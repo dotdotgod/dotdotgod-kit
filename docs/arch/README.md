@@ -1,3 +1,10 @@
 # Architecture
 
-Use this area for architecture decisions, data flow notes, integration boundaries, and migration design.
+Use this area for architecture decisions, code conventions, module boundaries, data flow notes, infrastructure/runtime dependencies, integration boundaries, and migration design.
+
+## Index
+
+- `README.md`: architecture documentation scope and local table of contents.
+- `CODE_CONVENTIONS.md`: dotdot code conventions, including abstraction boundaries and when to split long code. If conventions grow across multiple topics, promote them to `conventions/README.md` with supporting UPPER_SNAKE_CASE files.
+- `DOCS_STRUCTURE.md`: documentation layout, naming, README index, size guideline, and domain directory promotion rules.
+- `EXTENSION_ARCHITECTURE.md`: Pi package resource boundaries, plan/load extension responsibilities, prompt layer, and future search architecture.
