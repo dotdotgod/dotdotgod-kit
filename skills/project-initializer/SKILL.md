@@ -1,0 +1,56 @@
+---
+name: project-initializer
+description: Initialize a new software project with shared AI agent instructions and a documentation scaffold. Use when asked to set up a new project, create or normalize AGENTS.md/CLAUDE.md/CODEX.md, create docs/spec docs/test docs/arch docs/plan docs/archive, or establish a doc-first project baseline for multiple AI agents.
+---
+
+# Project Initializer
+
+## Overview
+
+Create a conservative project baseline that multiple AI coding agents can share:
+
+- `AGENTS.md` is the canonical project instruction file.
+- `CLAUDE.md` imports `AGENTS.md` for Claude Code.
+- `CODEX.md` points Codex users to `AGENTS.md`.
+- `docs/` contains `spec`, `test`, `arch`, `plan`, and `archive` areas with concise README files.
+- Under `docs/`, all directories use kebab-case and all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
+- `docs/plan/<task-slug>/` is the default shape for active plan work; each task directory keeps its overview/index in `README.md` and supporting UPPER_SNAKE_CASE plan files alongside it.
+- Completed plan task directories move to `docs/archive/<task-slug>/`.
+- `.gitignore` includes `docs/plan` and `docs/archive` so active plans and archived investigations stay local by default.
+
+Prefer the bundled dependency-free shell script for deterministic setup. Resolve paths relative to this skill directory:
+
+```bash
+sh scripts/init_project.sh <project-root>
+```
+
+Use `--dry-run` before touching an unfamiliar repository. Use `--force` only when the user explicitly wants existing scaffold files regenerated; it creates timestamped backups before replacing files.
+
+## Workflow
+
+1. Inspect the target project root.
+   - Check for existing `AGENTS.md`, `AGENT.md`, `CLAUDE.md`, `CODEX.md`, and `docs/`.
+   - Preserve project-specific instructions unless the user asks to replace them.
+   - If both `AGENT.md` and `AGENTS.md` exist, prefer `AGENTS.md` as canonical and leave `AGENT.md` untouched unless asked.
+
+2. Run the initializer.
+   - Default behavior creates missing files only.
+   - Existing files are skipped.
+   - `.gitignore` is created or appended with missing `docs/plan` and `docs/archive` entries.
+   - `--force` backs up replaced files as `<name>.bak.<timestamp>`.
+
+3. Review generated files.
+   - Fill project-specific sections in `AGENTS.md` when context is available.
+   - Keep `CLAUDE.md` and `CODEX.md` thin so instructions do not drift.
+   - Treat `docs/plan` and `docs/archive` as local working memory unless the project deliberately removes those `.gitignore` entries.
+   - Keep active plans as kebab-case task directories under `docs/plan/`; move completed or superseded task directories to `docs/archive/`.
+   - Keep markdown file names under `docs/` in UPPER_SNAKE_CASE.
+
+4. Report the result.
+   - List created/skipped/backed-up files.
+   - Mention any existing instructions that still need manual consolidation.
+
+## Bundled Resources
+
+- `scripts/init_project.sh`: creates the scaffold and handles overwrite policy with POSIX shell only.
+- `references/agent-docs.md`: naming rationale and expected content model for shared agent docs.
