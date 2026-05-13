@@ -16,8 +16,8 @@ This directory keeps project knowledge close to the code.
 
 ## Map
 
-- `spec/`: product behavior, API contracts, user-facing requirements. Current specs include `PROJECT_INITIALIZER.md`, `DOTDOT_SETTING.md`, `PLAN_MODE.md`, and `LOAD_PROJECT.md`.
+- `spec/`: product behavior, API contracts, user-facing requirements. Current specs include `PROJECT_INITIALIZER.md`, `DOTDOT_SETTING.md`, `PLAN_MODE.md`, `LOAD_PROJECT.md`, and `CROSS_AGENT_SUPPORT.md`.
 - `test/`: test strategy, coverage notes, regression cases, and manual verification records.
-- `arch/`: architecture decisions, code conventions, module boundaries, data flow, infrastructure/runtime dependencies, integration boundaries, and migration design. Current architecture docs include `CODE_CONVENTIONS.md`, `DOCS_STRUCTURE.md`, and `EXTENSION_ARCHITECTURE.md`.
+- `arch/`: architecture decisions, code conventions, module boundaries, data flow, infrastructure/runtime dependencies, integration boundaries, and migration design. Current architecture docs include `CODE_CONVENTIONS.md`, `DOCS_STRUCTURE.md`, `EXTENSION_ARCHITECTURE.md`, `CROSS_AGENT_ARCHITECTURE.md`, and `VALIDATION_ARCHITECTURE.md`.
 - `plan/`: local active implementation plans. Create one kebab-case directory per task (`plan/<task-slug>/`), keep the task overview/index in that directory's `README.md`, and add supporting UPPER_SNAKE_CASE plan files alongside it. Current active plans include `smaxh-docs-review/`. Ignored by git by default.
 - `archive/`: local completed plans, temporary reports, historical notes, payload captures, and investigation notes. Move completed plan task directories to `archive/plan/<task-slug>/`; put temporary reports and investigations under `archive/report/<report-slug>/`. See `archive/README.md` for the local archive index. Ignored by git by default.

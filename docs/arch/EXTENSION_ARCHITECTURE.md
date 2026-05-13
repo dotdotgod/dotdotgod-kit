@@ -2,7 +2,7 @@
 
 ## Package Shape
 
-`project-memory-kit` is a Pi package that exposes resources through the `pi` manifest in `package.json`.
+`@dotdotgod/pi` is a Pi package that exposes resources through the `pi` manifest in `package.json`.
 
 ```json
 {
@@ -17,13 +17,12 @@ Pi core packages are peer dependencies and are not bundled into the tarball.
 
 ## Package Distribution Metadata
 
-The npm package is published as `project-memory-kit`.
+The npm package is published as `@dotdotgod/pi`.
 
 Distribution metadata is intentionally explicit:
 
 - `publishConfig.access` is `public`.
 - `pack:dry-run` runs `npm pack --dry-run` for package verification.
-- `publish:public` runs `npm publish --access public`.
 - Keywords cover Pi packages, agent memory, documentation, skills, extensions, plan mode, and project/context loading.
 - The tarball should contain package resources under `skills/` and `extensions/`, plus package metadata and license files.
 - Pi peer dependencies remain unbundled and are resolved by the host Pi installation.
@@ -57,7 +56,7 @@ Plan mode injects runtime instructions because project docs can be edited by use
 `load-project` owns runtime project memory loading:
 
 - `/load` command
-- `/pmk:load` namespaced alias
+- `/dd:load` namespaced alias
 - lightweight detection of baseline memory files
 - read-only loader prompt generation
 - command-conflict guidance for `/load`
@@ -94,11 +93,11 @@ Future memory search features should extend `load-project` rather than the initi
 
 Potential additions:
 
-- `/pmk:index`
-- `/pmk:search`
-- `/pmk:status`
+- `/dd:index`
+- `/dd:search`
+- `/dd:status`
 - vector index over project docs
 - graph search over entities and relationships
-- LLM-callable `pmk_search` tools
+- LLM-callable `dd_search` tools
 
 The initializer should remain a conservative scaffold generator.

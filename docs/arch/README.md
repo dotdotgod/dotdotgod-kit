@@ -8,3 +8,5 @@ Use this area for architecture decisions, code conventions, module boundaries, d
 - `CODE_CONVENTIONS.md`: dotdot code conventions, including abstraction boundaries and when to split long code. If conventions grow across multiple topics, promote them to `conventions/README.md` with supporting UPPER_SNAKE_CASE files.
 - `DOCS_STRUCTURE.md`: documentation layout, naming, README index, size guideline, and domain directory promotion rules.
 - `EXTENSION_ARCHITECTURE.md`: Pi package resource boundaries, plan/load extension responsibilities, prompt layer, and future search architecture.
+- `CROSS_AGENT_ARCHITECTURE.md`: npm workspace package boundaries for Pi, docs validator, Claude Code, and Codex adapters.
+- `VALIDATION_ARCHITECTURE.md`: zero-dependency docs validator rules, dependency policy, and workspace verification strategy.

@@ -4,14 +4,14 @@
 
 `load-project` is a Pi extension that starts a read-only project memory loading turn.
 
-It helps the agent inspect the project-memory-kit scaffold and summarize the current project context.
+It helps the agent inspect the dotdotgod scaffold and summarize the current project context.
 
 ## Commands
 
 - `/load`: load project memory for the current working directory.
-- `/pmk:load`: stable namespaced alias for the same behavior.
+- `/dd:load`: stable namespaced alias for the same behavior.
 
-`/pmk:load` exists because other extensions may also register `/load`. Pi resolves duplicate extension commands with suffixes, so the namespaced command provides a clearer project-memory-kit entrypoint.
+`/dd:load` exists because other extensions may also register `/load`. Pi resolves duplicate extension commands with suffixes, so the namespaced command provides a clearer dotdotgod entrypoint.
 
 ## Read-Only Behavior
 
@@ -72,5 +72,5 @@ The command is intentionally a runtime extension entrypoint. It can later grow f
 - project memory indexing
 - vector search
 - graph search
-- `pmk_search` or related LLM-callable tools
-- `/pmk:index`, `/pmk:search`, or `/pmk:status` commands
+- `dd_search` or related LLM-callable tools
+- `/dd:index`, `/dd:search`, or `/dd:status` commands
