@@ -16,7 +16,7 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 - Active plan tasks are managed as kebab-case directories under `docs/plan/<task-slug>/` for projects initialized with `project-initializer`.
 - Under `docs/`, all directories use kebab-case and all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
 - Each task directory keeps its overview and index in `README.md`; supporting plan files such as `RESEARCH_NOTES.md` or `VERIFICATION.md` live alongside it.
-- When a plan markdown file under `docs/plan/` is created or updated, plan mode shows a saved-plan preview after the agent turn. `README.md` is preferred when multiple plan files were touched.
+- When a plan markdown file under `docs/plan/` is created or updated, plan mode includes the saved-plan preview in the execution-choice prompt before asking whether to execute, stay in plan mode, or refine the plan. `README.md` is preferred when multiple plan files were touched.
 - Completed task directories should be moved to `docs/archive/plan/<task-slug>/` after execution and verification.
 - Plans are encouraged to include target files, risks, and verification steps.
 
@@ -34,7 +34,7 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 4. The task overview, index, scope, and status belong in `docs/plan/<task-slug>/README.md`.
 5. Supporting research, checklists, or verification notes can be added as UPPER_SNAKE_CASE markdown files in the same directory.
 6. If the session is long or noisy, the agent may suggest a user-initiated planning-focused `/compact <instructions>` before writing the plan.
-7. After the agent creates or updates a plan file, Pi shows the full saved plan preview in the conversation.
+7. After the agent creates or updates a plan file, Pi shows the full saved plan preview inside the execution-choice prompt before you choose the next action.
 8. The agent should write a numbered plan in the task `README.md` and final response with this format:
 
 ```md

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Doc-First Planning"
+  short_description: "Plan work from dotdotgod docs first."
+  default_prompt: "Plan this change from AGENTS.md, docs/spec, docs/test, docs/arch, and docs/plan before implementation."

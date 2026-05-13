@@ -1,0 +1,50 @@
+## Goal
+
+Create implementation plans from the repository's documented design sources before changing source/config files. Treat planning as a managed artifact under `docs/plan`.
+
+Do not start implementation until the plan has a clear evidence trail and the user has asked to execute it.
+
+## Source Order
+
+Prefer live repository docs in this order:
+
+1. `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `README.md`, and `docs/README.md` for working rules and project map.
+2. `docs/spec/` for behavior, domain rules, API contracts, and acceptance criteria.
+3. `docs/test/` for verification strategy, regression cases, fixtures, and manual checks.
+4. `docs/arch/` for architecture decisions, module boundaries, integration constraints, and runtime assumptions.
+5. `docs/plan/README.md` and matching active plans under `docs/plan/`.
+6. Relevant completed plans under `docs/archive/plan/` or reports under `docs/archive/report/` only when directly useful.
+
+## Workflow
+
+1. Establish current state.
+   - Check git status.
+   - Locate relevant docs and active plans.
+   - Preserve user edits and unrelated dirty worktree changes.
+2. Gather evidence before planning.
+   - Search docs by domain terms from the user request.
+   - Read nearest README indexes and relevant focused docs.
+   - Read code only after docs identify likely module boundaries, or when docs are missing/stale.
+3. Create or update the active plan at:
+
+   ```text
+   docs/plan/<task-slug>/README.md
+   ```
+
+4. Use supporting files in the same task directory only when useful, with UPPER_SNAKE_CASE markdown names such as `RESEARCH_NOTES.md` or `VERIFICATION.md`.
+5. Include:
+   - scope and current status
+   - target files and rationale
+   - implementation steps
+   - risks and edge cases when useful
+   - verification method
+   - final housekeeping step to move completed work to `docs/archive/plan/<task-slug>/`
+6. Update `docs/plan/README.md` if the repository keeps active plan entries there.
+7. Stop after presenting the plan unless the user explicitly asks for execution.
+
+## Quality Rules
+
+- Prefer documented facts over inference; label inference explicitly.
+- Keep plans concise and maintainable.
+- Use local repository terminology and existing module names.
+- Validation steps must be executable commands or concrete review checks.

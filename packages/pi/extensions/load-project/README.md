@@ -7,11 +7,11 @@ See the behavior contract in [`docs/spec/LOAD_PROJECT.md`](../../docs/spec/LOAD_
 ## Commands
 
 - `/load` — load current project memory.
-- `/pmk:load` — stable namespaced alias for command-conflict avoidance.
+- `/dd:load` — stable namespaced alias for command-conflict avoidance.
 
 ## Behavior
 
-The command checks for the expected `project-memory-kit` scaffold, then sends a read-only loader prompt to the agent.
+The command checks for the expected dotdotgod scaffold, then sends a read-only loader prompt to the agent.
 
 Baseline files and directories include:
 
@@ -39,5 +39,5 @@ The agent is instructed to:
 ## Notes
 
 - The command itself does not modify files.
-- `/load` may conflict with other extensions, so `/pmk:load` is always registered as the stable project-memory-kit alias.
+- `/load` may conflict with other extensions, so `/dd:load` is always registered as the stable dotdotgod alias.
 - Future indexing/search behavior should extend this runtime entrypoint rather than the initializer skill.

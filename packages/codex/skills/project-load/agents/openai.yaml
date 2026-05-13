@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Load"
+  short_description: "Load dotdotgod project memory."
+  default_prompt: "Load this project's dotdotgod memory and summarize rules, docs, commands, active plans, and open questions."

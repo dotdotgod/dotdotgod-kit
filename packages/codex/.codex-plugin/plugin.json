@@ -1,0 +1,30 @@
+{
+  "name": "dotdotgod",
+  "version": "0.1.2",
+  "description": "Dotdotgod project memory workflows for Codex: initialize shared docs, load project memory, and plan implementation work doc-first.",
+  "author": {
+    "name": "dotdotgod"
+  },
+  "license": "Elastic-2.0",
+  "keywords": [
+    "dotdotgod",
+    "codex",
+    "agent-memory",
+    "documentation",
+    "planning"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Dotdotgod Project Memory",
+    "shortDescription": "Initialize, load, and plan from shared project memory.",
+    "longDescription": "Reusable Codex skills for shared AGENTS.md instructions, docs/spec docs/test docs/arch docs/plan docs/archive workflows, and doc-first implementation planning.",
+    "developerName": "dotdotgod",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Load this project's dotdotgod memory.",
+      "Plan this change using docs/spec, docs/test, and docs/arch first.",
+      "Initialize this project with dotdotgod shared agent docs."
+    ]
+  }
+}
