@@ -126,6 +126,25 @@ export function cleanStepText(text: string): string {
 	return cleaned;
 }
 
+function isTemplatePlanStep(text: string): boolean {
+	const normalized = text
+		.toLowerCase()
+		.replace(/[`:*_()[\]{}]/g, "")
+		.replace(/\s+/g, " ")
+		.trim();
+
+	return (
+		normalized === "target files and rationale" ||
+		normalized === "implementation steps" ||
+		normalized === "verification method" ||
+		normalized === "risks and edge cases" ||
+		normalized === "archive step" ||
+		normalized === "completion" ||
+		normalized.includes("실행/유지/수정 선택") ||
+		normalized.includes("선택 프롬프트")
+	);
+}
+
 export function extractTodoItems(message: string): TodoItem[] {
 	const items: TodoItem[] = [];
 	const headerMatch = message.match(/\*{0,2}Plan:\*{0,2}\s*\n/i);
@@ -141,7 +160,7 @@ export function extractTodoItems(message: string): TodoItem[] {
 			.trim();
 		if (text.length > 5 && !text.startsWith("`") && !text.startsWith("/") && !text.startsWith("-")) {
 			const cleaned = cleanStepText(text);
-			if (cleaned.length > 3) {
+			if (cleaned.length > 3 && !isTemplatePlanStep(text) && !isTemplatePlanStep(cleaned)) {
 				items.push({ step: items.length + 1, text: cleaned, completed: false });
 			}
 		}
