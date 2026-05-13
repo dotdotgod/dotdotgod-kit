@@ -11,11 +11,13 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
   - `code_search`
   - `fetch_content`
   - `get_search_content`
-- The planning prompt includes React Native / TypeScript project conventions.
+- The planning prompt stays generic across project types.
+- If the session is long or noisy, the agent may suggest a user-initiated planning-focused `/compact <instructions>` before writing the plan.
 - Active plan tasks are managed as kebab-case directories under `docs/plan/<task-slug>/` for projects initialized with `project-initializer`.
 - Under `docs/`, all directories use kebab-case and all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
 - Each task directory keeps its overview and index in `README.md`; supporting plan files such as `RESEARCH_NOTES.md` or `VERIFICATION.md` live alongside it.
-- Completed task directories should be moved to `docs/archive/<task-slug>/` after execution and verification.
+- When a plan markdown file under `docs/plan/` is created or updated, plan mode shows a saved-plan preview after the agent turn. `README.md` is preferred when multiple plan files were touched.
+- Completed task directories should be moved to `docs/archive/plan/<task-slug>/` after execution and verification.
 - Plans are encouraged to include target files, risks, and verification steps.
 
 ## Commands
@@ -31,7 +33,9 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 3. The agent should create or update a focused kebab-case task directory under `docs/plan/<task-slug>/`.
 4. The task overview, index, scope, and status belong in `docs/plan/<task-slug>/README.md`.
 5. Supporting research, checklists, or verification notes can be added as UPPER_SNAKE_CASE markdown files in the same directory.
-6. The agent should write a numbered plan in the task `README.md` and final response with this format:
+6. If the session is long or noisy, the agent may suggest a user-initiated planning-focused `/compact <instructions>` before writing the plan.
+7. After the agent creates or updates a plan file, Pi shows the full saved plan preview in the conversation.
+8. The agent should write a numbered plan in the task `README.md` and final response with this format:
 
 ```md
 Plan:
@@ -40,10 +44,10 @@ Plan:
 3. Verification method
 ```
 
-7. Choose `Execute the plan` in the UI to switch into implementation mode.
-8. During execution, the agent marks completed steps with `[DONE:n]` tags.
-9. After implementation and verification, the agent moves the completed task directory to `docs/archive/<task-slug>/`.
-10. Use `/todos` to inspect progress.
+9. Choose `Execute the plan` in the UI to switch into implementation mode.
+10. During execution, the agent marks completed steps with `[DONE:n]` tags.
+11. After implementation and verification, the agent moves the completed task directory to `docs/archive/plan/<task-slug>/`.
+12. Use `/todos` to inspect progress.
 
 ## Plan Mode Restrictions
 

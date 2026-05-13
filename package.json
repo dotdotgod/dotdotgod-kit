@@ -1,6 +1,6 @@
 {
   "name": "project-memory-kit",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Project memory kit for AI coding agents: shared docs initialization, plan/archive workflow, and Pi plan mode extension.",
   "type": "module",
   "license": "Elastic-2.0",

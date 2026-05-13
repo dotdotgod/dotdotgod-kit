@@ -8,7 +8,9 @@ import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
-import { isAbsolute, relative, resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { basename, isAbsolute, relative, resolve } from "node:path";
 import { extractTodoItems, isSafeCommand, markCompletedSteps, type TodoItem } from "./utils.js";
 
 const PLAN_DIRECTORY = "docs/plan";
@@ -91,6 +93,25 @@ function isManagedPlanMarkdownPath(cwd: string, path: string): boolean {
 	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY) || isMarkdownPathInside(cwd, path, ARCHIVE_DIRECTORY);
 }
 
+function isActivePlanMarkdownPath(cwd: string, path: string): boolean {
+	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY);
+}
+
+function toRelativeDisplayPath(cwd: string, path: string): string {
+	const targetPath = resolve(cwd, normalizeToolPath(path));
+	return relative(cwd, targetPath) || normalizeToolPath(path);
+}
+
+function hashContent(content: string): string {
+	return createHash("sha256").update(content).digest("hex");
+}
+
+function buildPlanPreview(relativePath: string, content: string, otherTouchedPaths: string[]): string {
+	const body = content.trim();
+	const otherFiles = otherTouchedPaths.length > 0 ? `\n\nOther touched plan files:\n${otherTouchedPaths.map((p) => `- ${p}`).join("\n")}` : "";
+	return `**Saved plan:** \`${relativePath}\`\n\n${body}${otherFiles}`;
+}
+
 function getToolPath(input: unknown): string | undefined {
 	if (!input || typeof input !== "object") return undefined;
 	const path = (input as { path?: unknown }).path;
@@ -101,6 +122,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let planModeEnabled = false;
 	let executionMode = false;
 	let todoItems: TodoItem[] = [];
+	let touchedPlanPaths: string[] = [];
+	let lastShownPlanPreview: { path: string; hash: string; mtimeMs: number } | undefined;
 
 	pi.registerFlag("plan", {
 		description: "Start in plan mode (safe exploration plus docs/plan updates)",
@@ -139,6 +162,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		todoItems = [];
 
 		if (planModeEnabled) {
+			touchedPlanPaths = [];
 			pi.setActiveTools(PLAN_MODE_TOOLS);
 			ctx.ui.notify(`Plan mode enabled. Tools: ${PLAN_MODE_TOOLS.join(", ")}`);
 		} else {
@@ -153,7 +177,60 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			enabled: planModeEnabled,
 			todos: todoItems,
 			executing: executionMode,
+			lastShownPlanPreview,
 		});
+	}
+
+	function rememberTouchedPlanPath(cwd: string, path: string): void {
+		const relativePath = toRelativeDisplayPath(cwd, path);
+		touchedPlanPaths = touchedPlanPaths.filter((candidate) => candidate !== relativePath);
+		touchedPlanPaths.push(relativePath);
+	}
+
+	function selectPlanPreviewPath(cwd: string): string | undefined {
+		const existing = touchedPlanPaths.filter((path) => existsSync(resolve(cwd, path)));
+		if (existing.length === 0) return undefined;
+
+		const readme = [...existing].reverse().find((path) => basename(path) === "README.md");
+		return readme ?? existing[existing.length - 1];
+	}
+
+	function showTouchedPlanPreview(ctx: ExtensionContext): void {
+		const selectedPath = selectPlanPreviewPath(ctx.cwd);
+		if (!selectedPath) return;
+
+		try {
+			const absolutePath = resolve(ctx.cwd, selectedPath);
+			const stat = statSync(absolutePath);
+			const content = readFileSync(absolutePath, "utf8");
+			const hash = hashContent(content);
+			if (
+				lastShownPlanPreview?.path === selectedPath &&
+				lastShownPlanPreview.hash === hash &&
+				lastShownPlanPreview.mtimeMs === stat.mtimeMs
+			) {
+				return;
+			}
+
+			const otherTouchedPaths = touchedPlanPaths.filter((path) => path !== selectedPath);
+			pi.sendMessage(
+				{
+					customType: "plan-file-preview",
+					content: buildPlanPreview(selectedPath, content, otherTouchedPaths),
+					display: true,
+				},
+				{ triggerTurn: false },
+			);
+			lastShownPlanPreview = { path: selectedPath, hash, mtimeMs: stat.mtimeMs };
+			persistState();
+		} catch (error) {
+			ctx.ui.notify(
+				`Plan file preview skipped: ${error instanceof Error ? error.message : String(error)}`,
+				"warning",
+			);
+		} finally {
+			touchedPlanPaths = [];
+		}
 	}
 
 	pi.registerCommand("plan", {
@@ -200,6 +277,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 					reason: `Plan mode: ${event.toolName} is only allowed for markdown plan files under ${PLAN_DIRECTORY}/ or ${ARCHIVE_DIRECTORY}/. Directories must be kebab-case and markdown file names must be UPPER_SNAKE_CASE.md. Use execution mode for source changes.`,
 				};
 			}
+			if (isActivePlanMarkdownPath(ctx.cwd, path)) {
+				rememberTouchedPlanPath(ctx.cwd, path);
+			}
 		}
 	});
 
@@ -242,20 +322,17 @@ Restrictions:
 - Bash is restricted to read-only allowlisted commands.
 
 Project context:
-- This is a React Native / TypeScript app.
-- Prefer existing Zustand, TanStack React Query, and React Navigation patterns.
-- New shared components should go under src/components/atomics.
-- New stores should go under src/stores.
-- Follow the styles/colors and styles/font conventions.
+- Read AGENTS.md and docs/README.md first when available.
+- Treat project docs as the source of truth for stack, commands, conventions, and architecture.
+- Check docs/arch when code conventions, module boundaries, infrastructure/runtime dependencies, or integration constraints may affect the plan.
 
 Workflow:
-- Explore the relevant files thoroughly before planning.
-- Ask clarifying questions with questionnaire when requirements are ambiguous.
+- Explore relevant files thoroughly before planning; ask clarifying questions with questionnaire when requirements are ambiguous.
+- If the session is long or noisy, suggest a user-initiated planning-focused compaction before writing the plan. Use instructions like: /compact Preserve decisions, modified files, active docs/spec and docs/arch context, completed and active plan/archive status, verification results, unresolved next steps, and omit low-value discussion.
 - Use web_search, code_search, and fetch_content when library or web evidence is needed.
-- Manage each active task as its own kebab-case directory under docs/plan/<task-slug>/.
-- Put the task index, overview, scope, and current status in docs/plan/<task-slug>/README.md.
-- Put supporting plan files, research notes, checklists, or verification notes in the same task directory as separate UPPER_SNAKE_CASE markdown files, for example RESEARCH_NOTES.md or VERIFICATION.md.
-- Include a final housekeeping step that moves the completed task directory from docs/plan/<task-slug>/ to docs/archive/<task-slug>/ after implementation and verification are complete.
+- Manage active work under docs/plan/<task-slug>/README.md, with optional UPPER_SNAKE_CASE support files in the same task directory.
+- When one docs domain grows into multiple files, group it under docs/<area>/<domain>/README.md plus supporting UPPER_SNAKE_CASE files.
+- Include scope, status, target files, risks, verification, and a final archive step to docs/archive/plan/<task-slug>/.
 - Do not change product/source files in plan mode. Only maintain docs/plan or docs/archive markdown files and produce an executable plan.
 
 Always write a numbered plan in the task README and final response with this format:
@@ -290,7 +367,7 @@ ${todoList}
 Execute each step in order.
 After completing a step, include a [DONE:n] tag in your response.
 Example: after completing step 1, include [DONE:1].
-When implementation and verification are complete, move the completed task directory from docs/plan/<task-slug>/ to docs/archive/<task-slug>/ as the final housekeeping step.
+When implementation and verification are complete, move the completed task directory from docs/plan/<task-slug>/ to docs/archive/plan/<task-slug>/ as the final housekeeping step.
 
 If an out-of-scope change is required, stop and ask the user for confirmation.`,
 					display: false,
@@ -336,6 +413,21 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 				todoItems = extracted;
 			}
 		}
+
+		const selectedPreviewPath = selectPlanPreviewPath(ctx.cwd);
+		if (todoItems.length === 0 && selectedPreviewPath) {
+			try {
+				const planContent = readFileSync(resolve(ctx.cwd, selectedPreviewPath), "utf8");
+				const extracted = extractTodoItems(planContent);
+				if (extracted.length > 0) {
+					todoItems = extracted;
+				}
+			} catch {
+				// Preview rendering below will surface any file-access issue; todo fallback can be skipped silently.
+			}
+		}
+
+		showTouchedPlanPreview(ctx);
 
 		if (todoItems.length > 0) {
 			const todoListText = todoItems.map((t, i) => `${i + 1}. ☐ ${t.text}`).join("\n");
@@ -386,12 +478,22 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 
 		const planModeEntry = entries
 			.filter((e: { type: string; customType?: string }) => e.type === "custom" && e.customType === "plan-mode")
-			.pop() as { data?: { enabled: boolean; todos?: TodoItem[]; executing?: boolean } } | undefined;
+			.pop() as
+			| {
+					data?: {
+						enabled: boolean;
+						todos?: TodoItem[];
+						executing?: boolean;
+						lastShownPlanPreview?: { path: string; hash: string; mtimeMs: number };
+					};
+			  }
+			| undefined;
 
 		if (planModeEntry?.data) {
 			planModeEnabled = planModeEntry.data.enabled ?? planModeEnabled;
 			todoItems = planModeEntry.data.todos ?? todoItems;
 			executionMode = planModeEntry.data.executing ?? executionMode;
+			lastShownPlanPreview = planModeEntry.data.lastShownPlanPreview ?? lastShownPlanPreview;
 		}
 
 		const isResume = planModeEntry !== undefined;
