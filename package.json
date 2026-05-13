@@ -1,0 +1,36 @@
+{
+  "name": "@dotdot/pi-workflow",
+  "version": "0.1.0",
+  "description": "Dotdot's Pi workflow package: project initializer skill and customized plan mode extension.",
+  "type": "module",
+  "license": "Elastic-2.0",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-coding-agent",
+    "skill",
+    "extension",
+    "project-initializer",
+    "plan-mode"
+  ],
+  "peerDependencies": {
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "pi": {
+    "skills": [
+      "./skills"
+    ],
+    "extensions": [
+      "./extensions"
+    ]
+  },
+  "files": [
+    "skills",
+    "extensions",
+    "README.md",
+    "LICENSE"
+  ]
+}
