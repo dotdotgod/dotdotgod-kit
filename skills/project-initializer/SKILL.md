@@ -13,9 +13,12 @@ Create a conservative project baseline that multiple AI coding agents can share:
 - `CLAUDE.md` imports `AGENTS.md` for Claude Code.
 - `CODEX.md` points Codex users to `AGENTS.md`.
 - `docs/` contains `spec`, `test`, `arch`, `plan`, and `archive` areas with concise README files.
+- `docs/arch/` covers architecture decisions, code conventions, module boundaries, data flow, infrastructure/runtime dependencies, integration boundaries, and migration design.
+- Code conventions can start as `docs/arch/CODE_CONVENTIONS.md`; when they grow across multiple topics, promote them to `docs/arch/conventions/README.md` plus supporting UPPER_SNAKE_CASE files.
 - Under `docs/`, all directories use kebab-case and all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
 - `docs/plan/<task-slug>/` is the default shape for active plan work; each task directory keeps its overview/index in `README.md` and supporting UPPER_SNAKE_CASE plan files alongside it.
-- Completed plan task directories move to `docs/archive/<task-slug>/`.
+- Completed plan task directories move to `docs/archive/plan/<task-slug>/`.
+- Temporary reports and investigations move to `docs/archive/report/<report-slug>/`.
 - `.gitignore` includes `docs/plan` and `docs/archive` so active plans and archived investigations stay local by default.
 
 Prefer the bundled dependency-free shell script for deterministic setup. Resolve paths relative to this skill directory:
@@ -24,7 +27,7 @@ Prefer the bundled dependency-free shell script for deterministic setup. Resolve
 sh scripts/init_project.sh <project-root>
 ```
 
-Use `--dry-run` before touching an unfamiliar repository. Use `--force` only when the user explicitly wants existing scaffold files regenerated; it creates timestamped backups before replacing files.
+Use `--dry-run` before touching an unfamiliar repository. Use `--dotdot-setting` when the user wants dotdot code conventions generated under `docs/arch/CODE_CONVENTIONS.md` and referenced from `AGENTS.md`. Use `--force` only when the user explicitly wants existing scaffold files regenerated; it creates timestamped backups before replacing files.
 
 ## Workflow
 
@@ -37,14 +40,17 @@ Use `--dry-run` before touching an unfamiliar repository. Use `--force` only whe
    - Default behavior creates missing files only.
    - Existing files are skipped.
    - `.gitignore` is created or appended with missing `docs/plan` and `docs/archive` entries.
+   - `--dotdot-setting` additionally creates `docs/arch/CODE_CONVENTIONS.md`, adds it to the architecture README index, and adds an `AGENTS.md` reference.
    - `--force` backs up replaced files as `<name>.bak.<timestamp>`.
 
 3. Review generated files.
    - Fill project-specific sections in `AGENTS.md` when context is available.
    - Keep `CLAUDE.md` and `CODEX.md` thin so instructions do not drift.
    - Treat `docs/plan` and `docs/archive` as local working memory unless the project deliberately removes those `.gitignore` entries.
-   - Keep active plans as kebab-case task directories under `docs/plan/`; move completed or superseded task directories to `docs/archive/`.
+   - Keep active plans as kebab-case task directories under `docs/plan/`; move completed or superseded task directories to `docs/archive/plan/`.
+   - Put temporary reports, payload captures, and investigations under `docs/archive/report/`.
    - Keep markdown file names under `docs/` in UPPER_SNAKE_CASE.
+   - Start with focused single docs, then promote a growing domain to `docs/<area>/<domain>/README.md` plus supporting files when multiple documents are needed.
 
 4. Report the result.
    - List created/skipped/backed-up files.
