@@ -62,16 +62,14 @@ Suggested compaction should preserve information useful for the next plan:
 
 Compaction should remain user-initiated because it is lossy.
 
-## Saved Plan Preview
+## Plan Review Choice
 
-When the agent creates or updates a plan markdown file under `docs/plan/`, plan mode shows a saved-plan preview before asking whether to execute, stay in plan mode, or refine the plan.
+When the agent finishes planning, plan mode asks whether to execute, stay in plan mode, or refine the plan.
 
-- `README.md` is preferred when multiple plan files were touched.
-- The full saved plan markdown is shown.
-- Duplicate previews are avoided with path/content state tracking.
-- The preview and action choices are shown together in a single custom UI so the user reviews the full saved markdown before selecting execute, stay, or refine.
-- The custom UI keeps action choices fixed below the preview, uses a short action-choice heading, and never embeds the full markdown in a select prompt.
-- If no `docs/plan/` markdown file was written or edited, no saved-plan preview is expected.
+- Plan files under `docs/plan/` remain the durable review artifact.
+- Plan mode no longer renders a saved-plan file preview in the TUI.
+- The action prompt uses a short selector title and does not embed plan markdown.
+- Todo extraction and execution tracking remain available when a concrete `Plan:` section is present.
 
 ## Todo Extraction and Execution
 
