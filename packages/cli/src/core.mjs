@@ -555,6 +555,28 @@ export function runStatus(argv) {
   process.exit(status.ok ? 0 : 1);
 }
 
+export function readFreshIndex(root) {
+  const initialStatus = getStatus(root);
+  if (initialStatus.ok) return { status: initialStatus, index: readIndex(root), metadata: { cacheRefreshed: false } };
+
+  const index = buildIndex(root);
+  const manifest = writeIndex(root, index);
+  const status = getStatus(root);
+  return {
+    status,
+    index,
+    metadata: {
+      cacheRefreshed: true,
+      previousStatus: initialStatus.status,
+      changedFiles: index.incremental?.changedFiles ?? initialStatus.staleFiles,
+      fullRebuild: index.incremental?.fullRebuild === true,
+      indexedFiles: index.files.length,
+      indexSizeBytes: manifest.indexSizeBytes,
+      archiveBodiesIncluded: index.archiveBodiesIncluded === true,
+    },
+  };
+}
+
 export function graphSummary(index) {
   const graph = index?.graph ?? { nodes: [], edges: [] };
   const byType = graph.nodes.reduce((acc, node) => ({ ...acc, [node.type]: (acc[node.type] ?? 0) + 1 }), {});
@@ -803,13 +825,12 @@ export function buildCommunities(index, limits = {}) {
 
 export function runLoadSnapshot(argv) {
   const options = parseCommon(argv);
-  const status = getStatus(options.root);
-  const index = readIndex(options.root);
+  const { status, index, metadata } = readFreshIndex(options.root);
   const summary = graphSummary(index);
   const communities = buildCommunities(index, { communities: 5, items: 5 });
-  const payload = { root: options.root, cache: status, graph: summary, communities, bounds: { communities: 5, communityItems: 5, fullGraphIncluded: false } };
+  const payload = { root: options.root, cache: status, metadata, graph: summary, communities, bounds: { communities: 5, communityItems: 5, fullGraphIncluded: false } };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
-  else console.log(`dotdotgod load snapshot\n- cache: ${status.status}\n- indexed files: ${status.indexedFiles}\n- current files: ${status.currentFiles}\n- archive bodies included: ${status.archiveBodiesIncluded ? 'yes' : 'no'}\n- graph: ${summary.nodes} nodes, ${summary.edges} edges\n- communities: ${communities.communities.length}/${communities.total} shown, ${communities.omitted} omitted`);
+  else console.log(`dotdotgod load snapshot\n- cache: ${status.status}${metadata.cacheRefreshed ? ' (refreshed)' : ''}\n- indexed files: ${status.indexedFiles}\n- current files: ${status.currentFiles}\n- archive bodies included: ${status.archiveBodiesIncluded ? 'yes' : 'no'}\n- graph: ${summary.nodes} nodes, ${summary.edges} edges\n- communities: ${communities.communities.length}/${communities.total} shown, ${communities.omitted} omitted`);
 }
 
 export function parseGraphOptions(argv) {
@@ -827,18 +848,18 @@ export function parseGraphOptions(argv) {
 export function runGraph(argv) {
   const sub = argv[0];
   const options = parseGraphOptions(argv.slice(1));
-  const status = getStatus(options.root);
-  const index = readIndex(options.root);
+  const { status, index, metadata } = readFreshIndex(options.root);
   const impact = options.changed ? buildImpactReport(index, options.changed) : undefined;
   const payload = sub === 'query'
-    ? { ok: status.ok, command: 'graph query', root: options.root, status, changed: options.changed, related: impact?.related ?? [], impact }
+    ? { ok: status.ok, command: 'graph query', root: options.root, status, metadata, changed: options.changed, related: impact?.related ?? [], impact }
     : sub === 'communities'
-      ? { ok: status.ok, command: 'graph communities', root: options.root, status, graph: graphSummary(index), communities: buildCommunities(index) }
-      : { ok: status.ok, command: `graph ${sub}`, root: options.root, status, graph: graphSummary(index) };
+      ? { ok: status.ok, command: 'graph communities', root: options.root, status, metadata, graph: graphSummary(index), communities: buildCommunities(index) }
+      : { ok: status.ok, command: `graph ${sub}`, root: options.root, status, metadata, graph: graphSummary(index) };
+  const refreshNote = metadata.cacheRefreshed ? ', refreshed' : '';
   if (options.json) console.log(JSON.stringify(payload, null, 2));
-  else if (sub === 'query') console.log(`graph query: ${payload.related.length} related node(s), ${impact?.omittedRelated ?? 0} omitted (${status.status} index)`);
-  else if (sub === 'communities') console.log(`graph communities: ${payload.communities.communities.length}/${payload.communities.total} shown, ${payload.communities.omitted} omitted (${status.status} index)`);
-  else console.log(`${payload.command}: ${payload.graph.nodes} nodes, ${payload.graph.edges} edges (${status.status} index)`);
+  else if (sub === 'query') console.log(`graph query: ${payload.related.length} related node(s), ${impact?.omittedRelated ?? 0} omitted (${status.status}${refreshNote} index)`);
+  else if (sub === 'communities') console.log(`graph communities: ${payload.communities.communities.length}/${payload.communities.total} shown, ${payload.communities.omitted} omitted (${status.status}${refreshNote} index)`);
+  else console.log(`${payload.command}: ${payload.graph.nodes} nodes, ${payload.graph.edges} edges (${status.status}${refreshNote} index)`);
 }
 
 export function runCli(argv = process.argv.slice(2)) {
