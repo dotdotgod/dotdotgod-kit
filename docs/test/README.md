@@ -126,6 +126,18 @@ pi uninstall npm:@dotdotgod/pi
 
 Confirmed after the first public `0.1.0` publish: install added the package successfully and uninstall removed it successfully.
 
+Context measurement smoke:
+
+```bash
+pnpm run measure:context
+pnpm run measure:context:json
+node scripts/measure-context.mjs --markdown --output docs/archive/report/context-metrics/latest.md
+```
+
+- Confirm the static measurement reports load prompt, baseline memory, default docs surface, archive index, full archive, and archive body excluded estimates.
+- Confirm local output under `docs/archive/report/context-metrics/` remains ignored by git.
+- In Pi, start with `--dd-context-debug --dd-context-debug-output docs/archive/report/context-metrics/session.jsonl`, run `/dd:load` and `/plan`, then confirm JSONL events are written for load and Plan Mode activity.
+
 README landing review:
 
 - Confirm root `README.md` leads with the dotdotgod concept and user outcomes before package details.

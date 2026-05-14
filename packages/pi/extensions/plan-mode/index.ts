@@ -9,6 +9,7 @@ import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
 import { isAbsolute, relative, resolve } from "node:path";
+import { recordContextMetric } from "../context-metrics/utils.js";
 import {
 	buildPlanCompactionInstructions,
 	extractTodoItems,
@@ -148,17 +149,20 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
 		planCompactionInFlight = true;
 		lastPlanCompactionReason = reason;
+		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:compaction-request", { reason, entryCount });
 		ctx.ui.notify("Planning context is large; compacting before continuing.", "info");
 		ctx.compact({
 			customInstructions: buildPlanCompactionInstructions(reason),
 			onComplete: () => {
 				planCompactionInFlight = false;
 				lastPlanCompactionEntryCount = getSessionEntryCount(ctx);
+				recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:compaction-complete", { reason, entryCount: lastPlanCompactionEntryCount });
 				ctx.ui.notify("Planning compaction completed.", "info");
 				persistState();
 			},
 			onError: (error) => {
 				planCompactionInFlight = false;
+				recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:compaction-error", { reason, error: error.message });
 				ctx.ui.notify(`Planning compaction failed: ${error.message}`, "warning");
 				persistState();
 			},
@@ -181,6 +185,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
 		if (planModeEnabled) {
 			pi.setActiveTools(PLAN_MODE_TOOLS);
+			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:enabled", { entryCount: getSessionEntryCount(ctx) });
 			ctx.ui.notify(`Plan mode enabled. Tools: ${PLAN_MODE_TOOLS.join(", ")}`);
 			requestPlanningCompactionIfNeeded(ctx);
 		} else {
@@ -339,6 +344,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 
 	pi.on("turn_end", async (event, ctx) => {
 		if (planModeEnabled && !executionMode) {
+			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:turn-end", { entryCount: getSessionEntryCount(ctx) });
 			requestPlanningCompactionIfNeeded(ctx);
 		}
 
@@ -386,6 +392,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 		if (choice?.startsWith("Execute the plan")) {
 			planModeEnabled = false;
 			executionMode = todoItems.length > 0;
+			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:execution-start", { todoCount: todoItems.length });
 			pi.setActiveTools(NORMAL_MODE_TOOLS);
 			updateStatus(ctx);
 
@@ -460,6 +467,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 
 		if (planModeEnabled) {
 			pi.setActiveTools(PLAN_MODE_TOOLS);
+			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:session-start-enabled", { entryCount: getSessionEntryCount(ctx) });
 		}
 		updateStatus(ctx);
 		requestPlanningCompactionIfNeeded(ctx);

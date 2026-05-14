@@ -76,6 +76,12 @@ Plan Mode compaction uses conservative token criteria:
 
 The extension debounces repeated compactions, skips compaction during execution mode, and continues without blocking if compaction fails.
 
+## Debug Measurement
+
+When the Pi adapter is started with `--dd-context-debug`, Plan Mode records local JSONL measurement events for Plan Mode entry, planning turn end, compaction request, compaction completion/error, and execution start.
+
+Events include context usage when available, git state, compaction reason, entry counts, and todo counts where relevant. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
+
 ## Plan Review Choice
 
 When the agent finishes planning after creating or updating an active plan markdown file under `docs/plan/`, plan mode asks whether to execute, stay in plan mode, or refine the plan.

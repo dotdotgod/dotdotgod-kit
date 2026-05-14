@@ -54,6 +54,12 @@ The loader prompt asks the agent to:
 - use `docs/archive/README.md` or targeted archive paths only when the user request or current task makes completed plans/reports relevant
 - distinguish completed plan archives under `docs/archive/plan/` from temporary reports under `docs/archive/report/` when archive lookup is needed
 
+## Debug Measurement
+
+When the Pi adapter is started with `--dd-context-debug`, `/load` and `/dd:load` record local JSONL measurement events before and after sending the load prompt.
+
+The event includes prompt character/word/approx-token counts, context usage when available, git state, and the docs directories included in the default summary. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
+
 ## Response Shape
 
 The agent should summarize:

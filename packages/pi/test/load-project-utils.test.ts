@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { buildLoadPrompt, collectSnapshot, hasOtherLoadCommand, listMarkdownFiles } from "../extensions/load-project/utils.ts";
+import { buildLoadPrompt, collectSnapshot, estimateTextMetrics, hasOtherLoadCommand, listMarkdownFiles } from "../extensions/load-project/utils.ts";
 
 function fixture(): string {
 	return mkdtempSync(join(tmpdir(), "dotdotgod-load-test-"));
@@ -55,6 +55,13 @@ describe("load-project prompt", () => {
 		assert.match(prompt, /docs\/spec\/README\.md/);
 		assert.match(prompt, /do not scan it as part of the documentation directory summary/i);
 		assert.match(prompt, /Do not modify files/);
+	});
+});
+
+describe("load-project measurement helpers", () => {
+	it("estimates text metrics", () => {
+		assert.deepEqual(estimateTextMetrics("one two three"), { characters: 13, words: 3, approxTokens: 4 });
+		assert.deepEqual(estimateTextMetrics(""), { characters: 0, words: 0, approxTokens: 0 });
 	});
 });
 

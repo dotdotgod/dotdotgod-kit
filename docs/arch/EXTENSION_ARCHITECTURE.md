@@ -51,6 +51,17 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 
 Plan mode injects runtime instructions because project docs can be edited by users. The prompt should stay generic and must not contain app-specific stack assumptions.
 
+### Context Metrics Debug Utilities
+
+The Pi adapter includes opt-in context metrics debug helpers used by `load-project` and `plan-mode`.
+
+- `--dd-context-debug` enables local JSONL event recording.
+- `--dd-context-debug-output <path>` sets the output file path.
+- Default output is under `docs/archive/report/context-metrics/`, which is ignored by git.
+- Events record timestamps, git state, `ctx.getContextUsage()` when available, `/dd:load` prompt metrics, Plan Mode state changes, and compaction callbacks.
+
+The debug path is for measurement and investigation only; normal package behavior remains unchanged unless the flag is enabled.
+
 ### `load-project` Extension
 
 `load-project` owns runtime project memory loading:
