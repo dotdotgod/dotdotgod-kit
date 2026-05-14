@@ -4,7 +4,7 @@
 
 `load-project` is a Pi extension that starts a read-only project memory loading turn.
 
-It helps the agent inspect the dotdotgod scaffold and summarize the current project context.
+It helps the agent inspect the dotdotgod scaffold and summarize the current project context. This is a full curated project memory load: it covers the default memory surface needed for project work, but it does not read every repository file or every archive body.
 
 ## Commands
 

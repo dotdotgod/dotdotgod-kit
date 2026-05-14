@@ -122,7 +122,7 @@ Enable Pi runtime debug measurement when using the Pi adapter:
 pi --dd-context-debug --dd-context-debug-output docs/archive/report/context-metrics/session.jsonl
 ```
 
-The debug mode records `/dd:load`, Plan Mode, and Plan Mode compaction events with `ctx.getContextUsage()` when available.
+The debug mode records `/dd:load`, Plan Mode full curated load requests/skips, and Plan Mode compaction events with `ctx.getContextUsage()` when available.
 
 ## Measurement Methods
 See [`MEASUREMENT_METHODS.md`](MEASUREMENT_METHODS.md) for the static token estimate, Pi runtime observation, scenario benchmark, and archive growth experiment procedures.

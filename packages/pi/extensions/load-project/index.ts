@@ -28,6 +28,11 @@ async function runLoadCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext, ar
 	});
 	const deliverAs = ctx.isIdle() ? undefined : "followUp";
 	pi.sendUserMessage(prompt, deliverAs ? { deliverAs } : undefined);
+	pi.appendEntry("project-memory-load", {
+		commandName,
+		entryCount: ctx.sessionManager.getEntries().length,
+		promptMetrics,
+	});
 	recordContextMetric(ctx, (name) => pi.getFlag(name), "load-project:after-send", { commandName, deliverAs: deliverAs ?? "immediate" });
 
 	if (ctx.hasUI) {

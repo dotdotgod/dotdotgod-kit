@@ -10,6 +10,7 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { Key } from "@earendil-works/pi-tui";
 import { isAbsolute, relative, resolve } from "node:path";
 import { recordContextMetric } from "../context-metrics/utils.js";
+import { buildLoadPrompt, collectSnapshot } from "../load-project/utils.js";
 import {
 	buildPlanCompactionInstructions,
 	extractTodoItems,
@@ -117,6 +118,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let planCompactionInFlight = false;
 	let lastPlanCompactionEntryCount: number | undefined;
 	let lastPlanCompactionReason: string | undefined;
+	let planningLoadInFlight = false;
+	let lastPlanningLoadEntryCount: number | undefined;
 
 	pi.registerFlag("plan", {
 		description: "Start in plan mode (safe exploration plus docs/plan updates)",
@@ -169,12 +172,52 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		});
 	}
 
-	function requestPlanningCompactionIfNeeded(ctx: ExtensionContext): void {
+	function hasRecentProjectMemoryLoad(ctx: ExtensionContext, currentEntryCount: number): boolean {
+		const entries = ctx.sessionManager.getEntries();
+		for (let i = entries.length - 1; i >= 0; i -= 1) {
+			const entry = entries[i] as { type?: string; customType?: string; data?: { entryCount?: number } };
+			if (entry.type === "custom" && entry.customType === "project-memory-load") {
+				const loadEntryCount = entry.data?.entryCount ?? i;
+				return currentEntryCount - loadEntryCount < 25;
+			}
+		}
+		return false;
+	}
+
+	function requestPlanningLoadIfNeeded(ctx: ExtensionContext): void {
+		if (!planModeEnabled || executionMode || planningLoadInFlight || planCompactionInFlight) return;
+
+		const entryCount = getSessionEntryCount(ctx);
+		if (lastPlanningLoadEntryCount !== undefined && entryCount - lastPlanningLoadEntryCount < 10) {
+			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:load-skipped", { reason: "debounced", entryCount });
+			return;
+		}
+		if (hasRecentProjectMemoryLoad(ctx, entryCount)) {
+			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:load-skipped", { reason: "recent-project-memory-load", entryCount });
+			return;
+		}
+
+		planningLoadInFlight = true;
+		lastPlanningLoadEntryCount = entryCount;
+		const prompt = buildLoadPrompt(ctx.cwd, "", collectSnapshot(ctx.cwd));
+		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:load-requested", { entryCount });
+		pi.appendEntry("project-memory-load", { reason: "plan-mode-context-shaping", entryCount });
+		pi.sendUserMessage(prompt, { deliverAs: "followUp" });
+		if (ctx.hasUI) {
+			ctx.ui.notify("Project memory looks missing or stale; loading curated project memory for planning.", "info");
+		}
+		planningLoadInFlight = false;
+		persistState();
+	}
+
+	function shapePlanningContextIfNeeded(ctx: ExtensionContext): void {
 		if (!planModeEnabled || executionMode) return;
 		const reason = getPlanCompactionReason(ctx.getContextUsage());
 		if (reason) {
 			requestPlanningCompaction(ctx, reason);
+			return;
 		}
+		requestPlanningLoadIfNeeded(ctx);
 	}
 
 	function togglePlanMode(ctx: ExtensionContext): void {
@@ -187,7 +230,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			pi.setActiveTools(PLAN_MODE_TOOLS);
 			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:enabled", { entryCount: getSessionEntryCount(ctx) });
 			ctx.ui.notify(`Plan mode enabled. Tools: ${PLAN_MODE_TOOLS.join(", ")}`);
-			requestPlanningCompactionIfNeeded(ctx);
+			shapePlanningContextIfNeeded(ctx);
 		} else {
 			pi.setActiveTools(NORMAL_MODE_TOOLS);
 			ctx.ui.notify("Plan mode disabled. Full access restored.");
@@ -203,6 +246,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			activePlanTouched,
 			lastPlanCompactionEntryCount,
 			lastPlanCompactionReason,
+			lastPlanningLoadEntryCount,
 		});
 	}
 
@@ -345,7 +389,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 	pi.on("turn_end", async (event, ctx) => {
 		if (planModeEnabled && !executionMode) {
 			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:turn-end", { entryCount: getSessionEntryCount(ctx) });
-			requestPlanningCompactionIfNeeded(ctx);
+			shapePlanningContextIfNeeded(ctx);
 		}
 
 		if (!executionMode || todoItems.length === 0) return;
@@ -430,6 +474,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 						activePlanTouched?: boolean;
 						lastPlanCompactionEntryCount?: number;
 						lastPlanCompactionReason?: string;
+						lastPlanningLoadEntryCount?: number;
 					};
 			  }
 			| undefined;
@@ -441,6 +486,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			activePlanTouched = planModeEntry.data.activePlanTouched ?? activePlanTouched;
 			lastPlanCompactionEntryCount = planModeEntry.data.lastPlanCompactionEntryCount ?? lastPlanCompactionEntryCount;
 			lastPlanCompactionReason = planModeEntry.data.lastPlanCompactionReason ?? lastPlanCompactionReason;
+			lastPlanningLoadEntryCount = planModeEntry.data.lastPlanningLoadEntryCount ?? lastPlanningLoadEntryCount;
 		}
 
 		const isResume = planModeEntry !== undefined;
@@ -470,6 +516,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:session-start-enabled", { entryCount: getSessionEntryCount(ctx) });
 		}
 		updateStatus(ctx);
-		requestPlanningCompactionIfNeeded(ctx);
+		shapePlanningContextIfNeeded(ctx);
 	});
 }
