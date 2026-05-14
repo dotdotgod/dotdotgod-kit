@@ -60,6 +60,7 @@ describe('dotdotgod CLI e2e', () => {
 
     const snapshot = json(run(['load-snapshot', root, '--json']));
     assert.equal(snapshot.cache.status, 'fresh');
+    assert.equal(snapshot.metadata.cacheRefreshed, false);
     assert(snapshot.graph.nodes > 0);
     assert(snapshot.graph.byType.export >= 1);
     assert(snapshot.graph.byType.package_resource >= 1);
@@ -70,6 +71,7 @@ describe('dotdotgod CLI e2e', () => {
 
     const communities = json(run(['graph', 'communities', root, '--json']));
     assert.equal(communities.command, 'graph communities');
+    assert.equal(communities.metadata.cacheRefreshed, false);
     assert(communities.communities.communities.length > 0);
     assert(['leiden', 'deterministic-domain-grouping'].includes(communities.communities.method));
     assert.equal(typeof communities.communities.fallback, 'boolean');
@@ -101,8 +103,11 @@ describe('dotdotgod CLI e2e', () => {
     const stalePayload = JSON.parse(stale.stdout);
     assert.equal(stalePayload.status, 'stale');
     assert(stalePayload.examples.includes('docs/spec/README.md'));
-    const reindex = json(run(['index', root, '--json']));
-    assert.equal(reindex.incremental.fullRebuild, false);
-    assert.equal(reindex.incremental.changedFiles, 1);
+    const snapshot = json(run(['load-snapshot', root, '--json']));
+    assert.equal(snapshot.metadata.cacheRefreshed, true);
+    assert.equal(snapshot.metadata.previousStatus, 'stale');
+    assert.equal(snapshot.metadata.fullRebuild, false);
+    assert.equal(snapshot.metadata.changedFiles, 1);
+    assert.equal(snapshot.cache.status, 'fresh');
   });
 });
