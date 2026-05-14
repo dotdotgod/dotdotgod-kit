@@ -2,6 +2,10 @@
 
 This directory keeps project knowledge close to the code.
 
+## Language
+
+- Write all documents under `docs/` in English.
+
 ## Naming
 
 - All directories under `docs/` use kebab-case.

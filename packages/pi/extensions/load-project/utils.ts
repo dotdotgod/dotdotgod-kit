@@ -275,7 +275,7 @@ Instructions:
 5. Follow README.md indexes, including domain directories such as docs/<area>/<domain>/README.md and expanded convention directories such as docs/arch/conventions/README.md.
 6. For docs/plan, list entries first and selectively read only the relevant README.md or markdown files.
 7. For docs/archive, do not scan it as part of the documentation directory summary. Use docs/archive/README.md as the history map, and use targeted archive paths only when the user request or current task makes completed plans/reports relevant.
-8. Summarize the result concisely in English.
+8. Summarize the result concisely.
 
 Response format:
 - Project summary
