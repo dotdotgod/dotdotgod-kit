@@ -88,7 +88,7 @@ Read the detailed concept docs: [Context curation](docs/concept/CONTEXT_CURATION
 | [`@dotdotgod/claude-code`](packages/claude-code/README.md) | Claude Code `dd:*` commands and project memory skills. |
 | [`@dotdotgod/codex`](packages/codex/README.md) | Codex project memory skills and `dd:*` trigger phrases. |
 
-Current public package version: `0.1.5`.
+Current public package version: `0.1.6`.
 
 ## Quick Start
 
@@ -98,13 +98,13 @@ Install the Pi adapter:
 pi install npm:@dotdotgod/pi
 ```
 
-Then start with the initializer skill. Ask Pi:
+Then start Pi in the target repository and run the initializer skill by asking:
 
 ```text
 Initialize this project with dotdotgod.
 ```
 
-The `project-initializer` skill creates or normalizes `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive`. That scaffold is what makes later `/dd:load` and `/plan` turns structured instead of ad-hoc.
+The bundled `project-initializer` skill creates or normalizes `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive`. That scaffold is what makes later `/dd:load` and `/plan` turns structured instead of ad-hoc.
 
 CLI validation:
 
