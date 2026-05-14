@@ -48,9 +48,28 @@ Future dependencies are allowed only when the extra correctness outweighs packag
 - `markdownlint-cli`: as a companion tool, not a core dependency.
 - `lychee`: as an optional external link checker, not a bundled binary.
 
+## TypeScript and Unit Tests
+
+Workspace packages can add TypeScript typecheck and unit test scripts when they contain testable source.
+
+The Pi adapter currently owns the first TypeScript quality gate:
+
+- `npm --workspace @dotdotgod/pi run typecheck`: TypeScript `noEmit` checking for extension source and tests.
+- `npm --workspace @dotdotgod/pi run test`: Node built-in test runner coverage for pure plan-mode and load-project helpers.
+- `npm --workspace @dotdotgod/pi run verify`: syntax checks, typecheck, and unit tests together.
+
+Root commands aggregate package-provided checks:
+
+```bash
+npm run verify:types
+npm run verify:unit
+```
+
+Unit tests should prefer extracted pure helpers over importing full Pi extension entrypoints, because extension entrypoints depend on Pi runtime peer packages and session/UI wiring.
+
 ## Workspace Verification
 
-Root verification should run workspace package checks:
+Root verification should run generated-resource drift checks, package typechecks/tests, workspace package checks, and package dry-runs:
 
 ```bash
 npm run verify
