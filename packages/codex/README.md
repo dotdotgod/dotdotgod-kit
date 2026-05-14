@@ -1,6 +1,13 @@
 # @dotdotgod/codex
 
-Codex adapter for dotdotgod project memory workflows.
+Codex adapter for dotdotgod project memory workflows. It packages reusable skills that help Codex load project memory, plan from docs before implementation, and initialize the shared agent documentation scaffold.
+
+## What Gets Better?
+
+- Codex can start from `AGENTS.md` and the dotdotgod docs map instead of rebuilding context manually.
+- Planning work lands in `docs/plan/<task-slug>/README.md` before implementation.
+- Completed plans and temporary reports use the same archive structure as Pi and Claude Code.
+- `dd:load`, `dd:plan`, and `dd:init` can be used as command-like trigger phrases where direct slash commands are unavailable.
 
 ## Included
 

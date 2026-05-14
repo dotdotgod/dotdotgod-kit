@@ -1,6 +1,13 @@
 # @dotdotgod/docs-validator
 
-Zero-dependency CLI for validating dotdotgod documentation scaffolds.
+Zero-dependency CLI for validating dotdotgod documentation scaffolds. It keeps AI-agent project memory usable by checking the docs structure agents depend on: README indexes, local links, heading anchors, plan/archive shapes, and naming rules.
+
+## Why Use It?
+
+- Catch broken local docs links before agents follow stale context.
+- Keep `docs/spec`, `docs/test`, `docs/arch`, `docs/plan`, and `docs/archive` predictable.
+- Enforce the same local-memory conventions used by Pi, Claude Code, and Codex adapters.
+- Validate ignored local memory during development with `--include-local-memory`.
 
 ## Usage
 

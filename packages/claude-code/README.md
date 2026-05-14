@@ -1,6 +1,13 @@
 # @dotdotgod/claude-code
 
-Claude Code adapter for dotdotgod project memory workflows.
+Claude Code adapter for dotdotgod project memory workflows. It gives Claude Code `dd:*` commands and skills that follow the same `AGENTS.md`, docs/spec, docs/test, docs/arch, docs/plan, and docs/archive contract used by the Pi and Codex adapters.
+
+## What Gets Better?
+
+- `/dd:load` starts with project memory instead of ad-hoc rediscovery.
+- `/dd:plan` writes or updates a durable plan in `docs/plan/<task-slug>/README.md` before implementation.
+- `/dd:init` bootstraps shared agent instructions and docs folders.
+- Skills mirror the commands so natural-language requests can use the same workflows.
 
 ## Included
 
