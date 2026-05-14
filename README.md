@@ -26,6 +26,27 @@ Agents work better from shaped project memory than from raw conversation history
 - **Safer execution:** planning happens before source changes, and execution follows explicit steps.
 - **Reusable history:** completed plans and reports become future context instead of disappearing into chat logs.
 
+## Current Capabilities
+
+- **Project scaffold:** initialize `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs indexes, local `docs/plan`, and `docs/archive` conventions.
+- **Read-only project load:** `/dd:load` and adapter load workflows prefer a bounded `dotdotgod load-snapshot` map before reading individual docs.
+- **Safe planning loop:** Pi Plan Mode restricts source/config mutation until a durable plan exists, tracks explicit `[DONE:n]` execution markers, and archives completed work.
+- **Unified CLI:** `@dotdotgod/cli` owns validation, cache/index/status, load snapshots, graph impact queries, and community summaries.
+- **Generic indexing:** indexing is gitignore-aware rather than pnpm-monorepo-specific, with support for common plain-text docs, source, scripts, config, web, and infrastructure files.
+- **Bounded graph output:** full graph data stays in `.dotdotgod/`; agent-facing commands return compact summaries, omitted counts, schema/cache metadata, and archive inclusion policy.
+- **Cross-agent adapters:** Pi, Claude Code, and Codex share the same docs-first workflow while respecting each agent's native extension model.
+
+## How dotdotgod Differs from Graphify
+
+Graphify-style systems can be useful when a large corpus is indexed once and queried many times, but they can also increase cost when agents always read large reports, index too much of a repository, or retry dense extraction. dotdotgod takes a narrower context-curation approach:
+
+- **Docs-first, not repo-dump-first:** project memory starts from explicit docs, plans, architecture notes, tests, and archive indexes.
+- **Gitignore-aware scope:** the index follows project visibility rules and excludes dependency/generated/cache paths by default.
+- **Archive bodies excluded by default:** `docs/archive/README.md` remains the history map, while completed plan/report bodies are read only when targeted.
+- **Deterministic first pass:** current graph extraction uses local file metadata, Markdown links/headings, package metadata, imports, exports, commands, tests, and events instead of broad LLM extraction.
+- **Bounded agent surface:** load snapshots expose compact graph/community/cache summaries rather than forcing agents to read a full graph report.
+- **Token saving is not the product:** reduced context is a side effect; the goal is giving agents the right memory at the right time.
+
 Read the detailed concept docs: [Context curation](docs/concept/CONTEXT_CURATION.md), [Context mechanics](docs/concept/CONTEXT_MECHANICS.md), and [Measurement design](docs/concept/MEASUREMENT_DESIGN.md).
 
 ## Install the Adapter You Need
@@ -37,7 +58,7 @@ Read the detailed concept docs: [Context curation](docs/concept/CONTEXT_CURATION
 | [`@dotdotgod/claude-code`](packages/claude-code/README.md) | Claude Code `dd:*` commands and project memory skills. |
 | [`@dotdotgod/codex`](packages/codex/README.md) | Codex project memory skills and `dd:*` trigger phrases. |
 
-Current public package version: `0.1.3`.
+Current public package version: `0.1.4`.
 
 ## Quick Start
 

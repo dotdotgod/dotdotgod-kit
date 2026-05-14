@@ -5,6 +5,7 @@ Codex adapter for dotdotgod's context curation workflow. It packages reusable sk
 ## What Gets Better?
 
 - Codex can start from `AGENTS.md` and the dotdotgod docs map instead of rebuilding context manually.
+- Load guidance prefers `dotdotgod load-snapshot <root> --json` when the CLI is available, then falls back to README-index reads.
 - Planning work captures current intent in `docs/plan/<task-slug>/README.md` before implementation.
 - Completed plans and temporary reports use the same archive structure as Pi and Claude Code, turning outcomes into future context.
 - `dd:load`, `dd:plan`, and `dd:init` can be used as command-like trigger phrases where direct slash commands are unavailable.
@@ -35,3 +36,8 @@ pnpm --filter @dotdotgod/codex run pack:dry-run
 - Active plans use `docs/plan/<task-slug>/README.md`.
 - Completed plans move to `docs/archive/plan/<task-slug>/`.
 - Temporary reports move to `docs/archive/report/<report-slug>/`.
+- `docs/archive/README.md` is the archive map; archive bodies should be read only when targeted.
+
+## Compared with Graphify-Style Memory
+
+This adapter packages reusable workflow skills rather than a repo-wide extraction engine. It guides Codex to prefer a bounded dotdotgod load snapshot when available, avoid broad archive scans, and follow README indexes before reading raw files. That keeps the memory layer portable across Codex runtimes and useful on small tasks where a large graph report would be overhead.
