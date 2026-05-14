@@ -83,9 +83,7 @@ Prompt content should:
 - enabled/disabled plan mode
 - todo items
 - execution mode
-- last shown plan preview metadata
-
-The saved plan preview uses content hash and mtime metadata to avoid repeating the same preview.
+- active plan-file touch tracking for review-prompt eligibility
 
 ## Future Search Architecture
 

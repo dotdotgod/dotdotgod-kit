@@ -10,7 +10,7 @@ version: 1.0.0
 
 Create implementation plans from the repository's documented design sources before changing source/config files. Treat planning as a managed artifact under `docs/plan`.
 
-Do not start implementation until the plan has a clear evidence trail and the user has asked to execute it.
+Do not start implementation until the plan has a clear evidence trail and the user has asked to execute it. Treat the written plan file as the durable review artifact; do not rely on transient chat previews.
 
 ## Source Order
 
@@ -29,6 +29,7 @@ Prefer live repository docs in this order:
    - Check git status.
    - Locate relevant docs and active plans.
    - Preserve user edits and unrelated dirty worktree changes.
+   - If the session is long or noisy, suggest a user-initiated planning-focused compaction before writing or revising the plan; do not compact automatically because compaction is lossy.
 2. Gather evidence before planning.
    - Search docs by domain terms from the user request.
    - Read nearest README indexes and relevant focused docs.
@@ -48,7 +49,9 @@ Prefer live repository docs in this order:
    - verification method
    - final housekeeping step to move completed work to `docs/archive/plan/<task-slug>/`
 6. Update `docs/plan/README.md` if the repository keeps active plan entries there.
-7. Stop after presenting the plan unless the user explicitly asks for execution.
+7. Use repository-local package manager evidence for verification commands. In this repository, prefer `pnpm run verify`, `pnpm run pack:dry-run`, and `.husky/pre-push` when applicable.
+8. Stop after presenting the plan unless the user explicitly asks for execution.
+9. After implementation and verification, archive completed or superseded plan directories under `docs/archive/plan/<task-slug>/`; remove stale local plan artifacts only when the project policy allows plan/archive housekeeping.
 
 ## Quality Rules
 
@@ -56,3 +59,4 @@ Prefer live repository docs in this order:
 - Keep plans concise and maintainable.
 - Use local repository terminology and existing module names.
 - Validation steps must be executable commands or concrete review checks.
+- Avoid turning explanatory numbered lists into executable implementation plans. Use concrete action-oriented `Plan:` steps only when a real active plan artifact is being created or updated.
