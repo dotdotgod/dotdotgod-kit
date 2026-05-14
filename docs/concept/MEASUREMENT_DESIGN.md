@@ -81,7 +81,7 @@ Record task outcomes that matter more than raw token totals:
 - rework count
 - whether completed work was archived with useful future context
 
-## Current Snapshot
+## Baseline Snapshot
 Measured on: 2026-05-15
 Commit: `79bf12a`
 Dirty worktree: yes, measurement tooling changes were in progress
@@ -98,7 +98,7 @@ Approximation: `approxTokens = ceil(characters / 4)`
 | Full archive | 40 | 167,065 | 22,343 | 41,767 | Not loaded by default |
 | Archive body excluded | 39 | 162,481 | 21,825 | 40,621 | Historical memory kept out of default summary |
 
-This snapshot shows the current design tradeoff: the archive remains available through an index, while full archive bodies are kept out of the default loading surface. These values are repository-state examples, not universal benchmark claims.
+This baseline snapshot shows the design tradeoff captured at that repository state: the archive remains available through an index, while full archive bodies are kept out of the default loading surface. These values are historical repository-state examples, not current benchmark claims or universal results.
 
 ## Measurement Commands
 

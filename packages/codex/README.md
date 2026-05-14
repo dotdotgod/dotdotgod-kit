@@ -7,6 +7,7 @@ Codex adapter for dotdotgod's context curation workflow. It packages reusable sk
 - Codex can start from `AGENTS.md` and the dotdotgod docs map instead of rebuilding context manually.
 - Load guidance prefers `dotdotgod load-snapshot <root> --json` when the CLI is available, then falls back to README-index reads.
 - Codex can use docs structure as retrieval intent: specs for behavior, architecture for rationale, tests for verification, plans for current work, and archive indexes for past decisions.
+- Product intent, design rationale, and verification standards stay in durable docs instead of transient chat.
 - Planning work captures current intent in `docs/plan/<task-slug>/README.md` before implementation.
 - Completed plans and temporary reports use the same archive structure as Pi and Claude Code, turning outcomes into future context.
 - `dd:load`, `dd:plan`, and `dd:init` can be used as command-like trigger phrases where direct slash commands are unavailable.

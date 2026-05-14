@@ -4,6 +4,8 @@ Pi adapter for dotdotgod's context curation workflow. **Start with the `project-
 
 Use it when you want Pi to turn a repository into durable agent memory: shared rules, specs, architecture, test strategy, active plans, archived decisions, and a bounded load snapshot.
 
+The adapter is designed for builders who want coding agents to help with implementation while product intent, design rationale, verification standards, and project memory stay explicit. The initializer, `/dd:load`, and `/plan` workflow give those decisions a stable place outside the chat transcript.
+
 ## Start Here: Run the Project Initializer Skill
 
 After installing the package, open Pi in your repository and ask it to initialize or normalize the project memory scaffold. The bundled skill is named `project-initializer`; you do not need to run its internal script yourself.
@@ -25,7 +27,7 @@ A good first-run flow is:
 5. Let the skill create the scaffold.
 6. Then use `/dd:load` to load the new project memory and `/plan` for implementation planning.
 
-The initializer is the first step: it creates the structure that later lets `/dd:load` find the right context and `/plan` write durable task intent.
+The initializer is the first step: it creates the structure that later lets `/dd:load` find the right context and `/plan` write durable task intent before implementation begins.
 
 ## What You Get
 
@@ -52,7 +54,7 @@ docs/
   archive/README.md          # completed-work history map, ignored by git
 ```
 
-This is the core context curation idea: instead of putting more raw files into context, give the agent a predictable map of what matters, where current intent lives, how to verify changes, and which past decisions are worth revisiting.
+This is the core context curation idea: instead of putting more raw files into context, give the agent a predictable map of what matters, what product decisions have been made, where current intent lives, how to verify changes, and which past decisions are worth revisiting.
 
 ## Install
 
@@ -85,7 +87,7 @@ pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 - Agents can distinguish stable project truth (`docs/spec`, `docs/arch`, `docs/test`) from current task intent (`docs/plan`).
 - README indexes act as routing tables: the CLI records them as `routes_to` edges, while docs paths become memory-area metadata for specs, architecture, tests, active plans, and archive maps.
 - Archive history stays discoverable without forcing every completed plan body into the default context.
-- Planning and verification become explicit artifacts rather than hidden chat state.
+- Product intent, planning, and verification become explicit artifacts rather than hidden chat state.
 - Graph/cache metadata stays bounded in `.dotdotgod/`, with agent-facing output limited to summaries, memory areas, omitted counts, and archive policy.
 
 ## Commands

@@ -8,7 +8,7 @@ This document defines the validation strategy for the dotdotgod workspace.
 
 ### `@dotdotgod/cli`
 
-The dotdotgod CLI owns docs scaffold validation and is the planned home for project memory snapshots, graph indexing, graph queries, and Leiden-style community detection.
+The dotdotgod CLI owns docs scaffold validation, project memory snapshots, graph indexing, graph queries, and Leiden-style community detection.
 
 CLI binary:
 
@@ -22,7 +22,7 @@ Local workspace command:
 node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
 ```
 
-The previous standalone `@dotdotgod/docs-validator` package is being removed in favor of this unified CLI package.
+The previous standalone `@dotdotgod/docs-validator` package was replaced by this unified CLI package.
 
 ## Rule Boundaries
 

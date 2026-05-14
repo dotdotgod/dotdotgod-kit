@@ -7,6 +7,7 @@ Claude Code adapter for dotdotgod's context curation workflow. It gives Claude C
 - `/dd:load` starts from curated project memory instead of ad-hoc rediscovery.
 - Load guidance prefers `dotdotgod load-snapshot <root> --json` when the CLI is available, then falls back to README-index reads.
 - Claude Code can use docs structure as retrieval intent: specs for behavior, architecture for rationale, tests for verification, plans for current work, and archive indexes for past decisions.
+- Product intent, design rationale, and verification standards stay in durable docs instead of transient chat.
 - `/dd:plan` writes or updates durable task intent in `docs/plan/<task-slug>/README.md` before implementation.
 - `/dd:init` bootstraps shared agent instructions and docs folders for future context curation.
 - Skills mirror the commands so natural-language requests can use the same workflows.

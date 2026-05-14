@@ -19,7 +19,7 @@ Do not modify files during the load pass unless the user explicitly asks for edi
 2. Prefer the bounded CLI snapshot when available.
    - If `dotdotgod` is installed or available in the repository, run `dotdotgod load-snapshot <root> --json`.
    - If the local environment allows package execution but no `dotdotgod` binary is available, optionally run `npx @dotdotgod/cli load-snapshot <root> --json`.
-   - Treat the snapshot as the first-pass project-memory map for cache status, graph size, related communities, and archive inclusion policy.
+   - Treat the snapshot as the first-pass project-memory map for cache status, graph size, memory areas, related communities, and archive inclusion policy.
    - If the CLI is unavailable, network/package execution is undesirable, or the command fails, continue with the manual README-index fallback below.
 3. Inspect baseline memory files when present:
    - `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `README.md`
