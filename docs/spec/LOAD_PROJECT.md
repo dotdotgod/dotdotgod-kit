@@ -78,6 +78,7 @@ The command is intentionally a runtime extension entrypoint. It can later grow f
 
 - project memory indexing
 - bounded graph impact reports grouped by related files, docs, tests, commands, events, package resources, and symbols
+- bounded graph community summaries for load snapshots without embedding the full graph
 - vector search
 - graph search
 - `dd_search` or related LLM-callable tools

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
+  buildCommunities,
   buildGraph,
   buildImpactReport,
   buildIndex,
@@ -87,6 +88,9 @@ describe('CLI index and graph helpers', () => {
     assert(impact.groups.commands.items.some((item) => item.id === 'command:load'));
     assert(impact.groups.files.items.some((item) => item.id === 'file:packages/tool/index.test.mjs'));
     assert.equal(impact.groups.docs.items.length, 0);
+    const communities = buildCommunities(index, { communities: 3, items: 3 });
+    assert(communities.total > 0);
+    assert(communities.communities.some((community) => community.id === 'cli' || community.id === 'package-metadata'));
   });
 
   it('can build a graph directly from selected files', () => {
