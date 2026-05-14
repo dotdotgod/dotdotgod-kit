@@ -9,6 +9,7 @@ import {
 	isSafeCommand,
 	isSafePlanArchiveCommand,
 	markCompletedSteps,
+	shouldShapePlanningContextOnAgentStart,
 	type TodoItem,
 } from "../extensions/plan-mode/utils.ts";
 
@@ -72,6 +73,15 @@ describe("plan-mode compaction helpers", () => {
 		);
 		assert.equal(getPlanCompactionReason({ tokens: 100_000 }), "Plan Mode context exceeded 100,000 tokens.");
 		assert.equal(getPlanCompactionReason({ tokens: 40_000, contextWindow: 200_000, percent: 20 }), undefined);
+	});
+});
+
+describe("plan-mode context shaping trigger", () => {
+	it("runs the initial shaping check only for active non-execution planning turns", () => {
+		assert.equal(shouldShapePlanningContextOnAgentStart({ planModeEnabled: true, executionMode: false, planningContextShapePending: true }), true);
+		assert.equal(shouldShapePlanningContextOnAgentStart({ planModeEnabled: false, executionMode: false, planningContextShapePending: true }), false);
+		assert.equal(shouldShapePlanningContextOnAgentStart({ planModeEnabled: true, executionMode: true, planningContextShapePending: true }), false);
+		assert.equal(shouldShapePlanningContextOnAgentStart({ planModeEnabled: true, executionMode: false, planningContextShapePending: false }), false);
 	});
 });
 

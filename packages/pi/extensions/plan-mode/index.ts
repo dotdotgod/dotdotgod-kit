@@ -16,6 +16,7 @@ import {
 	extractTodoItems,
 	getPlanCompactionReason,
 	isSafeCommand,
+	shouldShapePlanningContextOnAgentStart,
 	markCompletedSteps,
 	type TodoItem,
 } from "./utils.js";
@@ -121,6 +122,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let planningLoadInFlight = false;
 	let lastPlanningLoadEntryCount: number | undefined;
 	let pendingPlanningLoadAfterCompaction = false;
+	let planningContextShapePending = false;
 
 	pi.registerFlag("plan", {
 		description: "Start in plan mode (safe exploration plus docs/plan updates)",
@@ -246,11 +248,12 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		activePlanTouched = false;
 
 		if (planModeEnabled) {
+			planningContextShapePending = true;
 			pi.setActiveTools(PLAN_MODE_TOOLS);
 			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:enabled", { entryCount: getSessionEntryCount(ctx) });
 			ctx.ui.notify(`Plan mode enabled. Tools: ${PLAN_MODE_TOOLS.join(", ")}`);
-			shapePlanningContextIfNeeded(ctx);
 		} else {
+			planningContextShapePending = false;
 			pi.setActiveTools(NORMAL_MODE_TOOLS);
 			ctx.ui.notify("Plan mode disabled. Full access restored.");
 		}
@@ -267,6 +270,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			lastPlanCompactionReason,
 			lastPlanningLoadEntryCount,
 			pendingPlanningLoadAfterCompaction,
+			planningContextShapePending,
 		});
 	}
 
@@ -343,7 +347,14 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		};
 	});
 
-	pi.on("before_agent_start", async () => {
+	pi.on("before_agent_start", async (_event, ctx) => {
+		if (shouldShapePlanningContextOnAgentStart({ planModeEnabled, executionMode, planningContextShapePending })) {
+			planningContextShapePending = false;
+			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:initial-context-shape", { entryCount: getSessionEntryCount(ctx) });
+			shapePlanningContextIfNeeded(ctx);
+			persistState();
+		}
+
 		if (planModeEnabled) {
 			return {
 				message: {
@@ -455,6 +466,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 
 		if (choice?.startsWith("Execute the plan")) {
 			planModeEnabled = false;
+			planningContextShapePending = false;
 			executionMode = todoItems.length > 0;
 			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:execution-start", { todoCount: todoItems.length });
 			pi.setActiveTools(NORMAL_MODE_TOOLS);
@@ -479,6 +491,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 	pi.on("session_start", async (_event, ctx) => {
 		if (pi.getFlag("plan") === true) {
 			planModeEnabled = true;
+			planningContextShapePending = true;
 		}
 
 		const entries = ctx.sessionManager.getEntries();
@@ -496,6 +509,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 						lastPlanCompactionReason?: string;
 						lastPlanningLoadEntryCount?: number;
 						pendingPlanningLoadAfterCompaction?: boolean;
+						planningContextShapePending?: boolean;
 					};
 			  }
 			| undefined;
@@ -509,6 +523,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			lastPlanCompactionReason = planModeEntry.data.lastPlanCompactionReason ?? lastPlanCompactionReason;
 			lastPlanningLoadEntryCount = planModeEntry.data.lastPlanningLoadEntryCount ?? lastPlanningLoadEntryCount;
 			pendingPlanningLoadAfterCompaction = planModeEntry.data.pendingPlanningLoadAfterCompaction ?? pendingPlanningLoadAfterCompaction;
+			planningContextShapePending = planModeEntry.data.planningContextShapePending ?? planningContextShapePending;
 		}
 
 		const isResume = planModeEntry !== undefined;
@@ -538,6 +553,5 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:session-start-enabled", { entryCount: getSessionEntryCount(ctx) });
 		}
 		updateStatus(ctx);
-		shapePlanningContextIfNeeded(ctx);
 	});
 }

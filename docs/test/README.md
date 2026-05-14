@@ -79,9 +79,10 @@ Plan mode review choice and todo extraction:
 6. Confirm no `[plan-todo-list]` message or persistent todo widget is shown; use `/todos` for on-demand progress details.
 7. Confirm Plan Mode allows constrained housekeeping such as `mkdir -p docs/archive/plan`, `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`, and `rm -r docs/plan/<task-slug>`.
 8. Confirm Plan Mode still blocks housekeeping that touches source/config paths, such as `rm package.json` or `mv packages/pi docs/archive/plan/pi`.
-9. In a high-context session, enable `/plan` and confirm Pi shows `Planning context is large; compacting before continuing.` followed by `Planning compaction completed.`
-10. Confirm the Plan Mode compaction request uses planning-specific `customInstructions` that preserve decisions, active plan status, relevant docs, verification results, next steps, and `[DONE:n]` markers.
-11. Confirm repeated Plan Mode turns immediately after compaction do not trigger another compaction until enough new session entries exist.
+9. In a high-context session, enable `/plan` and confirm Pi does not immediately show a compaction or project-memory-load notification.
+10. Send the first planning request and confirm Pi shows `Planning context is large; compacting before continuing.` followed by `Planning compaction completed.` only when context thresholds are met.
+11. Confirm the Plan Mode compaction request uses planning-specific `customInstructions` that preserve decisions, active plan status, relevant docs, verification results, next steps, and `[DONE:n]` markers.
+12. Confirm repeated Plan Mode turns immediately after compaction do not trigger another compaction until enough new session entries exist.
 
 Claude Code adapter local plugin smoke:
 
@@ -136,7 +137,7 @@ node scripts/measure-context.mjs --markdown --output docs/archive/report/context
 
 - Confirm the static measurement reports load prompt, baseline memory, default docs surface, archive index, full archive, and archive body excluded estimates.
 - Confirm local output under `docs/archive/report/context-metrics/` remains ignored by git.
-- In Pi, start with `--dd-context-debug --dd-context-debug-output docs/archive/report/context-metrics/session.jsonl`, run `/dd:load` and `/plan`, then confirm JSONL events are written for load, Plan Mode full curated load requests/skips, deferred load-after-compaction events when applicable, and Plan Mode activity.
+- In Pi, start with `--dd-context-debug --dd-context-debug-output docs/archive/report/context-metrics/session.jsonl`, run `/dd:load`, `/plan`, and a first planning request, then confirm JSONL events are written for load, Plan Mode initial context-shaping checks, full curated load requests/skips, deferred load-after-compaction events when applicable, and Plan Mode activity.
 
 README landing review:
 

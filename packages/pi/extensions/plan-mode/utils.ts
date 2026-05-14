@@ -206,6 +206,16 @@ export interface PlanContextUsage {
 	percent?: number | null;
 }
 
+export interface PlanningContextShapeTriggerState {
+	planModeEnabled: boolean;
+	executionMode: boolean;
+	planningContextShapePending: boolean;
+}
+
+export function shouldShapePlanningContextOnAgentStart(state: PlanningContextShapeTriggerState): boolean {
+	return state.planModeEnabled && !state.executionMode && state.planningContextShapePending;
+}
+
 export function buildPlanCompactionInstructions(reason?: string): string {
 	const normalizedReason = reason?.trim();
 	if (!normalizedReason) return PLAN_MODE_COMPACTION_INSTRUCTIONS;

@@ -53,7 +53,7 @@ The plan should include:
 
 ## Planning Context Shaping
 
-Before writing or refining a plan, Plan Mode shapes context in two directions:
+After Plan Mode is enabled and the user sends the first planning request, Plan Mode shapes context in two directions before substantive planning continues:
 
 - If project memory is missing or stale, it requests a full curated project memory load.
 - If context is too large or noisy, it requests planning-focused compaction.
@@ -64,7 +64,7 @@ If compaction and load are both needed, Plan Mode requests compaction first, the
 
 ## Planning-Focused Compaction
 
-Plan mode automatically requests planning-focused compaction when context is large enough to hurt plan quality. It triggers on Plan Mode entry and after planning turns while Plan Mode remains active.
+Plan mode automatically requests planning-focused compaction when context is large enough to hurt plan quality. It does not compact immediately when `/plan` is toggled on; it checks after the first user planning request and after later planning turns while Plan Mode remains active.
 
 The extension passes planning-specific `customInstructions` to `ctx.compact()` so compaction preserves information useful for the next plan:
 
@@ -89,7 +89,7 @@ The extension debounces repeated compactions, skips compaction during execution 
 
 ## Debug Measurement
 
-When the Pi adapter is started with `--dd-context-debug`, Plan Mode records local JSONL measurement events for Plan Mode entry, planning turn end, compaction request, compaction completion/error, and execution start.
+When the Pi adapter is started with `--dd-context-debug`, Plan Mode records local JSONL measurement events for Plan Mode entry, initial context-shaping checks, planning turn end, compaction request, compaction completion/error, and execution start.
 
 Events include context usage when available, git state, compaction reason, entry counts, and todo counts where relevant. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
 
