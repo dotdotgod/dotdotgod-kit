@@ -136,7 +136,7 @@ node scripts/measure-context.mjs --markdown --output docs/archive/report/context
 
 - Confirm the static measurement reports load prompt, baseline memory, default docs surface, archive index, full archive, and archive body excluded estimates.
 - Confirm local output under `docs/archive/report/context-metrics/` remains ignored by git.
-- In Pi, start with `--dd-context-debug --dd-context-debug-output docs/archive/report/context-metrics/session.jsonl`, run `/dd:load` and `/plan`, then confirm JSONL events are written for load, Plan Mode full curated load requests/skips, and Plan Mode activity.
+- In Pi, start with `--dd-context-debug --dd-context-debug-output docs/archive/report/context-metrics/session.jsonl`, run `/dd:load` and `/plan`, then confirm JSONL events are written for load, Plan Mode full curated load requests/skips, deferred load-after-compaction events when applicable, and Plan Mode activity.
 
 README landing review:
 
