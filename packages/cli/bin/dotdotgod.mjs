@@ -225,12 +225,114 @@ function cacheFile(root) {
   return join(root, CACHE_DIR, INDEX_FILE);
 }
 
+function addNode(graph, id, type, data = {}) {
+  if (!graph.nodes.some((node) => node.id === id)) graph.nodes.push({ id, type, ...data });
+}
+
+function addEdge(graph, source, target, relation, data = {}) {
+  graph.edges.push({ source, target, relation, ...data });
+}
+
+function extractMarkdownGraph(root, file, graph) {
+  const path = rel(root, file);
+  const content = readFileSync(file, 'utf8');
+  const fileId = `file:${path}`;
+  const headingRe = /^(#{1,6})\s+(.+)$/gm;
+  let match;
+  while ((match = headingRe.exec(content)) !== null) {
+    const title = match[2].trim();
+    const id = `heading:${path}#${headingToAnchor(title)}`;
+    addNode(graph, id, 'heading', { path, title, depth: match[1].length });
+    addEdge(graph, fileId, id, 'contains_heading', { confidence: 'EXTRACTED' });
+  }
+  for (const { href, line } of extractLinks(content)) {
+    const pathPart = href.split('#')[0];
+    if (!pathPart) continue;
+    const targetPath = rel(root, resolve(dirname(file), pathPart));
+    const targetId = `file:${targetPath}`;
+    addNode(graph, targetId, 'file', { path: targetPath });
+    addEdge(graph, fileId, targetId, 'links_to', { line, confidence: 'EXTRACTED' });
+  }
+}
+
+function extractPackageGraph(root, file, graph) {
+  const path = rel(root, file);
+  const fileId = `file:${path}`;
+  let pkg;
+  try { pkg = JSON.parse(readFileSync(file, 'utf8')); } catch { return; }
+  if (pkg.name) {
+    const pkgId = `package:${pkg.name}`;
+    addNode(graph, pkgId, 'package', { name: pkg.name, path });
+    addEdge(graph, fileId, pkgId, 'declares_package', { confidence: 'EXTRACTED' });
+  }
+  for (const [name, command] of Object.entries(pkg.scripts ?? {})) {
+    const id = `script:${path}#${name}`;
+    addNode(graph, id, 'script', { name, command, path });
+    addEdge(graph, fileId, id, 'declares_script', { confidence: 'EXTRACTED' });
+  }
+  for (const [name, target] of Object.entries(typeof pkg.bin === 'string' ? { [pkg.name ?? 'bin']: pkg.bin } : pkg.bin ?? {})) {
+    const id = `bin:${name}`;
+    addNode(graph, id, 'binary', { name, target, path });
+    addEdge(graph, fileId, id, 'declares_bin', { confidence: 'EXTRACTED' });
+  }
+  for (const section of ['dependencies', 'devDependencies', 'peerDependencies']) {
+    for (const name of Object.keys(pkg[section] ?? {})) {
+      const id = `dependency:${name}`;
+      addNode(graph, id, 'dependency', { name });
+      addEdge(graph, fileId, id, 'depends_on', { section, confidence: 'EXTRACTED' });
+    }
+  }
+}
+
+function extractScriptGraph(root, file, graph) {
+  const path = rel(root, file);
+  const fileId = `file:${path}`;
+  const content = readFileSync(file, 'utf8');
+  const importRe = /^\s*import(?:\s+type)?[\s\S]*?from\s+['"]([^'"]+)['"]|^\s*import\s+['"]([^'"]+)['"]/gm;
+  let match;
+  while ((match = importRe.exec(content)) !== null) {
+    const spec = match[1] || match[2];
+    const id = `import:${spec}`;
+    addNode(graph, id, 'import', { specifier: spec });
+    addEdge(graph, fileId, id, 'imports', { confidence: 'EXTRACTED' });
+  }
+  const declarationRe = /\b(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)|\b(?:export\s+)?(?:class|const|let|var)\s+([A-Za-z_$][\w$]*)/g;
+  while ((match = declarationRe.exec(content)) !== null) {
+    const name = match[1] || match[2];
+    const id = `symbol:${path}#${name}`;
+    addNode(graph, id, 'symbol', { name, path });
+    addEdge(graph, fileId, id, 'declares', { confidence: 'EXTRACTED' });
+  }
+  const eventRe = /['"]([a-z][a-z0-9-]+:[a-z0-9:-]+)['"]/g;
+  while ((match = eventRe.exec(content)) !== null) {
+    const name = match[1];
+    const id = `event:${name}`;
+    addNode(graph, id, 'event', { name });
+    addEdge(graph, fileId, id, 'emits_event', { confidence: 'EXTRACTED' });
+  }
+}
+
+function buildGraph(root, files) {
+  const graph = { nodes: [], edges: [] };
+  for (const file of files) {
+    const path = rel(root, file);
+    const fileId = `file:${path}`;
+    addNode(graph, fileId, 'file', { path, extension: extname(file) });
+    if (path.endsWith('.md')) extractMarkdownGraph(root, file, graph);
+    else if (basename(file) === 'package.json') extractPackageGraph(root, file, graph);
+    else if (/\.(mjs|cjs|js|jsx|ts|tsx)$/.test(path)) extractScriptGraph(root, file, graph);
+  }
+  return graph;
+}
+
 function buildIndex(root) {
-  const files = collectIndexFiles(root).map((file) => {
+  const indexFiles = collectIndexFiles(root);
+  const files = indexFiles.map((file) => {
     const stats = statSync(file);
     return { path: rel(root, file), sha256: fingerprint(file), size: stats.size, mtimeMs: Math.round(stats.mtimeMs) };
   });
-  return { version: CACHE_VERSION, generatedAt: new Date().toISOString(), archiveBodiesIncluded: false, files };
+  const graph = buildGraph(root, indexFiles);
+  return { version: CACHE_VERSION, generatedAt: new Date().toISOString(), archiveBodiesIncluded: false, files, graph };
 }
 
 function readIndex(root) {
@@ -256,9 +358,9 @@ function runIndex(argv) {
   const index = buildIndex(options.root);
   mkdirSync(join(options.root, CACHE_DIR), { recursive: true });
   writeFileSync(cacheFile(options.root), `${JSON.stringify(index, null, 2)}\n`);
-  const result = { ok: true, cachePath: rel(options.root, cacheFile(options.root)), indexedFiles: index.files.length, archiveBodiesIncluded: false };
+  const result = { ok: true, cachePath: rel(options.root, cacheFile(options.root)), indexedFiles: index.files.length, nodes: index.graph.nodes.length, edges: index.graph.edges.length, archiveBodiesIncluded: false };
   if (options.json) console.log(JSON.stringify(result, null, 2));
-  else console.log(`✅ index written (${result.indexedFiles} files, cache: ${result.cachePath})`);
+  else console.log(`✅ index written (${result.indexedFiles} files, ${result.nodes} nodes, ${result.edges} edges, cache: ${result.cachePath})`);
 }
 
 function runStatus(argv) {
@@ -269,20 +371,57 @@ function runStatus(argv) {
   process.exit(status.ok ? 0 : 1);
 }
 
+function graphSummary(index) {
+  const graph = index?.graph ?? { nodes: [], edges: [] };
+  const byType = graph.nodes.reduce((acc, node) => ({ ...acc, [node.type]: (acc[node.type] ?? 0) + 1 }), {});
+  const byRelation = graph.edges.reduce((acc, edge) => ({ ...acc, [edge.relation]: (acc[edge.relation] ?? 0) + 1 }), {});
+  return { nodes: graph.nodes.length, edges: graph.edges.length, byType, byRelation };
+}
+
+function neighborhood(index, changedPath) {
+  const graph = index?.graph ?? { nodes: [], edges: [] };
+  const seed = `file:${changedPath}`;
+  const related = new Set([seed]);
+  for (const edge of graph.edges) {
+    if (edge.source === seed) related.add(edge.target);
+    if (edge.target === seed) related.add(edge.source);
+  }
+  return [...related].slice(0, 25).map((id) => graph.nodes.find((node) => node.id === id) ?? { id });
+}
+
 function runLoadSnapshot(argv) {
   const options = parseCommon(argv);
   const status = getStatus(options.root);
-  const payload = { root: options.root, cache: status, note: 'Graph impact neighborhoods and Leiden communities are planned for the next milestone.' };
+  const index = readIndex(options.root);
+  const summary = graphSummary(index);
+  const payload = { root: options.root, cache: status, graph: summary, note: 'Leiden-style community detection is planned after deterministic graph extraction.' };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
-  else console.log(`dotdotgod load snapshot\n- cache: ${status.status}\n- indexed files: ${status.indexedFiles}\n- current files: ${status.currentFiles}\n- archive bodies included: ${status.archiveBodiesIncluded ? 'yes' : 'no'}\n- graph communities: planned`);
+  else console.log(`dotdotgod load snapshot\n- cache: ${status.status}\n- indexed files: ${status.indexedFiles}\n- current files: ${status.currentFiles}\n- archive bodies included: ${status.archiveBodiesIncluded ? 'yes' : 'no'}\n- graph: ${summary.nodes} nodes, ${summary.edges} edges\n- graph communities: planned`);
+}
+
+function parseGraphOptions(argv) {
+  const filtered = [];
+  let changed;
+  for (let i = 0; i < argv.length; i += 1) {
+    if (argv[i] === '--changed') changed = argv[++i];
+    else filtered.push(argv[i]);
+  }
+  const options = parseCommon(filtered);
+  options.changed = changed;
+  return options;
 }
 
 function runGraph(argv) {
   const sub = argv[0];
-  const options = parseCommon(argv.slice(1));
-  const payload = { ok: true, command: `graph ${sub}`, root: options.root, status: getStatus(options.root), note: 'Graph extraction and Leiden-style community detection are planned after cache/index foundation.' };
+  const options = parseGraphOptions(argv.slice(1));
+  const status = getStatus(options.root);
+  const index = readIndex(options.root);
+  const payload = sub === 'query'
+    ? { ok: status.ok, command: 'graph query', root: options.root, status, changed: options.changed, related: options.changed ? neighborhood(index, options.changed) : [] }
+    : { ok: status.ok, command: `graph ${sub}`, root: options.root, status, graph: graphSummary(index), note: 'Leiden-style community detection is planned after deterministic graph extraction.' };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
-  else console.log(`${payload.command}: planned (${payload.status.status} index)`);
+  else if (sub === 'query') console.log(`graph query: ${payload.related.length} related node(s) (${status.status} index)`);
+  else console.log(`${payload.command}: ${payload.graph.nodes} nodes, ${payload.graph.edges} edges (${status.status} index)`);
 }
 
 if (command === 'validate') runValidate(args);
