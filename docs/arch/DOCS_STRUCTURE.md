@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the long-term documentation structure used by `project-memory-kit` and projects initialized with it.
+This document defines the long-term documentation structure used by dotdotgod and projects initialized with it.
 
 ## Top-Level Areas
 

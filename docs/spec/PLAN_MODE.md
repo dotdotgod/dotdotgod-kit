@@ -64,11 +64,13 @@ Compaction should remain user-initiated because it is lossy.
 
 ## Saved Plan Preview
 
-When the agent creates or updates a plan markdown file under `docs/plan/`, plan mode shows a saved-plan preview after the agent turn.
+When the agent creates or updates a plan markdown file under `docs/plan/`, plan mode shows a saved-plan preview before asking whether to execute, stay in plan mode, or refine the plan.
 
 - `README.md` is preferred when multiple plan files were touched.
 - The full saved plan markdown is shown.
 - Duplicate previews are avoided with path/content state tracking.
+- The preview is included in the execution-choice prompt so the user can review the saved plan before choosing.
+- If no `docs/plan/` markdown file was written or edited, no saved-plan preview is expected.
 
 ## Todo Extraction and Execution
 
