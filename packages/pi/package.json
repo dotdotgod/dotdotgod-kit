@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/pi",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pi adapter for dotdotgod: shared docs initialization, plan/archive workflow, and project loading extensions.",
   "type": "module",
   "license": "Elastic-2.0",
