@@ -195,9 +195,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		return readme ?? existing[existing.length - 1];
 	}
 
-	function showTouchedPlanPreview(ctx: ExtensionContext): void {
+	function consumeTouchedPlanPreview(ctx: ExtensionContext): string | undefined {
 		const selectedPath = selectPlanPreviewPath(ctx.cwd);
-		if (!selectedPath) return;
+		if (!selectedPath) return undefined;
 
 		try {
 			const absolutePath = resolve(ctx.cwd, selectedPath);
@@ -209,25 +209,19 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 				lastShownPlanPreview.hash === hash &&
 				lastShownPlanPreview.mtimeMs === stat.mtimeMs
 			) {
-				return;
+				return undefined;
 			}
 
 			const otherTouchedPaths = touchedPlanPaths.filter((path) => path !== selectedPath);
-			pi.sendMessage(
-				{
-					customType: "plan-file-preview",
-					content: buildPlanPreview(selectedPath, content, otherTouchedPaths),
-					display: true,
-				},
-				{ triggerTurn: false },
-			);
 			lastShownPlanPreview = { path: selectedPath, hash, mtimeMs: stat.mtimeMs };
 			persistState();
+			return buildPlanPreview(selectedPath, content, otherTouchedPaths);
 		} catch (error) {
 			ctx.ui.notify(
 				`Plan file preview skipped: ${error instanceof Error ? error.message : String(error)}`,
 				"warning",
 			);
+			return undefined;
 		} finally {
 			touchedPlanPaths = [];
 		}
@@ -427,7 +421,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			}
 		}
 
-		showTouchedPlanPreview(ctx);
+		const planPreview = consumeTouchedPlanPreview(ctx);
 
 		if (todoItems.length > 0) {
 			const todoListText = todoItems.map((t, i) => `${i + 1}. ☐ ${t.text}`).join("\n");
@@ -441,7 +435,11 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			);
 		}
 
-		const choice = await ctx.ui.select("Plan mode - choose next action", [
+		const selectTitle = planPreview
+			? `${planPreview}\n\nPlan mode - choose next action`
+			: "Plan mode - choose next action";
+
+		const choice = await ctx.ui.select(selectTitle, [
 			todoItems.length > 0 ? "Execute the plan (track progress)" : "Execute the plan",
 			"Stay in plan mode",
 			"Refine the plan",

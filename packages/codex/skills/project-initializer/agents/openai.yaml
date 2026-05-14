@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Initializer"
+  short_description: "Initialize agent docs and local docs folders with shell."
+  default_prompt: "Initialize this project with AGENTS.md, CLAUDE.md, CODEX.md, docs folders, and local plan/archive gitignore entries."

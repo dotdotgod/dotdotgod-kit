@@ -1,0 +1,30 @@
+{
+  "name": "@dotdotgod/docs-validator",
+  "version": "0.1.2",
+  "description": "Zero-dependency validator for dotdotgod documentation scaffolds.",
+  "type": "module",
+  "license": "Elastic-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "dd-docs-validate": "./bin/dd-docs-validate.mjs"
+  },
+  "keywords": [
+    "dotdotgod",
+    "docs",
+    "markdown",
+    "validator",
+    "agent-memory"
+  ],
+  "scripts": {
+    "verify": "node --check bin/dd-docs-validate.mjs && node bin/dd-docs-validate.mjs ../.. --include-local-memory",
+    "pack:dry-run": "npm pack --dry-run --json"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ]
+}

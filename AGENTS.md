@@ -4,8 +4,8 @@ Canonical instructions for AI coding agents working in this repository.
 
 ## Project
 
-- Name: project-memory-kit
-- Purpose: Project memory kit for AI coding agents containing shared docs initialization, plan/archive workflow conventions, and a customized Pi plan mode extension.
+- Name: dotdotgod
+- Purpose: Project memory kit for AI coding agents containing shared docs initialization, plan/archive workflow conventions, and customized Pi, Claude Code, and Codex adapters.
 - Primary stack: TypeScript/Node.js, Pi coding agent package conventions, POSIX shell for initializer scripting.
 
 ## Working Rules
@@ -23,14 +23,14 @@ Canonical instructions for AI coding agents working in this repository.
 Document project-specific commands here as they become available:
 
 ```bash
-# Test this package in Pi for one run
-pi -e /Users/dotdot/Workspace/pi-workflow
-
-# Install this package locally in Pi
-pi install /Users/dotdot/Workspace/pi-workflow
+# Test/install the Pi adapter locally
+pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 
 # Run the project initializer dry-run against the current project
-sh skills/project-initializer/scripts/init_project.sh --dry-run --project-name project-memory-kit .
+sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --project-name dotdotgod .
+
+# Verify all workspace packages
+npm run verify
 ```
 
 ## Documentation Map

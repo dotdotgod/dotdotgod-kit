@@ -1,7 +1,7 @@
 /**
  * Project Memory Loader Extension
  *
- * Provides /load and /pmk:load commands for loading project-memory-kit docs.
+ * Provides /load and /dd:load commands for loading dotdotgod docs.
  */
 
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
@@ -95,7 +95,7 @@ function buildLoadPrompt(cwd: string, args: string, snapshot: ProjectMemorySnaps
 
 	const mode = args.trim() ? `\nUser arguments: ${args.trim()}\n` : "";
 
-	return `Load the project-memory-kit project memory.${mode}
+	return `Load the dotdotgod project memory.${mode}
 Current working directory: ${cwd}
 
 Detected memory files:
@@ -127,13 +127,13 @@ Response format:
 Do not modify files. Only load and summarize project memory.`;
 }
 
-async function runLoadCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext, args: string, commandName: "load" | "pmk:load") {
+async function runLoadCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext, args: string, commandName: "load" | "dd:load") {
 	const snapshot = collectSnapshot(ctx.cwd);
 	const conflict = hasOtherLoadCommand(pi);
 
 	if (ctx.hasUI && conflict) {
 		ctx.ui.notify(
-			"Another /load command was detected. project-memory-kit provides /pmk:load as the stable alias.",
+			"Another /load command was detected. dotdotgod provides /dd:load as the stable alias.",
 			"info",
 		);
 	}
@@ -150,12 +150,12 @@ async function runLoadCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext, ar
 
 export default function loadProjectExtension(pi: ExtensionAPI): void {
 	pi.registerCommand("load", {
-		description: "Load project-memory-kit docs for the current project",
+		description: "Load dotdotgod docs for the current project",
 		handler: async (args, ctx) => runLoadCommand(pi, ctx, args, "load"),
 	});
 
-	pi.registerCommand("pmk:load", {
-		description: "Load project-memory-kit docs for the current project (namespaced alias)",
-		handler: async (args, ctx) => runLoadCommand(pi, ctx, args, "pmk:load"),
+	pi.registerCommand("dd:load", {
+		description: "Load dotdotgod docs for the current project (namespaced alias)",
+		handler: async (args, ctx) => runLoadCommand(pi, ctx, args, "dd:load"),
 	});
 }

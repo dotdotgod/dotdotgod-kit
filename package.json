@@ -1,49 +1,19 @@
 {
-  "name": "project-memory-kit",
+  "name": "dotdotgod-workspace",
   "version": "0.1.2",
-  "description": "Project memory kit for AI coding agents: shared docs initialization, plan/archive workflow, and Pi plan mode extension.",
+  "private": true,
+  "description": "Workspace for dotdotgod project memory packages across Pi, docs validation, Claude Code, and Codex adapters.",
   "type": "module",
   "license": "Elastic-2.0",
-  "publishConfig": {
-    "access": "public"
-  },
-  "keywords": [
-    "pi-package",
-    "pi",
-    "pi-coding-agent",
-    "ai-agent",
-    "project-memory",
-    "agent-memory",
-    "documentation",
-    "skill",
-    "extension",
-    "project-initializer",
-    "plan-mode",
-    "project-loader",
-    "context-loader"
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
-    "pack:dry-run": "npm pack --dry-run",
-    "publish:public": "npm publish --access public"
-  },
-  "peerDependencies": {
-    "@earendil-works/pi-agent-core": "*",
-    "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*"
-  },
-  "pi": {
-    "skills": [
-      "./skills"
-    ],
-    "extensions": [
-      "./extensions"
-    ]
-  },
-  "files": [
-    "skills",
-    "extensions",
-    "README.md",
-    "LICENSE"
-  ]
+    "generate": "node scripts/generate-adapters.mjs",
+    "verify:generated": "node scripts/generate-adapters.mjs --check",
+    "verify": "npm run verify:generated && npm --workspaces run verify --if-present",
+    "verify:docs": "npm --workspace @dotdotgod/docs-validator run verify && node packages/docs-validator/bin/dd-docs-validate.mjs . --include-local-memory",
+    "pack:dry-run": "npm run verify:generated && npm --workspaces run pack:dry-run --if-present",
+    "publish:all": "npm publish -w @dotdotgod/docs-validator --access public && npm publish -w @dotdotgod/pi --access public && npm publish -w @dotdotgod/claude-code --access public && npm publish -w @dotdotgod/codex --access public"
+  }
 }
