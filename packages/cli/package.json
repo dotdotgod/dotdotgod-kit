@@ -19,7 +19,8 @@
     "knowledge-graph"
   ],
   "scripts": {
-    "verify": "node --check bin/dotdotgod.mjs && node bin/dotdotgod.mjs validate ../.. --include-local-memory && node bin/dotdotgod.mjs index ../.. --json && node bin/dotdotgod.mjs status ../.. --json",
+    "test": "node --test test/*.test.mjs",
+    "verify": "node --check bin/dotdotgod.mjs && node --check src/core.mjs && pnpm run test && node bin/dotdotgod.mjs validate ../.. --include-local-memory && node bin/dotdotgod.mjs index ../.. --json && node bin/dotdotgod.mjs status ../.. --json",
     "pack:dry-run": "pnpm pack --dry-run --json"
   },
   "files": [

@@ -28,6 +28,12 @@ Run unit tests where workspace packages provide them:
 pnpm run verify:unit
 ```
 
+Run CLI unit and e2e tests directly:
+
+```bash
+pnpm --filter @dotdotgod/cli test
+```
+
 Run all workspace package checks:
 
 ```bash
@@ -50,7 +56,7 @@ node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
 
 - `@dotdotgod/shared`: private source resources for generated adapter commands, skills, and initializer files.
 - `@dotdotgod/pi`: generated initializer skill, extension syntax smoke checks, TypeScript typecheck, unit tests for pure plan/load helpers, and Pi package tarball dry-run.
-- `@dotdotgod/cli`: CLI syntax check, validation against this repository, and cache/index status smoke checks.
+- `@dotdotgod/cli`: CLI syntax check, unit/e2e tests, validation against this repository, and cache/index status smoke checks.
 - `@dotdotgod/claude-code`: generated plugin commands/skills, plugin manifest/resource checks, and tarball dry-run.
 - `@dotdotgod/codex`: generated plugin skills, plugin manifest/skill checks, and tarball dry-run.
 
