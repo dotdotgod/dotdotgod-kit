@@ -16,6 +16,7 @@ This directory keeps project knowledge close to the code.
 
 ## Map
 
+- `concept/`: core ideas behind dotdotgod, including context curation and why the docs structure improves AI-agent work.
 - `spec/`: product behavior, API contracts, user-facing requirements. Current specs include `PROJECT_INITIALIZER.md`, `DOTDOT_SETTING.md`, `PLAN_MODE.md`, `LOAD_PROJECT.md`, and `CROSS_AGENT_SUPPORT.md`.
 - `test/`: test strategy, coverage notes, regression cases, and manual verification records.
 - `arch/`: architecture decisions, code conventions, module boundaries, data flow, infrastructure/runtime dependencies, integration boundaries, and migration design. Current architecture docs include `CODE_CONVENTIONS.md`, `DOCS_STRUCTURE.md`, `EXTENSION_ARCHITECTURE.md`, `CROSS_AGENT_ARCHITECTURE.md`, and `VALIDATION_ARCHITECTURE.md`.
