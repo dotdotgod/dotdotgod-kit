@@ -92,11 +92,19 @@ Current public package version: `0.1.4`.
 
 ## Quick Start
 
-Pi adapter:
+Install the Pi adapter:
 
 ```bash
 pi install npm:@dotdotgod/pi
 ```
+
+Then start with the initializer skill. Ask Pi:
+
+```text
+Initialize this project with dotdotgod.
+```
+
+The `project-initializer` skill creates or normalizes `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive`. That scaffold is what makes later `/dd:load` and `/plan` turns structured instead of ad-hoc.
 
 CLI validation:
 
