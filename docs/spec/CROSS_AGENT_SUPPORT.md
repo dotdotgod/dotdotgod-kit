@@ -66,6 +66,7 @@ Optional workflows:
 - keyboard shortcuts
 - tool filtering or permission hooks
 - project memory indexing/search
+- CLI-backed load snapshots where shell or package execution is available
 
 ## Packaging Contract
 

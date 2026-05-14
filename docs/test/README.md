@@ -119,11 +119,14 @@ Then confirm these commands are discoverable or invokable in the active Claude C
 /dd:init
 ```
 
+For `/dd:load`, confirm the generated guidance prefers `dotdotgod load-snapshot <root> --json` when available, treats the snapshot as the first-pass project-memory map, keeps `docs/archive/README.md` as the archive map, and falls back to manual README-index reads when the CLI is unavailable.
+
 Codex adapter local plugin smoke:
 
 - Install or add `/Users/dotdot/Workspace/dotdotgod/packages/codex` with the current Codex local plugin workflow.
 - Confirm `project-load`, `doc-first-planning`, and `project-initializer` skills are discoverable.
 - Confirm command-like trigger phrases `dd:load`, `dd:plan`, and `dd:init` activate the expected workflows.
+- For `dd:load`, confirm the generated guidance prefers `dotdotgod load-snapshot <root> --json` when available, treats the snapshot as the first-pass project-memory map, keeps `docs/archive/README.md` as the archive map, and falls back to manual README-index reads when the CLI is unavailable.
 
 Cross-agent planning parity smoke:
 
