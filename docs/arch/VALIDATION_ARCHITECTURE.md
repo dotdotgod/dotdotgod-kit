@@ -71,6 +71,13 @@ Embedding/vector search dependencies are out of scope for the first CLI mileston
 
 Workspace packages can add TypeScript typecheck and unit test scripts when they contain testable source.
 
+The CLI uses Node's built-in test runner:
+
+- `pnpm --filter @dotdotgod/cli test`: unit tests for pure validation/index/graph helpers plus e2e tests that execute `bin/dotdotgod.mjs` against temporary fixture projects.
+- `pnpm --filter @dotdotgod/cli run verify`: syntax checks, CLI tests, docs validation, index generation, and status smoke checks.
+
+CLI unit tests import `packages/cli/src/core.mjs`; e2e tests shell out to the published binary entrypoint. Fixtures live in temporary directories so stale-index and validation-failure cases can mutate files safely.
+
 The Pi adapter currently owns TypeScript quality gates:
 
 - `pnpm --filter @dotdotgod/pi run typecheck`: TypeScript `noEmit` checking for extension source and tests.
