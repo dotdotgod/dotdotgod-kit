@@ -1,13 +1,13 @@
 # @dotdotgod/pi
 
-Pi adapter for dotdotgod project memory workflows. It gives Pi a practical project-memory loop: load the current repository context, plan safely before source changes, track execution progress, and initialize the shared docs scaffold for new projects.
+Pi adapter for dotdotgod's context curation workflow. It gives Pi a practical project-memory loop: load curated repository context, plan safely into durable docs before source changes, execute from explicit steps, and archive outcomes as future context.
 
 ## Why Install It?
 
-- Start work with `/dd:load` instead of manually re-reading project rules.
-- Use `/plan` to keep implementation planning in `docs/plan/` before mutating source/config files.
-- Keep completed work organized under `docs/archive/plan/`.
-- Share the same `AGENTS.md`, docs, and plan/archive conventions with Claude Code and Codex adapters.
+- Start work with `/dd:load` instead of manually re-reading project rules and scattered docs.
+- Use `/plan` to refine current intent in `docs/plan/` before mutating source/config files.
+- Keep completed work organized under `docs/archive/plan/` so it becomes reusable project memory.
+- Share the same curated `AGENTS.md`, docs, and plan/archive conventions with Claude Code and Codex adapters.
 
 ## Install
 
@@ -15,7 +15,7 @@ Pi adapter for dotdotgod project memory workflows. It gives Pi a practical proje
 pi install npm:@dotdotgod/pi
 ```
 
-Published install/uninstall smoke has been verified for `0.1.0`:
+Published install/uninstall smoke has been verified for `0.1.1`:
 
 ```bash
 pi install npm:@dotdotgod/pi
