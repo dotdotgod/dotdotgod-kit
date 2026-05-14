@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+	PLAN_COMPACTION_PERCENT_THRESHOLD,
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
 	buildPlanCompactionInstructions,
 	extractDoneSteps,
 	extractTodoItems,
+	formatPlanCompactionFocus,
 	getPlanCompactionReason,
 	isSafeCommand,
 	isSafePlanArchiveCommand,
@@ -54,18 +56,37 @@ describe("plan-mode command safety", () => {
 
 describe("plan-mode compaction helpers", () => {
 	it("builds planning-focused custom instructions with the reason", () => {
-		const instructions = buildPlanCompactionInstructions("Plan Mode context exceeded 70% of the context window.");
-		assert.match(instructions, /^Reason: Plan Mode context exceeded 70%/);
+		const instructions = buildPlanCompactionInstructions(`Plan Mode context exceeded ${PLAN_COMPACTION_PERCENT_THRESHOLD}% of the context window.`);
+		assert.match(instructions, new RegExp(`^Reason: Plan Mode context exceeded ${PLAN_COMPACTION_PERCENT_THRESHOLD}%`));
 		assert.match(instructions, /Preserve planning-critical context/);
 		assert.match(instructions, /active plan task slug\/path\/status/);
 		assert.match(instructions, /\[DONE:n\]/);
 		assert.equal(buildPlanCompactionInstructions(), PLAN_MODE_COMPACTION_INSTRUCTIONS);
 	});
 
+	it("builds current-work-focused custom instructions", () => {
+		const focus = formatPlanCompactionFocus({
+			task: "Integrate load-snapshot into /dd:load",
+			activePlanPaths: ["docs/plan/load-snapshot-integration/README.md"],
+			touchedMemoryPaths: ["docs/plan/load-snapshot-integration/README.md"],
+			todoSummary: "1/3 completed",
+			pendingLoadAfterCompaction: true,
+			constraints: ["Use pnpm", "Exclude archive bodies"],
+		});
+		assert.match(focus ?? "", /Current work focus/);
+		assert.match(focus ?? "", /Integrate load-snapshot/);
+		assert.match(focus ?? "", /docs\/plan\/load-snapshot-integration\/README\.md/);
+
+		const instructions = buildPlanCompactionInstructions("because", { task: "Do the current task" });
+		assert.match(instructions, /Reason: because/);
+		assert.match(instructions, /Current work focus/);
+		assert.match(instructions, /Do the current task/);
+	});
+
 	it("detects token-based planning compaction reasons", () => {
 		assert.equal(
-			getPlanCompactionReason({ tokens: 70_000, contextWindow: 100_000, percent: 70 }),
-			"Plan Mode context exceeded 70% of the context window.",
+			getPlanCompactionReason({ tokens: 60_000, contextWindow: 100_000, percent: 60 }),
+			`Plan Mode context exceeded ${PLAN_COMPACTION_PERCENT_THRESHOLD}% of the context window.`,
 		);
 		assert.equal(
 			getPlanCompactionReason({ tokens: 168_000, contextWindow: 200_000 }),

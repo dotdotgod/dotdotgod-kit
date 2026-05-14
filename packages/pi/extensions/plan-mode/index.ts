@@ -18,6 +18,7 @@ import {
 	isSafeCommand,
 	shouldShapePlanningContextOnAgentStart,
 	markCompletedSteps,
+	type PlanCompactionFocus,
 	type TodoItem,
 } from "./utils.js";
 
@@ -69,6 +70,22 @@ function getTextContent(message: AssistantMessage): string {
 		.filter((block): block is TextContent => block.type === "text")
 		.map((block) => block.text)
 		.join("\n");
+}
+
+function getMessageText(message: AgentMessage): string {
+	if (!("content" in message)) return "";
+	const content = message.content;
+	if (typeof content === "string") return content;
+	if (!Array.isArray(content)) return "";
+	return content
+		.filter((block): block is TextContent => block.type === "text")
+		.map((block) => block.text)
+		.join("\n");
+}
+
+function truncateText(text: string, limit = 500): string {
+	const normalized = text.replace(/\s+/g, " ").trim();
+	return normalized.length > limit ? `${normalized.slice(0, limit - 1)}…` : normalized;
 }
 
 function normalizeToolPath(path: string): string {
@@ -123,6 +140,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let lastPlanningLoadEntryCount: number | undefined;
 	let pendingPlanningLoadAfterCompaction = false;
 	let planningContextShapePending = false;
+	let lastPlanningRequest: string | undefined;
+	let touchedPlanArchivePaths: string[] = [];
 
 	pi.registerFlag("plan", {
 		description: "Start in plan mode (safe exploration plus docs/plan updates)",
@@ -145,20 +164,39 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		return ctx.sessionManager.getEntries().length;
 	}
 
+	function buildCurrentWorkFocus(): PlanCompactionFocus {
+		const completed = todoItems.filter((item) => item.completed).length;
+		const focus: PlanCompactionFocus = {
+			activePlanPaths: touchedPlanArchivePaths.filter((path) => path.startsWith("docs/plan/")),
+			touchedMemoryPaths: touchedPlanArchivePaths,
+			pendingLoadAfterCompaction: pendingPlanningLoadAfterCompaction,
+			constraints: [
+				"Use pnpm for workspace commands",
+				"Plan Mode blocks source/config mutation until execution mode",
+				"Keep docs/archive/README.md included as the archive map",
+				"Exclude docs/archive/** bodies by default unless targeted",
+			],
+		};
+		if (lastPlanningRequest) focus.task = lastPlanningRequest;
+		if (todoItems.length > 0) focus.todoSummary = `${completed}/${todoItems.length} completed`;
+		return focus;
+	}
+
 	function requestPlanningCompaction(ctx: ExtensionContext, reason: string): void {
 		if (planCompactionInFlight) return;
 
 		const entryCount = getSessionEntryCount(ctx);
-		if (lastPlanCompactionEntryCount !== undefined && entryCount - lastPlanCompactionEntryCount < 10) {
+		if (lastPlanCompactionEntryCount !== undefined && entryCount - lastPlanCompactionEntryCount < 5) {
 			return;
 		}
 
+		const focus = buildCurrentWorkFocus();
 		planCompactionInFlight = true;
 		lastPlanCompactionReason = reason;
-		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:compaction-request", { reason, entryCount });
+		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:compaction-request", { reason, entryCount, focus });
 		ctx.ui.notify("Planning context is large; compacting before continuing.", "info");
 		ctx.compact({
-			customInstructions: buildPlanCompactionInstructions(reason),
+			customInstructions: buildPlanCompactionInstructions(reason, focus),
 			onComplete: () => {
 				planCompactionInFlight = false;
 				lastPlanCompactionEntryCount = getSessionEntryCount(ctx);
@@ -271,6 +309,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			lastPlanningLoadEntryCount,
 			pendingPlanningLoadAfterCompaction,
 			planningContextShapePending,
+			lastPlanningRequest,
+			touchedPlanArchivePaths,
 		});
 	}
 
@@ -318,6 +358,10 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 					reason: `Plan mode: ${event.toolName} is only allowed for markdown plan files under ${PLAN_DIRECTORY}/ or ${ARCHIVE_DIRECTORY}/. Directories must be kebab-case and markdown file names must be UPPER_SNAKE_CASE.md. Use execution mode for source changes.`,
 				};
 			}
+			const normalizedPath = normalizeToolPath(path).replace(/\\/g, "/");
+			if (!touchedPlanArchivePaths.includes(normalizedPath)) {
+				touchedPlanArchivePaths = [...touchedPlanArchivePaths, normalizedPath].slice(-12);
+			}
 			if (isActivePlanMarkdownPath(ctx.cwd, path)) {
 				activePlanTouched = true;
 			}
@@ -347,7 +391,22 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		};
 	});
 
+	function updateLatestPlanningRequest(ctx: ExtensionContext): void {
+		const latestUserEntry = [...ctx.sessionManager.getEntries()].reverse().find((entry) => {
+			const candidate = entry as { type?: string; message?: AgentMessage };
+			return candidate.type === "message" && candidate.message?.role === "user";
+		}) as { message?: AgentMessage } | undefined;
+		const latestText = latestUserEntry?.message ? truncateText(getMessageText(latestUserEntry.message)) : "";
+		if (latestText && !latestText.includes("[PLAN MODE ACTIVE]") && !latestText.startsWith("Load the dotdotgod project memory.")) {
+			lastPlanningRequest = latestText;
+		}
+	}
+
 	pi.on("before_agent_start", async (_event, ctx) => {
+		if (planModeEnabled && !executionMode) {
+			updateLatestPlanningRequest(ctx);
+		}
+
 		if (shouldShapePlanningContextOnAgentStart({ planModeEnabled, executionMode, planningContextShapePending })) {
 			planningContextShapePending = false;
 			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:initial-context-shape", { entryCount: getSessionEntryCount(ctx) });
@@ -510,6 +569,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 						lastPlanningLoadEntryCount?: number;
 						pendingPlanningLoadAfterCompaction?: boolean;
 						planningContextShapePending?: boolean;
+						lastPlanningRequest?: string;
+						touchedPlanArchivePaths?: string[];
 					};
 			  }
 			| undefined;
@@ -524,6 +585,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			lastPlanningLoadEntryCount = planModeEntry.data.lastPlanningLoadEntryCount ?? lastPlanningLoadEntryCount;
 			pendingPlanningLoadAfterCompaction = planModeEntry.data.pendingPlanningLoadAfterCompaction ?? pendingPlanningLoadAfterCompaction;
 			planningContextShapePending = planModeEntry.data.planningContextShapePending ?? planningContextShapePending;
+			lastPlanningRequest = planModeEntry.data.lastPlanningRequest ?? lastPlanningRequest;
+			touchedPlanArchivePaths = planModeEntry.data.touchedPlanArchivePaths ?? touchedPlanArchivePaths;
 		}
 
 		const isResume = planModeEntry !== undefined;
