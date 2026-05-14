@@ -69,8 +69,8 @@ When the agent creates or updates a plan markdown file under `docs/plan/`, plan 
 - `README.md` is preferred when multiple plan files were touched.
 - The full saved plan markdown is shown.
 - Duplicate previews are avoided with path/content state tracking.
-- The preview is shown in a blocking preview UI before the execution-choice prompt.
-- The execution-choice prompt appears only after the preview is continued or closed and uses a short title rather than embedding the full markdown.
+- The preview and action choices are shown together in a single custom UI so the user reviews the full saved markdown before selecting execute, stay, or refine.
+- The custom UI keeps action choices fixed below the preview, uses a short action-choice heading, and never embeds the full markdown in a select prompt.
 - If no `docs/plan/` markdown file was written or edited, no saved-plan preview is expected.
 
 ## Todo Extraction and Execution

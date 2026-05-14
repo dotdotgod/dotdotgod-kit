@@ -16,7 +16,7 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 - Active plan tasks are managed as kebab-case directories under `docs/plan/<task-slug>/` for projects initialized with `project-initializer`.
 - Under `docs/`, all directories use kebab-case and all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
 - Each task directory keeps its overview and index in `README.md`; supporting plan files such as `RESEARCH_NOTES.md` or `VERIFICATION.md` live alongside it.
-- When a plan markdown file under `docs/plan/` is created or updated, plan mode shows the saved-plan preview in a blocking preview UI before asking whether to execute, stay in plan mode, or refine the plan. `README.md` is preferred when multiple plan files were touched.
+- When a plan markdown file under `docs/plan/` is created or updated, plan mode shows the saved-plan preview and execute/stay/refine choices in a single custom UI. `README.md` is preferred when multiple plan files were touched.
 - Completed task directories should be moved to `docs/archive/plan/<task-slug>/` after execution and verification.
 - Plans are encouraged to include target files, risks, and verification steps.
 
@@ -34,7 +34,7 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 4. The task overview, index, scope, and status belong in `docs/plan/<task-slug>/README.md`.
 5. Supporting research, checklists, or verification notes can be added as UPPER_SNAKE_CASE markdown files in the same directory.
 6. If the session is long or noisy, the agent may suggest a user-initiated planning-focused `/compact <instructions>` before writing the plan.
-7. After the agent creates or updates a plan file, Pi shows the full saved plan preview in a blocking preview UI. Continue or close the preview to open the execution-choice prompt.
+7. After the agent creates or updates a plan file, Pi shows the full saved plan preview with execute/stay/refine choices fixed below the preview.
 8. The agent should write concrete executable steps in the final `Plan:` section. Generic section labels such as `Target files and rationale`, `Implementation steps`, and `Verification method` are ignored for todo extraction.
 9. Choose `Execute the plan` in the UI to switch into implementation mode.
 10. During execution, the agent marks completed steps with `[DONE:n]` tags.
