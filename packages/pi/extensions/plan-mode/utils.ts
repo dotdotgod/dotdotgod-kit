@@ -94,7 +94,100 @@ const SAFE_PATTERNS = [
 	/^\s*eza\b/,
 ];
 
+export function tokenizeShellCommand(command: string): string[] | undefined {
+	const tokens: string[] = [];
+	let current = "";
+	let quote: "'" | '"' | undefined;
+
+	for (let i = 0; i < command.length; i += 1) {
+		const char = command[i];
+		if (!char) continue;
+
+		if (quote) {
+			if (char === quote) {
+				quote = undefined;
+			} else {
+				current += char;
+			}
+			continue;
+		}
+
+		if (char === "'" || char === '"') {
+			quote = char;
+			continue;
+		}
+
+		if (/\s/.test(char)) {
+			if (current.length > 0) {
+				tokens.push(current);
+				current = "";
+			}
+			continue;
+		}
+
+		current += char;
+	}
+
+	if (quote) return undefined;
+	if (current.length > 0) tokens.push(current);
+	return tokens;
+}
+
+export function isPlanArchivePath(path: string): boolean {
+	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
+	if (normalized.includes("\0") || normalized.includes("*")) return false;
+	if (normalized.startsWith("/") || normalized.startsWith("../") || normalized.includes("/../")) return false;
+	return (
+		normalized.startsWith("docs/plan/") ||
+		normalized.startsWith("docs/archive/") ||
+		normalized === "docs/archive/plan"
+	);
+}
+
+export function isProtectedPlanArchiveRoot(path: string): boolean {
+	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
+	return normalized === "docs/plan" || normalized === "docs/archive" || normalized === "docs/archive/plan";
+}
+
+export function isSafePlanArchiveCommand(command: string): boolean {
+	if (/[;&|<>`$\n\r]/.test(command)) return false;
+
+	const tokens = tokenizeShellCommand(command.trim());
+	if (!tokens || tokens.length === 0) return false;
+
+	const [program, ...args] = tokens;
+	if (program === "mkdir") {
+		const paths = args.filter((arg) => arg !== "-p");
+		const options = args.filter((arg) => arg.startsWith("-"));
+		return paths.length > 0 && options.every((option) => option === "-p") && paths.every(isPlanArchivePath);
+	}
+
+	if (program === "mv") {
+		const paths = args.filter((arg) => !arg.startsWith("-"));
+		const options = args.filter((arg) => arg.startsWith("-"));
+		return paths.length >= 2 && options.every((option) => option === "-f" || option === "-n") && paths.every(isPlanArchivePath);
+	}
+
+	if (program === "rm" || program === "rmdir") {
+		const paths = args.filter((arg) => !arg.startsWith("-"));
+		const options = args.filter((arg) => arg.startsWith("-"));
+		const optionsAllowed =
+			program === "rmdir"
+				? options.length === 0
+				: options.every((option) => /^-[rRf]+$/.test(option));
+		return (
+			paths.length > 0 &&
+			optionsAllowed &&
+			paths.every(isPlanArchivePath) &&
+			paths.every((path) => !isProtectedPlanArchiveRoot(path))
+		);
+	}
+
+	return false;
+}
+
 export function isSafeCommand(command: string): boolean {
+	if (isSafePlanArchiveCommand(command)) return true;
 	const isDestructive = DESTRUCTIVE_PATTERNS.some((p) => p.test(command));
 	const isSafe = SAFE_PATTERNS.some((p) => p.test(command));
 	return !isDestructive && isSafe;

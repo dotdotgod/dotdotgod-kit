@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { extractDoneSteps, extractTodoItems, isSafeCommand, markCompletedSteps, type TodoItem } from "../extensions/plan-mode/utils.ts";
+import { extractDoneSteps, extractTodoItems, isSafeCommand, isSafePlanArchiveCommand, markCompletedSteps, type TodoItem } from "../extensions/plan-mode/utils.ts";
 
 describe("plan-mode command safety", () => {
 	it("allows read-only commands", () => {
@@ -12,6 +12,31 @@ describe("plan-mode command safety", () => {
 	it("blocks mutating or dangerous commands", () => {
 		for (const command of ["rm -rf docs", "mv a b", "npm install", "git commit -m test", "echo hi > file", "sudo ls"]) {
 			assert.equal(isSafeCommand(command), false, command);
+		}
+	});
+
+	it("allows constrained plan/archive housekeeping commands", () => {
+		for (const command of [
+			"mkdir -p docs/archive/plan",
+			"mv docs/plan/old-task docs/archive/plan/old-task",
+			"rm -rf docs/plan/stale-task",
+			"rm docs/archive/plan/stale-task/README.md",
+		]) {
+			assert.equal(isSafePlanArchiveCommand(command), true, command);
+			assert.equal(isSafeCommand(command), true, command);
+		}
+	});
+
+	it("blocks plan/archive housekeeping commands that escape local memory", () => {
+		for (const command of [
+			"rm -rf docs/plan",
+			"rm package.json",
+			"mv packages/pi docs/archive/plan/pi",
+			"mv docs/plan/task packages/task",
+			"rm -rf docs/plan/task && rm package.json",
+			"rm -rf docs/plan/../spec",
+		]) {
+			assert.equal(isSafePlanArchiveCommand(command), false, command);
 		}
 	});
 });

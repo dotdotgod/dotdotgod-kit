@@ -77,6 +77,8 @@ Plan mode review choice and todo extraction:
 4. Confirm ordinary explanatory replies that do not touch `docs/plan/` do not show the action prompt or extract todos.
 5. Confirm the action prompt uses a short selector title and does not embed the full plan markdown.
 6. Confirm no `[plan-todo-list]` message or persistent todo widget is shown; use `/todos` for on-demand progress details.
+7. Confirm Plan Mode allows constrained housekeeping such as `mkdir -p docs/archive/plan`, `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`, and `rm -r docs/plan/<task-slug>`.
+8. Confirm Plan Mode still blocks housekeeping that touches source/config paths, such as `rm package.json` or `mv packages/pi docs/archive/plan/pi`.
 
 Claude Code adapter local plugin smoke:
 

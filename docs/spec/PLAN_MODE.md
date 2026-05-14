@@ -23,6 +23,10 @@ While plan mode is active:
 - `edit` and `write` are allowed only for markdown files under:
   - `docs/plan/`
   - `docs/archive/`
+- Conservative plan/archive housekeeping bash commands are allowed only when every affected path stays under `docs/plan/` or `docs/archive/`:
+  - `mkdir -p docs/archive/plan`
+  - `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`
+  - `rm -r docs/plan/<task-slug>` or `rm docs/archive/plan/<task-slug>/README.md`
 - Product/source/config changes outside those directories are blocked.
 
 ## Plan File Shape
