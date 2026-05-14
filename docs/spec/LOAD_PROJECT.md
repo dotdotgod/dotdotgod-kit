@@ -15,9 +15,9 @@ It helps the agent inspect the dotdotgod scaffold and summarize the current proj
 
 ## Read-Only Behavior
 
-The command does not modify files.
+The command does not modify source, docs, or config files.
 
-It collects a lightweight snapshot of expected memory files and docs directories, then sends a read-only loader prompt to the agent.
+It first tries to run `dotdotgod load-snapshot <cwd> --json` and include a bounded snapshot summary in the loader prompt. The CLI read can lazily refresh `.dotdotgod/` cache metadata when the cache is missing or stale. If the CLI is unavailable or returns invalid JSON, the command falls back to a lightweight snapshot of expected memory files and docs directories, then sends a read-only loader prompt to the agent.
 
 The agent is instructed to use read-only tools such as:
 
@@ -45,8 +45,10 @@ The loader checks for these baseline files:
 
 The loader prompt asks the agent to:
 
-- start with `AGENTS.md`, `README.md`, and `docs/README.md` when available
+- use the `load-snapshot` summary first when present, including cache status, lazy refresh metadata, graph size, bounded community summaries, and archive inclusion policy
+- start with `AGENTS.md`, `README.md`, and `docs/README.md` when they are not already clear from the loaded context
 - summarize product, architecture, code conventions, infrastructure/runtime dependencies, and verification context
+- inspect docs/spec, docs/arch, and docs/test selectively instead of re-scanning every listed file unless a task needs a full refresh
 - follow `README.md` indexes, including domain directories such as `docs/<area>/<domain>/README.md`
 - follow expanded convention directories such as `docs/arch/conventions/README.md`
 - list `docs/plan` first and read only relevant active plan files
@@ -58,7 +60,7 @@ The loader prompt asks the agent to:
 
 When the Pi adapter is started with `--dd-context-debug`, `/load` and `/dd:load` record local JSONL measurement events before and after sending the load prompt.
 
-The event includes prompt character/word/approx-token counts, context usage when available, git state, and the docs directories included in the default summary. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
+The event includes prompt character/word/approx-token counts, context usage when available, git state, the docs directories included in the default summary, and whether the CLI load snapshot succeeded. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
 
 ## Response Shape
 
@@ -72,13 +74,15 @@ The agent should summarize:
 - relevant archive notes
 - open TODO/TBD items or questions to clarify
 
+## Current Snapshot Integration
+
+`/load` and `/dd:load` now use the unified CLI load snapshot as the preferred bounded project-memory map. The prompt includes compact cache, refresh, graph, and community metadata but does not embed the full graph or archive bodies. `docs/archive/README.md` remains included as the archive map; other archive bodies remain excluded by default.
+
 ## Future Extension Points
 
-The command is intentionally a runtime extension entrypoint. It can later grow from prompt-only loading into:
+The command is intentionally a runtime extension entrypoint. It can later grow into:
 
-- project memory indexing with lazy cache refresh metadata (`metadata.cacheRefreshed`) for agent-facing snapshots and graph reads
 - bounded graph impact reports grouped by related files, docs, tests, commands, events, package resources, and symbols
-- bounded graph community summaries for load snapshots without embedding the full graph; communities use Leiden detection when possible and deterministic domain grouping as fallback
 - vector search
 - graph search
 - `dd_search` or related LLM-callable tools

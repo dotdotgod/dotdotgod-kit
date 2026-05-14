@@ -45,9 +45,10 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 - active tool selection for planning/execution
 - write/edit filtering for plan/archive markdown files
 - read-only bash allowlist enforcement
-- session state for plan mode, execution mode, todos, active plan-file touch tracking, pending first-request context shaping, and plan-compaction debounce metadata
+- session state for plan mode, execution mode, todos, active plan-file touch tracking, touched plan/archive paths, latest planning request, pending first-request context shaping, and plan-compaction debounce metadata
 - concise execute/stay/refine review prompt after active plan file updates, without saved-plan preview rendering
 - automatic planning-focused `ctx.compact({ customInstructions })` requests after user planning requests when a long or noisy session may hurt plan quality
+- current-work-directed compaction instructions that include the latest task focus before the durable preservation rules
 
 Plan mode injects runtime instructions because project docs can be edited by users. The prompt should stay generic and must not contain app-specific stack assumptions.
 
@@ -68,11 +69,12 @@ The debug path is for measurement and investigation only; normal package behavio
 
 - `/load` command
 - `/dd:load` namespaced alias
-- lightweight detection of baseline memory files
-- read-only loader prompt generation
+- direct `dotdotgod load-snapshot <cwd> --json` invocation when available
+- lightweight detection of baseline memory files as a fallback and prompt scaffold
+- read-only, snapshot-first loader prompt generation
 - command-conflict guidance for `/load`
 
-The extension is intentionally thin today. The shared CLI now owns deterministic validation, cache/index management, bounded graph impact reports, and community summaries. The load extension remains the planned runtime entrypoint for deciding how much of that bounded CLI output should be included in `/dd:load` without turning project loading into a full graph dump.
+The shared CLI owns deterministic validation, cache/index management, bounded graph impact reports, and community summaries. The load extension includes compact CLI snapshot metadata in `/dd:load` without turning project loading into a full graph dump. It preserves `docs/archive/README.md` as the archive map while keeping archive bodies excluded by default.
 
 ## Prompt Layer
 
@@ -96,6 +98,7 @@ Prompt content should:
 - execution mode
 - active plan-file touch tracking for review-prompt eligibility
 - pending first-request context shaping state
+- latest planning request and touched plan/archive paths for current-work compaction focus
 - last planning compaction entry count/reason for debounce
 
 ## Future Search Architecture
@@ -107,7 +110,6 @@ Potential additions:
 - `/dd:index`
 - `/dd:search`
 - `/dd:status`
-- bounded `dotdotgod load-snapshot` integration in `/dd:load`
 - vector index over project docs
 - graph search over entities and relationships
 - LLM-callable `dd_search` tools

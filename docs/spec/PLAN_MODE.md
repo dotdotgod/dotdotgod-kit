@@ -66,7 +66,15 @@ If compaction and load are both needed, Plan Mode requests compaction first, the
 
 Plan mode automatically requests planning-focused compaction when context is large enough to hurt plan quality. It does not compact immediately when `/plan` is toggled on; it checks after the first user planning request and after later planning turns while Plan Mode remains active.
 
-The extension passes planning-specific `customInstructions` to `ctx.compact()` so compaction preserves information useful for the next plan:
+The extension passes planning-specific `customInstructions` to `ctx.compact()` so compaction preserves information useful for the next plan. Instructions start with the compaction reason, then include a `Current work focus:` section derived from available local state:
+
+- latest user planning request
+- active plan path or touched docs/plan and docs/archive files
+- todo count and completed state when present
+- pending load-after-compaction state
+- persistent user/project constraints such as pnpm usage, archive policy, and Plan Mode source mutation restrictions
+
+The durable preservation rules then ask compaction to keep:
 
 - user decisions and constraints
 - active plan task slug, path, and status
@@ -79,19 +87,19 @@ The extension passes planning-specific `customInstructions` to `ctx.compact()` s
 
 Compaction omits low-value discussion, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail.
 
-Plan Mode compaction uses conservative token criteria:
+Plan Mode compaction uses moderately proactive token criteria:
 
-- context usage at or above 70% when percentage is available
+- context usage at or above 60% when percentage is available
 - context tokens within 32,000 tokens of the context window when window size is available
 - 100,000 context tokens as a fallback when only token count is available
 
-The extension debounces repeated compactions, skips compaction during execution mode, and continues without blocking if compaction fails.
+The extension debounces repeated compactions, skips compaction during execution mode, and continues without blocking if compaction fails. The debounce is intentionally short enough to allow useful re-compaction during long planning sessions while still avoiding repeated immediate compactions.
 
 ## Debug Measurement
 
 When the Pi adapter is started with `--dd-context-debug`, Plan Mode records local JSONL measurement events for Plan Mode entry, initial context-shaping checks, planning turn end, compaction request, compaction completion/error, and execution start.
 
-Events include context usage when available, git state, compaction reason, entry counts, and todo counts where relevant. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
+Events include context usage when available, git state, compaction reason, current-work focus, entry counts, and todo counts where relevant. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
 
 ## Plan Review Choice
 

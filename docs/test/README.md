@@ -83,6 +83,11 @@ Pi load command aliases:
 /dd:load
 ```
 
+- Confirm the loader prompt includes a compact `Load snapshot:` section when `dotdotgod load-snapshot` is available.
+- Confirm the snapshot section reports cache status, lazy refresh metadata, graph counts, bounded community summaries, and `fullGraphIncluded=false`.
+- Confirm `docs/archive/README.md` remains available as the archive map while archive bodies are not embedded by default.
+- Temporarily make the CLI unavailable and confirm `/dd:load` falls back to the lightweight marker/docs snapshot instead of failing.
+
 Plan mode review choice and todo extraction:
 
 1. Run `/plan`.
@@ -96,7 +101,8 @@ Plan mode review choice and todo extraction:
 9. In a high-context session, enable `/plan` and confirm Pi does not immediately show a compaction or project-memory-load notification.
 10. Send the first planning request and confirm Pi shows `Planning context is large; compacting before continuing.` followed by `Planning compaction completed.` only when context thresholds are met.
 11. Confirm the Plan Mode compaction request uses planning-specific `customInstructions` that preserve decisions, active plan status, relevant docs, verification results, next steps, and `[DONE:n]` markers.
-12. Confirm repeated Plan Mode turns immediately after compaction do not trigger another compaction until enough new session entries exist.
+12. Confirm compaction instructions include `Current work focus:` with the latest planning request, active/touched plan paths, todo state when present, pending load-after-compaction state, and archive/pnpm/source-mutation constraints.
+13. Confirm repeated Plan Mode turns immediately after compaction do not trigger another compaction until enough new session entries exist.
 
 Claude Code adapter local plugin smoke:
 

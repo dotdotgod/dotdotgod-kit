@@ -193,12 +193,21 @@ export function isSafeCommand(command: string): boolean {
 	return !isDestructive && isSafe;
 }
 
-export const PLAN_COMPACTION_PERCENT_THRESHOLD = 70;
+export const PLAN_COMPACTION_PERCENT_THRESHOLD = 60;
 export const PLAN_COMPACTION_TOKEN_FALLBACK = 100_000;
 export const PLAN_COMPACTION_CONTEXT_RESERVE = 32_000;
 
 export const PLAN_MODE_COMPACTION_INSTRUCTIONS =
 	"Preserve planning-critical context for dotdotgod Plan Mode. Keep user decisions, constraints, active plan task slug/path/status, touched docs/plan and docs/archive files, relevant docs/spec docs/test docs/arch context, implementation decisions, verification results, unresolved risks/questions, and concrete next steps. Preserve completed [DONE:n] markers if present. Omit low-value discussion, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail. Summarize in a compact structure that lets the next assistant continue planning or execution without asking the user to repeat context.";
+
+export interface PlanCompactionFocus {
+	task?: string;
+	activePlanPaths?: string[];
+	touchedMemoryPaths?: string[];
+	todoSummary?: string;
+	pendingLoadAfterCompaction?: boolean;
+	constraints?: string[];
+}
 
 export interface PlanContextUsage {
 	tokens?: number | null;
@@ -216,10 +225,34 @@ export function shouldShapePlanningContextOnAgentStart(state: PlanningContextSha
 	return state.planModeEnabled && !state.executionMode && state.planningContextShapePending;
 }
 
-export function buildPlanCompactionInstructions(reason?: string): string {
+function formatFocusList(label: string, values: string[] | undefined): string | undefined {
+	const cleaned = [...new Set(values?.map((value) => value.trim()).filter(Boolean) ?? [])];
+	if (cleaned.length === 0) return undefined;
+	return `- ${label}: ${cleaned.slice(0, 8).join(", ")}${cleaned.length > 8 ? `, +${cleaned.length - 8} more` : ""}`;
+}
+
+export function formatPlanCompactionFocus(focus?: PlanCompactionFocus): string | undefined {
+	if (!focus) return undefined;
+	const lines = [
+		focus.task?.trim() ? `- Task: ${focus.task.trim()}` : undefined,
+		formatFocusList("Active plan", focus.activePlanPaths),
+		formatFocusList("Touched plan/archive memory", focus.touchedMemoryPaths),
+		focus.todoSummary?.trim() ? `- Todo state: ${focus.todoSummary.trim()}` : undefined,
+		focus.pendingLoadAfterCompaction ? "- Pending: load curated project memory after compaction" : undefined,
+		formatFocusList("Preserve constraints", focus.constraints),
+	].filter((line): line is string => Boolean(line));
+	if (lines.length === 0) return undefined;
+	return `Current work focus:\n${lines.join("\n")}`;
+}
+
+export function buildPlanCompactionInstructions(reason?: string, focus?: PlanCompactionFocus): string {
+	const sections = [];
 	const normalizedReason = reason?.trim();
-	if (!normalizedReason) return PLAN_MODE_COMPACTION_INSTRUCTIONS;
-	return `Reason: ${normalizedReason}\n\n${PLAN_MODE_COMPACTION_INSTRUCTIONS}`;
+	if (normalizedReason) sections.push(`Reason: ${normalizedReason}`);
+	const formattedFocus = formatPlanCompactionFocus(focus);
+	if (formattedFocus) sections.push(formattedFocus);
+	sections.push(PLAN_MODE_COMPACTION_INSTRUCTIONS);
+	return sections.join("\n\n");
 }
 
 export function getPlanCompactionReason(usage: PlanContextUsage | null | undefined): string | undefined {

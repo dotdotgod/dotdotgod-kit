@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { buildLoadPrompt, collectSnapshot, estimateTextMetrics, hasOtherLoadCommand, listMarkdownFiles } from "../extensions/load-project/utils.ts";
+import { buildLoadPrompt, collectSnapshot, estimateTextMetrics, formatLoadSnapshotSummary, hasOtherLoadCommand, listMarkdownFiles } from "../extensions/load-project/utils.ts";
 
 function fixture(): string {
 	return mkdtempSync(join(tmpdir(), "dotdotgod-load-test-"));
@@ -55,6 +55,34 @@ describe("load-project prompt", () => {
 		assert.match(prompt, /docs\/spec\/README\.md/);
 		assert.match(prompt, /do not scan it as part of the documentation directory summary/i);
 		assert.match(prompt, /Do not modify files/);
+	});
+
+	it("includes bounded load-snapshot metadata when available", () => {
+		const prompt = buildLoadPrompt("/project", "", { present: ["docs/archive/README.md"], missing: [], directories: [] }, {
+			ok: true,
+			command: "local workspace CLI",
+			data: {
+				cache: { ok: true, status: "fresh", indexedFiles: 3, staleFiles: 0, archiveBodiesIncluded: false },
+				metadata: { cacheRefreshed: true, previousStatus: "stale", changedFiles: 1, fullRebuild: false },
+				graph: { nodes: 10, edges: 8, byType: { file: 4, heading: 6 } },
+				communities: { method: "leiden", fallback: false, total: 1, omitted: 0, communities: [{ label: "Pi Load", files: ["packages/pi/extensions/load-project/index.ts"], docs: ["docs/spec/LOAD_PROJECT.md"], commands: ["dd:load"], events: [], tests: [] }] },
+				bounds: { fullGraphIncluded: false },
+			},
+		});
+
+		assert.match(prompt, /Load snapshot:/);
+		assert.match(prompt, /cacheRefreshed=true/);
+		assert.match(prompt, /archiveBodiesIncluded=false/);
+		assert.match(prompt, /fullGraphIncluded=false/);
+		assert.match(prompt, /Use the Load snapshot section first/);
+		assert.match(prompt, /Do not re-scan every listed file/);
+	});
+
+	it("formats load-snapshot fallback failures", () => {
+		const summary = formatLoadSnapshotSummary({ ok: false, error: "missing binary" });
+		assert.match(summary, /unavailable/);
+		assert.match(summary, /lightweight fallback snapshot/);
+		assert.match(summary, /missing binary/);
 	});
 });
 

@@ -6,10 +6,11 @@
 
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { recordContextMetric } from "../context-metrics/utils.js";
-import { buildLoadPrompt, collectSnapshot, estimateTextMetrics, hasOtherLoadCommand } from "./utils.js";
+import { buildLoadPrompt, collectSnapshot, estimateTextMetrics, hasOtherLoadCommand, runDotdotgodLoadSnapshot } from "./utils.js";
 
 async function runLoadCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext, args: string, commandName: "load" | "dd:load") {
 	const snapshot = collectSnapshot(ctx.cwd);
+	const loadSnapshot = runDotdotgodLoadSnapshot(ctx.cwd);
 	const conflict = hasOtherLoadCommand(pi.getCommands());
 
 	if (ctx.hasUI && conflict) {
@@ -19,12 +20,17 @@ async function runLoadCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext, ar
 		);
 	}
 
-	const prompt = buildLoadPrompt(ctx.cwd, args, snapshot);
+	const prompt = buildLoadPrompt(ctx.cwd, args, snapshot, loadSnapshot);
 	const promptMetrics = estimateTextMetrics(prompt);
 	recordContextMetric(ctx, (name) => pi.getFlag(name), "load-project:before-send", {
 		commandName,
 		promptMetrics,
 		directorySummaryPaths: snapshot.directories.map((directory) => directory.path),
+		loadSnapshot: {
+			ok: loadSnapshot.ok,
+			command: loadSnapshot.command,
+			error: loadSnapshot.error,
+		},
 	});
 	const deliverAs = ctx.isIdle() ? undefined : "followUp";
 	pi.sendUserMessage(prompt, deliverAs ? { deliverAs } : undefined);
@@ -32,6 +38,11 @@ async function runLoadCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext, ar
 		commandName,
 		entryCount: ctx.sessionManager.getEntries().length,
 		promptMetrics,
+		loadSnapshot: {
+			ok: loadSnapshot.ok,
+			command: loadSnapshot.command,
+			error: loadSnapshot.error,
+		},
 	});
 	recordContextMetric(ctx, (name) => pi.getFlag(name), "load-project:after-send", { commandName, deliverAs: deliverAs ?? "immediate" });
 
