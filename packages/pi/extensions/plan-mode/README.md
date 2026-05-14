@@ -17,6 +17,7 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 - Under `docs/`, all directories use kebab-case and all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
 - Each task directory keeps its overview and index in `README.md`; supporting plan files such as `RESEARCH_NOTES.md` or `VERIFICATION.md` live alongside it.
 - Plan mode does not render saved-plan file previews in the TUI; users review the durable markdown plan file when needed.
+- Execute/stay/refine choices are shown only after an active plan markdown file under `docs/plan/` is created or updated.
 - Completed task directories should be moved to `docs/archive/plan/<task-slug>/` after execution and verification.
 - Plans are encouraged to include target files, risks, and verification steps.
 

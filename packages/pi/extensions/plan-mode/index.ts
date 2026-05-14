@@ -91,6 +91,10 @@ function isManagedPlanMarkdownPath(cwd: string, path: string): boolean {
 	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY) || isMarkdownPathInside(cwd, path, ARCHIVE_DIRECTORY);
 }
 
+function isActivePlanMarkdownPath(cwd: string, path: string): boolean {
+	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY);
+}
+
 function getToolPath(input: unknown): string | undefined {
 	if (!input || typeof input !== "object") return undefined;
 	const path = (input as { path?: unknown }).path;
@@ -101,6 +105,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let planModeEnabled = false;
 	let executionMode = false;
 	let todoItems: TodoItem[] = [];
+	let activePlanTouched = false;
 
 	pi.registerFlag("plan", {
 		description: "Start in plan mode (safe exploration plus docs/plan updates)",
@@ -124,6 +129,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		planModeEnabled = !planModeEnabled;
 		executionMode = false;
 		todoItems = [];
+		activePlanTouched = false;
 
 		if (planModeEnabled) {
 			pi.setActiveTools(PLAN_MODE_TOOLS);
@@ -140,6 +146,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			enabled: planModeEnabled,
 			todos: todoItems,
 			executing: executionMode,
+			activePlanTouched,
 		});
 	}
 
@@ -186,6 +193,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 					block: true,
 					reason: `Plan mode: ${event.toolName} is only allowed for markdown plan files under ${PLAN_DIRECTORY}/ or ${ARCHIVE_DIRECTORY}/. Directories must be kebab-case and markdown file names must be UPPER_SNAKE_CASE.md. Use execution mode for source changes.`,
 				};
+			}
+			if (isActivePlanMarkdownPath(ctx.cwd, path)) {
+				activePlanTouched = true;
 			}
 		}
 	});
@@ -303,6 +313,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 		}
 
 		if (!planModeEnabled || !ctx.hasUI) return;
+		if (!activePlanTouched) return;
+		activePlanTouched = false;
 
 		const lastAssistant = [...event.messages].reverse().find(isAssistantMessage);
 		if (lastAssistant) {
@@ -356,6 +368,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 						enabled: boolean;
 						todos?: TodoItem[];
 						executing?: boolean;
+						activePlanTouched?: boolean;
 					};
 			  }
 			| undefined;
@@ -364,6 +377,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			planModeEnabled = planModeEntry.data.enabled ?? planModeEnabled;
 			todoItems = planModeEntry.data.todos ?? todoItems;
 			executionMode = planModeEntry.data.executing ?? executionMode;
+			activePlanTouched = planModeEntry.data.activePlanTouched ?? activePlanTouched;
 		}
 
 		const isResume = planModeEntry !== undefined;
