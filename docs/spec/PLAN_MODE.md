@@ -69,12 +69,13 @@ When the agent creates or updates a plan markdown file under `docs/plan/`, plan 
 - `README.md` is preferred when multiple plan files were touched.
 - The full saved plan markdown is shown.
 - Duplicate previews are avoided with path/content state tracking.
-- The preview is included in the execution-choice prompt so the user can review the saved plan before choosing.
+- The preview is shown in a blocking preview UI before the execution-choice prompt.
+- The execution-choice prompt appears only after the preview is continued or closed and uses a short title rather than embedding the full markdown.
 - If no `docs/plan/` markdown file was written or edited, no saved-plan preview is expected.
 
 ## Todo Extraction and Execution
 
-Plan mode extracts numbered steps from a `Plan:` section.
+Plan mode extracts numbered executable steps from a `Plan:` section. Generic planning template labels such as `Target files and rationale`, `Implementation steps`, and `Verification method` are ignored so they do not become execution todos.
 
 When the user chooses to execute the plan:
 

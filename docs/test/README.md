@@ -57,11 +57,13 @@ Pi load command aliases:
 /dd:load
 ```
 
-Plan mode preview ordering:
+Plan mode preview ordering and todo extraction:
 
 1. Run `/plan`.
 2. Ask the agent to write or update a plan under `docs/plan/<task-slug>/README.md`.
-3. Confirm the full saved plan preview appears inside the `Execute the plan / Stay in plan mode / Refine the plan` choice prompt before selecting an action.
+3. Confirm the full saved plan preview appears in a blocking preview UI before the `Execute the plan / Stay in plan mode / Refine the plan` choice prompt.
+4. Continue or close the preview, then confirm the execution-choice prompt appears with a short title and does not embed the full plan markdown.
+5. Confirm `[plan-todo-list]` does not include generic template labels such as `Target files and rationale`, `Implementation steps`, or `Verification method` as executable todos.
 
 Claude Code adapter local plugin smoke:
 

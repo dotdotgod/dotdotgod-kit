@@ -7,7 +7,7 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Key } from "@earendil-works/pi-tui";
+import { Key, truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, isAbsolute, relative, resolve } from "node:path";
@@ -227,6 +227,57 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 	}
 
+	async function showPlanPreviewBeforeChoice(ctx: ExtensionContext, planPreview: string): Promise<void> {
+		const lines = planPreview.split("\n");
+		await ctx.ui.custom<boolean>((tui, theme, _keybindings, done) => {
+			let offset = 0;
+			const pageSize = 30;
+			const maxOffset = Math.max(0, lines.length - pageSize);
+
+			function move(delta: number): void {
+				offset = Math.max(0, Math.min(maxOffset, offset + delta));
+				tui.requestRender();
+			}
+
+			return {
+				render(width: number) {
+					const safeWidth = Math.max(1, width);
+					const visible = lines.slice(offset, offset + pageSize).flatMap((line) =>
+						line.length === 0 ? [""] : wrapTextWithAnsi(line, safeWidth),
+					);
+					const footer =
+						maxOffset > 0
+							? `Lines ${offset + 1}-${Math.min(offset + pageSize, lines.length)} of ${lines.length} · j/k scroll · Enter continue · Esc close`
+							: "Enter continue · Esc close";
+					return [
+						truncateToWidth(theme.fg("accent", theme.bold("Saved plan preview")), safeWidth),
+						truncateToWidth(theme.fg("muted", footer), safeWidth),
+						"",
+						...visible,
+						"",
+						truncateToWidth(theme.fg("muted", footer), safeWidth),
+					];
+				},
+				invalidate() {},
+				handleInput(data: string) {
+					if (data === "\n" || data === "\r") {
+						done(true);
+					} else if (data === "\u001b" || data === "q") {
+						done(false);
+					} else if (data === "j") {
+						move(1);
+					} else if (data === "k") {
+						move(-1);
+					} else if (data === "d") {
+						move(pageSize);
+					} else if (data === "u") {
+						move(-pageSize);
+					}
+				},
+			};
+		});
+	}
+
 	pi.registerCommand("plan", {
 		description: "Toggle plan mode (safe exploration plus docs/plan updates)",
 		handler: async (_args, ctx) => togglePlanMode(ctx),
@@ -329,17 +380,9 @@ Workflow:
 - Include scope, status, target files, risks, verification, and a final archive step to docs/archive/plan/<task-slug>/.
 - Do not change product/source files in plan mode. Only maintain docs/plan or docs/archive markdown files and produce an executable plan.
 
-Always write a numbered plan in the task README and final response with this format:
+Always write the task README with scope, target files, implementation steps, verification, risks when useful, and archive housekeeping.
 
-Plan:
-1. Target files and rationale
-2. Implementation steps
-3. Verification method
-
-When useful, include:
-- Files expected to be modified
-- Risks and edge cases
-- Tests or verification commands to run
+In the final response, use a Plan: section only for concrete executable steps. Avoid generic template labels such as "Target files and rationale", "Implementation steps", or "Verification method" as numbered plan items.
 
 Do NOT attempt to make changes - just describe what you would do.`,
 					display: false,
@@ -423,6 +466,10 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 
 		const planPreview = consumeTouchedPlanPreview(ctx);
 
+		if (planPreview) {
+			await showPlanPreviewBeforeChoice(ctx, planPreview);
+		}
+
 		if (todoItems.length > 0) {
 			const todoListText = todoItems.map((t, i) => `${i + 1}. ☐ ${t.text}`).join("\n");
 			pi.sendMessage(
@@ -435,11 +482,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			);
 		}
 
-		const selectTitle = planPreview
-			? `${planPreview}\n\nPlan mode - choose next action`
-			: "Plan mode - choose next action";
-
-		const choice = await ctx.ui.select(selectTitle, [
+		const choice = await ctx.ui.select("Plan mode - choose next action", [
 			todoItems.length > 0 ? "Execute the plan (track progress)" : "Execute the plan",
 			"Stay in plan mode",
 			"Refine the plan",
