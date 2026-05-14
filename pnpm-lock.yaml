@@ -20,9 +20,9 @@ importers:
 
   packages/claude-code: {}
 
-  packages/codex: {}
+  packages/cli: {}
 
-  packages/docs-validator: {}
+  packages/codex: {}
 
   packages/pi:
     dependencies:

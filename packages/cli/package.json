@@ -1,0 +1,31 @@
+{
+  "name": "@dotdotgod/cli",
+  "version": "0.1.1",
+  "description": "CLI for dotdotgod validation, project memory snapshots, and graph indexing.",
+  "type": "module",
+  "license": "Elastic-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "dotdotgod": "./bin/dotdotgod.mjs"
+  },
+  "keywords": [
+    "dotdotgod",
+    "docs",
+    "markdown",
+    "validator",
+    "agent-memory",
+    "knowledge-graph"
+  ],
+  "scripts": {
+    "verify": "node --check bin/dotdotgod.mjs && node bin/dotdotgod.mjs validate ../.. --include-local-memory && node bin/dotdotgod.mjs index ../.. --json && node bin/dotdotgod.mjs status ../.. --json",
+    "pack:dry-run": "pnpm pack --dry-run --json"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ]
+}
