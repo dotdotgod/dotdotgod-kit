@@ -19,7 +19,7 @@ export const MARKER_FILES = [
 	"docs/archive/README.md",
 ];
 
-export const MEMORY_DIRECTORIES = ["docs/spec", "docs/test", "docs/arch", "docs/plan", "docs/archive"];
+export const MEMORY_DIRECTORIES = ["docs/spec", "docs/test", "docs/arch", "docs/plan"];
 
 export interface ProjectMemorySnapshot {
 	present: string[];
@@ -115,8 +115,9 @@ Instructions:
 2. Start with AGENTS.md, README.md, and docs/README.md to understand the project purpose and working rules.
 3. Inspect docs/spec, docs/arch, and docs/test to summarize product, architecture, code conventions, infrastructure/runtime dependencies, and verification context.
 4. Follow README.md indexes, including domain directories such as docs/<area>/<domain>/README.md and expanded convention directories such as docs/arch/conventions/README.md.
-5. For docs/plan and docs/archive, list entries first and selectively read only the relevant README.md or markdown files. Treat docs/archive/plan as completed plans and docs/archive/report as temporary reports/investigations. Do not read every archive indiscriminately.
-6. Summarize the result concisely in English.
+5. For docs/plan, list entries first and selectively read only the relevant README.md or markdown files.
+6. For docs/archive, do not scan it as part of the documentation directory summary. Use docs/archive/README.md or targeted archive paths only when the user request or current task makes completed plans/reports relevant.
+7. Summarize the result concisely in English.
 
 Response format:
 - Project summary

@@ -49,9 +49,10 @@ The loader prompt asks the agent to:
 - summarize product, architecture, code conventions, infrastructure/runtime dependencies, and verification context
 - follow `README.md` indexes, including domain directories such as `docs/<area>/<domain>/README.md`
 - follow expanded convention directories such as `docs/arch/conventions/README.md`
-- list `docs/plan` and `docs/archive` first and read only relevant files
-- distinguish completed plan archives under `docs/archive/plan/` from temporary reports under `docs/archive/report/`
-- avoid reading every archive indiscriminately
+- list `docs/plan` first and read only relevant active plan files
+- exclude `docs/archive` from the documentation directory summary
+- use `docs/archive/README.md` or targeted archive paths only when the user request or current task makes completed plans/reports relevant
+- distinguish completed plan archives under `docs/archive/plan/` from temporary reports under `docs/archive/report/` when archive lookup is needed
 
 ## Response Shape
 
