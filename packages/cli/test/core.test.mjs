@@ -90,7 +90,8 @@ describe('CLI index and graph helpers', () => {
     assert.equal(impact.groups.docs.items.length, 0);
     const communities = buildCommunities(index, { communities: 3, items: 3 });
     assert(communities.total > 0);
-    assert(communities.communities.some((community) => community.id === 'cli' || community.id === 'package-metadata'));
+    assert(['leiden', 'deterministic-domain-grouping'].includes(communities.method));
+    assert.equal(typeof communities.fallback, 'boolean');
   });
 
   it('can build a graph directly from selected files', () => {

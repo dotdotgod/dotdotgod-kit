@@ -20,7 +20,11 @@ importers:
 
   packages/claude-code: {}
 
-  packages/cli: {}
+  packages/cli:
+    dependencies:
+      leiden-ts:
+        specifier: ^0.1.0
+        version: 0.1.0
 
   packages/codex: {}
 
@@ -640,6 +644,10 @@ packages:
 
   koffi@2.16.2:
     resolution: {integrity: sha512-owU0MRwv6xkrVqCd+33uw6BaYppkTRXbO/rVdJNI2dvZG0gzyRhYwW25eWtc5pauwK8TGh3AbkFONSezdykfSA==}
+
+  leiden-ts@0.1.0:
+    resolution: {integrity: sha512-kX0bBlEdXrbZg9seGZzp+JIwTgSK6xa3+ZFulyc/oeGC3Woam8inhHLeNzma/Wv6ERXiwoNkDAN4ZaGLAOhAbA==}
+    engines: {node: '>=20.10'}
 
   long@5.3.2:
     resolution: {integrity: sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==}
@@ -1733,6 +1741,8 @@ snapshots:
 
   koffi@2.16.2:
     optional: true
+
+  leiden-ts@0.1.0: {}
 
   long@5.3.2: {}
 
