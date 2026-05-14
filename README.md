@@ -17,6 +17,36 @@ Agents work better from shaped project memory than from raw conversation history
 - `docs/plan/` for active task intent and executable plans.
 - `docs/archive/` for completed decisions, reports, and reusable historical memory.
 
+## What Initialization Creates
+
+The initializer gives a project a predictable memory surface that any supported agent can load:
+
+```text
+AGENTS.md                    # canonical instructions for all coding agents
+CLAUDE.md                    # thin Claude Code entrypoint pointing to AGENTS.md
+CODEX.md                     # thin Codex entrypoint pointing to AGENTS.md
+docs/
+  README.md                  # docs map and naming/index rules
+  spec/README.md             # product behavior and requirements index
+  arch/README.md             # architecture and code-convention index
+  test/README.md             # verification strategy and smoke-test index
+  plan/README.md             # active local task plans, ignored by git
+  archive/README.md          # completed-work history map, ignored by git
+```
+
+This structure separates stable project truth from temporary chat state. Specs explain what should happen, architecture explains why it is built that way, tests explain how to verify it, plans capture current intent before implementation, and archive indexes make completed decisions discoverable later.
+
+## Why Loading Works Better with This Structure
+
+When an agent runs `/dd:load`, `dd:load`, or `dotdotgod load-snapshot`, it does not need to rediscover the repository from scratch. It can follow the same durable map every time:
+
+1. Read the baseline instructions and docs indexes.
+2. Use the bounded CLI snapshot for cache status, graph size, communities, and archive policy.
+3. Inspect only the relevant spec, architecture, test, or active plan files.
+4. Use `docs/archive/README.md` as the history map and read archived bodies only when a task needs a targeted past decision.
+
+The result is a project load that is repeatable, bounded, and task-directed. New sessions start with the same rules and context map, long-running work survives compaction, and agent handoffs do not depend on remembering what happened in a previous chat.
+
 ## What Context Curation Improves
 
 - **Less context noise:** important constraints are not buried under chat history and repeated tool output.
