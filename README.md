@@ -37,7 +37,7 @@ Read the detailed concept docs: [Context curation](docs/concept/CONTEXT_CURATION
 | [`@dotdotgod/claude-code`](packages/claude-code/README.md) | Claude Code `dd:*` commands and project memory skills. |
 | [`@dotdotgod/codex`](packages/codex/README.md) | Codex project memory skills and `dd:*` trigger phrases. |
 
-Current public package version: `0.1.2`.
+Current public package version: `0.1.3`.
 
 ## Quick Start
 
