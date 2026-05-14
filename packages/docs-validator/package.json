@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/docs-validator",
-  "version": "0.1.2",
+  "version": "0.1.0",
   "description": "Zero-dependency validator for dotdotgod documentation scaffolds.",
   "type": "module",
   "license": "Elastic-2.0",

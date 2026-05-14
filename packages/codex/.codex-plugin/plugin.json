@@ -1,6 +1,6 @@
 {
   "name": "dotdotgod",
-  "version": "0.1.2",
+  "version": "0.1.0",
   "description": "Dotdotgod project memory workflows for Codex: initialize shared docs, load project memory, and plan implementation work doc-first.",
   "author": {
     "name": "dotdotgod"
