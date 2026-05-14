@@ -113,6 +113,10 @@ Claude Code, Codex, and Pi can all use the same docs scaffold and vocabulary. Th
 
 Archived plans and reports explain what changed, why it changed, and how it was verified. Future tasks can reuse that history as curated context.
 
+## How It Works in Practice
+
+For the detailed task workflow, Plan Mode compaction behavior, docs naming rules, scale benefits, and token-usage framing, see [`CONTEXT_MECHANICS.md`](CONTEXT_MECHANICS.md).
+
 ## What dotdotgod Is Not
 
 - It is not a replacement for clear product or architecture docs.
