@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "verify": "node -e \"const fs=require('fs'); const req=['.claude-plugin/plugin.json','commands/dd/load.md','commands/dd/plan.md','commands/dd/init.md','skills/project-load/SKILL.md','skills/doc-first-planning/SKILL.md','skills/project-initializer/SKILL.md','skills/project-initializer/scripts/init_project.sh']; JSON.parse(fs.readFileSync('.claude-plugin/plugin.json','utf8')); for (const f of req) { if (!fs.existsSync(f)) throw new Error('missing '+f); } console.log('claude-code adapter ok')\"",
-    "pack:dry-run": "npm pack --dry-run --json"
+    "pack:dry-run": "pnpm pack --dry-run --json"
   },
   "files": [
     ".claude-plugin",

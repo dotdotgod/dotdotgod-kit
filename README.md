@@ -1,6 +1,6 @@
 # dotdotgod
 
-Dotdotgod project memory kit for AI coding agents. This repository is an npm workspace containing adapters and utilities for shared project memory workflows.
+Dotdotgod project memory kit for AI coding agents. This repository is a pnpm workspace containing adapters and utilities for shared project memory workflows.
 
 ## Packages
 
@@ -18,8 +18,8 @@ pi install npm:@dotdotgod/pi
 ## Local Development
 
 ```bash
-npm run verify
-npm run pack:dry-run
+pnpm run verify
+pnpm run pack:dry-run
 pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 ```
 
@@ -39,5 +39,5 @@ pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 The root package is private. Publish workspace packages individually or with:
 
 ```bash
-npm run publish:all
+pnpm run publish:all
 ```

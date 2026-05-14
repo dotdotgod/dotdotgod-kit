@@ -43,10 +43,10 @@ describe("plan-mode command safety", () => {
 
 describe("plan-mode todo extraction", () => {
 	it("extracts concrete numbered plan items", () => {
-		const todos = extractTodoItems(`Plan:\n1. Update docs/test/README.md\n2. Run npm run verify\n3. Archive completed plan`);
+		const todos = extractTodoItems(`Plan:\n1. Update docs/test/README.md\n2. Run pnpm run verify\n3. Archive completed plan`);
 		assert.deepEqual(
 			todos.map((todo) => todo.text),
-			["Docs/test/README.md", "Npm run verify", "Archive completed plan"],
+			["Docs/test/README.md", "Pnpm run verify", "Archive completed plan"],
 		);
 	});
 

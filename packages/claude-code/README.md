@@ -25,8 +25,8 @@ claude --plugin-dir /Users/dotdot/Workspace/dotdotgod/packages/claude-code
 Run package checks:
 
 ```bash
-npm --workspace @dotdotgod/claude-code run verify
-npm --workspace @dotdotgod/claude-code run pack:dry-run
+pnpm --filter @dotdotgod/claude-code run verify
+pnpm --filter @dotdotgod/claude-code run pack:dry-run
 ```
 
 ## Shared Contract

@@ -22,7 +22,7 @@ The npm package is published as `@dotdotgod/pi`.
 Distribution metadata is intentionally explicit:
 
 - `publishConfig.access` is `public`.
-- `pack:dry-run` runs `npm pack --dry-run` for package verification.
+- `pack:dry-run` runs `pnpm pack --dry-run --json` for package verification.
 - Keywords cover Pi packages, agent memory, documentation, skills, extensions, plan mode, and project/context loading.
 - The tarball should contain package resources under `skills/` and `extensions/`, plus package metadata and license files.
 - Pi peer dependencies remain unbundled and are resolved by the host Pi installation.
@@ -45,8 +45,8 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 - active tool selection for planning/execution
 - write/edit filtering for plan/archive markdown files
 - read-only bash allowlist enforcement
-- session state for plan mode, execution mode, todos, and saved preview state
-- saved plan preview after plan file updates
+- session state for plan mode, execution mode, todos, and active plan-file touch tracking
+- concise execute/stay/refine review prompt after active plan file updates, without saved-plan preview rendering
 - planning-focused `/compact <instructions>` suggestions when a long or noisy session may hurt plan quality
 
 Plan mode injects runtime instructions because project docs can be edited by users. The prompt should stay generic and must not contain app-specific stack assumptions.

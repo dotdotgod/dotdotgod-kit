@@ -30,7 +30,7 @@ pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --project-name dotdotgod .
 
 # Verify all workspace packages
-npm run verify
+pnpm run verify
 ```
 
 ## Documentation Map
