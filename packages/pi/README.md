@@ -31,7 +31,7 @@ The initializer is the first step: it creates the structure that later lets `/dd
 
 - **Project initializer skill:** create `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs indexes, active-plan space, archive map, and local memory ignores.
 - **Structured project memory:** give project knowledge a stable home before the agent starts loading or planning.
-- **Task-directed loading:** `/dd:load` starts from a bounded `dotdotgod load-snapshot` map when available, then reads only relevant docs.
+- **Task-directed loading:** `/dd:load` starts from a bounded `dotdotgod load-snapshot` map with memory-area summaries when available, then reads only relevant docs.
 - **Safer planning:** `/plan` keeps source/config changes blocked while the agent writes or updates a durable plan under `docs/plan/`.
 - **Execution continuity:** completed plan steps are reported with explicit `[DONE:n]` markers, making progress recoverable after long sessions or compaction.
 - **Reusable history:** completed work moves to `docs/archive/plan/`, while `docs/archive/README.md` remains the lightweight history map for future tasks.
@@ -60,7 +60,7 @@ This is the core context curation idea: instead of putting more raw files into c
 pi install npm:@dotdotgod/pi
 ```
 
-Published install/uninstall smoke has been verified for `0.1.7`:
+Published install/uninstall smoke has been verified for `0.1.8`:
 
 ```bash
 pi install npm:@dotdotgod/pi
@@ -77,16 +77,16 @@ pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 
 - `project-initializer` skill: the starting point; creates `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs folders, README indexes, and local memory ignores.
 - `plan-mode` extension: read-first planning mode with restricted tools, docs/plan writes, execution tracking, tiered hidden prompts, and `/todos`.
-- `load-project` extension: read-only project context loading through `/load` and `/dd:load`, using `dotdotgod load-snapshot` when available with a lightweight fallback.
+- `load-project` extension: read-only project context loading through `/load` and `/dd:load`, using `dotdotgod load-snapshot` when available with bounded cache, graph, memory-area, community, and archive-policy summaries plus a lightweight fallback.
 
 ## Expected Improvements
 
 - New sessions can start from the same durable project map instead of ad-hoc file scanning.
 - Agents can distinguish stable project truth (`docs/spec`, `docs/arch`, `docs/test`) from current task intent (`docs/plan`).
-- README indexes act as routing tables, so load and retrieval begin from curated project intent rather than undifferentiated files.
+- README indexes act as routing tables: the CLI records them as `routes_to` edges, while docs paths become memory-area metadata for specs, architecture, tests, active plans, and archive maps.
 - Archive history stays discoverable without forcing every completed plan body into the default context.
 - Planning and verification become explicit artifacts rather than hidden chat state.
-- Graph/cache metadata stays bounded in `.dotdotgod/`, with agent-facing output limited to summaries, omitted counts, and archive policy.
+- Graph/cache metadata stays bounded in `.dotdotgod/`, with agent-facing output limited to summaries, memory areas, omitted counts, and archive policy.
 
 ## Commands
 
@@ -109,7 +109,7 @@ The emphasis is different:
 ### Where dotdotgod is better
 
 - **Clear starting workflow:** the project-initializer skill creates a predictable memory scaffold before loading or planning.
-- **Better retrieval priors:** docs paths and README indexes classify nodes as specs, architecture, tests, active plans, or archive maps before the graph query begins.
+- **Better retrieval priors:** docs paths and README indexes become memory-area metadata, `belongs_to_area` edges, and README `routes_to` edges before the graph query begins.
 - **Lower default context pressure:** agents see bounded snapshots and README indexes instead of a full graph report by default, avoiding the case where a small question pays the cost of reading `GRAPH_REPORT` first.
 - **Safer task execution:** Plan Mode preserves intent, safety constraints, verification, and completed-step state with `[DONE:n]` markers.
 - **Better long-running project continuity:** active plans and archive indexes survive session resets, compaction, and agent handoff.

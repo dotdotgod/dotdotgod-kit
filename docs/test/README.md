@@ -43,7 +43,7 @@ node packages/cli/bin/dotdotgod.mjs load-snapshot . --json
 node packages/cli/bin/dotdotgod.mjs status . --json
 ```
 
-Confirm JSON output includes schema status, lazy refresh timing/reason metadata, bounded snapshot quality metrics, graph counts, omitted community counts, and archive inclusion policy.
+Confirm JSON output includes schema status, lazy refresh timing/reason metadata, bounded snapshot quality metrics, graph counts, bounded memory-area summaries, omitted community counts, retrieval hints, and archive inclusion policy.
 
 Run all workspace package checks:
 
@@ -87,7 +87,7 @@ Pi load command aliases:
 ```
 
 - Confirm the loader prompt includes a compact `Load snapshot:` section when `dotdotgod load-snapshot` is available.
-- Confirm the snapshot section reports cache status, lazy refresh metadata, graph counts, bounded community summaries, and `fullGraphIncluded=false`.
+- Confirm the snapshot section reports cache status, lazy refresh metadata, graph counts, bounded memory-area summaries, bounded community summaries, and `fullGraphIncluded=false`.
 - Confirm `docs/archive/README.md` remains available as the archive map while archive bodies are not embedded by default.
 - Temporarily make the CLI unavailable and confirm `/dd:load` falls back to the lightweight marker/docs snapshot instead of failing.
 

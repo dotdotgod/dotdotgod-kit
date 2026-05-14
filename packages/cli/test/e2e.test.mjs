@@ -52,7 +52,7 @@ describe('dotdotgod CLI e2e', () => {
     assert(existsSync(join(root, '.dotdotgod/manifest.json')));
     assert(existsSync(join(root, '.dotdotgod/graph/nodes/docs.json')));
     assert(existsSync(join(root, '.dotdotgod/graph/edges/imports.json')));
-    assert.equal(index.schemaVersion, 3);
+    assert.equal(index.schemaVersion, 5);
     assert.equal(typeof index.incremental.elapsedMs, 'number');
     assert(index.indexSizeBytes > 0);
 
@@ -69,14 +69,18 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(typeof snapshot.metadata.elapsedMs, 'number');
     assert(snapshot.graph.nodes > 0);
     assert(snapshot.graph.byType.export >= 1);
+    assert(snapshot.graph.byType.memory_area >= 1);
     assert(snapshot.graph.byType.package_resource >= 1);
     assert(snapshot.graph.byType.command >= 1);
+    assert(snapshot.graph.byRelation.routes_to >= 1);
     assert.equal(snapshot.bounds.fullGraphIncluded, false);
     assert.equal(snapshot.bounds.archiveMapIncluded, true);
     assert.equal(snapshot.bounds.archiveBodiesIncluded, false);
     assert(snapshot.quality.snapshotBytes > 0);
     assert(snapshot.quality.approxSnapshotTokens > 0);
     assert.equal(typeof snapshot.quality.omittedCommunities, 'number');
+    assert.equal(typeof snapshot.quality.omittedMemoryAreaItems, 'number');
+    assert(snapshot.memoryAreas.areas.some((area) => area.area === 'active-plan' && area.role === 'active-task-intent'));
     assert(snapshot.communities.communities.length > 0);
     assert(['leiden', 'deterministic-domain-grouping'].includes(snapshot.communities.method));
 
@@ -91,6 +95,7 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(query.command, 'graph query');
     assert(query.related.some((node) => node.id === 'file:packages/app/index.mjs'));
     assert(query.impact.groups.commands.items.some((item) => item.id === 'command:app'));
+    assert(query.related.some((item) => item.id === 'file:packages/app/index.mjs' && item.retrieval?.signals.includes('reason:changed-file')));
     assert.equal(typeof query.impact.omittedRelated, 'number');
   });
 

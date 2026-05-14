@@ -8,7 +8,7 @@ Command-line tools for dotdotgod project memory. The CLI validates the docs scaf
 - Build `.dotdotgod/` as a local, ignored cache of file fingerprints and compact graph shards.
 - Use `load-snapshot` as the bounded first-pass map for agent loading instead of embedding every doc or archive body.
 - Query likely side effects with grouped, bounded graph impact reports.
-- Turn dotdotgod's docs structure into retrieval priors: specs, architecture, tests, active plans, and archive maps are not treated as generic files.
+- Turn dotdotgod's docs structure into retrieval priors: specs, architecture, tests, active plans, and archive maps become explicit memory-area hints instead of generic files.
 - Keep indexing generic: discovery follows gitignore-visible files and supported text/source/config formats rather than assuming a pnpm monorepo.
 
 ## Commands
@@ -22,11 +22,13 @@ dotdotgod graph query . --changed <path>
 dotdotgod graph communities .
 ```
 
-`validate` replaces the previous standalone docs validator package. Graph indexing currently extracts a deterministic first-pass graph from Markdown headings/links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Other supported plain-text/source/config files are indexed as file metadata until dedicated extractors are added.
+`validate` replaces the previous standalone docs validator package. Graph indexing currently extracts a deterministic first-pass graph from Markdown headings/links, README routing links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, metric-event string literals, and dotdotgod memory-area membership. Other supported plain-text/source/config files are indexed as file metadata until dedicated extractors are added.
 
 The cache uses `.dotdotgod/manifest.json` plus compact graph shards under `.dotdotgod/graph/` so larger long-running projects do not require one giant JSON file. `status` is read-only and reports whether the cache is missing, fresh, stale, or schema-incompatible. `load-snapshot` and `graph` commands lazily refresh a missing/stale cache before producing agent-facing output and include refresh reason, elapsed timing, changed-file count, schema version, cache size, and archive inclusion policy in JSON output when available.
 
-`graph query` returns a bounded impact report grouped into files, docs, tests, commands, events, package resources, and symbols. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
+Memory-aware graph metadata is deterministic and path-based: files under `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive/README.md` get `memoryArea`, `memoryRole`, `retrievalPriority`, and `retrieval.signals` metadata. The graph also adds `memory_area:*` nodes, `belongs_to_area` edges, and `routes_to` edges from README indexes so curated docs maps become routing hints rather than plain links only.
+
+`load-snapshot` returns bounded `memoryAreas` summaries alongside cache, graph, community, and archive-policy metadata. `graph query` returns a bounded impact report grouped into files, docs, tests, commands, events, package resources, and symbols, with related nodes annotated by retrieval priority and reason-derived signals. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
 
 ## Indexing Scope
 
@@ -38,6 +40,6 @@ Default exclusions include dependency, generated, cache, and secret-like paths s
 
 The CLI is not designed to make agents read a giant graph report. The full graph stays in the local cache; agent-facing output is bounded and includes omitted counts.
 
-Its practical advantage is that graph and retrieval start from project-declared structure: `docs/spec` means behavior truth, `docs/arch` means design rationale, `docs/test` means verification, `docs/plan` means current intent, and `docs/archive/README.md` means historical map. That gives queries useful ranking and routing signals before any source file is read.
+Its practical advantage is that graph and retrieval start from project-declared structure: `docs/spec` means behavior truth, `docs/arch` means design rationale, `docs/test` means verification, `docs/plan` means current intent, and `docs/archive/README.md` means historical map. The CLI encodes that structure as memory-area metadata, `belongs_to_area` edges, README `routes_to` edges, and retrieval signals before any source file is read.
 
 This avoids common failure modes where a memory layer costs more than direct file reads on small tasks, indexes dependency/generated directories, or expands dense documents through repeated extraction.

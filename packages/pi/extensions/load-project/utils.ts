@@ -64,6 +64,19 @@ interface LoadSnapshotLike {
 		edges?: number;
 		byType?: Record<string, number>;
 	};
+	memoryAreas?: {
+		areas?: Array<{
+			area?: string;
+			label?: string;
+			role?: string;
+			priority?: number;
+			files?: string[];
+			count?: number;
+			omitted?: number;
+		}>;
+		total?: number;
+		method?: string;
+	};
 	communities?: {
 		communities?: Array<{
 			id?: string;
@@ -216,6 +229,7 @@ export function formatLoadSnapshotSummary(result: LoadSnapshotRunResult, communi
 	const cache = snapshot.cache;
 	const metadata = snapshot.metadata;
 	const graph = snapshot.graph ?? cache?.graph;
+	const memoryAreas = snapshot.memoryAreas;
 	const communities = snapshot.communities;
 	const lines = [
 		"Load snapshot:",
@@ -223,9 +237,16 @@ export function formatLoadSnapshotSummary(result: LoadSnapshotRunResult, communi
 		`- Cache: status=${cache?.status ?? "unknown"}, ok=${String(cache?.ok ?? "unknown")}, indexedFiles=${formatCount(cache?.indexedFiles)}, staleFiles=${formatCount(cache?.staleFiles)}, archiveBodiesIncluded=${String(cache?.archiveBodiesIncluded ?? metadata?.archiveBodiesIncluded ?? "unknown")}`,
 		`- Refresh: cacheRefreshed=${String(metadata?.cacheRefreshed ?? false)}, previousStatus=${metadata?.previousStatus ?? "none"}, changedFiles=${formatCount(metadata?.changedFiles)}, fullRebuild=${String(metadata?.fullRebuild ?? false)}`,
 		`- Graph: nodes=${formatCount(graph?.nodes)}, edges=${formatCount(graph?.edges)}, topTypes=${formatTopTypes(snapshot.graph?.byType)}`,
+		`- Memory areas: method=${memoryAreas?.method ?? "unknown"}, shown=${formatCount(memoryAreas?.areas?.length)}, total=${formatCount(memoryAreas?.total)}`,
 		`- Communities: method=${communities?.method ?? "unknown"}, fallback=${String(communities?.fallback ?? "unknown")}, shown=${formatCount(communities?.communities?.slice(0, communityLimit).length)}, total=${formatCount(communities?.total)}, omitted=${formatCount(communities?.omitted)}`,
 		`- Bounds: fullGraphIncluded=${String(snapshot.bounds?.fullGraphIncluded ?? false)}`,
 	];
+
+	for (const area of memoryAreas?.areas?.slice(0, communityLimit) ?? []) {
+		lines.push(
+			`  - ${area.label ?? area.area ?? "memory area"}: role=${area.role ?? "unknown"}; priority=${formatCount(area.priority)}; files=${truncateList(area.files, 3)}; omitted=${formatCount(area.omitted)}`,
+		);
+	}
 
 	for (const community of communities?.communities?.slice(0, communityLimit) ?? []) {
 		lines.push(
