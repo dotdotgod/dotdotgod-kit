@@ -1,2 +1,2 @@
 #!/usr/bin/env sh
-pnpm run verify && pnpm run pack:dry-run
+pnpm run verify && pnpm run verify:cache && pnpm run pack:dry-run
