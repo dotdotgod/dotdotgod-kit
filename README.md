@@ -1,51 +1,61 @@
-# @dotdot/pi-workflow
+# project-memory-kit
 
-Dotdot's Pi workflow package.
+Project memory kit for AI coding agents. It provides shared docs initialization, plan/archive workflow conventions, and customized Pi extensions.
 
 ## Included
 
-### Skills
+- Skill: `project-initializer` — initializes shared agent docs and documentation folders.
+- Extension: `plan-mode` — adds `/plan`, `/todos`, `Ctrl+Alt+P`, safe planning restrictions, todo tracking, and saved plan previews.
+- Extension: `load-project` — adds `/load` and `/pmk:load` for read-only project memory loading.
 
-- `project-initializer` — initializes shared agent docs and documentation folders for a project.
+## Documentation
 
-### Extensions
+- [Project initializer spec](docs/spec/PROJECT_INITIALIZER.md)
+- [Plan mode spec](docs/spec/PLAN_MODE.md)
+- [Load project spec](docs/spec/LOAD_PROJECT.md)
+- [Dotdot setting spec](docs/spec/DOTDOT_SETTING.md)
+- [Docs structure architecture](docs/arch/DOCS_STRUCTURE.md)
+- [Extension architecture](docs/arch/EXTENSION_ARCHITECTURE.md)
+- [Code conventions](docs/arch/CODE_CONVENTIONS.md)
 
-- `plan-mode` — customized planning mode for Pi.
-  - `/plan`
-  - `/todos`
-  - `Ctrl+Alt+P`
-  - manages active plan task directories under `docs/plan/<task-slug>/`
-  - archives completed task directories under `docs/archive/<task-slug>/`
-
-## Local install
+## Install from npm
 
 ```bash
-pi install /Users/dotdot/Workspace/pi-workflow
+pi install npm:project-memory-kit
 ```
 
-Or test for one run:
+Or test for one run without installing permanently:
 
 ```bash
-pi -e /Users/dotdot/Workspace/pi-workflow
+pi -e npm:project-memory-kit
+```
+
+## Local development
+
+```bash
+pi install /Users/dotdot/Workspace/project-memory-kit
+pi -e /Users/dotdot/Workspace/project-memory-kit
 ```
 
 ## Usage
 
-Project initializer:
-
 ```text
 /skill:project-initializer initialize this project
-```
-
-Plan mode:
-
-```text
 /plan
 /todos
+/load
+/pmk:load
 ```
 
-## Notes
+Optional dotdot convention scaffold:
 
-- `project-initializer` is a Pi skill, not an extension.
-- `plan-mode` is a Pi extension because it registers commands, shortcuts, tool filtering, and session state.
-- The customized plan mode can use `pi-web-access` tools when they are installed: `web_search`, `code_search`, `fetch_content`, `get_search_content`.
+```bash
+sh skills/project-initializer/scripts/init_project.sh --dotdot-setting <project-root>
+```
+
+## Publishing
+
+```bash
+npm run pack:dry-run
+npm publish --access public
+```
