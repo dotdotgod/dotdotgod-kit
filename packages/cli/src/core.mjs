@@ -2,9 +2,11 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 const CACHE_DIR = '.dotdotgod';
-const INDEX_FILE = 'index.json';
+const MANIFEST_FILE = 'manifest.json';
+const GRAPH_NODE_SHARDS = ['docs', 'packages', 'source'];
+const GRAPH_EDGE_SHARDS = ['imports', 'docs-links', 'tests', 'events', 'packages', 'symbols', 'commands', 'other'];
 
 function usage(message) {
   if (message) console.error(message);
@@ -219,7 +221,77 @@ export function fingerprint(file) {
 }
 
 export function cacheFile(root) {
-  return join(root, CACHE_DIR, INDEX_FILE);
+  return join(root, CACHE_DIR, MANIFEST_FILE);
+}
+
+function graphNodeShard(node) {
+  const path = node.path ?? '';
+  if (path.startsWith('docs/') || node.type === 'heading') return 'docs';
+  if (node.type === 'package' || node.type === 'script' || node.type === 'binary' || node.type === 'dependency' || node.type === 'package_resource') return 'packages';
+  return 'source';
+}
+
+function graphEdgeShard(edge) {
+  if (edge.relation === 'imports') return 'imports';
+  if (edge.relation === 'links_to' || edge.relation === 'contains_heading') return 'docs-links';
+  if (edge.relation === 'declares_test' || edge.relation === 'tests') return 'tests';
+  if (edge.relation === 'emits_event') return 'events';
+  if (edge.relation === 'declares_package' || edge.relation === 'declares_script' || edge.relation === 'declares_bin' || edge.relation === 'depends_on' || edge.relation === 'includes_resource') return 'packages';
+  if (edge.relation === 'declares' || edge.relation === 'exports' || edge.relation === 'exports_symbol') return 'symbols';
+  if (edge.relation === 'handles_command') return 'commands';
+  return 'other';
+}
+
+function compactNode(node) {
+  const { id, type, ...data } = node;
+  return Object.keys(data).length > 0 ? [id, type, data] : [id, type];
+}
+
+function expandNode(row) {
+  const [id, type, data = {}] = row;
+  return { id, type, ...data };
+}
+
+function compactEdge(edge) {
+  const { source, target, relation, ...data } = edge;
+  return Object.keys(data).length > 0 ? [source, target, relation, data] : [source, target, relation];
+}
+
+function expandEdge(row) {
+  const [source, target, relation, data = {}] = row;
+  return { source, target, relation, ...data };
+}
+
+function shardFile(root, kind, name) {
+  return join(root, CACHE_DIR, 'graph', kind, `${name}.json`);
+}
+
+function jsonSize(file) {
+  return existsSync(file) ? statSync(file).size : 0;
+}
+
+function writeJson(file, value) {
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(value)}\n`);
+}
+
+function compactGraph(graph) {
+  const nodes = Object.fromEntries(GRAPH_NODE_SHARDS.map((name) => [name, []]));
+  const edges = Object.fromEntries(GRAPH_EDGE_SHARDS.map((name) => [name, []]));
+  for (const node of graph.nodes) nodes[graphNodeShard(node)].push(compactNode(node));
+  for (const edge of graph.edges) edges[graphEdgeShard(edge)].push(compactEdge(edge));
+  return { nodes, edges };
+}
+
+function expandGraph(compact) {
+  return {
+    nodes: Object.values(compact?.nodes ?? {}).flat().map(expandNode),
+    edges: Object.values(compact?.edges ?? {}).flat().map(expandEdge),
+  };
+}
+
+function graphStats(graph) {
+  return { nodes: graph.nodes.length, edges: graph.edges.length };
 }
 
 export function addNode(graph, id, type, data = {}) {
@@ -389,42 +461,89 @@ export function buildGraph(root, files) {
   return graph;
 }
 
-export function buildIndex(root) {
-  const indexFiles = collectIndexFiles(root);
-  const files = indexFiles.map((file) => {
+function collectFingerprints(root) {
+  return collectIndexFiles(root).map((file) => {
     const stats = statSync(file);
     return { path: rel(root, file), sha256: fingerprint(file), size: stats.size, mtimeMs: Math.round(stats.mtimeMs) };
   });
-  const graph = buildGraph(root, indexFiles);
-  return { version: CACHE_VERSION, generatedAt: new Date().toISOString(), archiveBodiesIncluded: false, files, graph };
+}
+
+function nodeOwnedByPath(node, paths) {
+  return paths.has(node.path) || paths.has(node.id?.replace(/^file:/, '')) || paths.has(node.id?.replace(/^test:/, ''));
+}
+
+function mergeIncrementalGraph(previousGraph, changedGraph, changedPaths) {
+  if (!previousGraph) return changedGraph;
+  const changedSet = new Set(changedPaths);
+  const changedNodeIds = new Set(previousGraph.nodes.filter((node) => nodeOwnedByPath(node, changedSet)).map((node) => node.id));
+  for (const node of changedGraph.nodes) changedNodeIds.add(node.id);
+  const graph = { nodes: [], edges: [] };
+  for (const node of previousGraph.nodes) if (!changedNodeIds.has(node.id) && !nodeOwnedByPath(node, changedSet)) addNode(graph, node.id, node.type, Object.fromEntries(Object.entries(node).filter(([key]) => key !== 'id' && key !== 'type')));
+  for (const edge of previousGraph.edges) if (!changedNodeIds.has(edge.source) && !changedNodeIds.has(edge.target)) addEdge(graph, edge.source, edge.target, edge.relation, Object.fromEntries(Object.entries(edge).filter(([key]) => key !== 'source' && key !== 'target' && key !== 'relation')));
+  for (const node of changedGraph.nodes) addNode(graph, node.id, node.type, Object.fromEntries(Object.entries(node).filter(([key]) => key !== 'id' && key !== 'type')));
+  for (const edge of changedGraph.edges) addEdge(graph, edge.source, edge.target, edge.relation, Object.fromEntries(Object.entries(edge).filter(([key]) => key !== 'source' && key !== 'target' && key !== 'relation')));
+  return graph;
+}
+
+export function buildIndex(root, previous = readIndex(root)) {
+  const files = collectFingerprints(root);
+  const indexed = new Map((previous?.files ?? []).map((file) => [file.path, file.sha256]));
+  const changedPaths = files.filter((file) => indexed.get(file.path) !== file.sha256).map((file) => file.path);
+  const changedFiles = files.filter((file) => changedPaths.includes(file.path)).map((file) => join(root, file.path));
+  const fullRebuild = !previous?.graph || previous.version !== CACHE_VERSION;
+  const graph = fullRebuild ? buildGraph(root, files.map((file) => join(root, file.path))) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles), changedPaths);
+  return { version: CACHE_VERSION, generatedAt: new Date().toISOString(), archiveBodiesIncluded: false, files, graph, stats: graphStats(graph), incremental: { enabled: true, fullRebuild, changedFiles: changedPaths.length } };
+}
+
+export function writeIndex(root, index) {
+  const compact = compactGraph(index.graph);
+  for (const [name, rows] of Object.entries(compact.nodes)) writeJson(shardFile(root, 'nodes', name), rows);
+  for (const [name, rows] of Object.entries(compact.edges)) writeJson(shardFile(root, 'edges', name), rows);
+  const graphShards = {
+    nodes: Object.fromEntries(Object.keys(compact.nodes).map((name) => [name, rel(root, shardFile(root, 'nodes', name))])),
+    edges: Object.fromEntries(Object.keys(compact.edges).map((name) => [name, rel(root, shardFile(root, 'edges', name))])),
+  };
+  const manifest = { version: index.version, generatedAt: index.generatedAt, archiveBodiesIncluded: index.archiveBodiesIncluded, files: index.files, graph: { ...graphStats(index.graph), compactSchema: true, shards: graphShards }, incremental: index.incremental };
+  writeJson(cacheFile(root), manifest);
+  const shardBytes = [...Object.values(graphShards.nodes), ...Object.values(graphShards.edges)].reduce((sum, path) => sum + jsonSize(join(root, path)), 0);
+  const manifestBytes = jsonSize(cacheFile(root));
+  return { ...manifest, indexSizeBytes: manifestBytes + shardBytes, manifestBytes, shardBytes };
 }
 
 export function readIndex(root) {
   const file = cacheFile(root);
   if (!existsSync(file)) return null;
-  try { return JSON.parse(readFileSync(file, 'utf8')); } catch { return null; }
+  try {
+    const manifest = JSON.parse(readFileSync(file, 'utf8'));
+    const shards = manifest.graph?.shards;
+    if (!shards) return manifest;
+    const compact = { nodes: {}, edges: {} };
+    for (const [name, path] of Object.entries(shards.nodes ?? {})) compact.nodes[name] = existsSync(join(root, path)) ? JSON.parse(readFileSync(join(root, path), 'utf8')) : [];
+    for (const [name, path] of Object.entries(shards.edges ?? {})) compact.edges[name] = existsSync(join(root, path)) ? JSON.parse(readFileSync(join(root, path), 'utf8')) : [];
+    return { ...manifest, graph: expandGraph(compact) };
+  } catch { return null; }
 }
 
 export function getStatus(root) {
   const index = readIndex(root);
-  const current = buildIndex(root);
-  if (!index) return { ok: false, status: 'missing', cachePath: rel(root, cacheFile(root)), indexedFiles: 0, currentFiles: current.files.length, staleFiles: current.files.length, archiveBodiesIncluded: false };
+  const currentFiles = collectFingerprints(root);
+  if (!index) return { ok: false, status: 'missing', cachePath: rel(root, cacheFile(root)), indexedFiles: 0, currentFiles: currentFiles.length, staleFiles: currentFiles.length, archiveBodiesIncluded: false };
   const indexed = new Map((index.files ?? []).map((file) => [file.path, file.sha256]));
-  const currentMap = new Map(current.files.map((file) => [file.path, file.sha256]));
-  const stale = current.files.filter((file) => indexed.get(file.path) !== file.sha256).map((file) => file.path);
+  const currentMap = new Map(currentFiles.map((file) => [file.path, file.sha256]));
+  const stale = currentFiles.filter((file) => indexed.get(file.path) !== file.sha256).map((file) => file.path);
   const removed = [...indexed.keys()].filter((path) => !currentMap.has(path));
   const staleFiles = [...stale, ...removed];
-  return { ok: staleFiles.length === 0 && index.version === CACHE_VERSION, status: staleFiles.length === 0 ? 'fresh' : 'stale', cachePath: rel(root, cacheFile(root)), indexedFiles: index.files?.length ?? 0, currentFiles: current.files.length, staleFiles: staleFiles.length, examples: staleFiles.slice(0, 10), archiveBodiesIncluded: index.archiveBodiesIncluded === true };
+  const ok = staleFiles.length === 0 && index.version === CACHE_VERSION;
+  return { ok, status: ok ? 'fresh' : 'stale', cachePath: rel(root, cacheFile(root)), indexedFiles: index.files?.length ?? 0, currentFiles: currentFiles.length, staleFiles: staleFiles.length, examples: staleFiles.slice(0, 10), archiveBodiesIncluded: index.archiveBodiesIncluded === true, graph: graphStats(index.graph ?? { nodes: [], edges: [] }) };
 }
 
 export function runIndex(argv) {
   const options = parseCommon(argv);
   const index = buildIndex(options.root);
-  mkdirSync(join(options.root, CACHE_DIR), { recursive: true });
-  writeFileSync(cacheFile(options.root), `${JSON.stringify(index, null, 2)}\n`);
-  const result = { ok: true, cachePath: rel(options.root, cacheFile(options.root)), indexedFiles: index.files.length, nodes: index.graph.nodes.length, edges: index.graph.edges.length, archiveBodiesIncluded: false };
+  const manifest = writeIndex(options.root, index);
+  const result = { ok: true, cachePath: rel(options.root, cacheFile(options.root)), indexedFiles: index.files.length, nodes: index.graph.nodes.length, edges: index.graph.edges.length, indexSizeBytes: manifest.indexSizeBytes, shards: manifest.graph.shards, incremental: index.incremental, archiveBodiesIncluded: false };
   if (options.json) console.log(JSON.stringify(result, null, 2));
-  else console.log(`✅ index written (${result.indexedFiles} files, ${result.nodes} nodes, ${result.edges} edges, cache: ${result.cachePath})`);
+  else console.log(`✅ index written (${result.indexedFiles} files, ${result.nodes} nodes, ${result.edges} edges, ${(result.indexSizeBytes / 1024).toFixed(1)} KiB, cache: ${result.cachePath})`);
 }
 
 export function runStatus(argv) {

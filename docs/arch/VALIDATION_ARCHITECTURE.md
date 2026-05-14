@@ -44,13 +44,14 @@ The validator does not own general markdown style formatting. Use tools such as 
 The CLI uses `.dotdotgod/` at the project root as the default local cache directory.
 
 - `.dotdotgod/` is ignored by git.
-- The first cache artifact is `.dotdotgod/index.json`.
+- The cache manifest is `.dotdotgod/manifest.json`.
+- Compact graph shards live under `.dotdotgod/graph/nodes/` and `.dotdotgod/graph/edges/`.
 - Cache entries use content hashes, not only modified times, to detect stale files.
 - The index records whether archive bodies were included; default indexes exclude archive bodies.
-- `dotdotgod status <root>` reports `missing`, `fresh`, or `stale`.
-- `dotdotgod index <root>` rewrites the index from the current curated scope.
+- `dotdotgod status <root>` reports `missing`, `fresh`, or `stale` from file fingerprints without rebuilding the graph.
+- `dotdotgod index <root>` incrementally rebuilds changed file graph shards when a compatible manifest already exists.
 
-The index records file fingerprints, cache metadata, and a deterministic graph. Current graph extraction covers Markdown headings/links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Leiden-style communities are planned after direct graph queries are useful.
+The index records file fingerprints, cache metadata, and a deterministic graph. Current graph extraction covers Markdown headings/links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Graph storage uses a compact tuple schema in shards so multi-year projects do not depend on one large JSON file. Leiden-style communities are planned after direct graph queries are useful.
 
 ## Dependency Policy
 

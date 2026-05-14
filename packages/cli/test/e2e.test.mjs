@@ -49,7 +49,10 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(index.ok, true);
     assert(index.nodes > 0);
     assert(index.edges > 0);
-    assert(existsSync(join(root, '.dotdotgod/index.json')));
+    assert(existsSync(join(root, '.dotdotgod/manifest.json')));
+    assert(existsSync(join(root, '.dotdotgod/graph/nodes/docs.json')));
+    assert(existsSync(join(root, '.dotdotgod/graph/edges/imports.json')));
+    assert(index.indexSizeBytes > 0);
 
     const status = json(run(['status', root, '--json']));
     assert.equal(status.status, 'fresh');
@@ -89,5 +92,8 @@ describe('dotdotgod CLI e2e', () => {
     const stalePayload = JSON.parse(stale.stdout);
     assert.equal(stalePayload.status, 'stale');
     assert(stalePayload.examples.includes('docs/spec/README.md'));
+    const reindex = json(run(['index', root, '--json']));
+    assert.equal(reindex.incremental.fullRebuild, false);
+    assert.equal(reindex.incremental.changedFiles, 1);
   });
 });
