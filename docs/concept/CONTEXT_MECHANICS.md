@@ -4,18 +4,19 @@
 
 A typical dotdotgod workflow is a loop that turns current work into future project memory:
 
-1. **Load curated project memory when needed.** If project memory is missing or stale, Plan Mode requests the full curated project memory surface: canonical rules, README indexes, specs, architecture, tests, and active plans. This is a full curated load, not a planning-only slice, and archive bodies remain excluded by default.
-2. **Read stable docs first.** The docs map tells the agent where to find product truth, engineering constraints, verification expectations, active plans, and historical archives.
-3. **Plan in a durable file.** Current task intent is written to `docs/plan/<task-slug>/README.md` with scope, target files, risks, verification, and executable steps.
-4. **Keep planning separate from mutation.** In Pi, Plan Mode allows exploration and plan-file edits while blocking source/config changes until execution mode.
-5. **Compact planning context when needed.** If the planning context grows large, Plan Mode requests compaction with planning-specific instructions instead of generic summarization. If both load and compaction are needed, compaction is requested first and the curated project memory load follows after compaction completes.
-6. **Execute explicit steps.** Execution starts from the written plan, and completed steps are marked with `[DONE:n]` markers.
-7. **Verify with project-specific checks.** Verification commands and manual smoke tests live in project docs.
-8. **Archive the outcome.** Completed plans move to `docs/archive/plan/<task-slug>/` so the result becomes reusable historical memory.
+1. **Enter Plan Mode without immediately reshaping context.** Toggling Plan Mode enables the safe planning environment first; context load/compaction waits until the user sends a planning request.
+2. **Load curated project memory when needed.** If project memory is missing or stale after that planning request, Plan Mode requests the full curated project memory surface: canonical rules, README indexes, specs, architecture, tests, and active plans. This is a full curated load, not a planning-only slice, and archive bodies remain excluded by default.
+3. **Read stable docs first.** The docs map tells the agent where to find product truth, engineering constraints, verification expectations, active plans, and historical archives.
+4. **Plan in a durable file.** Current task intent is written to `docs/plan/<task-slug>/README.md` with scope, target files, risks, verification, and executable steps.
+5. **Keep planning separate from mutation.** In Pi, Plan Mode allows exploration and plan-file edits while blocking source/config changes until execution mode.
+6. **Compact planning context when needed.** If the planning context grows large after the user has requested planning work, Plan Mode requests compaction with planning-specific instructions instead of generic summarization. If both load and compaction are needed, compaction is requested first and the curated project memory load follows after compaction completes.
+7. **Execute explicit steps.** Execution starts from the written plan, and completed steps are marked with `[DONE:n]` markers.
+8. **Verify with project-specific checks.** Verification commands and manual smoke tests live in project docs.
+9. **Archive the outcome.** Completed plans move to `docs/archive/plan/<task-slug>/` so the result becomes reusable historical memory.
 
 This workflow does not require every agent to remember every previous conversation. It gives agents stable places to find the current task, project rules, constraints, verification history, and completed decisions.
 
-Plan Mode controls planning context in two directions: if context is missing or stale, it loads curated project memory; if context is too large or noisy, it compacts with planning-specific instructions. Only after context is shaped should the agent write or refine the plan.
+Plan Mode controls planning context in two directions after the user sends a planning request: if context is missing or stale, it loads curated project memory; if context is too large or noisy, it compacts with planning-specific instructions. Only after context is shaped should the agent write or refine the plan.
 
 ## How Plan Mode Compaction Helps Agents
 
