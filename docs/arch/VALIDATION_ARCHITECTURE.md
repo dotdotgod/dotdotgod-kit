@@ -51,7 +51,7 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - `dotdotgod status <root>` reports `missing`, `fresh`, or `stale` from file fingerprints without rebuilding the graph.
 - `dotdotgod index <root>` incrementally rebuilds changed file graph shards when a compatible manifest already exists.
 
-The index records file fingerprints, cache metadata, and a deterministic graph. Current graph extraction covers Markdown headings/links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Graph storage uses a compact tuple schema in shards so multi-year projects do not depend on one large JSON file. Leiden-style communities are planned after direct graph queries are useful.
+The index records file fingerprints, cache metadata, and a deterministic graph. Current graph extraction covers Markdown headings/links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Graph storage uses a compact tuple schema in shards so multi-year projects do not depend on one large JSON file. Community summaries use `leiden-ts` over a weighted durable-node projection with deterministic domain grouping as a fallback.
 
 ## Dependency Policy
 
@@ -60,7 +60,7 @@ Validation remains dependency-free and uses Node built-ins.
 Future dependencies are allowed only when the extra correctness outweighs package complexity:
 
 - Tree-sitter parser packages for deterministic AST extraction.
-- A Leiden/community detection package or a small local implementation if dependency quality is poor.
+- `leiden-ts`: pure TypeScript Leiden community detection for bounded graph community summaries.
 - `github-slugger`: if heading anchor compatibility needs to match GitHub more exactly.
 - `remark-parse`: if markdown link parsing requires AST-level accuracy.
 - `markdownlint-cli`: as a companion tool, not a core dependency.

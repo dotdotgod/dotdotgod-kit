@@ -28,5 +28,8 @@
     "src",
     "README.md",
     "LICENSE"
-  ]
+  ],
+  "dependencies": {
+    "leiden-ts": "^0.1.0"
+  }
 }

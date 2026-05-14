@@ -66,10 +66,13 @@ describe('dotdotgod CLI e2e', () => {
     assert(snapshot.graph.byType.command >= 1);
     assert.equal(snapshot.bounds.fullGraphIncluded, false);
     assert(snapshot.communities.communities.length > 0);
+    assert(['leiden', 'deterministic-domain-grouping'].includes(snapshot.communities.method));
 
     const communities = json(run(['graph', 'communities', root, '--json']));
     assert.equal(communities.command, 'graph communities');
     assert(communities.communities.communities.length > 0);
+    assert(['leiden', 'deterministic-domain-grouping'].includes(communities.communities.method));
+    assert.equal(typeof communities.communities.fallback, 'boolean');
 
     const query = json(run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--json']));
     assert.equal(query.command, 'graph query');
