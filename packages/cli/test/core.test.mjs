@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   buildGraph,
+  buildImpactReport,
   buildIndex,
   collectIndexFiles,
   extractAnchors,
@@ -82,6 +83,10 @@ describe('CLI index and graph helpers', () => {
     const related = neighborhood(index, 'packages/tool/index.mjs');
     assert(related.some((node) => node.id === 'file:packages/tool/index.mjs'));
     assert(related.length <= 25);
+    const impact = buildImpactReport(index, 'packages/tool/index.mjs');
+    assert(impact.groups.commands.items.some((item) => item.id === 'command:load'));
+    assert(impact.groups.files.items.some((item) => item.id === 'file:packages/tool/index.test.mjs'));
+    assert.equal(impact.groups.docs.items.length, 0);
   });
 
   it('can build a graph directly from selected files', () => {

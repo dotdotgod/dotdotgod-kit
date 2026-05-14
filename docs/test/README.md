@@ -34,6 +34,12 @@ Run CLI unit and e2e tests directly:
 pnpm --filter @dotdotgod/cli test
 ```
 
+Run CLI graph query smoke directly:
+
+```bash
+node packages/cli/bin/dotdotgod.mjs graph query . --changed packages/pi/extensions/plan-mode/index.ts --json
+```
+
 Run all workspace package checks:
 
 ```bash
