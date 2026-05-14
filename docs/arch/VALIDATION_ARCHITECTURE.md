@@ -52,6 +52,8 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - `dotdotgod index <root>` incrementally rebuilds changed file graph shards when a compatible manifest already exists.
 - Agent-facing read commands such as `dotdotgod load-snapshot` and `dotdotgod graph ...` lazily refresh missing or stale caches before returning output.
 - Lazy refresh output includes `metadata.cacheRefreshed` and refresh details so callers can tell when a read command updated `.dotdotgod/`.
+- Completion hooks that refresh the index are optional; the default workflow relies on lazy refresh instead of mutating the cache after every task.
+- The Husky pre-push hook validates docs and checks `dotdotgod status` instead of running `dotdotgod index`, so the hook detects stale caches without hidden cache mutation.
 
 The index records file fingerprints, cache metadata, and a deterministic graph. Current graph extraction covers Markdown headings/links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Graph storage uses a compact tuple schema in shards so multi-year projects do not depend on one large JSON file. Community summaries use `leiden-ts` over a weighted durable-node projection with deterministic domain grouping as a fallback.
 

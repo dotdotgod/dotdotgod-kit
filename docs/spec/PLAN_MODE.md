@@ -115,7 +115,7 @@ When the user chooses to execute the plan:
 - Final implementation or verification responses must include `[DONE:n]` for every step completed in that turn.
 - `/todos` displays completion progress.
 
-When all tracked steps are complete, plan execution state is cleared without emitting an additional `[plan-complete]` preview/message.
+When all tracked steps are complete, plan execution state is cleared without emitting an additional `[plan-complete]` preview/message. Plan completion does not automatically run project indexing by default; future cache-refresh hooks should be opt-in and should run only after all tracked steps have corresponding `[DONE:n]` markers.
 
 ## Archive Policy
 

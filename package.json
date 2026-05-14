@@ -13,6 +13,7 @@
     "verify:unit": "pnpm -r --if-present run test",
     "verify": "pnpm run verify:generated && pnpm run verify:types && pnpm run verify:unit && pnpm -r --if-present run verify",
     "verify:docs": "pnpm --filter @dotdotgod/cli run verify && node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory",
+    "verify:cache": "node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory && node packages/cli/bin/dotdotgod.mjs status . --json",
     "measure:context": "node scripts/measure-context.mjs --markdown",
     "measure:context:json": "node scripts/measure-context.mjs --json",
     "pack:dry-run": "pnpm run verify:generated && pnpm -r --if-present run pack:dry-run",

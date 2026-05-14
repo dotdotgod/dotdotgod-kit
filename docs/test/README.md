@@ -166,8 +166,10 @@ Husky lives at the workspace root and is installed by the root `prepare` script.
 Pre-push hook:
 
 ```bash
-pnpm run verify && pnpm run pack:dry-run
+pnpm run verify && pnpm run verify:cache && pnpm run pack:dry-run
 ```
+
+`verify:cache` runs docs validation and `dotdotgod status`; it does not run `dotdotgod index`, so pre-push detects stale caches without hidden mutation.
 
 Run it manually with:
 
