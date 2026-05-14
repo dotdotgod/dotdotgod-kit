@@ -75,7 +75,7 @@ Plan mode review choice and todo extraction:
 2. Ask the agent to write or update a plan under `docs/plan/<task-slug>/README.md`.
 3. Confirm Pi asks whether to `Execute the plan / Stay in plan mode / Refine the plan` without rendering a saved-plan file preview.
 4. Confirm the action prompt uses a short selector title and does not embed the full plan markdown.
-5. Confirm `[plan-todo-list]` appears only after choosing execute and does not include generic template labels such as `Target files and rationale`, `Implementation steps`, or `Verification method` as executable todos.
+5. Confirm no `[plan-todo-list]` message or persistent todo widget is shown; use `/todos` for on-demand progress details.
 
 Claude Code adapter local plugin smoke:
 
