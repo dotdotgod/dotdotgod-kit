@@ -60,7 +60,7 @@ Before writing or refining a plan, Plan Mode shapes context in two directions:
 
 The full curated load uses the same default project memory surface as `/dd:load`: baseline memory files, docs indexes, specs, architecture, tests, and active plans. It does not mean reading every repository file or every archive body. Archive bodies remain excluded by default and should be read only through targeted lookup when relevant.
 
-If compaction and load are both needed, Plan Mode requests compaction first. Loading additional memory into an already-large context would make the context problem worse.
+If compaction and load are both needed, Plan Mode requests compaction first, then requests the curated project memory load after compaction completes. Loading additional memory into an already-large context would make the context problem worse, but compaction alone cannot recover project docs that were never loaded.
 
 ## Planning-Focused Compaction
 

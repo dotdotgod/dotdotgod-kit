@@ -120,6 +120,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let lastPlanCompactionReason: string | undefined;
 	let planningLoadInFlight = false;
 	let lastPlanningLoadEntryCount: number | undefined;
+	let pendingPlanningLoadAfterCompaction = false;
 
 	pi.registerFlag("plan", {
 		description: "Start in plan mode (safe exploration plus docs/plan updates)",
@@ -161,6 +162,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 				lastPlanCompactionEntryCount = getSessionEntryCount(ctx);
 				recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:compaction-complete", { reason, entryCount: lastPlanCompactionEntryCount });
 				ctx.ui.notify("Planning compaction completed.", "info");
+				if (pendingPlanningLoadAfterCompaction) {
+					pendingPlanningLoadAfterCompaction = false;
+					recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:load-after-compaction", { reason });
+					requestPlanningLoadIfNeeded(ctx);
+				}
 				persistState();
 			},
 			onError: (error) => {
@@ -210,11 +216,24 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		persistState();
 	}
 
+	function shouldLoadForPlanning(ctx: ExtensionContext): boolean {
+		if (!planModeEnabled || executionMode || planningLoadInFlight) return false;
+		const entryCount = getSessionEntryCount(ctx);
+		if (lastPlanningLoadEntryCount !== undefined && entryCount - lastPlanningLoadEntryCount < 10) return false;
+		return !hasRecentProjectMemoryLoad(ctx, entryCount);
+	}
+
 	function shapePlanningContextIfNeeded(ctx: ExtensionContext): void {
 		if (!planModeEnabled || executionMode) return;
 		const reason = getPlanCompactionReason(ctx.getContextUsage());
+		const loadNeeded = shouldLoadForPlanning(ctx);
 		if (reason) {
+			pendingPlanningLoadAfterCompaction = loadNeeded;
+			if (loadNeeded) {
+				recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:load-deferred-until-after-compaction", { reason });
+			}
 			requestPlanningCompaction(ctx, reason);
+			persistState();
 			return;
 		}
 		requestPlanningLoadIfNeeded(ctx);
@@ -247,6 +266,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			lastPlanCompactionEntryCount,
 			lastPlanCompactionReason,
 			lastPlanningLoadEntryCount,
+			pendingPlanningLoadAfterCompaction,
 		});
 	}
 
@@ -475,6 +495,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 						lastPlanCompactionEntryCount?: number;
 						lastPlanCompactionReason?: string;
 						lastPlanningLoadEntryCount?: number;
+						pendingPlanningLoadAfterCompaction?: boolean;
 					};
 			  }
 			| undefined;
@@ -487,6 +508,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			lastPlanCompactionEntryCount = planModeEntry.data.lastPlanCompactionEntryCount ?? lastPlanCompactionEntryCount;
 			lastPlanCompactionReason = planModeEntry.data.lastPlanCompactionReason ?? lastPlanCompactionReason;
 			lastPlanningLoadEntryCount = planModeEntry.data.lastPlanningLoadEntryCount ?? lastPlanningLoadEntryCount;
+			pendingPlanningLoadAfterCompaction = planModeEntry.data.pendingPlanningLoadAfterCompaction ?? pendingPlanningLoadAfterCompaction;
 		}
 
 		const isResume = planModeEntry !== undefined;
