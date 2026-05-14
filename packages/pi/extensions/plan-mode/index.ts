@@ -7,7 +7,7 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Key, truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
+import { Key, matchesKey, truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, isAbsolute, relative, resolve } from "node:path";
@@ -227,51 +227,80 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 	}
 
-	async function showPlanPreviewBeforeChoice(ctx: ExtensionContext, planPreview: string): Promise<void> {
-		const lines = planPreview.split("\n");
-		await ctx.ui.custom<boolean>((tui, theme, _keybindings, done) => {
-			let offset = 0;
-			const pageSize = 30;
-			const maxOffset = Math.max(0, lines.length - pageSize);
+	async function choosePlanActionWithPreview(
+		ctx: ExtensionContext,
+		planPreview: string,
+		actions: string[],
+	): Promise<string | null> {
+		const sourceLines = planPreview.split("\n");
+		return ctx.ui.custom<string | null>((tui, theme, _keybindings, done) => {
+			let scrollOffset = 0;
+			let selectedIndex = 0;
+			let currentWidth = 80;
+			const previewRows = 24;
 
-			function move(delta: number): void {
-				offset = Math.max(0, Math.min(maxOffset, offset + delta));
+			function wrapPreview(width: number): string[] {
+				return sourceLines.flatMap((line) => (line.length === 0 ? [""] : wrapTextWithAnsi(line, width)));
+			}
+
+			function requestRender(): void {
 				tui.requestRender();
+			}
+
+			function moveScroll(delta: number): void {
+				const maxOffset = Math.max(0, wrapPreview(currentWidth).length - previewRows);
+				scrollOffset = Math.max(0, Math.min(maxOffset, scrollOffset + delta));
+				requestRender();
 			}
 
 			return {
 				render(width: number) {
 					const safeWidth = Math.max(1, width);
-					const visible = lines.slice(offset, offset + pageSize).flatMap((line) =>
-						line.length === 0 ? [""] : wrapTextWithAnsi(line, safeWidth),
-					);
+					currentWidth = safeWidth;
+					const wrapped = wrapPreview(safeWidth);
+					const maxOffset = Math.max(0, wrapped.length - previewRows);
+					scrollOffset = Math.max(0, Math.min(maxOffset, scrollOffset));
+					const visible = wrapped.slice(scrollOffset, scrollOffset + previewRows);
 					const footer =
 						maxOffset > 0
-							? `Lines ${offset + 1}-${Math.min(offset + pageSize, lines.length)} of ${lines.length} · j/k scroll · Enter continue · Esc close`
-							: "Enter continue · Esc close";
+							? `Preview ${scrollOffset + 1}-${Math.min(scrollOffset + previewRows, wrapped.length)} of ${wrapped.length} · j/k scroll · d/u page`
+							: "Preview fits · choose an action below";
+					const actionLines = actions.map((action, index) => {
+						const prefix = index === selectedIndex ? "› " : "  ";
+						const styled = index === selectedIndex ? theme.fg("accent", `${prefix}${action}`) : `${prefix}${action}`;
+						return truncateToWidth(styled, safeWidth);
+					});
 					return [
 						truncateToWidth(theme.fg("accent", theme.bold("Saved plan preview")), safeWidth),
 						truncateToWidth(theme.fg("muted", footer), safeWidth),
 						"",
 						...visible,
 						"",
-						truncateToWidth(theme.fg("muted", footer), safeWidth),
+						truncateToWidth(theme.fg("accent", theme.bold("Plan mode - choose next action")), safeWidth),
+						...actionLines,
+						truncateToWidth(theme.fg("dim", "↑↓ choose · Enter select · Esc stay in plan mode"), safeWidth),
 					];
 				},
 				invalidate() {},
 				handleInput(data: string) {
-					if (data === "\n" || data === "\r") {
-						done(true);
-					} else if (data === "\u001b" || data === "q") {
-						done(false);
+					if (matchesKey(data, Key.enter)) {
+						done(actions[selectedIndex] ?? null);
+					} else if (matchesKey(data, Key.escape) || data === "q") {
+						done("Stay in plan mode");
+					} else if (matchesKey(data, Key.down)) {
+						selectedIndex = Math.min(actions.length - 1, selectedIndex + 1);
+						requestRender();
+					} else if (matchesKey(data, Key.up)) {
+						selectedIndex = Math.max(0, selectedIndex - 1);
+						requestRender();
 					} else if (data === "j") {
-						move(1);
+						moveScroll(1);
 					} else if (data === "k") {
-						move(-1);
+						moveScroll(-1);
 					} else if (data === "d") {
-						move(pageSize);
+						moveScroll(previewRows);
 					} else if (data === "u") {
-						move(-pageSize);
+						moveScroll(-previewRows);
 					}
 				},
 			};
@@ -466,11 +495,16 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 
 		const planPreview = consumeTouchedPlanPreview(ctx);
 
-		if (planPreview) {
-			await showPlanPreviewBeforeChoice(ctx, planPreview);
-		}
+		const actionChoices = [
+			todoItems.length > 0 ? "Execute the plan (track progress)" : "Execute the plan",
+			"Stay in plan mode",
+			"Refine the plan",
+		];
+		const choice = planPreview
+			? await choosePlanActionWithPreview(ctx, planPreview, actionChoices)
+			: await ctx.ui.select("Plan mode - choose next action", actionChoices);
 
-		if (todoItems.length > 0) {
+		if (todoItems.length > 0 && choice?.startsWith("Execute the plan")) {
 			const todoListText = todoItems.map((t, i) => `${i + 1}. ☐ ${t.text}`).join("\n");
 			pi.sendMessage(
 				{
@@ -481,12 +515,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 				{ triggerTurn: false },
 			);
 		}
-
-		const choice = await ctx.ui.select("Plan mode - choose next action", [
-			todoItems.length > 0 ? "Execute the plan (track progress)" : "Execute the plan",
-			"Stay in plan mode",
-			"Refine the plan",
-		]);
 
 		if (choice?.startsWith("Execute the plan")) {
 			planModeEnabled = false;
