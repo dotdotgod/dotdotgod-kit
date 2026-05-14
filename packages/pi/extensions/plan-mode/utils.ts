@@ -154,7 +154,9 @@ export function extractTodoItems(message: string): TodoItem[] {
 	const numberedPattern = /^\s*(\d+)[.)]\s+\*{0,2}([^*\n]+)/gm;
 
 	for (const match of planSection.matchAll(numberedPattern)) {
-		const text = match[2]
+		const rawText = match[2];
+		if (!rawText) continue;
+		const text = rawText
 			.trim()
 			.replace(/\*{1,2}$/, "")
 			.trim();

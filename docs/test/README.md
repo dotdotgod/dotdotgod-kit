@@ -16,6 +16,18 @@ Check generated adapter resources for drift:
 npm run verify:generated
 ```
 
+Run TypeScript type checks where workspace packages provide them:
+
+```bash
+npm run verify:types
+```
+
+Run unit tests where workspace packages provide them:
+
+```bash
+npm run verify:unit
+```
+
 Run all workspace package checks:
 
 ```bash
@@ -37,7 +49,7 @@ node packages/docs-validator/bin/dd-docs-validate.mjs . --include-local-memory
 ## Workspace Coverage
 
 - `@dotdotgod/shared`: private source resources for generated adapter commands, skills, and initializer files.
-- `@dotdotgod/pi`: generated initializer skill, extension syntax smoke checks, and Pi package tarball dry-run.
+- `@dotdotgod/pi`: generated initializer skill, extension syntax smoke checks, TypeScript typecheck, unit tests for pure plan/load helpers, and Pi package tarball dry-run.
 - `@dotdotgod/docs-validator`: CLI syntax check and validation against this repository.
 - `@dotdotgod/claude-code`: generated plugin commands/skills, plugin manifest/resource checks, and tarball dry-run.
 - `@dotdotgod/codex`: generated plugin skills, plugin manifest/skill checks, and tarball dry-run.

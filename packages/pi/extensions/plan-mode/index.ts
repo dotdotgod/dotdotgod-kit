@@ -522,10 +522,10 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			pi.setActiveTools(NORMAL_MODE_TOOLS);
 			updateStatus(ctx);
 
-			const execMessage =
-				todoItems.length > 0
-					? `Execute the plan. Start with: ${todoItems[0].text}`
-					: "Execute the plan you just created.";
+			const firstTodo = todoItems[0];
+			const execMessage = firstTodo
+				? `Execute the plan. Start with: ${firstTodo.text}`
+				: "Execute the plan you just created.";
 			pi.sendMessage(
 				{ customType: "plan-mode-execute", content: execMessage, display: true },
 				{ triggerTurn: true },
@@ -579,7 +579,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			const messages: AssistantMessage[] = [];
 			for (let i = executeIndex + 1; i < entries.length; i++) {
 				const entry = entries[i];
-				if (entry.type === "message" && "message" in entry && isAssistantMessage(entry.message as AgentMessage)) {
+				if (entry && entry.type === "message" && "message" in entry && isAssistantMessage(entry.message as AgentMessage)) {
 					messages.push(entry.message as AssistantMessage);
 				}
 			}
