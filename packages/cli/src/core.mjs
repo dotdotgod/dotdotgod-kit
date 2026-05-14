@@ -443,14 +443,101 @@ export function graphSummary(index) {
 }
 
 export function neighborhood(index, changedPath) {
-  const graph = index?.graph ?? { nodes: [], edges: [] };
-  const seed = `file:${changedPath}`;
-  const related = new Set([seed]);
-  for (const edge of graph.edges) {
-    if (edge.source === seed) related.add(edge.target);
-    if (edge.target === seed) related.add(edge.source);
+  return buildImpactReport(index, changedPath).related;
+}
+
+function addImpactItem(group, item, limit = 10) {
+  if (group.items.some((existing) => existing.id === item.id)) return;
+  if (group.items.length >= limit) {
+    group.omitted += 1;
+    return;
   }
-  return [...related].slice(0, 25).map((id) => graph.nodes.find((node) => node.id === id) ?? { id });
+  group.items.push(item);
+}
+
+function docsArea(path = '') {
+  if (path.startsWith('docs/spec/')) return 'spec';
+  if (path.startsWith('docs/arch/')) return 'arch';
+  if (path.startsWith('docs/test/')) return 'test-docs';
+  if (path.startsWith('docs/plan/')) return 'plan';
+  if (path.startsWith('docs/archive/')) return 'archive-index';
+  if (path.startsWith('docs/')) return 'docs';
+  return undefined;
+}
+
+function fileFromImport(changedPath, specifier) {
+  if (!specifier?.startsWith('.')) return undefined;
+  const base = dirname(changedPath);
+  const candidate = rel('.', resolve(base, specifier));
+  return candidate.replace(/^\.\//, '');
+}
+
+export function buildImpactReport(index, changedPath, limits = {}) {
+  const graph = index?.graph ?? { nodes: [], edges: [] };
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const seed = `file:${changedPath}`;
+  const maxRelated = limits.related ?? 25;
+  const groups = {
+    files: { items: [], omitted: 0 },
+    docs: { items: [], omitted: 0 },
+    tests: { items: [], omitted: 0 },
+    commands: { items: [], omitted: 0 },
+    events: { items: [], omitted: 0 },
+    packageResources: { items: [], omitted: 0 },
+    symbols: { items: [], omitted: 0 },
+  };
+  const relatedIds = new Set([seed]);
+  const reasons = new Map([[seed, new Set(['changed-file'])]]);
+  const addReason = (id, reason) => {
+    relatedIds.add(id);
+    if (!reasons.has(id)) reasons.set(id, new Set());
+    reasons.get(id).add(reason);
+  };
+
+  for (const edge of graph.edges) {
+    if (edge.source === seed) addReason(edge.target, edge.relation);
+    if (edge.target === seed) addReason(edge.source, `incoming:${edge.relation}`);
+  }
+
+  const changedDir = dirname(changedPath).replaceAll('\\', '/');
+  for (const node of graph.nodes) {
+    if (node.type === 'file' && node.path !== changedPath && dirname(node.path).replaceAll('\\', '/') === changedDir) {
+      addReason(node.id, 'same-directory');
+    }
+    if (node.type === 'test' && (node.path.includes(basename(changedPath).replace(/\.(mjs|cjs|js|jsx|ts|tsx)$/, '')) || node.path.includes(changedDir))) {
+      addReason(node.id, 'test-path-proximity');
+    }
+  }
+
+  const seedImports = graph.edges
+    .filter((edge) => edge.source === seed && edge.relation === 'imports')
+    .map((edge) => nodeById.get(edge.target)?.specifier)
+    .filter(Boolean);
+  for (const specifier of seedImports) {
+    const importedPath = fileFromImport(changedPath, specifier);
+    if (importedPath) addReason(`file:${importedPath}`, 'imports-local-file');
+    for (const edge of graph.edges) {
+      const node = nodeById.get(edge.target);
+      if (edge.relation === 'imports' && node?.specifier === specifier && edge.source !== seed) {
+        addReason(edge.source, 'shares-import');
+      }
+    }
+  }
+
+  const related = [...relatedIds].slice(0, maxRelated).map((id) => ({ ...(nodeById.get(id) ?? { id }), reasons: [...(reasons.get(id) ?? [])] }));
+  for (const item of related) {
+    if (item.type === 'file') {
+      const area = docsArea(item.path);
+      if (area) addImpactItem(groups.docs, { ...item, area }, limits.docs ?? 10);
+      else addImpactItem(groups.files, item, limits.files ?? 10);
+    } else if (item.type === 'test') addImpactItem(groups.tests, item, limits.tests ?? 10);
+    else if (item.type === 'command') addImpactItem(groups.commands, item, limits.commands ?? 10);
+    else if (item.type === 'event') addImpactItem(groups.events, item, limits.events ?? 10);
+    else if (item.type === 'package_resource') addImpactItem(groups.packageResources, item, limits.packageResources ?? 10);
+    else if (item.type === 'symbol' || item.type === 'export') addImpactItem(groups.symbols, item, limits.symbols ?? 10);
+  }
+
+  return { changed: changedPath, related, groups, omittedRelated: Math.max(0, relatedIds.size - related.length) };
 }
 
 export function runLoadSnapshot(argv) {
@@ -480,11 +567,12 @@ export function runGraph(argv) {
   const options = parseGraphOptions(argv.slice(1));
   const status = getStatus(options.root);
   const index = readIndex(options.root);
+  const impact = options.changed ? buildImpactReport(index, options.changed) : undefined;
   const payload = sub === 'query'
-    ? { ok: status.ok, command: 'graph query', root: options.root, status, changed: options.changed, related: options.changed ? neighborhood(index, options.changed) : [] }
+    ? { ok: status.ok, command: 'graph query', root: options.root, status, changed: options.changed, related: impact?.related ?? [], impact }
     : { ok: status.ok, command: `graph ${sub}`, root: options.root, status, graph: graphSummary(index), note: 'Leiden-style community detection is planned after deterministic graph extraction.' };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
-  else if (sub === 'query') console.log(`graph query: ${payload.related.length} related node(s) (${status.status} index)`);
+  else if (sub === 'query') console.log(`graph query: ${payload.related.length} related node(s), ${impact?.omittedRelated ?? 0} omitted (${status.status} index)`);
   else console.log(`${payload.command}: ${payload.graph.nodes} nodes, ${payload.graph.edges} edges (${status.status} index)`);
 }
 

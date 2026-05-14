@@ -65,6 +65,8 @@ describe('dotdotgod CLI e2e', () => {
     const query = json(run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--json']));
     assert.equal(query.command, 'graph query');
     assert(query.related.some((node) => node.id === 'file:packages/app/index.mjs'));
+    assert(query.impact.groups.commands.items.some((item) => item.id === 'command:app'));
+    assert.equal(typeof query.impact.omittedRelated, 'number');
   });
 
   it('reports validation failures and stale indexes', () => {

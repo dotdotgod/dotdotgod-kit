@@ -77,6 +77,7 @@ The agent should summarize:
 The command is intentionally a runtime extension entrypoint. It can later grow from prompt-only loading into:
 
 - project memory indexing
+- bounded graph impact reports grouped by related files, docs, tests, commands, events, package resources, and symbols
 - vector search
 - graph search
 - `dd_search` or related LLM-callable tools
