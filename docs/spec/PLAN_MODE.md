@@ -84,10 +84,11 @@ When the user chooses to execute the plan:
 
 - Full tool access is restored.
 - Remaining steps are injected into execution context.
-- The agent marks completed steps by including `[DONE:n]` in responses.
+- The agent marks completed steps by including `[DONE:n]` in the same response that reports completion.
+- Final implementation or verification responses must include `[DONE:n]` for every step completed in that turn.
 - `/todos` displays completion progress.
 
-When all tracked steps are complete, plan execution state is cleared.
+When all tracked steps are complete, plan execution state is cleared without emitting an additional `[plan-complete]` preview/message.
 
 ## Archive Policy
 
