@@ -118,7 +118,16 @@ Pi adapter npm install after publish:
 
 ```bash
 pi install npm:@dotdotgod/pi
+pi uninstall npm:@dotdotgod/pi
 ```
+
+Confirmed after the first public `0.1.0` publish: install added the package successfully and uninstall removed it successfully.
+
+README landing review:
+
+- Confirm root `README.md` leads with the dotdotgod concept and user outcomes before package details.
+- Confirm each published package README explains the package-specific value proposition before local development details.
+- Confirm package READMEs avoid implying Pi-style runtime enforcement for Claude Code or Codex adapters.
 
 ## Husky Pre-Push Hook
 
