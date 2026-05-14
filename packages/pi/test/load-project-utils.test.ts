@@ -27,7 +27,7 @@ describe("load-project snapshot", () => {
 		assert.ok(snapshot.present.includes("docs/README.md"));
 		assert.ok(snapshot.missing.includes("CLAUDE.md"));
 		assert.equal(snapshot.directories.find((dir) => dir.path === "docs/spec")?.exists, true);
-		assert.equal(snapshot.directories.find((dir) => dir.path === "docs/archive")?.exists, false);
+		assert.equal(snapshot.directories.some((dir) => dir.path === "docs/archive"), false);
 	});
 
 	it("lists markdown files recursively with a limit", () => {
@@ -53,6 +53,7 @@ describe("load-project prompt", () => {
 		assert.match(prompt, /- AGENTS\.md/);
 		assert.match(prompt, /- CLAUDE\.md/);
 		assert.match(prompt, /docs\/spec\/README\.md/);
+		assert.match(prompt, /do not scan it as part of the documentation directory summary/i);
 		assert.match(prompt, /Do not modify files/);
 	});
 });
