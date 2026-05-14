@@ -64,11 +64,12 @@ Compaction should remain user-initiated because it is lossy.
 
 ## Plan Review Choice
 
-When the agent finishes planning, plan mode asks whether to execute, stay in plan mode, or refine the plan.
+When the agent finishes planning after creating or updating an active plan markdown file under `docs/plan/`, plan mode asks whether to execute, stay in plan mode, or refine the plan.
 
 - Plan files under `docs/plan/` remain the durable review artifact.
 - Plan mode no longer renders a saved-plan file preview in the TUI.
 - The action prompt uses a short selector title and does not embed plan markdown.
+- Plan mode does not show the action prompt for ordinary explanatory replies that did not touch an active plan file.
 - Todo extraction and execution tracking remain available when a concrete `Plan:` section is present.
 
 ## Todo Extraction and Execution
