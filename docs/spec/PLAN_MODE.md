@@ -53,18 +53,28 @@ The plan should include:
 
 ## Planning-Focused Compaction
 
-At the start of planning, the agent may suggest `/compact <instructions>` when the session is long or noisy.
+Plan mode automatically requests planning-focused compaction when context is large enough to hurt plan quality. It triggers on Plan Mode entry and after planning turns while Plan Mode remains active.
 
-Suggested compaction should preserve information useful for the next plan:
+The extension passes planning-specific `customInstructions` to `ctx.compact()` so compaction preserves information useful for the next plan:
 
-- user decisions
-- modified files
-- active docs/spec and docs/arch context
-- completed and active plan/archive status
-- verification results
-- unresolved next steps
+- user decisions and constraints
+- active plan task slug, path, and status
+- touched docs/plan and docs/archive files
+- active docs/spec, docs/test, and docs/arch context
+- implementation decisions
+- verification results and command outcomes
+- unresolved risks, questions, and next steps
+- completed `[DONE:n]` markers when present
 
-Compaction should remain user-initiated because it is lossy.
+Compaction omits low-value discussion, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail.
+
+Plan Mode compaction uses conservative token criteria:
+
+- context usage at or above 70% when percentage is available
+- context tokens within 32,000 tokens of the context window when window size is available
+- 100,000 context tokens as a fallback when only token count is available
+
+The extension debounces repeated compactions, skips compaction during execution mode, and continues without blocking if compaction fails.
 
 ## Plan Review Choice
 
