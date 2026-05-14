@@ -50,12 +50,13 @@ Allowed:
 - Plan/archive markdown updates under `docs/plan/` and `docs/archive/`: `edit`, `write`
 - Directory names under `docs/` must be kebab-case; markdown file names must be UPPER_SNAKE_CASE.md
 - Read-only bash commands: `rg`, `git status`, `git diff`, `yarn info`, `npm view`, etc.
+- Plan/archive housekeeping bash commands when every affected path stays under `docs/plan/` or `docs/archive/`: `mkdir -p docs/archive/plan`, `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`, `rm -r docs/plan/<task-slug>`
 - Web/document research: `web_search`, `code_search`, `fetch_content`, `get_search_content`
 
 Blocked:
 
 - `edit`, `write` outside `docs/plan/` and `docs/archive/`
-- `rm`, `mv`, `cp`, `mkdir`, `touch`
+- `rm`, `mv`, `cp`, `mkdir`, `touch` outside the constrained plan/archive housekeeping allowance
 - `git add`, `git commit`, `git push`, `git reset`, etc.
 - `npm install`, `yarn add`, `pnpm add`, etc.
 - `sudo`, `kill`, editor launches, etc.
