@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { extractDoneSteps, extractTodoItems, isSafeCommand, isSafePlanArchiveCommand, markCompletedSteps, type TodoItem } from "../extensions/plan-mode/utils.ts";
+import {
+	PLAN_MODE_COMPACTION_INSTRUCTIONS,
+	buildPlanCompactionInstructions,
+	extractDoneSteps,
+	extractTodoItems,
+	getPlanCompactionReason,
+	isSafeCommand,
+	isSafePlanArchiveCommand,
+	markCompletedSteps,
+	type TodoItem,
+} from "../extensions/plan-mode/utils.ts";
 
 describe("plan-mode command safety", () => {
 	it("allows read-only commands", () => {
@@ -38,6 +48,30 @@ describe("plan-mode command safety", () => {
 		]) {
 			assert.equal(isSafePlanArchiveCommand(command), false, command);
 		}
+	});
+});
+
+describe("plan-mode compaction helpers", () => {
+	it("builds planning-focused custom instructions with the reason", () => {
+		const instructions = buildPlanCompactionInstructions("Plan Mode context exceeded 70% of the context window.");
+		assert.match(instructions, /^Reason: Plan Mode context exceeded 70%/);
+		assert.match(instructions, /Preserve planning-critical context/);
+		assert.match(instructions, /active plan task slug\/path\/status/);
+		assert.match(instructions, /\[DONE:n\]/);
+		assert.equal(buildPlanCompactionInstructions(), PLAN_MODE_COMPACTION_INSTRUCTIONS);
+	});
+
+	it("detects token-based planning compaction reasons", () => {
+		assert.equal(
+			getPlanCompactionReason({ tokens: 70_000, contextWindow: 100_000, percent: 70 }),
+			"Plan Mode context exceeded 70% of the context window.",
+		);
+		assert.equal(
+			getPlanCompactionReason({ tokens: 168_000, contextWindow: 200_000 }),
+			"Plan Mode context is within 32,000 tokens of the context window.",
+		);
+		assert.equal(getPlanCompactionReason({ tokens: 100_000 }), "Plan Mode context exceeded 100,000 tokens.");
+		assert.equal(getPlanCompactionReason({ tokens: 40_000, contextWindow: 200_000, percent: 20 }), undefined);
 	});
 });
 

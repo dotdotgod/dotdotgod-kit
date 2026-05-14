@@ -193,6 +193,51 @@ export function isSafeCommand(command: string): boolean {
 	return !isDestructive && isSafe;
 }
 
+export const PLAN_COMPACTION_PERCENT_THRESHOLD = 70;
+export const PLAN_COMPACTION_TOKEN_FALLBACK = 100_000;
+export const PLAN_COMPACTION_CONTEXT_RESERVE = 32_000;
+
+export const PLAN_MODE_COMPACTION_INSTRUCTIONS =
+	"Preserve planning-critical context for dotdotgod Plan Mode. Keep user decisions, constraints, active plan task slug/path/status, touched docs/plan and docs/archive files, relevant docs/spec docs/test docs/arch context, implementation decisions, verification results, unresolved risks/questions, and concrete next steps. Preserve completed [DONE:n] markers if present. Omit low-value discussion, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail. Summarize in a compact structure that lets the next assistant continue planning or execution without asking the user to repeat context.";
+
+export interface PlanContextUsage {
+	tokens?: number | null;
+	contextWindow?: number | null;
+	percent?: number | null;
+}
+
+export function buildPlanCompactionInstructions(reason?: string): string {
+	const normalizedReason = reason?.trim();
+	if (!normalizedReason) return PLAN_MODE_COMPACTION_INSTRUCTIONS;
+	return `Reason: ${normalizedReason}\n\n${PLAN_MODE_COMPACTION_INSTRUCTIONS}`;
+}
+
+export function getPlanCompactionReason(usage: PlanContextUsage | null | undefined): string | undefined {
+	if (!usage) return undefined;
+
+	const percent = usage.percent ?? null;
+	if (typeof percent === "number") {
+		const normalizedPercent = percent <= 1 ? percent * 100 : percent;
+		if (normalizedPercent >= PLAN_COMPACTION_PERCENT_THRESHOLD) {
+			return `Plan Mode context exceeded ${PLAN_COMPACTION_PERCENT_THRESHOLD}% of the context window.`;
+		}
+	}
+
+	const tokens = usage.tokens ?? null;
+	if (typeof tokens !== "number") return undefined;
+
+	const contextWindow = usage.contextWindow ?? null;
+	if (typeof contextWindow === "number" && tokens >= contextWindow - PLAN_COMPACTION_CONTEXT_RESERVE) {
+		return `Plan Mode context is within ${PLAN_COMPACTION_CONTEXT_RESERVE.toLocaleString()} tokens of the context window.`;
+	}
+
+	if (tokens >= PLAN_COMPACTION_TOKEN_FALLBACK) {
+		return `Plan Mode context exceeded ${PLAN_COMPACTION_TOKEN_FALLBACK.toLocaleString()} tokens.`;
+	}
+
+	return undefined;
+}
+
 export interface TodoItem {
 	step: number;
 	text: string;

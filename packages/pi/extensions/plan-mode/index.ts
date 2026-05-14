@@ -9,7 +9,14 @@ import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
 import { isAbsolute, relative, resolve } from "node:path";
-import { extractTodoItems, isSafeCommand, markCompletedSteps, type TodoItem } from "./utils.js";
+import {
+	buildPlanCompactionInstructions,
+	extractTodoItems,
+	getPlanCompactionReason,
+	isSafeCommand,
+	markCompletedSteps,
+	type TodoItem,
+} from "./utils.js";
 
 const PLAN_DIRECTORY = "docs/plan";
 const ARCHIVE_DIRECTORY = "docs/archive";
@@ -106,6 +113,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let executionMode = false;
 	let todoItems: TodoItem[] = [];
 	let activePlanTouched = false;
+	let planCompactionInFlight = false;
+	let lastPlanCompactionEntryCount: number | undefined;
+	let lastPlanCompactionReason: string | undefined;
 
 	pi.registerFlag("plan", {
 		description: "Start in plan mode (safe exploration plus docs/plan updates)",
@@ -122,7 +132,45 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		} else {
 			ctx.ui.setStatus("plan-mode", undefined);
 		}
+	}
 
+	function getSessionEntryCount(ctx: ExtensionContext): number {
+		return ctx.sessionManager.getEntries().length;
+	}
+
+	function requestPlanningCompaction(ctx: ExtensionContext, reason: string): void {
+		if (planCompactionInFlight) return;
+
+		const entryCount = getSessionEntryCount(ctx);
+		if (lastPlanCompactionEntryCount !== undefined && entryCount - lastPlanCompactionEntryCount < 10) {
+			return;
+		}
+
+		planCompactionInFlight = true;
+		lastPlanCompactionReason = reason;
+		ctx.ui.notify("Planning context is large; compacting before continuing.", "info");
+		ctx.compact({
+			customInstructions: buildPlanCompactionInstructions(reason),
+			onComplete: () => {
+				planCompactionInFlight = false;
+				lastPlanCompactionEntryCount = getSessionEntryCount(ctx);
+				ctx.ui.notify("Planning compaction completed.", "info");
+				persistState();
+			},
+			onError: (error) => {
+				planCompactionInFlight = false;
+				ctx.ui.notify(`Planning compaction failed: ${error.message}`, "warning");
+				persistState();
+			},
+		});
+	}
+
+	function requestPlanningCompactionIfNeeded(ctx: ExtensionContext): void {
+		if (!planModeEnabled || executionMode) return;
+		const reason = getPlanCompactionReason(ctx.getContextUsage());
+		if (reason) {
+			requestPlanningCompaction(ctx, reason);
+		}
 	}
 
 	function togglePlanMode(ctx: ExtensionContext): void {
@@ -134,6 +182,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		if (planModeEnabled) {
 			pi.setActiveTools(PLAN_MODE_TOOLS);
 			ctx.ui.notify(`Plan mode enabled. Tools: ${PLAN_MODE_TOOLS.join(", ")}`);
+			requestPlanningCompactionIfNeeded(ctx);
 		} else {
 			pi.setActiveTools(NORMAL_MODE_TOOLS);
 			ctx.ui.notify("Plan mode disabled. Full access restored.");
@@ -147,6 +196,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			todos: todoItems,
 			executing: executionMode,
 			activePlanTouched,
+			lastPlanCompactionEntryCount,
+			lastPlanCompactionReason,
 		});
 	}
 
@@ -245,7 +296,7 @@ Project context:
 
 Workflow:
 - Explore relevant files thoroughly before planning; ask clarifying questions with questionnaire when requirements are ambiguous.
-- If the session is long or noisy, suggest a user-initiated planning-focused compaction before writing the plan. Use instructions like: /compact Preserve decisions, modified files, active docs/spec and docs/arch context, completed and active plan/archive status, verification results, unresolved next steps, and omit low-value discussion.
+- If planning compaction has just occurred, rely on the preserved planning summary plus current project docs before writing or refining the plan.
 - Use web_search, code_search, and fetch_content when library or web evidence is needed.
 - Manage active work under docs/plan/<task-slug>/README.md, with optional UPPER_SNAKE_CASE support files in the same task directory.
 - When one docs domain grows into multiple files, group it under docs/<area>/<domain>/README.md plus supporting UPPER_SNAKE_CASE files.
@@ -287,6 +338,10 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 	});
 
 	pi.on("turn_end", async (event, ctx) => {
+		if (planModeEnabled && !executionMode) {
+			requestPlanningCompactionIfNeeded(ctx);
+		}
+
 		if (!executionMode || todoItems.length === 0) return;
 		if (!isAssistantMessage(event.message)) return;
 
@@ -366,6 +421,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 						todos?: TodoItem[];
 						executing?: boolean;
 						activePlanTouched?: boolean;
+						lastPlanCompactionEntryCount?: number;
+						lastPlanCompactionReason?: string;
 					};
 			  }
 			| undefined;
@@ -375,6 +432,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			todoItems = planModeEntry.data.todos ?? todoItems;
 			executionMode = planModeEntry.data.executing ?? executionMode;
 			activePlanTouched = planModeEntry.data.activePlanTouched ?? activePlanTouched;
+			lastPlanCompactionEntryCount = planModeEntry.data.lastPlanCompactionEntryCount ?? lastPlanCompactionEntryCount;
+			lastPlanCompactionReason = planModeEntry.data.lastPlanCompactionReason ?? lastPlanCompactionReason;
 		}
 
 		const isResume = planModeEntry !== undefined;
@@ -403,5 +462,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			pi.setActiveTools(PLAN_MODE_TOOLS);
 		}
 		updateStatus(ctx);
+		requestPlanningCompactionIfNeeded(ctx);
 	});
 }
