@@ -1,25 +1,44 @@
 # dotdotgod
 
-Dotdotgod project memory kit for AI coding agents. This repository is a pnpm workspace containing adapters and utilities for shared project memory workflows.
+Dotdotgod is a pnpm workspace for shared AI-agent project memory workflows. It provides adapters for Pi, Claude Code, and Codex plus a docs scaffold validator.
 
-## Packages
+Repository: <https://github.com/dotdotgod/dotdotgod>
 
-- [`@dotdotgod/pi`](packages/pi/README.md): Pi adapter with project initializer skill, plan mode, and project loading extensions.
+## Published Packages
+
+- [`@dotdotgod/pi`](packages/pi/README.md): Pi package with project initializer skill, plan mode, and project loading extensions.
 - [`@dotdotgod/docs-validator`](packages/docs-validator/README.md): zero-dependency docs scaffold validator and `dd-docs-validate` CLI.
-- [`@dotdotgod/claude-code`](packages/claude-code/README.md): Claude Code adapter with `dd:*` commands and project memory skills.
-- [`@dotdotgod/codex`](packages/codex/README.md): Codex adapter with project memory skills.
+- [`@dotdotgod/claude-code`](packages/claude-code/README.md): Claude Code plugin resources with `dd:*` commands and project memory skills.
+- [`@dotdotgod/codex`](packages/codex/README.md): Codex plugin resources with project memory skills.
 
-## Install Pi Adapter
+Current first public package version: `0.1.0`.
+
+## Install
+
+Pi adapter:
 
 ```bash
 pi install npm:@dotdotgod/pi
 ```
 
+Docs validator:
+
+```bash
+npx @dotdotgod/docs-validator .
+```
+
 ## Local Development
 
 ```bash
+pnpm install
 pnpm run verify
 pnpm run pack:dry-run
+.husky/pre-push
+```
+
+Local Pi adapter install:
+
+```bash
 pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 ```
 
@@ -36,7 +55,7 @@ pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 
 ## Publishing
 
-The root package is private. Publish workspace packages individually or with:
+The root workspace package is private. Publish public workspace packages individually or with:
 
 ```bash
 pnpm run publish:all
