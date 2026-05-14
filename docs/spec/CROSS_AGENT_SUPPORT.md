@@ -72,7 +72,7 @@ Optional workflows:
 Cross-agent support is distributed as npm workspace packages:
 
 - `@dotdotgod/pi`: Pi adapter with skills and extensions.
-- `@dotdotgod/docs-validator`: zero-dependency docs scaffold validator.
+- `@dotdotgod/cli`: validation, project memory snapshot, and graph indexing CLI.
 - `@dotdotgod/claude-code`: Claude Code adapter with plugin commands and skills.
 - `@dotdotgod/codex`: Codex adapter with project memory skills.
 

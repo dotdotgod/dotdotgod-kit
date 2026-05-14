@@ -33,7 +33,7 @@ Read the detailed concept docs: [Context curation](docs/concept/CONTEXT_CURATION
 | Package | Use it for |
 | --- | --- |
 | [`@dotdotgod/pi`](packages/pi/README.md) | Pi project initializer skill, plan mode, and project loading extensions. |
-| [`@dotdotgod/docs-validator`](packages/docs-validator/README.md) | Zero-dependency validation for the dotdotgod docs scaffold. |
+| [`@dotdotgod/cli`](packages/cli/README.md) | CLI for validation, project memory snapshots, and graph indexing. |
 | [`@dotdotgod/claude-code`](packages/claude-code/README.md) | Claude Code `dd:*` commands and project memory skills. |
 | [`@dotdotgod/codex`](packages/codex/README.md) | Codex project memory skills and `dd:*` trigger phrases. |
 
@@ -47,10 +47,10 @@ Pi adapter:
 pi install npm:@dotdotgod/pi
 ```
 
-Docs validator:
+CLI validation:
 
 ```bash
-npx @dotdotgod/docs-validator .
+npx @dotdotgod/cli validate .
 ```
 
 Local workspace checks:

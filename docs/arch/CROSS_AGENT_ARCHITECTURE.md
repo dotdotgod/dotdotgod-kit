@@ -11,7 +11,7 @@ Use shared source resources with thin generated agent adapters.
 ```text
 dotdotgod
 ├── packages/shared/           # private shared source resources for generated adapters
-├── packages/docs-validator/   # shared docs scaffold validator
+├── packages/cli/              # shared CLI for validation, snapshots, and graph indexing
 ├── packages/pi/               # generated Pi skills plus Pi extensions
 ├── packages/claude-code/      # generated Claude Code plugin commands and skills
 ├── packages/codex/            # generated Codex plugin skills
@@ -108,7 +108,7 @@ Codex adapter design should not depend on Pi-style command parity.
 Use a pnpm workspace monorepo:
 
 ```text
-packages/docs-validator/
+packages/cli/
 packages/pi/
 packages/claude-code/
 packages/codex/
@@ -116,7 +116,7 @@ packages/codex/
 
 Published package names:
 
-- `@dotdotgod/docs-validator`
+- `@dotdotgod/cli`
 - `@dotdotgod/pi`
 - `@dotdotgod/claude-code`
 - `@dotdotgod/codex`
