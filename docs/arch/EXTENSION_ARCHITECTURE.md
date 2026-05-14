@@ -72,7 +72,7 @@ The debug path is for measurement and investigation only; normal package behavio
 - read-only loader prompt generation
 - command-conflict guidance for `/load`
 
-The extension is intentionally thin today, but it is the planned runtime entrypoint for future memory indexing, vector search, graph search, and LLM-callable project-memory tools.
+The extension is intentionally thin today. The shared CLI now owns deterministic validation, cache/index management, bounded graph impact reports, and community summaries. The load extension remains the planned runtime entrypoint for deciding how much of that bounded CLI output should be included in `/dd:load` without turning project loading into a full graph dump.
 
 ## Prompt Layer
 
@@ -107,6 +107,7 @@ Potential additions:
 - `/dd:index`
 - `/dd:search`
 - `/dd:status`
+- bounded `dotdotgod load-snapshot` integration in `/dd:load`
 - vector index over project docs
 - graph search over entities and relationships
 - LLM-callable `dd_search` tools

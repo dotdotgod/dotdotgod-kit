@@ -65,6 +65,7 @@ The dotdotgod structure keeps growth manageable:
 - active intent stays isolated in `docs/plan`
 - completed work stays available in `docs/archive` but is not loaded indiscriminately
 - agents can follow indexes and select relevant memory instead of reading everything
+- optional CLI graph snapshots can surface bounded impact neighborhoods and domain communities for larger, multi-year projects
 - Pi, Claude Code, and Codex share the same vocabulary and directory contract
 
 This is why the structure becomes more valuable in larger projects: the amount of possible context grows, but the agent still has a predictable way to narrow it to the context needed for the current task.
@@ -77,7 +78,7 @@ dotdotgod may add a small fixed overhead because loaders and workflow instructio
 
 The expected benefit is not always fewer total tokens in every turn. The more important goal is higher useful-context density: more of the context the agent sees should be relevant to current decisions, constraints, verification, and next steps.
 
-In long or complex work, curated memory can reduce wasted context by replacing repeated user explanation and raw conversation history with stable docs, active plans, targeted archive lookup, and planning-focused compaction. In small tasks, the overhead may be more visible than the savings.
+In long or complex work, curated memory can reduce wasted context by replacing repeated user explanation and raw conversation history with stable docs, active plans, targeted archive lookup, planning-focused compaction, and bounded graph summaries. In small tasks, the overhead may be more visible than the savings.
 
 Actual token usage depends on:
 

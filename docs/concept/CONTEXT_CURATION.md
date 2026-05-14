@@ -83,6 +83,12 @@ The Pi, Claude Code, and Codex adapters make the same memory structure usable ac
 
 Effect: project context is portable across tools.
 
+### Optional graph index
+
+The dotdotgod CLI can build a deterministic graph over curated project scopes. This borrows the useful lesson from Graphify-style systems: structural edges can help agents find side effects and navigation neighborhoods. dotdotgod still stays docs-first and curated-scope-first. The graph is an acceleration layer for load snapshots and impact queries, not a repo-wide memory dump or a token-saving identity.
+
+Effect: agents can see bounded related files, docs, tests, commands, events, package resources, and communities without loading every source file or archive body.
+
 ## Why the Expected Effects Happen
 
 ### Less context noise
@@ -122,6 +128,7 @@ For the detailed task workflow, Plan Mode compaction behavior, docs naming rules
 - It is not a replacement for clear product or architecture docs.
 - It is not primarily a token optimizer.
 - It is not a vector database or automatic semantic memory system.
+- It is not a Graphify clone or repo-wide indexing system by default.
 - It does not make every piece of history relevant; it gives history a structure so agents can choose what to read.
 
 ## Workflow Example
