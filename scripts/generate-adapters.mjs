@@ -171,7 +171,7 @@ copyDirectory("packages/shared/initializer/references", "packages/codex/skills/p
 if (check && changed.length > 0) {
   console.error("Generated adapter resources are out of date:");
   for (const file of changed) console.error(`- ${file}`);
-  console.error("Run `npm run generate` to update them.");
+  console.error("Run `pnpm run generate` to update them.");
   process.exit(1);
 }
 

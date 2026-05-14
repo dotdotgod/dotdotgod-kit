@@ -51,7 +51,7 @@ Pi-specific behavior remains here:
 - shortcut registration
 - tool filtering
 - session state
-- saved plan preview injection
+- active plan-file touch tracking and concise execute/stay/refine review prompts
 
 Commands:
 

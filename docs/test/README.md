@@ -100,6 +100,12 @@ Codex adapter local plugin smoke:
 - Confirm `project-load`, `doc-first-planning`, and `project-initializer` skills are discoverable.
 - Confirm command-like trigger phrases `dd:load`, `dd:plan`, and `dd:init` activate the expected workflows.
 
+Cross-agent planning parity smoke:
+
+- Confirm Claude Code `/dd:plan` and `doc-first-planning` guidance mention the written plan file as the durable review artifact and do not reference saved-plan preview UI.
+- Confirm Codex `doc-first-planning` guidance has the same planning workflow, archive housekeeping, and package-manager-aware verification guidance.
+- Confirm generated resources stay in sync with `packages/shared/workflows/plan.md` via `pnpm run verify:generated`.
+
 Initializer parity smoke:
 
 ```bash

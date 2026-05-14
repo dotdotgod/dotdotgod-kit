@@ -7,6 +7,6 @@ Use this area for behavior specs, API contracts, and product requirements.
 - `README.md`: specs documentation scope and local table of contents.
 - `PROJECT_INITIALIZER.md`: project initializer scaffold, CLI options, overwrite policy, and docs contract.
 - `DOTDOT_SETTING.md`: optional project-initializer dotdot setting behavior and generated code convention contract.
-- `PLAN_MODE.md`: `/plan`, `/todos`, safe planning restrictions, saved plan preview, and execution tracking.
+- `PLAN_MODE.md`: `/plan`, `/todos`, safe planning restrictions, concise plan review choice, and execution tracking.
 - `LOAD_PROJECT.md`: `/load` and `/dd:load` read-only project memory loading behavior.
 - `CROSS_AGENT_SUPPORT.md`: cross-agent support contract for Pi, Claude Code, Codex, and shared docs workflows.
