@@ -5,21 +5,21 @@
   "description": "Workspace for dotdotgod project memory packages across Pi, docs validation, Claude Code, and Codex adapters.",
   "type": "module",
   "license": "Elastic-2.0",
-  "workspaces": [
-    "packages/*"
-  ],
+  "packageManager": "pnpm@10.30.0",
   "scripts": {
     "generate": "node scripts/generate-adapters.mjs",
     "verify:generated": "node scripts/generate-adapters.mjs --check",
-    "verify:types": "npm --workspaces run typecheck --if-present",
-    "verify:unit": "npm --workspaces run test --if-present",
-    "verify": "npm run verify:generated && npm run verify:types && npm run verify:unit && npm --workspaces run verify --if-present",
-    "verify:docs": "npm --workspace @dotdotgod/docs-validator run verify && node packages/docs-validator/bin/dd-docs-validate.mjs . --include-local-memory",
-    "pack:dry-run": "npm run verify:generated && npm --workspaces run pack:dry-run --if-present",
-    "publish:all": "npm publish -w @dotdotgod/docs-validator --access public && npm publish -w @dotdotgod/pi --access public && npm publish -w @dotdotgod/claude-code --access public && npm publish -w @dotdotgod/codex --access public"
+    "verify:types": "pnpm -r --if-present run typecheck",
+    "verify:unit": "pnpm -r --if-present run test",
+    "verify": "pnpm run verify:generated && pnpm run verify:types && pnpm run verify:unit && pnpm -r --if-present run verify",
+    "verify:docs": "pnpm --filter @dotdotgod/docs-validator run verify && node packages/docs-validator/bin/dd-docs-validate.mjs . --include-local-memory",
+    "pack:dry-run": "pnpm run verify:generated && pnpm -r --if-present run pack:dry-run",
+    "publish:all": "pnpm --filter @dotdotgod/docs-validator publish --access public && pnpm --filter @dotdotgod/pi publish --access public && pnpm --filter @dotdotgod/claude-code publish --access public && pnpm --filter @dotdotgod/codex publish --access public",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@types/node": "^25.7.0",
+    "husky": "^9.1.7",
     "typescript": "^6.0.3"
   }
 }

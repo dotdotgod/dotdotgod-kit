@@ -17,8 +17,8 @@ Codex may not expose the same slash-command model as Pi or Claude Code. Treat `d
 Run package checks:
 
 ```bash
-npm --workspace @dotdotgod/codex run verify
-npm --workspace @dotdotgod/codex run pack:dry-run
+pnpm --filter @dotdotgod/codex run verify
+pnpm --filter @dotdotgod/codex run pack:dry-run
 ```
 
 ## Shared Contract

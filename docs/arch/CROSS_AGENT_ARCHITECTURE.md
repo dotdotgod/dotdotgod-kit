@@ -105,7 +105,7 @@ Codex adapter design should not depend on Pi-style command parity.
 
 ## Packaging Strategy
 
-Use an npm workspace monorepo:
+Use a pnpm workspace monorepo:
 
 ```text
 packages/docs-validator/
@@ -129,9 +129,9 @@ Use fixed versions initially. Independent versions are only worth the overhead w
 
 - Keep current Pi behavior compatible after resources live under `packages/pi/`.
 - Use `dd` for new namespaces and command prefixes.
-- Edit common workflow text in `packages/shared`, then run `npm run generate`.
+- Edit common workflow text in `packages/shared`, then run `pnpm run generate`.
 - Keep generated adapter files checked in for zero-build local installs.
-- Use `npm run verify:generated` to catch drift when generated files are edited directly.
+- Use `pnpm run verify:generated` to catch drift when generated files are edited directly.
 - Keep `AGENTS.md` and docs scaffold stable across adapters.
 - Keep platform-specific enforcement in adapter code, not in shared docs.
 
@@ -140,10 +140,10 @@ Use fixed versions initially. Independent versions are only worth the overhead w
 Generation and package verification:
 
 ```bash
-npm run generate
-npm run verify:generated
-npm run verify
-npm run pack:dry-run
+pnpm run generate
+pnpm run verify:generated
+pnpm run verify
+pnpm run pack:dry-run
 ```
 
 Pi verification:

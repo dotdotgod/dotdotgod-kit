@@ -26,8 +26,8 @@
     "syntax": "node --check extensions/load-project/index.ts && node --check extensions/load-project/utils.ts && node --check extensions/plan-mode/index.ts && node --check extensions/plan-mode/utils.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-strip-types test/*.test.ts",
-    "verify": "npm run syntax && npm run typecheck && npm run test",
-    "pack:dry-run": "npm pack --dry-run --json"
+    "verify": "pnpm run syntax && pnpm run typecheck && pnpm run test",
+    "pack:dry-run": "pnpm pack --dry-run --json"
   },
   "peerDependencies": {
     "@earendil-works/pi-agent-core": "*",

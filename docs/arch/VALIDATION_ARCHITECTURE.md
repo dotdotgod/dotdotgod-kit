@@ -54,15 +54,15 @@ Workspace packages can add TypeScript typecheck and unit test scripts when they 
 
 The Pi adapter currently owns the first TypeScript quality gate:
 
-- `npm --workspace @dotdotgod/pi run typecheck`: TypeScript `noEmit` checking for extension source and tests.
-- `npm --workspace @dotdotgod/pi run test`: Node built-in test runner coverage for pure plan-mode and load-project helpers.
-- `npm --workspace @dotdotgod/pi run verify`: syntax checks, typecheck, and unit tests together.
+- `pnpm --filter @dotdotgod/pi run typecheck`: TypeScript `noEmit` checking for extension source and tests.
+- `pnpm --filter @dotdotgod/pi run test`: Node built-in test runner coverage for pure plan-mode and load-project helpers.
+- `pnpm --filter @dotdotgod/pi run verify`: syntax checks, typecheck, and unit tests together.
 
 Root commands aggregate package-provided checks:
 
 ```bash
-npm run verify:types
-npm run verify:unit
+pnpm run verify:types
+pnpm run verify:unit
 ```
 
 Unit tests should prefer extracted pure helpers over importing full Pi extension entrypoints, because extension entrypoints depend on Pi runtime peer packages and session/UI wiring.
@@ -72,8 +72,8 @@ Unit tests should prefer extracted pure helpers over importing full Pi extension
 Root verification should run generated-resource drift checks, package typechecks/tests, workspace package checks, and package dry-runs:
 
 ```bash
-npm run verify
-npm run pack:dry-run
+pnpm run verify
+pnpm run pack:dry-run
 ```
 
 Docs validation should include ignored local memory during local development:

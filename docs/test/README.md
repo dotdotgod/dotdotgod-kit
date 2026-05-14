@@ -7,37 +7,37 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 Regenerate adapter resources from shared sources:
 
 ```bash
-npm run generate
+pnpm run generate
 ```
 
 Check generated adapter resources for drift:
 
 ```bash
-npm run verify:generated
+pnpm run verify:generated
 ```
 
 Run TypeScript type checks where workspace packages provide them:
 
 ```bash
-npm run verify:types
+pnpm run verify:types
 ```
 
 Run unit tests where workspace packages provide them:
 
 ```bash
-npm run verify:unit
+pnpm run verify:unit
 ```
 
 Run all workspace package checks:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 Run package dry-runs:
 
 ```bash
-npm run pack:dry-run
+pnpm run pack:dry-run
 ```
 
 Run docs validation directly:
@@ -114,16 +114,22 @@ Pi adapter npm install after publish:
 pi install npm:@dotdotgod/pi
 ```
 
-## Husky Plan
+## Husky Pre-Push Hook
 
-Husky should live at the workspace root if enabled.
+Husky lives at the workspace root and is installed by the root `prepare` script.
 
-Recommended pre-push hook:
+Pre-push hook:
 
 ```bash
-npm run verify && npm run pack:dry-run
+pnpm run verify && pnpm run pack:dry-run
 ```
 
-`npm run verify` includes generated-resource drift checks, so direct edits to generated adapter files fail until `npm run generate` is run or the shared source is updated.
+Run it manually with:
 
-Husky is not required for package consumers and should remain a development-only workflow.
+```bash
+.husky/pre-push
+```
+
+`pnpm run verify` includes generated-resource drift checks, so direct edits to generated adapter files fail until `pnpm run generate` is run or the shared source is updated.
+
+Husky is not required for package consumers and remains a development-only workflow.

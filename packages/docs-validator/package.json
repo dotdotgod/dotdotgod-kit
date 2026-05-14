@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "verify": "node --check bin/dd-docs-validate.mjs && node bin/dd-docs-validate.mjs ../.. --include-local-memory",
-    "pack:dry-run": "npm pack --dry-run --json"
+    "pack:dry-run": "pnpm pack --dry-run --json"
   },
   "files": [
     "bin",
