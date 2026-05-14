@@ -15,7 +15,7 @@ Pi adapter for dotdotgod's context curation workflow. It gives Pi a practical pr
 pi install npm:@dotdotgod/pi
 ```
 
-Published install/uninstall smoke has been verified for `0.1.1`:
+Published install/uninstall smoke has been verified for `0.1.2`:
 
 ```bash
 pi install npm:@dotdotgod/pi
