@@ -6,6 +6,7 @@ Claude Code adapter for dotdotgod's context curation workflow. It gives Claude C
 
 - `/dd:load` starts from curated project memory instead of ad-hoc rediscovery.
 - Load guidance prefers `dotdotgod load-snapshot <root> --json` when the CLI is available, then falls back to README-index reads.
+- Claude Code can use docs structure as retrieval intent: specs for behavior, architecture for rationale, tests for verification, plans for current work, and archive indexes for past decisions.
 - `/dd:plan` writes or updates durable task intent in `docs/plan/<task-slug>/README.md` before implementation.
 - `/dd:init` bootstraps shared agent instructions and docs folders for future context curation.
 - Skills mirror the commands so natural-language requests can use the same workflows.
@@ -48,4 +49,6 @@ pnpm --filter @dotdotgod/claude-code run pack:dry-run
 
 ## Compared with Graphify-Style Memory
 
-This adapter is guidance-oriented rather than a repo-wide extraction engine. It asks Claude Code to prefer a bounded dotdotgod load snapshot when available, avoid broad archive scans, and follow README indexes before reading raw files. That keeps the memory layer useful on small tasks where a large graph report would be overhead.
+This adapter is guidance-oriented rather than a repo-wide extraction engine. It asks Claude Code to prefer a bounded dotdotgod load snapshot when available, avoid broad archive scans, and follow README indexes before reading raw files.
+
+The strength is structured retrieval: project docs declare which files are rules, specs, architecture, verification, active intent, or historical memory. That keeps the memory layer useful on small tasks where a large graph report would be overhead.

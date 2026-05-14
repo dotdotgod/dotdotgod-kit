@@ -60,7 +60,7 @@ This is the core context curation idea: instead of putting more raw files into c
 pi install npm:@dotdotgod/pi
 ```
 
-Published install/uninstall smoke has been verified for `0.1.6`:
+Published install/uninstall smoke has been verified for `0.1.7`:
 
 ```bash
 pi install npm:@dotdotgod/pi
@@ -83,6 +83,7 @@ pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 
 - New sessions can start from the same durable project map instead of ad-hoc file scanning.
 - Agents can distinguish stable project truth (`docs/spec`, `docs/arch`, `docs/test`) from current task intent (`docs/plan`).
+- README indexes act as routing tables, so load and retrieval begin from curated project intent rather than undifferentiated files.
 - Archive history stays discoverable without forcing every completed plan body into the default context.
 - Planning and verification become explicit artifacts rather than hidden chat state.
 - Graph/cache metadata stays bounded in `.dotdotgod/`, with agent-facing output limited to summaries, omitted counts, and archive policy.
@@ -105,6 +106,31 @@ The emphasis is different:
 - **dotdotgod:** curate durable project memory and task intent first; use bounded graph/cache summaries as a map.
 - **Graphify-style reports:** generate a broader graph/report from a corpus, which can help on large repeated queries but may add overhead on small tasks.
 
-Plan Mode focuses on preserving intent, safety constraints, verification, and completed-step state rather than compressing the whole repository.
+### Where dotdotgod is better
+
+- **Clear starting workflow:** the project-initializer skill creates a predictable memory scaffold before loading or planning.
+- **Better retrieval priors:** docs paths and README indexes classify nodes as specs, architecture, tests, active plans, or archive maps before the graph query begins.
+- **Lower default context pressure:** agents see bounded snapshots and README indexes instead of a full graph report by default, avoiding the case where a small question pays the cost of reading `GRAPH_REPORT` first.
+- **Safer task execution:** Plan Mode preserves intent, safety constraints, verification, and completed-step state with `[DONE:n]` markers.
+- **Better long-running project continuity:** active plans and archive indexes survive session resets, compaction, and agent handoff.
+- **Archive discipline:** `docs/archive/README.md` stays visible as the history map, while completed plan/report bodies are read only when targeted.
+- **Generic but conservative indexing:** the CLI follows gitignore-visible text/source/config files and avoids dependency, generated, cache, and secret-like paths by default, reducing the risk of repo-wide recursive indexing loops.
+- **Layered context by default:** the always-visible layer is the project map and bounded snapshot; source files and archive bodies stay in the targeted-read layer.
+- **Smaller skill surface:** the adapter keeps long-lived instructions focused on workflow and delegates repository facts to files and CLI snapshots instead of a large always-loaded skill report.
+
+### Where Graphify-style memory can be better
+
+- **More automatic corpus understanding:** broad graph/report generation can discover relationships without requiring a docs scaffold first.
+- **Richer semantic extraction:** Graphify-style systems may handle dense prose, PDFs, images, videos, or other non-code artifacts better than dotdotgod's current deterministic first pass.
+- **Better for large repeated exploratory queries:** if a large corpus is indexed once and queried many times, a richer graph/report can provide more immediate recall and may reduce repeated raw-file reads.
+- **Less process discipline required upfront:** projects without `docs/spec`, `docs/arch`, `docs/test`, or archive conventions may get value faster from automatic extraction.
+- **Potentially broader language coverage:** dotdotgod currently has focused deterministic extraction for Markdown, package metadata, and JS/TS-style structure; other languages are indexed mostly as file metadata until dedicated extractors are added.
+
+Trade-off summary:
+
+- dotdotgod is designed to avoid common query overhead problems: full report reads for small tasks, indexing dependency/generated directories, dense extraction retry cost, and large always-loaded skill instructions.
+- Graphify-style memory can be stronger when the graph/report is high quality, reused across many broad questions, and the corpus benefits from semantic or multimodal extraction.
+
+In short, dotdotgod is better when you want a durable workflow for project memory, planning, verification, and handoff. Graphify-style memory may be better when you want aggressive automatic extraction across a large, messy, multimodal corpus.
 
 See the workspace root README for the cross-agent package map.

@@ -8,6 +8,7 @@ Command-line tools for dotdotgod project memory. The CLI validates the docs scaf
 - Build `.dotdotgod/` as a local, ignored cache of file fingerprints and compact graph shards.
 - Use `load-snapshot` as the bounded first-pass map for agent loading instead of embedding every doc or archive body.
 - Query likely side effects with grouped, bounded graph impact reports.
+- Turn dotdotgod's docs structure into retrieval priors: specs, architecture, tests, active plans, and archive maps are not treated as generic files.
 - Keep indexing generic: discovery follows gitignore-visible files and supported text/source/config formats rather than assuming a pnpm monorepo.
 
 ## Commands
@@ -35,4 +36,8 @@ Default exclusions include dependency, generated, cache, and secret-like paths s
 
 ## Compared with Graphify-Style Reports
 
-The CLI is not designed to make agents read a giant graph report. The full graph stays in the local cache; agent-facing output is bounded and includes omitted counts. This avoids common failure modes where a memory layer costs more than direct file reads on small tasks, indexes dependency/generated directories, or expands dense documents through repeated extraction.
+The CLI is not designed to make agents read a giant graph report. The full graph stays in the local cache; agent-facing output is bounded and includes omitted counts.
+
+Its practical advantage is that graph and retrieval start from project-declared structure: `docs/spec` means behavior truth, `docs/arch` means design rationale, `docs/test` means verification, `docs/plan` means current intent, and `docs/archive/README.md` means historical map. That gives queries useful ranking and routing signals before any source file is read.
+
+This avoids common failure modes where a memory layer costs more than direct file reads on small tasks, indexes dependency/generated directories, or expands dense documents through repeated extraction.
