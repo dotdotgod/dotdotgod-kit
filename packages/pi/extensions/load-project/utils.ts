@@ -32,6 +32,15 @@ export interface LoadCommandInfo {
 	sourceInfo?: { path?: string };
 }
 
+export function estimateTextMetrics(text: string): { characters: number; words: number; approxTokens: number } {
+	const trimmed = text.trim();
+	return {
+		characters: text.length,
+		words: trimmed ? trimmed.split(/\s+/).length : 0,
+		approxTokens: Math.ceil(text.length / 4),
+	};
+}
+
 export function pathExists(cwd: string, path: string): boolean {
 	return existsSync(join(cwd, path));
 }

@@ -5,7 +5,8 @@
  */
 
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { buildLoadPrompt, collectSnapshot, hasOtherLoadCommand } from "./utils.js";
+import { recordContextMetric } from "../context-metrics/utils.js";
+import { buildLoadPrompt, collectSnapshot, estimateTextMetrics, hasOtherLoadCommand } from "./utils.js";
 
 async function runLoadCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext, args: string, commandName: "load" | "dd:load") {
 	const snapshot = collectSnapshot(ctx.cwd);
@@ -19,8 +20,15 @@ async function runLoadCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext, ar
 	}
 
 	const prompt = buildLoadPrompt(ctx.cwd, args, snapshot);
+	const promptMetrics = estimateTextMetrics(prompt);
+	recordContextMetric(ctx, (name) => pi.getFlag(name), "load-project:before-send", {
+		commandName,
+		promptMetrics,
+		directorySummaryPaths: snapshot.directories.map((directory) => directory.path),
+	});
 	const deliverAs = ctx.isIdle() ? undefined : "followUp";
 	pi.sendUserMessage(prompt, deliverAs ? { deliverAs } : undefined);
+	recordContextMetric(ctx, (name) => pi.getFlag(name), "load-project:after-send", { commandName, deliverAs: deliverAs ?? "immediate" });
 
 	if (ctx.hasUI) {
 		const queued = deliverAs === "followUp" ? " It will run as a follow-up after the current turn finishes." : "";
@@ -29,6 +37,17 @@ async function runLoadCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext, ar
 }
 
 export default function loadProjectExtension(pi: ExtensionAPI): void {
+	pi.registerFlag("dd-context-debug", {
+		description: "Record dotdotgod context measurement debug events to a local JSONL file",
+		type: "boolean",
+		default: false,
+	});
+	pi.registerFlag("dd-context-debug-output", {
+		description: "Path for dotdotgod context measurement debug JSONL output",
+		type: "string",
+		default: "",
+	});
+
 	pi.registerCommand("load", {
 		description: "Load dotdotgod docs for the current project",
 		handler: async (args, ctx) => runLoadCommand(pi, ctx, args, "load"),

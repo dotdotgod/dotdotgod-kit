@@ -23,7 +23,7 @@
     "context-loader"
   ],
   "scripts": {
-    "syntax": "node --check extensions/load-project/index.ts && node --check extensions/load-project/utils.ts && node --check extensions/plan-mode/index.ts && node --check extensions/plan-mode/utils.ts",
+    "syntax": "node --check extensions/context-metrics/utils.ts && node --check extensions/load-project/index.ts && node --check extensions/load-project/utils.ts && node --check extensions/plan-mode/index.ts && node --check extensions/plan-mode/utils.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-strip-types test/*.test.ts",
     "verify": "pnpm run syntax && pnpm run typecheck && pnpm run test",

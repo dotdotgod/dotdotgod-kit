@@ -86,4 +86,4 @@ Actual token usage depends on:
 - whether the task needs historical archive lookup
 - whether Plan Mode compaction is triggered
 
-Use [`MEASUREMENT_DESIGN.md`](MEASUREMENT_DESIGN.md) to measure token usage, useful-context density, compaction effects, and task outcomes before making numeric claims.
+Use [`MEASUREMENT_DESIGN.md`](MEASUREMENT_DESIGN.md) to measure token usage, useful-context density, compaction effects, and task outcomes before making numeric claims. For local debugging, run `pnpm run measure:context` or enable Pi with `--dd-context-debug` to record runtime context events under ignored archive reports.
