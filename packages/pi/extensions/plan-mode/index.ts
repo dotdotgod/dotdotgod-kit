@@ -118,19 +118,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			ctx.ui.setStatus("plan-mode", undefined);
 		}
 
-		if (executionMode && todoItems.length > 0) {
-			const lines = todoItems.map((item) => {
-				if (item.completed) {
-					return (
-						ctx.ui.theme.fg("success", "☑ ") + ctx.ui.theme.fg("muted", ctx.ui.theme.strikethrough(item.text))
-					);
-				}
-				return `${ctx.ui.theme.fg("muted", "☐ ")}${item.text}`;
-			});
-			ctx.ui.setWidget("plan-todos", lines);
-		} else {
-			ctx.ui.setWidget("plan-todos", undefined);
-		}
 	}
 
 	function togglePlanMode(ctx: ExtensionContext): void {
@@ -302,9 +289,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 	pi.on("agent_end", async (event, ctx) => {
 		if (executionMode && todoItems.length > 0) {
 			if (todoItems.every((t) => t.completed)) {
-				const completedList = todoItems.map((t) => `~~${t.text}~~`).join("\n");
 				pi.sendMessage(
-					{ customType: "plan-complete", content: `**Plan execution complete!** ✓\n\n${completedList}`, display: true },
+					{ customType: "plan-complete", content: "**Plan execution complete!** ✓", display: true },
 					{ triggerTurn: false },
 				);
 				executionMode = false;
@@ -332,18 +318,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			"Refine the plan",
 		];
 		const choice = await ctx.ui.select("Plan mode - choose next action", actionChoices);
-
-		if (todoItems.length > 0 && choice?.startsWith("Execute the plan")) {
-			const todoListText = todoItems.map((t, i) => `${i + 1}. ☐ ${t.text}`).join("\n");
-			pi.sendMessage(
-				{
-					customType: "plan-todo-list",
-					content: `**Plan Steps (${todoItems.length}):**\n\n${todoListText}`,
-					display: true,
-				},
-				{ triggerTurn: false },
-			);
-		}
 
 		if (choice?.startsWith("Execute the plan")) {
 			planModeEnabled = false;
