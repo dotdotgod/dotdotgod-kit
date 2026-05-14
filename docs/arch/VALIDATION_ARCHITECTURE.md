@@ -50,7 +50,7 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - `dotdotgod status <root>` reports `missing`, `fresh`, or `stale`.
 - `dotdotgod index <root>` rewrites the index from the current curated scope.
 
-The initial index is intentionally conservative: it records file fingerprints and cache metadata before AST graph edges and Leiden communities are added.
+The index records file fingerprints, cache metadata, and a deterministic graph. Current graph extraction covers Markdown headings/links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Leiden-style communities are planned after direct graph queries are useful.
 
 ## Dependency Policy
 

@@ -29,8 +29,9 @@ function fixture() {
   writeFileSync(join(root, 'docs/spec/README.md'), '# Spec\n');
   writeFileSync(join(root, 'docs/archive/README.md'), '# Archive\n');
   writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'fixture-root', scripts: { verify: 'node --test' } }, null, 2));
-  writeFileSync(join(root, 'packages/tool/package.json'), JSON.stringify({ name: '@fixture/tool', bin: { tool: './bin/tool.mjs' }, dependencies: { leftpad: '1.0.0' } }, null, 2));
-  writeFileSync(join(root, 'packages/tool/index.mjs'), "import fs from 'node:fs';\nexport function run() { return 'plan-mode:enabled'; }\nconst value = 1;\n");
+  writeFileSync(join(root, 'packages/tool/package.json'), JSON.stringify({ name: '@fixture/tool', files: ['bin', 'index.mjs'], bin: { tool: './bin/tool.mjs' }, pi: { extensions: ['./extensions'] }, dependencies: { leftpad: '1.0.0' } }, null, 2));
+  writeFileSync(join(root, 'packages/tool/index.mjs'), "import fs from 'node:fs';\nexport function run() { return 'plan-mode:enabled'; }\nconst value = 1;\nfunction local() { const hidden = 1; return hidden; }\npi.registerCommand('load', {});\n");
+  writeFileSync(join(root, 'packages/tool/index.test.mjs'), "import { run } from './index.mjs';\nexport { run as testRun };\n");
   return root;
 }
 
@@ -71,6 +72,13 @@ describe('CLI index and graph helpers', () => {
     assert(summary.edges > 0);
     assert.equal(summary.byType.package >= 2, true);
     assert.equal(summary.byRelation.imports >= 1, true);
+    assert.equal(summary.byRelation.exports >= 1, true);
+    assert.equal(summary.byRelation.handles_command >= 1, true);
+    assert.equal(summary.byRelation.includes_resource >= 1, true);
+    assert.equal(summary.byType.test >= 1, true);
+    assert(index.graph.nodes.some((node) => node.id === 'command:load'));
+    assert(index.graph.nodes.some((node) => node.id === 'export:packages/tool/index.mjs#run'));
+    assert(!index.graph.nodes.some((node) => node.id === 'symbol:packages/tool/index.mjs#hidden'));
     const related = neighborhood(index, 'packages/tool/index.mjs');
     assert(related.some((node) => node.id === 'file:packages/tool/index.mjs'));
     assert(related.length <= 25);

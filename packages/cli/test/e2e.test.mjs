@@ -23,8 +23,8 @@ function createFixture() {
   writeFileSync(join(root, 'docs/plan/task/README.md'), '# Task\n');
   writeFileSync(join(root, 'docs/archive/README.md'), '# Archive\n');
   writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'fixture', scripts: { test: 'node --test' } }, null, 2));
-  writeFileSync(join(root, 'packages/app/package.json'), JSON.stringify({ name: '@fixture/app', scripts: { start: 'node index.mjs' } }, null, 2));
-  writeFileSync(join(root, 'packages/app/index.mjs'), "import path from 'node:path';\nexport function main() { return 'plan-mode:load-requested'; }\n");
+  writeFileSync(join(root, 'packages/app/package.json'), JSON.stringify({ name: '@fixture/app', files: ['index.mjs'], scripts: { start: 'node index.mjs' } }, null, 2));
+  writeFileSync(join(root, 'packages/app/index.mjs'), "import path from 'node:path';\nexport function main() { return 'plan-mode:load-requested'; }\npi.registerCommand('app', {});\n");
   return root;
 }
 
@@ -58,6 +58,9 @@ describe('dotdotgod CLI e2e', () => {
     const snapshot = json(run(['load-snapshot', root, '--json']));
     assert.equal(snapshot.cache.status, 'fresh');
     assert(snapshot.graph.nodes > 0);
+    assert(snapshot.graph.byType.export >= 1);
+    assert(snapshot.graph.byType.package_resource >= 1);
+    assert(snapshot.graph.byType.command >= 1);
 
     const query = json(run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--json']));
     assert.equal(query.command, 'graph query');

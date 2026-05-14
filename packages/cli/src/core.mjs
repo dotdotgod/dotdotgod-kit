@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const CACHE_DIR = '.dotdotgod';
 const INDEX_FILE = 'index.json';
 
@@ -227,7 +227,15 @@ export function addNode(graph, id, type, data = {}) {
 }
 
 export function addEdge(graph, source, target, relation, data = {}) {
-  graph.edges.push({ source, target, relation, ...data });
+  const edge = { source, target, relation, ...data };
+  if (!graph.edges.some((existing) => JSON.stringify(existing) === JSON.stringify(edge))) graph.edges.push(edge);
+}
+
+function addPackageResource(graph, fileId, packagePath, name, target, kind) {
+  if (!target || typeof target !== 'string') return;
+  const id = `package_resource:${packagePath}#${kind}:${name}`;
+  addNode(graph, id, 'package_resource', { name, target, kind, path: packagePath });
+  addEdge(graph, fileId, id, 'includes_resource', { kind, confidence: 'EXTRACTED' });
 }
 
 export function extractMarkdownGraph(root, file, graph) {
@@ -271,6 +279,15 @@ export function extractPackageGraph(root, file, graph) {
     const id = `bin:${name}`;
     addNode(graph, id, 'binary', { name, target, path });
     addEdge(graph, fileId, id, 'declares_bin', { confidence: 'EXTRACTED' });
+    addPackageResource(graph, fileId, path, name, target, 'bin');
+  }
+  for (const [index, target] of (Array.isArray(pkg.files) ? pkg.files : []).entries()) {
+    addPackageResource(graph, fileId, path, `files:${index}`, target, 'files');
+  }
+  for (const [kind, value] of Object.entries(pkg.pi ?? {})) {
+    for (const [index, target] of (Array.isArray(value) ? value : [value]).entries()) {
+      addPackageResource(graph, fileId, path, `pi:${kind}:${index}`, target, `pi:${kind}`);
+    }
   }
   for (const section of ['dependencies', 'devDependencies', 'peerDependencies']) {
     for (const name of Object.keys(pkg[section] ?? {})) {
@@ -278,6 +295,19 @@ export function extractPackageGraph(root, file, graph) {
       addNode(graph, id, 'dependency', { name });
       addEdge(graph, fileId, id, 'depends_on', { section, confidence: 'EXTRACTED' });
     }
+  }
+}
+
+function addSymbol(graph, fileId, path, name, exported = false) {
+  if (!name) return;
+  const id = `symbol:${path}#${name}`;
+  addNode(graph, id, 'symbol', { name, path });
+  addEdge(graph, fileId, id, 'declares', { confidence: 'EXTRACTED' });
+  if (exported) {
+    const exportId = `export:${path}#${name}`;
+    addNode(graph, exportId, 'export', { name, path });
+    addEdge(graph, fileId, exportId, 'exports', { confidence: 'EXTRACTED' });
+    addEdge(graph, exportId, id, 'exports_symbol', { confidence: 'EXTRACTED' });
   }
 }
 
@@ -293,14 +323,51 @@ export function extractScriptGraph(root, file, graph) {
     addNode(graph, id, 'import', { specifier: spec });
     addEdge(graph, fileId, id, 'imports', { confidence: 'EXTRACTED' });
   }
-  const declarationRe = /\b(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)|\b(?:export\s+)?(?:class|const|let|var)\s+([A-Za-z_$][\w$]*)/g;
-  while ((match = declarationRe.exec(content)) !== null) {
-    const name = match[1] || match[2];
-    const id = `symbol:${path}#${name}`;
-    addNode(graph, id, 'symbol', { name, path });
-    addEdge(graph, fileId, id, 'declares', { confidence: 'EXTRACTED' });
+
+  const lines = content.split('\n');
+  let depth = 0;
+  for (const line of lines) {
+    const topLevel = depth === 0;
+    const trimmed = line.trim();
+    if (topLevel) {
+      let declaration = trimmed.match(/^(export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/);
+      if (!declaration) declaration = trimmed.match(/^(export\s+)?class\s+([A-Za-z_$][\w$]*)/);
+      if (!declaration) declaration = trimmed.match(/^(export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/);
+      if (declaration) addSymbol(graph, fileId, path, declaration[2], Boolean(declaration[1]));
+    }
+    const withoutStrings = line.replace(/(['"`])(?:\\.|(?!\1).)*\1/g, '');
+    depth += (withoutStrings.match(/{/g) ?? []).length;
+    depth -= (withoutStrings.match(/}/g) ?? []).length;
+    if (depth < 0) depth = 0;
   }
-  const eventRe = /['"]([a-z][a-z0-9-]+:[a-z0-9:-]+)['"]/g;
+
+  const exportListRe = /^\s*export\s*{([^}]+)}/gm;
+  while ((match = exportListRe.exec(content)) !== null) {
+    for (const item of match[1].split(',')) {
+      const name = item.trim().split(/\s+as\s+/)[0]?.trim();
+      if (name) addSymbol(graph, fileId, path, name, true);
+    }
+  }
+
+  const commandRe = /\.registerCommand\(\s*['"]([^'"]+)['"]/g;
+  while ((match = commandRe.exec(content)) !== null) {
+    const name = match[1];
+    const id = `command:${name}`;
+    addNode(graph, id, 'command', { name });
+    addEdge(graph, fileId, id, 'handles_command', { confidence: 'EXTRACTED' });
+  }
+
+  const isTestFile = /(^|\/)(test|tests)\//.test(path) || /\.(test|spec)\.(mjs|cjs|js|jsx|ts|tsx)$/.test(path);
+  if (isTestFile) {
+    const id = `test:${path}`;
+    addNode(graph, id, 'test', { path });
+    addEdge(graph, fileId, id, 'declares_test', { confidence: 'INFERRED' });
+    for (const edge of graph.edges.filter((edge) => edge.source === fileId && edge.relation === 'imports')) {
+      addEdge(graph, id, edge.target, 'tests', { confidence: 'INFERRED' });
+    }
+  }
+
+  const eventRe = /['"]((?!node:)[a-z][a-z0-9-]*-[a-z0-9-]*:[a-z0-9:-]+)['"]/g;
   while ((match = eventRe.exec(content)) !== null) {
     const name = match[1];
     const id = `event:${name}`;
