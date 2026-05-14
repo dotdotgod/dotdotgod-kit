@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
@@ -52,20 +52,31 @@ describe('dotdotgod CLI e2e', () => {
     assert(existsSync(join(root, '.dotdotgod/manifest.json')));
     assert(existsSync(join(root, '.dotdotgod/graph/nodes/docs.json')));
     assert(existsSync(join(root, '.dotdotgod/graph/edges/imports.json')));
+    assert.equal(index.schemaVersion, 3);
+    assert.equal(typeof index.incremental.elapsedMs, 'number');
     assert(index.indexSizeBytes > 0);
 
     const status = json(run(['status', root, '--json']));
     assert.equal(status.status, 'fresh');
     assert.equal(status.ok, true);
+    assert.equal(status.schemaOk, true);
+    assert.equal(status.reason, 'fresh');
 
     const snapshot = json(run(['load-snapshot', root, '--json']));
     assert.equal(snapshot.cache.status, 'fresh');
     assert.equal(snapshot.metadata.cacheRefreshed, false);
+    assert.equal(snapshot.metadata.refreshReason, 'fresh');
+    assert.equal(typeof snapshot.metadata.elapsedMs, 'number');
     assert(snapshot.graph.nodes > 0);
     assert(snapshot.graph.byType.export >= 1);
     assert(snapshot.graph.byType.package_resource >= 1);
     assert(snapshot.graph.byType.command >= 1);
     assert.equal(snapshot.bounds.fullGraphIncluded, false);
+    assert.equal(snapshot.bounds.archiveMapIncluded, true);
+    assert.equal(snapshot.bounds.archiveBodiesIncluded, false);
+    assert(snapshot.quality.snapshotBytes > 0);
+    assert(snapshot.quality.approxSnapshotTokens > 0);
+    assert.equal(typeof snapshot.quality.omittedCommunities, 'number');
     assert(snapshot.communities.communities.length > 0);
     assert(['leiden', 'deterministic-domain-grouping'].includes(snapshot.communities.method));
 
@@ -106,8 +117,30 @@ describe('dotdotgod CLI e2e', () => {
     const snapshot = json(run(['load-snapshot', root, '--json']));
     assert.equal(snapshot.metadata.cacheRefreshed, true);
     assert.equal(snapshot.metadata.previousStatus, 'stale');
+    assert.equal(snapshot.metadata.refreshReason, 'content-changed');
     assert.equal(snapshot.metadata.fullRebuild, false);
     assert.equal(snapshot.metadata.changedFiles, 1);
+    assert.equal(typeof snapshot.metadata.elapsedMs, 'number');
     assert.equal(snapshot.cache.status, 'fresh');
+  });
+
+  it('rebuilds incompatible cache schemas during lazy refresh', () => {
+    const root = createFixture();
+    assert.equal(run(['index', root, '--json']).status, 0);
+    const manifestPath = join(root, '.dotdotgod/manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    writeFileSync(manifestPath, JSON.stringify({ ...manifest, version: 1, schemaVersion: 1 }, null, 2));
+
+    const stale = run(['status', root, '--json']);
+    assert.notEqual(stale.status, 0);
+    const stalePayload = JSON.parse(stale.stdout);
+    assert.equal(stalePayload.reason, 'schema-mismatch');
+    assert.equal(stalePayload.schemaOk, false);
+
+    const snapshot = json(run(['load-snapshot', root, '--json']));
+    assert.equal(snapshot.metadata.cacheRefreshed, true);
+    assert.equal(snapshot.metadata.refreshReason, 'schema-mismatch');
+    assert.equal(snapshot.metadata.fullRebuild, true);
+    assert.equal(snapshot.cache.schemaOk, true);
   });
 });
