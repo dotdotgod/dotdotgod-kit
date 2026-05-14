@@ -274,9 +274,10 @@ Remaining plan steps:
 ${todoList}
 
 Execute each step in order.
-After completing a step, include a [DONE:n] tag in your response.
-Example: after completing step 1, include [DONE:1].
-When implementation and verification are complete, move the completed task directory from docs/plan/<task-slug>/ to docs/archive/plan/<task-slug>/ as the final housekeeping step.
+After completing any step, include its [DONE:n] tag in the same assistant response.
+Final responses after implementation or verification MUST include [DONE:n] for every step completed in that turn.
+Example: after completing step 1, include [DONE:1]. If steps 1 and 2 are both complete, include [DONE:1] [DONE:2].
+When implementation and verification are complete, move the completed task directory from docs/plan/<task-slug>/ to docs/archive/plan/<task-slug>/ as the final housekeeping step and include the archive step's [DONE:n] tag.
 
 If an out-of-scope change is required, stop and ask the user for confirmation.`,
 					display: false,
@@ -299,10 +300,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 	pi.on("agent_end", async (event, ctx) => {
 		if (executionMode && todoItems.length > 0) {
 			if (todoItems.every((t) => t.completed)) {
-				pi.sendMessage(
-					{ customType: "plan-complete", content: "**Plan execution complete!** ✓", display: true },
-					{ triggerTurn: false },
-				);
 				executionMode = false;
 				todoItems = [];
 				pi.setActiveTools(NORMAL_MODE_TOOLS);

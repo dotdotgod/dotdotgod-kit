@@ -38,8 +38,8 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 7. After the agent creates or updates a plan file, Pi asks whether to execute, stay in plan mode, or refine the plan.
 8. The agent should write concrete executable steps in the final `Plan:` section. Generic section labels such as `Target files and rationale`, `Implementation steps`, and `Verification method` are ignored for todo extraction.
 9. Choose `Execute the plan` in the UI to switch into implementation mode.
-10. During execution, the agent marks completed steps with `[DONE:n]` tags.
-11. After implementation and verification, the agent moves the completed task directory to `docs/archive/plan/<task-slug>/`.
+10. During execution, the agent must mark every completed step in the same response with `[DONE:n]` tags.
+11. After implementation and verification, the agent moves the completed task directory to `docs/archive/plan/<task-slug>/` and includes that step's `[DONE:n]` tag.
 12. Use `/todos` to inspect progress.
 
 ## Plan Mode Restrictions
