@@ -58,7 +58,13 @@ describe("load-project prompt", () => {
 	});
 
 	it("includes bounded load-snapshot metadata when available", () => {
-		const prompt = buildLoadPrompt("/project", "", { present: ["docs/archive/README.md"], missing: [], directories: [] }, {
+		const prompt = buildLoadPrompt("/project", "", {
+			present: ["docs/archive/README.md"],
+			missing: [],
+			directories: [
+				{ path: "docs/archive", exists: true, markdownFiles: ["docs/archive/README.md", "docs/archive/plan/old-task/README.md"] },
+			],
+		}, {
 			ok: true,
 			command: "local workspace CLI",
 			data: {
@@ -76,6 +82,8 @@ describe("load-project prompt", () => {
 		assert.match(prompt, /fullGraphIncluded=false/);
 		assert.match(prompt, /Use the Load snapshot section first/);
 		assert.match(prompt, /Do not re-scan every listed file/);
+		assert.match(prompt, /docs\/archive: available; follow its README\.md only if relevant/);
+		assert.doesNotMatch(prompt, /docs\/archive\/plan\/old-task\/README\.md/);
 	});
 
 	it("formats load-snapshot fallback failures", () => {

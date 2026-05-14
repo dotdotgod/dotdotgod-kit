@@ -37,6 +37,12 @@ function measureFiles(name, files, notes) {
   return { name, files: existing.length, characters: chars, words, approxTokens: Math.ceil(chars / 4), notes };
 }
 function listMarkdownFiles(directory, limit = 20) { return walkMarkdown(directory, limit); }
+function extractBacktickExport(path, name) {
+  const text = read(path);
+  const pattern = 'export const ' + name + ' = `([\\s\\S]*?)`;';
+  const match = text.match(new RegExp(pattern));
+  return match ? match[1] : '';
+}
 function buildLoadPrompt() {
   const present = markerFiles.filter((f) => existsSync(join(root, f)));
   const missing = markerFiles.filter((f) => !existsSync(join(root, f)));
@@ -53,8 +59,12 @@ const archiveAll = walkMarkdown('docs/archive');
 const archiveIndex = archiveAll.filter((f) => f === 'docs/archive/README.md');
 const archiveBody = archiveAll.filter((f) => f !== 'docs/archive/README.md');
 const loadPrompt = buildLoadPrompt();
+const planModeFullPrompt = extractBacktickExport('packages/pi/extensions/plan-mode/utils.ts', 'PLAN_MODE_FULL_CONTEXT_PROMPT');
+const planModeCompactPrompt = extractBacktickExport('packages/pi/extensions/plan-mode/utils.ts', 'PLAN_MODE_COMPACT_CONTEXT_PROMPT');
 const groups = [
-  { name: 'Load prompt', files: 1, characters: loadPrompt.length, words: loadPrompt.trim().split(/\s+/).length, approxTokens: Math.ceil(loadPrompt.length / 4), notes: 'Generated from current /dd:load prompt shape' },
+  { name: 'Load prompt', files: 1, characters: loadPrompt.length, words: loadPrompt.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(loadPrompt.length / 4), notes: 'Generated from current /dd:load prompt shape' },
+  { name: 'Plan Mode full prompt', files: 1, characters: planModeFullPrompt.length, words: planModeFullPrompt.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(planModeFullPrompt.length / 4), notes: 'First active planning turn after /plan' },
+  { name: 'Plan Mode compact reminder', files: 1, characters: planModeCompactPrompt.length, words: planModeCompactPrompt.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(planModeCompactPrompt.length / 4), notes: 'Later planning turns after the full prompt was injected' },
   measureFiles('Baseline memory', markerFiles, 'AGENTS/CLAUDE/CODEX/root/docs indexes'),
   measureFiles('Docs indexes', docsIndexes, 'README indexes; archive bodies excluded by default'),
   measureFiles('Default docs surface', defaultDocs, 'spec/arch/test/plan; archive excluded from directory summary'),

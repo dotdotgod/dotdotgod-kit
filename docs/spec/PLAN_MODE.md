@@ -66,7 +66,7 @@ If compaction and load are both needed, Plan Mode requests compaction first, the
 
 Plan mode automatically requests planning-focused compaction when context is large enough to hurt plan quality. It does not compact immediately when `/plan` is toggled on; it checks once after the first user planning request for that Plan Mode session. Later planning turns record debug metrics but do not automatically re-run load or compaction decisions.
 
-The extension passes planning-specific `customInstructions` to `ctx.compact()` so compaction preserves information useful for the next plan. Instructions start with the compaction reason, then include a `Current work focus:` section derived from available local state:
+The extension passes planning-specific `customInstructions` to `ctx.compact()` so compaction preserves information useful for the next plan without retaining stale session history. Instructions start with the compaction reason, then include a `Current work focus:` section derived from available local state:
 
 - latest user planning request
 - active plan path or touched docs/plan and docs/archive files
@@ -76,16 +76,18 @@ The extension passes planning-specific `customInstructions` to `ctx.compact()` s
 
 The durable preservation rules then ask compaction to keep:
 
+- latest user request
 - user decisions and constraints
 - active plan task slug, path, and status
+- current target files
 - touched docs/plan and docs/archive files
-- active docs/spec, docs/test, and docs/arch context
+- relevant docs/spec, docs/test, and docs/arch context
 - implementation decisions
-- verification results and command outcomes
+- verification commands, results, and command outcomes
 - unresolved risks, questions, and next steps
 - completed `[DONE:n]` markers when present
 
-Compaction omits low-value discussion, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail.
+Compaction demotes or omits old completed plans unless directly relevant, repeated project-load summaries, package publish history unless task-related, generic Plan Mode boilerplate recoverable from runtime prompts, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail.
 
 Plan Mode compaction uses moderately proactive token criteria:
 
@@ -102,6 +104,8 @@ When the Pi adapter is started with `--dd-context-debug`, Plan Mode records loca
 Events include context usage when available, git state, compaction reason, current-work focus, entry counts, and todo counts where relevant. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
 
 ## Plan Review Choice
+
+Plan Mode uses tiered hidden runtime instructions. The first active planning turn after Plan Mode is enabled receives the full safety and workflow prompt. Later planning turns receive a compact reminder that preserves non-negotiable restrictions while avoiding repeated boilerplate in the context.
 
 When the agent finishes planning after creating or updating an active plan markdown file under `docs/plan/`, plan mode asks whether to execute, stay in plan mode, or refine the plan.
 
