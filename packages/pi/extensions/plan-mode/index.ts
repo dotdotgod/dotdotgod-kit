@@ -7,10 +7,8 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Key, matchesKey, truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
-import { createHash } from "node:crypto";
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { basename, isAbsolute, relative, resolve } from "node:path";
+import { Key } from "@earendil-works/pi-tui";
+import { isAbsolute, relative, resolve } from "node:path";
 import { extractTodoItems, isSafeCommand, markCompletedSteps, type TodoItem } from "./utils.js";
 
 const PLAN_DIRECTORY = "docs/plan";
@@ -93,25 +91,6 @@ function isManagedPlanMarkdownPath(cwd: string, path: string): boolean {
 	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY) || isMarkdownPathInside(cwd, path, ARCHIVE_DIRECTORY);
 }
 
-function isActivePlanMarkdownPath(cwd: string, path: string): boolean {
-	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY);
-}
-
-function toRelativeDisplayPath(cwd: string, path: string): string {
-	const targetPath = resolve(cwd, normalizeToolPath(path));
-	return relative(cwd, targetPath) || normalizeToolPath(path);
-}
-
-function hashContent(content: string): string {
-	return createHash("sha256").update(content).digest("hex");
-}
-
-function buildPlanPreview(relativePath: string, content: string, otherTouchedPaths: string[]): string {
-	const body = content.trim();
-	const otherFiles = otherTouchedPaths.length > 0 ? `\n\nOther touched plan files:\n${otherTouchedPaths.map((p) => `- ${p}`).join("\n")}` : "";
-	return `**Saved plan:** \`${relativePath}\`\n\n${body}${otherFiles}`;
-}
-
 function getToolPath(input: unknown): string | undefined {
 	if (!input || typeof input !== "object") return undefined;
 	const path = (input as { path?: unknown }).path;
@@ -122,8 +101,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let planModeEnabled = false;
 	let executionMode = false;
 	let todoItems: TodoItem[] = [];
-	let touchedPlanPaths: string[] = [];
-	let lastShownPlanPreview: { path: string; hash: string; mtimeMs: number } | undefined;
 
 	pi.registerFlag("plan", {
 		description: "Start in plan mode (safe exploration plus docs/plan updates)",
@@ -162,7 +139,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		todoItems = [];
 
 		if (planModeEnabled) {
-			touchedPlanPaths = [];
 			pi.setActiveTools(PLAN_MODE_TOOLS);
 			ctx.ui.notify(`Plan mode enabled. Tools: ${PLAN_MODE_TOOLS.join(", ")}`);
 		} else {
@@ -177,133 +153,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			enabled: planModeEnabled,
 			todos: todoItems,
 			executing: executionMode,
-			lastShownPlanPreview,
-		});
-	}
-
-	function rememberTouchedPlanPath(cwd: string, path: string): void {
-		const relativePath = toRelativeDisplayPath(cwd, path);
-		touchedPlanPaths = touchedPlanPaths.filter((candidate) => candidate !== relativePath);
-		touchedPlanPaths.push(relativePath);
-	}
-
-	function selectPlanPreviewPath(cwd: string): string | undefined {
-		const existing = touchedPlanPaths.filter((path) => existsSync(resolve(cwd, path)));
-		if (existing.length === 0) return undefined;
-
-		const readme = [...existing].reverse().find((path) => basename(path) === "README.md");
-		return readme ?? existing[existing.length - 1];
-	}
-
-	function consumeTouchedPlanPreview(ctx: ExtensionContext): string | undefined {
-		const selectedPath = selectPlanPreviewPath(ctx.cwd);
-		if (!selectedPath) return undefined;
-
-		try {
-			const absolutePath = resolve(ctx.cwd, selectedPath);
-			const stat = statSync(absolutePath);
-			const content = readFileSync(absolutePath, "utf8");
-			const hash = hashContent(content);
-			if (
-				lastShownPlanPreview?.path === selectedPath &&
-				lastShownPlanPreview.hash === hash &&
-				lastShownPlanPreview.mtimeMs === stat.mtimeMs
-			) {
-				return undefined;
-			}
-
-			const otherTouchedPaths = touchedPlanPaths.filter((path) => path !== selectedPath);
-			lastShownPlanPreview = { path: selectedPath, hash, mtimeMs: stat.mtimeMs };
-			persistState();
-			return buildPlanPreview(selectedPath, content, otherTouchedPaths);
-		} catch (error) {
-			ctx.ui.notify(
-				`Plan file preview skipped: ${error instanceof Error ? error.message : String(error)}`,
-				"warning",
-			);
-			return undefined;
-		} finally {
-			touchedPlanPaths = [];
-		}
-	}
-
-	async function choosePlanActionWithPreview(
-		ctx: ExtensionContext,
-		planPreview: string,
-		actions: string[],
-	): Promise<string | null> {
-		const sourceLines = planPreview.split("\n");
-		return ctx.ui.custom<string | null>((tui, theme, _keybindings, done) => {
-			let scrollOffset = 0;
-			let selectedIndex = 0;
-			let currentWidth = 80;
-			const previewRows = 24;
-
-			function wrapPreview(width: number): string[] {
-				return sourceLines.flatMap((line) => (line.length === 0 ? [""] : wrapTextWithAnsi(line, width)));
-			}
-
-			function requestRender(): void {
-				tui.requestRender();
-			}
-
-			function moveScroll(delta: number): void {
-				const maxOffset = Math.max(0, wrapPreview(currentWidth).length - previewRows);
-				scrollOffset = Math.max(0, Math.min(maxOffset, scrollOffset + delta));
-				requestRender();
-			}
-
-			return {
-				render(width: number) {
-					const safeWidth = Math.max(1, width);
-					currentWidth = safeWidth;
-					const wrapped = wrapPreview(safeWidth);
-					const maxOffset = Math.max(0, wrapped.length - previewRows);
-					scrollOffset = Math.max(0, Math.min(maxOffset, scrollOffset));
-					const visible = wrapped.slice(scrollOffset, scrollOffset + previewRows);
-					const footer =
-						maxOffset > 0
-							? `Preview ${scrollOffset + 1}-${Math.min(scrollOffset + previewRows, wrapped.length)} of ${wrapped.length} · j/k scroll · d/u page`
-							: "Preview fits · choose an action below";
-					const actionLines = actions.map((action, index) => {
-						const prefix = index === selectedIndex ? "› " : "  ";
-						const styled = index === selectedIndex ? theme.fg("accent", `${prefix}${action}`) : `${prefix}${action}`;
-						return truncateToWidth(styled, safeWidth);
-					});
-					return [
-						truncateToWidth(theme.fg("accent", theme.bold("Saved plan preview")), safeWidth),
-						truncateToWidth(theme.fg("muted", footer), safeWidth),
-						"",
-						...visible,
-						"",
-						truncateToWidth(theme.fg("accent", theme.bold("Plan mode - choose next action")), safeWidth),
-						...actionLines,
-						truncateToWidth(theme.fg("dim", "↑↓ choose · Enter select · Esc stay in plan mode"), safeWidth),
-					];
-				},
-				invalidate() {},
-				handleInput(data: string) {
-					if (matchesKey(data, Key.enter)) {
-						done(actions[selectedIndex] ?? null);
-					} else if (matchesKey(data, Key.escape) || data === "q") {
-						done("Stay in plan mode");
-					} else if (matchesKey(data, Key.down)) {
-						selectedIndex = Math.min(actions.length - 1, selectedIndex + 1);
-						requestRender();
-					} else if (matchesKey(data, Key.up)) {
-						selectedIndex = Math.max(0, selectedIndex - 1);
-						requestRender();
-					} else if (data === "j") {
-						moveScroll(1);
-					} else if (data === "k") {
-						moveScroll(-1);
-					} else if (data === "d") {
-						moveScroll(previewRows);
-					} else if (data === "u") {
-						moveScroll(-previewRows);
-					}
-				},
-			};
 		});
 	}
 
@@ -350,9 +199,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 					block: true,
 					reason: `Plan mode: ${event.toolName} is only allowed for markdown plan files under ${PLAN_DIRECTORY}/ or ${ARCHIVE_DIRECTORY}/. Directories must be kebab-case and markdown file names must be UPPER_SNAKE_CASE.md. Use execution mode for source changes.`,
 				};
-			}
-			if (isActivePlanMarkdownPath(ctx.cwd, path)) {
-				rememberTouchedPlanPath(ctx.cwd, path);
 			}
 		}
 	});
@@ -480,29 +326,12 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			}
 		}
 
-		const selectedPreviewPath = selectPlanPreviewPath(ctx.cwd);
-		if (todoItems.length === 0 && selectedPreviewPath) {
-			try {
-				const planContent = readFileSync(resolve(ctx.cwd, selectedPreviewPath), "utf8");
-				const extracted = extractTodoItems(planContent);
-				if (extracted.length > 0) {
-					todoItems = extracted;
-				}
-			} catch {
-				// Preview rendering below will surface any file-access issue; todo fallback can be skipped silently.
-			}
-		}
-
-		const planPreview = consumeTouchedPlanPreview(ctx);
-
 		const actionChoices = [
 			todoItems.length > 0 ? "Execute the plan (track progress)" : "Execute the plan",
 			"Stay in plan mode",
 			"Refine the plan",
 		];
-		const choice = planPreview
-			? await choosePlanActionWithPreview(ctx, planPreview, actionChoices)
-			: await ctx.ui.select("Plan mode - choose next action", actionChoices);
+		const choice = await ctx.ui.select("Plan mode - choose next action", actionChoices);
 
 		if (todoItems.length > 0 && choice?.startsWith("Execute the plan")) {
 			const todoListText = todoItems.map((t, i) => `${i + 1}. ☐ ${t.text}`).join("\n");
@@ -553,7 +382,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 						enabled: boolean;
 						todos?: TodoItem[];
 						executing?: boolean;
-						lastShownPlanPreview?: { path: string; hash: string; mtimeMs: number };
 					};
 			  }
 			| undefined;
@@ -562,7 +390,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			planModeEnabled = planModeEntry.data.enabled ?? planModeEnabled;
 			todoItems = planModeEntry.data.todos ?? todoItems;
 			executionMode = planModeEntry.data.executing ?? executionMode;
-			lastShownPlanPreview = planModeEntry.data.lastShownPlanPreview ?? lastShownPlanPreview;
 		}
 
 		const isResume = planModeEntry !== undefined;
