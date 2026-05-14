@@ -26,6 +26,8 @@ Agents work better from shaped project memory than from raw conversation history
 - **Safer execution:** planning happens before source changes, and execution follows explicit steps.
 - **Reusable history:** completed plans and reports become future context instead of disappearing into chat logs.
 
+Read the detailed concept docs: [Context curation](docs/concept/CONTEXT_CURATION.md), [Context mechanics](docs/concept/CONTEXT_MECHANICS.md), and [Measurement design](docs/concept/MEASUREMENT_DESIGN.md).
+
 ## Install the Adapter You Need
 
 | Package | Use it for |
