@@ -38,6 +38,8 @@ Run CLI graph query smoke directly:
 
 ```bash
 node packages/cli/bin/dotdotgod.mjs graph query . --changed packages/pi/extensions/plan-mode/index.ts --json
+node packages/cli/bin/dotdotgod.mjs graph communities . --json
+node packages/cli/bin/dotdotgod.mjs load-snapshot . --json
 ```
 
 Run all workspace package checks:

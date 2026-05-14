@@ -659,14 +659,73 @@ export function buildImpactReport(index, changedPath, limits = {}) {
   return { changed: changedPath, related, groups, omittedRelated: Math.max(0, relatedIds.size - related.length) };
 }
 
+function communityKeyForNode(node) {
+  const path = node.path ?? node.id?.replace(/^file:/, '').replace(/^test:/, '') ?? '';
+  if (path.startsWith('packages/pi/extensions/plan-mode/')) return 'pi-plan-mode';
+  if (path.startsWith('packages/pi/extensions/load-project/')) return 'pi-load-project';
+  if (path.startsWith('packages/pi/extensions/context-metrics/')) return 'pi-context-metrics';
+  if (path.startsWith('packages/cli/')) return 'cli';
+  if (path.startsWith('packages/claude-code/')) return 'claude-code-adapter';
+  if (path.startsWith('packages/codex/')) return 'codex-adapter';
+  if (path.startsWith('packages/shared/')) return 'shared-adapter-resources';
+  const area = docsArea(path);
+  if (area) return `docs-${area}`;
+  if (node.type === 'package' || node.type === 'script' || node.type === 'binary' || node.type === 'dependency' || node.type === 'package_resource') return 'package-metadata';
+  if (node.type === 'command') return `command-${node.name}`;
+  if (node.type === 'event') return `event-${node.name.split(':')[0]}`;
+  return 'project-root';
+}
+
+function communityLabel(id) {
+  return id.split('-').map((part) => part ? part[0].toUpperCase() + part.slice(1) : part).join(' ');
+}
+
+function addBounded(list, value, limit) {
+  if (!value || list.includes(value)) return 0;
+  if (list.length >= limit) return 1;
+  list.push(value);
+  return 0;
+}
+
+export function buildCommunities(index, limits = {}) {
+  const graph = index?.graph ?? { nodes: [], edges: [] };
+  const maxCommunities = limits.communities ?? 8;
+  const itemLimit = limits.items ?? 8;
+  const map = new Map();
+  for (const node of graph.nodes) {
+    const id = communityKeyForNode(node);
+    if (!map.has(id)) map.set(id, { id, label: communityLabel(id), files: [], docs: [], commands: [], events: [], tests: [], packageResources: [], nodeCount: 0, edgeCount: 0, omitted: 0 });
+    const community = map.get(id);
+    community.nodeCount += 1;
+    const path = node.path ?? node.id?.replace(/^file:/, '').replace(/^test:/, '');
+    if (node.type === 'file') {
+      const area = docsArea(path);
+      community.omitted += addBounded(area ? community.docs : community.files, path, itemLimit);
+    } else if (node.type === 'heading' && node.path) community.omitted += addBounded(community.docs, node.path, itemLimit);
+    else if (node.type === 'command') community.omitted += addBounded(community.commands, node.name, itemLimit);
+    else if (node.type === 'event') community.omitted += addBounded(community.events, node.name, itemLimit);
+    else if (node.type === 'test') community.omitted += addBounded(community.tests, node.path, itemLimit);
+    else if (node.type === 'package_resource') community.omitted += addBounded(community.packageResources, `${node.kind}:${node.target}`, itemLimit);
+  }
+  const nodeToCommunity = new Map(graph.nodes.map((node) => [node.id, communityKeyForNode(node)]));
+  for (const edge of graph.edges) {
+    const source = nodeToCommunity.get(edge.source);
+    const target = nodeToCommunity.get(edge.target);
+    if (source && source === target && map.has(source)) map.get(source).edgeCount += 1;
+  }
+  const all = [...map.values()].sort((a, b) => (b.nodeCount + b.edgeCount) - (a.nodeCount + a.edgeCount) || a.id.localeCompare(b.id));
+  return { communities: all.slice(0, maxCommunities), omitted: Math.max(0, all.length - maxCommunities), total: all.length, method: 'deterministic-domain-grouping' };
+}
+
 export function runLoadSnapshot(argv) {
   const options = parseCommon(argv);
   const status = getStatus(options.root);
   const index = readIndex(options.root);
   const summary = graphSummary(index);
-  const payload = { root: options.root, cache: status, graph: summary, note: 'Leiden-style community detection is planned after deterministic graph extraction.' };
+  const communities = buildCommunities(index, { communities: 5, items: 5 });
+  const payload = { root: options.root, cache: status, graph: summary, communities, bounds: { communities: 5, communityItems: 5, fullGraphIncluded: false } };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
-  else console.log(`dotdotgod load snapshot\n- cache: ${status.status}\n- indexed files: ${status.indexedFiles}\n- current files: ${status.currentFiles}\n- archive bodies included: ${status.archiveBodiesIncluded ? 'yes' : 'no'}\n- graph: ${summary.nodes} nodes, ${summary.edges} edges\n- graph communities: planned`);
+  else console.log(`dotdotgod load snapshot\n- cache: ${status.status}\n- indexed files: ${status.indexedFiles}\n- current files: ${status.currentFiles}\n- archive bodies included: ${status.archiveBodiesIncluded ? 'yes' : 'no'}\n- graph: ${summary.nodes} nodes, ${summary.edges} edges\n- communities: ${communities.communities.length}/${communities.total} shown, ${communities.omitted} omitted`);
 }
 
 export function parseGraphOptions(argv) {
@@ -689,9 +748,12 @@ export function runGraph(argv) {
   const impact = options.changed ? buildImpactReport(index, options.changed) : undefined;
   const payload = sub === 'query'
     ? { ok: status.ok, command: 'graph query', root: options.root, status, changed: options.changed, related: impact?.related ?? [], impact }
-    : { ok: status.ok, command: `graph ${sub}`, root: options.root, status, graph: graphSummary(index), note: 'Leiden-style community detection is planned after deterministic graph extraction.' };
+    : sub === 'communities'
+      ? { ok: status.ok, command: 'graph communities', root: options.root, status, graph: graphSummary(index), communities: buildCommunities(index) }
+      : { ok: status.ok, command: `graph ${sub}`, root: options.root, status, graph: graphSummary(index) };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else if (sub === 'query') console.log(`graph query: ${payload.related.length} related node(s), ${impact?.omittedRelated ?? 0} omitted (${status.status} index)`);
+  else if (sub === 'communities') console.log(`graph communities: ${payload.communities.communities.length}/${payload.communities.total} shown, ${payload.communities.omitted} omitted (${status.status} index)`);
   else console.log(`${payload.command}: ${payload.graph.nodes} nodes, ${payload.graph.edges} edges (${status.status} index)`);
 }
 

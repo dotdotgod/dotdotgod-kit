@@ -64,6 +64,12 @@ describe('dotdotgod CLI e2e', () => {
     assert(snapshot.graph.byType.export >= 1);
     assert(snapshot.graph.byType.package_resource >= 1);
     assert(snapshot.graph.byType.command >= 1);
+    assert.equal(snapshot.bounds.fullGraphIncluded, false);
+    assert(snapshot.communities.communities.length > 0);
+
+    const communities = json(run(['graph', 'communities', root, '--json']));
+    assert.equal(communities.command, 'graph communities');
+    assert(communities.communities.communities.length > 0);
 
     const query = json(run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--json']));
     assert.equal(query.command, 'graph query');
