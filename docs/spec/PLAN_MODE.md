@@ -64,7 +64,7 @@ If compaction and load are both needed, Plan Mode requests compaction first, the
 
 ## Planning-Focused Compaction
 
-Plan mode automatically requests planning-focused compaction when context is large enough to hurt plan quality. It does not compact immediately when `/plan` is toggled on; it checks after the first user planning request and after later planning turns while Plan Mode remains active.
+Plan mode automatically requests planning-focused compaction when context is large enough to hurt plan quality. It does not compact immediately when `/plan` is toggled on; it checks once after the first user planning request for that Plan Mode session. Later planning turns record debug metrics but do not automatically re-run load or compaction decisions.
 
 The extension passes planning-specific `customInstructions` to `ctx.compact()` so compaction preserves information useful for the next plan. Instructions start with the compaction reason, then include a `Current work focus:` section derived from available local state:
 
@@ -93,11 +93,11 @@ Plan Mode compaction uses moderately proactive token criteria:
 - context tokens within 32,000 tokens of the context window when window size is available
 - 100,000 context tokens as a fallback when only token count is available
 
-The extension debounces repeated compactions, skips compaction during execution mode, and continues without blocking if compaction fails. The debounce is intentionally short enough to allow useful re-compaction during long planning sessions while still avoiding repeated immediate compactions.
+The extension skips compaction during execution mode and continues without blocking if compaction fails. Repeated automatic compaction/load during the same planning session is intentionally avoided; users can start a fresh planning session by toggling Plan Mode off and on when they want a new context-shaping decision.
 
 ## Debug Measurement
 
-When the Pi adapter is started with `--dd-context-debug`, Plan Mode records local JSONL measurement events for Plan Mode entry, initial context-shaping checks, planning turn end, compaction request, compaction completion/error, and execution start.
+When the Pi adapter is started with `--dd-context-debug`, Plan Mode records local JSONL measurement events for Plan Mode entry, the first-request context-shaping check, planning turn end, compaction request, compaction completion/error, and execution start.
 
 Events include context usage when available, git state, compaction reason, current-work focus, entry counts, and todo counts where relevant. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
 

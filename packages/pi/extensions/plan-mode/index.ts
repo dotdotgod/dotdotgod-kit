@@ -479,7 +479,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 	pi.on("turn_end", async (event, ctx) => {
 		if (planModeEnabled && !executionMode) {
 			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:turn-end", { entryCount: getSessionEntryCount(ctx) });
-			shapePlanningContextIfNeeded(ctx);
 		}
 
 		if (!executionMode || todoItems.length === 0) return;

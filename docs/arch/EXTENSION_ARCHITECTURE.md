@@ -47,7 +47,7 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 - read-only bash allowlist enforcement
 - session state for plan mode, execution mode, todos, active plan-file touch tracking, touched plan/archive paths, latest planning request, pending first-request context shaping, and plan-compaction debounce metadata
 - concise execute/stay/refine review prompt after active plan file updates, without saved-plan preview rendering
-- automatic planning-focused `ctx.compact({ customInstructions })` requests after user planning requests when a long or noisy session may hurt plan quality
+- one-time planning-focused `ctx.compact({ customInstructions })` and curated-load decisions after the first user planning request when a long or noisy session may hurt plan quality
 - current-work-directed compaction instructions that include the latest task focus before the durable preservation rules
 
 Plan mode injects runtime instructions because project docs can be edited by users. The prompt should stay generic and must not contain app-specific stack assumptions.
@@ -99,7 +99,7 @@ Prompt content should:
 - active plan-file touch tracking for review-prompt eligibility
 - pending first-request context shaping state
 - latest planning request and touched plan/archive paths for current-work compaction focus
-- last planning compaction entry count/reason for debounce
+- last planning compaction entry count/reason for measurement and resume continuity
 
 ## Future Search Architecture
 

@@ -102,7 +102,7 @@ Plan mode review choice and todo extraction:
 10. Send the first planning request and confirm Pi shows `Planning context is large; compacting before continuing.` followed by `Planning compaction completed.` only when context thresholds are met.
 11. Confirm the Plan Mode compaction request uses planning-specific `customInstructions` that preserve decisions, active plan status, relevant docs, verification results, next steps, and `[DONE:n]` markers.
 12. Confirm compaction instructions include `Current work focus:` with the latest planning request, active/touched plan paths, todo state when present, pending load-after-compaction state, and archive/pnpm/source-mutation constraints.
-13. Confirm repeated Plan Mode turns immediately after compaction do not trigger another compaction until enough new session entries exist.
+13. Confirm later planning turns in the same Plan Mode session do not automatically trigger another load or compaction decision; context shaping runs only for the first planning request after Plan Mode is enabled.
 
 Claude Code adapter local plugin smoke:
 
