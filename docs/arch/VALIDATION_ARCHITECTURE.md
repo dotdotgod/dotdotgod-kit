@@ -53,7 +53,8 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - Agent-facing read commands such as `dotdotgod load-snapshot` and `dotdotgod graph ...` lazily refresh missing or stale caches before returning output.
 - Lazy refresh output includes `metadata.cacheRefreshed` and refresh details so callers can tell when a read command updated `.dotdotgod/`.
 - Completion hooks that refresh the index are optional; the default workflow relies on lazy refresh instead of mutating the cache after every task.
-- The Husky pre-push hook validates docs and checks `dotdotgod status` instead of running `dotdotgod index`, so the hook detects stale caches without hidden cache mutation.
+- `pnpm run verify:cache` validates docs, runs `dotdotgod index`, and then checks `dotdotgod status`, so local verification and Husky pre-push refresh stale cache automatically before asserting freshness.
+- The Husky pre-push hook runs `verify:cache`, so it may update the ignored `.dotdotgod/` cache as a local side effect while keeping tracked source/docs changes explicit.
 
 The index records file fingerprints, cache metadata, and a deterministic graph. Current graph extraction covers Markdown headings/links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Graph storage uses a compact tuple schema in shards so multi-year projects do not depend on one large JSON file. Community summaries use `leiden-ts` over a weighted durable-node projection with deterministic domain grouping as a fallback.
 

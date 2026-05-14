@@ -175,7 +175,7 @@ Pre-push hook:
 pnpm run verify && pnpm run verify:cache && pnpm run pack:dry-run
 ```
 
-`verify:cache` runs docs validation and `dotdotgod status`; it does not run `dotdotgod index`, so pre-push detects stale caches without hidden mutation.
+`verify:cache` runs docs validation, `dotdotgod index`, and `dotdotgod status`, so pre-push refreshes the ignored `.dotdotgod/` cache automatically before checking freshness.
 
 Run it manually with:
 
