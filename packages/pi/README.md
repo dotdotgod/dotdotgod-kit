@@ -1,19 +1,39 @@
 # @dotdotgod/pi
 
-Pi adapter for dotdotgod's context curation workflow. It turns a repository into structured project memory for AI coding agents: durable rules, specs, architecture, test strategy, active plans, archived decisions, and a bounded load snapshot.
+Pi adapter for dotdotgod's context curation workflow. **Start with the `project-initializer` skill**: it creates the structured project memory scaffold that makes `/dd:load`, `/plan`, and future agent handoffs useful.
 
-Use it when you want Pi to start from the right project context instead of rediscovering the repository from scratch every session.
+Use it when you want Pi to turn a repository into durable agent memory: shared rules, specs, architecture, test strategy, active plans, archived decisions, and a bounded load snapshot.
+
+## Start Here: Initialize Project Memory
+
+After installing the package, ask Pi to initialize or normalize the project memory scaffold. The bundled skill is named `project-initializer` and is triggered by requests like:
+
+```text
+Initialize this project with dotdotgod.
+Set up AGENTS.md, CLAUDE.md, CODEX.md, and docs folders.
+Create a doc-first project baseline for this repository.
+```
+
+For deterministic setup, the skill uses the bundled shell script:
+
+```bash
+sh skills/project-initializer/scripts/init_project.sh --dry-run --project-name <name> <project-root>
+sh skills/project-initializer/scripts/init_project.sh --project-name <name> <project-root>
+```
+
+The initializer is the first step: it creates the structure that later lets `/dd:load` find the right context and `/plan` write durable task intent.
 
 ## What You Get
 
-- **Structured project memory:** initialize `AGENTS.md`, docs indexes, active plans, and archive maps so project knowledge has a stable home.
+- **Project initializer skill:** create `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs indexes, active-plan space, archive map, and local memory ignores.
+- **Structured project memory:** give project knowledge a stable home before the agent starts loading or planning.
 - **Task-directed loading:** `/dd:load` starts from a bounded `dotdotgod load-snapshot` map when available, then reads only relevant docs.
 - **Safer planning:** `/plan` keeps source/config changes blocked while the agent writes or updates a durable plan under `docs/plan/`.
 - **Execution continuity:** completed plan steps are reported with explicit `[DONE:n]` markers, making progress recoverable after long sessions or compaction.
 - **Reusable history:** completed work moves to `docs/archive/plan/`, while `docs/archive/README.md` remains the lightweight history map for future tasks.
 - **Cross-agent conventions:** the same `AGENTS.md`, docs, plan, and archive structure also works with dotdotgod's Claude Code and Codex adapters.
 
-## The Memory Shape It Creates
+## The Memory Shape Initialized by the Skill
 
 ```text
 AGENTS.md                    # canonical working rules for agents
@@ -51,7 +71,7 @@ pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 
 ## Included
 
-- `project-initializer` skill: creates `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs folders, README indexes, and local memory ignores.
+- `project-initializer` skill: the starting point; creates `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs folders, README indexes, and local memory ignores.
 - `plan-mode` extension: read-first planning mode with restricted tools, docs/plan writes, execution tracking, tiered hidden prompts, and `/todos`.
 - `load-project` extension: read-only project context loading through `/load` and `/dd:load`, using `dotdotgod load-snapshot` when available with a lightweight fallback.
 
