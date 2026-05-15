@@ -4,11 +4,13 @@ dotdotgod is a context curation kit for AI coding agents.
 
 It is not primarily about saving tokens. It is about giving agents the right project memory: rules, decisions, current intent, architecture, verification history, and completed work, organized so agents can continue without rediscovering the project.
 
+It is for builders who use coding agents but still want product intent, design rationale, verification standards, and project memory to remain clear and durable. Coding agents can help write, refine, and navigate the documents, but the project still needs a stable source of truth for what should be built, why, and how it is verified.
+
 Repository: <https://github.com/dotdotgod/dotdotgod>
 
 ## Core Idea
 
-Agents work better from shaped project memory than from raw conversation history. dotdotgod turns scattered repo knowledge into a reusable context system:
+Agents work better from shaped project memory than from raw conversation history. dotdotgod turns scattered repo knowledge into a reusable context system that keeps product decisions reviewable while coding agents do the implementation work:
 
 - `AGENTS.md` for canonical working rules.
 - `docs/spec/` for product truth and expected behavior.
@@ -34,7 +36,7 @@ docs/
   archive/README.md          # completed-work history map, ignored by git
 ```
 
-This structure separates stable project truth from temporary chat state. Specs explain what should happen, architecture explains why it is built that way, tests explain how to verify it, plans capture current intent before implementation, and archive indexes make completed decisions discoverable later.
+This structure separates stable project truth from temporary chat state. Specs explain what should happen, architecture explains why it is built that way, tests explain how to verify it, plans capture current intent before implementation, and archive indexes make completed decisions discoverable later. The workflow treats documentation as part of product execution, not as after-the-fact notes.
 
 ## Why Loading Works Better with This Structure
 

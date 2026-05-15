@@ -9,6 +9,7 @@ Command-line tools for dotdotgod project memory. The CLI validates the docs scaf
 - Use `load-snapshot` as the bounded first-pass map for agent loading instead of embedding every doc or archive body.
 - Query likely side effects with grouped, bounded graph impact reports.
 - Turn dotdotgod's docs structure into retrieval priors: specs, architecture, tests, active plans, and archive maps become explicit memory-area hints instead of generic files.
+- Keep product intent, design rationale, and verification standards discoverable as structured project memory for coding agents.
 - Keep indexing generic: discovery follows gitignore-visible files and supported text/source/config formats rather than assuming a pnpm monorepo.
 
 ## Commands

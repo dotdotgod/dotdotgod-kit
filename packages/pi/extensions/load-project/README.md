@@ -2,7 +2,7 @@
 
 Pi extension that starts a read-only project memory loading turn for the current working directory.
 
-See the behavior contract in [`docs/spec/LOAD_PROJECT.md`](../../docs/spec/LOAD_PROJECT.md) and the extension boundary notes in [`docs/arch/EXTENSION_ARCHITECTURE.md`](../../docs/arch/EXTENSION_ARCHITECTURE.md).
+See the workspace behavior contract in `docs/spec/LOAD_PROJECT.md` and the extension boundary notes in `docs/arch/EXTENSION_ARCHITECTURE.md`.
 
 ## Commands
 
@@ -32,8 +32,9 @@ The agent is instructed to:
 - follow local `README.md` indexes
 - follow domain directories such as `docs/<area>/<domain>/README.md`
 - follow expanded convention directories such as `docs/arch/conventions/README.md`
-- list `docs/plan` and `docs/archive` first, then selectively read relevant files
-- distinguish completed plan archives under `docs/archive/plan/` from temporary reports under `docs/archive/report/`
+- list `docs/plan` first, then selectively read relevant active plan files
+- use `docs/archive/README.md` as the archive history map instead of scanning archive bodies by default
+- distinguish completed plan archives under `docs/archive/plan/` from temporary reports under `docs/archive/report/` when targeted archive lookup is needed
 - summarize project purpose, working rules, commands, docs map, architecture/code conventions, active plans, relevant archives, and TODO/TBD items
 
 ## Notes

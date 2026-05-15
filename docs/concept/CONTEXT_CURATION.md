@@ -4,7 +4,9 @@
 
 dotdotgod is built around context curation: giving AI coding agents the project memory that matters, in a shape they can reliably use.
 
-The goal is not primarily to save tokens. Token reduction can happen as a side effect, but the real goal is to reduce context noise. Agents work better when decisions, constraints, current intent, and verification history are easy to find instead of buried in raw chat history, repeated tool output, or stale instructions.
+The goal is not primarily to save tokens. Token reduction can happen as a side effect, but the real goal is to reduce context noise and preserve decision quality. Agents work better when product intent, design rationale, constraints, current intent, and verification history are easy to find instead of buried in raw chat history, repeated tool output, or stale instructions.
+
+This makes dotdotgod useful for builders who want coding agents to help with implementation while keeping the source of truth for what should be built, why it should be built that way, and how it will be verified in durable project memory.
 
 ## Problem
 
@@ -17,6 +19,7 @@ AI coding agents often start work from a noisy mix of context:
 - half-finished plans
 - product expectations hidden in issue text or chat
 - architecture constraints hidden in source files
+- verification standards that are implied instead of written down
 - verification results that disappear after the session ends
 
 More context does not always help. If important project decisions are mixed with irrelevant history, agents may spend attention on the wrong details, re-ask solved questions, or infer rules that already exist somewhere else.
@@ -30,8 +33,9 @@ Curated context means project memory is:
 - **durable:** plans and decisions survive session boundaries
 - **structured:** agents know where to look for rules, specs, architecture, tests, active work, and archives
 - **shared:** different agents can use the same project contract
+- **reviewable:** product and engineering decisions have a place where people and agents can inspect them
 
-This makes the useful context more available without dumping every possible detail into every turn.
+This makes the useful context more available without dumping every possible detail into every turn. Coding agents can help draft and maintain the documents, but the project still keeps a stable source of truth outside the chat transcript.
 
 ## Memory Layers
 
@@ -51,19 +55,19 @@ Effect: different agents start from the same rules.
 
 Product behavior, API contracts, and user-facing requirements.
 
-Effect: agents can check what the project is supposed to do before changing how it works.
+Effect: agents can check what the project is supposed to do before changing how it works, and product intent stays reviewable across tasks.
 
 ### `docs/arch/`
 
 Architecture decisions, module boundaries, code conventions, data flow, and integration constraints.
 
-Effect: implementation choices are less speculative because constraints are explicit.
+Effect: implementation choices are less speculative because constraints and design rationale are explicit.
 
 ### `docs/test/`
 
 Test strategy, regression cases, coverage notes, and manual verification records.
 
-Effect: agents can verify changes using project-specific expectations instead of generic guesses.
+Effect: agents can verify changes using project-specific standards instead of generic guesses.
 
 ### `docs/plan/`
 
@@ -125,7 +129,7 @@ For the detailed task workflow, Plan Mode compaction behavior, docs naming rules
 
 ## What dotdotgod Is Not
 
-- It is not a replacement for clear product or architecture docs.
+- It is not a replacement for clear product or architecture thinking.
 - It is not primarily a token optimizer.
 - It is not a vector database or automatic semantic memory system.
 - It is not a Graphify clone or repo-wide indexing system by default.

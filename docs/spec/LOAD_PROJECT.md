@@ -19,7 +19,7 @@ The command does not modify source, docs, or config files.
 
 It first tries to run `dotdotgod load-snapshot <cwd> --json` and include a bounded snapshot summary in the loader prompt. The CLI read can lazily refresh `.dotdotgod/` cache metadata when the cache is missing or stale. If the CLI is unavailable or returns invalid JSON, the command falls back to a lightweight snapshot of expected memory files and docs directories, then sends a read-only loader prompt to the agent.
 
-When the CLI snapshot is available, the prompt keeps the documentation directory summary compact and asks the agent to use communities, cache metadata, and README indexes before reading individual docs. The lightweight fallback still lists discovered markdown files so repositories without a valid snapshot remain usable.
+When the CLI snapshot is available, the prompt keeps the documentation directory summary compact and asks the agent to use memory areas, communities, cache metadata, and README indexes before reading individual docs. The lightweight fallback still lists discovered markdown files so repositories without a valid snapshot remain usable.
 
 The agent is instructed to use read-only tools such as:
 
@@ -47,7 +47,7 @@ The loader checks for these baseline files:
 
 The loader prompt asks the agent to:
 
-- use the `load-snapshot` summary first when present, including cache status, lazy refresh metadata, graph size, bounded community summaries, and archive inclusion policy
+- use the `load-snapshot` summary first when present, including cache status, lazy refresh metadata, graph size, bounded memory-area summaries, bounded community summaries, and archive inclusion policy
 - start with `AGENTS.md`, `README.md`, and `docs/README.md` when they are not already clear from the loaded context
 - summarize product, architecture, code conventions, infrastructure/runtime dependencies, and verification context
 - inspect docs/spec, docs/arch, and docs/test selectively instead of re-scanning every listed file unless a task needs a full refresh
@@ -78,7 +78,7 @@ The agent should summarize:
 
 ## Current Snapshot Integration
 
-`/load` and `/dd:load` now use the unified CLI load snapshot as the preferred bounded project-memory map. The prompt includes compact cache, refresh, graph, and community metadata but does not embed the full graph or archive bodies. `docs/archive/README.md` remains included as the archive map; other archive bodies remain excluded by default.
+`/load` and `/dd:load` now use the unified CLI load snapshot as the preferred bounded project-memory map. The prompt includes compact cache, refresh, graph, memory-area, and community metadata but does not embed the full graph or archive bodies. `docs/archive/README.md` remains included as the archive map; other archive bodies remain excluded by default.
 
 ## Future Extension Points
 
