@@ -19,12 +19,12 @@ Pi core packages are peer dependencies and are not bundled into the tarball.
 
 The npm package is published as `@dotdotgod/pi`.
 
-Distribution metadata is intentionally explicit:
+Distribution metadata:
 
 - `publishConfig.access` is `public`.
-- `pack:dry-run` runs `pnpm pack --dry-run --json` for package verification.
-- Keywords cover Pi packages, agent memory, documentation, skills, extensions, plan mode, and project/context loading.
-- The tarball should contain package resources under `skills/` and `extensions/`, plus package metadata and license files.
+- `pack:dry-run` runs `pnpm pack --dry-run --json`.
+- Keywords cover Pi packages, agent memory, documentation, skills, extensions, Plan Mode, and project/context loading.
+- Tarballs contain `skills/`, `extensions/`, package metadata, and license files.
 - Pi peer dependencies remain unbundled and are resolved by the host Pi installation.
 
 ## Resource Responsibilities
@@ -39,18 +39,12 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 
 `plan-mode` owns runtime planning behavior:
 
-- `/plan` command
-- `/todos` command
-- `Ctrl+Alt+P` shortcut
-- active tool selection for planning/execution
-- write/edit filtering for plan/archive markdown files
-- read-only bash allowlist enforcement, plus a user-confirmed one-command permission gate for agent-requested dotdotgod CLI commands
-- session state for plan mode, execution mode, todos, current active plan README path, active plan-file touch tracking, touched plan/archive paths, latest planning request, pending first-request context shaping, queued planning-load delivery, and plan-compaction debounce metadata
-- concise execute/stay/refine review prompt after active plan file updates, without saved-plan preview rendering
-- one-time planning-focused `ctx.compact({ customInstructions })` and queued curated-load decisions after the first user planning request when a long or noisy session may hurt plan quality
-- optional dotdotgod CLI planning-context checks after compaction that run validation, refresh bounded index/load-snapshot metadata, and attach a `graph impact` summary when a current-work path can be inferred
-- tiered hidden Plan Mode prompts: a full safety/workflow prompt for the first active planning turn and a compact restriction reminder for later turns
-- current-work-directed compaction instructions that include the latest task focus before the durable preservation rules and explicitly demote stale history or repeated boilerplate
+- Entry points: `/plan`, `/todos`, and `Ctrl+Alt+P`.
+- Tooling: planning/execution tool switching, optional `--plan-extra-tools`, plan/archive markdown write filters, read-only bash allowlist, and one-command approval for agent-requested dotdotgod CLI commands.
+- State: mode flags, todos, active plan README, touched plan/archive paths, latest planning request, first-request context shaping, queued planning-load delivery, compaction debounce, and CLI planning-context summary.
+- UX: concise execute/stay/refine review prompt after active plan updates, without saved-plan preview rendering.
+- Context shaping: one-time planning-focused compaction/load decisions after the first planning request, plus optional validation, bounded load-snapshot refresh, and `graph impact` summary when the CLI is available.
+- Prompts: first-turn full safety/workflow prompt, later compact reminder, resolved active tool list, and current-work-directed compaction instructions that demote stale history and repeated boilerplate.
 
 Plan mode injects runtime instructions because project docs can be edited by users. The prompt should stay generic and must not contain app-specific stack assumptions.
 
@@ -82,7 +76,9 @@ The shared CLI owns deterministic validation, cache/index management, bounded gr
 
 Extension prompts act as runtime safety and workflow layers.
 
-They may repeat a small amount of docs workflow guidance from `AGENTS.md` because project docs are user-editable and may be missing or customized.
+They may repeat a small amount of `AGENTS.md` workflow guidance because project docs are user-editable and may be missing or customized.
+
+Plan Mode prompts must match runtime permissions: source/code/config mutation is forbidden, plan/archive markdown updates are allowed, and optional external tools appear only when active.
 
 Prompt content should:
 
@@ -93,18 +89,7 @@ Prompt content should:
 
 ## State and Persistence
 
-`plan-mode` persists state through custom session entries:
-
-- enabled/disabled plan mode
-- todo items
-- execution mode
-- active plan-file touch tracking for review-prompt eligibility
-- pending first-request context shaping state
-- Plan Mode full-prompt injection state for compact reminder selection
-- latest planning request, current active plan README path, pending queued planning-load state, and touched plan/archive paths for current-work compaction focus
-- last planning compaction entry count/reason for measurement and resume continuity
-- pending planning-load prompt/reason so automatic project-memory loads can be flushed safely after active prompts complete
-- latest dotdotgod CLI planning-context summary and whether the one-time CLI check has run
+`plan-mode` persists custom session entries for mode state, todos, review-prompt eligibility, prompt tier, active plan path, touched plan/archive paths, latest planning request, queued load state, compaction measurements, and one-time CLI context-check state.
 
 ## Future Search Architecture
 

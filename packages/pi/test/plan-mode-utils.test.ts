@@ -11,10 +11,12 @@ import {
 	extractPathMentions,
 	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
+	parsePlanModeExtraTools,
 	isDotdotgodCliCommand,
 	isSafeCommand,
 	isSafePlanArchiveCommand,
 	markCompletedSteps,
+	resolvePlanModeTools,
 	selectPlanImpactPath,
 	shouldAllowPlanModeBashCommand,
 	shouldShapePlanningContextOnAgentStart,
@@ -141,6 +143,24 @@ describe("plan-mode CLI context helpers", () => {
 		assert.equal(selectPlanImpactPath(".", "Change packages/pi/index.ts", "docs/plan/task/README.md", [], exists), "packages/pi/index.ts");
 		assert.equal(selectPlanImpactPath(".", "No file here", "docs/plan/task/README.md", [], exists), "docs/plan/task/README.md");
 		assert.equal(selectPlanImpactPath(".", "No file here", undefined, ["docs/plan/missing/README.md"], exists), undefined);
+	});
+});
+
+describe("plan-mode tool settings", () => {
+	it("parses and resolves extra Plan Mode tools against installed tools", () => {
+		assert.deepEqual(parsePlanModeExtraTools("ctx_search, ctx_execute_file, ctx_search, bad tool, subagent"), ["ctx_search", "ctx_execute_file", "subagent"]);
+		const resolved = resolvePlanModeTools("ctx_search,missing_tool", ["read", "bash", "edit", "write", "grep", "find", "ls", "ctx_search"]);
+		assert.deepEqual(resolved, ["read", "bash", "edit", "write", "grep", "find", "ls", "ctx_search"]);
+		assert(!resolved.includes("questionnaire"));
+		assert(!resolved.includes("missing_tool"));
+	});
+
+	it("injects the resolved Plan Mode tool list into the full prompt", () => {
+		const prompt = buildPlanModeContextPrompt(false, ["read", "bash", "ctx_search"]);
+		assert.match(prompt, /Allowed tools: read, bash, ctx_search/);
+		assert.match(prompt, /using questionnaire if available/);
+		assert.match(prompt, /You may create or update only the allowed docs\/plan or docs\/archive markdown files/);
+		assert.doesNotMatch(prompt, /Do NOT attempt to make changes/);
 	});
 });
 

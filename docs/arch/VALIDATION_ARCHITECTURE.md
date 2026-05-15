@@ -42,7 +42,7 @@ The validator owns dotdotgod-specific structure checks:
 
 The validator does not own general markdown style formatting. Use tools such as Prettier or markdownlint separately if a project wants style linting.
 
-Traceability validation is intentionally CLI-owned because project docs are user-editable. Validation errors include the expected block shape and property-level guidance so coding agents can repair invalid behavior documents without memorizing the schema. Projects may configure the enforced path arrays, but valid traceability blocks still use the same schema everywhere.
+Traceability validation is CLI-owned because project docs are user-editable. Errors include block-shape and property guidance. Projects may configure enforced path arrays, but valid traceability blocks share one schema.
 
 ## Cache and Stale-Index Policy
 
@@ -63,11 +63,13 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - `pnpm run verify:cache` validates docs, runs `dotdotgod index`, and then checks `dotdotgod status`, so local verification and Husky pre-push refresh stale cache automatically before asserting freshness.
 - The Husky pre-push hook runs `verify:cache`, so it may update the ignored `.dotdotgod/` cache as a local side effect while keeping tracked source/docs changes explicit.
 
-The index records file fingerprints, cache metadata, schema metadata, and a deterministic graph. File discovery is gitignore-aware by default through `git ls-files --cached --others --exclude-standard`, with a conservative directory-walk fallback for non-git contexts. The file filter includes common plain-text docs, source, script, config, web, and infrastructure formats instead of assuming a pnpm monorepo shape. Current graph extraction covers Markdown headings/links, fenced `json dotdotgod` traceability blocks, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Other supported text files are currently represented as file metadata until dedicated extractors are added.
+The index records fingerprints, cache/schema metadata, and a deterministic graph. Discovery is gitignore-aware through `git ls-files --cached --others --exclude-standard`, with a conservative directory-walk fallback. Supported files include common docs, source, script, config, web, and infrastructure formats.
 
-Graph file nodes include deterministic memory-area metadata for dotdotgod structures. `AGENTS.md`, docs indexes, specs, architecture docs, test docs, active plans, and `docs/archive/README.md` receive `memoryArea`, `memoryRole`, `memoryScope`, `memoryFreshness`, `retrievalPriority`, and `retrieval.signals` fields. The optional memory-area config can override or extend this classification while the zero-config default preserves existing behavior. The graph also adds compact `memory_area:*` nodes with `belongs_to_area` edges. Links from `README.md` files keep their normal `links_to` edge and also receive a `routes_to` edge with `CURATED_INDEX` confidence, making README indexes first-class routing hints without requiring semantic embedding. Graph query output carries retrieval metadata and reason-derived signals for related nodes; load snapshots expose bounded `memoryConfig`, `memoryPolicy`, and `memoryAreas` summaries.
+Current extraction covers Markdown headings/links, `json dotdotgod` traceability blocks, package metadata/resources, TypeScript/JavaScript imports and declarations, Pi command registrations, inferred tests, and metric-event strings. Other supported text files become metadata-only file nodes until dedicated extractors exist.
 
-Graph storage uses a compact tuple schema in shards so multi-year projects do not depend on one large JSON file. Community summaries use `leiden-ts` over a weighted durable-node projection with deterministic domain grouping as a fallback. Load snapshots expose bounded quality metadata, including snapshot size estimates, omitted community counts, omitted item counts, bounded memory-area summaries, and archive inclusion policy.
+Graph file nodes include deterministic memory-area metadata for dotdotgod structures. Optional memory-area config can override or extend classification while zero-config behavior stays compatible. README links also get `routes_to` edges with `CURATED_INDEX` confidence, making README indexes routing hints without semantic embeddings.
+
+Graph storage uses compact shards instead of one large JSON file. Community summaries use `leiden-ts` over a weighted durable-node projection, with deterministic domain grouping as fallback. Load snapshots expose bounded quality, community, memory-area, and archive-policy summaries.
 
 ## Dependency Policy
 

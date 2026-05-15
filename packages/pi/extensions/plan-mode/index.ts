@@ -17,6 +17,7 @@ import {
 	buildPlanCompactionInstructions,
 	buildPlanModeContextPrompt,
 	extractTodoItems,
+	resolvePlanModeTools,
 	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
 	selectPlanImpactPath,
@@ -29,21 +30,6 @@ import {
 
 const PLAN_DIRECTORY = "docs/plan";
 const ARCHIVE_DIRECTORY = "docs/archive";
-
-const PLAN_MODE_TOOLS = [
-	"read",
-	"bash",
-	"edit",
-	"write",
-	"grep",
-	"find",
-	"ls",
-	"questionnaire",
-	"web_search",
-	"code_search",
-	"fetch_content",
-	"get_search_content",
-];
 
 const NORMAL_MODE_TOOLS = [
 	"read",
@@ -230,11 +216,17 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let lastPlanningRequest: string | undefined;
 	let currentPlanPath: string | undefined;
 	let touchedPlanArchivePaths: string[] = [];
+	let activePlanModeTools: string[] = [];
 
 	pi.registerFlag("plan", {
 		description: "Start in plan mode (safe exploration plus docs/plan updates)",
 		type: "boolean",
 		default: false,
+	});
+	pi.registerFlag("plan-extra-tools", {
+		description: "Comma-separated extra tool names to allow in Plan Mode when those tools are installed",
+		type: "string",
+		default: "",
 	});
 
 	function updateStatus(ctx: ExtensionContext): void {
@@ -423,15 +415,22 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
 		if (planModeEnabled) {
 			planningContextShapePending = true;
-			pi.setActiveTools(PLAN_MODE_TOOLS);
-			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:enabled", { entryCount: getSessionEntryCount(ctx) });
-			ctx.ui.notify(`Plan mode enabled. Tools: ${PLAN_MODE_TOOLS.join(", ")}`);
+			activePlanModeTools = getPlanModeTools();
+			pi.setActiveTools(activePlanModeTools);
+			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:enabled", { entryCount: getSessionEntryCount(ctx), tools: activePlanModeTools });
+			ctx.ui.notify(`Plan mode enabled. Tools: ${activePlanModeTools.join(", ")}`);
 		} else {
 			planningContextShapePending = false;
+			activePlanModeTools = [];
 			pi.setActiveTools(NORMAL_MODE_TOOLS);
 			ctx.ui.notify("Plan mode disabled. Full access restored.");
 		}
 		updateStatus(ctx);
+	}
+
+	function getPlanModeTools(): string[] {
+		const availableTools = pi.getAllTools().map((tool) => tool.name);
+		return resolvePlanModeTools(pi.getFlag("plan-extra-tools"), availableTools);
 	}
 
 	function persistState(): void {
@@ -562,7 +561,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 
 		if (planModeEnabled) {
-			const baseContent = buildPlanModeContextPrompt(planModeFullPromptInjected);
+			if (activePlanModeTools.length === 0) activePlanModeTools = getPlanModeTools();
+			const baseContent = buildPlanModeContextPrompt(planModeFullPromptInjected, activePlanModeTools);
 			const content = planningCliContextSummary ? `${baseContent}\n\n${planningCliContextSummary}` : baseContent;
 			planModeFullPromptInjected = true;
 			persistState();
@@ -754,8 +754,9 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 		}
 
 		if (planModeEnabled) {
-			pi.setActiveTools(PLAN_MODE_TOOLS);
-			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:session-start-enabled", { entryCount: getSessionEntryCount(ctx) });
+			activePlanModeTools = getPlanModeTools();
+			pi.setActiveTools(activePlanModeTools);
+			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:session-start-enabled", { entryCount: getSessionEntryCount(ctx), tools: activePlanModeTools });
 		}
 		updateStatus(ctx);
 	});

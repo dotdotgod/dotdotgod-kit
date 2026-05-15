@@ -10,6 +10,7 @@ For projects using the dotdotgod CLI, behavior specs are validated for fenced `j
 - `PROJECT_INITIALIZER.md`: project initializer scaffold, CLI options, overwrite policy, and docs contract.
 - `DOTDOT_SETTING.md`: optional project-initializer dotdot setting behavior and generated code convention contract.
 - `PLAN_MODE.md`: `/plan`, `/todos`, safe planning restrictions, concise plan review choice, and execution tracking.
+- `PLAN_MODE_TOOL_SETTINGS.md`: optional Plan Mode extra tool allowlist settings and prompt requirements.
 - `LOAD_PROJECT.md`: `/load` and `/dd:load` read-only project memory loading behavior.
 - `MEMORY_AREA_CONFIG.md`: optional config for shared/local and fresh/stale memory-area policy.
 - `TRACEABILITY_CONFIG.md`: optional config for traceability enforcement paths.
