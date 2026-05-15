@@ -1,6 +1,14 @@
 # @dotdotgod/cli
 
-Command-line tools for dotdotgod project memory.
+Command-line tools for dotdotgod project memory. The CLI validates the docs scaffold, builds a local graph/cache, reports cache freshness, and returns bounded project-memory snapshots for agents.
+
+## Why Use It?
+
+- Replace ad-hoc docs checks with `dotdotgod validate`.
+- Build `.dotdotgod/` as a local, ignored cache of file fingerprints and compact graph shards.
+- Use `load-snapshot` as the bounded first-pass map for agent loading instead of embedding every doc or archive body.
+- Query likely side effects with grouped, bounded graph impact reports.
+- Keep indexing generic: discovery follows gitignore-visible files and supported text/source/config formats rather than assuming a pnpm monorepo.
 
 ## Commands
 
@@ -13,4 +21,18 @@ dotdotgod graph query . --changed <path>
 dotdotgod graph communities .
 ```
 
-`validate` replaces the previous standalone docs validator package. Graph indexing currently extracts a deterministic first-pass graph from Markdown headings/links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. The cache uses `.dotdotgod/manifest.json` plus compact graph shards under `.dotdotgod/graph/` so larger long-running projects do not require one giant JSON file. `status` is read-only and reports whether the cache is missing, fresh, or stale. `load-snapshot` and `graph` commands lazily refresh a missing/stale cache before producing agent-facing output and include `metadata.cacheRefreshed` plus refresh details in JSON output when that happens. `graph query` returns a bounded impact report grouped into files, docs, tests, commands, events, package resources, and symbols. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
+`validate` replaces the previous standalone docs validator package. Graph indexing currently extracts a deterministic first-pass graph from Markdown headings/links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Other supported plain-text/source/config files are indexed as file metadata until dedicated extractors are added.
+
+The cache uses `.dotdotgod/manifest.json` plus compact graph shards under `.dotdotgod/graph/` so larger long-running projects do not require one giant JSON file. `status` is read-only and reports whether the cache is missing, fresh, stale, or schema-incompatible. `load-snapshot` and `graph` commands lazily refresh a missing/stale cache before producing agent-facing output and include refresh reason, elapsed timing, changed-file count, schema version, cache size, and archive inclusion policy in JSON output when available.
+
+`graph query` returns a bounded impact report grouped into files, docs, tests, commands, events, package resources, and symbols. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
+
+## Indexing Scope
+
+`dotdotgod index` is gitignore-aware by default. It uses `git ls-files --cached --others --exclude-standard` when possible, then filters to supported text, source, script, config, web, and infrastructure files. In non-git contexts it falls back to a conservative directory walk.
+
+Default exclusions include dependency, generated, cache, and secret-like paths such as `.git/`, `.dotdotgod/`, `node_modules/`, `dist/`, `build/`, `coverage/`, `.next/`, `target/`, `vendor/`, `.venv/`, and `.env`. Example env templates such as `.env.example` remain indexable. `docs/archive/README.md` is included as the archive map, while archive bodies are excluded by default.
+
+## Compared with Graphify-Style Reports
+
+The CLI is not designed to make agents read a giant graph report. The full graph stays in the local cache; agent-facing output is bounded and includes omitted counts. This avoids common failure modes where a memory layer costs more than direct file reads on small tasks, indexes dependency/generated directories, or expands dense documents through repeated extraction.
