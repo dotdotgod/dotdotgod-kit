@@ -46,6 +46,7 @@ It also ensures `.gitignore` contains:
 
 Generated docs follow these conventions:
 
+- Projects using the dotdotgod CLI should run `dotdotgod validate` after docs changes; the CLI owns machine-readable traceability validation for behavior specs and expects traceability as the final section.
 - Directories under `docs/` use kebab-case.
 - Markdown file names under `docs/` use UPPER_SNAKE_CASE, including `README.md`.
 - Individual markdown files should preferably stay under 200 lines and under 10,000 characters.
@@ -64,3 +65,29 @@ Generated docs follow these conventions:
 - The initializer does not merge into existing files unless `--force` is explicitly used.
 - The initializer does not infer project stack beyond the project name.
 - `docs/plan` and `docs/archive` are local working-memory areas by default and are ignored by git unless a project deliberately changes that policy.
+
+## Traceability
+
+```json dotdotgod
+{
+  "kind": "spec",
+  "implementedBy": [
+    "packages/shared/initializer/scripts/init_project.sh",
+    "packages/pi/skills/project-initializer/scripts/init_project.sh",
+    "packages/claude-code/skills/project-initializer/scripts/init_project.sh",
+    "packages/codex/skills/project-initializer/scripts/init_project.sh",
+    "scripts/generate-adapters.mjs"
+  ],
+  "verifiedBy": [
+    "docs/test/README.md"
+  ],
+  "relatedDocs": [
+    "docs/arch/CROSS_AGENT_ARCHITECTURE.md",
+    "docs/arch/DOCS_STRUCTURE.md"
+  ],
+  "verificationCommands": [
+    "sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name .",
+    "pnpm run verify:generated"
+  ]
+}
+```

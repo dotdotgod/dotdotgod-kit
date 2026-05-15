@@ -17,6 +17,7 @@ function createFixture() {
   writeFileSync(join(root, 'README.md'), '# Fixture\n');
   writeFileSync(join(root, 'docs/README.md'), '# Docs\n[Spec](spec/README.md)\n');
   writeFileSync(join(root, 'docs/spec/README.md'), '# Spec\n');
+  writeFileSync(join(root, 'docs/spec/APP.md'), '# App\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "verificationCommands": ["node --test"]\n}\n```\n');
   writeFileSync(join(root, 'docs/test/README.md'), '# Tests\n');
   writeFileSync(join(root, 'docs/arch/README.md'), '# Architecture\n');
   writeFileSync(join(root, 'docs/plan/README.md'), '# Plans\n');
@@ -52,7 +53,7 @@ describe('dotdotgod CLI e2e', () => {
     assert(existsSync(join(root, '.dotdotgod/manifest.json')));
     assert(existsSync(join(root, '.dotdotgod/graph/nodes/docs.json')));
     assert(existsSync(join(root, '.dotdotgod/graph/edges/imports.json')));
-    assert.equal(index.schemaVersion, 5);
+    assert.equal(index.schemaVersion, 6);
     assert.equal(typeof index.incremental.elapsedMs, 'number');
     assert(index.indexSizeBytes > 0);
 
@@ -95,6 +96,7 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(query.command, 'graph query');
     assert(query.related.some((node) => node.id === 'file:packages/app/index.mjs'));
     assert(query.impact.groups.commands.items.some((item) => item.id === 'command:app'));
+    assert(query.impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/APP.md'));
     assert(query.related.some((item) => item.id === 'file:packages/app/index.mjs' && item.retrieval?.signals.includes('reason:changed-file')));
     assert.equal(typeof query.impact.omittedRelated, 'number');
   });
@@ -104,11 +106,13 @@ describe('dotdotgod CLI e2e', () => {
     mkdirSync(join(root, 'docs/BadDir'), { recursive: true });
     writeFileSync(join(root, 'docs/BadDir/bad.md'), '# Bad\n');
 
+    writeFileSync(join(root, 'docs/spec/BAD.md'), '# Bad\n');
     const invalid = run(['validate', root, '--include-local-memory', '--json']);
     assert.notEqual(invalid.status, 0);
     const invalidPayload = JSON.parse(invalid.stdout);
     assert.equal(invalidPayload.ok, false);
     assert(invalidPayload.errors.some((error) => error.code === 'DIR_NAMING'));
+    assert(invalidPayload.errors.some((error) => error.code === 'TRACEABILITY_MISSING' && /Property guidance/.test(error.message)));
 
     writeFileSync(join(root, 'docs/BadDir/README.md'), '# Bad Dir\n');
     // The bad directory intentionally remains invalid for validation, but index/status can still detect staleness.

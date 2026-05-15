@@ -45,3 +45,29 @@ Existing overwrite behavior remains unchanged:
 - Do not include the full dotdot code convention body directly in `AGENTS.md`.
 - Do not enable dotdot conventions by default.
 - Do not automatically merge dotdot conventions into existing project files unless the user explicitly uses `--force` or asks for manual migration.
+
+## Traceability
+
+```json dotdotgod
+{
+  "kind": "spec",
+  "implementedBy": [
+    "packages/shared/initializer/scripts/init_project.sh",
+    "packages/pi/skills/project-initializer/scripts/init_project.sh",
+    "packages/claude-code/skills/project-initializer/scripts/init_project.sh",
+    "packages/codex/skills/project-initializer/scripts/init_project.sh",
+    "docs/arch/CODE_CONVENTIONS.md"
+  ],
+  "verifiedBy": [
+    "docs/test/README.md"
+  ],
+  "relatedDocs": [
+    "docs/spec/PROJECT_INITIALIZER.md",
+    "docs/arch/DOCS_STRUCTURE.md"
+  ],
+  "verificationCommands": [
+    "sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --dotdot-setting --project-name fixture-name .",
+    "pnpm run verify:generated"
+  ]
+}
+```

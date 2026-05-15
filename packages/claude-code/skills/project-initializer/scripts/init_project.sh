@@ -197,7 +197,8 @@ Canonical instructions for AI coding agents working in this repository.
 - Keep changes scoped to the user's request.
 - Preserve user edits and unrelated dirty worktree changes.
 - Prefer existing local patterns over introducing new abstractions.
-- Update docs when behavior, architecture, or test strategy changes.$DOTDOT_AGENT_RULE
+- Update docs when behavior, architecture, or test strategy changes.
+- When using the dotdotgod CLI, run \`dotdotgod validate\` after docs changes and follow its traceability guidance for behavior specs.$DOTDOT_AGENT_RULE
 
 ## Commands
 
@@ -269,7 +270,9 @@ This directory keeps project knowledge close to the code.
 
 write_file "$PROJECT_ROOT/docs/spec/README.md" "# Specs
 
-Use this area for behavior specs, API contracts, and product requirements."
+Use this area for behavior specs, API contracts, and product requirements.
+
+For projects using the dotdotgod CLI, behavior specs may be required by \`dotdotgod validate\` to include fenced \`json dotdotgod\` traceability blocks as the final section. The CLI owns the schema and prints property-level repair guidance when validation fails."
 
 write_file "$PROJECT_ROOT/docs/test/README.md" "# Tests
 
@@ -289,8 +292,11 @@ Dotdot code conventions for keeping implementation simple and maintainable.
 - Do not introduce unnecessary abstractions.
 - Do not abstract code that is not reused.
 - If code grows beyond 150 lines, consider splitting or extracting focused units even when it is not reused.
+- Review files approaching 250 lines for focused extraction by responsibility.
+- Prefer extracting pure helpers when behavior can be tested without runtime dependencies.
+- Keep runtime integration explicit and local until a stable reuse pattern appears.
 - Do not abstract reused code when the reused behavior is likely to split into separate features or flows later.
-- Prefer local, explicit code until a stable reuse pattern appears.
+- Keep source files readable as plain text for humans and coding agents.
 "
 fi
 

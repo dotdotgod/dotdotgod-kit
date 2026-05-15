@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { spawnSync } from 'node:child_process';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 
-export const CACHE_VERSION = 5;
+export const CACHE_VERSION = 6;
 const CACHE_DIR = '.dotdotgod';
 const MANIFEST_FILE = 'manifest.json';
 const GRAPH_NODE_SHARDS = ['docs', 'packages', 'source'];
@@ -62,6 +62,86 @@ export function extractLinks(content) {
     }
   });
   return links;
+}
+
+const TRACEABILITY_PATH_FIELDS = ['implementedBy', 'verifiedBy', 'relatedDocs'];
+const TRACEABILITY_COMMAND_FIELDS = ['verificationCommands'];
+
+export function traceabilityExample() {
+  return 'Expected dotdotgod traceability block:\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/..."],\n  "verifiedBy": ["packages/..."],\n  "relatedDocs": ["docs/..."],\n  "verificationCommands": ["pnpm ..."]\n}\n```\n\nProperty guidance:\n- kind: use "spec" for behavior specs.\n- implementedBy: source/config/script files that implement this spec\'s behavior.\n- verifiedBy: test files or verification docs that check this behavior.\n- relatedDocs: docs with relevant architecture, test strategy, or product context.\n- verificationCommands: commands an agent can run to verify this behavior.';
+}
+
+function lineForOffset(content, offset) {
+  return content.slice(0, offset).split('\n').length;
+}
+
+export function extractDotdotgodTraceabilityBlocks(content) {
+  const blocks = [];
+  const re = /^(`{3,}|~{3,})[ \t]*([^\n]*)\n([\s\S]*?)\n\1[ \t]*$/gm;
+  let match;
+  while ((match = re.exec(content)) !== null) {
+    const info = match[2].trim().toLowerCase().split(/\s+/);
+    if (!info.includes('json') || !info.includes('dotdotgod')) continue;
+    const raw = match[3].trim();
+    const line = lineForOffset(content, match.index);
+    try {
+      blocks.push({ data: JSON.parse(raw), raw, line });
+    } catch (error) {
+      blocks.push({ error: error instanceof Error ? error.message : String(error), raw, line });
+    }
+  }
+  return blocks;
+}
+
+function isLocalRelativeTraceabilityPath(value) {
+  if (typeof value !== 'string' || value.trim() !== value || value.length === 0) return false;
+  if (value.startsWith('/') || value.startsWith('~') || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) return false;
+  if (value.split('/').includes('..')) return false;
+  return !isSecretIndexPath(value);
+}
+
+function traceabilityFieldError(file, code, field, message, line = null) {
+  return { file, line, code, message: `${field ? `Field "${field}": ` : ''}${message}\n\n${traceabilityExample()}` };
+}
+
+export function validateTraceabilityPlacement(content, root, file) {
+  const headings = [...content.matchAll(/^##\s+(.+)$/gm)];
+  const lastHeading = headings.at(-1)?.[1]?.trim();
+  if (lastHeading !== 'Traceability') {
+    return [traceabilityFieldError(rel(root, file), 'TRACEABILITY_PLACEMENT', null, 'Traceability must be the final section in behavior specs.')];
+  }
+  return [];
+}
+
+export function validateTraceabilityBlock(data, root, file, line = null) {
+  const errors = [];
+  const add = (code, field, message) => errors.push(traceabilityFieldError(rel(root, file), code, field, message, line));
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    add('TRACEABILITY_INVALID_JSON', null, 'Traceability block must be a JSON object.');
+    return errors;
+  }
+  if (data.kind !== 'spec') add('TRACEABILITY_INVALID_KIND', 'kind', 'must be "spec" for behavior specs.');
+  for (const field of TRACEABILITY_PATH_FIELDS) {
+    if (!Array.isArray(data[field])) {
+      add('TRACEABILITY_INVALID_FIELD', field, 'must be an array of local relative paths.');
+      continue;
+    }
+    for (const value of data[field]) {
+      if (!isLocalRelativeTraceabilityPath(value)) {
+        add('TRACEABILITY_INVALID_PATH', field, `invalid local relative path: ${JSON.stringify(value)}.`);
+        continue;
+      }
+      if (!existsSync(resolve(root, value))) add('TRACEABILITY_MISSING_TARGET', field, `target does not exist: ${value}.`);
+    }
+  }
+  for (const field of TRACEABILITY_COMMAND_FIELDS) {
+    if (!Array.isArray(data[field])) {
+      add('TRACEABILITY_INVALID_FIELD', field, 'must be an array of executable project-local command strings.');
+      continue;
+    }
+    for (const value of data[field]) if (typeof value !== 'string' || value.trim().length === 0) add('TRACEABILITY_INVALID_COMMAND', field, `invalid command: ${JSON.stringify(value)}.`);
+  }
+  return errors;
 }
 
 export function headingToAnchor(text) {
@@ -141,6 +221,15 @@ export function runValidate(argv) {
     const lines = content.split('\n').length;
     if (lines > options.maxLines) addError(file, 'FILE_TOO_LONG', `Markdown file has ${lines} lines; max is ${options.maxLines}`);
     if (content.length > options.maxChars) addError(file, 'FILE_TOO_LARGE', `Markdown file has ${content.length} characters; max is ${options.maxChars}`);
+    if (docsRel.startsWith('spec/') && name !== 'README.md') {
+      const blocks = extractDotdotgodTraceabilityBlocks(content);
+      if (blocks.length === 0) addError(file, 'TRACEABILITY_MISSING', `Behavior specs must include a fenced \`json dotdotgod\` traceability block as the final section.\n\n${traceabilityExample()}`);
+      else for (const error of validateTraceabilityPlacement(content, root, file)) errors.push(error);
+      for (const block of blocks) {
+        if (block.error) addError(file, 'TRACEABILITY_INVALID_JSON', `Invalid \`json dotdotgod\` block: ${block.error}\n\n${traceabilityExample()}`, block.line);
+        else for (const error of validateTraceabilityBlock(block.data, root, file, block.line)) errors.push(error);
+      }
+    }
   }
   const byDir = new Map();
   for (const file of markdownFiles) byDir.set(dirname(file), [...(byDir.get(dirname(file)) ?? []), file]);
@@ -294,7 +383,7 @@ function graphNodeShard(node) {
 
 function graphEdgeShard(edge) {
   if (edge.relation === 'imports') return 'imports';
-  if (edge.relation === 'links_to' || edge.relation === 'routes_to' || edge.relation === 'contains_heading') return 'docs-links';
+  if (edge.relation === 'links_to' || edge.relation === 'routes_to' || edge.relation === 'contains_heading' || edge.relation === 'implemented_by' || edge.relation === 'verified_by' || edge.relation === 'related_doc' || edge.relation === 'verification_command') return 'docs-links';
   if (edge.relation === 'declares_test' || edge.relation === 'tests') return 'tests';
   if (edge.relation === 'emits_event') return 'events';
   if (edge.relation === 'declares_package' || edge.relation === 'declares_script' || edge.relation === 'declares_bin' || edge.relation === 'depends_on' || edge.relation === 'includes_resource') return 'packages';
@@ -490,6 +579,28 @@ function addPackageResource(graph, fileId, packagePath, name, target, kind) {
   addEdge(graph, fileId, id, 'includes_resource', { kind, confidence: 'EXTRACTED' });
 }
 
+function addTraceabilityTarget(graph, sourceId, root, relation, targetPath, data = {}) {
+  if (!isLocalRelativeTraceabilityPath(targetPath) || !existsSync(resolve(root, targetPath))) return;
+  const targetId = `file:${targetPath}`;
+  addNode(graph, targetId, 'file', fileNodeMetadata(targetPath));
+  addEdge(graph, sourceId, targetId, relation, { confidence: 'CURATED_TRACEABILITY', ...data });
+}
+
+function addTraceabilityGraph(root, fileId, content, graph) {
+  for (const block of extractDotdotgodTraceabilityBlocks(content)) {
+    if (block.error || !block.data || block.data.kind !== 'spec') continue;
+    for (const target of block.data.implementedBy ?? []) addTraceabilityTarget(graph, fileId, root, 'implemented_by', target);
+    for (const target of block.data.verifiedBy ?? []) addTraceabilityTarget(graph, fileId, root, 'verified_by', target);
+    for (const target of block.data.relatedDocs ?? []) addTraceabilityTarget(graph, fileId, root, 'related_doc', target);
+    for (const [index, command] of (Array.isArray(block.data.verificationCommands) ? block.data.verificationCommands : []).entries()) {
+      if (typeof command !== 'string' || command.trim().length === 0) continue;
+      const id = `verification_command:${fileId}#${index}`;
+      addNode(graph, id, 'verification_command', { command, path: fileId.replace(/^file:/, '') });
+      addEdge(graph, fileId, id, 'verification_command', { confidence: 'CURATED_TRACEABILITY' });
+    }
+  }
+}
+
 export function extractMarkdownGraph(root, file, graph) {
   const path = rel(root, file);
   const content = readFileSync(file, 'utf8');
@@ -511,6 +622,7 @@ export function extractMarkdownGraph(root, file, graph) {
     addEdge(graph, fileId, targetId, 'links_to', { line, confidence: 'EXTRACTED' });
     if (isReadmeIndexPath(path)) addEdge(graph, fileId, targetId, 'routes_to', { line, confidence: 'CURATED_INDEX', sourceRole: 'readme-index' });
   }
+  addTraceabilityGraph(root, fileId, content, graph);
 }
 
 export function extractPackageGraph(root, file, graph) {
@@ -549,6 +661,10 @@ export function extractPackageGraph(root, file, graph) {
       addEdge(graph, fileId, id, 'depends_on', { section, confidence: 'EXTRACTED' });
     }
   }
+}
+
+function isTestPath(path = '') {
+  return /(^|\/)(test|tests)\//.test(path) || /\.(test|spec)\.(mjs|cjs|js|jsx|ts|tsx)$/.test(path);
 }
 
 function addSymbol(graph, fileId, path, name, exported = false) {
@@ -610,8 +726,7 @@ export function extractScriptGraph(root, file, graph) {
     addEdge(graph, fileId, id, 'handles_command', { confidence: 'EXTRACTED' });
   }
 
-  const isTestFile = /(^|\/)(test|tests)\//.test(path) || /\.(test|spec)\.(mjs|cjs|js|jsx|ts|tsx)$/.test(path);
-  if (isTestFile) {
+  if (isTestPath(path)) {
     const id = `test:${path}`;
     addNode(graph, id, 'test', { path });
     addEdge(graph, fileId, id, 'declares_test', { confidence: 'INFERRED' });
@@ -837,6 +952,12 @@ export function buildImpactReport(index, changedPath, limits = {}) {
     if (edge.target === seed) addReason(edge.source, `incoming:${edge.relation}`);
   }
 
+  const traceabilityRelations = new Set(['implemented_by', 'verified_by', 'related_doc', 'verification_command']);
+  for (const edge of graph.edges) {
+    if (!traceabilityRelations.has(edge.relation)) continue;
+    if (relatedIds.has(edge.source)) addReason(edge.target, edge.relation);
+  }
+
   const changedDir = dirname(changedPath).replaceAll('\\', '/');
   for (const node of graph.nodes) {
     if (node.type === 'file' && node.path !== changedPath && dirname(node.path).replaceAll('\\', '/') === changedDir) {
@@ -862,6 +983,7 @@ export function buildImpactReport(index, changedPath, limits = {}) {
     }
   }
 
+  const traceabilityReasonScore = (item) => (item.reasons ?? []).some((reason) => ['incoming:implemented_by', 'implemented_by', 'verified_by', 'related_doc', 'verification_command'].includes(reason)) ? 20 : 0;
   const relatedAll = [...relatedIds]
     .map((id) => {
       const node = nodeById.get(id) ?? { id };
@@ -874,13 +996,14 @@ export function buildImpactReport(index, changedPath, limits = {}) {
     .sort((a, b) => {
       if (a.id === seed) return -1;
       if (b.id === seed) return 1;
-      return (b.retrieval?.priority ?? 0) - (a.retrieval?.priority ?? 0) || a.id.localeCompare(b.id);
+      return ((b.retrieval?.priority ?? 0) + traceabilityReasonScore(b)) - ((a.retrieval?.priority ?? 0) + traceabilityReasonScore(a)) || a.id.localeCompare(b.id);
     });
   const related = relatedAll.slice(0, maxRelated);
   for (const item of related) {
     if (item.type === 'file') {
       const area = docsArea(item.path);
       if (area) addImpactItem(groups.docs, { ...item, area }, limits.docs ?? 10);
+      else if (isTestPath(item.path)) addImpactItem(groups.tests, item, limits.tests ?? 10);
       else addImpactItem(groups.files, item, limits.files ?? 10);
     } else if (item.type === 'test') addImpactItem(groups.tests, item, limits.tests ?? 10);
     else if (item.type === 'command') addImpactItem(groups.commands, item, limits.commands ?? 10);
@@ -924,8 +1047,8 @@ function addBounded(list, value, limit) {
 }
 
 function relationWeight(relation) {
-  if (relation === 'imports' || relation === 'tests' || relation === 'handles_command') return 4;
-  if (relation === 'emits_event' || relation === 'includes_resource' || relation === 'routes_to') return 3;
+  if (relation === 'imports' || relation === 'tests' || relation === 'handles_command' || relation === 'implemented_by' || relation === 'verified_by') return 4;
+  if (relation === 'emits_event' || relation === 'includes_resource' || relation === 'routes_to' || relation === 'related_doc' || relation === 'verification_command') return 3;
   if (relation === 'links_to' || relation === 'belongs_to_area' || relation === 'declares_package' || relation === 'declares_bin') return 2;
   return 1;
 }

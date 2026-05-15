@@ -13,6 +13,7 @@ import {
   buildIndex,
   collectIndexFiles,
   extractAnchors,
+  extractDotdotgodTraceabilityBlocks,
   extractLinks,
   graphSummary,
   headingToAnchor,
@@ -24,6 +25,7 @@ import {
   neighborhood,
   retrievalPriorityForPath,
   shouldIndexPath,
+  validateTraceabilityBlock,
 } from '../src/core.mjs';
 
 function fixture() {
@@ -37,6 +39,9 @@ function fixture() {
   writeFileSync(join(root, 'README.md'), '# Fixture\n');
   writeFileSync(join(root, 'docs/README.md'), '# Docs\n[Spec](spec/README.md)\n');
   writeFileSync(join(root, 'docs/spec/README.md'), '# Spec\n');
+  writeFileSync(join(root, 'docs/spec/FEATURE.md'), '# Feature\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/tool/index.mjs"],\n  "verifiedBy": ["packages/tool/index.test.mjs"],\n  "relatedDocs": ["docs/test/README.md"],\n  "verificationCommands": ["node --test packages/tool/index.test.mjs"]\n}\n```\n');
+  mkdirSync(join(root, 'docs/test'), { recursive: true });
+  writeFileSync(join(root, 'docs/test/README.md'), '# Tests\n');
   writeFileSync(join(root, 'docs/plan/README.md'), '# Plans\n');
   writeFileSync(join(root, 'docs/archive/README.md'), '# Archive\n');
   writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'fixture-root', scripts: { verify: 'node --test' } }, null, 2));
@@ -60,6 +65,18 @@ describe('CLI docs helpers', () => {
     assert.equal(headingToAnchor('Hello `World`!'), 'hello-world');
     assert.deepEqual([...extractAnchors(md)], ['hello-world', 'hello-world-1']);
     assert.deepEqual(extractLinks(md), [{ href: 'docs/README.md#hello-world', line: 2 }]);
+  });
+
+  it('extracts and validates dotdotgod traceability blocks', () => {
+    const root = fixture();
+    const content = readFileSync(join(root, 'docs/spec/FEATURE.md'), 'utf8');
+    const blocks = extractDotdotgodTraceabilityBlocks(content);
+    assert.equal(blocks.length, 1);
+    assert.equal(blocks[0].data.kind, 'spec');
+    assert.deepEqual(validateTraceabilityBlock(blocks[0].data, root, join(root, 'docs/spec/FEATURE.md')), []);
+    const errors = validateTraceabilityBlock({ kind: 'spec', implementedBy: 'bad', verifiedBy: [], relatedDocs: [], verificationCommands: [] }, root, join(root, 'docs/spec/BAD.md'));
+    assert.equal(errors[0].code, 'TRACEABILITY_INVALID_FIELD');
+    assert.match(errors[0].message, /Property guidance/);
   });
 
   it('classifies dotdotgod memory paths for deterministic retrieval hints', () => {
@@ -137,9 +154,10 @@ describe('CLI index and graph helpers', () => {
     assert(related.length <= 25);
     const impact = buildImpactReport(index, 'packages/tool/index.mjs');
     assert(impact.groups.commands.items.some((item) => item.id === 'command:load'));
-    assert(impact.groups.files.items.some((item) => item.id === 'file:packages/tool/index.test.mjs'));
+    assert(impact.groups.tests.items.some((item) => item.id === 'file:packages/tool/index.test.mjs'));
     assert(impact.related.some((item) => item.id === 'file:packages/tool/index.mjs' && item.retrieval?.signals.includes('reason:changed-file')));
-    assert.equal(impact.groups.docs.items.length, 0);
+    assert(impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/FEATURE.md'));
+    assert(impact.groups.tests.items.some((item) => item.id === 'file:packages/tool/index.test.mjs'));
     const communities = buildCommunities(index, { communities: 3, items: 3 });
     assert(communities.total > 0);
     assert(['leiden', 'deterministic-domain-grouping'].includes(communities.method));
