@@ -9,6 +9,7 @@ import {
   buildCommunities,
   buildGraph,
   buildImpactReport,
+  buildMemoryAreas,
   buildIndex,
   collectIndexFiles,
   extractAnchors,
@@ -16,8 +17,12 @@ import {
   graphSummary,
   headingToAnchor,
   isKebabCase,
+  isReadmeIndexPath,
   isUpperSnakeMarkdown,
+  memoryAreaForPath,
+  memoryRoleForPath,
   neighborhood,
+  retrievalPriorityForPath,
   shouldIndexPath,
 } from '../src/core.mjs';
 
@@ -55,6 +60,17 @@ describe('CLI docs helpers', () => {
     assert.equal(headingToAnchor('Hello `World`!'), 'hello-world');
     assert.deepEqual([...extractAnchors(md)], ['hello-world', 'hello-world-1']);
     assert.deepEqual(extractLinks(md), [{ href: 'docs/README.md#hello-world', line: 2 }]);
+  });
+
+  it('classifies dotdotgod memory paths for deterministic retrieval hints', () => {
+    assert.equal(memoryAreaForPath('AGENTS.md'), 'rules');
+    assert.equal(memoryRoleForPath('docs/spec/README.md'), 'behavior-truth');
+    assert.equal(memoryAreaForPath('docs/arch/CODE_CONVENTIONS.md'), 'architecture');
+    assert.equal(memoryAreaForPath('docs/test/README.md'), 'test');
+    assert.equal(memoryAreaForPath('docs/plan/task/README.md'), 'active-plan');
+    assert.equal(memoryAreaForPath('docs/archive/README.md'), 'archive-map');
+    assert.equal(isReadmeIndexPath('docs/spec/README.md'), true);
+    assert(retrievalPriorityForPath('docs/plan/task/README.md') > retrievalPriorityForPath('packages/tool/index.mjs'));
   });
 });
 
@@ -100,14 +116,20 @@ describe('CLI index and graph helpers', () => {
     assert(summary.nodes > 0);
     assert(summary.edges > 0);
     assert.equal(summary.byType.package >= 2, true);
+    assert.equal(summary.byType.memory_area >= 1, true);
     assert.equal(summary.byRelation.imports >= 1, true);
     assert.equal(summary.byRelation.exports >= 1, true);
     assert.equal(summary.byRelation.handles_command >= 1, true);
     assert.equal(summary.byRelation.includes_resource >= 1, true);
+    assert.equal(summary.byRelation.routes_to >= 1, true);
+    assert.equal(summary.byRelation.belongs_to_area >= 1, true);
     assert.equal(summary.byType.test >= 1, true);
     assert(index.graph.nodes.some((node) => node.id === 'command:load'));
+    assert(index.graph.nodes.some((node) => node.id === 'memory_area:spec' && node.role === 'behavior-truth'));
+    assert(index.graph.nodes.some((node) => node.id === 'file:docs/spec/README.md' && node.memoryArea === 'spec' && node.retrieval?.role === 'behavior-truth'));
     assert(index.graph.nodes.some((node) => node.id === 'export:packages/tool/index.mjs#run'));
     assert(index.graph.edges.some((edge) => edge.source === 'file:packages/tool/index.mjs' && edge.target === 'command:load' && edge.relation === 'handles_command' && edge.confidence === 'EXTRACTED'));
+    assert(index.graph.edges.some((edge) => edge.source === 'file:docs/README.md' && edge.target === 'file:docs/spec/README.md' && edge.relation === 'routes_to' && edge.confidence === 'CURATED_INDEX'));
     assert(index.graph.edges.some((edge) => edge.source === 'test:packages/tool/index.test.mjs' && edge.relation === 'tests' && edge.confidence === 'INFERRED'));
     assert(!index.graph.nodes.some((node) => node.id === 'symbol:packages/tool/index.mjs#hidden'));
     const related = neighborhood(index, 'packages/tool/index.mjs');
@@ -116,11 +138,14 @@ describe('CLI index and graph helpers', () => {
     const impact = buildImpactReport(index, 'packages/tool/index.mjs');
     assert(impact.groups.commands.items.some((item) => item.id === 'command:load'));
     assert(impact.groups.files.items.some((item) => item.id === 'file:packages/tool/index.test.mjs'));
+    assert(impact.related.some((item) => item.id === 'file:packages/tool/index.mjs' && item.retrieval?.signals.includes('reason:changed-file')));
     assert.equal(impact.groups.docs.items.length, 0);
     const communities = buildCommunities(index, { communities: 3, items: 3 });
     assert(communities.total > 0);
     assert(['leiden', 'deterministic-domain-grouping'].includes(communities.method));
     assert.equal(typeof communities.fallback, 'boolean');
+    const memoryAreas = buildMemoryAreas(index, { items: 2 });
+    assert(memoryAreas.areas.some((area) => area.area === 'spec' && area.role === 'behavior-truth' && area.files.includes('docs/spec/README.md')));
   });
 
   it('can build a graph directly from selected files', () => {

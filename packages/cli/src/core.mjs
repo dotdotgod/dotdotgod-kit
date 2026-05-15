@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { spawnSync } from 'node:child_process';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 
-export const CACHE_VERSION = 3;
+export const CACHE_VERSION = 5;
 const CACHE_DIR = '.dotdotgod';
 const MANIFEST_FILE = 'manifest.json';
 const GRAPH_NODE_SHARDS = ['docs', 'packages', 'source'];
@@ -294,7 +294,7 @@ function graphNodeShard(node) {
 
 function graphEdgeShard(edge) {
   if (edge.relation === 'imports') return 'imports';
-  if (edge.relation === 'links_to' || edge.relation === 'contains_heading') return 'docs-links';
+  if (edge.relation === 'links_to' || edge.relation === 'routes_to' || edge.relation === 'contains_heading') return 'docs-links';
   if (edge.relation === 'declares_test' || edge.relation === 'tests') return 'tests';
   if (edge.relation === 'emits_event') return 'events';
   if (edge.relation === 'declares_package' || edge.relation === 'declares_script' || edge.relation === 'declares_bin' || edge.relation === 'depends_on' || edge.relation === 'includes_resource') return 'packages';
@@ -355,13 +355,132 @@ function graphStats(graph) {
   return { nodes: graph.nodes.length, edges: graph.edges.length };
 }
 
+function graphNodeIndex(graph) {
+  if (!graph._nodeIndex) {
+    Object.defineProperty(graph, '_nodeIndex', {
+      value: new Map(graph.nodes.map((node) => [node.id, node])),
+      enumerable: false,
+      writable: true,
+    });
+  }
+  return graph._nodeIndex;
+}
+
+function graphEdgeIndex(graph) {
+  if (!graph._edgeIndex) {
+    Object.defineProperty(graph, '_edgeIndex', {
+      value: new Set(graph.edges.map((edge) => JSON.stringify(edge))),
+      enumerable: false,
+      writable: true,
+    });
+  }
+  return graph._edgeIndex;
+}
+
+function definedEntries(data) {
+  return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
+}
+
 export function addNode(graph, id, type, data = {}) {
-  if (!graph.nodes.some((node) => node.id === id)) graph.nodes.push({ id, type, ...data });
+  const index = graphNodeIndex(graph);
+  const existing = index.get(id);
+  if (existing) {
+    Object.assign(existing, definedEntries(data));
+    return;
+  }
+  const node = { id, type, ...definedEntries(data) };
+  graph.nodes.push(node);
+  index.set(id, node);
 }
 
 export function addEdge(graph, source, target, relation, data = {}) {
   const edge = { source, target, relation, ...data };
-  if (!graph.edges.some((existing) => JSON.stringify(existing) === JSON.stringify(edge))) graph.edges.push(edge);
+  const key = JSON.stringify(edge);
+  const index = graphEdgeIndex(graph);
+  if (index.has(key)) return;
+  graph.edges.push(edge);
+  index.add(key);
+}
+
+const MEMORY_AREAS = {
+  rules: { label: 'Agent Rules', role: 'agent-working-rules', priority: 100 },
+  'agent-entrypoint': { label: 'Agent Entrypoints', role: 'agent-specific-entrypoint', priority: 85 },
+  'project-overview': { label: 'Project Overview', role: 'project-map', priority: 85 },
+  'docs-index': { label: 'Docs Index', role: 'documentation-routing-map', priority: 90 },
+  spec: { label: 'Product Specs', role: 'behavior-truth', priority: 80 },
+  architecture: { label: 'Architecture', role: 'architecture-rationale', priority: 75 },
+  test: { label: 'Tests', role: 'verification-knowledge', priority: 70 },
+  'active-plan': { label: 'Active Plans', role: 'active-task-intent', priority: 95 },
+  'archive-map': { label: 'Archive Map', role: 'historical-memory-map', priority: 65 },
+  'archive-body': { label: 'Archive Body', role: 'historical-memory-body', priority: 20 },
+};
+
+export function memoryAreaForPath(path = '') {
+  if (path === 'AGENTS.md') return 'rules';
+  if (path === 'CLAUDE.md' || path === 'CODEX.md') return 'agent-entrypoint';
+  if (path === 'README.md') return 'project-overview';
+  if (path === 'docs/README.md') return 'docs-index';
+  if (path.startsWith('docs/spec/')) return 'spec';
+  if (path.startsWith('docs/arch/')) return 'architecture';
+  if (path.startsWith('docs/test/')) return 'test';
+  if (path.startsWith('docs/plan/')) return 'active-plan';
+  if (path === 'docs/archive/README.md') return 'archive-map';
+  if (path.startsWith('docs/archive/')) return 'archive-body';
+  return undefined;
+}
+
+export function memoryRoleForPath(path = '') {
+  const area = memoryAreaForPath(path);
+  return area ? MEMORY_AREAS[area]?.role : undefined;
+}
+
+export function retrievalPriorityForPath(path = '') {
+  const area = memoryAreaForPath(path);
+  return area ? MEMORY_AREAS[area]?.priority ?? 30 : 30;
+}
+
+export function isReadmeIndexPath(path = '') {
+  return basename(path) === 'README.md';
+}
+
+function retrievalSignalsForPath(path = '') {
+  const signals = [];
+  const area = memoryAreaForPath(path);
+  if (area) signals.push('memory-area');
+  if (path.startsWith('docs/')) signals.push('docs-path');
+  if (isReadmeIndexPath(path)) signals.push('readme-index');
+  return signals;
+}
+
+function retrievalMetadataForPath(path = '') {
+  const area = memoryAreaForPath(path);
+  return {
+    area,
+    role: memoryRoleForPath(path),
+    priority: retrievalPriorityForPath(path),
+    signals: retrievalSignalsForPath(path),
+  };
+}
+
+function fileNodeMetadata(path, file) {
+  const retrieval = retrievalMetadataForPath(path);
+  return {
+    path,
+    extension: file ? extname(file) : extname(path),
+    memoryArea: retrieval.area,
+    memoryRole: retrieval.role,
+    retrievalPriority: retrieval.priority,
+    retrieval,
+  };
+}
+
+function addMemoryAreaMembership(graph, fileId, path) {
+  const area = memoryAreaForPath(path);
+  if (!area) return;
+  const definition = MEMORY_AREAS[area];
+  const areaId = `memory_area:${area}`;
+  addNode(graph, areaId, 'memory_area', { area, label: definition.label, role: definition.role, retrievalPriority: definition.priority });
+  addEdge(graph, fileId, areaId, 'belongs_to_area', { confidence: 'DETERMINISTIC', role: definition.role });
 }
 
 function addPackageResource(graph, fileId, packagePath, name, target, kind) {
@@ -388,8 +507,9 @@ export function extractMarkdownGraph(root, file, graph) {
     if (!pathPart) continue;
     const targetPath = rel(root, resolve(dirname(file), pathPart));
     const targetId = `file:${targetPath}`;
-    addNode(graph, targetId, 'file', { path: targetPath });
+    addNode(graph, targetId, 'file', fileNodeMetadata(targetPath));
     addEdge(graph, fileId, targetId, 'links_to', { line, confidence: 'EXTRACTED' });
+    if (isReadmeIndexPath(path)) addEdge(graph, fileId, targetId, 'routes_to', { line, confidence: 'CURATED_INDEX', sourceRole: 'readme-index' });
   }
 }
 
@@ -514,7 +634,8 @@ export function buildGraph(root, files) {
   for (const file of files) {
     const path = rel(root, file);
     const fileId = `file:${path}`;
-    addNode(graph, fileId, 'file', { path, extension: extname(file) });
+    addNode(graph, fileId, 'file', fileNodeMetadata(path, file));
+    addMemoryAreaMembership(graph, fileId, path);
     if (path.endsWith('.md')) extractMarkdownGraph(root, file, graph);
     else if (basename(file) === 'package.json') extractPackageGraph(root, file, graph);
     else if (/\.(mjs|cjs|js|jsx|ts|tsx)$/.test(path)) extractScriptGraph(root, file, graph);
@@ -550,10 +671,12 @@ export function buildIndex(root, previous = readIndex(root)) {
   const startedAt = Date.now();
   const files = collectFingerprints(root);
   const indexed = new Map((previous?.files ?? []).map((file) => [file.path, file.sha256]));
-  const changedPaths = files.filter((file) => indexed.get(file.path) !== file.sha256).map((file) => file.path);
+  const currentPaths = new Set(files.map((file) => file.path));
+  const removedPaths = (previous?.files ?? []).filter((file) => !currentPaths.has(file.path)).map((file) => file.path);
+  const changedPaths = [...files.filter((file) => indexed.get(file.path) !== file.sha256).map((file) => file.path), ...removedPaths];
   const changedFiles = files.filter((file) => changedPaths.includes(file.path)).map((file) => join(root, file.path));
   const fullRebuild = !previous?.graph || previous.version !== CACHE_VERSION;
-  const refreshReason = !previous ? 'missing' : previous.version !== CACHE_VERSION ? 'schema-mismatch' : changedPaths.length > 0 ? 'content-changed' : 'fresh';
+  const refreshReason = !previous ? 'missing' : previous.version !== CACHE_VERSION ? 'schema-mismatch' : removedPaths.length > 0 ? 'content-removed' : changedPaths.length > 0 ? 'content-changed' : 'fresh';
   const graph = fullRebuild ? buildGraph(root, files.map((file) => join(root, file.path))) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles), changedPaths);
   return { version: CACHE_VERSION, schemaVersion: CACHE_VERSION, generatedAt: new Date().toISOString(), archiveBodiesIncluded: false, files, graph, stats: graphStats(graph), incremental: { enabled: true, fullRebuild, changedFiles: changedPaths.length, refreshReason, elapsedMs: Date.now() - startedAt } };
 }
@@ -739,7 +862,21 @@ export function buildImpactReport(index, changedPath, limits = {}) {
     }
   }
 
-  const related = [...relatedIds].slice(0, maxRelated).map((id) => ({ ...(nodeById.get(id) ?? { id }), reasons: [...(reasons.get(id) ?? [])] }));
+  const relatedAll = [...relatedIds]
+    .map((id) => {
+      const node = nodeById.get(id) ?? { id };
+      const path = node.path ?? id.replace(/^file:/, '').replace(/^test:/, '');
+      const reasonList = [...(reasons.get(id) ?? [])];
+      const retrieval = retrievalMetadataForPath(path);
+      const reasonSignals = reasonList.map((reason) => `reason:${reason}`);
+      return { ...node, reasons: reasonList, retrieval: { ...retrieval, signals: [...new Set([...retrieval.signals, ...reasonSignals])] } };
+    })
+    .sort((a, b) => {
+      if (a.id === seed) return -1;
+      if (b.id === seed) return 1;
+      return (b.retrieval?.priority ?? 0) - (a.retrieval?.priority ?? 0) || a.id.localeCompare(b.id);
+    });
+  const related = relatedAll.slice(0, maxRelated);
   for (const item of related) {
     if (item.type === 'file') {
       const area = docsArea(item.path);
@@ -752,12 +889,13 @@ export function buildImpactReport(index, changedPath, limits = {}) {
     else if (item.type === 'symbol' || item.type === 'export') addImpactItem(groups.symbols, item, limits.symbols ?? 10);
   }
 
-  return { changed: changedPath, related, groups, omittedRelated: Math.max(0, relatedIds.size - related.length) };
+  return { changed: changedPath, related, groups, omittedRelated: Math.max(0, relatedAll.length - related.length) };
 }
 
-const DURABLE_COMMUNITY_NODE_TYPES = new Set(['file', 'test', 'command', 'event', 'package_resource', 'package', 'script', 'binary']);
+const DURABLE_COMMUNITY_NODE_TYPES = new Set(['file', 'memory_area', 'test', 'command', 'event', 'package_resource', 'package', 'script', 'binary']);
 
 function communityKeyForNode(node) {
+  if (node.type === 'memory_area') return `memory-${node.area}`;
   const path = node.path ?? node.id?.replace(/^file:/, '').replace(/^test:/, '') ?? '';
   if (path.startsWith('packages/pi/extensions/plan-mode/')) return 'pi-plan-mode';
   if (path.startsWith('packages/pi/extensions/load-project/')) return 'pi-load-project';
@@ -787,8 +925,8 @@ function addBounded(list, value, limit) {
 
 function relationWeight(relation) {
   if (relation === 'imports' || relation === 'tests' || relation === 'handles_command') return 4;
-  if (relation === 'emits_event' || relation === 'includes_resource') return 3;
-  if (relation === 'links_to' || relation === 'declares_package' || relation === 'declares_bin') return 2;
+  if (relation === 'emits_event' || relation === 'includes_resource' || relation === 'routes_to') return 3;
+  if (relation === 'links_to' || relation === 'belongs_to_area' || relation === 'declares_package' || relation === 'declares_bin') return 2;
   return 1;
 }
 
@@ -799,6 +937,7 @@ function addCommunityDetails(community, node, itemLimit) {
     const area = docsArea(path);
     community.omitted += addBounded(area ? community.docs : community.files, path, itemLimit);
   } else if (node.type === 'heading' && node.path) community.omitted += addBounded(community.docs, node.path, itemLimit);
+  else if (node.type === 'memory_area') community.omitted += addBounded(community.docs, `memory_area:${node.area}`, itemLimit);
   else if (node.type === 'command') community.omitted += addBounded(community.commands, node.name, itemLimit);
   else if (node.type === 'event') community.omitted += addBounded(community.events, node.name, itemLimit);
   else if (node.type === 'test') community.omitted += addBounded(community.tests, node.path, itemLimit);
@@ -896,12 +1035,35 @@ export function buildCommunities(index, limits = {}) {
   }
 }
 
+export function buildMemoryAreas(index, limits = {}) {
+  const graph = index?.graph ?? { nodes: [], edges: [] };
+  const itemLimit = limits.items ?? 4;
+  const areas = new Map();
+  for (const [area, definition] of Object.entries(MEMORY_AREAS)) {
+    areas.set(area, { area, label: definition.label, role: definition.role, priority: definition.priority, files: [], count: 0, omitted: 0 });
+  }
+  for (const node of graph.nodes) {
+    if (node.type !== 'file') continue;
+    const area = node.memoryArea ?? memoryAreaForPath(node.path);
+    if (!area || !areas.has(area)) continue;
+    const summary = areas.get(area);
+    summary.count += 1;
+    if (summary.files.length < itemLimit) summary.files.push(node.path);
+    else summary.omitted += 1;
+  }
+  const all = [...areas.values()]
+    .filter((area) => area.count > 0)
+    .sort((a, b) => b.priority - a.priority || a.area.localeCompare(b.area));
+  return { areas: all, total: all.length, omitted: 0, method: 'deterministic-path-classification' };
+}
+
 export function runLoadSnapshot(argv) {
   const options = parseCommon(argv);
   const { status, index, metadata } = readFreshIndex(options.root);
   const summary = graphSummary(index);
   const communities = buildCommunities(index, { communities: 5, items: 5 });
-  const bounds = { communities: 5, communityItems: 5, fullGraphIncluded: false, archiveBodiesIncluded: status.archiveBodiesIncluded, archiveMapIncluded: true };
+  const memoryAreas = buildMemoryAreas(index, { items: 4 });
+  const bounds = { communities: 5, communityItems: 5, memoryAreaItems: 4, fullGraphIncluded: false, archiveBodiesIncluded: status.archiveBodiesIncluded, archiveMapIncluded: true };
   const quality = {
     indexedFiles: status.indexedFiles,
     currentFiles: status.currentFiles,
@@ -909,14 +1071,16 @@ export function runLoadSnapshot(argv) {
     totalCommunities: communities.total,
     omittedCommunities: communities.omitted,
     omittedCommunityItems: communities.communities.reduce((sum, community) => sum + (community.omitted ?? 0), 0),
+    memoryAreas: memoryAreas.total,
+    omittedMemoryAreaItems: memoryAreas.areas.reduce((sum, area) => sum + (area.omitted ?? 0), 0),
     graphNodes: summary.nodes,
     graphEdges: summary.edges,
   };
-  let payload = { root: options.root, cache: status, metadata, graph: summary, communities, bounds, quality };
+  let payload = { root: options.root, cache: status, metadata, graph: summary, memoryAreas, communities, bounds, quality };
   const serialized = JSON.stringify(payload);
   payload = { ...payload, quality: { ...quality, snapshotBytes: Buffer.byteLength(serialized), approxSnapshotTokens: Math.ceil(serialized.length / 4) } };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
-  else console.log(`dotdotgod load snapshot\n- cache: ${status.status}${metadata.cacheRefreshed ? ' (refreshed)' : ''}\n- indexed files: ${status.indexedFiles}\n- current files: ${status.currentFiles}\n- archive bodies included: ${status.archiveBodiesIncluded ? 'yes' : 'no'}\n- graph: ${summary.nodes} nodes, ${summary.edges} edges\n- communities: ${communities.communities.length}/${communities.total} shown, ${communities.omitted} omitted`);
+  else console.log(`dotdotgod load snapshot\n- cache: ${status.status}${metadata.cacheRefreshed ? ' (refreshed)' : ''}\n- indexed files: ${status.indexedFiles}\n- current files: ${status.currentFiles}\n- archive bodies included: ${status.archiveBodiesIncluded ? 'yes' : 'no'}\n- graph: ${summary.nodes} nodes, ${summary.edges} edges\n- memory areas: ${memoryAreas.areas.length}/${memoryAreas.total} shown\n- communities: ${communities.communities.length}/${communities.total} shown, ${communities.omitted} omitted`);
 }
 
 export function parseGraphOptions(argv) {
