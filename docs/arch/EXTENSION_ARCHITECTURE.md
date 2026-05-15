@@ -44,10 +44,11 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 - `Ctrl+Alt+P` shortcut
 - active tool selection for planning/execution
 - write/edit filtering for plan/archive markdown files
-- read-only bash allowlist enforcement
+- read-only bash allowlist enforcement, plus a user-confirmed one-command permission gate for agent-requested dotdotgod CLI commands
 - session state for plan mode, execution mode, todos, current active plan README path, active plan-file touch tracking, touched plan/archive paths, latest planning request, pending first-request context shaping, queued planning-load delivery, and plan-compaction debounce metadata
 - concise execute/stay/refine review prompt after active plan file updates, without saved-plan preview rendering
 - one-time planning-focused `ctx.compact({ customInstructions })` and queued curated-load decisions after the first user planning request when a long or noisy session may hurt plan quality
+- optional dotdotgod CLI planning-context checks after compaction that run validation, refresh bounded index/load-snapshot metadata, and attach a `graph impact` summary when a current-work path can be inferred
 - tiered hidden Plan Mode prompts: a full safety/workflow prompt for the first active planning turn and a compact restriction reminder for later turns
 - current-work-directed compaction instructions that include the latest task focus before the durable preservation rules and explicitly demote stale history or repeated boilerplate
 
@@ -103,6 +104,7 @@ Prompt content should:
 - latest planning request, current active plan README path, pending queued planning-load state, and touched plan/archive paths for current-work compaction focus
 - last planning compaction entry count/reason for measurement and resume continuity
 - pending planning-load prompt/reason so automatic project-memory loads can be flushed safely after active prompts complete
+- latest dotdotgod CLI planning-context summary and whether the one-time CLI check has run
 
 ## Future Search Architecture
 

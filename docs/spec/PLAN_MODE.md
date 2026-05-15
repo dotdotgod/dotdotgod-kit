@@ -28,6 +28,7 @@ While plan mode is active:
   - `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`
   - `rm -r docs/plan/<task-slug>` or `rm docs/archive/plan/<task-slug>/README.md`
 - Product/source/config changes outside those directories are blocked.
+- Agent-requested dotdotgod CLI bash commands that are not otherwise allowlisted require explicit one-command user approval before they run in Plan Mode.
 
 ## Plan File Shape
 
@@ -64,6 +65,8 @@ If compaction and load are both needed, Plan Mode requests compaction first, the
 
 Queued planning loads are persisted in Plan Mode session state and flushed from a safe `agent_end` point with follow-up delivery. This avoids sending a new load prompt from `before_agent_start` while the agent is already processing another prompt.
 
+When the dotdotgod CLI is available, Plan Mode also runs a CLI planning-context check after any needed compaction and before the automatic project-memory load is flushed. The check runs validation, refreshes a bounded load snapshot, and runs `dotdotgod graph impact` for the best available current-work path when one can be inferred from the latest request, current active plan, or touched plan paths. If the CLI is unavailable, Plan Mode silently skips this enhancement.
+
 ## Planning-Focused Compaction
 
 Plan mode automatically requests planning-focused compaction when context is large enough to hurt plan quality. It does not compact immediately when `/plan` is toggled on; it checks once after the first user planning request for that Plan Mode session. Later planning turns record debug metrics but do not automatically re-run load or compaction decisions.
@@ -86,6 +89,7 @@ The durable preservation rules then ask compaction to keep:
 - current target files
 - touched docs/plan and docs/archive files
 - relevant docs/spec, docs/test, and docs/arch context
+- dotdotgod CLI validation, index, and graph impact summary when available
 - implementation decisions
 - verification commands, results, and command outcomes
 - unresolved risks, questions, and next steps
@@ -105,7 +109,7 @@ The extension skips compaction during execution mode and continues without block
 
 When the Pi adapter is started with `--dd-context-debug`, Plan Mode records local JSONL measurement events for Plan Mode entry, the first-request context-shaping check, planning turn end, compaction request, compaction completion/error, and execution start.
 
-Events include context usage when available, git state, compaction reason, current-work focus, queued/flushed planning-load state, entry counts, and todo counts where relevant. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
+Events include context usage when available, git state, compaction reason, current-work focus, queued/flushed planning-load state, CLI planning-context availability, entry counts, and todo counts where relevant. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
 
 ## Plan Review Choice
 

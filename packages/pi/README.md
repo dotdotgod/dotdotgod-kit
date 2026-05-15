@@ -111,7 +111,7 @@ The emphasis is different:
 ### Where dotdotgod is better
 
 - **Clear starting workflow:** the project-initializer skill creates a predictable memory scaffold before loading or planning.
-- **Better retrieval priors:** docs paths and README indexes become memory-area metadata, `belongs_to_area` edges, and README `routes_to` edges before the graph query begins.
+- **Better retrieval priors:** docs paths and README indexes become memory-area metadata, `belongs_to_area` edges, and README `routes_to` edges before graph impact routing begins.
 - **Lower default context pressure:** agents see bounded snapshots and README indexes instead of a full graph report by default, avoiding the case where a small question pays the cost of reading `GRAPH_REPORT` first.
 - **Safer task execution:** Plan Mode preserves intent, safety constraints, verification, and completed-step state with `[DONE:n]` markers.
 - **Better long-running project continuity:** active plans and archive indexes survive session resets, compaction, and agent handoff.

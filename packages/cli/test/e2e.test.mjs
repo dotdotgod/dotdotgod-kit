@@ -39,12 +39,16 @@ function json(result) {
 }
 
 describe('dotdotgod CLI e2e', () => {
-  it('validates, indexes, reports status, snapshots, and graph query results', () => {
+  it('validates, indexes, reports status, snapshots, and graph impact results', () => {
     const root = createFixture();
 
     const validate = run(['validate', root, '--include-local-memory']);
     assert.equal(validate.status, 0, validate.stdout + validate.stderr);
     assert.match(validate.stdout, /docs validation passed/);
+
+    const missingIndex = run(['validate', root, '--include-local-memory', '--check-index', '--json']);
+    assert.notEqual(missingIndex.status, 0);
+    assert(JSON.parse(missingIndex.stdout).errors.some((error) => error.code === 'INDEX_MISSING'));
 
     const index = json(run(['index', root, '--json']));
     assert.equal(index.ok, true);
@@ -56,6 +60,9 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(index.schemaVersion, 6);
     assert.equal(typeof index.incremental.elapsedMs, 'number');
     assert(index.indexSizeBytes > 0);
+
+    const validateIndex = run(['validate', root, '--include-local-memory', '--check-index']);
+    assert.equal(validateIndex.status, 0, validateIndex.stdout + validateIndex.stderr);
 
     const status = json(run(['status', root, '--json']));
     assert.equal(status.status, 'fresh');
@@ -92,13 +99,17 @@ describe('dotdotgod CLI e2e', () => {
     assert(['leiden', 'deterministic-domain-grouping'].includes(communities.communities.method));
     assert.equal(typeof communities.communities.fallback, 'boolean');
 
-    const query = json(run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--json']));
-    assert.equal(query.command, 'graph query');
-    assert(query.related.some((node) => node.id === 'file:packages/app/index.mjs'));
-    assert(query.impact.groups.commands.items.some((item) => item.id === 'command:app'));
-    assert(query.impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/APP.md'));
-    assert(query.related.some((item) => item.id === 'file:packages/app/index.mjs' && item.retrieval?.signals.includes('reason:changed-file')));
-    assert.equal(typeof query.impact.omittedRelated, 'number');
+    const impact = json(run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--json']));
+    assert.equal(impact.command, 'graph impact');
+    assert(impact.related.some((node) => node.id === 'file:packages/app/index.mjs'));
+    assert(impact.impact.groups.commands.items.some((item) => item.id === 'command:app'));
+    assert(impact.impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/APP.md'));
+    assert(impact.related.some((item) => item.id === 'file:packages/app/index.mjs' && item.retrieval?.signals.includes('reason:changed-file')));
+    assert.equal(typeof impact.impact.omittedRelated, 'number');
+
+    const queryAlias = json(run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--json']));
+    assert.equal(queryAlias.command, 'graph impact');
+    assert.equal(queryAlias.deprecatedAliasUsed, true);
   });
 
   it('reports validation failures and stale indexes', () => {
@@ -106,18 +117,24 @@ describe('dotdotgod CLI e2e', () => {
     mkdirSync(join(root, 'docs/BadDir'), { recursive: true });
     writeFileSync(join(root, 'docs/BadDir/bad.md'), '# Bad\n');
 
+    writeFileSync(join(root, 'docs/README.md'), '# Docs\n[Missing](missing.md)\n[Missing Anchor](spec/README.md#missing-anchor)\n');
     writeFileSync(join(root, 'docs/spec/BAD.md'), '# Bad\n');
     const invalid = run(['validate', root, '--include-local-memory', '--json']);
     assert.notEqual(invalid.status, 0);
     const invalidPayload = JSON.parse(invalid.stdout);
     assert.equal(invalidPayload.ok, false);
     assert(invalidPayload.errors.some((error) => error.code === 'DIR_NAMING'));
+    assert(invalidPayload.errors.some((error) => error.code === 'BROKEN_LINK'));
+    assert(invalidPayload.errors.some((error) => error.code === 'BROKEN_ANCHOR'));
     assert(invalidPayload.errors.some((error) => error.code === 'TRACEABILITY_MISSING' && /Property guidance/.test(error.message)));
 
     writeFileSync(join(root, 'docs/BadDir/README.md'), '# Bad Dir\n');
     // The bad directory intentionally remains invalid for validation, but index/status can still detect staleness.
     assert.equal(run(['index', root, '--json']).status, 0);
     writeFileSync(join(root, 'docs/spec/README.md'), '# Spec\n\nChanged\n');
+    const staleValidate = run(['validate', root, '--include-local-memory', '--check-index', '--json']);
+    assert.notEqual(staleValidate.status, 0);
+    assert(JSON.parse(staleValidate.stdout).errors.some((error) => error.code === 'INDEX_STALE' && error.file === 'docs/spec/README.md'));
     const stale = run(['status', root, '--json']);
     assert.notEqual(stale.status, 0);
     const stalePayload = JSON.parse(stale.stdout);
@@ -140,6 +157,10 @@ describe('dotdotgod CLI e2e', () => {
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     writeFileSync(manifestPath, JSON.stringify({ ...manifest, version: 1, schemaVersion: 1 }, null, 2));
 
+    const validate = run(['validate', root, '--check-index', '--json']);
+    assert.notEqual(validate.status, 0);
+    assert(JSON.parse(validate.stdout).errors.some((error) => error.code === 'INDEX_SCHEMA_MISMATCH'));
+
     const stale = run(['status', root, '--json']);
     assert.notEqual(stale.status, 0);
     const stalePayload = JSON.parse(stale.stdout);
@@ -151,5 +172,22 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(snapshot.metadata.refreshReason, 'schema-mismatch');
     assert.equal(snapshot.metadata.fullRebuild, true);
     assert.equal(snapshot.cache.schemaOk, true);
+  });
+
+  it('checks only indexable markdown files for index freshness', () => {
+    const root = createFixture();
+    assert.equal(run(['index', root, '--json']).status, 0);
+    writeFileSync(join(root, 'docs/arch/NEW_DOC.md'), '# New Doc\n');
+    const missingFile = run(['validate', root, '--include-local-memory', '--check-index', '--json']);
+    assert.notEqual(missingFile.status, 0);
+    assert(JSON.parse(missingFile.stdout).errors.some((error) => error.code === 'INDEX_MISSING_FILE' && error.file === 'docs/arch/NEW_DOC.md'));
+
+    const archiveRoot = createFixture();
+    assert.equal(run(['index', archiveRoot, '--json']).status, 0);
+    mkdirSync(join(archiveRoot, 'docs/archive/plan/old-task'), { recursive: true });
+    writeFileSync(join(archiveRoot, 'docs/archive/plan/old-task/README.md'), '# Old Task\n');
+    const archiveValidate = run(['validate', archiveRoot, '--include-local-memory', '--check-index', '--json']);
+    assert.equal(archiveValidate.status, 0, archiveValidate.stdout + archiveValidate.stderr);
+    assert.equal(JSON.parse(archiveValidate.stdout).ok, true);
   });
 });
