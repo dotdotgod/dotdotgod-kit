@@ -24,7 +24,7 @@ dotdotgod
 
 `packages/shared` owns agent-neutral assets and contracts:
 
-- `workflows/load.md`: common project memory loading guidance.
+- `workflows/load.md`: common project memory loading guidance, including snapshot-first CLI guidance with manual README-index fallback.
 - `workflows/plan.md`: common doc-first planning guidance.
 - `workflows/init.md`: common project initializer guidance with platform-specific script command placeholders.
 - `initializer/scripts/init_project.sh`: deterministic scaffold generator.
@@ -80,6 +80,7 @@ Responsibilities:
 - project-memory initialization skill and `/dd:init` command
 - project loading skill and `/dd:load` command
 - planning workflow guidance using Claude-native command and skill components
+- generated load guidance that prefers `dotdotgod load-snapshot` when available and falls back to README-index reads
 - optional hooks later if they safely enforce docs-plan restrictions
 
 ### Codex Adapter
@@ -97,6 +98,7 @@ Responsibilities:
 
 - Codex plugin manifest and package resources
 - reusable skills for initialization, loading, and planning workflows
+- generated load guidance that prefers `dotdotgod load-snapshot` when available and falls back to README-index reads
 - `AGENTS.md`-first instruction flow
 - command-like trigger phrases: `dd:init`, `dd:load`, and `dd:plan`
 - optional MCP/tooling integration when useful

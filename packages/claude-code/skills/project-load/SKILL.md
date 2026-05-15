@@ -17,7 +17,12 @@ Do not modify files during the load pass unless the user explicitly asks for edi
 1. Identify the repository root and current state.
    - Check current directory, git root, branch, and dirty worktree status.
    - Mention user changes and avoid reverting or cleaning them.
-2. Inspect baseline memory files when present:
+2. Prefer the bounded CLI snapshot when available.
+   - If `dotdotgod` is installed or available in the repository, run `dotdotgod load-snapshot <root> --json`.
+   - If the local environment allows package execution but no `dotdotgod` binary is available, optionally run `npx @dotdotgod/cli load-snapshot <root> --json`.
+   - Treat the snapshot as the first-pass project-memory map for cache status, graph size, related communities, and archive inclusion policy.
+   - If the CLI is unavailable, network/package execution is undesirable, or the command fails, continue with the manual README-index fallback below.
+3. Inspect baseline memory files when present:
    - `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `README.md`
    - `docs/README.md`
    - `docs/spec/README.md`
@@ -25,11 +30,11 @@ Do not modify files during the load pass unless the user explicitly asks for edi
    - `docs/arch/README.md`
    - `docs/plan/README.md`
    - `docs/archive/README.md`
-3. Start with `AGENTS.md`, `README.md`, and `docs/README.md` when available.
-4. Follow README indexes. Read relevant docs under `docs/spec`, `docs/test`, and `docs/arch`.
-5. List `docs/plan` and `docs/archive` entries first, then selectively read only relevant active plans or archive notes.
-6. Distinguish completed plans under `docs/archive/plan/` from reports under `docs/archive/report/`.
-7. Avoid broad reads of generated outputs, dependencies, databases, caches, secrets, and `.env*` contents.
+4. Start with `AGENTS.md`, `README.md`, and `docs/README.md` when they are not already clear from the CLI snapshot or loaded context.
+5. Follow README indexes. Read relevant docs under `docs/spec`, `docs/test`, and `docs/arch` selectively instead of re-scanning every listed file unless the task needs a full refresh.
+6. List `docs/plan` entries first, then selectively read only relevant active plans.
+7. Use `docs/archive/README.md` as the archive history map. Do not scan archive bodies by default; read targeted completed plans under `docs/archive/plan/` or reports under `docs/archive/report/` only when directly relevant.
+8. Avoid broad reads of generated outputs, dependencies, databases, caches, secrets, and `.env*` contents.
 
 ## Output Shape
 
