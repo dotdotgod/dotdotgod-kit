@@ -4,9 +4,11 @@ Pi adapter for dotdotgod's context curation workflow. **Start with the `project-
 
 Use it when you want Pi to turn a repository into durable agent memory: shared rules, specs, architecture, test strategy, active plans, archived decisions, and a bounded load snapshot.
 
-## Start Here: Initialize Project Memory
+## Start Here: Run the Project Initializer Skill
 
-After installing the package, ask Pi to initialize or normalize the project memory scaffold. The bundled skill is named `project-initializer` and is triggered by requests like:
+After installing the package, open Pi in your repository and ask it to initialize or normalize the project memory scaffold. The bundled skill is named `project-initializer`; you do not need to run its internal script yourself.
+
+Use natural language in Pi:
 
 ```text
 Initialize this project with dotdotgod.
@@ -14,12 +16,14 @@ Set up AGENTS.md, CLAUDE.md, CODEX.md, and docs folders.
 Create a doc-first project baseline for this repository.
 ```
 
-For deterministic setup, the skill uses the bundled shell script:
+A good first-run flow is:
 
-```bash
-sh skills/project-initializer/scripts/init_project.sh --dry-run --project-name <name> <project-root>
-sh skills/project-initializer/scripts/init_project.sh --project-name <name> <project-root>
-```
+1. Install the package with `pi install npm:@dotdotgod/pi`.
+2. Start Pi in the target repository.
+3. Ask: `Initialize this project with dotdotgod.`
+4. Review the files the skill plans to create or skip.
+5. Let the skill create the scaffold.
+6. Then use `/dd:load` to load the new project memory and `/plan` for implementation planning.
 
 The initializer is the first step: it creates the structure that later lets `/dd:load` find the right context and `/plan` write durable task intent.
 
@@ -56,7 +60,7 @@ This is the core context curation idea: instead of putting more raw files into c
 pi install npm:@dotdotgod/pi
 ```
 
-Published install/uninstall smoke has been verified for `0.1.5`:
+Published install/uninstall smoke has been verified for `0.1.6`:
 
 ```bash
 pi install npm:@dotdotgod/pi
