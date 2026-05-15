@@ -57,7 +57,7 @@ describe('dotdotgod CLI e2e', () => {
     assert(existsSync(join(root, '.dotdotgod/manifest.json')));
     assert(existsSync(join(root, '.dotdotgod/graph/nodes/docs.json')));
     assert(existsSync(join(root, '.dotdotgod/graph/edges/imports.json')));
-    assert.equal(index.schemaVersion, 6);
+    assert.equal(index.schemaVersion, 7);
     assert.equal(typeof index.incremental.elapsedMs, 'number');
     assert(index.indexSizeBytes > 0);
 
@@ -88,7 +88,12 @@ describe('dotdotgod CLI e2e', () => {
     assert(snapshot.quality.approxSnapshotTokens > 0);
     assert.equal(typeof snapshot.quality.omittedCommunities, 'number');
     assert.equal(typeof snapshot.quality.omittedMemoryAreaItems, 'number');
-    assert(snapshot.memoryAreas.areas.some((area) => area.area === 'active-plan' && area.role === 'active-task-intent'));
+    assert.equal(snapshot.memoryConfig.source, 'default');
+    assert(snapshot.memoryPolicy.sharedAreas.includes('spec'));
+    assert(snapshot.memoryPolicy.localAreas.includes('active-plan'));
+    assert(snapshot.memoryPolicy.freshAreas.includes('active-plan'));
+    assert(snapshot.memoryPolicy.staleAreas.includes('archive-body'));
+    assert(snapshot.memoryAreas.areas.some((area) => area.area === 'active-plan' && area.role === 'active-task-intent' && area.scope === 'local' && area.freshness === 'fresh'));
     assert(snapshot.communities.communities.length > 0);
     assert(['leiden', 'deterministic-domain-grouping'].includes(snapshot.communities.method));
 
@@ -110,6 +115,75 @@ describe('dotdotgod CLI e2e', () => {
     const queryAlias = json(run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--json']));
     assert.equal(queryAlias.command, 'graph impact');
     assert.equal(queryAlias.deprecatedAliasUsed, true);
+  });
+
+  it('reports memory config validation failures without crashing runtime commands', () => {
+    const root = createFixture();
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({
+      memory: {
+        areas: [
+          { id: 'Bad Id', paths: [], scope: 'global', freshness: 'old', priority: 101, includeBodiesByDefault: 'yes' },
+        ],
+      },
+    }, null, 2));
+
+    const invalid = run(['validate', root, '--include-local-memory', '--json']);
+    assert.notEqual(invalid.status, 0);
+    const payload = JSON.parse(invalid.stdout);
+    assert(payload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_ID'));
+    assert(payload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_SCOPE'));
+    const snapshot = json(run(['load-snapshot', root, '--json']));
+    assert.equal(snapshot.memoryConfig.source, 'dotdotgod.config.json');
+    assert(snapshot.memoryPolicy.sharedAreas.includes('spec'));
+  });
+
+  it('validates configurable traceability scopes with multiple path arrays', () => {
+    const root = createFixture();
+    mkdirSync(join(root, 'docs/product'), { recursive: true });
+    mkdirSync(join(root, 'docs/requirements'), { recursive: true });
+    writeFileSync(join(root, 'docs/product/README.md'), '# Product\n');
+    writeFileSync(join(root, 'docs/product/FEATURE.md'), '# Product Feature\n');
+    writeFileSync(join(root, 'docs/requirements/README.md'), '# Requirements\n');
+    writeFileSync(join(root, 'docs/requirements/REQ.md'), '# Requirement\n');
+    writeFileSync(join(root, 'docs/spec/APP.md'), '# App without traceability after custom policy\n');
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({
+      traceability: {
+        required: ['docs/product/**', 'docs/requirements/**'],
+        exclude: ['**/README.md'],
+      },
+    }, null, 2));
+
+    const invalid = run(['validate', root, '--include-local-memory', '--json']);
+    assert.notEqual(invalid.status, 0);
+    const payload = JSON.parse(invalid.stdout);
+    assert(payload.errors.some((error) => error.code === 'TRACEABILITY_MISSING' && error.file === 'docs/product/FEATURE.md'));
+    assert(payload.errors.some((error) => error.code === 'TRACEABILITY_MISSING' && error.file === 'docs/requirements/REQ.md'));
+    assert(!payload.errors.some((error) => error.code === 'TRACEABILITY_MISSING' && error.file === 'docs/spec/APP.md'));
+
+    const block = '\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "verificationCommands": ["node --test"]\n}\n```\n';
+    writeFileSync(join(root, 'docs/product/FEATURE.md'), `# Product Feature\n${block}`);
+    writeFileSync(join(root, 'docs/requirements/REQ.md'), `# Requirement\n${block}`);
+    const valid = run(['validate', root, '--include-local-memory', '--json']);
+    assert.equal(valid.status, 0, valid.stdout + valid.stderr);
+  });
+
+  it('reports traceability config validation failures without crashing runtime commands', () => {
+    const root = createFixture();
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({
+      traceability: {
+        required: 'docs/product/**',
+        exclude: ['../escape'],
+      },
+    }, null, 2));
+
+    const invalid = run(['validate', root, '--include-local-memory', '--json']);
+    assert.notEqual(invalid.status, 0);
+    const payload = JSON.parse(invalid.stdout);
+    assert(payload.errors.some((error) => error.code === 'TRACEABILITY_CONFIG_INVALID_REQUIRED'));
+    assert(payload.errors.some((error) => error.code === 'TRACEABILITY_CONFIG_INVALID_EXCLUDE'));
+    const snapshot = json(run(['load-snapshot', root, '--json']));
+    assert.equal(snapshot.memoryConfig.source, 'dotdotgod.config.json');
+    assert.deepEqual(snapshot.memoryConfig.traceability.required, ['docs/spec/**']);
   });
 
   it('reports validation failures and stale indexes', () => {

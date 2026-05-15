@@ -58,6 +58,7 @@ Dotdotgod's advantage is not just that it can index files. It gives the index an
 - **Active and historical memory stay separate:** `docs/plan` carries current work; `docs/archive/README.md` maps completed work without loading every old plan body.
 - **Retrieval starts with intent:** behavior questions route to specs, design questions route to architecture, verification questions route to tests, current-work questions route to plans, and past-decision questions route through the archive map.
 - **Graph/cache output stays bounded:** the full graph remains local in `.dotdotgod/`; agents receive compact snapshots, memory-area summaries, omitted counts, schema/cache metadata, and archive policy.
+- **Memory policy can be explicit:** projects can keep the default shared/local and fresh/stale memory areas or define them in `dotdotgod.config.json`.
 
 ## What Context Curation Improves
 
@@ -74,7 +75,7 @@ Dotdotgod's advantage is not just that it can index files. It gives the index an
 - **Project scaffold:** initialize `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs indexes, local `docs/plan`, and `docs/archive` conventions.
 - **Read-only project load:** `/dd:load` and adapter load workflows prefer a bounded `dotdotgod load-snapshot` map before reading individual docs.
 - **Safe planning loop:** Pi Plan Mode restricts source/config mutation until a durable plan exists, tracks explicit `[DONE:n]` execution markers, and archives completed work.
-- **Unified CLI:** `@dotdotgod/cli` owns validation, cache/index/status, load snapshots, memory-area summaries, graph impact queries, and community summaries.
+- **Unified CLI:** `@dotdotgod/cli` owns validation, cache/index/status, load snapshots, configurable memory-area summaries, graph impact queries, and community summaries.
 - **Generic indexing:** indexing is gitignore-aware rather than pnpm-monorepo-specific, with support for common plain-text docs, source, scripts, config, web, and infrastructure files.
 - **Bounded graph output:** full graph data stays in `.dotdotgod/`; agent-facing commands return compact summaries, omitted counts, schema/cache metadata, and archive inclusion policy.
 - **Cross-agent adapters:** Pi, Claude Code, and Codex share the same docs-first workflow while respecting each agent's native extension model.
