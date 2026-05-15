@@ -193,11 +193,98 @@ export function isSafeCommand(command: string): boolean {
 	return !isDestructive && isSafe;
 }
 
+export function isDotdotgodCliCommand(command: string): boolean {
+	if (/[;&|<>`$\n\r]/.test(command)) return false;
+
+	const tokens = tokenizeShellCommand(command.trim());
+	if (!tokens || tokens.length === 0) return false;
+
+	const [program, script] = tokens;
+	if (program === "dotdotgod") return true;
+	if (program !== "node" || !script || script.startsWith("-")) return false;
+
+	const normalizedScript = script.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
+	return normalizedScript === "packages/cli/bin/dotdotgod.mjs";
+}
+
+export interface PlanModeBashApproval {
+	hasUI: boolean;
+	confirm: (title: string, message: string) => boolean | Promise<boolean>;
+}
+
+export interface PlanModeBashDecision {
+	allow: boolean;
+	reason?: string;
+}
+
+export async function shouldAllowPlanModeBashCommand(command: string, approval?: PlanModeBashApproval): Promise<PlanModeBashDecision> {
+	if (isSafeCommand(command)) return { allow: true };
+
+	if (isDotdotgodCliCommand(command)) {
+		if (!approval?.hasUI) {
+			return {
+				allow: false,
+				reason: `Plan mode: dotdotgod CLI commands require interactive user approval.\nCommand: ${command}`,
+			};
+		}
+
+		const approved = await approval.confirm(
+			"Allow dotdotgod CLI in Plan Mode?",
+			`The agent wants to run:\n${command}\n\nThis can read or update dotdotgod cache files depending on the subcommand. Allow this one command?`,
+		);
+		return approved
+			? { allow: true }
+			: {
+				allow: false,
+				reason: `Plan mode: dotdotgod CLI command blocked by user.\nCommand: ${command}`,
+			};
+	}
+
+	return {
+		allow: false,
+		reason: `Plan mode: command is not allowlisted. Mutating, install, or deletion commands are only allowed during execution mode.\nCommand: ${command}`,
+	};
+}
+
 export function getCurrentPlanReadmePath(path: string): string | undefined {
 	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
 	const match = normalized.match(/^docs\/plan\/([a-z0-9]+(?:-[a-z0-9]+)*)\/(README\.md|[A-Z0-9]+(?:_[A-Z0-9]+)*\.md)$/);
 	if (!match?.[1]) return undefined;
 	return `docs/plan/${match[1]}/README.md`;
+}
+
+export function extractPathMentions(text: string): string[] {
+	const paths: string[] = [];
+	const seen = new Set<string>();
+	const re = /(?:^|[\s`"'(:])(@?\.?[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+)(?=$|[\s`"'),.;:])/g;
+	let match;
+	while ((match = re.exec(text)) !== null) {
+		const raw = match[1];
+		if (!raw) continue;
+		const normalized = raw.replace(/^@/, "").replace(/^\.\//, "").replace(/\/+/g, "/");
+		if (normalized.includes("..") || normalized.endsWith("/")) continue;
+		if (!/[.][A-Za-z0-9]+$/.test(normalized)) continue;
+		if (!seen.has(normalized)) {
+			seen.add(normalized);
+			paths.push(normalized);
+		}
+	}
+	return paths;
+}
+
+export function selectPlanImpactPath(
+	cwd: string,
+	latestRequest: string | undefined,
+	currentPlanPath: string | undefined,
+	touchedPaths: readonly string[],
+	pathExists: (cwd: string, path: string) => boolean,
+): string | undefined {
+	const candidates = [
+		...extractPathMentions(latestRequest ?? ""),
+		...(currentPlanPath ? [currentPlanPath] : []),
+		...touchedPaths,
+	];
+	return candidates.find((path) => pathExists(cwd, path));
 }
 
 export const PLAN_COMPACTION_PERCENT_THRESHOLD = 60;

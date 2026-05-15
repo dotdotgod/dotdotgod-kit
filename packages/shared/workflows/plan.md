@@ -43,7 +43,7 @@ Prefer live repository docs in this order:
    - final housekeeping step to move completed work to `docs/archive/plan/<task-slug>/`
 6. Update `docs/plan/README.md` if the repository keeps active plan entries there.
 7. Use repository-local package manager evidence for verification commands. In this repository, prefer `pnpm run verify`, `pnpm run pack:dry-run`, and `.husky/pre-push` when applicable.
-8. After creating or updating behavior specs, run project validation when possible. For dotdotgod projects, `dotdotgod validate` enforces machine-readable `json dotdotgod` traceability blocks as the final section in specs. If validation fails, use the schema, property guidance, and example shown in the validation error to repair the spec.
+8. After creating or updating behavior specs, run project validation when possible. For dotdotgod projects, `dotdotgod validate` enforces machine-readable `json dotdotgod` traceability blocks as the final section in specs. Use `dotdotgod validate --check-index` when you need to confirm markdown fingerprints match the graph index. If validation fails, use the schema, property guidance, and example shown in the validation error to repair the spec.
 9. Stop after presenting the plan unless the user explicitly asks for execution.
 10. After implementation and verification, archive completed or superseded plan directories under `docs/archive/plan/<task-slug>/`; remove stale local plan artifacts only when the project policy allows plan/archive housekeeping.
 

@@ -16,20 +16,21 @@ Command-line tools for dotdotgod project memory. The CLI validates the docs scaf
 
 ```bash
 dotdotgod validate .
+dotdotgod validate . --check-index
 dotdotgod status .
 dotdotgod index .
 dotdotgod load-snapshot .
-dotdotgod graph query . --changed <path>
+dotdotgod graph impact . --changed <path>
 dotdotgod graph communities .
 ```
 
-`validate` replaces the previous standalone docs validator package. Graph indexing currently extracts a deterministic first-pass graph from Markdown headings/links, README routing links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, metric-event string literals, and dotdotgod memory-area membership. Other supported plain-text/source/config files are indexed as file metadata until dedicated extractors are added.
+`validate` replaces the previous standalone docs validator package. It checks docs structure, local Markdown links, CLI-enforced spec traceability blocks, and traceability target paths. With `--check-index`, it also compares current Markdown fingerprints with `.dotdotgod/manifest.json` and reports stale or missing graph index entries without refreshing the cache. Graph indexing currently extracts a deterministic first-pass graph from Markdown headings/links, README routing links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, metric-event string literals, and dotdotgod memory-area membership. Other supported plain-text/source/config files are indexed as file metadata until dedicated extractors are added.
 
 The cache uses `.dotdotgod/manifest.json` plus compact graph shards under `.dotdotgod/graph/` so larger long-running projects do not require one giant JSON file. `status` is read-only and reports whether the cache is missing, fresh, stale, or schema-incompatible. `load-snapshot` and `graph` commands lazily refresh a missing/stale cache before producing agent-facing output and include refresh reason, elapsed timing, changed-file count, schema version, cache size, and archive inclusion policy in JSON output when available.
 
 Memory-aware graph metadata is deterministic and path-based: files under `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive/README.md` get `memoryArea`, `memoryRole`, `retrievalPriority`, and `retrieval.signals` metadata. The graph also adds `memory_area:*` nodes, `belongs_to_area` edges, and `routes_to` edges from README indexes so curated docs maps become routing hints rather than plain links only.
 
-`load-snapshot` returns bounded `memoryAreas` summaries alongside cache, graph, community, and archive-policy metadata. `graph query` returns a bounded impact report grouped into files, docs, tests, commands, events, package resources, and symbols, with related nodes annotated by retrieval priority and reason-derived signals. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
+`load-snapshot` returns bounded `memoryAreas` summaries alongside cache, graph, community, and archive-policy metadata. `graph impact` returns a bounded impact report grouped into files, docs, tests, commands, events, package resources, and symbols, with related nodes annotated by retrieval priority and reason-derived signals. `graph query` remains as a deprecated alias for `graph impact`. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
 
 ## Indexing Scope
 

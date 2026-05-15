@@ -13,11 +13,12 @@ const GRAPH_EDGE_SHARDS = ['imports', 'docs-links', 'tests', 'events', 'packages
 function usage(message) {
   if (message) console.error(message);
   console.error(`Usage:
-  dotdotgod validate <root> [--include-local-memory] [--max-lines n] [--max-chars n] [--no-link-check] [--json]
+  dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]
   dotdotgod index <root> [--json]
   dotdotgod status <root> [--json]
   dotdotgod load-snapshot <root> [--json]
-  dotdotgod graph query <root> [--changed path] [--json]
+  dotdotgod graph impact <root> [--changed path] [--json]
+  dotdotgod graph query <root> [--changed path] [--json]  # deprecated alias
   dotdotgod graph communities <root> [--json]`);
   process.exit(message ? 2 : 0);
 }
@@ -169,10 +170,11 @@ export function extractAnchors(content) {
 }
 
 export function runValidate(argv) {
-  const options = { root: '.', includeLocalMemory: false, maxLines: 200, maxChars: 10000, linkCheck: true, json: false };
+  const options = { root: '.', includeLocalMemory: false, checkIndex: false, maxLines: 200, maxChars: 10000, linkCheck: true, json: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--include-local-memory') options.includeLocalMemory = true;
+    else if (arg === '--check-index') options.checkIndex = true;
     else if (arg === '--max-lines') options.maxLines = Number(argv[++i]);
     else if (arg === '--max-chars') options.maxChars = Number(argv[++i]);
     else if (arg === '--no-link-check') options.linkCheck = false;
@@ -253,6 +255,26 @@ export function runValidate(argv) {
       }
     }
   }
+  if (options.checkIndex) {
+    const index = readIndex(root);
+    if (!index) {
+      addError(cacheFile(root), 'INDEX_MISSING', 'Expected .dotdotgod index cache. Run `dotdotgod index <root>` or a lazy-refreshing command such as `dotdotgod load-snapshot <root> --json`.');
+    } else {
+      const schemaVersion = index.schemaVersion ?? index.version ?? null;
+      if (schemaVersion !== CACHE_VERSION) addError(cacheFile(root), 'INDEX_SCHEMA_MISMATCH', `Index schema is ${String(schemaVersion)}; expected ${CACHE_VERSION}. Run \`dotdotgod index <root>\`.`);
+      const indexed = new Map((index.files ?? []).map((file) => [file.path, file.sha256]));
+      const indexableMarkdownPaths = new Set(collectIndexFiles(root).map((file) => rel(root, file)).filter((path) => path.endsWith('.md')));
+      for (const file of markdownFiles) {
+        const path = rel(root, file);
+        if (!indexableMarkdownPaths.has(path)) continue;
+        const indexedHash = indexed.get(path);
+        const currentHash = fingerprint(file);
+        if (!indexedHash) addError(file, 'INDEX_MISSING_FILE', 'Markdown file is not present in the current graph index. Run `dotdotgod index <root>`.');
+        else if (indexedHash !== currentHash) addError(file, 'INDEX_STALE', 'Markdown fingerprint differs from the current graph index. Run `dotdotgod index <root>` or a lazy-refreshing command such as `dotdotgod load-snapshot <root> --json`.');
+      }
+    }
+  }
+
   if (options.includeLocalMemory) {
     for (const area of ['plan', 'archive/plan', 'archive/report']) {
       const areaRoot = join(docs, area);
@@ -1223,14 +1245,15 @@ export function runGraph(argv) {
   const options = parseGraphOptions(argv.slice(1));
   const { status, index, metadata } = readFreshIndex(options.root);
   const impact = options.changed ? buildImpactReport(index, options.changed) : undefined;
-  const payload = sub === 'query'
-    ? { ok: status.ok, command: 'graph query', root: options.root, status, metadata, changed: options.changed, related: impact?.related ?? [], impact }
+  const isImpact = sub === 'impact' || sub === 'query';
+  const payload = isImpact
+    ? { ok: status.ok, command: 'graph impact', deprecatedAliasUsed: sub === 'query' || undefined, root: options.root, status, metadata, changed: options.changed, related: impact?.related ?? [], impact }
     : sub === 'communities'
       ? { ok: status.ok, command: 'graph communities', root: options.root, status, metadata, graph: graphSummary(index), communities: buildCommunities(index) }
       : { ok: status.ok, command: `graph ${sub}`, root: options.root, status, metadata, graph: graphSummary(index) };
   const refreshNote = metadata.cacheRefreshed ? ', refreshed' : '';
   if (options.json) console.log(JSON.stringify(payload, null, 2));
-  else if (sub === 'query') console.log(`graph query: ${payload.related.length} related node(s), ${impact?.omittedRelated ?? 0} omitted (${status.status}${refreshNote} index)`);
+  else if (isImpact) console.log(`graph impact: ${payload.related.length} related node(s), ${impact?.omittedRelated ?? 0} omitted (${status.status}${refreshNote} index)${sub === 'query' ? ' — graph query is deprecated; use graph impact instead.' : ''}`);
   else if (sub === 'communities') console.log(`graph communities: ${payload.communities.communities.length}/${payload.communities.total} shown, ${payload.communities.omitted} omitted (${status.status}${refreshNote} index)`);
   else console.log(`${payload.command}: ${payload.graph.nodes} nodes, ${payload.graph.edges} edges (${status.status}${refreshNote} index)`);
 }

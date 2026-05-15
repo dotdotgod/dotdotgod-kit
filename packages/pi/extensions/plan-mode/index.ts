@@ -8,7 +8,9 @@ import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
-import { isAbsolute, relative, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { recordContextMetric } from "../context-metrics/utils.js";
 import { buildLoadPrompt, collectSnapshot } from "../load-project/utils.js";
 import {
@@ -17,7 +19,8 @@ import {
 	extractTodoItems,
 	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
-	isSafeCommand,
+	selectPlanImpactPath,
+	shouldAllowPlanModeBashCommand,
 	shouldShapePlanningContextOnAgentStart,
 	markCompletedSteps,
 	type PlanCompactionFocus,
@@ -124,6 +127,83 @@ function isActivePlanMarkdownPath(cwd: string, path: string): boolean {
 	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY);
 }
 
+function planPathExists(cwd: string, path: string): boolean {
+	return existsSync(resolve(cwd, path));
+}
+
+interface PlanCliCommandResult {
+	ok: boolean;
+	label?: string;
+	data?: unknown;
+	stdout?: string;
+	error?: string;
+}
+
+function runDotdotgodCli(cwd: string, args: string[]): PlanCliCommandResult {
+	const localCli = join(cwd, "packages/cli/bin/dotdotgod.mjs");
+	const candidates = existsSync(localCli)
+		? [
+			{ command: process.execPath, args: [localCli, ...args], label: "local workspace CLI" },
+			{ command: "dotdotgod", args, label: "dotdotgod" },
+		]
+		: [{ command: "dotdotgod", args, label: "dotdotgod" }];
+
+	const errors: string[] = [];
+	for (const candidate of candidates) {
+		const result = spawnSync(candidate.command, candidate.args, {
+			cwd,
+			encoding: "utf8",
+			stdio: ["ignore", "pipe", "pipe"],
+			timeout: 10_000,
+			maxBuffer: 1024 * 1024,
+		});
+		const stdout = result.stdout?.trim() ?? "";
+		if (stdout) {
+			try {
+				return { ok: true, label: candidate.label, data: JSON.parse(stdout), stdout };
+			} catch {
+				if (result.status === 0) return { ok: true, label: candidate.label, stdout };
+			}
+		}
+		errors.push(`${candidate.label}: ${result.error?.message ?? result.stderr?.trim() ?? `exit ${String(result.status)}`}`);
+	}
+
+	return { ok: false, error: errors.join("; ") };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+	return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
+}
+
+function formatPlanCliContextSummary(validate: PlanCliCommandResult, snapshot: PlanCliCommandResult, impact: PlanCliCommandResult | undefined, impactPath: string | undefined): string {
+	const lines = ["dotdotgod CLI planning context:"];
+	if (!validate.ok) return "";
+	const validateData = asRecord(validate.data);
+	const errors = Array.isArray(validateData?.errors) ? validateData.errors.length : 0;
+	lines.push(`- Validate: source=${validate.label ?? "dotdotgod"}; ok=${String(validateData?.ok ?? true)}; errors=${errors}`);
+
+	const snapshotData = asRecord(snapshot.data);
+	const cache = asRecord(snapshotData?.cache);
+	const metadata = asRecord(snapshotData?.metadata);
+	const graph = asRecord(snapshotData?.graph) ?? asRecord(cache?.graph);
+	if (snapshot.ok && snapshotData) {
+		lines.push(`- Index: status=${String(cache?.status ?? "unknown")}; schema=${String(cache?.schemaVersion ?? metadata?.schemaVersion ?? "unknown")}; indexedFiles=${String(cache?.indexedFiles ?? "unknown")}; graph=${String(graph?.nodes ?? "unknown")} nodes/${String(graph?.edges ?? "unknown")} edges; refreshed=${String(metadata?.cacheRefreshed ?? false)}; reason=${String(metadata?.refreshReason ?? "unknown")}`);
+	}
+
+	const impactData = asRecord(impact?.data);
+	const impactGroups = asRecord(asRecord(impactData?.impact)?.groups);
+	if (impact?.ok && impactPath && impactGroups) {
+		const groupSummary = (name: string): string => {
+			const items = asRecord(impactGroups[name])?.items;
+			return Array.isArray(items) ? String(items.length) : "0";
+		};
+		lines.push(`- Impact: command=dotdotgod graph impact; changed=${impactPath}; docs=${groupSummary("docs")}; tests=${groupSummary("tests")}; files=${groupSummary("files")}; commands=${groupSummary("commands")}; events=${groupSummary("events")}`);
+	} else if (impactPath) {
+		lines.push(`- Impact: skipped or unavailable for ${impactPath}.`);
+	}
+	return lines.join("\n");
+}
+
 function getToolPath(input: unknown): string | undefined {
 	if (!input || typeof input !== "object") return undefined;
 	const path = (input as { path?: unknown }).path;
@@ -145,6 +225,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let pendingPlanningLoadReason: string | undefined;
 	let planningContextShapePending = false;
 	let planModeFullPromptInjected = false;
+	let planningCliContextSummary: string | undefined;
+	let planningCliContextChecked = false;
 	let lastPlanningRequest: string | undefined;
 	let currentPlanPath: string | undefined;
 	let touchedPlanArchivePaths: string[] = [];
@@ -212,6 +294,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 				lastPlanCompactionEntryCount = getSessionEntryCount(ctx);
 				recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:compaction-complete", { reason, entryCount: lastPlanCompactionEntryCount });
 				ctx.ui.notify("Planning compaction completed.", "info");
+				refreshPlanCliContextIfAvailable(ctx);
 				if (pendingPlanningLoadAfterCompaction) {
 					pendingPlanningLoadAfterCompaction = false;
 					recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:load-after-compaction", { reason });
@@ -293,6 +376,24 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		return !hasRecentProjectMemoryLoad(ctx, entryCount);
 	}
 
+	function refreshPlanCliContextIfAvailable(ctx: ExtensionContext): void {
+		if (planningCliContextChecked || !planModeEnabled || executionMode) return;
+		planningCliContextChecked = true;
+		const validate = runDotdotgodCli(ctx.cwd, ["validate", ctx.cwd, "--include-local-memory", "--check-index", "--json"]);
+		if (!validate.ok) {
+			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:cli-context-unavailable", { error: validate.error });
+			persistState();
+			return;
+		}
+
+		const snapshot = runDotdotgodCli(ctx.cwd, ["load-snapshot", ctx.cwd, "--json"]);
+		const impactPath = selectPlanImpactPath(ctx.cwd, lastPlanningRequest, currentPlanPath, touchedPlanArchivePaths, planPathExists);
+		const impact = impactPath ? runDotdotgodCli(ctx.cwd, ["graph", "impact", ctx.cwd, "--changed", impactPath, "--json"]) : undefined;
+		planningCliContextSummary = formatPlanCliContextSummary(validate, snapshot, impact, impactPath);
+		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:cli-context", { hasSummary: Boolean(planningCliContextSummary), impactPath });
+		persistState();
+	}
+
 	function shapePlanningContextIfNeeded(ctx: ExtensionContext): void {
 		if (!planModeEnabled || executionMode) return;
 		const reason = getPlanCompactionReason(ctx.getContextUsage());
@@ -306,6 +407,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			persistState();
 			return;
 		}
+		refreshPlanCliContextIfAvailable(ctx);
 		requestPlanningLoadIfNeeded(ctx);
 	}
 
@@ -316,6 +418,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		activePlanTouched = false;
 		if (planModeEnabled) currentPlanPath = undefined;
 		planModeFullPromptInjected = false;
+		planningCliContextSummary = undefined;
+		planningCliContextChecked = false;
 
 		if (planModeEnabled) {
 			planningContextShapePending = true;
@@ -344,6 +448,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			pendingPlanningLoadReason,
 			planningContextShapePending,
 			planModeFullPromptInjected,
+			planningCliContextSummary,
+			planningCliContextChecked,
 			lastPlanningRequest,
 			currentPlanPath,
 			touchedPlanArchivePaths,
@@ -377,10 +483,14 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
 		if (event.toolName === "bash") {
 			const command = event.input.command as string;
-			if (!isSafeCommand(command)) {
+			const decision = await shouldAllowPlanModeBashCommand(command, {
+				hasUI: ctx.hasUI,
+				confirm: (title, message) => ctx.ui.confirm(title, message),
+			});
+			if (!decision.allow) {
 				return {
 					block: true,
-					reason: `Plan mode: command is not allowlisted. Mutating, install, or deletion commands are only allowed during execution mode.\nCommand: ${command}`,
+					reason: decision.reason ?? "Plan mode: command blocked.",
 				};
 			}
 			return;
@@ -452,7 +562,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 
 		if (planModeEnabled) {
-			const content = buildPlanModeContextPrompt(planModeFullPromptInjected);
+			const baseContent = buildPlanModeContextPrompt(planModeFullPromptInjected);
+			const content = planningCliContextSummary ? `${baseContent}\n\n${planningCliContextSummary}` : baseContent;
 			planModeFullPromptInjected = true;
 			persistState();
 			return {
@@ -591,6 +702,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 						pendingPlanningLoadReason?: string;
 						planningContextShapePending?: boolean;
 						planModeFullPromptInjected?: boolean;
+						planningCliContextSummary?: string;
+						planningCliContextChecked?: boolean;
 						lastPlanningRequest?: string;
 						currentPlanPath?: string;
 						touchedPlanArchivePaths?: string[];
@@ -611,6 +724,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			pendingPlanningLoadReason = planModeEntry.data.pendingPlanningLoadReason ?? pendingPlanningLoadReason;
 			planningContextShapePending = planModeEntry.data.planningContextShapePending ?? planningContextShapePending;
 			planModeFullPromptInjected = planModeEntry.data.planModeFullPromptInjected ?? planModeFullPromptInjected;
+			planningCliContextSummary = planModeEntry.data.planningCliContextSummary ?? planningCliContextSummary;
+			planningCliContextChecked = planModeEntry.data.planningCliContextChecked ?? planningCliContextChecked;
 			lastPlanningRequest = planModeEntry.data.lastPlanningRequest ?? lastPlanningRequest;
 			currentPlanPath = planModeEntry.data.currentPlanPath ?? currentPlanPath;
 			touchedPlanArchivePaths = planModeEntry.data.touchedPlanArchivePaths ?? touchedPlanArchivePaths;

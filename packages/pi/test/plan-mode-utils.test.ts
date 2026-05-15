@@ -8,11 +8,15 @@ import {
 	extractDoneSteps,
 	extractTodoItems,
 	formatPlanCompactionFocus,
+	extractPathMentions,
 	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
+	isDotdotgodCliCommand,
 	isSafeCommand,
 	isSafePlanArchiveCommand,
 	markCompletedSteps,
+	selectPlanImpactPath,
+	shouldAllowPlanModeBashCommand,
 	shouldShapePlanningContextOnAgentStart,
 	type TodoItem,
 } from "../extensions/plan-mode/utils.ts";
@@ -54,6 +58,59 @@ describe("plan-mode command safety", () => {
 			assert.equal(isSafePlanArchiveCommand(command), false, command);
 		}
 	});
+
+	it("detects dotdotgod CLI commands for explicit Plan Mode approval", () => {
+		for (const command of [
+			"dotdotgod validate .",
+			"node packages/cli/bin/dotdotgod.mjs validate .",
+			"node ./packages/cli/bin/dotdotgod.mjs validate .",
+		]) {
+			assert.equal(isDotdotgodCliCommand(command), true, command);
+			assert.equal(isSafeCommand(command), false, command);
+		}
+	});
+
+	it("rejects non-dotdotgod or chained commands from the dotdotgod CLI permission path", () => {
+		for (const command of [
+			"node -e \"console.log(1)\"",
+			"node scripts/other.mjs",
+			"pnpm dlx dotdotgod validate .",
+			"dotdotgod validate . && rm package.json",
+			"dotdotgod validate . > out.txt",
+		]) {
+			assert.equal(isDotdotgodCliCommand(command), false, command);
+		}
+	});
+
+	it("asks for one-command approval before allowing dotdotgod CLI in Plan Mode", async () => {
+		let prompts = 0;
+		assert.deepEqual(await shouldAllowPlanModeBashCommand("grep foo README.md"), { allow: true });
+		assert.deepEqual(
+			await shouldAllowPlanModeBashCommand("node packages/cli/bin/dotdotgod.mjs validate .", {
+				hasUI: true,
+				confirm: (title, message) => {
+					prompts += 1;
+					assert.match(title, /Allow dotdotgod CLI/);
+					assert.match(message, /dotdotgod\.mjs validate/);
+					return true;
+				},
+			}),
+			{ allow: true },
+		);
+		assert.equal(prompts, 1);
+
+		const declined = await shouldAllowPlanModeBashCommand("dotdotgod validate .", { hasUI: true, confirm: () => false });
+		assert.equal(declined.allow, false);
+		assert.match(declined.reason ?? "", /blocked by user/);
+
+		const headless = await shouldAllowPlanModeBashCommand("dotdotgod validate .", { hasUI: false, confirm: () => true });
+		assert.equal(headless.allow, false);
+		assert.match(headless.reason ?? "", /interactive user approval/);
+
+		const unsafe = await shouldAllowPlanModeBashCommand("rm package.json");
+		assert.equal(unsafe.allow, false);
+		assert.match(unsafe.reason ?? "", /not allowlisted/);
+	});
 });
 
 describe("plan-mode current plan path helpers", () => {
@@ -68,6 +125,22 @@ describe("plan-mode current plan path helpers", () => {
 		assert.equal(getCurrentPlanReadmePath("docs/plan/LandingSite/README.md"), undefined);
 		assert.equal(getCurrentPlanReadmePath("docs/plan/landing-site/notes.md"), undefined);
 		assert.equal(getCurrentPlanReadmePath("packages/pi/README.md"), undefined);
+	});
+});
+
+describe("plan-mode CLI context helpers", () => {
+	it("extracts mentioned file paths from planning requests", () => {
+		assert.deepEqual(
+			extractPathMentions("Review `packages/pi/extensions/plan-mode/index.ts` and @docs/spec/PLAN_MODE.md, not docs/spec/"),
+			["packages/pi/extensions/plan-mode/index.ts", "docs/spec/PLAN_MODE.md"],
+		);
+	});
+
+	it("selects an impact path from request, current plan, then touched paths", () => {
+		const exists = (_cwd: string, path: string): boolean => path === "docs/plan/task/README.md" || path === "packages/pi/index.ts";
+		assert.equal(selectPlanImpactPath(".", "Change packages/pi/index.ts", "docs/plan/task/README.md", [], exists), "packages/pi/index.ts");
+		assert.equal(selectPlanImpactPath(".", "No file here", "docs/plan/task/README.md", [], exists), "docs/plan/task/README.md");
+		assert.equal(selectPlanImpactPath(".", "No file here", undefined, ["docs/plan/missing/README.md"], exists), undefined);
 	});
 });
 

@@ -77,6 +77,12 @@ describe('CLI docs helpers', () => {
     const errors = validateTraceabilityBlock({ kind: 'spec', implementedBy: 'bad', verifiedBy: [], relatedDocs: [], verificationCommands: [] }, root, join(root, 'docs/spec/BAD.md'));
     assert.equal(errors[0].code, 'TRACEABILITY_INVALID_FIELD');
     assert.match(errors[0].message, /Property guidance/);
+
+    const invalid = validateTraceabilityBlock({ kind: 'feature', implementedBy: ['../escape'], verifiedBy: ['missing.test.mjs'], relatedDocs: [], verificationCommands: [''] }, root, join(root, 'docs/spec/BAD.md'));
+    assert(invalid.some((error) => error.code === 'TRACEABILITY_INVALID_KIND' && /Property guidance/.test(error.message)));
+    assert(invalid.some((error) => error.code === 'TRACEABILITY_INVALID_PATH'));
+    assert(invalid.some((error) => error.code === 'TRACEABILITY_MISSING_TARGET'));
+    assert(invalid.some((error) => error.code === 'TRACEABILITY_INVALID_COMMAND'));
   });
 
   it('classifies dotdotgod memory paths for deterministic retrieval hints', () => {

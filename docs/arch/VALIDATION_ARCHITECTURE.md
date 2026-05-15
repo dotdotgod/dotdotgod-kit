@@ -29,6 +29,7 @@ The previous standalone `@dotdotgod/docs-validator` package was replaced by this
 The validator owns dotdotgod-specific structure checks:
 
 - Behavior specs under `docs/spec/*.md` except `README.md` include valid fenced `json dotdotgod` traceability blocks as the final section.
+- Optional `--check-index` validation compares current markdown fingerprints with `.dotdotgod/manifest.json` so stale graph indexes are visible without running `status` separately.
 - `docs/` directory names are kebab-case.
 - Markdown files under `docs/` are UPPER_SNAKE_CASE or `README.md`.
 - Markdown files stay within configurable line and character budgets.
@@ -55,6 +56,7 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - `dotdotgod status <root>` reports `missing`, `fresh`, or `stale` from file fingerprints and schema state without rebuilding the graph.
 - `dotdotgod index <root>` incrementally rebuilds changed file graph shards when a compatible manifest already exists.
 - Agent-facing read commands such as `dotdotgod load-snapshot` and `dotdotgod graph ...` lazily refresh missing or stale caches before returning output.
+- `dotdotgod validate --check-index` does not refresh the cache; it reports missing, schema-mismatched, missing-file, or stale markdown fingerprints so agents can run `dotdotgod index` or a lazy-refreshing read command intentionally.
 - Lazy refresh output includes `metadata.cacheRefreshed`, refresh reason, elapsed timing, rebuild mode, changed-file count, and cache size details so callers can tell when and why a read command updated `.dotdotgod/`.
 - Completion hooks that refresh the index are optional; the default workflow relies on lazy refresh instead of mutating the cache after every task.
 - `pnpm run verify:cache` validates docs, runs `dotdotgod index`, and then checks `dotdotgod status`, so local verification and Husky pre-push refresh stale cache automatically before asserting freshness.

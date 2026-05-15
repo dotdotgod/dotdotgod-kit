@@ -37,13 +37,13 @@ pnpm --filter @dotdotgod/cli test
 Run CLI graph/cache smoke directly:
 
 ```bash
-node packages/cli/bin/dotdotgod.mjs graph query . --changed packages/pi/extensions/plan-mode/index.ts --json
+node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --json
 node packages/cli/bin/dotdotgod.mjs graph communities . --json
 node packages/cli/bin/dotdotgod.mjs load-snapshot . --json
 node packages/cli/bin/dotdotgod.mjs status . --json
 ```
 
-Confirm JSON output includes schema status, refresh metadata, graph counts, bounded memory-area/community summaries, retrieval hints, and archive policy. For graph query, confirm traceability relations surface related specs, tests, and verification docs when the changed file is listed in a `json dotdotgod` spec block.
+Confirm JSON includes schema/refresh metadata, graph counts, bounded summaries, retrieval hints, and archive policy. For graph impact, confirm traceability relations surface related specs/tests/docs.
 
 Run all workspace package checks:
 
@@ -61,6 +61,7 @@ Run docs validation directly:
 
 ```bash
 node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
+node packages/cli/bin/dotdotgod.mjs validate . --check-index
 ```
 
 ## Workspace Coverage
@@ -105,9 +106,10 @@ Plan mode review choice and todo extraction:
 10. Send the first planning request and confirm Pi shows `Planning context is large; compacting before continuing.` followed by `Planning compaction completed.` only when context thresholds are met.
 11. Confirm the Plan Mode compaction request uses planning-specific `customInstructions` that preserve decisions, active plan status, relevant docs, verification results, next steps, and `[DONE:n]` markers.
 12. Confirm compaction instructions include `Current work focus:` with the latest planning request, the current active plan README path when known, active/touched plan paths, todo state when present, pending load-after-compaction state, and archive/pnpm/source-mutation constraints.
-13. Confirm a missing/stale project-memory load is queued and flushed after the active prompt finishes, without `Agent is already processing a prompt` runtime errors.
-14. Confirm later planning turns in the same Plan Mode session do not automatically trigger another load or compaction decision; context shaping runs only for the first planning request after Plan Mode is enabled.
-15. Confirm the first active planning turn receives the full hidden Plan Mode safety/workflow prompt and later planning turns receive only the compact hidden reminder while source/config mutation remains blocked.
+13. With the CLI available, confirm first Plan Mode context shaping adds validation, snapshot, and `graph impact`; with no CLI, confirm Plan Mode continues. Also confirm agent-requested dotdotgod CLI asks for one-command approval.
+14. Confirm a missing/stale project-memory load is queued and flushed after the active prompt finishes, without `Agent is already processing a prompt` runtime errors.
+15. Confirm later planning turns in the same Plan Mode session do not automatically trigger another load or compaction decision; context shaping runs only for the first planning request after Plan Mode is enabled.
+16. Confirm the first active planning turn receives the full hidden Plan Mode safety/workflow prompt and later planning turns receive only the compact hidden reminder while source/config mutation remains blocked.
 
 Claude Code adapter local plugin smoke:
 
@@ -174,9 +176,7 @@ node scripts/measure-context.mjs --markdown --output docs/archive/report/context
 
 README landing review:
 
-- Confirm root `README.md` leads with the dotdotgod concept and user outcomes before package details.
-- Confirm each published package README explains the package-specific value proposition before local development details.
-- Confirm package READMEs avoid implying Pi-style runtime enforcement for Claude Code or Codex adapters.
+- Confirm root/package READMEs lead with dotdotgod value and avoid implying Pi-style runtime enforcement for Claude Code or Codex adapters.
 
 ## Husky Pre-Push Hook
 
