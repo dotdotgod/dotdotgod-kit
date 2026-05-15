@@ -45,9 +45,9 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 - active tool selection for planning/execution
 - write/edit filtering for plan/archive markdown files
 - read-only bash allowlist enforcement
-- session state for plan mode, execution mode, todos, active plan-file touch tracking, touched plan/archive paths, latest planning request, pending first-request context shaping, and plan-compaction debounce metadata
+- session state for plan mode, execution mode, todos, current active plan README path, active plan-file touch tracking, touched plan/archive paths, latest planning request, pending first-request context shaping, queued planning-load delivery, and plan-compaction debounce metadata
 - concise execute/stay/refine review prompt after active plan file updates, without saved-plan preview rendering
-- one-time planning-focused `ctx.compact({ customInstructions })` and curated-load decisions after the first user planning request when a long or noisy session may hurt plan quality
+- one-time planning-focused `ctx.compact({ customInstructions })` and queued curated-load decisions after the first user planning request when a long or noisy session may hurt plan quality
 - tiered hidden Plan Mode prompts: a full safety/workflow prompt for the first active planning turn and a compact restriction reminder for later turns
 - current-work-directed compaction instructions that include the latest task focus before the durable preservation rules and explicitly demote stale history or repeated boilerplate
 
@@ -100,8 +100,9 @@ Prompt content should:
 - active plan-file touch tracking for review-prompt eligibility
 - pending first-request context shaping state
 - Plan Mode full-prompt injection state for compact reminder selection
-- latest planning request and touched plan/archive paths for current-work compaction focus
+- latest planning request, current active plan README path, pending queued planning-load state, and touched plan/archive paths for current-work compaction focus
 - last planning compaction entry count/reason for measurement and resume continuity
+- pending planning-load prompt/reason so automatic project-memory loads can be flushed safely after active prompts complete
 
 ## Future Search Architecture
 

@@ -15,6 +15,7 @@ import {
 	buildPlanCompactionInstructions,
 	buildPlanModeContextPrompt,
 	extractTodoItems,
+	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
 	isSafeCommand,
 	shouldShapePlanningContextOnAgentStart,
@@ -140,9 +141,12 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let planningLoadInFlight = false;
 	let lastPlanningLoadEntryCount: number | undefined;
 	let pendingPlanningLoadAfterCompaction = false;
+	let pendingPlanningLoadPrompt: string | undefined;
+	let pendingPlanningLoadReason: string | undefined;
 	let planningContextShapePending = false;
 	let planModeFullPromptInjected = false;
 	let lastPlanningRequest: string | undefined;
+	let currentPlanPath: string | undefined;
 	let touchedPlanArchivePaths: string[] = [];
 
 	pi.registerFlag("plan", {
@@ -168,10 +172,14 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
 	function buildCurrentWorkFocus(): PlanCompactionFocus {
 		const completed = todoItems.filter((item) => item.completed).length;
+		const activePlanPaths = [
+			...(currentPlanPath ? [currentPlanPath] : []),
+			...touchedPlanArchivePaths.filter((path) => path.startsWith("docs/plan/")),
+		];
 		const focus: PlanCompactionFocus = {
-			activePlanPaths: touchedPlanArchivePaths.filter((path) => path.startsWith("docs/plan/")),
+			activePlanPaths,
 			touchedMemoryPaths: touchedPlanArchivePaths,
-			pendingLoadAfterCompaction: pendingPlanningLoadAfterCompaction,
+			pendingLoadAfterCompaction: pendingPlanningLoadAfterCompaction || Boolean(pendingPlanningLoadPrompt),
 			constraints: [
 				"Use pnpm for workspace commands",
 				"Plan Mode blocks source/config mutation until execution mode",
@@ -233,7 +241,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	}
 
 	function requestPlanningLoadIfNeeded(ctx: ExtensionContext): void {
-		if (!planModeEnabled || executionMode || planningLoadInFlight || planCompactionInFlight) return;
+		if (!planModeEnabled || executionMode || planningLoadInFlight || planCompactionInFlight || pendingPlanningLoadPrompt) return;
 
 		const entryCount = getSessionEntryCount(ctx);
 		if (lastPlanningLoadEntryCount !== undefined && entryCount - lastPlanningLoadEntryCount < 10) {
@@ -245,21 +253,41 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			return;
 		}
 
-		planningLoadInFlight = true;
 		lastPlanningLoadEntryCount = entryCount;
-		const prompt = buildLoadPrompt(ctx.cwd, "", collectSnapshot(ctx.cwd));
-		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:load-requested", { entryCount });
-		pi.appendEntry("project-memory-load", { reason: "plan-mode-context-shaping", entryCount });
-		pi.sendUserMessage(prompt, { deliverAs: "followUp" });
+		pendingPlanningLoadPrompt = buildLoadPrompt(ctx.cwd, "", collectSnapshot(ctx.cwd));
+		pendingPlanningLoadReason = "plan-mode-context-shaping";
+		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:load-queued", { entryCount, reason: pendingPlanningLoadReason });
+		pi.appendEntry("project-memory-load", { reason: pendingPlanningLoadReason, entryCount, queued: true });
 		if (ctx.hasUI) {
-			ctx.ui.notify("Project memory looks missing or stale; loading curated project memory for planning.", "info");
+			ctx.ui.notify("Project memory looks missing or stale; queued curated project memory load for planning.", "info");
 		}
-		planningLoadInFlight = false;
 		persistState();
 	}
 
+	function flushPendingPlanningLoad(ctx: ExtensionContext): boolean {
+		if (!pendingPlanningLoadPrompt || planningLoadInFlight || executionMode) return false;
+		planningLoadInFlight = true;
+		const prompt = pendingPlanningLoadPrompt;
+		const reason = pendingPlanningLoadReason ?? "plan-mode-context-shaping";
+		try {
+			pi.sendUserMessage(prompt, { deliverAs: "followUp" });
+			pendingPlanningLoadPrompt = undefined;
+			pendingPlanningLoadReason = undefined;
+			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:load-flushed", { reason, entryCount: getSessionEntryCount(ctx) });
+			return true;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:load-flush-error", { reason, error: message });
+			if (ctx.hasUI) ctx.ui.notify(`Planning project-memory load is still queued: ${message}`, "warning");
+			return false;
+		} finally {
+			planningLoadInFlight = false;
+			persistState();
+		}
+	}
+
 	function shouldLoadForPlanning(ctx: ExtensionContext): boolean {
-		if (!planModeEnabled || executionMode || planningLoadInFlight) return false;
+		if (!planModeEnabled || executionMode || planningLoadInFlight || pendingPlanningLoadPrompt) return false;
 		const entryCount = getSessionEntryCount(ctx);
 		if (lastPlanningLoadEntryCount !== undefined && entryCount - lastPlanningLoadEntryCount < 10) return false;
 		return !hasRecentProjectMemoryLoad(ctx, entryCount);
@@ -286,6 +314,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		executionMode = false;
 		todoItems = [];
 		activePlanTouched = false;
+		if (planModeEnabled) currentPlanPath = undefined;
 		planModeFullPromptInjected = false;
 
 		if (planModeEnabled) {
@@ -311,9 +340,12 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			lastPlanCompactionReason,
 			lastPlanningLoadEntryCount,
 			pendingPlanningLoadAfterCompaction,
+			pendingPlanningLoadPrompt,
+			pendingPlanningLoadReason,
 			planningContextShapePending,
 			planModeFullPromptInjected,
 			lastPlanningRequest,
+			currentPlanPath,
 			touchedPlanArchivePaths,
 		});
 	}
@@ -368,6 +400,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			}
 			if (isActivePlanMarkdownPath(ctx.cwd, path)) {
 				activePlanTouched = true;
+				currentPlanPath = getCurrentPlanReadmePath(path) ?? currentPlanPath;
 			}
 		}
 	});
@@ -439,6 +472,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 					customType: "plan-execution-context",
 					content: `[EXECUTING PLAN - Full tool access enabled]
 
+Active plan: ${currentPlanPath ?? "unknown"}
+
 Remaining plan steps:
 ${todoList}
 
@@ -471,6 +506,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 	});
 
 	pi.on("agent_end", async (event, ctx) => {
+		if (planModeEnabled && !executionMode && flushPendingPlanningLoad(ctx)) return;
+
 		if (executionMode && todoItems.length > 0) {
 			if (todoItems.every((t) => t.completed)) {
 				executionMode = false;
@@ -494,6 +531,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			}
 		}
 
+		const inferredPlanPath = currentPlanPath ?? getCurrentPlanReadmePath(touchedPlanArchivePaths.find((path) => path.startsWith("docs/plan/")) ?? "");
 		const actionChoices = [
 			todoItems.length > 0 ? "Execute the plan (track progress)" : "Execute the plan",
 			"Stay in plan mode",
@@ -511,12 +549,15 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 
 			const firstTodo = todoItems[0];
 			const execMessage = firstTodo
-				? `Execute the plan. Start with: ${firstTodo.text}`
-				: "Execute the plan you just created.";
+				? `Execute the plan${inferredPlanPath ? ` in ${inferredPlanPath}` : ""}. Start with: ${firstTodo.text}`
+				: inferredPlanPath
+					? `Execute the plan in ${inferredPlanPath}.`
+					: "Execute the plan you just created.";
 			pi.sendMessage(
 				{ customType: "plan-mode-execute", content: execMessage, display: true },
 				{ triggerTurn: true },
 			);
+			persistState();
 		} else if (choice === "Refine the plan") {
 			const refinement = await ctx.ui.editor("Refine the plan:", "");
 			if (refinement?.trim()) {
@@ -546,9 +587,12 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 						lastPlanCompactionReason?: string;
 						lastPlanningLoadEntryCount?: number;
 						pendingPlanningLoadAfterCompaction?: boolean;
+						pendingPlanningLoadPrompt?: string;
+						pendingPlanningLoadReason?: string;
 						planningContextShapePending?: boolean;
 						planModeFullPromptInjected?: boolean;
 						lastPlanningRequest?: string;
+						currentPlanPath?: string;
 						touchedPlanArchivePaths?: string[];
 					};
 			  }
@@ -563,9 +607,12 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			lastPlanCompactionReason = planModeEntry.data.lastPlanCompactionReason ?? lastPlanCompactionReason;
 			lastPlanningLoadEntryCount = planModeEntry.data.lastPlanningLoadEntryCount ?? lastPlanningLoadEntryCount;
 			pendingPlanningLoadAfterCompaction = planModeEntry.data.pendingPlanningLoadAfterCompaction ?? pendingPlanningLoadAfterCompaction;
+			pendingPlanningLoadPrompt = planModeEntry.data.pendingPlanningLoadPrompt ?? pendingPlanningLoadPrompt;
+			pendingPlanningLoadReason = planModeEntry.data.pendingPlanningLoadReason ?? pendingPlanningLoadReason;
 			planningContextShapePending = planModeEntry.data.planningContextShapePending ?? planningContextShapePending;
 			planModeFullPromptInjected = planModeEntry.data.planModeFullPromptInjected ?? planModeFullPromptInjected;
 			lastPlanningRequest = planModeEntry.data.lastPlanningRequest ?? lastPlanningRequest;
+			currentPlanPath = planModeEntry.data.currentPlanPath ?? currentPlanPath;
 			touchedPlanArchivePaths = planModeEntry.data.touchedPlanArchivePaths ?? touchedPlanArchivePaths;
 		}
 

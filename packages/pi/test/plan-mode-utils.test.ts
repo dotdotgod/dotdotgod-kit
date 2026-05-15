@@ -8,6 +8,7 @@ import {
 	extractDoneSteps,
 	extractTodoItems,
 	formatPlanCompactionFocus,
+	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
 	isSafeCommand,
 	isSafePlanArchiveCommand,
@@ -52,6 +53,21 @@ describe("plan-mode command safety", () => {
 		]) {
 			assert.equal(isSafePlanArchiveCommand(command), false, command);
 		}
+	});
+});
+
+describe("plan-mode current plan path helpers", () => {
+	it("normalizes active plan markdown paths to the task README", () => {
+		assert.equal(getCurrentPlanReadmePath("docs/plan/landing-site/README.md"), "docs/plan/landing-site/README.md");
+		assert.equal(getCurrentPlanReadmePath("@docs/plan/landing-site/VERIFICATION.md"), "docs/plan/landing-site/README.md");
+		assert.equal(getCurrentPlanReadmePath("./docs/plan/landing-site/RESEARCH_NOTES.md"), "docs/plan/landing-site/README.md");
+	});
+
+	it("ignores non-plan or incorrectly named markdown paths", () => {
+		assert.equal(getCurrentPlanReadmePath("docs/archive/plan/landing-site/README.md"), undefined);
+		assert.equal(getCurrentPlanReadmePath("docs/plan/LandingSite/README.md"), undefined);
+		assert.equal(getCurrentPlanReadmePath("docs/plan/landing-site/notes.md"), undefined);
+		assert.equal(getCurrentPlanReadmePath("packages/pi/README.md"), undefined);
 	});
 });
 

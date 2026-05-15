@@ -55,12 +55,14 @@ The plan should include:
 
 After Plan Mode is enabled and the user sends the first planning request, Plan Mode shapes context in two directions before substantive planning continues:
 
-- If project memory is missing or stale, it requests a full curated project memory load.
+- If project memory is missing or stale, it queues a full curated project memory load for a safe follow-up point after the current prompt finishes.
 - If context is too large or noisy, it requests planning-focused compaction.
 
 The full curated load uses the same default project memory surface as `/dd:load`: baseline memory files, docs indexes, specs, architecture, tests, and active plans. It does not mean reading every repository file or every archive body. Archive bodies remain excluded by default and should be read only through targeted lookup when relevant.
 
-If compaction and load are both needed, Plan Mode requests compaction first, then requests the curated project memory load after compaction completes. Loading additional memory into an already-large context would make the context problem worse, but compaction alone cannot recover project docs that were never loaded.
+If compaction and load are both needed, Plan Mode requests compaction first, then queues the curated project memory load after compaction completes. Loading additional memory into an already-large context would make the context problem worse, but compaction alone cannot recover project docs that were never loaded.
+
+Queued planning loads are persisted in Plan Mode session state and flushed from a safe `agent_end` point with follow-up delivery. This avoids sending a new load prompt from `before_agent_start` while the agent is already processing another prompt.
 
 ## Planning-Focused Compaction
 
@@ -69,7 +71,9 @@ Plan mode automatically requests planning-focused compaction when context is lar
 The extension passes planning-specific `customInstructions` to `ctx.compact()` so compaction preserves information useful for the next plan without retaining stale session history. Instructions start with the compaction reason, then include a `Current work focus:` section derived from available local state:
 
 - latest user planning request
-- active plan path or touched docs/plan and docs/archive files
+- current active plan README path when known
+- pending queued project-memory load state
+- touched docs/plan and docs/archive files
 - todo count and completed state when present
 - pending load-after-compaction state
 - persistent user/project constraints such as pnpm usage, archive policy, and Plan Mode source mutation restrictions
@@ -78,7 +82,7 @@ The durable preservation rules then ask compaction to keep:
 
 - latest user request
 - user decisions and constraints
-- active plan task slug, path, and status
+- active plan task slug, README path, and status
 - current target files
 - touched docs/plan and docs/archive files
 - relevant docs/spec, docs/test, and docs/arch context
@@ -101,7 +105,7 @@ The extension skips compaction during execution mode and continues without block
 
 When the Pi adapter is started with `--dd-context-debug`, Plan Mode records local JSONL measurement events for Plan Mode entry, the first-request context-shaping check, planning turn end, compaction request, compaction completion/error, and execution start.
 
-Events include context usage when available, git state, compaction reason, current-work focus, entry counts, and todo counts where relevant. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
+Events include context usage when available, git state, compaction reason, current-work focus, queued/flushed planning-load state, entry counts, and todo counts where relevant. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
 
 ## Plan Review Choice
 
@@ -110,6 +114,7 @@ Plan Mode uses tiered hidden runtime instructions. The first active planning tur
 When the agent finishes planning after creating or updating an active plan markdown file under `docs/plan/`, plan mode asks whether to execute, stay in plan mode, or refine the plan.
 
 - Plan files under `docs/plan/` remain the durable review artifact.
+- Plan Mode stores the current active plan README path in session state when active plan markdown is created or updated, so execution prompts, resume, and compaction summaries can refer to the exact plan after context changes.
 - Plan mode no longer renders a saved-plan file preview in the TUI.
 - The action prompt uses a short selector title and does not embed plan markdown.
 - Plan mode does not show the action prompt for ordinary explanatory replies that did not touch an active plan file.
@@ -122,7 +127,8 @@ Plan mode extracts numbered executable steps from a `Plan:` section. Generic pla
 When the user chooses to execute the plan:
 
 - Full tool access is restored.
-- Remaining steps are injected into execution context.
+- The execute follow-up names the current active plan path when known.
+- Remaining steps are injected into execution context with the active plan path when known.
 - The agent marks completed steps by including `[DONE:n]` in the same response that reports completion.
 - Final implementation or verification responses must include `[DONE:n]` for every step completed in that turn.
 - `/todos` displays completion progress.

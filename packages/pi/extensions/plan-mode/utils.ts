@@ -193,6 +193,13 @@ export function isSafeCommand(command: string): boolean {
 	return !isDestructive && isSafe;
 }
 
+export function getCurrentPlanReadmePath(path: string): string | undefined {
+	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
+	const match = normalized.match(/^docs\/plan\/([a-z0-9]+(?:-[a-z0-9]+)*)\/(README\.md|[A-Z0-9]+(?:_[A-Z0-9]+)*\.md)$/);
+	if (!match?.[1]) return undefined;
+	return `docs/plan/${match[1]}/README.md`;
+}
+
 export const PLAN_COMPACTION_PERCENT_THRESHOLD = 60;
 export const PLAN_COMPACTION_TOKEN_FALLBACK = 100_000;
 export const PLAN_COMPACTION_CONTEXT_RESERVE = 32_000;

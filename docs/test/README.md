@@ -104,9 +104,10 @@ Plan mode review choice and todo extraction:
 9. In a high-context session, enable `/plan` and confirm Pi does not immediately show a compaction or project-memory-load notification.
 10. Send the first planning request and confirm Pi shows `Planning context is large; compacting before continuing.` followed by `Planning compaction completed.` only when context thresholds are met.
 11. Confirm the Plan Mode compaction request uses planning-specific `customInstructions` that preserve decisions, active plan status, relevant docs, verification results, next steps, and `[DONE:n]` markers.
-12. Confirm compaction instructions include `Current work focus:` with the latest planning request, active/touched plan paths, todo state when present, pending load-after-compaction state, and archive/pnpm/source-mutation constraints.
-13. Confirm later planning turns in the same Plan Mode session do not automatically trigger another load or compaction decision; context shaping runs only for the first planning request after Plan Mode is enabled.
-14. Confirm the first active planning turn receives the full hidden Plan Mode safety/workflow prompt and later planning turns receive only the compact hidden reminder while source/config mutation remains blocked.
+12. Confirm compaction instructions include `Current work focus:` with the latest planning request, the current active plan README path when known, active/touched plan paths, todo state when present, pending load-after-compaction state, and archive/pnpm/source-mutation constraints.
+13. Confirm a missing/stale project-memory load is queued and flushed after the active prompt finishes, without `Agent is already processing a prompt` runtime errors.
+14. Confirm later planning turns in the same Plan Mode session do not automatically trigger another load or compaction decision; context shaping runs only for the first planning request after Plan Mode is enabled.
+15. Confirm the first active planning turn receives the full hidden Plan Mode safety/workflow prompt and later planning turns receive only the compact hidden reminder while source/config mutation remains blocked.
 
 Claude Code adapter local plugin smoke:
 
@@ -130,6 +131,11 @@ Codex adapter local plugin smoke:
 - Confirm `project-load`, `doc-first-planning`, and `project-initializer` skills are discoverable.
 - Confirm command-like trigger phrases `dd:load`, `dd:plan`, and `dd:init` activate the expected workflows.
 - For `dd:load`, confirm the generated guidance prefers `dotdotgod load-snapshot <root> --json` when available, treats the snapshot as the first-pass project-memory map, keeps `docs/archive/README.md` as the archive map, and falls back to manual README-index reads when the CLI is unavailable.
+
+Plan Mode active-plan continuity smoke:
+
+- In `/plan`, create or update `docs/plan/<task-slug>/README.md`, choose execute, and confirm the follow-up names that path instead of only saying "the plan you just created".
+- With extracted todos, confirm hidden execution context includes `Active plan: docs/plan/<task-slug>/README.md`; after resume or planning compaction, confirm `Current work focus:` preserves the same path.
 
 Cross-agent planning parity smoke:
 
@@ -190,6 +196,4 @@ Run it manually with:
 .husky/pre-push
 ```
 
-`pnpm run verify` includes generated-resource drift checks, so direct edits to generated adapter files fail until `pnpm run generate` is run or the shared source is updated.
-
-Husky is not required for package consumers and remains a development-only workflow.
+`pnpm run verify` includes generated-resource drift checks, so direct edits to generated adapter files fail until `pnpm run generate` is run or the shared source is updated. Husky is not required for package consumers and remains a development-only workflow.
