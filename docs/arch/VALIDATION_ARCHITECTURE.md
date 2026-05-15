@@ -28,7 +28,7 @@ The previous standalone `@dotdotgod/docs-validator` package was replaced by this
 
 The validator owns dotdotgod-specific structure checks:
 
-- Behavior specs under `docs/spec/*.md` except `README.md` include valid fenced `json dotdotgod` traceability blocks as the final section.
+- Markdown files matched by the resolved traceability policy include valid fenced `json dotdotgod` traceability blocks as the final section. The default policy matches `docs/spec/**` and excludes README files.
 - Optional `--check-index` validation compares current markdown fingerprints with `.dotdotgod/manifest.json` so stale graph indexes are visible without running `status` separately.
 - `docs/` directory names are kebab-case.
 - Markdown files under `docs/` are UPPER_SNAKE_CASE or `README.md`.
@@ -36,12 +36,13 @@ The validator owns dotdotgod-specific structure checks:
 - Directories with multiple markdown files include `README.md`.
 - Local markdown links point to existing files.
 - Local markdown anchors point to existing headings.
+- Optional `dotdotgod.config.json` or `.dotdotgodrc.json` memory-area and traceability config uses valid array-based path fields, shared/local and fresh/stale area fields, and supported traceability include/exclude patterns.
 - `docs/plan`, `docs/archive/plan`, and `docs/archive/report` use expected task/report shapes.
 - `.gitignore` contains `docs/plan`, `docs/archive`, and `.dotdotgod`.
 
 The validator does not own general markdown style formatting. Use tools such as Prettier or markdownlint separately if a project wants style linting.
 
-Traceability validation is intentionally CLI-owned because project docs are user-editable. Validation errors include the expected block shape and property-level guidance so coding agents can repair invalid specs without memorizing the schema.
+Traceability validation is intentionally CLI-owned because project docs are user-editable. Validation errors include the expected block shape and property-level guidance so coding agents can repair invalid behavior documents without memorizing the schema. Projects may configure the enforced path arrays, but valid traceability blocks still use the same schema everywhere.
 
 ## Cache and Stale-Index Policy
 
@@ -64,7 +65,7 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 
 The index records file fingerprints, cache metadata, schema metadata, and a deterministic graph. File discovery is gitignore-aware by default through `git ls-files --cached --others --exclude-standard`, with a conservative directory-walk fallback for non-git contexts. The file filter includes common plain-text docs, source, script, config, web, and infrastructure formats instead of assuming a pnpm monorepo shape. Current graph extraction covers Markdown headings/links, fenced `json dotdotgod` traceability blocks, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Other supported text files are currently represented as file metadata until dedicated extractors are added.
 
-Graph file nodes include deterministic memory-area metadata for dotdotgod structures. `AGENTS.md`, docs indexes, specs, architecture docs, test docs, active plans, and `docs/archive/README.md` receive `memoryArea`, `memoryRole`, `retrievalPriority`, and `retrieval.signals` fields. The graph also adds compact `memory_area:*` nodes with `belongs_to_area` edges. Links from `README.md` files keep their normal `links_to` edge and also receive a `routes_to` edge with `CURATED_INDEX` confidence, making README indexes first-class routing hints without requiring semantic embedding. Graph query output carries retrieval metadata and reason-derived signals for related nodes; load snapshots expose a bounded `memoryAreas` summary.
+Graph file nodes include deterministic memory-area metadata for dotdotgod structures. `AGENTS.md`, docs indexes, specs, architecture docs, test docs, active plans, and `docs/archive/README.md` receive `memoryArea`, `memoryRole`, `memoryScope`, `memoryFreshness`, `retrievalPriority`, and `retrieval.signals` fields. The optional memory-area config can override or extend this classification while the zero-config default preserves existing behavior. The graph also adds compact `memory_area:*` nodes with `belongs_to_area` edges. Links from `README.md` files keep their normal `links_to` edge and also receive a `routes_to` edge with `CURATED_INDEX` confidence, making README indexes first-class routing hints without requiring semantic embedding. Graph query output carries retrieval metadata and reason-derived signals for related nodes; load snapshots expose bounded `memoryConfig`, `memoryPolicy`, and `memoryAreas` summaries.
 
 Graph storage uses a compact tuple schema in shards so multi-year projects do not depend on one large JSON file. Community summaries use `leiden-ts` over a weighted durable-node projection with deterministic domain grouping as a fallback. Load snapshots expose bounded quality metadata, including snapshot size estimates, omitted community counts, omitted item counts, bounded memory-area summaries, and archive inclusion policy.
 

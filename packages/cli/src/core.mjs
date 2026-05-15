@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { spawnSync } from 'node:child_process';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 
-export const CACHE_VERSION = 6;
+export const CACHE_VERSION = 7;
 const CACHE_DIR = '.dotdotgod';
 const MANIFEST_FILE = 'manifest.json';
 const GRAPH_NODE_SHARDS = ['docs', 'packages', 'source'];
@@ -213,6 +213,8 @@ export function runValidate(argv) {
   };
 
   if (!existsSync(docs)) usage(`docs directory not found: ${docs}`);
+  const memoryConfig = readMemoryConfig(root);
+  for (const error of memoryConfig.errors ?? []) errors.push(error);
   walk(docs);
   for (const file of markdownFiles) {
     const name = basename(file);
@@ -223,7 +225,7 @@ export function runValidate(argv) {
     const lines = content.split('\n').length;
     if (lines > options.maxLines) addError(file, 'FILE_TOO_LONG', `Markdown file has ${lines} lines; max is ${options.maxLines}`);
     if (content.length > options.maxChars) addError(file, 'FILE_TOO_LARGE', `Markdown file has ${content.length} characters; max is ${options.maxChars}`);
-    if (docsRel.startsWith('spec/') && name !== 'README.md') {
+    if (requiresTraceability(rel(root, file), memoryConfig)) {
       const blocks = extractDotdotgodTraceabilityBlocks(content);
       if (blocks.length === 0) addError(file, 'TRACEABILITY_MISSING', `Behavior specs must include a fenced \`json dotdotgod\` traceability block as the final section.\n\n${traceabilityExample()}`);
       else for (const error of validateTraceabilityPlacement(content, root, file)) errors.push(error);
@@ -263,7 +265,7 @@ export function runValidate(argv) {
       const schemaVersion = index.schemaVersion ?? index.version ?? null;
       if (schemaVersion !== CACHE_VERSION) addError(cacheFile(root), 'INDEX_SCHEMA_MISMATCH', `Index schema is ${String(schemaVersion)}; expected ${CACHE_VERSION}. Run \`dotdotgod index <root>\`.`);
       const indexed = new Map((index.files ?? []).map((file) => [file.path, file.sha256]));
-      const indexableMarkdownPaths = new Set(collectIndexFiles(root).map((file) => rel(root, file)).filter((path) => path.endsWith('.md')));
+      const indexableMarkdownPaths = new Set(collectIndexFiles(root, memoryConfig).map((file) => rel(root, file)).filter((path) => path.endsWith('.md')));
       for (const file of markdownFiles) {
         const path = rel(root, file);
         if (!indexableMarkdownPaths.has(path)) continue;
@@ -311,7 +313,7 @@ const INDEX_TEXT_EXTENSIONS = new Set([
 ]);
 const INDEX_TEXT_FILENAMES = new Set([
   'AGENTS.md', 'CLAUDE.md', 'CODEX.md', 'README', 'README.md', 'LICENSE', 'NOTICE', 'CHANGELOG', 'CHANGELOG.md', 'CONTRIBUTING.md', 'SECURITY.md', 'AUTHORS', 'CODEOWNERS', '.gitignore', '.editorconfig',
-  'package.json', 'pnpm-workspace.yaml', 'tsconfig.json', 'jsconfig.json',
+  'dotdotgod.config.json', '.dotdotgodrc.json', 'package.json', 'pnpm-workspace.yaml', 'tsconfig.json', 'jsconfig.json',
   'Dockerfile', 'Containerfile', 'Makefile', 'Justfile', 'Procfile', 'Rakefile', 'Gemfile', 'go.mod', 'go.sum', 'Cargo.toml', 'Cargo.lock', 'pyproject.toml', 'requirements.txt', 'Pipfile', 'Pipfile.lock', 'poetry.lock', 'deno.json', 'deno.jsonc', 'bunfig.toml',
   '.env.example', '.env.sample', '.env.template',
 ]);
@@ -336,11 +338,12 @@ function isSupportedIndexFile(path) {
   return INDEX_TEXT_FILENAMES.has(name) || INDEX_TEXT_EXTENSIONS.has(extname(name));
 }
 
-export function shouldIndexPath(path) {
+export function shouldIndexPath(path, config = defaultMemoryConfig()) {
   const normalized = path.replaceAll('\\', '/').replace(/^\.\//, '');
   if (!normalized || normalized.endsWith('/placeholder')) return false;
   if (isExcludedIndexDir(normalized) || isSecretIndexPath(normalized) || isGeneratedIndexPath(normalized)) return false;
-  if (normalized === 'docs/archive' || normalized.startsWith('docs/archive/')) return normalized === 'docs/archive/README.md';
+  const area = resolveMemoryArea(normalized, config);
+  if (area?.includeBodiesByDefault === false) return false;
   return isSupportedIndexFile(normalized);
 }
 
@@ -350,14 +353,15 @@ function gitIndexCandidates(root) {
   return result.stdout.split('\n').map((line) => line.trim()).filter(Boolean);
 }
 
-function walkIndexCandidates(root) {
+function walkIndexCandidates(root, config = readMemoryConfig(root)) {
   const files = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const path = join(dir, entry.name);
       const pathRel = rel(root, path);
       if (entry.isDirectory()) {
-        if (!isExcludedIndexDir(pathRel) && pathRel !== 'docs/archive') walk(path);
+        const area = resolveMemoryArea(pathRel, config);
+        if (!isExcludedIndexDir(pathRel) && area?.includeBodiesByDefault !== false) walk(path);
       } else if (entry.isFile()) files.push(pathRel);
     }
   };
@@ -381,10 +385,10 @@ function addDotdotgodLocalMemoryCandidates(root, candidates) {
   walkPlan(planRoot);
 }
 
-export function collectIndexFiles(root) {
-  const candidates = new Set(gitIndexCandidates(root) ?? walkIndexCandidates(root));
+export function collectIndexFiles(root, config = readMemoryConfig(root)) {
+  const candidates = new Set(gitIndexCandidates(root) ?? walkIndexCandidates(root, config));
   addDotdotgodLocalMemoryCandidates(root, candidates);
-  return [...candidates].filter(shouldIndexPath).map((path) => join(root, path)).filter(existsSync).sort();
+  return [...candidates].filter((path) => shouldIndexPath(path, config)).map((path) => join(root, path)).filter(existsSync).sort();
 }
 
 export function fingerprint(file) {
@@ -513,85 +517,255 @@ export function addEdge(graph, source, target, relation, data = {}) {
   index.add(key);
 }
 
-const MEMORY_AREAS = {
-  rules: { label: 'Agent Rules', role: 'agent-working-rules', priority: 100 },
-  'agent-entrypoint': { label: 'Agent Entrypoints', role: 'agent-specific-entrypoint', priority: 85 },
-  'project-overview': { label: 'Project Overview', role: 'project-map', priority: 85 },
-  'docs-index': { label: 'Docs Index', role: 'documentation-routing-map', priority: 90 },
-  spec: { label: 'Product Specs', role: 'behavior-truth', priority: 80 },
-  architecture: { label: 'Architecture', role: 'architecture-rationale', priority: 75 },
-  test: { label: 'Tests', role: 'verification-knowledge', priority: 70 },
-  'active-plan': { label: 'Active Plans', role: 'active-task-intent', priority: 95 },
-  'archive-map': { label: 'Archive Map', role: 'historical-memory-map', priority: 65 },
-  'archive-body': { label: 'Archive Body', role: 'historical-memory-body', priority: 20 },
+const MEMORY_CONFIG_FILES = ['dotdotgod.config.json', '.dotdotgodrc.json'];
+const MEMORY_SCOPES = new Set(['shared', 'local']);
+const MEMORY_FRESHNESS = new Set(['fresh', 'stale']);
+const DEFAULT_TRACEABILITY_POLICY = {
+  required: ['docs/spec/**'],
+  exclude: ['**/README.md'],
 };
+const DEFAULT_MEMORY_AREAS = [
+  { id: 'rules', label: 'Agent Rules', paths: ['AGENTS.md'], scope: 'shared', freshness: 'fresh', role: 'agent-working-rules', priority: 100, includeBodiesByDefault: true },
+  { id: 'agent-entrypoint', label: 'Agent Entrypoints', paths: ['CLAUDE.md', 'CODEX.md'], scope: 'shared', freshness: 'fresh', role: 'agent-specific-entrypoint', priority: 85, includeBodiesByDefault: true },
+  { id: 'project-overview', label: 'Project Overview', paths: ['README.md'], scope: 'shared', freshness: 'fresh', role: 'project-map', priority: 85, includeBodiesByDefault: true },
+  { id: 'docs-index', label: 'Docs Index', paths: ['docs/README.md'], scope: 'shared', freshness: 'fresh', role: 'documentation-routing-map', priority: 90, includeBodiesByDefault: true },
+  { id: 'spec', label: 'Product Specs', paths: ['docs/spec/**'], scope: 'shared', freshness: 'fresh', role: 'behavior-truth', priority: 80, includeBodiesByDefault: true },
+  { id: 'architecture', label: 'Architecture', paths: ['docs/arch/**'], scope: 'shared', freshness: 'fresh', role: 'architecture-rationale', priority: 75, includeBodiesByDefault: true },
+  { id: 'test', label: 'Tests', paths: ['docs/test/**'], scope: 'shared', freshness: 'fresh', role: 'verification-knowledge', priority: 70, includeBodiesByDefault: true },
+  { id: 'active-plan', label: 'Active Plans', paths: ['docs/plan/**'], scope: 'local', freshness: 'fresh', role: 'active-task-intent', priority: 95, includeBodiesByDefault: true },
+  { id: 'archive-map', label: 'Archive Map', paths: ['docs/archive/README.md'], scope: 'local', freshness: 'stale', role: 'historical-memory-map', priority: 65, includeBodiesByDefault: true },
+  { id: 'archive-body', label: 'Archive Body', paths: ['docs/archive/**'], excludePaths: ['docs/archive/README.md'], scope: 'local', freshness: 'stale', role: 'historical-memory-body', priority: 20, includeBodiesByDefault: false },
+];
 
-export function memoryAreaForPath(path = '') {
-  if (path === 'AGENTS.md') return 'rules';
-  if (path === 'CLAUDE.md' || path === 'CODEX.md') return 'agent-entrypoint';
-  if (path === 'README.md') return 'project-overview';
-  if (path === 'docs/README.md') return 'docs-index';
-  if (path.startsWith('docs/spec/')) return 'spec';
-  if (path.startsWith('docs/arch/')) return 'architecture';
-  if (path.startsWith('docs/test/')) return 'test';
-  if (path.startsWith('docs/plan/')) return 'active-plan';
-  if (path === 'docs/archive/README.md') return 'archive-map';
-  if (path.startsWith('docs/archive/')) return 'archive-body';
-  return undefined;
+function cloneArea(area) {
+  return {
+    ...area,
+    paths: [...(area.paths ?? [])],
+    excludePaths: [...(area.excludePaths ?? [])],
+  };
 }
 
-export function memoryRoleForPath(path = '') {
-  const area = memoryAreaForPath(path);
-  return area ? MEMORY_AREAS[area]?.role : undefined;
+function cloneTraceabilityPolicy(policy = DEFAULT_TRACEABILITY_POLICY) {
+  return {
+    required: [...(policy.required ?? [])],
+    exclude: [...(policy.exclude ?? [])],
+  };
 }
 
-export function retrievalPriorityForPath(path = '') {
-  const area = memoryAreaForPath(path);
-  return area ? MEMORY_AREAS[area]?.priority ?? 30 : 30;
+export function defaultMemoryConfig() {
+  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy() };
+}
+
+function normalizePathPattern(value = '') {
+  return value.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/+$|^\/+/, '');
+}
+
+function isValidPathPattern(value) {
+  if (typeof value !== 'string' || !value.trim()) return false;
+  const normalized = normalizePathPattern(value);
+  if (!normalized || normalized.startsWith('../') || normalized.includes('/../') || normalized === '..') return false;
+  if (normalized.includes('*') && !(normalized.endsWith('/**') || normalized.startsWith('**/'))) return false;
+  return true;
+}
+
+function matchMemoryPattern(path, pattern) {
+  const normalized = normalizePathPattern(path);
+  const normalizedPattern = normalizePathPattern(pattern);
+  if (normalizedPattern.endsWith('/**')) {
+    const prefix = normalizedPattern.slice(0, -3);
+    return normalized === prefix || normalized.startsWith(`${prefix}/`);
+  }
+  if (normalizedPattern.startsWith('**/')) {
+    const suffix = normalizedPattern.slice(3);
+    return normalized === suffix || normalized.endsWith(`/${suffix}`);
+  }
+  return normalized === normalizedPattern;
+}
+
+function areaMatchesPath(area, path) {
+  const excluded = (area.excludePaths ?? []).some((pattern) => matchMemoryPattern(path, pattern));
+  if (excluded) return false;
+  return (area.paths ?? []).some((pattern) => matchMemoryPattern(path, pattern));
+}
+
+function resolveMemoryArea(path = '', config = defaultMemoryConfig()) {
+  return (config.areas ?? []).find((area) => areaMatchesPath(area, path));
+}
+
+export function memoryAreaForPath(path = '', config = defaultMemoryConfig()) {
+  return resolveMemoryArea(path, config)?.id;
+}
+
+export function memoryRoleForPath(path = '', config = defaultMemoryConfig()) {
+  return resolveMemoryArea(path, config)?.role;
+}
+
+export function retrievalPriorityForPath(path = '', config = defaultMemoryConfig()) {
+  return resolveMemoryArea(path, config)?.priority ?? 30;
+}
+
+function normalizeTraceabilityPolicy(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return cloneTraceabilityPolicy();
+  return {
+    required: Array.isArray(raw.required) ? raw.required.map(normalizePathPattern) : [],
+    exclude: Array.isArray(raw.exclude) ? raw.exclude.map(normalizePathPattern) : [],
+  };
+}
+
+export function requiresTraceability(path = '', config = defaultMemoryConfig()) {
+  const policy = config.traceability ?? DEFAULT_TRACEABILITY_POLICY;
+  const excluded = (policy.exclude ?? []).some((pattern) => matchMemoryPattern(path, pattern));
+  if (excluded) return false;
+  return (policy.required ?? []).some((pattern) => matchMemoryPattern(path, pattern));
+}
+
+function normalizeMemoryArea(raw) {
+  return {
+    id: raw.id,
+    label: raw.label ?? raw.id,
+    paths: Array.isArray(raw.paths) ? raw.paths.map(normalizePathPattern) : [],
+    excludePaths: Array.isArray(raw.excludePaths) ? raw.excludePaths.map(normalizePathPattern) : [],
+    scope: raw.scope,
+    freshness: raw.freshness,
+    role: raw.role ?? raw.id,
+    priority: typeof raw.priority === 'number' ? raw.priority : 30,
+    includeBodiesByDefault: raw.includeBodiesByDefault !== false,
+  };
+}
+
+export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.config.json') {
+  const errors = [];
+  const add = (code, field, message) => errors.push({ file: rel(root, resolve(root, file)), code, message: `${field ? `Field "${field}": ` : ''}${message}` });
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    add('MEMORY_CONFIG_INVALID', null, 'Config must be a JSON object.');
+    return errors;
+  }
+  const traceability = data.traceability;
+  if (traceability !== undefined) {
+    if (!traceability || typeof traceability !== 'object' || Array.isArray(traceability)) {
+      add('TRACEABILITY_CONFIG_INVALID', 'traceability', 'Expected an object.');
+    } else {
+      if (!Array.isArray(traceability.required)) add('TRACEABILITY_CONFIG_INVALID_REQUIRED', 'traceability.required', 'Expected an array of path strings.');
+      else if (traceability.required.some((value) => !isValidPathPattern(value))) add('TRACEABILITY_CONFIG_INVALID_REQUIRED', 'traceability.required', 'Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+      if (traceability.exclude !== undefined && !Array.isArray(traceability.exclude)) add('TRACEABILITY_CONFIG_INVALID_EXCLUDE', 'traceability.exclude', 'Expected an array of path strings.');
+      else if (Array.isArray(traceability.exclude) && traceability.exclude.some((value) => !isValidPathPattern(value))) add('TRACEABILITY_CONFIG_INVALID_EXCLUDE', 'traceability.exclude', 'Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+    }
+  }
+  const areas = data.memory?.areas;
+  if (areas === undefined) return errors;
+  if (!Array.isArray(areas)) {
+    add('MEMORY_CONFIG_INVALID_FIELD', 'memory.areas', 'Expected an array.');
+    return errors;
+  }
+  const ids = new Set();
+  const exactIncluded = new Map();
+  for (const [index, area] of areas.entries()) {
+    const prefix = `memory.areas[${index}]`;
+    if (!area || typeof area !== 'object' || Array.isArray(area)) {
+      add('MEMORY_CONFIG_INVALID_AREA', prefix, 'Expected an object.');
+      continue;
+    }
+    if (typeof area.id !== 'string' || !isKebabCase(area.id)) add('MEMORY_CONFIG_INVALID_ID', `${prefix}.id`, 'Expected a kebab-case string.');
+    else if (ids.has(area.id)) add('MEMORY_CONFIG_DUPLICATE_ID', `${prefix}.id`, `Duplicate memory area id: ${area.id}`);
+    else ids.add(area.id);
+    if (!Array.isArray(area.paths) || area.paths.length === 0 || area.paths.some((value) => !isValidPathPattern(value))) add('MEMORY_CONFIG_INVALID_PATHS', `${prefix}.paths`, 'Expected a non-empty array of path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+    if (area.excludePaths !== undefined && (!Array.isArray(area.excludePaths) || area.excludePaths.some((value) => !isValidPathPattern(value)))) add('MEMORY_CONFIG_INVALID_EXCLUDE_PATHS', `${prefix}.excludePaths`, 'Expected an array of path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+    if (!MEMORY_SCOPES.has(area.scope)) add('MEMORY_CONFIG_INVALID_SCOPE', `${prefix}.scope`, 'Expected "shared" or "local".');
+    if (!MEMORY_FRESHNESS.has(area.freshness)) add('MEMORY_CONFIG_INVALID_FRESHNESS', `${prefix}.freshness`, 'Expected "fresh" or "stale".');
+    if (area.priority !== undefined && (!Number.isInteger(area.priority) || area.priority < 0 || area.priority > 100)) add('MEMORY_CONFIG_INVALID_PRIORITY', `${prefix}.priority`, 'Expected an integer from 0 to 100.');
+    if (area.includeBodiesByDefault !== undefined && typeof area.includeBodiesByDefault !== 'boolean') add('MEMORY_CONFIG_INVALID_INCLUDE_POLICY', `${prefix}.includeBodiesByDefault`, 'Expected a boolean.');
+    for (const pattern of area.paths ?? []) {
+      if (exactIncluded.has(pattern) && !(area.excludePaths ?? []).includes(pattern)) add('MEMORY_CONFIG_OVERLAP', `${prefix}.paths`, `Path pattern also appears in ${exactIncluded.get(pattern)}: ${pattern}`);
+      else exactIncluded.set(pattern, `${prefix}.paths`);
+    }
+  }
+  return errors;
+}
+
+export function readMemoryConfig(root = '.') {
+  for (const name of MEMORY_CONFIG_FILES) {
+    const path = join(root, name);
+    if (!existsSync(path)) continue;
+    try {
+      const data = JSON.parse(readFileSync(path, 'utf8'));
+      const errors = validateMemoryConfigData(data, root, name);
+      if (errors.length > 0) return { ...defaultMemoryConfig(), source: name, errors };
+      const configuredAreas = data.memory?.areas?.map(normalizeMemoryArea) ?? [];
+      const traceability = data.traceability === undefined ? cloneTraceabilityPolicy() : normalizeTraceabilityPolicy(data.traceability);
+      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, errors: [] } : { ...defaultMemoryConfig(), traceability, source: name, errors: [] };
+    } catch (error) {
+      return { ...defaultMemoryConfig(), source: name, errors: [{ file: name, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}` }] };
+    }
+  }
+  return defaultMemoryConfig();
+}
+
+function memoryConfigSummary(config) {
+  return {
+    source: config.source ?? 'default',
+    areas: (config.areas ?? []).map((area) => ({
+      id: area.id,
+      label: area.label,
+      paths: area.paths,
+      excludePaths: area.excludePaths ?? [],
+      scope: area.scope,
+      freshness: area.freshness,
+      role: area.role,
+      priority: area.priority,
+      includeBodiesByDefault: area.includeBodiesByDefault !== false,
+    })),
+    traceability: cloneTraceabilityPolicy(config.traceability ?? DEFAULT_TRACEABILITY_POLICY),
+  };
 }
 
 export function isReadmeIndexPath(path = '') {
   return basename(path) === 'README.md';
 }
 
-function retrievalSignalsForPath(path = '') {
+function retrievalSignalsForPath(path = '', config = defaultMemoryConfig()) {
   const signals = [];
-  const area = memoryAreaForPath(path);
-  if (area) signals.push('memory-area');
+  const definition = resolveMemoryArea(path, config);
+  if (definition) {
+    signals.push('memory-area', `scope:${definition.scope}`, `freshness:${definition.freshness}`);
+  }
   if (path.startsWith('docs/')) signals.push('docs-path');
   if (isReadmeIndexPath(path)) signals.push('readme-index');
   return signals;
 }
 
-function retrievalMetadataForPath(path = '') {
-  const area = memoryAreaForPath(path);
+function retrievalMetadataForPath(path = '', config = defaultMemoryConfig()) {
+  const definition = resolveMemoryArea(path, config);
   return {
-    area,
-    role: memoryRoleForPath(path),
-    priority: retrievalPriorityForPath(path),
-    signals: retrievalSignalsForPath(path),
+    area: definition?.id,
+    role: definition?.role,
+    priority: definition?.priority ?? 30,
+    scope: definition?.scope,
+    freshness: definition?.freshness,
+    includeBodiesByDefault: definition?.includeBodiesByDefault,
+    signals: retrievalSignalsForPath(path, config),
   };
 }
 
-function fileNodeMetadata(path, file) {
-  const retrieval = retrievalMetadataForPath(path);
+function fileNodeMetadata(path, file, config = defaultMemoryConfig()) {
+  const retrieval = retrievalMetadataForPath(path, config);
   return {
     path,
     extension: file ? extname(file) : extname(path),
     memoryArea: retrieval.area,
     memoryRole: retrieval.role,
+    memoryScope: retrieval.scope,
+    memoryFreshness: retrieval.freshness,
     retrievalPriority: retrieval.priority,
     retrieval,
   };
 }
 
-function addMemoryAreaMembership(graph, fileId, path) {
-  const area = memoryAreaForPath(path);
-  if (!area) return;
-  const definition = MEMORY_AREAS[area];
-  const areaId = `memory_area:${area}`;
-  addNode(graph, areaId, 'memory_area', { area, label: definition.label, role: definition.role, retrievalPriority: definition.priority });
-  addEdge(graph, fileId, areaId, 'belongs_to_area', { confidence: 'DETERMINISTIC', role: definition.role });
+function addMemoryAreaMembership(graph, fileId, path, config = defaultMemoryConfig()) {
+  const definition = resolveMemoryArea(path, config);
+  if (!definition) return;
+  const areaId = `memory_area:${definition.id}`;
+  addNode(graph, areaId, 'memory_area', { area: definition.id, label: definition.label, role: definition.role, scope: definition.scope, freshness: definition.freshness, retrievalPriority: definition.priority, includeBodiesByDefault: definition.includeBodiesByDefault !== false });
+  addEdge(graph, fileId, areaId, 'belongs_to_area', { confidence: 'DETERMINISTIC', role: definition.role, scope: definition.scope, freshness: definition.freshness });
 }
 
 function addPackageResource(graph, fileId, packagePath, name, target, kind) {
@@ -601,19 +775,19 @@ function addPackageResource(graph, fileId, packagePath, name, target, kind) {
   addEdge(graph, fileId, id, 'includes_resource', { kind, confidence: 'EXTRACTED' });
 }
 
-function addTraceabilityTarget(graph, sourceId, root, relation, targetPath, data = {}) {
+function addTraceabilityTarget(graph, sourceId, root, relation, targetPath, data = {}, config = defaultMemoryConfig()) {
   if (!isLocalRelativeTraceabilityPath(targetPath) || !existsSync(resolve(root, targetPath))) return;
   const targetId = `file:${targetPath}`;
-  addNode(graph, targetId, 'file', fileNodeMetadata(targetPath));
+  addNode(graph, targetId, 'file', fileNodeMetadata(targetPath, null, config));
   addEdge(graph, sourceId, targetId, relation, { confidence: 'CURATED_TRACEABILITY', ...data });
 }
 
-function addTraceabilityGraph(root, fileId, content, graph) {
+function addTraceabilityGraph(root, fileId, content, graph, config = defaultMemoryConfig()) {
   for (const block of extractDotdotgodTraceabilityBlocks(content)) {
     if (block.error || !block.data || block.data.kind !== 'spec') continue;
-    for (const target of block.data.implementedBy ?? []) addTraceabilityTarget(graph, fileId, root, 'implemented_by', target);
-    for (const target of block.data.verifiedBy ?? []) addTraceabilityTarget(graph, fileId, root, 'verified_by', target);
-    for (const target of block.data.relatedDocs ?? []) addTraceabilityTarget(graph, fileId, root, 'related_doc', target);
+    for (const target of block.data.implementedBy ?? []) addTraceabilityTarget(graph, fileId, root, 'implemented_by', target, {}, config);
+    for (const target of block.data.verifiedBy ?? []) addTraceabilityTarget(graph, fileId, root, 'verified_by', target, {}, config);
+    for (const target of block.data.relatedDocs ?? []) addTraceabilityTarget(graph, fileId, root, 'related_doc', target, {}, config);
     for (const [index, command] of (Array.isArray(block.data.verificationCommands) ? block.data.verificationCommands : []).entries()) {
       if (typeof command !== 'string' || command.trim().length === 0) continue;
       const id = `verification_command:${fileId}#${index}`;
@@ -623,7 +797,7 @@ function addTraceabilityGraph(root, fileId, content, graph) {
   }
 }
 
-export function extractMarkdownGraph(root, file, graph) {
+export function extractMarkdownGraph(root, file, graph, config = defaultMemoryConfig()) {
   const path = rel(root, file);
   const content = readFileSync(file, 'utf8');
   const fileId = `file:${path}`;
@@ -640,11 +814,11 @@ export function extractMarkdownGraph(root, file, graph) {
     if (!pathPart) continue;
     const targetPath = rel(root, resolve(dirname(file), pathPart));
     const targetId = `file:${targetPath}`;
-    addNode(graph, targetId, 'file', fileNodeMetadata(targetPath));
+    addNode(graph, targetId, 'file', fileNodeMetadata(targetPath, null, config));
     addEdge(graph, fileId, targetId, 'links_to', { line, confidence: 'EXTRACTED' });
     if (isReadmeIndexPath(path)) addEdge(graph, fileId, targetId, 'routes_to', { line, confidence: 'CURATED_INDEX', sourceRole: 'readme-index' });
   }
-  addTraceabilityGraph(root, fileId, content, graph);
+  addTraceabilityGraph(root, fileId, content, graph, config);
 }
 
 export function extractPackageGraph(root, file, graph) {
@@ -766,22 +940,22 @@ export function extractScriptGraph(root, file, graph) {
   }
 }
 
-export function buildGraph(root, files) {
+export function buildGraph(root, files, config = readMemoryConfig(root)) {
   const graph = { nodes: [], edges: [] };
   for (const file of files) {
     const path = rel(root, file);
     const fileId = `file:${path}`;
-    addNode(graph, fileId, 'file', fileNodeMetadata(path, file));
-    addMemoryAreaMembership(graph, fileId, path);
-    if (path.endsWith('.md')) extractMarkdownGraph(root, file, graph);
+    addNode(graph, fileId, 'file', fileNodeMetadata(path, file, config));
+    addMemoryAreaMembership(graph, fileId, path, config);
+    if (path.endsWith('.md')) extractMarkdownGraph(root, file, graph, config);
     else if (basename(file) === 'package.json') extractPackageGraph(root, file, graph);
     else if (/\.(mjs|cjs|js|jsx|ts|tsx)$/.test(path)) extractScriptGraph(root, file, graph);
   }
   return graph;
 }
 
-function collectFingerprints(root) {
-  return collectIndexFiles(root).map((file) => {
+function collectFingerprints(root, config = readMemoryConfig(root)) {
+  return collectIndexFiles(root, config).map((file) => {
     const stats = statSync(file);
     return { path: rel(root, file), sha256: fingerprint(file), size: stats.size, mtimeMs: Math.round(stats.mtimeMs) };
   });
@@ -806,7 +980,8 @@ function mergeIncrementalGraph(previousGraph, changedGraph, changedPaths) {
 
 export function buildIndex(root, previous = readIndex(root)) {
   const startedAt = Date.now();
-  const files = collectFingerprints(root);
+  const memoryConfig = readMemoryConfig(root);
+  const files = collectFingerprints(root, memoryConfig);
   const indexed = new Map((previous?.files ?? []).map((file) => [file.path, file.sha256]));
   const currentPaths = new Set(files.map((file) => file.path));
   const removedPaths = (previous?.files ?? []).filter((file) => !currentPaths.has(file.path)).map((file) => file.path);
@@ -814,8 +989,9 @@ export function buildIndex(root, previous = readIndex(root)) {
   const changedFiles = files.filter((file) => changedPaths.includes(file.path)).map((file) => join(root, file.path));
   const fullRebuild = !previous?.graph || previous.version !== CACHE_VERSION;
   const refreshReason = !previous ? 'missing' : previous.version !== CACHE_VERSION ? 'schema-mismatch' : removedPaths.length > 0 ? 'content-removed' : changedPaths.length > 0 ? 'content-changed' : 'fresh';
-  const graph = fullRebuild ? buildGraph(root, files.map((file) => join(root, file.path))) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles), changedPaths);
-  return { version: CACHE_VERSION, schemaVersion: CACHE_VERSION, generatedAt: new Date().toISOString(), archiveBodiesIncluded: false, files, graph, stats: graphStats(graph), incremental: { enabled: true, fullRebuild, changedFiles: changedPaths.length, refreshReason, elapsedMs: Date.now() - startedAt } };
+  const graph = fullRebuild ? buildGraph(root, files.map((file) => join(root, file.path)), memoryConfig) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles, memoryConfig), changedPaths);
+  const archiveBodiesIncluded = (memoryConfig.areas ?? []).some((area) => area.id === 'archive-body' && area.includeBodiesByDefault !== false);
+  return { version: CACHE_VERSION, schemaVersion: CACHE_VERSION, generatedAt: new Date().toISOString(), archiveBodiesIncluded, memoryConfig: memoryConfigSummary(memoryConfig), files, graph, stats: graphStats(graph), incremental: { enabled: true, fullRebuild, changedFiles: changedPaths.length, refreshReason, elapsedMs: Date.now() - startedAt } };
 }
 
 export function writeIndex(root, index) {
@@ -826,7 +1002,7 @@ export function writeIndex(root, index) {
     nodes: Object.fromEntries(Object.keys(compact.nodes).map((name) => [name, rel(root, shardFile(root, 'nodes', name))])),
     edges: Object.fromEntries(Object.keys(compact.edges).map((name) => [name, rel(root, shardFile(root, 'edges', name))])),
   };
-  const manifest = { version: index.version, schemaVersion: index.schemaVersion ?? index.version, generatedAt: index.generatedAt, archiveBodiesIncluded: index.archiveBodiesIncluded, files: index.files, graph: { ...graphStats(index.graph), compactSchema: true, shards: graphShards }, incremental: index.incremental };
+  const manifest = { version: index.version, schemaVersion: index.schemaVersion ?? index.version, generatedAt: index.generatedAt, archiveBodiesIncluded: index.archiveBodiesIncluded, memoryConfig: index.memoryConfig, files: index.files, graph: { ...graphStats(index.graph), compactSchema: true, shards: graphShards }, incremental: index.incremental };
   writeJson(cacheFile(root), manifest);
   const shardBytes = [...Object.values(graphShards.nodes), ...Object.values(graphShards.edges)].reduce((sum, path) => sum + jsonSize(join(root, path)), 0);
   const manifestBytes = jsonSize(cacheFile(root));
@@ -849,7 +1025,8 @@ export function readIndex(root) {
 
 export function getStatus(root) {
   const index = readIndex(root);
-  const currentFiles = collectFingerprints(root);
+  const memoryConfig = readMemoryConfig(root);
+  const currentFiles = collectFingerprints(root, memoryConfig);
   if (!index) return { ok: false, status: 'missing', cachePath: rel(root, cacheFile(root)), indexedFiles: 0, currentFiles: currentFiles.length, staleFiles: currentFiles.length, archiveBodiesIncluded: false, schemaVersion: null, expectedSchemaVersion: CACHE_VERSION, schemaOk: false, reason: 'missing' };
   const indexed = new Map((index.files ?? []).map((file) => [file.path, file.sha256]));
   const currentMap = new Map(currentFiles.map((file) => [file.path, file.sha256]));
@@ -867,7 +1044,7 @@ export function runIndex(argv) {
   const options = parseCommon(argv);
   const index = buildIndex(options.root);
   const manifest = writeIndex(options.root, index);
-  const result = { ok: true, cachePath: rel(options.root, cacheFile(options.root)), schemaVersion: CACHE_VERSION, indexedFiles: index.files.length, nodes: index.graph.nodes.length, edges: index.graph.edges.length, indexSizeBytes: manifest.indexSizeBytes, shards: manifest.graph.shards, incremental: index.incremental, archiveBodiesIncluded: false };
+  const result = { ok: true, cachePath: rel(options.root, cacheFile(options.root)), schemaVersion: CACHE_VERSION, indexedFiles: index.files.length, nodes: index.graph.nodes.length, edges: index.graph.edges.length, indexSizeBytes: manifest.indexSizeBytes, shards: manifest.graph.shards, incremental: index.incremental, archiveBodiesIncluded: index.archiveBodiesIncluded === true, memoryConfig: index.memoryConfig };
   if (options.json) console.log(JSON.stringify(result, null, 2));
   else console.log(`✅ index written (${result.indexedFiles} files, ${result.nodes} nodes, ${result.edges} edges, ${(result.indexSizeBytes / 1024).toFixed(1)} KiB, cache: ${result.cachePath})`);
 }
@@ -1011,9 +1188,9 @@ export function buildImpactReport(index, changedPath, limits = {}) {
       const node = nodeById.get(id) ?? { id };
       const path = node.path ?? id.replace(/^file:/, '').replace(/^test:/, '');
       const reasonList = [...(reasons.get(id) ?? [])];
-      const retrieval = retrievalMetadataForPath(path);
+      const retrieval = node.retrieval ?? retrievalMetadataForPath(path);
       const reasonSignals = reasonList.map((reason) => `reason:${reason}`);
-      return { ...node, reasons: reasonList, retrieval: { ...retrieval, signals: [...new Set([...retrieval.signals, ...reasonSignals])] } };
+      return { ...node, reasons: reasonList, retrieval: { ...retrieval, signals: [...new Set([...(retrieval.signals ?? []), ...reasonSignals])] } };
     })
     .sort((a, b) => {
       if (a.id === seed) return -1;
@@ -1183,13 +1360,14 @@ export function buildCommunities(index, limits = {}) {
 export function buildMemoryAreas(index, limits = {}) {
   const graph = index?.graph ?? { nodes: [], edges: [] };
   const itemLimit = limits.items ?? 4;
+  const config = index?.memoryConfig?.areas ? index.memoryConfig : defaultMemoryConfig();
   const areas = new Map();
-  for (const [area, definition] of Object.entries(MEMORY_AREAS)) {
-    areas.set(area, { area, label: definition.label, role: definition.role, priority: definition.priority, files: [], count: 0, omitted: 0 });
+  for (const definition of config.areas ?? []) {
+    areas.set(definition.id, { area: definition.id, label: definition.label, role: definition.role, scope: definition.scope, freshness: definition.freshness, priority: definition.priority, includeBodiesByDefault: definition.includeBodiesByDefault !== false, files: [], count: 0, omitted: 0 });
   }
   for (const node of graph.nodes) {
     if (node.type !== 'file') continue;
-    const area = node.memoryArea ?? memoryAreaForPath(node.path);
+    const area = node.memoryArea ?? memoryAreaForPath(node.path, config);
     if (!area || !areas.has(area)) continue;
     const summary = areas.get(area);
     summary.count += 1;
@@ -1199,7 +1377,7 @@ export function buildMemoryAreas(index, limits = {}) {
   const all = [...areas.values()]
     .filter((area) => area.count > 0)
     .sort((a, b) => b.priority - a.priority || a.area.localeCompare(b.area));
-  return { areas: all, total: all.length, omitted: 0, method: 'deterministic-path-classification' };
+  return { areas: all, total: all.length, omitted: 0, method: 'configured-path-classification', source: config.source ?? 'default' };
 }
 
 export function runLoadSnapshot(argv) {
@@ -1208,6 +1386,14 @@ export function runLoadSnapshot(argv) {
   const summary = graphSummary(index);
   const communities = buildCommunities(index, { communities: 5, items: 5 });
   const memoryAreas = buildMemoryAreas(index, { items: 4 });
+  const memoryConfig = index.memoryConfig ?? memoryConfigSummary(readMemoryConfig(options.root));
+  const memoryPolicy = {
+    source: memoryConfig.source ?? 'default',
+    sharedAreas: (memoryConfig.areas ?? []).filter((area) => area.scope === 'shared').map((area) => area.id),
+    localAreas: (memoryConfig.areas ?? []).filter((area) => area.scope === 'local').map((area) => area.id),
+    freshAreas: (memoryConfig.areas ?? []).filter((area) => area.freshness === 'fresh').map((area) => area.id),
+    staleAreas: (memoryConfig.areas ?? []).filter((area) => area.freshness === 'stale').map((area) => area.id),
+  };
   const bounds = { communities: 5, communityItems: 5, memoryAreaItems: 4, fullGraphIncluded: false, archiveBodiesIncluded: status.archiveBodiesIncluded, archiveMapIncluded: true };
   const quality = {
     indexedFiles: status.indexedFiles,
@@ -1221,7 +1407,7 @@ export function runLoadSnapshot(argv) {
     graphNodes: summary.nodes,
     graphEdges: summary.edges,
   };
-  let payload = { root: options.root, cache: status, metadata, graph: summary, memoryAreas, communities, bounds, quality };
+  let payload = { root: options.root, cache: status, metadata, graph: summary, memoryConfig, memoryPolicy, memoryAreas, communities, bounds, quality };
   const serialized = JSON.stringify(payload);
   payload = { ...payload, quality: { ...quality, snapshotBytes: Buffer.byteLength(serialized), approxSnapshotTokens: Math.ceil(serialized.length / 4) } };
   if (options.json) console.log(JSON.stringify(payload, null, 2));

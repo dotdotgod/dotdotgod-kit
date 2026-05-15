@@ -2,6 +2,13 @@
 
 Use this area for test strategy, coverage notes, regression cases, and manual verification records.
 
+## Index
+
+- `README.md`: test documentation scope, verification commands, and manual smoke checks.
+- `MEMORY_AREA_CONFIG.md`: memory-area config validation and snapshot smoke checks.
+- `TRACEABILITY_CONFIG.md`: configurable traceability enforcement validation smoke checks.
+- `CONTEXT_MEASUREMENT.md`: context measurement commands and runtime context debug smoke checks.
+
 ## Verification Commands
 
 Regenerate adapter resources from shared sources:
@@ -162,17 +169,9 @@ pi uninstall npm:@dotdotgod/pi
 
 Confirmed after the first public `0.1.0` publish: install added the package successfully and uninstall removed it successfully.
 
-Context measurement smoke:
+Memory area config smoke: see `MEMORY_AREA_CONFIG.md` for config validation, snapshot, and archive-body checks.
 
-```bash
-pnpm run measure:context
-pnpm run measure:context:json
-node scripts/measure-context.mjs --markdown --output docs/archive/report/context-metrics/latest.md
-```
-
-- Confirm the static measurement reports load prompt, CLI load snapshot sample size, baseline memory, default docs surface, archive index, full archive, archive body excluded estimates, and Plan Mode full-vs-compact prompt estimates.
-- Confirm local output under `docs/archive/report/context-metrics/` remains ignored by git.
-- In Pi, start with `--dd-context-debug --dd-context-debug-output docs/archive/report/context-metrics/session.jsonl`, run `/dd:load`, `/plan`, and a first planning request, then confirm JSONL events are written for load, Plan Mode initial context-shaping checks, full curated load requests/skips, deferred load-after-compaction events when applicable, and Plan Mode activity.
+Context measurement smoke: see `CONTEXT_MEASUREMENT.md` for measurement commands and runtime context debug checks.
 
 README landing review:
 

@@ -23,6 +23,8 @@ import {
   memoryAreaForPath,
   memoryRoleForPath,
   neighborhood,
+  readMemoryConfig,
+  requiresTraceability,
   retrievalPriorityForPath,
   shouldIndexPath,
   validateTraceabilityBlock,
@@ -94,6 +96,44 @@ describe('CLI docs helpers', () => {
     assert.equal(memoryAreaForPath('docs/archive/README.md'), 'archive-map');
     assert.equal(isReadmeIndexPath('docs/spec/README.md'), true);
     assert(retrievalPriorityForPath('docs/plan/task/README.md') > retrievalPriorityForPath('packages/tool/index.mjs'));
+  });
+
+  it('loads optional memory area config for shared/local and fresh/stale policy', () => {
+    const root = fixture();
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({
+      memory: {
+        areas: [
+          { id: 'docs-shared', label: 'Shared Docs', paths: ['docs/spec/**'], scope: 'shared', freshness: 'fresh', role: 'behavior-truth', priority: 80, includeBodiesByDefault: true },
+          { id: 'local-history', label: 'Local History', paths: ['docs/archive/**'], scope: 'local', freshness: 'stale', role: 'historical-memory-body', priority: 10, includeBodiesByDefault: false },
+        ],
+      },
+    }, null, 2));
+    const config = readMemoryConfig(root);
+    assert.equal(config.source, 'dotdotgod.config.json');
+    assert.equal(memoryAreaForPath('docs/spec/FEATURE.md', config), 'docs-shared');
+    assert.equal(memoryAreaForPath('docs/archive/OLD.md', config), 'local-history');
+    assert.equal(shouldIndexPath('docs/archive/OLD.md', config), false);
+    assert.equal(shouldIndexPath('docs/spec/FEATURE.md', config), true);
+  });
+
+  it('loads configurable traceability scope with array path settings', () => {
+    const root = fixture();
+    assert.equal(requiresTraceability('docs/spec/FEATURE.md'), true);
+    assert.equal(requiresTraceability('docs/spec/README.md'), false);
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({
+      traceability: {
+        required: ['docs/product/**', 'docs/requirements/**'],
+        exclude: ['**/README.md', 'docs/product/DRAFT.md'],
+      },
+    }, null, 2));
+    const config = readMemoryConfig(root);
+    assert.equal(config.source, 'dotdotgod.config.json');
+    assert.deepEqual(config.traceability.required, ['docs/product/**', 'docs/requirements/**']);
+    assert.equal(requiresTraceability('docs/product/FEATURE.md', config), true);
+    assert.equal(requiresTraceability('docs/requirements/REQ.md', config), true);
+    assert.equal(requiresTraceability('docs/product/README.md', config), false);
+    assert.equal(requiresTraceability('docs/product/DRAFT.md', config), false);
+    assert.equal(requiresTraceability('docs/spec/FEATURE.md', config), false);
   });
 });
 
