@@ -70,7 +70,7 @@ The debug path is for measurement and investigation only; normal package behavio
 - read-only, snapshot-first loader prompt generation with compact directory summaries when the CLI snapshot is available
 - command-conflict guidance for `/load`
 
-The shared CLI owns deterministic validation, cache/index management, bounded graph impact reports, and community summaries. The load extension includes compact CLI snapshot metadata in `/dd:load` without turning project loading into a full graph dump. It preserves `docs/archive/README.md` as the archive map while keeping archive bodies excluded by default.
+The shared CLI owns deterministic validation, cache/index management, bounded graph impact reports, community summaries, and environment-aware command guidance. The load extension includes compact CLI snapshot metadata in `/dd:load` without turning project loading into a full graph dump. It preserves `docs/archive/README.md` as the archive map while keeping archive bodies excluded by default.
 
 ## Prompt Layer
 

@@ -73,6 +73,7 @@ describe("load-project prompt", () => {
 				graph: { nodes: 10, edges: 8, byType: { file: 4, heading: 6 } },
 				communities: { method: "leiden", fallback: false, total: 1, omitted: 0, communities: [{ label: "Pi Load", files: ["packages/pi/extensions/load-project/index.ts"], docs: ["docs/spec/LOAD_PROJECT.md"], commands: ["dd:load"], events: [], tests: [] }] },
 				bounds: { fullGraphIncluded: false },
+				commandGuidance: { source: "local-source", packageManager: "pnpm", install: null, validate: "node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory", loadSnapshot: "node packages/cli/bin/dotdotgod.mjs load-snapshot . --json", index: "node packages/cli/bin/dotdotgod.mjs index . --json", status: "node packages/cli/bin/dotdotgod.mjs status . --json", verify: "pnpm run verify" },
 			},
 		});
 
@@ -80,6 +81,9 @@ describe("load-project prompt", () => {
 		assert.match(prompt, /cacheRefreshed=true/);
 		assert.match(prompt, /archiveBodiesIncluded=false/);
 		assert.match(prompt, /fullGraphIncluded=false/);
+		assert.match(prompt, /source=local-source/);
+		assert.match(prompt, /node packages\/cli\/bin\/dotdotgod\.mjs validate \. --include-local-memory/);
+		assert.match(prompt, /Verify: pnpm run verify/);
 		assert.match(prompt, /Use the Load snapshot section first/);
 		assert.match(prompt, /Do not re-scan every listed file/);
 		assert.match(prompt, /docs\/archive: available; follow its README\.md only if relevant/);
