@@ -13,6 +13,7 @@ import { recordContextMetric } from "../context-metrics/utils.js";
 import { buildLoadPrompt, collectSnapshot } from "../load-project/utils.js";
 import {
 	buildPlanCompactionInstructions,
+	buildPlanModeContextPrompt,
 	extractTodoItems,
 	getPlanCompactionReason,
 	isSafeCommand,
@@ -140,6 +141,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let lastPlanningLoadEntryCount: number | undefined;
 	let pendingPlanningLoadAfterCompaction = false;
 	let planningContextShapePending = false;
+	let planModeFullPromptInjected = false;
 	let lastPlanningRequest: string | undefined;
 	let touchedPlanArchivePaths: string[] = [];
 
@@ -284,6 +286,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		executionMode = false;
 		todoItems = [];
 		activePlanTouched = false;
+		planModeFullPromptInjected = false;
 
 		if (planModeEnabled) {
 			planningContextShapePending = true;
@@ -309,6 +312,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			lastPlanningLoadEntryCount,
 			pendingPlanningLoadAfterCompaction,
 			planningContextShapePending,
+			planModeFullPromptInjected,
 			lastPlanningRequest,
 			touchedPlanArchivePaths,
 		});
@@ -415,38 +419,13 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 
 		if (planModeEnabled) {
+			const content = buildPlanModeContextPrompt(planModeFullPromptInjected);
+			planModeFullPromptInjected = true;
+			persistState();
 			return {
 				message: {
 					customType: "plan-mode-context",
-					content: `[PLAN MODE ACTIVE]
-You are in Plan Mode. This is a read-only exploration and design phase before code changes.
-
-Restrictions:
-- Allowed tools: read, bash, edit, write, grep, find, ls, questionnaire, web_search, code_search, fetch_content, get_search_content
-- edit/write are allowed only for markdown plan/archive files under docs/plan/ or docs/archive/.
-- Under docs/, directories must use kebab-case and markdown file names must use UPPER_SNAKE_CASE.md, including README.md.
-- Forbidden: source/code/config file mutation outside docs/plan/ and docs/archive/.
-- Bash is restricted to read-only allowlisted commands.
-
-Project context:
-- Read AGENTS.md and docs/README.md first when available.
-- Treat project docs as the source of truth for stack, commands, conventions, and architecture.
-- Check docs/arch when code conventions, module boundaries, infrastructure/runtime dependencies, or integration constraints may affect the plan.
-
-Workflow:
-- Explore relevant files thoroughly before planning; ask clarifying questions with questionnaire when requirements are ambiguous.
-- If planning compaction has just occurred, rely on the preserved planning summary plus current project docs before writing or refining the plan.
-- Use web_search, code_search, and fetch_content when library or web evidence is needed.
-- Manage active work under docs/plan/<task-slug>/README.md, with optional UPPER_SNAKE_CASE support files in the same task directory.
-- When one docs domain grows into multiple files, group it under docs/<area>/<domain>/README.md plus supporting UPPER_SNAKE_CASE files.
-- Include scope, status, target files, risks, verification, and a final archive step to docs/archive/plan/<task-slug>/.
-- Do not change product/source files in plan mode. Only maintain docs/plan or docs/archive markdown files and produce an executable plan.
-
-Always write the task README with scope, target files, implementation steps, verification, risks when useful, and archive housekeeping.
-
-In the final response, use a Plan: section only for concrete executable steps. Avoid generic template labels such as "Target files and rationale", "Implementation steps", or "Verification method" as numbered plan items.
-
-Do NOT attempt to make changes - just describe what you would do.`,
+					content,
 					display: false,
 				},
 			};
@@ -568,6 +547,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 						lastPlanningLoadEntryCount?: number;
 						pendingPlanningLoadAfterCompaction?: boolean;
 						planningContextShapePending?: boolean;
+						planModeFullPromptInjected?: boolean;
 						lastPlanningRequest?: string;
 						touchedPlanArchivePaths?: string[];
 					};
@@ -584,6 +564,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			lastPlanningLoadEntryCount = planModeEntry.data.lastPlanningLoadEntryCount ?? lastPlanningLoadEntryCount;
 			pendingPlanningLoadAfterCompaction = planModeEntry.data.pendingPlanningLoadAfterCompaction ?? pendingPlanningLoadAfterCompaction;
 			planningContextShapePending = planModeEntry.data.planningContextShapePending ?? planningContextShapePending;
+			planModeFullPromptInjected = planModeEntry.data.planModeFullPromptInjected ?? planModeFullPromptInjected;
 			lastPlanningRequest = planModeEntry.data.lastPlanningRequest ?? lastPlanningRequest;
 			touchedPlanArchivePaths = planModeEntry.data.touchedPlanArchivePaths ?? touchedPlanArchivePaths;
 		}

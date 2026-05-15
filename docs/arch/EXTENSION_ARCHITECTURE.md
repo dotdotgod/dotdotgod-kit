@@ -48,7 +48,8 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 - session state for plan mode, execution mode, todos, active plan-file touch tracking, touched plan/archive paths, latest planning request, pending first-request context shaping, and plan-compaction debounce metadata
 - concise execute/stay/refine review prompt after active plan file updates, without saved-plan preview rendering
 - one-time planning-focused `ctx.compact({ customInstructions })` and curated-load decisions after the first user planning request when a long or noisy session may hurt plan quality
-- current-work-directed compaction instructions that include the latest task focus before the durable preservation rules
+- tiered hidden Plan Mode prompts: a full safety/workflow prompt for the first active planning turn and a compact restriction reminder for later turns
+- current-work-directed compaction instructions that include the latest task focus before the durable preservation rules and explicitly demote stale history or repeated boilerplate
 
 Plan mode injects runtime instructions because project docs can be edited by users. The prompt should stay generic and must not contain app-specific stack assumptions.
 
@@ -71,7 +72,7 @@ The debug path is for measurement and investigation only; normal package behavio
 - `/dd:load` namespaced alias
 - direct `dotdotgod load-snapshot <cwd> --json` invocation when available
 - lightweight detection of baseline memory files as a fallback and prompt scaffold
-- read-only, snapshot-first loader prompt generation
+- read-only, snapshot-first loader prompt generation with compact directory summaries when the CLI snapshot is available
 - command-conflict guidance for `/load`
 
 The shared CLI owns deterministic validation, cache/index management, bounded graph impact reports, and community summaries. The load extension includes compact CLI snapshot metadata in `/dd:load` without turning project loading into a full graph dump. It preserves `docs/archive/README.md` as the archive map while keeping archive bodies excluded by default.
@@ -98,6 +99,7 @@ Prompt content should:
 - execution mode
 - active plan-file touch tracking for review-prompt eligibility
 - pending first-request context shaping state
+- Plan Mode full-prompt injection state for compact reminder selection
 - latest planning request and touched plan/archive paths for current-work compaction focus
 - last planning compaction entry count/reason for measurement and resume continuity
 

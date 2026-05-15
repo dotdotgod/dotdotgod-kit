@@ -19,6 +19,8 @@ The command does not modify source, docs, or config files.
 
 It first tries to run `dotdotgod load-snapshot <cwd> --json` and include a bounded snapshot summary in the loader prompt. The CLI read can lazily refresh `.dotdotgod/` cache metadata when the cache is missing or stale. If the CLI is unavailable or returns invalid JSON, the command falls back to a lightweight snapshot of expected memory files and docs directories, then sends a read-only loader prompt to the agent.
 
+When the CLI snapshot is available, the prompt keeps the documentation directory summary compact and asks the agent to use communities, cache metadata, and README indexes before reading individual docs. The lightweight fallback still lists discovered markdown files so repositories without a valid snapshot remain usable.
+
 The agent is instructed to use read-only tools such as:
 
 - `read`

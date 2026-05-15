@@ -244,13 +244,21 @@ export function buildLoadPrompt(
 ): string {
 	const present = snapshot.present.length > 0 ? snapshot.present.map((file) => `- ${file}`).join("\n") : "- none";
 	const missing = snapshot.missing.length > 0 ? snapshot.missing.map((file) => `- ${file}`).join("\n") : "- none";
-	const directorySummary = snapshot.directories
-		.map((directory) => {
-			if (!directory.exists) return `- ${directory.path}: missing`;
-			if (directory.markdownFiles.length === 0) return `- ${directory.path}: no markdown files`;
-			return `- ${directory.path}:\n${directory.markdownFiles.map((file) => `  - ${file}`).join("\n")}`;
-		})
-		.join("\n");
+	const hasLoadSnapshot = loadSnapshot?.ok === true;
+	const directorySummary = hasLoadSnapshot
+		? snapshot.directories
+			.map((directory) => {
+				if (!directory.exists) return `- ${directory.path}: missing`;
+				return `- ${directory.path}: available; follow its README.md only if relevant`;
+			})
+			.join("\n")
+		: snapshot.directories
+			.map((directory) => {
+				if (!directory.exists) return `- ${directory.path}: missing`;
+				if (directory.markdownFiles.length === 0) return `- ${directory.path}: no markdown files`;
+				return `- ${directory.path}:\n${directory.markdownFiles.map((file) => `  - ${file}`).join("\n")}`;
+			})
+			.join("\n");
 
 	const mode = args.trim() ? `\nUser arguments: ${args.trim()}\n` : "";
 	const loadSnapshotText = loadSnapshot ? `\n${formatLoadSnapshotSummary(loadSnapshot)}\n` : "";
@@ -270,7 +278,7 @@ ${directorySummary}
 Instructions:
 1. Use the Load snapshot section first when present. Treat it as the bounded project-memory map for cache status, graph size, related communities, and archive inclusion policy.
 2. Use only read-only tools such as read, ls, grep, and find to inspect project memory files.
-3. Start with AGENTS.md, README.md, and docs/README.md when they are not already clear from the loaded context.
+3. Start with AGENTS.md, README.md, and docs/README.md only when they are not already clear from the loaded context.
 4. Inspect docs/spec, docs/arch, and docs/test selectively based on the user request, the load snapshot communities, and README indexes. Do not re-scan every listed file unless the task needs a full refresh.
 5. Follow README.md indexes, including domain directories such as docs/<area>/<domain>/README.md and expanded convention directories such as docs/arch/conventions/README.md.
 6. For docs/plan, list entries first and selectively read only the relevant README.md or markdown files.

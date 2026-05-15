@@ -4,6 +4,7 @@ import {
 	PLAN_COMPACTION_PERCENT_THRESHOLD,
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
 	buildPlanCompactionInstructions,
+	buildPlanModeContextPrompt,
 	extractDoneSteps,
 	extractTodoItems,
 	formatPlanCompactionFocus,
@@ -58,10 +59,22 @@ describe("plan-mode compaction helpers", () => {
 	it("builds planning-focused custom instructions with the reason", () => {
 		const instructions = buildPlanCompactionInstructions(`Plan Mode context exceeded ${PLAN_COMPACTION_PERCENT_THRESHOLD}% of the context window.`);
 		assert.match(instructions, new RegExp(`^Reason: Plan Mode context exceeded ${PLAN_COMPACTION_PERCENT_THRESHOLD}%`));
-		assert.match(instructions, /Preserve planning-critical context/);
+		assert.match(instructions, /Preserve only planning-critical context/);
 		assert.match(instructions, /active plan task slug\/path\/status/);
 		assert.match(instructions, /\[DONE:n\]/);
+		assert.match(instructions, /Demote or omit old completed plans/);
 		assert.equal(buildPlanCompactionInstructions(), PLAN_MODE_COMPACTION_INSTRUCTIONS);
+	});
+
+	it("builds a compact Plan Mode reminder after the full prompt", () => {
+		const fullPrompt = buildPlanModeContextPrompt(false);
+		const compactPrompt = buildPlanModeContextPrompt(true);
+
+		assert.match(fullPrompt, /You are in Plan Mode/);
+		assert.match(fullPrompt, /Explore relevant files thoroughly/);
+		assert.match(compactPrompt, /Compact reminder/);
+		assert.match(compactPrompt, /Do not mutate source\/code\/config files/);
+		assert.ok(compactPrompt.length < fullPrompt.length / 2);
 	});
 
 	it("builds current-work-focused custom instructions", () => {

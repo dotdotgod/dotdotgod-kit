@@ -198,7 +198,44 @@ export const PLAN_COMPACTION_TOKEN_FALLBACK = 100_000;
 export const PLAN_COMPACTION_CONTEXT_RESERVE = 32_000;
 
 export const PLAN_MODE_COMPACTION_INSTRUCTIONS =
-	"Preserve planning-critical context for dotdotgod Plan Mode. Keep user decisions, constraints, active plan task slug/path/status, touched docs/plan and docs/archive files, relevant docs/spec docs/test docs/arch context, implementation decisions, verification results, unresolved risks/questions, and concrete next steps. Preserve completed [DONE:n] markers if present. Omit low-value discussion, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail. Summarize in a compact structure that lets the next assistant continue planning or execution without asking the user to repeat context.";
+	"Preserve only planning-critical context for dotdotgod Plan Mode. Prioritize the latest user request, active plan task slug/path/status, current target files, concrete user decisions and constraints, implementation decisions, verification commands/results, unresolved risks/questions, next steps, and completed [DONE:n] markers if present. Demote or omit old completed plans unless directly relevant, repeated project-load summaries, package publish history unless task-related, generic Plan Mode boilerplate recoverable from runtime prompts, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail. Summarize in a compact structure that lets the next assistant continue the current plan or execution without asking the user to repeat context.";
+
+export const PLAN_MODE_FULL_CONTEXT_PROMPT = `[PLAN MODE ACTIVE]
+You are in Plan Mode. This is a read-only exploration and design phase before code changes.
+
+Restrictions:
+- Allowed tools: read, bash, edit, write, grep, find, ls, questionnaire, web_search, code_search, fetch_content, get_search_content
+- edit/write are allowed only for markdown plan/archive files under docs/plan/ or docs/archive/.
+- Under docs/, directories must use kebab-case and markdown file names must use UPPER_SNAKE_CASE.md, including README.md.
+- Forbidden: source/code/config file mutation outside docs/plan/ and docs/archive/.
+- Bash is restricted to read-only allowlisted commands.
+
+Project context:
+- Read AGENTS.md and docs/README.md first when available.
+- Treat project docs as the source of truth for stack, commands, conventions, and architecture.
+- Check docs/arch when code conventions, module boundaries, infrastructure/runtime dependencies, or integration constraints may affect the plan.
+
+Workflow:
+- Explore relevant files thoroughly before planning; ask clarifying questions with questionnaire when requirements are ambiguous.
+- If planning compaction has just occurred, rely on the preserved planning summary plus current project docs before writing or refining the plan.
+- Use web_search, code_search, and fetch_content when library or web evidence is needed.
+- Manage active work under docs/plan/<task-slug>/README.md, with optional UPPER_SNAKE_CASE support files in the same task directory.
+- When one docs domain grows into multiple files, group it under docs/<area>/<domain>/README.md plus supporting UPPER_SNAKE_CASE files.
+- Include scope, status, target files, risks, verification, and a final archive step to docs/archive/plan/<task-slug>/.
+- Do not change product/source files in plan mode. Only maintain docs/plan or docs/archive markdown files and produce an executable plan.
+
+Always write the task README with scope, target files, implementation steps, verification, risks when useful, and archive housekeeping.
+
+In the final response, use a Plan: section only for concrete executable steps. Avoid generic template labels such as "Target files and rationale", "Implementation steps", or "Verification method" as numbered plan items.
+
+Do NOT attempt to make changes - just describe what you would do.`;
+
+export const PLAN_MODE_COMPACT_CONTEXT_PROMPT = `[PLAN MODE ACTIVE]
+Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for UPPER_SNAKE_CASE markdown under docs/plan/ or docs/archive/; bash remains read-only allowlisted. Use AGENTS.md and docs indexes as source of truth when needed. Maintain the active task under docs/plan/<task-slug>/README.md and use a Plan: section only for concrete executable steps when ready.`;
+
+export function buildPlanModeContextPrompt(compact = false): string {
+	return compact ? PLAN_MODE_COMPACT_CONTEXT_PROMPT : PLAN_MODE_FULL_CONTEXT_PROMPT;
+}
 
 export interface PlanCompactionFocus {
 	task?: string;

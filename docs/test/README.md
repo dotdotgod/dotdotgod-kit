@@ -103,6 +103,7 @@ Plan mode review choice and todo extraction:
 11. Confirm the Plan Mode compaction request uses planning-specific `customInstructions` that preserve decisions, active plan status, relevant docs, verification results, next steps, and `[DONE:n]` markers.
 12. Confirm compaction instructions include `Current work focus:` with the latest planning request, active/touched plan paths, todo state when present, pending load-after-compaction state, and archive/pnpm/source-mutation constraints.
 13. Confirm later planning turns in the same Plan Mode session do not automatically trigger another load or compaction decision; context shaping runs only for the first planning request after Plan Mode is enabled.
+14. Confirm the first active planning turn receives the full hidden Plan Mode safety/workflow prompt and later planning turns receive only the compact hidden reminder while source/config mutation remains blocked.
 
 Claude Code adapter local plugin smoke:
 
@@ -155,7 +156,7 @@ pnpm run measure:context:json
 node scripts/measure-context.mjs --markdown --output docs/archive/report/context-metrics/latest.md
 ```
 
-- Confirm the static measurement reports load prompt, baseline memory, default docs surface, archive index, full archive, and archive body excluded estimates.
+- Confirm the static measurement reports load prompt, baseline memory, default docs surface, archive index, full archive, archive body excluded estimates, and Plan Mode full-vs-compact prompt estimates.
 - Confirm local output under `docs/archive/report/context-metrics/` remains ignored by git.
 - In Pi, start with `--dd-context-debug --dd-context-debug-output docs/archive/report/context-metrics/session.jsonl`, run `/dd:load`, `/plan`, and a first planning request, then confirm JSONL events are written for load, Plan Mode initial context-shaping checks, full curated load requests/skips, deferred load-after-compaction events when applicable, and Plan Mode activity.
 
