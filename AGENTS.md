@@ -16,6 +16,7 @@ Canonical instructions for AI coding agents working in this repository.
 - Prefer existing local patterns over introducing new abstractions.
 - Update docs when behavior, architecture, or test strategy changes.
 - Write all documents under `docs/` in English.
+- Run `dotdotgod validate` after docs changes when the CLI is available, and follow its traceability guidance for behavior specs.
 - Follow the project code conventions in `docs/arch/CODE_CONVENTIONS.md`.
 - For Pi-specific implementation questions, consult the local Pi docs and examples before changing extension or skill behavior.
 

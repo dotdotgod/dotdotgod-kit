@@ -80,3 +80,31 @@ Cross-agent support is distributed as npm workspace packages:
 Versions are fixed across packages initially. The root workspace package is private and is not published.
 
 New package, command, and tool names should use dotdotgod and `dd` prefixes.
+
+## Traceability
+
+```json dotdotgod
+{
+  "kind": "spec",
+  "implementedBy": [
+    "packages/shared/workflows/init.md",
+    "packages/shared/workflows/load.md",
+    "packages/shared/workflows/plan.md",
+    "packages/claude-code/.claude-plugin/plugin.json",
+    "packages/codex/.codex-plugin/plugin.json",
+    "scripts/generate-adapters.mjs"
+  ],
+  "verifiedBy": [
+    "packages/cli/test/core.test.mjs",
+    "docs/test/README.md"
+  ],
+  "relatedDocs": [
+    "docs/arch/CROSS_AGENT_ARCHITECTURE.md",
+    "docs/arch/DOCS_STRUCTURE.md"
+  ],
+  "verificationCommands": [
+    "pnpm run verify:generated",
+    "pnpm run verify"
+  ]
+}
+```

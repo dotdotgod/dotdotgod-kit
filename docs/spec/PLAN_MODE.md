@@ -148,3 +148,27 @@ to:
 ```text
 docs/archive/plan/<task-slug>/
 ```
+
+## Traceability
+
+```json dotdotgod
+{
+  "kind": "spec",
+  "implementedBy": [
+    "packages/pi/extensions/plan-mode/index.ts",
+    "packages/pi/extensions/plan-mode/utils.ts"
+  ],
+  "verifiedBy": [
+    "packages/pi/test/plan-mode-utils.test.ts",
+    "docs/test/README.md"
+  ],
+  "relatedDocs": [
+    "docs/arch/EXTENSION_ARCHITECTURE.md",
+    "docs/arch/CODE_CONVENTIONS.md"
+  ],
+  "verificationCommands": [
+    "pnpm --filter @dotdotgod/pi test",
+    "pnpm --filter @dotdotgod/pi run typecheck"
+  ]
+}
+```

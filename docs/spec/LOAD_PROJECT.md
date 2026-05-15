@@ -89,3 +89,31 @@ The command is intentionally a runtime extension entrypoint. It can later grow i
 - graph search
 - `dd_search` or related LLM-callable tools
 - `/dd:index`, `/dd:search`, or `/dd:status` commands
+
+## Traceability
+
+```json dotdotgod
+{
+  "kind": "spec",
+  "implementedBy": [
+    "packages/pi/extensions/load-project/index.ts",
+    "packages/pi/extensions/load-project/utils.ts",
+    "packages/cli/src/core.mjs"
+  ],
+  "verifiedBy": [
+    "packages/pi/test/load-project-utils.test.ts",
+    "packages/cli/test/core.test.mjs",
+    "packages/cli/test/e2e.test.mjs",
+    "docs/test/README.md"
+  ],
+  "relatedDocs": [
+    "docs/arch/EXTENSION_ARCHITECTURE.md",
+    "docs/arch/VALIDATION_ARCHITECTURE.md"
+  ],
+  "verificationCommands": [
+    "pnpm --filter @dotdotgod/pi test",
+    "pnpm --filter @dotdotgod/cli test",
+    "node packages/cli/bin/dotdotgod.mjs load-snapshot . --json"
+  ]
+}
+```

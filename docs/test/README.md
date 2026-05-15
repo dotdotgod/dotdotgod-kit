@@ -43,7 +43,7 @@ node packages/cli/bin/dotdotgod.mjs load-snapshot . --json
 node packages/cli/bin/dotdotgod.mjs status . --json
 ```
 
-Confirm JSON output includes schema status, lazy refresh timing/reason metadata, bounded snapshot quality metrics, graph counts, bounded memory-area summaries, omitted community counts, retrieval hints, and archive inclusion policy.
+Confirm JSON output includes schema status, refresh metadata, graph counts, bounded memory-area/community summaries, retrieval hints, and archive policy. For graph query, confirm traceability relations surface related specs, tests, and verification docs when the changed file is listed in a `json dotdotgod` spec block.
 
 Run all workspace package checks:
 

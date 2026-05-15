@@ -15,6 +15,7 @@ Create a conservative dotdotgod project baseline that multiple AI coding agents 
 - `CODEX.md` points Codex users to `AGENTS.md`.
 - `docs/` contains `spec`, `test`, `arch`, `plan`, and `archive` areas with concise README files.
 - `docs/arch/` covers architecture decisions, code conventions, module boundaries, data flow, infrastructure/runtime dependencies, integration boundaries, and migration design.
+- Behavior specs can include fenced `json dotdotgod` traceability blocks as the final section; `dotdotgod validate` owns and enforces that machine-readable schema for CLI users.
 - Code conventions can start as `docs/arch/CODE_CONVENTIONS.md`; when they grow across multiple topics, promote them to `docs/arch/conventions/README.md` plus supporting UPPER_SNAKE_CASE files.
 - Under `docs/`, all directories use kebab-case and all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
 - `docs/plan/<task-slug>/README.md` is the default shape for active plan work.
@@ -46,6 +47,7 @@ Use `--dry-run` before touching an unfamiliar repository. Use `--dotdot-setting`
    - Fill project-specific sections in `AGENTS.md` when context is available.
    - Keep `CLAUDE.md` and `CODEX.md` thin so instructions do not drift.
    - Treat `docs/plan` and `docs/archive` as local working memory unless the project deliberately changes that policy.
+   - When adding behavior specs, run `dotdotgod validate` and follow any traceability schema/example shown in validation errors.
 4. Report the result.
    - List created/skipped/backed-up files.
    - Mention any existing instructions that still need manual consolidation.

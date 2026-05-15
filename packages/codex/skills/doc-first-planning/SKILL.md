@@ -32,6 +32,7 @@ Prefer live repository docs in this order:
 2. Gather evidence before planning.
    - Search docs by domain terms from the user request.
    - Read nearest README indexes and relevant focused docs.
+   - For behavior changes, prefer specs with CLI-enforced fenced `json dotdotgod` traceability blocks in the final section; use their source, test, related-doc, and verification-command mappings before editing code.
    - Read code only after docs identify likely module boundaries, or when docs are missing/stale.
 3. Create or update the active plan at:
 
@@ -49,8 +50,9 @@ Prefer live repository docs in this order:
    - final housekeeping step to move completed work to `docs/archive/plan/<task-slug>/`
 6. Update `docs/plan/README.md` if the repository keeps active plan entries there.
 7. Use repository-local package manager evidence for verification commands. In this repository, prefer `pnpm run verify`, `pnpm run pack:dry-run`, and `.husky/pre-push` when applicable.
-8. Stop after presenting the plan unless the user explicitly asks for execution.
-9. After implementation and verification, archive completed or superseded plan directories under `docs/archive/plan/<task-slug>/`; remove stale local plan artifacts only when the project policy allows plan/archive housekeeping.
+8. After creating or updating behavior specs, run project validation when possible. For dotdotgod projects, `dotdotgod validate` enforces machine-readable `json dotdotgod` traceability blocks as the final section in specs. If validation fails, use the schema, property guidance, and example shown in the validation error to repair the spec.
+9. Stop after presenting the plan unless the user explicitly asks for execution.
+10. After implementation and verification, archive completed or superseded plan directories under `docs/archive/plan/<task-slug>/`; remove stale local plan artifacts only when the project policy allows plan/archive housekeeping.
 
 ## Quality Rules
 

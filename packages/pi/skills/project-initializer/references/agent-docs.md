@@ -20,4 +20,6 @@ Put durable, project-wide instructions in `AGENTS.md`:
 - coding and review expectations
 - environment constraints
 
+For projects using the dotdotgod CLI, `dotdotgod validate` is the enforcement point for machine-readable docs rules such as fenced `json dotdotgod` traceability blocks in behavior specs. Keep the detailed schema in the CLI and its validation errors rather than duplicating it across agent memory files.
+
 Do not duplicate the same body in `CLAUDE.md` and `CODEX.md`; duplication causes drift.

@@ -28,6 +28,7 @@ The previous standalone `@dotdotgod/docs-validator` package was replaced by this
 
 The validator owns dotdotgod-specific structure checks:
 
+- Behavior specs under `docs/spec/*.md` except `README.md` include valid fenced `json dotdotgod` traceability blocks as the final section.
 - `docs/` directory names are kebab-case.
 - Markdown files under `docs/` are UPPER_SNAKE_CASE or `README.md`.
 - Markdown files stay within configurable line and character budgets.
@@ -38,6 +39,8 @@ The validator owns dotdotgod-specific structure checks:
 - `.gitignore` contains `docs/plan`, `docs/archive`, and `.dotdotgod`.
 
 The validator does not own general markdown style formatting. Use tools such as Prettier or markdownlint separately if a project wants style linting.
+
+Traceability validation is intentionally CLI-owned because project docs are user-editable. Validation errors include the expected block shape and property-level guidance so coding agents can repair invalid specs without memorizing the schema.
 
 ## Cache and Stale-Index Policy
 
@@ -57,7 +60,7 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - `pnpm run verify:cache` validates docs, runs `dotdotgod index`, and then checks `dotdotgod status`, so local verification and Husky pre-push refresh stale cache automatically before asserting freshness.
 - The Husky pre-push hook runs `verify:cache`, so it may update the ignored `.dotdotgod/` cache as a local side effect while keeping tracked source/docs changes explicit.
 
-The index records file fingerprints, cache metadata, schema metadata, and a deterministic graph. File discovery is gitignore-aware by default through `git ls-files --cached --others --exclude-standard`, with a conservative directory-walk fallback for non-git contexts. The file filter includes common plain-text docs, source, script, config, web, and infrastructure formats instead of assuming a pnpm monorepo shape. Current graph extraction covers Markdown headings/links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Other supported text files are currently represented as file metadata until dedicated extractors are added.
+The index records file fingerprints, cache metadata, schema metadata, and a deterministic graph. File discovery is gitignore-aware by default through `git ls-files --cached --others --exclude-standard`, with a conservative directory-walk fallback for non-git contexts. The file filter includes common plain-text docs, source, script, config, web, and infrastructure formats instead of assuming a pnpm monorepo shape. Current graph extraction covers Markdown headings/links, fenced `json dotdotgod` traceability blocks, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Other supported text files are currently represented as file metadata until dedicated extractors are added.
 
 Graph file nodes include deterministic memory-area metadata for dotdotgod structures. `AGENTS.md`, docs indexes, specs, architecture docs, test docs, active plans, and `docs/archive/README.md` receive `memoryArea`, `memoryRole`, `retrievalPriority`, and `retrieval.signals` fields. The graph also adds compact `memory_area:*` nodes with `belongs_to_area` edges. Links from `README.md` files keep their normal `links_to` edge and also receive a `routes_to` edge with `CURATED_INDEX` confidence, making README indexes first-class routing hints without requiring semantic embedding. Graph query output carries retrieval metadata and reason-derived signals for related nodes; load snapshots expose a bounded `memoryAreas` summary.
 
