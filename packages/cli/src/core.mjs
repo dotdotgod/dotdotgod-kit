@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
 import { Graph, leiden } from 'leiden-ts';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 
-const CACHE_VERSION = 3;
+export const CACHE_VERSION = 3;
 const CACHE_DIR = '.dotdotgod';
 const MANIFEST_FILE = 'manifest.json';
 const GRAPH_NODE_SHARDS = ['docs', 'packages', 'source'];
@@ -191,29 +192,88 @@ export function runValidate(argv) {
   process.exit(errors.length === 0 ? 0 : 1);
 }
 
-export function shouldIndexPath(path) {
-  const normalized = path.replaceAll('\\', '/');
-  if (normalized === CACHE_DIR || normalized.startsWith(`${CACHE_DIR}/`)) return false;
-  if (normalized.includes('/node_modules/') || normalized.startsWith('node_modules/')) return false;
-  if (normalized.includes('/.git/') || normalized.startsWith('.git/')) return false;
-  if (normalized === 'docs/archive' || normalized.startsWith('docs/archive/')) return normalized === 'docs/archive/README.md';
-  if (normalized.startsWith('docs/')) return true;
-  return ['AGENTS.md', 'CLAUDE.md', 'CODEX.md', 'README.md', 'package.json', 'pnpm-workspace.yaml'].includes(normalized) || normalized.startsWith('packages/');
+const INDEX_TEXT_EXTENSIONS = new Set([
+  '.md', '.mdx', '.markdown', '.txt', '.rst', '.adoc', '.org',
+  '.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx', '.py', '.pyw', '.go', '.rs', '.java', '.kt', '.kts', '.swift', '.rb', '.php', '.cs', '.cpp', '.cc', '.cxx', '.c', '.h', '.hpp', '.m', '.mm', '.scala', '.clj', '.cljs', '.ex', '.exs', '.erl', '.hrl', '.lua', '.pl', '.pm', '.r', '.R', '.sql',
+  '.json', '.jsonc', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf', '.properties', '.xml', '.html', '.htm', '.css', '.scss', '.sass', '.less', '.svg',
+  '.sh', '.bash', '.zsh', '.fish', '.ps1', '.bat', '.cmd', '.tf', '.tfvars', '.hcl', '.nix', '.cue',
+]);
+const INDEX_TEXT_FILENAMES = new Set([
+  'AGENTS.md', 'CLAUDE.md', 'CODEX.md', 'README', 'README.md', 'LICENSE', 'NOTICE', 'CHANGELOG', 'CHANGELOG.md', 'CONTRIBUTING.md', 'SECURITY.md', 'AUTHORS', 'CODEOWNERS', '.gitignore', '.editorconfig',
+  'package.json', 'pnpm-workspace.yaml', 'tsconfig.json', 'jsconfig.json',
+  'Dockerfile', 'Containerfile', 'Makefile', 'Justfile', 'Procfile', 'Rakefile', 'Gemfile', 'go.mod', 'go.sum', 'Cargo.toml', 'Cargo.lock', 'pyproject.toml', 'requirements.txt', 'Pipfile', 'Pipfile.lock', 'poetry.lock', 'deno.json', 'deno.jsonc', 'bunfig.toml',
+  '.env.example', '.env.sample', '.env.template',
+]);
+const INDEX_EXCLUDED_DIRS = new Set(['.git', CACHE_DIR, 'node_modules', 'vendor', '.venv', 'venv', 'target', 'dist', 'build', 'coverage', '.next', '.turbo', '.cache', '.pytest_cache', '__pycache__']);
+
+function isExcludedIndexDir(path) {
+  return path.split('/').some((part) => INDEX_EXCLUDED_DIRS.has(part));
 }
 
-export function collectIndexFiles(root) {
+function isSecretIndexPath(path) {
+  const name = basename(path);
+  return name === '.env' || (/^\.env\./.test(name) && !INDEX_TEXT_FILENAMES.has(name));
+}
+
+function isGeneratedIndexPath(path) {
+  const name = basename(path);
+  return name.endsWith('.min.js') || name.endsWith('.snap') || name.endsWith('.lockb');
+}
+
+function isSupportedIndexFile(path) {
+  const name = basename(path);
+  return INDEX_TEXT_FILENAMES.has(name) || INDEX_TEXT_EXTENSIONS.has(extname(name));
+}
+
+export function shouldIndexPath(path) {
+  const normalized = path.replaceAll('\\', '/').replace(/^\.\//, '');
+  if (!normalized || normalized.endsWith('/placeholder')) return false;
+  if (isExcludedIndexDir(normalized) || isSecretIndexPath(normalized) || isGeneratedIndexPath(normalized)) return false;
+  if (normalized === 'docs/archive' || normalized.startsWith('docs/archive/')) return normalized === 'docs/archive/README.md';
+  return isSupportedIndexFile(normalized);
+}
+
+function gitIndexCandidates(root) {
+  const result = spawnSync('git', ['-C', root, 'ls-files', '--cached', '--others', '--exclude-standard'], { encoding: 'utf8' });
+  if (result.status !== 0) return null;
+  return result.stdout.split('\n').map((line) => line.trim()).filter(Boolean);
+}
+
+function walkIndexCandidates(root) {
   const files = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const path = join(dir, entry.name);
       const pathRel = rel(root, path);
       if (entry.isDirectory()) {
-        if (shouldIndexPath(`${pathRel}/placeholder`) || pathRel === 'packages' || pathRel === 'docs/archive') walk(path);
-      } else if (entry.isFile() && shouldIndexPath(pathRel)) files.push(path);
+        if (!isExcludedIndexDir(pathRel) && pathRel !== 'docs/archive') walk(path);
+      } else if (entry.isFile()) files.push(pathRel);
     }
   };
   walk(root);
-  return files.sort();
+  return files;
+}
+
+function addDotdotgodLocalMemoryCandidates(root, candidates) {
+  for (const file of ['AGENTS.md', 'CLAUDE.md', 'CODEX.md', 'README.md', 'docs/README.md', 'docs/spec/README.md', 'docs/test/README.md', 'docs/arch/README.md', 'docs/plan/README.md', 'docs/archive/README.md']) {
+    if (existsSync(join(root, file))) candidates.add(file);
+  }
+  const planRoot = join(root, 'docs/plan');
+  const walkPlan = (dir) => {
+    if (!existsSync(dir)) return;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walkPlan(path);
+      else if (entry.isFile()) candidates.add(rel(root, path));
+    }
+  };
+  walkPlan(planRoot);
+}
+
+export function collectIndexFiles(root) {
+  const candidates = new Set(gitIndexCandidates(root) ?? walkIndexCandidates(root));
+  addDotdotgodLocalMemoryCandidates(root, candidates);
+  return [...candidates].filter(shouldIndexPath).map((path) => join(root, path)).filter(existsSync).sort();
 }
 
 export function fingerprint(file) {
@@ -487,13 +547,15 @@ function mergeIncrementalGraph(previousGraph, changedGraph, changedPaths) {
 }
 
 export function buildIndex(root, previous = readIndex(root)) {
+  const startedAt = Date.now();
   const files = collectFingerprints(root);
   const indexed = new Map((previous?.files ?? []).map((file) => [file.path, file.sha256]));
   const changedPaths = files.filter((file) => indexed.get(file.path) !== file.sha256).map((file) => file.path);
   const changedFiles = files.filter((file) => changedPaths.includes(file.path)).map((file) => join(root, file.path));
   const fullRebuild = !previous?.graph || previous.version !== CACHE_VERSION;
+  const refreshReason = !previous ? 'missing' : previous.version !== CACHE_VERSION ? 'schema-mismatch' : changedPaths.length > 0 ? 'content-changed' : 'fresh';
   const graph = fullRebuild ? buildGraph(root, files.map((file) => join(root, file.path))) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles), changedPaths);
-  return { version: CACHE_VERSION, generatedAt: new Date().toISOString(), archiveBodiesIncluded: false, files, graph, stats: graphStats(graph), incremental: { enabled: true, fullRebuild, changedFiles: changedPaths.length } };
+  return { version: CACHE_VERSION, schemaVersion: CACHE_VERSION, generatedAt: new Date().toISOString(), archiveBodiesIncluded: false, files, graph, stats: graphStats(graph), incremental: { enabled: true, fullRebuild, changedFiles: changedPaths.length, refreshReason, elapsedMs: Date.now() - startedAt } };
 }
 
 export function writeIndex(root, index) {
@@ -504,7 +566,7 @@ export function writeIndex(root, index) {
     nodes: Object.fromEntries(Object.keys(compact.nodes).map((name) => [name, rel(root, shardFile(root, 'nodes', name))])),
     edges: Object.fromEntries(Object.keys(compact.edges).map((name) => [name, rel(root, shardFile(root, 'edges', name))])),
   };
-  const manifest = { version: index.version, generatedAt: index.generatedAt, archiveBodiesIncluded: index.archiveBodiesIncluded, files: index.files, graph: { ...graphStats(index.graph), compactSchema: true, shards: graphShards }, incremental: index.incremental };
+  const manifest = { version: index.version, schemaVersion: index.schemaVersion ?? index.version, generatedAt: index.generatedAt, archiveBodiesIncluded: index.archiveBodiesIncluded, files: index.files, graph: { ...graphStats(index.graph), compactSchema: true, shards: graphShards }, incremental: index.incremental };
   writeJson(cacheFile(root), manifest);
   const shardBytes = [...Object.values(graphShards.nodes), ...Object.values(graphShards.edges)].reduce((sum, path) => sum + jsonSize(join(root, path)), 0);
   const manifestBytes = jsonSize(cacheFile(root));
@@ -528,21 +590,24 @@ export function readIndex(root) {
 export function getStatus(root) {
   const index = readIndex(root);
   const currentFiles = collectFingerprints(root);
-  if (!index) return { ok: false, status: 'missing', cachePath: rel(root, cacheFile(root)), indexedFiles: 0, currentFiles: currentFiles.length, staleFiles: currentFiles.length, archiveBodiesIncluded: false };
+  if (!index) return { ok: false, status: 'missing', cachePath: rel(root, cacheFile(root)), indexedFiles: 0, currentFiles: currentFiles.length, staleFiles: currentFiles.length, archiveBodiesIncluded: false, schemaVersion: null, expectedSchemaVersion: CACHE_VERSION, schemaOk: false, reason: 'missing' };
   const indexed = new Map((index.files ?? []).map((file) => [file.path, file.sha256]));
   const currentMap = new Map(currentFiles.map((file) => [file.path, file.sha256]));
   const stale = currentFiles.filter((file) => indexed.get(file.path) !== file.sha256).map((file) => file.path);
   const removed = [...indexed.keys()].filter((path) => !currentMap.has(path));
   const staleFiles = [...stale, ...removed];
-  const ok = staleFiles.length === 0 && index.version === CACHE_VERSION;
-  return { ok, status: ok ? 'fresh' : 'stale', cachePath: rel(root, cacheFile(root)), indexedFiles: index.files?.length ?? 0, currentFiles: currentFiles.length, staleFiles: staleFiles.length, examples: staleFiles.slice(0, 10), archiveBodiesIncluded: index.archiveBodiesIncluded === true, graph: graphStats(index.graph ?? { nodes: [], edges: [] }) };
+  const schemaVersion = index.schemaVersion ?? index.version ?? null;
+  const schemaOk = schemaVersion === CACHE_VERSION;
+  const ok = staleFiles.length === 0 && schemaOk;
+  const reason = ok ? 'fresh' : !schemaOk ? 'schema-mismatch' : staleFiles.length > 0 ? 'content-changed' : 'unknown';
+  return { ok, status: ok ? 'fresh' : 'stale', cachePath: rel(root, cacheFile(root)), indexedFiles: index.files?.length ?? 0, currentFiles: currentFiles.length, staleFiles: staleFiles.length, examples: staleFiles.slice(0, 10), archiveBodiesIncluded: index.archiveBodiesIncluded === true, schemaVersion, expectedSchemaVersion: CACHE_VERSION, schemaOk, reason, graph: graphStats(index.graph ?? { nodes: [], edges: [] }) };
 }
 
 export function runIndex(argv) {
   const options = parseCommon(argv);
   const index = buildIndex(options.root);
   const manifest = writeIndex(options.root, index);
-  const result = { ok: true, cachePath: rel(options.root, cacheFile(options.root)), indexedFiles: index.files.length, nodes: index.graph.nodes.length, edges: index.graph.edges.length, indexSizeBytes: manifest.indexSizeBytes, shards: manifest.graph.shards, incremental: index.incremental, archiveBodiesIncluded: false };
+  const result = { ok: true, cachePath: rel(options.root, cacheFile(options.root)), schemaVersion: CACHE_VERSION, indexedFiles: index.files.length, nodes: index.graph.nodes.length, edges: index.graph.edges.length, indexSizeBytes: manifest.indexSizeBytes, shards: manifest.graph.shards, incremental: index.incremental, archiveBodiesIncluded: false };
   if (options.json) console.log(JSON.stringify(result, null, 2));
   else console.log(`✅ index written (${result.indexedFiles} files, ${result.nodes} nodes, ${result.edges} edges, ${(result.indexSizeBytes / 1024).toFixed(1)} KiB, cache: ${result.cachePath})`);
 }
@@ -556,8 +621,9 @@ export function runStatus(argv) {
 }
 
 export function readFreshIndex(root) {
+  const startedAt = Date.now();
   const initialStatus = getStatus(root);
-  if (initialStatus.ok) return { status: initialStatus, index: readIndex(root), metadata: { cacheRefreshed: false } };
+  if (initialStatus.ok) return { status: initialStatus, index: readIndex(root), metadata: { cacheRefreshed: false, elapsedMs: Date.now() - startedAt, refreshReason: 'fresh', schemaVersion: CACHE_VERSION } };
 
   const index = buildIndex(root);
   const manifest = writeIndex(root, index);
@@ -568,10 +634,17 @@ export function readFreshIndex(root) {
     metadata: {
       cacheRefreshed: true,
       previousStatus: initialStatus.status,
+      previousReason: initialStatus.reason,
+      refreshReason: index.incremental?.refreshReason ?? initialStatus.reason,
       changedFiles: index.incremental?.changedFiles ?? initialStatus.staleFiles,
       fullRebuild: index.incremental?.fullRebuild === true,
       indexedFiles: index.files.length,
       indexSizeBytes: manifest.indexSizeBytes,
+      manifestBytes: manifest.manifestBytes,
+      shardBytes: manifest.shardBytes,
+      elapsedMs: Date.now() - startedAt,
+      indexElapsedMs: index.incremental?.elapsedMs,
+      schemaVersion: CACHE_VERSION,
       archiveBodiesIncluded: index.archiveBodiesIncluded === true,
     },
   };
@@ -828,7 +901,20 @@ export function runLoadSnapshot(argv) {
   const { status, index, metadata } = readFreshIndex(options.root);
   const summary = graphSummary(index);
   const communities = buildCommunities(index, { communities: 5, items: 5 });
-  const payload = { root: options.root, cache: status, metadata, graph: summary, communities, bounds: { communities: 5, communityItems: 5, fullGraphIncluded: false } };
+  const bounds = { communities: 5, communityItems: 5, fullGraphIncluded: false, archiveBodiesIncluded: status.archiveBodiesIncluded, archiveMapIncluded: true };
+  const quality = {
+    indexedFiles: status.indexedFiles,
+    currentFiles: status.currentFiles,
+    shownCommunities: communities.communities.length,
+    totalCommunities: communities.total,
+    omittedCommunities: communities.omitted,
+    omittedCommunityItems: communities.communities.reduce((sum, community) => sum + (community.omitted ?? 0), 0),
+    graphNodes: summary.nodes,
+    graphEdges: summary.edges,
+  };
+  let payload = { root: options.root, cache: status, metadata, graph: summary, communities, bounds, quality };
+  const serialized = JSON.stringify(payload);
+  payload = { ...payload, quality: { ...quality, snapshotBytes: Buffer.byteLength(serialized), approxSnapshotTokens: Math.ceil(serialized.length / 4) } };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else console.log(`dotdotgod load snapshot\n- cache: ${status.status}${metadata.cacheRefreshed ? ' (refreshed)' : ''}\n- indexed files: ${status.indexedFiles}\n- current files: ${status.currentFiles}\n- archive bodies included: ${status.archiveBodiesIncluded ? 'yes' : 'no'}\n- graph: ${summary.nodes} nodes, ${summary.edges} edges\n- communities: ${communities.communities.length}/${communities.total} shown, ${communities.omitted} omitted`);
 }

@@ -47,16 +47,17 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - The cache manifest is `.dotdotgod/manifest.json`.
 - Compact graph shards live under `.dotdotgod/graph/nodes/` and `.dotdotgod/graph/edges/`.
 - Cache entries use content hashes, not only modified times, to detect stale files.
+- Cache manifests include a schema version; incompatible schemas are reported as `schema-mismatch` and rebuilt by `index` or lazy-refreshing read commands.
 - The index records whether archive bodies were included; default indexes exclude archive bodies.
-- `dotdotgod status <root>` reports `missing`, `fresh`, or `stale` from file fingerprints without rebuilding the graph.
+- `dotdotgod status <root>` reports `missing`, `fresh`, or `stale` from file fingerprints and schema state without rebuilding the graph.
 - `dotdotgod index <root>` incrementally rebuilds changed file graph shards when a compatible manifest already exists.
 - Agent-facing read commands such as `dotdotgod load-snapshot` and `dotdotgod graph ...` lazily refresh missing or stale caches before returning output.
-- Lazy refresh output includes `metadata.cacheRefreshed` and refresh details so callers can tell when a read command updated `.dotdotgod/`.
+- Lazy refresh output includes `metadata.cacheRefreshed`, refresh reason, elapsed timing, rebuild mode, changed-file count, and cache size details so callers can tell when and why a read command updated `.dotdotgod/`.
 - Completion hooks that refresh the index are optional; the default workflow relies on lazy refresh instead of mutating the cache after every task.
 - `pnpm run verify:cache` validates docs, runs `dotdotgod index`, and then checks `dotdotgod status`, so local verification and Husky pre-push refresh stale cache automatically before asserting freshness.
 - The Husky pre-push hook runs `verify:cache`, so it may update the ignored `.dotdotgod/` cache as a local side effect while keeping tracked source/docs changes explicit.
 
-The index records file fingerprints, cache metadata, and a deterministic graph. Current graph extraction covers Markdown headings/links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Graph storage uses a compact tuple schema in shards so multi-year projects do not depend on one large JSON file. Community summaries use `leiden-ts` over a weighted durable-node projection with deterministic domain grouping as a fallback.
+The index records file fingerprints, cache metadata, schema metadata, and a deterministic graph. File discovery is gitignore-aware by default through `git ls-files --cached --others --exclude-standard`, with a conservative directory-walk fallback for non-git contexts. The file filter includes common plain-text docs, source, script, config, web, and infrastructure formats instead of assuming a pnpm monorepo shape. Current graph extraction covers Markdown headings/links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, and metric-event string literals. Other supported text files are currently represented as file metadata until dedicated extractors are added. Graph storage uses a compact tuple schema in shards so multi-year projects do not depend on one large JSON file. Community summaries use `leiden-ts` over a weighted durable-node projection with deterministic domain grouping as a fallback. Load snapshots expose bounded quality metadata, including snapshot size estimates, omitted community counts, omitted item counts, and archive inclusion policy.
 
 ## Dependency Policy
 

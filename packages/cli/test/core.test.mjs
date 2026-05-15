@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import {
+  CACHE_VERSION,
   buildCommunities,
   buildGraph,
   buildImpactReport,
@@ -22,6 +24,7 @@ import {
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-cli-unit-'));
   mkdirSync(join(root, 'docs/spec'), { recursive: true });
+  mkdirSync(join(root, 'docs/plan'), { recursive: true });
   mkdirSync(join(root, 'docs/archive'), { recursive: true });
   mkdirSync(join(root, 'packages/tool/bin'), { recursive: true });
   writeFileSync(join(root, '.gitignore'), 'docs/plan\ndocs/archive\n.dotdotgod\n');
@@ -29,6 +32,7 @@ function fixture() {
   writeFileSync(join(root, 'README.md'), '# Fixture\n');
   writeFileSync(join(root, 'docs/README.md'), '# Docs\n[Spec](spec/README.md)\n');
   writeFileSync(join(root, 'docs/spec/README.md'), '# Spec\n');
+  writeFileSync(join(root, 'docs/plan/README.md'), '# Plans\n');
   writeFileSync(join(root, 'docs/archive/README.md'), '# Archive\n');
   writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'fixture-root', scripts: { verify: 'node --test' } }, null, 2));
   writeFileSync(join(root, 'packages/tool/package.json'), JSON.stringify({ name: '@fixture/tool', files: ['bin', 'index.mjs'], bin: { tool: './bin/tool.mjs' }, pi: { extensions: ['./extensions'] }, dependencies: { leftpad: '1.0.0' } }, null, 2));
@@ -55,21 +59,44 @@ describe('CLI docs helpers', () => {
 });
 
 describe('CLI index and graph helpers', () => {
-  it('collects curated files and excludes archive bodies', () => {
+  it('collects gitignore-aware curated files and excludes archive bodies', () => {
     const root = fixture();
+    mkdirSync(join(root, 'src'), { recursive: true });
+    mkdirSync(join(root, 'tests'), { recursive: true });
+    mkdirSync(join(root, 'ignored'), { recursive: true });
+    writeFileSync(join(root, '.gitignore'), 'docs/plan\ndocs/archive\n.dotdotgod\nignored/\n');
+    writeFileSync(join(root, 'src/index.py'), 'def main():\n    return 1\n');
+    writeFileSync(join(root, 'tests/test_index.py'), 'from src.index import main\n');
+    writeFileSync(join(root, 'pyproject.toml'), '[project]\nname = "fixture"\n');
+    writeFileSync(join(root, '.env'), 'SECRET=1\n');
+    writeFileSync(join(root, '.env.example'), 'SECRET=example\n');
+    writeFileSync(join(root, 'ignored/visible.ts'), 'export const ignored = true;\n');
     writeFileSync(join(root, 'docs/archive/OLD.md'), '# Old\n');
+    spawnSync('git', ['init'], { cwd: root, stdio: 'ignore' });
     const files = collectIndexFiles(root).map((file) => file.slice(root.length + 1).replaceAll('\\', '/'));
     assert(files.includes('AGENTS.md'));
     assert(files.includes('docs/archive/README.md'));
+    assert(files.includes('docs/plan/README.md'));
     assert(files.includes('packages/tool/index.mjs'));
+    assert(files.includes('src/index.py'));
+    assert(files.includes('tests/test_index.py'));
+    assert(files.includes('pyproject.toml'));
+    assert(files.includes('.env.example'));
+    assert(!files.includes('.env'));
+    assert(!files.includes('ignored/visible.ts'));
     assert(!files.includes('docs/archive/OLD.md'));
     assert.equal(shouldIndexPath('node_modules/a/index.js'), false);
+    assert.equal(shouldIndexPath('src/main.go'), true);
+    assert.equal(shouldIndexPath('crates/app/src/lib.rs'), true);
+    assert.equal(shouldIndexPath('Dockerfile'), true);
   });
 
   it('builds graph nodes and bounded neighborhoods', () => {
     const root = fixture();
     const index = buildIndex(root);
     const summary = graphSummary(index);
+    assert.equal(index.schemaVersion, CACHE_VERSION);
+    assert.equal(typeof index.incremental.elapsedMs, 'number');
     assert(summary.nodes > 0);
     assert(summary.edges > 0);
     assert.equal(summary.byType.package >= 2, true);
@@ -80,6 +107,8 @@ describe('CLI index and graph helpers', () => {
     assert.equal(summary.byType.test >= 1, true);
     assert(index.graph.nodes.some((node) => node.id === 'command:load'));
     assert(index.graph.nodes.some((node) => node.id === 'export:packages/tool/index.mjs#run'));
+    assert(index.graph.edges.some((edge) => edge.source === 'file:packages/tool/index.mjs' && edge.target === 'command:load' && edge.relation === 'handles_command' && edge.confidence === 'EXTRACTED'));
+    assert(index.graph.edges.some((edge) => edge.source === 'test:packages/tool/index.test.mjs' && edge.relation === 'tests' && edge.confidence === 'INFERRED'));
     assert(!index.graph.nodes.some((node) => node.id === 'symbol:packages/tool/index.mjs#hidden'));
     const related = neighborhood(index, 'packages/tool/index.mjs');
     assert(related.some((node) => node.id === 'file:packages/tool/index.mjs'));
@@ -99,5 +128,20 @@ describe('CLI index and graph helpers', () => {
     const graph = buildGraph(root, [join(root, 'docs/README.md'), join(root, 'packages/tool/package.json')]);
     assert(graph.nodes.some((node) => node.type === 'heading' && node.title === 'Docs'));
     assert(graph.edges.some((edge) => edge.relation === 'declares_package'));
+  });
+
+  it('keeps generated Claude Code and Codex load guidance snapshot-first', () => {
+    const repoRoot = resolve('..', '..');
+    for (const file of [
+      'packages/claude-code/commands/dd/load.md',
+      'packages/claude-code/skills/project-load/SKILL.md',
+      'packages/codex/skills/project-load/SKILL.md',
+    ]) {
+      const content = readFileSync(join(repoRoot, file), 'utf8');
+      assert.match(content, /dotdotgod load-snapshot <root> --json/);
+      assert.match(content, /docs\/archive\/README\.md/);
+      assert.match(content, /Do not scan archive bodies by default/);
+      assert.match(content, /manual README-index fallback/);
+    }
   });
 });

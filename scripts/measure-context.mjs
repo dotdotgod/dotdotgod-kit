@@ -53,6 +53,10 @@ function buildLoadPrompt() {
   return `Load the dotdotgod project memory.\nCurrent working directory: ${root}\n\nLoad snapshot:\n- Measurement placeholder: runtime /dd:load uses dotdotgod load-snapshot when available and falls back to this lightweight summary.\n\nDetected memory files:\n${presentText}\n\nMissing baseline files:\n${missingText}\n\nDocumentation directory summary:\n${directorySummary}\n\nInstructions:\n1. Use the Load snapshot section first when present. Treat it as the bounded project-memory map for cache status, graph size, related communities, and archive inclusion policy.\n2. Use only read-only tools such as read, ls, grep, and find to inspect project memory files.\n3. Start with AGENTS.md, README.md, and docs/README.md when they are not already clear from the loaded context.\n4. Inspect docs/spec, docs/arch, and docs/test selectively based on the user request, the load snapshot communities, and README indexes. Do not re-scan every listed file unless the task needs a full refresh.\n5. Follow README.md indexes, including domain directories such as docs/<area>/<domain>/README.md and expanded convention directories such as docs/arch/conventions/README.md.\n6. For docs/plan, list entries first and selectively read only the relevant README.md or markdown files.\n7. For docs/archive, do not scan it as part of the documentation directory summary. Use docs/archive/README.md as the history map, and use targeted archive paths only when the user request or current task makes completed plans/reports relevant.\n8. Summarize the result concisely.\n\nResponse format:\n- Project summary\n- Key working rules\n- Available commands and verification methods\n- Documentation map\n- Active plans\n- Relevant archive notes\n- Open TODO/TBD items or questions to clarify\n\nDo not modify files. Only load and summarize project memory.`;
 }
 function git(cmd) { try { return execSync(`git ${cmd}`, { cwd: root, encoding: 'utf8', stdio: ['ignore','pipe','ignore'] }).trim(); } catch { return undefined; } }
+function cliJson(args) {
+  try { return JSON.parse(execSync(`${process.execPath} packages/cli/bin/dotdotgod.mjs ${args}`, { cwd: root, encoding: 'utf8', stdio: ['ignore','pipe','ignore'] })); }
+  catch { return null; }
+}
 const docsIndexes = walkMarkdown('docs').filter((f) => f.endsWith('/README.md') || f === 'docs/README.md').filter((f) => includeArchive || !f.startsWith('docs/archive/plan/') && !f.startsWith('docs/archive/report/'));
 const defaultDocs = memoryDirectories.flatMap((d) => walkMarkdown(d));
 const archiveAll = walkMarkdown('docs/archive');
@@ -61,8 +65,11 @@ const archiveBody = archiveAll.filter((f) => f !== 'docs/archive/README.md');
 const loadPrompt = buildLoadPrompt();
 const planModeFullPrompt = extractBacktickExport('packages/pi/extensions/plan-mode/utils.ts', 'PLAN_MODE_FULL_CONTEXT_PROMPT');
 const planModeCompactPrompt = extractBacktickExport('packages/pi/extensions/plan-mode/utils.ts', 'PLAN_MODE_COMPACT_CONTEXT_PROMPT');
+const loadSnapshotSample = cliJson('load-snapshot . --json');
+const loadSnapshotText = loadSnapshotSample ? JSON.stringify(loadSnapshotSample) : '';
 const groups = [
   { name: 'Load prompt', files: 1, characters: loadPrompt.length, words: loadPrompt.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(loadPrompt.length / 4), notes: 'Generated from current /dd:load prompt shape' },
+  { name: 'Load snapshot sample', files: loadSnapshotSample ? loadSnapshotSample.cache?.indexedFiles ?? 0 : 0, characters: loadSnapshotText.length, words: loadSnapshotText.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(loadSnapshotText.length / 4), notes: loadSnapshotSample ? `CLI snapshot JSON; refreshed=${loadSnapshotSample.metadata?.cacheRefreshed ?? false}; omitted communities=${loadSnapshotSample.quality?.omittedCommunities ?? 0}; omitted items=${loadSnapshotSample.quality?.omittedCommunityItems ?? 0}` : 'CLI snapshot unavailable' },
   { name: 'Plan Mode full prompt', files: 1, characters: planModeFullPrompt.length, words: planModeFullPrompt.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(planModeFullPrompt.length / 4), notes: 'First active planning turn after /plan' },
   { name: 'Plan Mode compact reminder', files: 1, characters: planModeCompactPrompt.length, words: planModeCompactPrompt.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(planModeCompactPrompt.length / 4), notes: 'Later planning turns after the full prompt was injected' },
   measureFiles('Baseline memory', markerFiles, 'AGENTS/CLAUDE/CODEX/root/docs indexes'),
@@ -72,7 +79,7 @@ const groups = [
   measureFiles('Full archive', archiveAll, 'Not loaded by default'),
   measureFiles('Archive body excluded', archiveBody, 'Historical memory kept out of default summary'),
 ];
-const result = { measuredAt: new Date().toISOString(), commit: git('rev-parse --short HEAD') ?? null, dirty: Boolean(git('status --short')), approximation: 'approxTokens = ceil(characters / 4)', includeArchive, groups };
+const result = { measuredAt: new Date().toISOString(), commit: git('rev-parse --short HEAD') ?? null, dirty: Boolean(git('status --short')), approximation: 'approxTokens = ceil(characters / 4)', includeArchive, runtimeGaps: ['tool-call counts', 'post-load file reads', 'archive body reads', 'agent fallback behavior'], groups };
 function markdown(r) {
   const rows = r.groups.map((g) => `| ${g.name} | ${g.files} | ${g.characters} | ${g.words} | ${g.approxTokens} | ${g.notes} |`).join('\n');
   return `# Context Measurement Snapshot\n\nMeasured on: ${r.measuredAt}\nCommit: ${r.commit ?? 'unknown'}\nDirty worktree: ${r.dirty ? 'yes' : 'no'}\nApproximation: ${r.approximation}\n\n| Group | Files | Characters | Words | Approx tokens | Notes |\n| --- | ---: | ---: | ---: | ---: | --- |\n${rows}\n`;
