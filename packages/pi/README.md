@@ -56,7 +56,7 @@ This is the core context curation idea: instead of putting more raw files into c
 pi install npm:@dotdotgod/pi
 ```
 
-Published install/uninstall smoke has been verified for `0.1.4`:
+Published install/uninstall smoke has been verified for `0.1.5`:
 
 ```bash
 pi install npm:@dotdotgod/pi
