@@ -1,6 +1,6 @@
 {
   "name": "dotdotgod-workspace",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "private": true,
   "description": "Workspace for dotdotgod project memory packages across CLI, Pi, Claude Code, and Codex adapters.",
   "type": "module",
