@@ -14,4 +14,5 @@ For projects using the dotdotgod CLI, behavior specs are validated for fenced `j
 - `LOAD_PROJECT.md`: `/load` and `/dd:load` read-only project memory loading behavior.
 - `MEMORY_AREA_CONFIG.md`: optional config for shared/local and fresh/stale memory-area policy.
 - `TRACEABILITY_CONFIG.md`: optional config for traceability enforcement paths.
+- `IMPACT_RANKING_CONFIG.md`: optional config for `graph impact` ranking presets, score breakdowns, PPR, and deterministic semantic links.
 - `CROSS_AGENT_SUPPORT.md`: cross-agent support contract for Pi, Claude Code, Codex, and shared docs workflows.

@@ -63,7 +63,7 @@ After Plan Mode is enabled, the first user planning request triggers one context
 
 The curated load uses the `/dd:load` default surface: baseline memory files, docs indexes, specs, architecture, tests, and active plans. It excludes full repository scans and archive bodies unless targeted.
 
-When the dotdotgod CLI is available, Plan Mode also validates, refreshes a bounded load snapshot, and runs `dotdotgod graph impact` for the best inferred current-work path. If the CLI is unavailable, this enhancement is skipped.
+When the dotdotgod CLI is available, Plan Mode also validates, refreshes a bounded load snapshot, and runs `dotdotgod graph impact` for the best inferred current-work path. Impact results include configurable ranking metadata, per-item `impactScore`, and `scoreBreakdown` when the CLI supports impact ranking. If the CLI is unavailable, this enhancement is skipped.
 
 ## Planning-Focused Compaction
 
@@ -169,7 +169,8 @@ docs/archive/plan/<task-slug>/
   "relatedDocs": [
     "docs/arch/EXTENSION_ARCHITECTURE.md",
     "docs/arch/CODE_CONVENTIONS.md",
-    "docs/spec/PLAN_MODE_TOOL_SETTINGS.md"
+    "docs/spec/PLAN_MODE_TOOL_SETTINGS.md",
+    "docs/spec/IMPACT_RANKING_CONFIG.md"
   ],
   "verificationCommands": [
     "pnpm --filter @dotdotgod/pi test",

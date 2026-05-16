@@ -11,3 +11,4 @@ Use this area for architecture decisions, code conventions, module boundaries, d
 - `CROSS_AGENT_ARCHITECTURE.md`: pnpm workspace package boundaries for Pi, CLI validation, Claude Code, and Codex adapters.
 - `VALIDATION_ARCHITECTURE.md`: CLI validation, graph/cache policy, dependency policy, and workspace verification strategy.
 - `MEMORY_AREA_CONFIG.md`: config discovery, path matching, graph metadata, and snapshot policy for shared/local and fresh/stale memory areas.
+- `IMPACT_RANKING_CONFIG.md`: graph impact ranking architecture, score components, PPR policy, and deterministic semantic edge generation.
