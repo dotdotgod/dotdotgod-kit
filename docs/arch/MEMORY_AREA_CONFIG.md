@@ -70,6 +70,8 @@ Each file node receives retrieval metadata derived from the resolved memory area
 
 The graph also creates `memory_area:*` nodes with area label, role, scope, freshness, priority, and inclusion policy. `belongs_to_area` edges carry the same scope and freshness metadata.
 
+Impact ranking uses this metadata as a bounded memory-policy score. Curated traceability remains higher-confidence than deterministic semantic edges, while memory priority only adjusts retrieval order without replacing explicit docs/code/test links.
+
 ## Snapshot Policy
 
 `load-snapshot` exposes config policy in bounded form:

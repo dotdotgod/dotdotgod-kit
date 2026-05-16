@@ -9,6 +9,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `TRACEABILITY_CONFIG.md`: configurable traceability enforcement validation smoke checks.
 - `CONTEXT_MEASUREMENT.md`: context measurement commands and runtime context debug smoke checks.
 - `COMMAND_GUIDANCE.md`: environment-aware load-snapshot command guidance checks.
+- `IMPACT_RANKING_CONFIG.md`: configurable graph impact ranking and semantic-edge checks.
 - `MANUAL_SMOKE.md`: adapter, Plan Mode, initializer, and publishing smoke checks.
 
 ## Verification Commands

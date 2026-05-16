@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { spawnSync } from 'node:child_process';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 
-export const CACHE_VERSION = 7;
+export const CACHE_VERSION = 8;
 const CACHE_DIR = '.dotdotgod';
 const MANIFEST_FILE = 'manifest.json';
 const GRAPH_NODE_SHARDS = ['docs', 'packages', 'source'];
@@ -409,7 +409,7 @@ function graphNodeShard(node) {
 
 function graphEdgeShard(edge) {
   if (edge.relation === 'imports') return 'imports';
-  if (edge.relation === 'links_to' || edge.relation === 'routes_to' || edge.relation === 'contains_heading' || edge.relation === 'implemented_by' || edge.relation === 'verified_by' || edge.relation === 'related_doc' || edge.relation === 'verification_command') return 'docs-links';
+  if (edge.relation === 'links_to' || edge.relation === 'routes_to' || edge.relation === 'contains_heading' || edge.relation === 'implemented_by' || edge.relation === 'verified_by' || edge.relation === 'related_doc' || edge.relation === 'verification_command' || SEMANTIC_RELATIONS.has(edge.relation)) return 'docs-links';
   if (edge.relation === 'declares_test' || edge.relation === 'tests') return 'tests';
   if (edge.relation === 'emits_event') return 'events';
   if (edge.relation === 'declares_package' || edge.relation === 'declares_script' || edge.relation === 'declares_bin' || edge.relation === 'depends_on' || edge.relation === 'includes_resource') return 'packages';
@@ -524,6 +524,42 @@ const DEFAULT_TRACEABILITY_POLICY = {
   required: ['docs/spec/**'],
   exclude: ['**/README.md'],
 };
+const DEFAULT_IMPACT_RANKING_POLICY = {
+  preset: 'balanced',
+  weights: { ppr: 40, traceability: 30, memoryPolicy: 10, verification: 15, proximity: 10, semantic: 10, freshness: 5, archivePenalty: -25 },
+  ppr: { enabled: true, damping: 0.85, iterations: 20, tolerance: 0.000001 },
+  relationWeights: {
+    imports: 4,
+    tests: 4,
+    implemented_by: 4,
+    verified_by: 4,
+    related_doc: 3,
+    verification_command: 3,
+    links_to: 2,
+    belongs_to_area: 2,
+    semantic_similarity: 2,
+    mentions_symbol: 2,
+    mentions_command: 2,
+    mentions_package: 1,
+  },
+  traceabilityBoosts: { implemented_by: 30, 'incoming:implemented_by': 30, verified_by: 25, 'incoming:verified_by': 25, verification_command: 15, 'incoming:verification_command': 15, related_doc: 12, 'incoming:related_doc': 12 },
+  verificationBoosts: { verified_by: 15, 'incoming:verified_by': 15, verification_command: 12, 'incoming:verification_command': 12, 'test-path-proximity': 8, tests: 10, 'incoming:tests': 10 },
+  semanticBoosts: { semantic_similarity: 8, 'incoming:semantic_similarity': 8, mentions_symbol: 6, 'incoming:mentions_symbol': 6, mentions_command: 6, 'incoming:mentions_command': 6, mentions_package: 4, 'incoming:mentions_package': 4 },
+  proximityBoosts: { imports: 10, 'incoming:imports': 10, 'imports-local-file': 8, 'same-directory': 4, 'shares-import': 3, handles_command: 6, 'incoming:handles_command': 6, emits_event: 5, 'incoming:emits_event': 5, routes_to: 5, 'incoming:routes_to': 5 },
+  semantic: { enabled: true, threshold: 0.5, topKPerFile: 5, includeArchiveBodies: false, signals: ['path', 'filename', 'heading', 'symbol', 'export', 'command', 'event', 'package'] },
+};
+const IMPACT_RANKING_PRESETS = {
+  balanced: {},
+  'docs-first': { weights: { ppr: 35, traceability: 35, memoryPolicy: 15, verification: 15, proximity: 5, semantic: 8, freshness: 5, archivePenalty: -30 } },
+  'code-proximity': { weights: { ppr: 45, traceability: 20, memoryPolicy: 8, verification: 12, proximity: 20, semantic: 8, freshness: 3, archivePenalty: -25 } },
+  'test-focused': { weights: { ppr: 35, traceability: 25, memoryPolicy: 8, verification: 25, proximity: 10, semantic: 7, freshness: 5, archivePenalty: -25 } },
+  'archive-aware': { weights: { ppr: 35, traceability: 25, memoryPolicy: 10, verification: 15, proximity: 10, semantic: 8, freshness: 3, archivePenalty: -10 } },
+};
+const SEMANTIC_RELATIONS = new Set(['semantic_similarity', 'mentions_symbol', 'mentions_command', 'mentions_package']);
+const IMPACT_RANKING_WEIGHT_KEYS = new Set(['ppr', 'traceability', 'memoryPolicy', 'verification', 'proximity', 'semantic', 'freshness', 'archivePenalty']);
+const IMPACT_RANKING_RELATION_KEYS = new Set(['imports', 'tests', 'implemented_by', 'verified_by', 'related_doc', 'verification_command', 'links_to', 'belongs_to_area', 'semantic_similarity', 'mentions_symbol', 'mentions_command', 'mentions_package']);
+const IMPACT_RANKING_REASON_KEYS = new Set(['implemented_by', 'incoming:implemented_by', 'verified_by', 'incoming:verified_by', 'verification_command', 'incoming:verification_command', 'related_doc', 'incoming:related_doc', 'test-path-proximity', 'tests', 'incoming:tests', 'semantic_similarity', 'incoming:semantic_similarity', 'mentions_symbol', 'incoming:mentions_symbol', 'mentions_command', 'incoming:mentions_command', 'mentions_package', 'incoming:mentions_package', 'imports', 'incoming:imports', 'imports-local-file', 'same-directory', 'shares-import', 'handles_command', 'incoming:handles_command', 'emits_event', 'incoming:emits_event', 'routes_to', 'incoming:routes_to']);
+const SEMANTIC_SIGNAL_KEYS = new Set(['path', 'filename', 'heading', 'symbol', 'export', 'command', 'event', 'package']);
 const DEFAULT_MEMORY_AREAS = [
   { id: 'rules', label: 'Agent Rules', paths: ['AGENTS.md'], scope: 'shared', freshness: 'fresh', role: 'agent-working-rules', priority: 100, includeBodiesByDefault: true },
   { id: 'agent-entrypoint', label: 'Agent Entrypoints', paths: ['CLAUDE.md', 'CODEX.md'], scope: 'shared', freshness: 'fresh', role: 'agent-specific-entrypoint', priority: 85, includeBodiesByDefault: true },
@@ -552,8 +588,28 @@ function cloneTraceabilityPolicy(policy = DEFAULT_TRACEABILITY_POLICY) {
   };
 }
 
+function cloneImpactRankingPolicy(policy = DEFAULT_IMPACT_RANKING_POLICY) {
+  return {
+    preset: policy.preset ?? 'balanced',
+    weights: { ...DEFAULT_IMPACT_RANKING_POLICY.weights, ...(policy.weights ?? {}) },
+    ppr: { ...DEFAULT_IMPACT_RANKING_POLICY.ppr, ...(policy.ppr ?? {}) },
+    relationWeights: { ...DEFAULT_IMPACT_RANKING_POLICY.relationWeights, ...(policy.relationWeights ?? {}) },
+    traceabilityBoosts: { ...DEFAULT_IMPACT_RANKING_POLICY.traceabilityBoosts, ...(policy.traceabilityBoosts ?? {}) },
+    verificationBoosts: { ...DEFAULT_IMPACT_RANKING_POLICY.verificationBoosts, ...(policy.verificationBoosts ?? {}) },
+    semanticBoosts: { ...DEFAULT_IMPACT_RANKING_POLICY.semanticBoosts, ...(policy.semanticBoosts ?? {}) },
+    proximityBoosts: { ...DEFAULT_IMPACT_RANKING_POLICY.proximityBoosts, ...(policy.proximityBoosts ?? {}) },
+    semantic: { ...DEFAULT_IMPACT_RANKING_POLICY.semantic, ...(policy.semantic ?? {}), signals: [...(policy.semantic?.signals ?? DEFAULT_IMPACT_RANKING_POLICY.semantic.signals)] },
+  };
+}
+
+function normalizeImpactRankingPolicy(raw) {
+  const presetName = typeof raw?.preset === 'string' ? raw.preset : 'balanced';
+  const preset = IMPACT_RANKING_PRESETS[presetName] ?? IMPACT_RANKING_PRESETS.balanced;
+  return cloneImpactRankingPolicy({ ...preset, ...raw, preset: presetName, weights: { ...(preset.weights ?? {}), ...(raw?.weights ?? {}) }, ppr: { ...(preset.ppr ?? {}), ...(raw?.ppr ?? {}) }, semantic: { ...(preset.semantic ?? {}), ...(raw?.semantic ?? {}) } });
+}
+
 export function defaultMemoryConfig() {
-  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy() };
+  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), impactRanking: cloneImpactRankingPolicy() };
 }
 
 function normalizePathPattern(value = '') {
@@ -633,6 +689,14 @@ function normalizeMemoryArea(raw) {
   };
 }
 
+function isFiniteNumberInRange(value, min, max) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+}
+
+function validateNumberMap(map, keys, min, max) {
+  return map && typeof map === 'object' && !Array.isArray(map) && Object.entries(map).every(([key, value]) => keys.has(key) && isFiniteNumberInRange(value, min, max));
+}
+
 export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.config.json') {
   const errors = [];
   const add = (code, field, message) => errors.push({ file: rel(root, resolve(root, file)), code, message: `${field ? `Field "${field}": ` : ''}${message}` });
@@ -649,6 +713,40 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
       else if (traceability.required.some((value) => !isValidPathPattern(value))) add('TRACEABILITY_CONFIG_INVALID_REQUIRED', 'traceability.required', 'Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
       if (traceability.exclude !== undefined && !Array.isArray(traceability.exclude)) add('TRACEABILITY_CONFIG_INVALID_EXCLUDE', 'traceability.exclude', 'Expected an array of path strings.');
       else if (Array.isArray(traceability.exclude) && traceability.exclude.some((value) => !isValidPathPattern(value))) add('TRACEABILITY_CONFIG_INVALID_EXCLUDE', 'traceability.exclude', 'Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+    }
+  }
+  const impactRanking = data.impactRanking;
+  if (impactRanking !== undefined) {
+    if (!impactRanking || typeof impactRanking !== 'object' || Array.isArray(impactRanking)) {
+      add('IMPACT_RANKING_CONFIG_INVALID', 'impactRanking', 'Expected an object.');
+    } else {
+      if (impactRanking.preset !== undefined && !Object.hasOwn(IMPACT_RANKING_PRESETS, impactRanking.preset)) add('IMPACT_RANKING_CONFIG_INVALID_PRESET', 'impactRanking.preset', 'Expected one of balanced, docs-first, code-proximity, test-focused, or archive-aware.');
+      if (impactRanking.weights !== undefined && !validateNumberMap(impactRanking.weights, IMPACT_RANKING_WEIGHT_KEYS, -100, 100)) add('IMPACT_RANKING_CONFIG_INVALID_WEIGHTS', 'impactRanking.weights', 'Expected known numeric weight keys with finite values from -100 to 100.');
+      if (impactRanking.relationWeights !== undefined && !validateNumberMap(impactRanking.relationWeights, IMPACT_RANKING_RELATION_KEYS, 0, 20)) add('IMPACT_RANKING_CONFIG_INVALID_RELATION_WEIGHTS', 'impactRanking.relationWeights', 'Expected known relation keys with finite values from 0 to 20.');
+      for (const key of ['traceabilityBoosts', 'verificationBoosts', 'semanticBoosts', 'proximityBoosts']) {
+        if (impactRanking[key] !== undefined && !validateNumberMap(impactRanking[key], IMPACT_RANKING_REASON_KEYS, 0, 100)) add('IMPACT_RANKING_CONFIG_INVALID_BOOSTS', `impactRanking.${key}`, 'Expected known reason keys with finite values from 0 to 100.');
+      }
+      if (impactRanking.ppr !== undefined) {
+        const ppr = impactRanking.ppr;
+        if (!ppr || typeof ppr !== 'object' || Array.isArray(ppr)) add('IMPACT_RANKING_CONFIG_INVALID_PPR', 'impactRanking.ppr', 'Expected an object.');
+        else {
+          if (ppr.enabled !== undefined && typeof ppr.enabled !== 'boolean') add('IMPACT_RANKING_CONFIG_INVALID_PPR', 'impactRanking.ppr.enabled', 'Expected a boolean.');
+          if (ppr.damping !== undefined && !isFiniteNumberInRange(ppr.damping, 0.01, 0.99)) add('IMPACT_RANKING_CONFIG_INVALID_PPR', 'impactRanking.ppr.damping', 'Expected a number greater than 0 and less than 1.');
+          if (ppr.iterations !== undefined && (!Number.isInteger(ppr.iterations) || ppr.iterations < 1 || ppr.iterations > 100)) add('IMPACT_RANKING_CONFIG_INVALID_PPR', 'impactRanking.ppr.iterations', 'Expected an integer from 1 to 100.');
+          if (ppr.tolerance !== undefined && !isFiniteNumberInRange(ppr.tolerance, 0, 1)) add('IMPACT_RANKING_CONFIG_INVALID_PPR', 'impactRanking.ppr.tolerance', 'Expected a number from 0 to 1.');
+        }
+      }
+      if (impactRanking.semantic !== undefined) {
+        const semantic = impactRanking.semantic;
+        if (!semantic || typeof semantic !== 'object' || Array.isArray(semantic)) add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic', 'Expected an object.');
+        else {
+          if (semantic.enabled !== undefined && typeof semantic.enabled !== 'boolean') add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic.enabled', 'Expected a boolean.');
+          if (semantic.threshold !== undefined && !isFiniteNumberInRange(semantic.threshold, 0, 1)) add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic.threshold', 'Expected a number from 0 to 1.');
+          if (semantic.topKPerFile !== undefined && (!Number.isInteger(semantic.topKPerFile) || semantic.topKPerFile < 0 || semantic.topKPerFile > 20)) add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic.topKPerFile', 'Expected an integer from 0 to 20.');
+          if (semantic.includeArchiveBodies !== undefined && typeof semantic.includeArchiveBodies !== 'boolean') add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic.includeArchiveBodies', 'Expected a boolean.');
+          if (semantic.signals !== undefined && (!Array.isArray(semantic.signals) || semantic.signals.some((value) => !SEMANTIC_SIGNAL_KEYS.has(value)))) add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic.signals', 'Expected an array of known deterministic signal names.');
+        }
+      }
     }
   }
   const areas = data.memory?.areas;
@@ -692,7 +790,8 @@ export function readMemoryConfig(root = '.') {
       if (errors.length > 0) return { ...defaultMemoryConfig(), source: name, errors };
       const configuredAreas = data.memory?.areas?.map(normalizeMemoryArea) ?? [];
       const traceability = data.traceability === undefined ? cloneTraceabilityPolicy() : normalizeTraceabilityPolicy(data.traceability);
-      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, errors: [] } : { ...defaultMemoryConfig(), traceability, source: name, errors: [] };
+      const impactRanking = normalizeImpactRankingPolicy(data.impactRanking);
+      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, impactRanking, errors: [] } : { ...defaultMemoryConfig(), traceability, impactRanking, source: name, errors: [] };
     } catch (error) {
       return { ...defaultMemoryConfig(), source: name, errors: [{ file: name, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}` }] };
     }
@@ -715,6 +814,7 @@ function memoryConfigSummary(config) {
       includeBodiesByDefault: area.includeBodiesByDefault !== false,
     })),
     traceability: cloneTraceabilityPolicy(config.traceability ?? DEFAULT_TRACEABILITY_POLICY),
+    impactRanking: cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY),
   };
 }
 
@@ -940,6 +1040,126 @@ export function extractScriptGraph(root, file, graph) {
   }
 }
 
+const TOKEN_STOPWORDS = new Set(['a', 'an', 'and', 'app', 'bin', 'code', 'config', 'docs', 'file', 'index', 'lib', 'md', 'mjs', 'node', 'package', 'readme', 'src', 'test', 'tests', 'the', 'ts', 'tsx', 'utils']);
+
+function splitCamelCase(value = '') {
+  return value.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');
+}
+
+function conceptTokens(value = '') {
+  const tokens = new Set();
+  for (const raw of splitCamelCase(String(value)).toLowerCase().split(/[^a-z0-9]+/)) {
+    if (raw.length < 3 || TOKEN_STOPWORDS.has(raw)) continue;
+    tokens.add(raw);
+  }
+  return tokens;
+}
+
+function addTokens(target, value) {
+  for (const token of conceptTokens(value)) target.add(token);
+}
+
+function intersectTokens(a, b) {
+  return [...a].filter((token) => b.has(token));
+}
+
+function jaccard(a, b) {
+  if (a.size === 0 || b.size === 0) return 0;
+  const intersection = intersectTokens(a, b).length;
+  const denominator = Math.min(a.size, b.size);
+  return denominator === 0 ? 0 : intersection / denominator;
+}
+
+function semanticSignalScore(source, target) {
+  const path = jaccard(source.pathTokens, target.pathTokens);
+  const heading = Math.max(jaccard(source.headingTokens, target.headingTokens), jaccard(source.headingTokens, target.allTokens), jaccard(source.allTokens, target.headingTokens));
+  const symbol = Math.max(jaccard(source.symbolTokens, target.symbolTokens), jaccard(source.headingTokens, target.symbolTokens), jaccard(source.symbolTokens, target.headingTokens));
+  const command = Math.max(jaccard(source.commandTokens, target.commandTokens), jaccard(source.allTokens, target.commandTokens), jaccard(source.commandTokens, target.allTokens));
+  const pkg = Math.max(jaccard(source.packageTokens, target.packageTokens), jaccard(source.allTokens, target.packageTokens), jaccard(source.packageTokens, target.allTokens));
+  return { path, filename: path, heading, symbol, export: symbol, command, event: command, package: pkg };
+}
+
+function semanticProfileForFile(fileNode, graph) {
+  const profile = {
+    id: fileNode.id,
+    path: fileNode.path,
+    retrieval: fileNode.retrieval,
+    pathTokens: new Set(),
+    headingTokens: new Set(),
+    symbolTokens: new Set(),
+    commandTokens: new Set(),
+    packageTokens: new Set(),
+    allTokens: new Set(),
+  };
+  addTokens(profile.pathTokens, fileNode.path ?? fileNode.id);
+  addTokens(profile.pathTokens, basename(fileNode.path ?? ''));
+
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  for (const edge of graph.edges) {
+    if (edge.source !== fileNode.id) continue;
+    const target = nodeById.get(edge.target);
+    if (!target) continue;
+    if (edge.relation === 'contains_heading') addTokens(profile.headingTokens, target.title ?? target.id);
+    if (edge.relation === 'declares' || edge.relation === 'exports') addTokens(profile.symbolTokens, target.name ?? target.id);
+    if (edge.relation === 'handles_command' || edge.relation === 'emits_event' || edge.relation === 'declares_script') addTokens(profile.commandTokens, target.name ?? target.command ?? target.id);
+    if (edge.relation === 'declares_package' || edge.relation === 'declares_bin' || edge.relation === 'includes_resource' || edge.relation === 'depends_on') addTokens(profile.packageTokens, target.name ?? target.target ?? target.id);
+  }
+  for (const set of [profile.pathTokens, profile.headingTokens, profile.symbolTokens, profile.commandTokens, profile.packageTokens]) {
+    for (const token of set) profile.allTokens.add(token);
+  }
+  return profile;
+}
+
+function semanticRelationForProfiles(source, target, scores) {
+  if (scores.symbol >= 0.5 && (source.headingTokens.size > 0 || target.headingTokens.size > 0)) return 'mentions_symbol';
+  if (scores.command >= 0.5) return 'mentions_command';
+  if (scores.package >= 0.5) return 'mentions_package';
+  return 'semantic_similarity';
+}
+
+export function addDeterministicSemanticEdges(graph, config = defaultMemoryConfig()) {
+  const policy = cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY);
+  if (policy.semantic.enabled === false || policy.semantic.topKPerFile === 0) return graph;
+
+  const threshold = policy.semantic.threshold ?? 0.5;
+  const topK = policy.semantic.topKPerFile ?? 5;
+  const includeArchiveBodies = policy.semantic.includeArchiveBodies === true;
+  const enabledSignals = new Set(policy.semantic.signals ?? DEFAULT_IMPACT_RANKING_POLICY.semantic.signals);
+  const baseGraph = { nodes: graph.nodes.map((node) => ({ ...node })), edges: graph.edges.filter((edge) => !SEMANTIC_RELATIONS.has(edge.relation)).map((edge) => ({ ...edge })) };
+  const files = baseGraph.nodes.filter((node) => node.type === 'file' && node.path);
+  const profiles = files.map((node) => semanticProfileForFile(node, baseGraph));
+
+  for (const source of profiles) {
+    if (!includeArchiveBodies && source.retrieval?.area === 'archive-body') continue;
+    const candidates = [];
+    for (const target of profiles) {
+      if (source.id === target.id) continue;
+      if (!includeArchiveBodies && target.retrieval?.area === 'archive-body') continue;
+      const scores = semanticSignalScore(source, target);
+      const weighted = Object.entries(scores).filter(([signal]) => enabledSignals.has(signal));
+      const score = weighted.length === 0 ? 0 : Math.max(...weighted.map(([, value]) => value));
+      if (score < threshold) continue;
+      const matchedTerms = intersectTokens(source.allTokens, target.allTokens).slice(0, 12);
+      if (matchedTerms.length === 0) continue;
+      const relation = semanticRelationForProfiles(source, target, scores);
+      const signals = weighted.filter(([, value]) => value > 0).map(([signal]) => signal);
+      candidates.push({ target, relation, score, matchedTerms, signals });
+    }
+    candidates
+      .sort((a, b) => b.score - a.score || a.target.id.localeCompare(b.target.id))
+      .slice(0, topK)
+      .forEach((candidate) => {
+        addEdge(baseGraph, source.id, candidate.target.id, candidate.relation, {
+          confidence: 'INFERRED_LEXICAL_SEMANTIC',
+          score: Math.round(candidate.score * 1000) / 1000,
+          matchedTerms: candidate.matchedTerms,
+          signals: candidate.signals,
+        });
+      });
+  }
+  return baseGraph;
+}
+
 export function buildGraph(root, files, config = readMemoryConfig(root)) {
   const graph = { nodes: [], edges: [] };
   for (const file of files) {
@@ -989,7 +1209,8 @@ export function buildIndex(root, previous = readIndex(root)) {
   const changedFiles = files.filter((file) => changedPaths.includes(file.path)).map((file) => join(root, file.path));
   const fullRebuild = !previous?.graph || previous.version !== CACHE_VERSION;
   const refreshReason = !previous ? 'missing' : previous.version !== CACHE_VERSION ? 'schema-mismatch' : removedPaths.length > 0 ? 'content-removed' : changedPaths.length > 0 ? 'content-changed' : 'fresh';
-  const graph = fullRebuild ? buildGraph(root, files.map((file) => join(root, file.path)), memoryConfig) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles, memoryConfig), changedPaths);
+  const rawGraph = fullRebuild ? buildGraph(root, files.map((file) => join(root, file.path)), memoryConfig) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles, memoryConfig), changedPaths);
+  const graph = addDeterministicSemanticEdges(rawGraph, memoryConfig);
   const archiveBodiesIncluded = (memoryConfig.areas ?? []).some((area) => area.id === 'archive-body' && area.includeBodiesByDefault !== false);
   return { version: CACHE_VERSION, schemaVersion: CACHE_VERSION, generatedAt: new Date().toISOString(), archiveBodiesIncluded, memoryConfig: memoryConfigSummary(memoryConfig), files, graph, stats: graphStats(graph), incremental: { enabled: true, fullRebuild, changedFiles: changedPaths.length, refreshReason, elapsedMs: Date.now() - startedAt } };
 }
@@ -1124,8 +1345,97 @@ function fileFromImport(changedPath, specifier) {
   return candidate.replace(/^\.\//, '');
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function roundScore(value) {
+  return Math.round(value * 10) / 10;
+}
+
+function sumReasonBoosts(reasons, boosts) {
+  return reasons.reduce((sum, reason) => sum + (boosts[reason] ?? 0), 0);
+}
+
+function cappedTraceabilityScore(reasons, boosts, cap) {
+  const values = reasons.map((reason) => boosts[reason] ?? 0).filter((value) => value > 0);
+  if (values.length === 0) return 0;
+  return clamp(Math.max(...values) + Math.min(5, Math.max(0, values.length - 1) * 2), 0, cap);
+}
+
+function buildPersonalizedPageRank(graph, seed, policy) {
+  if (policy.ppr.enabled === false) return new Map();
+  const damping = policy.ppr.damping ?? 0.85;
+  const iterations = policy.ppr.iterations ?? 20;
+  const tolerance = policy.ppr.tolerance ?? 0.000001;
+  const ids = new Set(graph.nodes.map((node) => node.id));
+  ids.add(seed);
+  const adjacency = new Map([...ids].map((id) => [id, []]));
+  for (const edge of graph.edges) {
+    const weight = policy.relationWeights[edge.relation] ?? relationWeight(edge.relation);
+    if (weight <= 0) continue;
+    if (!adjacency.has(edge.source)) adjacency.set(edge.source, []);
+    if (!adjacency.has(edge.target)) adjacency.set(edge.target, []);
+    adjacency.get(edge.source).push([edge.target, weight]);
+    adjacency.get(edge.target).push([edge.source, weight]);
+  }
+  let ranks = new Map([...adjacency.keys()].map((id) => [id, id === seed ? 1 : 0]));
+  for (let i = 0; i < iterations; i += 1) {
+    const next = new Map([...adjacency.keys()].map((id) => [id, id === seed ? 1 - damping : 0]));
+    for (const [id, edges] of adjacency.entries()) {
+      const rank = ranks.get(id) ?? 0;
+      const total = edges.reduce((sum, [, weight]) => sum + weight, 0);
+      if (total === 0) continue;
+      for (const [target, weight] of edges) next.set(target, (next.get(target) ?? 0) + damping * rank * (weight / total));
+    }
+    const delta = [...next.entries()].reduce((sum, [id, rank]) => sum + Math.abs(rank - (ranks.get(id) ?? 0)), 0);
+    ranks = next;
+    if (delta < tolerance) break;
+  }
+  return ranks;
+}
+
+function scoreImpactItem(item, seed, changedPath, policy, pprScores, maxPpr) {
+  if (item.id === seed) {
+    return { impactScore: 100, scoreBreakdown: { seed: 100, ppr: 40, traceability: 0, memoryPolicy: 0, verification: 0, proximity: 0, semantic: 0, freshness: 0, archivePenalty: 0 } };
+  }
+  const reasons = item.reasons ?? [];
+  const retrieval = item.retrieval ?? {};
+  const pprNormalized = maxPpr > 0 ? (pprScores.get(item.id) ?? 0) / maxPpr : 0;
+  const ppr = clamp(pprNormalized * (policy.weights.ppr ?? 40), 0, Math.abs(policy.weights.ppr ?? 40));
+  const traceability = cappedTraceabilityScore(reasons, policy.traceabilityBoosts, Math.abs(policy.weights.traceability ?? 30));
+  const memoryPolicy = clamp(((retrieval.priority ?? 30) / 100) * Math.abs(policy.weights.memoryPolicy ?? 10), 0, Math.abs(policy.weights.memoryPolicy ?? 10));
+  const verification = clamp(sumReasonBoosts(reasons, policy.verificationBoosts) + (item.type === 'test' || isTestPath(item.path ?? '') ? 10 : 0) + (item.type === 'verification_command' ? 12 : 0), 0, Math.abs(policy.weights.verification ?? 15));
+  const proximity = clamp(sumReasonBoosts(reasons, policy.proximityBoosts), 0, Math.abs(policy.weights.proximity ?? 10));
+  const semantic = clamp(sumReasonBoosts(reasons, policy.semanticBoosts), 0, Math.abs(policy.weights.semantic ?? 10));
+  const freshness = retrieval.freshness === 'fresh' ? Math.abs(policy.weights.freshness ?? 5) : retrieval.freshness === 'stale' ? -Math.abs(policy.weights.freshness ?? 5) : 0;
+  let archivePenalty = 0;
+  if (!changedPath.startsWith('docs/archive/')) {
+    if (retrieval.area === 'archive-body') archivePenalty -= Math.abs(policy.weights.archivePenalty ?? -25);
+    if (retrieval.includeBodiesByDefault === false) archivePenalty -= 10;
+    if (retrieval.freshness === 'stale' && retrieval.area !== 'archive-map') archivePenalty -= 5;
+  }
+  archivePenalty = clamp(archivePenalty, -Math.abs(policy.weights.archivePenalty ?? -25), 0);
+  const impactScore = clamp(ppr + traceability + memoryPolicy + verification + proximity + semantic + freshness + archivePenalty, 0, 100);
+  return {
+    impactScore: roundScore(impactScore),
+    scoreBreakdown: {
+      ppr: roundScore(ppr),
+      traceability: roundScore(traceability),
+      memoryPolicy: roundScore(memoryPolicy),
+      verification: roundScore(verification),
+      proximity: roundScore(proximity),
+      semantic: roundScore(semantic),
+      freshness: roundScore(freshness),
+      archivePenalty: roundScore(archivePenalty),
+    },
+  };
+}
+
 export function buildImpactReport(index, changedPath, limits = {}) {
   const graph = index?.graph ?? { nodes: [], edges: [] };
+  const config = index?.memoryConfig ? { ...defaultMemoryConfig(), ...index.memoryConfig } : defaultMemoryConfig();
+  const policy = cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY);
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
   const seed = `file:${changedPath}`;
   const maxRelated = limits.related ?? 25;
@@ -1151,38 +1461,30 @@ export function buildImpactReport(index, changedPath, limits = {}) {
     if (edge.target === seed) addReason(edge.source, `incoming:${edge.relation}`);
   }
 
-  const traceabilityRelations = new Set(['implemented_by', 'verified_by', 'related_doc', 'verification_command']);
+  const expansionRelations = new Set(['implemented_by', 'verified_by', 'related_doc', 'verification_command', ...SEMANTIC_RELATIONS]);
   for (const edge of graph.edges) {
-    if (!traceabilityRelations.has(edge.relation)) continue;
-    if (relatedIds.has(edge.source)) addReason(edge.target, edge.relation);
+    if (!expansionRelations.has(edge.relation)) continue;
+    if (relatedIds.has(edge.source) && edge.target !== seed) addReason(edge.target, edge.relation);
   }
 
   const changedDir = dirname(changedPath).replaceAll('\\', '/');
   for (const node of graph.nodes) {
-    if (node.type === 'file' && node.path !== changedPath && dirname(node.path).replaceAll('\\', '/') === changedDir) {
-      addReason(node.id, 'same-directory');
-    }
-    if (node.type === 'test' && (node.path.includes(basename(changedPath).replace(/\.(mjs|cjs|js|jsx|ts|tsx)$/, '')) || node.path.includes(changedDir))) {
-      addReason(node.id, 'test-path-proximity');
-    }
+    if (node.type === 'file' && node.path !== changedPath && dirname(node.path).replaceAll('\\', '/') === changedDir) addReason(node.id, 'same-directory');
+    if (node.type === 'test' && (node.path.includes(basename(changedPath).replace(/\.(mjs|cjs|js|jsx|ts|tsx)$/, '')) || node.path.includes(changedDir))) addReason(node.id, 'test-path-proximity');
   }
 
-  const seedImports = graph.edges
-    .filter((edge) => edge.source === seed && edge.relation === 'imports')
-    .map((edge) => nodeById.get(edge.target)?.specifier)
-    .filter(Boolean);
+  const seedImports = graph.edges.filter((edge) => edge.source === seed && edge.relation === 'imports').map((edge) => nodeById.get(edge.target)?.specifier).filter(Boolean);
   for (const specifier of seedImports) {
     const importedPath = fileFromImport(changedPath, specifier);
     if (importedPath) addReason(`file:${importedPath}`, 'imports-local-file');
     for (const edge of graph.edges) {
       const node = nodeById.get(edge.target);
-      if (edge.relation === 'imports' && node?.specifier === specifier && edge.source !== seed) {
-        addReason(edge.source, 'shares-import');
-      }
+      if (edge.relation === 'imports' && node?.specifier === specifier && edge.source !== seed) addReason(edge.source, 'shares-import');
     }
   }
 
-  const traceabilityReasonScore = (item) => (item.reasons ?? []).some((reason) => ['incoming:implemented_by', 'implemented_by', 'verified_by', 'related_doc', 'verification_command'].includes(reason)) ? 20 : 0;
+  const pprScores = buildPersonalizedPageRank(graph, seed, policy);
+  const candidatePprMax = Math.max(0, ...[...relatedIds].filter((id) => id !== seed).map((id) => pprScores.get(id) ?? 0));
   const relatedAll = [...relatedIds]
     .map((id) => {
       const node = nodeById.get(id) ?? { id };
@@ -1190,12 +1492,13 @@ export function buildImpactReport(index, changedPath, limits = {}) {
       const reasonList = [...(reasons.get(id) ?? [])];
       const retrieval = node.retrieval ?? retrievalMetadataForPath(path);
       const reasonSignals = reasonList.map((reason) => `reason:${reason}`);
-      return { ...node, reasons: reasonList, retrieval: { ...retrieval, signals: [...new Set([...(retrieval.signals ?? []), ...reasonSignals])] } };
+      const scored = scoreImpactItem({ ...node, reasons: reasonList, retrieval }, seed, changedPath, policy, pprScores, candidatePprMax);
+      return { ...node, reasons: reasonList, retrieval: { ...retrieval, signals: [...new Set([...(retrieval.signals ?? []), ...reasonSignals])] }, ...scored };
     })
     .sort((a, b) => {
       if (a.id === seed) return -1;
       if (b.id === seed) return 1;
-      return ((b.retrieval?.priority ?? 0) + traceabilityReasonScore(b)) - ((a.retrieval?.priority ?? 0) + traceabilityReasonScore(a)) || a.id.localeCompare(b.id);
+      return (b.impactScore ?? 0) - (a.impactScore ?? 0) || a.id.localeCompare(b.id);
     });
   const related = relatedAll.slice(0, maxRelated);
   for (const item of related) {
@@ -1211,7 +1514,13 @@ export function buildImpactReport(index, changedPath, limits = {}) {
     else if (item.type === 'symbol' || item.type === 'export') addImpactItem(groups.symbols, item, limits.symbols ?? 10);
   }
 
-  return { changed: changedPath, related, groups, omittedRelated: Math.max(0, relatedAll.length - related.length) };
+  return {
+    changed: changedPath,
+    ranking: { method: policy.ppr.enabled === false ? 'policy-score' : 'personalized-pagerank+policy', preset: policy.preset, configSource: index?.memoryConfig?.source ?? 'default', weights: policy.weights, ppr: policy.ppr },
+    related,
+    groups,
+    omittedRelated: Math.max(0, relatedAll.length - related.length),
+  };
 }
 
 const DURABLE_COMMUNITY_NODE_TYPES = new Set(['file', 'memory_area', 'test', 'command', 'event', 'package_resource', 'package', 'script', 'binary']);
@@ -1248,7 +1557,8 @@ function addBounded(list, value, limit) {
 function relationWeight(relation) {
   if (relation === 'imports' || relation === 'tests' || relation === 'handles_command' || relation === 'implemented_by' || relation === 'verified_by') return 4;
   if (relation === 'emits_event' || relation === 'includes_resource' || relation === 'routes_to' || relation === 'related_doc' || relation === 'verification_command') return 3;
-  if (relation === 'links_to' || relation === 'belongs_to_area' || relation === 'declares_package' || relation === 'declares_bin') return 2;
+  if (relation === 'links_to' || relation === 'belongs_to_area' || relation === 'declares_package' || relation === 'declares_bin' || relation === 'semantic_similarity' || relation === 'mentions_symbol' || relation === 'mentions_command') return 2;
+  if (relation === 'mentions_package') return 1;
   return 1;
 }
 

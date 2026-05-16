@@ -9,7 +9,7 @@ const bin = resolve('bin/dotdotgod.mjs');
 
 function createFixture() {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-cli-e2e-'));
-  for (const dir of ['docs/spec', 'docs/test', 'docs/arch', 'docs/plan/task', 'docs/archive', 'packages/app']) mkdirSync(join(root, dir), { recursive: true });
+  for (const dir of ['docs/spec', 'docs/test', 'docs/arch', 'docs/plan/task', 'docs/archive/plan/routing-policy-old', 'packages/app']) mkdirSync(join(root, dir), { recursive: true });
   writeFileSync(join(root, '.gitignore'), 'docs/plan\ndocs/archive\n.dotdotgod\n');
   writeFileSync(join(root, 'AGENTS.md'), '# Agents\n');
   writeFileSync(join(root, 'CLAUDE.md'), '# Claude\n');
@@ -17,15 +17,20 @@ function createFixture() {
   writeFileSync(join(root, 'README.md'), '# Fixture\n');
   writeFileSync(join(root, 'docs/README.md'), '# Docs\n[Spec](spec/README.md)\n');
   writeFileSync(join(root, 'docs/spec/README.md'), '# Spec\n');
-  writeFileSync(join(root, 'docs/spec/APP.md'), '# App\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "verificationCommands": ["node --test"]\n}\n```\n');
+  writeFileSync(join(root, 'docs/spec/APP.md'), '# Routing Policy App\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["packages/app/index.test.mjs", "docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "verificationCommands": ["node --test packages/app/index.test.mjs"]\n}\n```\n');
   writeFileSync(join(root, 'docs/test/README.md'), '# Tests\n');
   writeFileSync(join(root, 'docs/arch/README.md'), '# Architecture\n');
+  writeFileSync(join(root, 'docs/arch/ROUTING_POLICY_NOTES.md'), '# Routing Policy Notes\n\nSemantic-only routing policy notes.\n');
   writeFileSync(join(root, 'docs/plan/README.md'), '# Plans\n');
   writeFileSync(join(root, 'docs/plan/task/README.md'), '# Task\n');
   writeFileSync(join(root, 'docs/archive/README.md'), '# Archive\n');
+  writeFileSync(join(root, 'docs/archive/plan/routing-policy-old/README.md'), '# Routing Policy Archive\n');
   writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'fixture', scripts: { test: 'node --test' } }, null, 2));
-  writeFileSync(join(root, 'packages/app/package.json'), JSON.stringify({ name: '@fixture/app', files: ['index.mjs'], scripts: { start: 'node index.mjs' } }, null, 2));
-  writeFileSync(join(root, 'packages/app/index.mjs'), "import path from 'node:path';\nexport function main() { return 'plan-mode:load-requested'; }\npi.registerCommand('app', {});\n");
+  writeFileSync(join(root, 'packages/app/package.json'), JSON.stringify({ name: '@fixture/app', files: ['index.mjs', 'helper.mjs'], scripts: { start: 'node index.mjs' }, dependencies: { 'left-pad': '1.0.0' } }, null, 2));
+  writeFileSync(join(root, 'packages/app/index.mjs'), "import './helper.mjs';\nimport leftPad from 'left-pad';\nexport function resolveRoutingPolicy() { return leftPad('routing-policy', 2); }\npi.registerCommand('app', {});\n'routing-policy:changed';\n");
+  writeFileSync(join(root, 'packages/app/helper.mjs'), 'export const routingPolicyHelper = true;\n');
+  writeFileSync(join(root, 'packages/app/neighbor.mjs'), "import leftPad from 'left-pad';\nexport const routingPolicyNeighbor = leftPad;\n");
+  writeFileSync(join(root, 'packages/app/index.test.mjs'), "import { resolveRoutingPolicy } from './index.mjs';\nexport const routingPolicyTest = resolveRoutingPolicy;\n");
   return root;
 }
 
@@ -36,6 +41,32 @@ function run(args, options = {}) {
 function json(result) {
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return JSON.parse(result.stdout);
+}
+
+function itemById(payload, id) {
+  return payload.related.find((item) => item.id === id);
+}
+
+function rankOf(payload, id) {
+  return payload.related.findIndex((item) => item.id === id);
+}
+
+function hasSemanticReason(item) {
+  return (item?.reasons ?? []).some((reason) => reason.includes('semantic') || reason.includes('mentions_'));
+}
+
+function writeConfig(root, value) {
+  writeFileSync(join(root, 'dotdotgod.config.json'), `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function impactWithConfig(value) {
+  const root = createFixture();
+  writeConfig(root, value);
+  return json(run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--json']));
+}
+
+function archiveBodyMemoryAreas() {
+  return [{ id: 'archive-body', label: 'Archive Body', paths: ['docs/archive/**'], excludePaths: ['docs/archive/README.md'], scope: 'local', freshness: 'stale', role: 'historical-memory-body', priority: 20, includeBodiesByDefault: true }];
 }
 
 describe('dotdotgod CLI e2e', () => {
@@ -57,7 +88,7 @@ describe('dotdotgod CLI e2e', () => {
     assert(existsSync(join(root, '.dotdotgod/manifest.json')));
     assert(existsSync(join(root, '.dotdotgod/graph/nodes/docs.json')));
     assert(existsSync(join(root, '.dotdotgod/graph/edges/imports.json')));
-    assert.equal(index.schemaVersion, 7);
+    assert.equal(index.schemaVersion, 8);
     assert.equal(typeof index.incremental.elapsedMs, 'number');
     assert(index.indexSizeBytes > 0);
 
@@ -92,6 +123,7 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(snapshot.commandGuidance.install, 'npm install -D @dotdotgod/cli');
     assert.equal(snapshot.commandGuidance.validate, 'npx dotdotgod validate .');
     assert.equal(snapshot.memoryConfig.source, 'default');
+    assert.equal(snapshot.memoryConfig.impactRanking.preset, 'balanced');
     assert(snapshot.memoryPolicy.sharedAreas.includes('spec'));
     assert(snapshot.memoryPolicy.localAreas.includes('active-plan'));
     assert(snapshot.memoryPolicy.freshAreas.includes('active-plan'));
@@ -109,15 +141,72 @@ describe('dotdotgod CLI e2e', () => {
 
     const impact = json(run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--json']));
     assert.equal(impact.command, 'graph impact');
-    assert(impact.related.some((node) => node.id === 'file:packages/app/index.mjs'));
+    assert.equal(impact.impact.ranking.method, 'personalized-pagerank+policy');
+    assert.deepEqual(impact.related, impact.impact.related);
+    assert.equal(impact.related.every((node) => typeof node.impactScore === 'number' && node.scoreBreakdown), true);
+    const changed = itemById(impact, 'file:packages/app/index.mjs');
+    assert.equal(rankOf(impact, changed.id), 0);
+    assert.equal(changed.impactScore, 100);
+    assert.equal(changed.scoreBreakdown.seed, 100);
+    const spec = itemById(impact, 'file:docs/spec/APP.md');
+    const semanticOnly = itemById(impact, 'file:docs/arch/ROUTING_POLICY_NOTES.md');
+    assert(spec);
+    assert(semanticOnly);
+    assert(rankOf(impact, spec.id) < rankOf(impact, semanticOnly.id));
+    assert(spec.scoreBreakdown.traceability > 0);
+    assert(hasSemanticReason(semanticOnly));
+    assert(semanticOnly.scoreBreakdown.semantic > 0);
     assert(impact.impact.groups.commands.items.some((item) => item.id === 'command:app'));
     assert(impact.impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/APP.md'));
+    assert(impact.impact.groups.tests.items.some((item) => item.id === 'file:packages/app/index.test.mjs'));
     assert(impact.related.some((item) => item.id === 'file:packages/app/index.mjs' && item.retrieval?.signals.includes('reason:changed-file')));
+    assert(!impact.related.some((item) => item.id.startsWith('file:docs/archive/plan/')));
     assert.equal(typeof impact.impact.omittedRelated, 'number');
 
     const queryAlias = json(run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--json']));
     assert.equal(queryAlias.command, 'graph impact');
     assert.equal(queryAlias.deprecatedAliasUsed, true);
+    assert.equal(queryAlias.impact.ranking.method, 'personalized-pagerank+policy');
+    assert.equal(queryAlias.related.every((node) => typeof node.impactScore === 'number' && node.scoreBreakdown), true);
+  });
+
+  it('applies impact ranking presets, semantic thresholds, archive safety, and measurement output', () => {
+    const docsFirst = impactWithConfig({ impactRanking: { preset: 'docs-first' } });
+    const codeProximity = impactWithConfig({ impactRanking: { preset: 'code-proximity' } });
+    const testFocused = impactWithConfig({ impactRanking: { preset: 'test-focused' } });
+
+    assert.equal(docsFirst.impact.ranking.preset, 'docs-first');
+    assert.equal(codeProximity.impact.ranking.preset, 'code-proximity');
+    assert.equal(testFocused.impact.ranking.preset, 'test-focused');
+    assert(itemById(docsFirst, 'file:docs/spec/APP.md').scoreBreakdown.traceability > itemById(codeProximity, 'file:docs/spec/APP.md').scoreBreakdown.traceability);
+    assert(rankOf(codeProximity, 'file:packages/app/helper.mjs') < rankOf(docsFirst, 'file:packages/app/helper.mjs'));
+    assert(itemById(testFocused, 'file:packages/app/index.test.mjs').scoreBreakdown.verification > itemById(codeProximity, 'file:packages/app/index.test.mjs').scoreBreakdown.verification);
+
+    const archiveConfig = (preset) => ({ memory: { areas: archiveBodyMemoryAreas() }, impactRanking: { preset, semantic: { includeArchiveBodies: true } } });
+    const balancedArchive = impactWithConfig(archiveConfig('balanced'));
+    const archiveAware = impactWithConfig(archiveConfig('archive-aware'));
+    const archiveId = 'file:docs/archive/plan/routing-policy-old/README.md';
+    assert(itemById(balancedArchive, archiveId));
+    assert(itemById(archiveAware, archiveId));
+    assert(itemById(archiveAware, archiveId).scoreBreakdown.archivePenalty > itemById(balancedArchive, archiveId).scoreBreakdown.archivePenalty);
+    assert(rankOf(archiveAware, 'file:docs/spec/APP.md') < rankOf(archiveAware, archiveId));
+
+    const semanticDefault = json(run(['graph', 'impact', createFixture(), '--changed', 'packages/app/index.mjs', '--json']));
+    assert(hasSemanticReason(itemById(semanticDefault, 'file:docs/arch/ROUTING_POLICY_NOTES.md')));
+    const semanticDisabled = impactWithConfig({ impactRanking: { semantic: { enabled: false } } });
+    assert(!hasSemanticReason(itemById(semanticDisabled, 'file:docs/arch/ROUTING_POLICY_NOTES.md')));
+
+    const repoRoot = resolve('../..');
+    const output = join(createFixture(), 'impact-measure.md');
+    const measured = spawnSync(process.execPath, [join(repoRoot, 'scripts/measure-context.mjs'), '--markdown', '--impact-changed', 'packages/cli/src/core.mjs', '--output', output], { cwd: repoRoot, encoding: 'utf8' });
+    assert.equal(measured.status, 0, measured.stderr || measured.stdout);
+    const measurement = readFileSync(output, 'utf8');
+    assert.match(measurement, /Graph impact sample/);
+    assert.match(measurement, /ranking=(personalized-pagerank\+policy|policy-score)/);
+    assert.match(measurement, /scored=\d+/);
+    assert.match(measurement, /semantic=\d+/);
+    assert.match(measurement, /related=\d+/);
+    assert.match(measurement, /omitted=\d+/);
   });
 
   it('reports memory config validation failures without crashing runtime commands', () => {
@@ -168,6 +257,35 @@ describe('dotdotgod CLI e2e', () => {
     writeFileSync(join(root, 'docs/requirements/REQ.md'), `# Requirement\n${block}`);
     const valid = run(['validate', root, '--include-local-memory', '--json']);
     assert.equal(valid.status, 0, valid.stdout + valid.stderr);
+  });
+
+  it('reports impact ranking config validation failures without crashing runtime commands', () => {
+    const root = createFixture();
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({
+      impactRanking: {
+        preset: 'wild',
+        weights: { unknown: 1 },
+        relationWeights: { unknown: 1 },
+        traceabilityBoosts: { unknown: 1 },
+        ppr: { damping: 2, iterations: 200 },
+        semantic: { threshold: 2, topKPerFile: 100, signals: ['embedding'] },
+      },
+    }, null, 2));
+
+    const invalid = run(['validate', root, '--include-local-memory', '--json']);
+    assert.notEqual(invalid.status, 0);
+    const payload = JSON.parse(invalid.stdout);
+    assert(payload.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_PRESET'));
+    assert(payload.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_WEIGHTS'));
+    assert(payload.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_RELATION_WEIGHTS'));
+    assert(payload.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_BOOSTS'));
+    assert(payload.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_PPR'));
+    assert(payload.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_SEMANTIC'));
+
+    const impact = json(run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--json']));
+    assert.equal(impact.impact.ranking.preset, 'balanced');
+    assert.equal(impact.impact.ranking.method, 'personalized-pagerank+policy');
+    assert(impact.related.some((item) => typeof item.impactScore === 'number' && item.scoreBreakdown));
   });
 
   it('reports traceability config validation failures without crashing runtime commands', () => {

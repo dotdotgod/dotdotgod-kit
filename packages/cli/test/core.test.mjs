@@ -2,16 +2,18 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   CACHE_VERSION,
+  addDeterministicSemanticEdges,
   buildCommunities,
   buildGraph,
   buildImpactReport,
   buildMemoryAreas,
   buildIndex,
   collectIndexFiles,
+  defaultMemoryConfig,
   detectCommandGuidance,
   detectPackageManager,
   extractAnchors,
@@ -29,6 +31,7 @@ import {
   requiresTraceability,
   retrievalPriorityForPath,
   shouldIndexPath,
+  validateMemoryConfigData,
   validateTraceabilityBlock,
 } from '../src/core.mjs';
 
@@ -53,6 +56,60 @@ function fixture() {
   writeFileSync(join(root, 'packages/tool/index.mjs'), "import fs from 'node:fs';\nexport function run() { return 'plan-mode:enabled'; }\nconst value = 1;\nfunction local() { const hidden = 1; return hidden; }\npi.registerCommand('load', {});\n");
   writeFileSync(join(root, 'packages/tool/index.test.mjs'), "import { run } from './index.mjs';\nexport { run as testRun };\n");
   return root;
+}
+
+function writeFixtureFile(root, path, content) {
+  const target = join(root, path);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, content);
+}
+
+function writeFixtureJson(root, path, value) {
+  writeFixtureFile(root, path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function writeImpactRankingFixture(root) {
+  writeFixtureFile(root, 'docs/spec/ROUTE_PLANNER.md', '# Route Planner Tools\n\n## Route Planner Tools\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/route-planner/index.mjs"],\n  "verifiedBy": ["packages/route-planner/route-planner.test.mjs"],\n  "relatedDocs": ["docs/arch/ROUTE_PLANNER_ARCH.md"],\n  "verificationCommands": ["pnpm --filter @fixture/route-planner test"]\n}\n```\n');
+  writeFixtureFile(root, 'docs/arch/ROUTE_PLANNER_ARCH.md', '# Route Planner Architecture\n');
+  writeFixtureFile(root, 'docs/arch/ROUTE_PLANNER_SEMANTIC.md', '# Route Planner Design Notes\n\nSemantic-only route planner notes.\n');
+  writeFixtureFile(root, 'docs/arch/ROUTE_PLANNER_COMMAND.md', '# Route Planner Command\n');
+  writeFixtureFile(root, 'docs/arch/ROUTE_PLANNER_PACKAGE.md', '# Route Planner Package\n');
+  writeFixtureFile(root, 'docs/arch/POLICY_AUDITOR_OVERVIEW.md', '# Policy Auditor Overview\n');
+  writeFixtureFile(root, 'docs/arch/POLICY_AUDITOR_SCENARIOS.md', '# Policy Auditor Scenarios\n');
+  writeFixtureFile(root, 'docs/arch/POLICY_AUDITOR_REFERENCE.md', '# Policy Auditor Reference\n');
+  writeFixtureFile(root, 'docs/archive/plan/route-planner-old/README.md', '# Route Planner Archive\n');
+  writeFixtureFile(root, 'packages/route-planner/package.json', JSON.stringify({ name: '@fixture/route-planner', files: ['route-planner-assets'], bin: { 'route-planner': './index.mjs' }, dependencies: { 'route-planner-core': '1.0.0' } }, null, 2));
+  writeFixtureFile(root, 'packages/route-planner/index.mjs', "import './helper.mjs';\nimport leftPad from 'left-pad';\nexport function resolveRoutePlannerTools() { return leftPad('route-planner-tools', 2); }\nexport const routePlannerMode = 'route-planner:changed';\npi.registerCommand('route-planner', {});\n'route-planner:event';\n");
+  writeFixtureFile(root, 'packages/route-planner/helper.mjs', 'export const routePlannerHelper = true;\n');
+  writeFixtureFile(root, 'packages/route-planner/neighbor.mjs', "import leftPad from 'left-pad';\nexport const routePlannerNeighbor = leftPad;\n");
+  writeFixtureFile(root, 'packages/route-planner/route-planner.test.mjs', "import { resolveRoutePlannerTools } from './index.mjs';\nexport const routePlannerTest = resolveRoutePlannerTools;\n");
+  writeFixtureFile(root, 'packages/route-cli/command.mjs', "pi.registerCommand('route-planner', {});\n'route-planner:command';\n");
+  writeFixtureFile(root, 'packages/policy-auditor/notes.mjs', '// policy auditor notes only; no declarations needed for semantic path matching\n');
+}
+
+function semanticEdges(graph, source, relation) {
+  return graph.edges.filter((edge) => edge.confidence === 'INFERRED_LEXICAL_SEMANTIC' && (!source || edge.source === source) && (!relation || edge.relation === relation));
+}
+
+function itemById(report, id) {
+  return report.related.find((item) => item.id === id);
+}
+
+function rankOf(report, id) {
+  return report.related.findIndex((item) => item.id === id);
+}
+
+function cloneConfigWithImpactRanking(impactRanking = {}) {
+  const config = defaultMemoryConfig();
+  config.impactRanking = {
+    ...config.impactRanking,
+    ...impactRanking,
+    weights: { ...config.impactRanking.weights, ...(impactRanking.weights ?? {}) },
+    ppr: { ...config.impactRanking.ppr, ...(impactRanking.ppr ?? {}) },
+    relationWeights: { ...config.impactRanking.relationWeights, ...(impactRanking.relationWeights ?? {}) },
+    semantic: { ...config.impactRanking.semantic, ...(impactRanking.semantic ?? {}) },
+  };
+  return config;
 }
 
 describe('CLI docs helpers', () => {
@@ -149,6 +206,25 @@ describe('CLI docs helpers', () => {
     assert.equal(guidance.loadSnapshot, 'npx dotdotgod load-snapshot . --json');
   });
 
+  it('loads configurable impact ranking policy with preset and partial overrides', () => {
+    const root = fixture();
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({
+      impactRanking: {
+        preset: 'docs-first',
+        weights: { semantic: 7 },
+        ppr: { enabled: false },
+        semantic: { threshold: 0.4, topKPerFile: 3 },
+      },
+    }, null, 2));
+    const config = readMemoryConfig(root);
+    assert.equal(config.source, 'dotdotgod.config.json');
+    assert.equal(config.impactRanking.preset, 'docs-first');
+    assert.equal(config.impactRanking.weights.semantic, 7);
+    assert.equal(config.impactRanking.weights.traceability, 35);
+    assert.equal(config.impactRanking.ppr.enabled, false);
+    assert.equal(config.impactRanking.semantic.threshold, 0.4);
+  });
+
   it('loads configurable traceability scope with array path settings', () => {
     const root = fixture();
     assert.equal(requiresTraceability('docs/spec/FEATURE.md'), true);
@@ -167,6 +243,217 @@ describe('CLI docs helpers', () => {
     assert.equal(requiresTraceability('docs/product/README.md', config), false);
     assert.equal(requiresTraceability('docs/product/DRAFT.md', config), false);
     assert.equal(requiresTraceability('docs/spec/FEATURE.md', config), false);
+  });
+});
+
+describe('impact ranking unit coverage', () => {
+  it('resolves presets, partial overrides, and invalid config families', () => {
+    const defaults = readMemoryConfig(fixture()).impactRanking;
+    assert.equal(defaults.preset, 'balanced');
+    assert.equal(defaults.weights.traceability, 30);
+
+    const docsFirstRoot = fixture();
+    writeFixtureJson(docsFirstRoot, 'dotdotgod.config.json', { impactRanking: { preset: 'docs-first' } });
+    const docsFirst = readMemoryConfig(docsFirstRoot).impactRanking;
+    assert.equal(docsFirst.preset, 'docs-first');
+    assert(docsFirst.weights.traceability > defaults.weights.traceability);
+    assert(docsFirst.weights.memoryPolicy > defaults.weights.memoryPolicy);
+
+    const codeRoot = fixture();
+    writeFixtureJson(codeRoot, 'dotdotgod.config.json', { impactRanking: { preset: 'code-proximity' } });
+    assert(readMemoryConfig(codeRoot).impactRanking.weights.proximity > defaults.weights.proximity);
+
+    const testRoot = fixture();
+    writeFixtureJson(testRoot, 'dotdotgod.config.json', { impactRanking: { preset: 'test-focused' } });
+    assert(readMemoryConfig(testRoot).impactRanking.weights.verification > defaults.weights.verification);
+
+    const archiveRoot = fixture();
+    writeFixtureJson(archiveRoot, 'dotdotgod.config.json', { impactRanking: { preset: 'archive-aware' } });
+    assert(Math.abs(readMemoryConfig(archiveRoot).impactRanking.weights.archivePenalty) < Math.abs(defaults.weights.archivePenalty));
+
+    const partialRoot = fixture();
+    writeFixtureJson(partialRoot, 'dotdotgod.config.json', {
+      impactRanking: {
+        preset: 'docs-first',
+        weights: { semantic: 7 },
+        relationWeights: { imports: 9 },
+        traceabilityBoosts: { implemented_by: 33 },
+        ppr: { enabled: false },
+        semantic: { threshold: 0.4, topKPerFile: 3 },
+      },
+    });
+    const partial = readMemoryConfig(partialRoot).impactRanking;
+    assert.equal(partial.weights.semantic, 7);
+    assert.equal(partial.weights.traceability, 35);
+    assert.equal(partial.relationWeights.imports, 9);
+    assert.equal(partial.relationWeights.tests, defaults.relationWeights.tests);
+    assert.equal(partial.traceabilityBoosts.implemented_by, 33);
+    assert.equal(partial.traceabilityBoosts.verified_by, defaults.traceabilityBoosts.verified_by);
+    assert.equal(partial.ppr.enabled, false);
+    assert.equal(partial.semantic.threshold, 0.4);
+
+    const invalidData = {
+      impactRanking: {
+        preset: 'wild',
+        weights: { unknown: 1 },
+        relationWeights: { unknown: 1 },
+        traceabilityBoosts: { unknown: 1 },
+        verificationBoosts: { verified_by: 'bad' },
+        ppr: { enabled: 'yes', damping: 2, iterations: 0, tolerance: 2 },
+        semantic: { enabled: 'yes', threshold: 2, topKPerFile: 21, includeArchiveBodies: 'yes', signals: ['embedding'] },
+      },
+    };
+    const errors = validateMemoryConfigData(invalidData, fixture());
+    const codes = new Set(errors.map((error) => error.code));
+    for (const code of ['IMPACT_RANKING_CONFIG_INVALID_PRESET', 'IMPACT_RANKING_CONFIG_INVALID_WEIGHTS', 'IMPACT_RANKING_CONFIG_INVALID_RELATION_WEIGHTS', 'IMPACT_RANKING_CONFIG_INVALID_BOOSTS', 'IMPACT_RANKING_CONFIG_INVALID_PPR', 'IMPACT_RANKING_CONFIG_INVALID_SEMANTIC']) {
+      assert(codes.has(code), `missing ${code}`);
+    }
+
+    const fallbackRoot = fixture();
+    writeFixtureJson(fallbackRoot, 'dotdotgod.config.json', invalidData);
+    const fallback = readMemoryConfig(fallbackRoot);
+    assert(fallback.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_PRESET'));
+    assert.equal(fallback.impactRanking.preset, 'balanced');
+  });
+
+  it('creates deterministic semantic edges for lexical, symbol, command, package, threshold, top-k, and archive rules', () => {
+    const root = fixture();
+    writeImpactRankingFixture(root);
+    const index = buildIndex(root);
+    const graph = index.graph;
+
+    const pathEdge = semanticEdges(graph, 'file:packages/policy-auditor/notes.mjs', 'semantic_similarity').find((edge) => edge.target === 'file:docs/arch/POLICY_AUDITOR_OVERVIEW.md');
+    assert(pathEdge);
+    assert.equal(pathEdge.confidence, 'INFERRED_LEXICAL_SEMANTIC');
+    assert.equal(typeof pathEdge.score, 'number');
+    assert(pathEdge.matchedTerms.includes('policy'));
+    assert(pathEdge.signals.includes('path') || pathEdge.signals.includes('filename'));
+
+    const symbolEdge = semanticEdges(graph, 'file:packages/route-planner/index.mjs', 'mentions_symbol').find((edge) => edge.matchedTerms.includes('route') && edge.matchedTerms.includes('planner'));
+    assert(symbolEdge);
+    assert(symbolEdge.signals.includes('symbol') || symbolEdge.signals.includes('export'));
+
+    const commandEdge = semanticEdges(graph, 'file:packages/route-cli/command.mjs', 'mentions_command').find((edge) => edge.target === 'file:docs/arch/ROUTE_PLANNER_COMMAND.md');
+    assert(commandEdge);
+    assert(commandEdge.signals.includes('command') || commandEdge.signals.includes('event'));
+
+    const packageEdge = semanticEdges(graph, 'file:packages/route-planner/package.json', 'mentions_package').find((edge) => edge.target === 'file:docs/arch/ROUTE_PLANNER_PACKAGE.md');
+    assert(packageEdge);
+    assert(packageEdge.signals.includes('package'));
+
+    const thresholdRoot = fixture();
+    writeImpactRankingFixture(thresholdRoot);
+    writeFixtureJson(thresholdRoot, 'dotdotgod.config.json', { impactRanking: { semantic: { threshold: 0.75 } } });
+    const thresholdIndex = buildIndex(thresholdRoot);
+    assert(!semanticEdges(thresholdIndex.graph, 'file:packages/policy-auditor/notes.mjs').some((edge) => edge.target === 'file:docs/arch/POLICY_AUDITOR_OVERVIEW.md'));
+
+    const topKRoot = fixture();
+    writeImpactRankingFixture(topKRoot);
+    writeFixtureJson(topKRoot, 'dotdotgod.config.json', { impactRanking: { semantic: { topKPerFile: 1 } } });
+    const topKIndex = buildIndex(topKRoot);
+    assert.equal(semanticEdges(topKIndex.graph, 'file:packages/policy-auditor/notes.mjs').length, 1);
+
+    const archiveSource = join(root, 'packages/route-planner/index.mjs');
+    const archiveDoc = join(root, 'docs/archive/plan/route-planner-old/README.md');
+    const archiveExcluded = addDeterministicSemanticEdges(buildGraph(root, [archiveSource, archiveDoc], defaultMemoryConfig()), defaultMemoryConfig());
+    assert(!semanticEdges(archiveExcluded, 'file:packages/route-planner/index.mjs').some((edge) => edge.target === 'file:docs/archive/plan/route-planner-old/README.md'));
+
+    const includeArchive = cloneConfigWithImpactRanking({ semantic: { includeArchiveBodies: true } });
+    const archiveIncluded = addDeterministicSemanticEdges(buildGraph(root, [archiveSource, archiveDoc], includeArchive), includeArchive);
+    assert(semanticEdges(archiveIncluded, 'file:packages/route-planner/index.mjs').some((edge) => edge.target === 'file:docs/archive/plan/route-planner-old/README.md'));
+  });
+
+  it('scores seed, traceability, verification, proximity, semantic, memory, archive penalty, and score caps', () => {
+    const root = fixture();
+    writeImpactRankingFixture(root);
+    const report = buildImpactReport(buildIndex(root), 'packages/route-planner/index.mjs', { related: 50 });
+
+    const seed = itemById(report, 'file:packages/route-planner/index.mjs');
+    assert.equal(rankOf(report, seed.id), 0);
+    assert.equal(seed.impactScore, 100);
+    assert.equal(seed.scoreBreakdown.seed, 100);
+
+    const spec = itemById(report, 'file:docs/spec/ROUTE_PLANNER.md');
+    const semanticOnly = itemById(report, 'file:docs/arch/ROUTE_PLANNER_SEMANTIC.md');
+    assert(spec);
+    assert(semanticOnly);
+    assert(spec.scoreBreakdown.traceability > 0);
+    assert(spec.scoreBreakdown.memoryPolicy > semanticOnly.scoreBreakdown.memoryPolicy);
+    assert(semanticOnly.scoreBreakdown.semantic > 0);
+    assert(rankOf(report, spec.id) < rankOf(report, semanticOnly.id));
+
+    const verifiedTest = itemById(report, 'file:packages/route-planner/route-planner.test.mjs');
+    assert(verifiedTest.scoreBreakdown.verification > 0);
+
+    const helper = itemById(report, 'file:packages/route-planner/helper.mjs');
+    assert(helper.scoreBreakdown.proximity > 0);
+
+    const archivePath = 'docs/archive/plan/route-planner-old/README.md';
+    const archiveIndex = {
+      memoryConfig: defaultMemoryConfig(),
+      graph: {
+        nodes: [
+          { id: 'file:packages/archive-seed.mjs', type: 'file', path: 'packages/archive-seed.mjs' },
+          { id: `file:${archivePath}`, type: 'file', path: archivePath, retrieval: { area: 'archive-body', priority: 20, freshness: 'stale', includeBodiesByDefault: false, signals: [] } },
+        ],
+        edges: [{ source: 'file:packages/archive-seed.mjs', target: `file:${archivePath}`, relation: 'semantic_similarity' }],
+      },
+    };
+    const archiveItem = itemById(buildImpactReport(archiveIndex, 'packages/archive-seed.mjs'), `file:${archivePath}`);
+    assert(archiveItem.scoreBreakdown.archivePenalty < 0);
+    assert(archiveItem.scoreBreakdown.freshness < 0);
+
+    const capIndex = {
+      memoryConfig: defaultMemoryConfig(),
+      graph: {
+        nodes: [
+          { id: 'file:packages/cap/seed.mjs', type: 'file', path: 'packages/cap/seed.mjs' },
+          { id: 'file:docs/spec/CAP.md', type: 'file', path: 'docs/spec/CAP.md', retrieval: { area: 'spec', priority: 100, freshness: 'fresh', includeBodiesByDefault: true, signals: [] } },
+        ],
+        edges: ['implemented_by', 'verified_by', 'related_doc', 'verification_command', 'semantic_similarity', 'imports'].map((relation) => ({ source: 'file:packages/cap/seed.mjs', target: 'file:docs/spec/CAP.md', relation })),
+      },
+    };
+    const capped = itemById(buildImpactReport(capIndex, 'packages/cap/seed.mjs'), 'file:docs/spec/CAP.md');
+    assert.equal(capped.impactScore, 100);
+    assert.equal(rankOf(buildImpactReport(capIndex, 'packages/cap/seed.mjs'), 'file:packages/cap/seed.mjs'), 0);
+  });
+
+  it('uses changed-file PPR, disabled-PPR fallback, relation weights, and grouping compatibility', () => {
+    const nodes = [
+      { id: 'file:packages/ppr/seed.mjs', type: 'file', path: 'packages/ppr/seed.mjs' },
+      { id: 'file:docs/spec/PPR_STRONG.md', type: 'file', path: 'docs/spec/PPR_STRONG.md', retrieval: { area: 'spec', priority: 80, freshness: 'fresh', includeBodiesByDefault: true, signals: [] } },
+      { id: 'file:docs/arch/PPR_WEAK.md', type: 'file', path: 'docs/arch/PPR_WEAK.md', retrieval: { area: 'architecture', priority: 75, freshness: 'fresh', includeBodiesByDefault: true, signals: [] } },
+    ];
+    const edges = [
+      { source: 'file:packages/ppr/seed.mjs', target: 'file:docs/spec/PPR_STRONG.md', relation: 'implemented_by' },
+      { source: 'file:packages/ppr/seed.mjs', target: 'file:docs/arch/PPR_WEAK.md', relation: 'mentions_package' },
+    ];
+    const report = buildImpactReport({ memoryConfig: defaultMemoryConfig(), graph: { nodes, edges } }, 'packages/ppr/seed.mjs');
+    assert(itemById(report, 'file:docs/spec/PPR_STRONG.md').scoreBreakdown.ppr > itemById(report, 'file:docs/arch/PPR_WEAK.md').scoreBreakdown.ppr);
+
+    const disabledConfig = cloneConfigWithImpactRanking({ ppr: { enabled: false } });
+    const disabled = buildImpactReport({ memoryConfig: disabledConfig, graph: { nodes, edges } }, 'packages/ppr/seed.mjs');
+    assert.equal(disabled.ranking.method, 'policy-score');
+    assert(disabled.related.filter((item) => item.id !== 'file:packages/ppr/seed.mjs').every((item) => item.scoreBreakdown.ppr === 0));
+
+    const weightedConfig = cloneConfigWithImpactRanking({ relationWeights: { implemented_by: 1, mentions_package: 20 } });
+    const weighted = buildImpactReport({ memoryConfig: weightedConfig, graph: { nodes, edges } }, 'packages/ppr/seed.mjs');
+    assert(itemById(weighted, 'file:docs/arch/PPR_WEAK.md').scoreBreakdown.ppr > itemById(weighted, 'file:docs/spec/PPR_STRONG.md').scoreBreakdown.ppr);
+    assert.equal(rankOf(weighted, 'file:packages/ppr/seed.mjs'), 0);
+
+    const root = fixture();
+    writeImpactRankingFixture(root);
+    const index = buildIndex(root);
+    const sourceReport = buildImpactReport(index, 'packages/route-planner/index.mjs', { related: 50 });
+    assert(sourceReport.groups.docs.items.some((item) => item.id === 'file:docs/spec/ROUTE_PLANNER.md'));
+    assert(sourceReport.groups.tests.items.some((item) => item.id === 'file:packages/route-planner/route-planner.test.mjs'));
+    assert(sourceReport.groups.commands.items.some((item) => item.id === 'command:route-planner'));
+    assert(sourceReport.groups.events.items.some((item) => item.id === 'event:route-planner:event'));
+    assert(sourceReport.groups.symbols.items.some((item) => item.id === 'export:packages/route-planner/index.mjs#resolveRoutePlannerTools'));
+    assert.equal(typeof sourceReport.omittedRelated, 'number');
+
+    const packageReport = buildImpactReport(index, 'packages/route-planner/package.json', { related: 50 });
+    assert(packageReport.groups.packageResources.items.some((item) => item.id.startsWith('package_resource:packages/route-planner/package.json#')));
   });
 });
 
@@ -203,8 +490,11 @@ describe('CLI index and graph helpers', () => {
     assert.equal(shouldIndexPath('Dockerfile'), true);
   });
 
-  it('builds graph nodes and bounded neighborhoods', () => {
+  it('builds graph nodes, semantic edges, scores, and bounded neighborhoods', () => {
     const root = fixture();
+    mkdirSync(join(root, 'packages/pi/extensions/plan-mode'), { recursive: true });
+    writeFileSync(join(root, 'docs/spec/PLAN_MODE.md'), '# Plan Mode Tool Settings\n\n## Plan Mode Tools\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/pi/extensions/plan-mode/utils.ts"],\n  "verifiedBy": ["packages/pi/test/plan-mode-utils.test.ts"],\n  "relatedDocs": ["docs/spec/FEATURE.md"],\n  "verificationCommands": ["pnpm --filter @dotdotgod/pi test"]\n}\n```\n');
+    writeFileSync(join(root, 'packages/pi/extensions/plan-mode/utils.ts'), 'export function resolvePlanModeTools() { return ["read"]; }\n');
     const index = buildIndex(root);
     const summary = graphSummary(index);
     assert.equal(index.schemaVersion, CACHE_VERSION);
@@ -219,6 +509,7 @@ describe('CLI index and graph helpers', () => {
     assert.equal(summary.byRelation.includes_resource >= 1, true);
     assert.equal(summary.byRelation.routes_to >= 1, true);
     assert.equal(summary.byRelation.belongs_to_area >= 1, true);
+    assert.equal(summary.byRelation.semantic_similarity >= 1 || summary.byRelation.mentions_symbol >= 1, true);
     assert.equal(summary.byType.test >= 1, true);
     assert(index.graph.nodes.some((node) => node.id === 'command:load'));
     assert(index.graph.nodes.some((node) => node.id === 'memory_area:spec' && node.role === 'behavior-truth'));
@@ -235,8 +526,13 @@ describe('CLI index and graph helpers', () => {
     assert(impact.groups.commands.items.some((item) => item.id === 'command:load'));
     assert(impact.groups.tests.items.some((item) => item.id === 'file:packages/tool/index.test.mjs'));
     assert(impact.related.some((item) => item.id === 'file:packages/tool/index.mjs' && item.retrieval?.signals.includes('reason:changed-file')));
+    assert.equal(impact.ranking.method, 'personalized-pagerank+policy');
+    assert(impact.related.every((item) => typeof item.impactScore === 'number' && item.scoreBreakdown));
     assert(impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/FEATURE.md'));
     assert(impact.groups.tests.items.some((item) => item.id === 'file:packages/tool/index.test.mjs'));
+    const semanticImpact = buildImpactReport(index, 'packages/pi/extensions/plan-mode/utils.ts');
+    assert(semanticImpact.related.some((item) => item.id === 'file:docs/spec/PLAN_MODE.md' && (item.reasons.includes('incoming:semantic_similarity') || item.reasons.includes('incoming:mentions_symbol') || item.reasons.includes('incoming:implemented_by'))));
+    assert(semanticImpact.related.some((item) => item.scoreBreakdown?.semantic > 0 || item.scoreBreakdown?.traceability > 0));
     const communities = buildCommunities(index, { communities: 3, items: 3 });
     assert(communities.total > 0);
     assert(['leiden', 'deterministic-domain-grouping'].includes(communities.method));
