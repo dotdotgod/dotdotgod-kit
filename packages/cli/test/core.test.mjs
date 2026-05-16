@@ -12,6 +12,7 @@ import {
   buildImpactReport,
   buildMemoryAreas,
   buildIndex,
+  buildCompactImpactReport,
   collectIndexFiles,
   defaultMemoryConfig,
   detectCommandGuidance,
@@ -382,6 +383,13 @@ describe('impact ranking unit coverage', () => {
     assert(semanticOnly.scoreBreakdown.semantic > 0);
     assert(rankOf(report, spec.id) < rankOf(report, semanticOnly.id));
 
+    const compact = buildCompactImpactReport(report);
+    assert.equal(compact.compact, true);
+    assert.equal(compact.related.length <= 10, true);
+    assert.equal(compact.ranking.weights, undefined);
+    assert(compact.groups.docs.items.some((item) => item.id === 'file:docs/spec/ROUTE_PLANNER.md'));
+    assert.equal(compact.quality.semanticOnlyTop10 <= 5, true);
+
     const verifiedTest = itemById(report, 'file:packages/route-planner/route-planner.test.mjs');
     assert(verifiedTest.scoreBreakdown.verification > 0);
 
@@ -440,6 +448,29 @@ describe('impact ranking unit coverage', () => {
     const weighted = buildImpactReport({ memoryConfig: weightedConfig, graph: { nodes, edges } }, 'packages/ppr/seed.mjs');
     assert(itemById(weighted, 'file:docs/arch/PPR_WEAK.md').scoreBreakdown.ppr > itemById(weighted, 'file:docs/spec/PPR_STRONG.md').scoreBreakdown.ppr);
     assert.equal(rankOf(weighted, 'file:packages/ppr/seed.mjs'), 0);
+
+    const noisyNodes = [
+      { id: 'file:packages/noisy/seed.mjs', type: 'file', path: 'packages/noisy/seed.mjs' },
+      { id: 'file:docs/spec/NOISY.md', type: 'file', path: 'docs/spec/NOISY.md', retrieval: { area: 'spec', priority: 80, freshness: 'fresh', includeBodiesByDefault: true, signals: [] } },
+      { id: 'file:docs/arch/NOISY_ARCH.md', type: 'file', path: 'docs/arch/NOISY_ARCH.md', retrieval: { area: 'architecture', priority: 75, freshness: 'fresh', includeBodiesByDefault: true, signals: [] } },
+      { id: 'file:docs/test/NOISY_TEST.md', type: 'file', path: 'docs/test/NOISY_TEST.md', retrieval: { area: 'test', priority: 70, freshness: 'fresh', includeBodiesByDefault: true, signals: [] } },
+      ...['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'].map((name) => ({ id: `file:docs/arch/NOISY_${name}.md`, type: 'file', path: `docs/arch/NOISY_${name}.md`, retrieval: { area: 'architecture', priority: 65, freshness: 'fresh', includeBodiesByDefault: true, signals: [] } })),
+      { id: 'file:packages/noisy/seed.test.mjs', type: 'file', path: 'packages/noisy/seed.test.mjs' },
+      ...['a', 'b', 'c', 'd', 'e'].map((name) => ({ id: `import:${name}`, type: 'import', specifier: name })),
+    ];
+    const noisyEdges = [
+      { source: 'file:packages/noisy/seed.mjs', target: 'file:docs/spec/NOISY.md', relation: 'related_doc' },
+      { source: 'file:packages/noisy/seed.mjs', target: 'file:docs/arch/NOISY_ARCH.md', relation: 'links_to' },
+      { source: 'file:packages/noisy/seed.mjs', target: 'file:docs/test/NOISY_TEST.md', relation: 'verified_by' },
+      ...['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'].map((name) => ({ source: 'file:packages/noisy/seed.mjs', target: `file:docs/arch/NOISY_${name}.md`, relation: 'links_to' })),
+      { source: 'file:packages/noisy/seed.mjs', target: 'file:packages/noisy/seed.test.mjs', relation: 'verified_by' },
+      ...['a', 'b', 'c', 'd', 'e'].map((name) => ({ source: 'file:packages/noisy/seed.mjs', target: `import:${name}`, relation: 'imports' })),
+    ];
+    const noisy = buildImpactReport({ memoryConfig: defaultMemoryConfig(), graph: { nodes: noisyNodes, edges: noisyEdges } }, 'packages/noisy/seed.mjs', { related: 10 });
+    const firstPageNoise = noisy.related.filter((item) => item.id !== 'file:packages/noisy/seed.mjs').slice(0, 10);
+    assert.equal(firstPageNoise.filter((item) => item.type === 'import').length <= 2, true);
+    const importCRank = rankOf(noisy, 'import:c');
+    assert(importCRank === -1 || rankOf(noisy, 'file:docs/spec/NOISY.md') < importCRank);
 
     const root = fixture();
     writeImpactRankingFixture(root);

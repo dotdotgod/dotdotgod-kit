@@ -9,7 +9,8 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `TRACEABILITY_CONFIG.md`: configurable traceability enforcement validation smoke checks.
 - `CONTEXT_MEASUREMENT.md`: context measurement commands and runtime context debug smoke checks.
 - `COMMAND_GUIDANCE.md`: environment-aware load-snapshot command guidance checks.
-- `IMPACT_RANKING_CONFIG.md`: configurable graph impact ranking and semantic-edge checks.
+- `IMPACT_RANKING_CONFIG.md`: configurable graph impact ranking, compact output, semantic-edge, and selection-noise checks.
+- `GRAPH_IMPACT_QUALITY.md`: graph impact quality scoring script, metrics, and baseline comparison checks.
 - `CLI_INTERFACE.md`: baseline CLI help/version and invalid invocation checks.
 - `MANUAL_SMOKE.md`: adapter, Plan Mode, initializer, and publishing smoke checks.
 
@@ -57,6 +58,8 @@ Run CLI graph/cache smoke directly:
 node packages/cli/bin/dotdotgod.mjs --help
 node packages/cli/bin/dotdotgod.mjs --version
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --json
+node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --compact --json
+node scripts/evaluate-graph-impact.mjs . --json
 node packages/cli/bin/dotdotgod.mjs graph communities . --json
 node packages/cli/bin/dotdotgod.mjs load-snapshot . --json
 node packages/cli/bin/dotdotgod.mjs status . --json

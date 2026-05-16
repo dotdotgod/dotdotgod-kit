@@ -19,6 +19,9 @@ Verify configurable `graph impact` ranking, score breakdown output, deterministi
 | Score breakdown | Seed, traceability, verification, proximity, semantic, memory priority/freshness, archive penalty, and `0..100` score cap are asserted separately. |
 | PPR | Stronger weighted paths get higher PPR contribution; disabled PPR reports `policy-score`; relation-weight overrides affect PPR contribution predictably. |
 | Compatibility | Grouped impact buckets, `omittedRelated`, and deprecated `graph query` additive fields remain present. |
+| Compact output | `graph impact --compact --json` returns compact grouped items, no raw ranking weights, and a smaller payload than raw JSON. |
+| Selection noise control | First-page results cap low-actionability metadata nodes and prefer curated/test/proximity candidates over pure semantic-only matches. |
+| Quality tooling | `scripts/evaluate-graph-impact.mjs` reports P@5, P@10, must Recall@10, MRR, nDCG@10, runtime context, and lexical/snapshot baselines. |
 
 ## Automated E2E Coverage
 
@@ -44,8 +47,10 @@ Verify configurable `graph impact` ranking, score breakdown output, deterministi
 ```bash
 pnpm --filter @dotdotgod/cli test
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json
-node packages/cli/bin/dotdotgod.mjs graph query . --changed packages/cli/src/core.mjs --json
+node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --compact --json
+node packages/cli/bin/dotdotgod.mjs graph query . --changed packages/cli/src/core.mjs --compact --json
 node scripts/measure-context.mjs --markdown --impact-changed packages/cli/src/core.mjs
+node scripts/evaluate-graph-impact.mjs . --json
 node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
 ```
 
@@ -58,6 +63,8 @@ For `graph impact --json`, confirm:
 - Related items include numeric `impactScore` and structured `scoreBreakdown`.
 - The changed file is first with `impactScore: 100` and `scoreBreakdown.seed: 100`.
 - Curated traceability reasons outrank comparable semantic-only hints.
+- Compact JSON omits raw `ranking.weights` and keeps `related.length <= 10` by default.
+- Low-actionability import/package/dependency metadata does not dominate the first page when actionable files/docs/tests exist.
 - Semantic reasons appear only when deterministic lexical matches pass the configured controls.
 - Archive body items are absent by default and carry stale/archive penalties when explicitly indexed.
 

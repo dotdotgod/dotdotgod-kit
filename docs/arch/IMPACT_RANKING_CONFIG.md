@@ -17,8 +17,9 @@ Invalid config is reported by `validate`, but runtime graph commands use default
 3. Collect direct neighbors and limited expanded neighbors from traceability and semantic relations.
 4. Compute changed-file Personalized PageRank over weighted graph edges.
 5. Score each related item with `scoreBreakdown`.
-6. Sort by `impactScore`, keeping the changed file first.
-7. Preserve bounded grouped output and omitted counts.
+6. Sort by selection score, keeping the changed file first while preserving each item's explainable `impactScore`.
+7. Demote pure semantic-only matches and cap low-actionability metadata nodes on the first page when actionable files/docs/tests exist.
+8. Preserve bounded grouped output and omitted counts.
 
 ## Score Components
 
@@ -26,7 +27,7 @@ Invalid config is reported by `validate`, but runtime graph commands use default
 - `traceability`: curated docs links such as `implemented_by` and `verified_by`.
 - `memoryPolicy`: normalized memory-area retrieval priority.
 - `verification`: tests and verification commands.
-- `proximity`: imports, same-directory, shared imports, routes, commands, and events.
+- `proximity`: imports, links, same-directory, shared imports, routes, commands, and events.
 - `semantic`: deterministic lexical/name/heading/symbol/command/event/package hints.
 - `freshness`: fresh memory boost or stale memory penalty.
 - `archivePenalty`: protects historical archive bodies from default over-retrieval.
@@ -51,13 +52,20 @@ Personalized PageRank is seeded by the changed file and runs with bounded iterat
 
 PPR is normalized against candidate results, not the entire graph, then capped by the configured `ppr` score weight.
 
+## Compact Output
+
+`--compact` builds an agent-facing view from the same ranked report. It keeps status/cache metadata and short grouped items, but omits raw ranking weights, long retrieval signal lists, and verbose node metadata.
+
+Raw `graph impact --json` remains the diagnostic compatibility shape.
+
 ## Compatibility
 
 The feature is additive:
 
-- existing `related` and `impact.groups` remain
-- `ranking`, `impactScore`, and `scoreBreakdown` are new fields
-- deprecated `graph query` receives the same fields
+- existing raw `related` and `impact.groups` remain by default
+- `ranking`, `impactScore`, and `scoreBreakdown` stay available on raw items
+- `--compact` is opt-in and returns compact top-level `related` plus grouped compact items
+- deprecated `graph query` receives the same raw or compact behavior
 - projects without config keep the built-in `balanced` preset
 
 ## Traceability Discipline

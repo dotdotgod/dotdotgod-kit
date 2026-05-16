@@ -13,7 +13,8 @@ Verify baseline `dotdotgod` command discovery, version reporting, subcommand hel
 - `validate`, `index`, `status`, `load-snapshot`, `graph`, `graph impact`, `graph query`, and `graph communities` expose help without running command side effects.
 - Unknown commands and invalid options print diagnostics to stderr and exit `2`.
 - `graph impact` and deprecated `graph query` require `--changed <path>` and do not create `.dotdotgod/` when the argument is missing.
-- JSON missing-argument output uses `ok: false` with `error.code: "MISSING_CHANGED"`.
+- JSON missing-argument output uses `ok: false` with `error.code: "MISSING_CHANGED"`, including when `--compact` is present.
+- Compact graph impact output remains opt-in and smaller than raw JSON.
 
 ## Smoke Commands
 
@@ -25,4 +26,5 @@ node packages/cli/bin/dotdotgod.mjs validate --help
 node packages/cli/bin/dotdotgod.mjs graph impact --help
 node packages/cli/bin/dotdotgod.mjs graph impact . --json
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json
+node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --compact --json
 ```

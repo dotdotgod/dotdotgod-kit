@@ -17,6 +17,8 @@
     "verify:cache": "node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory && node packages/cli/bin/dotdotgod.mjs index . --json && node packages/cli/bin/dotdotgod.mjs status . --json",
     "measure:context": "node scripts/measure-context.mjs --markdown",
     "measure:context:json": "node scripts/measure-context.mjs --json",
+    "measure:graph-impact": "node scripts/evaluate-graph-impact.mjs . --markdown",
+    "measure:graph-impact:json": "node scripts/evaluate-graph-impact.mjs . --json",
     "pack:dry-run:packages": "pnpm -r --if-present run pack:dry-run",
     "pack:dry-run": "pnpm run verify:generated && pnpm run pack:dry-run:packages",
     "publish:all": "pnpm --filter @dotdotgod/cli publish --access public && pnpm --filter @dotdotgod/pi publish --access public && pnpm --filter @dotdotgod/claude-code publish --access public && pnpm --filter @dotdotgod/codex publish --access public",

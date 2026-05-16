@@ -90,6 +90,9 @@ New package, command, and tool names should use dotdotgod and `dd` prefixes.
     "packages/shared/workflows/init.md",
     "packages/shared/workflows/load.md",
     "packages/shared/workflows/plan.md",
+    "packages/claude-code/commands/dd/load.md",
+    "packages/claude-code/skills/project-load/SKILL.md",
+    "packages/codex/skills/project-load/SKILL.md",
     "packages/claude-code/.claude-plugin/plugin.json",
     "packages/codex/.codex-plugin/plugin.json",
     "scripts/generate-adapters.mjs"

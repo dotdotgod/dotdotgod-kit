@@ -23,6 +23,7 @@ dotdotgod status .
 dotdotgod index .
 dotdotgod load-snapshot .
 dotdotgod graph impact . --changed <path>
+dotdotgod graph impact . --changed <path> --compact
 dotdotgod graph communities .
 ```
 
@@ -34,7 +35,7 @@ Memory-aware graph metadata is deterministic and path-based: files under `docs/s
 
 `--help`, `-h`, and `help` print usage to stdout; `--version`, `-v`, and `version` print the package version. Command-specific help is available with `dotdotgod <command> --help`, including nested graph commands such as `dotdotgod graph impact --help`.
 
-`load-snapshot` returns bounded `memoryAreas` summaries alongside cache, graph, community, and archive-policy metadata. `graph impact` returns a bounded impact report grouped into files, docs, tests, commands, events, package resources, and symbols, with related nodes annotated by retrieval priority and reason-derived signals. `graph impact` and the deprecated `graph query` alias require `--changed <path>` so impact ranking has a seed file. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
+`load-snapshot` returns bounded `memoryAreas` summaries alongside cache, graph, community, and archive-policy metadata. `graph impact` returns a bounded impact report grouped into files, docs, tests, commands, events, package resources, and symbols, with related nodes annotated by retrieval priority and reason-derived signals. Use `graph impact --compact` for a smaller agent-facing grouped summary; use raw `--json` for diagnostics. `graph impact` and the deprecated `graph query` alias require `--changed <path>` so impact ranking has a seed file. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
 
 ## Indexing Scope
 
