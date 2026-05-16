@@ -30,18 +30,12 @@ function commandUsage(command = 'root') {
     case 'graph':
       return `Usage:
   dotdotgod graph impact <root> --changed <path> [--compact] [--json]
-  dotdotgod graph query <root> --changed <path> [--compact] [--json]  # deprecated alias
   dotdotgod graph communities <root> [--json]`;
     case 'graph impact':
       return `Usage:
   dotdotgod graph impact <root> --changed <path> [--compact] [--json]
 
 Ranks nodes related to a changed file. <root> is the project root; --changed is a project-relative file path. Use --compact for an agent-facing grouped summary.`;
-    case 'graph query':
-      return `Usage:
-  dotdotgod graph query <root> --changed <path> [--compact] [--json]
-
-Deprecated alias for dotdotgod graph impact.`;
     case 'graph communities':
       return `Usage:
   dotdotgod graph communities <root> [--json]`;
@@ -55,7 +49,6 @@ Deprecated alias for dotdotgod graph impact.`;
   dotdotgod status <root> [--json]
   dotdotgod load-snapshot <root> [--json]
   dotdotgod graph impact <root> --changed <path> [--compact] [--json]
-  dotdotgod graph query <root> --changed <path> [--compact] [--json]  # deprecated alias
   dotdotgod graph communities <root> [--json]`;
   }
 }
@@ -1758,9 +1751,9 @@ function formatCompactImpactGroup(name, group) {
   ];
 }
 
-function formatCompactImpactOutput(payload, impact, sub) {
+function formatCompactImpactOutput(payload, impact) {
   const refreshNote = payload.metadata.cacheRefreshed ? ', refreshed' : '';
-  const lines = [`graph impact compact: ${impact.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${payload.status.status}${refreshNote} index)${sub === 'query' ? ' — graph query is deprecated; use graph impact instead.' : ''}`];
+  const lines = [`graph impact compact: ${impact.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${payload.status.status}${refreshNote} index)`];
   for (const name of ['docs', 'tests', 'files', 'commands', 'events', 'packageResources', 'symbols']) lines.push(...formatCompactImpactGroup(name, impact.groups[name]));
   return lines.join('\n');
 }
@@ -2035,27 +2028,27 @@ export function parseGraphOptions(argv) {
 
 export function runGraph(argv) {
   const sub = argv[0];
-  const isImpact = sub === 'impact' || sub === 'query';
-  if (!['impact', 'query', 'communities'].includes(sub)) usage(sub ? `Unknown graph command: ${sub}` : 'Missing graph command.', 'graph');
+  const isImpact = sub === 'impact';
+  if (!['impact', 'communities'].includes(sub)) usage(sub ? `Unknown graph command: ${sub}` : 'Missing graph command.', 'graph');
   const options = parseGraphOptions(argv.slice(1));
   if (isImpact && !options.changed) {
     const message = 'Missing required option: --changed <path>. Run `dotdotgod graph impact <root> --changed <path>`.';
     if (options.json) {
-      console.log(JSON.stringify({ ok: false, command: 'graph impact', deprecatedAliasUsed: sub === 'query' || undefined, compact: options.compact || undefined, root: options.root, error: { code: 'MISSING_CHANGED', message }, usage: commandUsage(sub === 'query' ? 'graph query' : 'graph impact') }, null, 2));
+      console.log(JSON.stringify({ ok: false, command: 'graph impact', compact: options.compact || undefined, root: options.root, error: { code: 'MISSING_CHANGED', message }, usage: commandUsage('graph impact') }, null, 2));
       process.exit(2);
     }
-    usage(message, sub === 'query' ? 'graph query' : 'graph impact');
+    usage(message, 'graph impact');
   }
   const { status, index, metadata } = readFreshIndex(options.root);
   const rawImpact = isImpact ? buildImpactReport(index, options.changed) : undefined;
   const impact = isImpact && options.compact ? buildCompactImpactReport(rawImpact) : rawImpact;
   const payload = isImpact
-    ? { ok: status.ok, command: 'graph impact', deprecatedAliasUsed: sub === 'query' || undefined, compact: options.compact || undefined, root: options.root, status, metadata, changed: options.changed, related: impact.related, impact }
+    ? { ok: status.ok, command: 'graph impact', compact: options.compact || undefined, root: options.root, status, metadata, changed: options.changed, related: impact.related, impact }
     : { ok: status.ok, command: 'graph communities', root: options.root, status, metadata, graph: graphSummary(index), communities: buildCommunities(index) };
   const refreshNote = metadata.cacheRefreshed ? ', refreshed' : '';
   if (options.json) console.log(JSON.stringify(payload, null, 2));
-  else if (isImpact && options.compact) console.log(formatCompactImpactOutput(payload, impact, sub));
-  else if (isImpact) console.log(`graph impact: ${payload.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${status.status}${refreshNote} index)${sub === 'query' ? ' — graph query is deprecated; use graph impact instead.' : ''}`);
+  else if (isImpact && options.compact) console.log(formatCompactImpactOutput(payload, impact));
+  else if (isImpact) console.log(`graph impact: ${payload.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${status.status}${refreshNote} index)`);
   else console.log(`graph communities: ${payload.communities.communities.length}/${payload.communities.total} shown, ${payload.communities.omitted} omitted (${status.status}${refreshNote} index)`);
 }
 

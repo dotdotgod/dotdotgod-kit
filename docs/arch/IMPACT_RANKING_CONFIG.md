@@ -65,7 +65,7 @@ The feature is additive:
 - existing raw `related` and `impact.groups` remain by default
 - `ranking`, `impactScore`, and `scoreBreakdown` stay available on raw items
 - `--compact` is opt-in and returns compact top-level `related` plus grouped compact items
-- deprecated `graph query` receives the same raw or compact behavior
+- removed aliases such as `graph query` are rejected as unknown graph commands
 - projects without config keep the built-in `balanced` preset
 
 ## Traceability Discipline
