@@ -22,3 +22,10 @@ Dotdot code conventions for keeping implementation simple and maintainable.
 - Keep runtime integration explicit and local until reuse is stable.
 - Put testable logic in focused modules before adding broad framework abstractions.
 - Preserve plain-text readability: avoid dense clever code, hidden control flow, and large mixed-responsibility files.
+
+## Workspace Verification Scripts
+
+- Every workspace package that defines quality-check scripts named `syntax`, `typecheck`, `test`, `lint`, `check`, or family variants such as `test:unit` must include those checks in that package's `verify` script.
+- The root `pnpm run verify` delegates package-specific checks to package `verify` scripts after generated-resource drift and contract checks; do not rely on root `verify:types` or `verify:unit` for required coverage.
+- Keep `pack:dry-run` scripts focused on package contents. Generated-resource drift belongs in root `verify:generated` and the safe standalone root `pack:dry-run` wrapper.
+- When adding a package or a new check script, run `pnpm run verify:contract` to confirm the package `verify` contract before committing.
