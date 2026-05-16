@@ -22,6 +22,8 @@ The CLI checks the project root in order:
 
 If no config exists, or if runtime parsing finds invalid config, the CLI falls back to built-in defaults. Validation still reports config errors so agents can repair them.
 
+`dotdotgod config <root>` exposes the same resolved policy without refreshing the graph cache. `dotdotgod config init <root>` writes `dotdotgod.config.json` from the built-in defaults so a project can edit the policy intentionally. Config remains root-scoped; there is no global, user-level, or package-cascading config lookup.
+
 ## Default Compatibility
 
 The default config is equivalent to the previous hard-coded behavior:
@@ -96,4 +98,4 @@ Possible later additions:
 - a load policy enum such as `eager`, `indexed`, `targeted`, or `excluded`
 - per-command memory profiles
 - explicit archive-body opt-in command flags
-- initializer option to materialize the default config for teams that want editable policy from day one
+- initializer option to run `dotdotgod config init` for teams that want editable policy from day one

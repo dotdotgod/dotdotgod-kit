@@ -90,6 +90,9 @@ describe('dotdotgod CLI e2e', () => {
     for (const [args, pattern] of [
       [['validate', '--help'], /dotdotgod validate <root>/],
       [['index', '-h'], /dotdotgod index <root>/],
+      [['config', '--help'], /dotdotgod config init <root>/],
+      [['config', 'init', '--help'], /dotdotgod config init <root> \[--force\]/],
+      [['help', 'config', 'init'], /dotdotgod config init <root> \[--force\]/],
       [['status', 'help'], /dotdotgod status <root>/],
       [['load-snapshot', '--help'], /dotdotgod load-snapshot <root>/],
       [['graph', '--help'], /dotdotgod graph communities <root>/],
@@ -147,6 +150,56 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(missingChangedValueJson.status, 2);
     assert.equal(JSON.parse(missingChangedValueJson.stdout).error.code, 'MISSING_CHANGED');
     assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
+  });
+
+  it('shows and initializes project config safely', () => {
+    const root = createFixture();
+
+    const showDefault = json(run(['config', root, '--json']));
+    assert.equal(showDefault.command, 'config');
+    assert.equal(showDefault.source, 'default');
+    assert.equal(showDefault.path, null);
+    assert.equal(showDefault.config.impactRanking.preset, 'balanced');
+    assert(showDefault.config.areas.some((area) => area.id === 'active-plan'));
+    assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
+
+    const init = json(run(['config', 'init', root, '--json']));
+    assert.equal(init.command, 'config init');
+    assert.equal(init.created, true);
+    assert.equal(init.overwritten, false);
+    assert.equal(existsSync(join(root, 'dotdotgod.config.json')), true);
+    const initialized = JSON.parse(readFileSync(join(root, 'dotdotgod.config.json'), 'utf8'));
+    assert.equal(initialized.impactRanking.preset, 'balanced');
+    assert(initialized.memory.areas.some((area) => area.id === 'archive-body' && area.includeBodiesByDefault === false));
+
+    const showConfigured = json(run(['config', root, '--json']));
+    assert.equal(showConfigured.source, 'dotdotgod.config.json');
+    assert.match(showConfigured.path, /dotdotgod\.config\.json$/);
+
+    const refused = run(['config', 'init', root, '--json']);
+    assert.equal(refused.status, 2);
+    assert.equal(refused.stderr, '');
+    assert.equal(JSON.parse(refused.stdout).error.code, 'CONFIG_EXISTS');
+
+    const forced = json(run(['config', 'init', root, '--force', '--json']));
+    assert.equal(forced.created, false);
+    assert.equal(forced.overwritten, true);
+
+    const rcRoot = createFixture();
+    writeFileSync(join(rcRoot, '.dotdotgodrc.json'), '{}\n');
+    const rcRefused = run(['config', 'init', rcRoot, '--force', '--json']);
+    assert.equal(rcRefused.status, 2);
+    assert.equal(JSON.parse(rcRefused.stdout).error.code, 'CONFIG_RC_EXISTS');
+
+    const invalidRoot = createFixture();
+    writeFileSync(join(invalidRoot, 'dotdotgod.config.json'), '{"memory":{"areas":"bad"}}\n');
+    const invalid = run(['config', invalidRoot, '--json']);
+    assert.equal(invalid.status, 1);
+    const invalidPayload = JSON.parse(invalid.stdout);
+    assert.equal(invalidPayload.ok, false);
+    assert.equal(invalidPayload.source, 'dotdotgod.config.json');
+    assert(invalidPayload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_FIELD'));
+    assert.equal(existsSync(join(invalidRoot, '.dotdotgod/manifest.json')), false);
   });
 
   it('validates, indexes, reports status, snapshots, and graph impact results', () => {

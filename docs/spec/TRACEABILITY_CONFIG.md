@@ -8,7 +8,7 @@ The default remains unchanged: projects without config require traceability for 
 
 ## Config File
 
-Traceability policy lives in the same optional root config file used by memory-area policy:
+Traceability policy lives in the same optional root config file used by memory-area policy. Use `dotdotgod config <root>` to inspect the resolved policy or `dotdotgod config init <root>` to create an editable default config.
 
 1. `dotdotgod.config.json`
 2. `.dotdotgodrc.json`
@@ -68,7 +68,8 @@ With this config, `docs/product/FEATURE.md` and `docs/requirements/REQ.md` requi
   "relatedDocs": [
     "docs/arch/VALIDATION_ARCHITECTURE.md",
     "docs/arch/MEMORY_AREA_CONFIG.md",
-    "docs/spec/MEMORY_AREA_CONFIG.md"
+    "docs/spec/MEMORY_AREA_CONFIG.md",
+    "docs/spec/CONFIG_COMMAND.md"
   ],
   "verificationCommands": [
     "pnpm --filter @dotdotgod/cli test",

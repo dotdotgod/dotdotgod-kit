@@ -8,7 +8,7 @@ The ranking must remain explainable: every ranked item should expose an `impactS
 
 ## Config File
 
-Impact ranking policy lives in the same optional root config files as memory and traceability policy:
+Impact ranking policy lives in the same optional root config files as memory and traceability policy. Use `dotdotgod config <root>` to inspect the resolved policy or `dotdotgod config init <root>` to create an editable default config.
 
 1. `dotdotgod.config.json`
 2. `.dotdotgodrc.json`
@@ -160,7 +160,8 @@ Semantic reasons remain visible in `reasons` and `scoreBreakdown`; they are demo
     "docs/arch/IMPACT_RANKING_CONFIG.md",
     "docs/arch/VALIDATION_ARCHITECTURE.md",
     "docs/spec/MEMORY_AREA_CONFIG.md",
-    "docs/spec/TRACEABILITY_CONFIG.md"
+    "docs/spec/TRACEABILITY_CONFIG.md",
+    "docs/spec/CONFIG_COMMAND.md"
   ],
   "verificationCommands": [
     "pnpm --filter @dotdotgod/cli test",

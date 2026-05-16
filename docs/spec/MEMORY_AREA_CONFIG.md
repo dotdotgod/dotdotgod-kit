@@ -18,7 +18,7 @@ The CLI looks for one optional JSON config file at the project root:
 1. `dotdotgod.config.json`
 2. `.dotdotgodrc.json`
 
-If neither file exists, the CLI uses its built-in defaults. The zero-config default must remain compatible with the existing docs scaffold.
+If neither file exists, the CLI uses its built-in defaults. The zero-config default must remain compatible with the existing docs scaffold. Use `dotdotgod config <root>` to inspect the resolved policy, or `dotdotgod config init <root>` to materialize the defaults as `dotdotgod.config.json` for a project.
 
 ## Memory Area Fields
 
@@ -99,6 +99,7 @@ The load snapshot must not embed the full graph or stale archive bodies by defau
     "docs/test/README.md"
   ],
   "relatedDocs": [
+    "docs/spec/CONFIG_COMMAND.md",
     "docs/arch/MEMORY_AREA_CONFIG.md",
     "docs/arch/DOCS_STRUCTURE.md",
     "docs/arch/VALIDATION_ARCHITECTURE.md"

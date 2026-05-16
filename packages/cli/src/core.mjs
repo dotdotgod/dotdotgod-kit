@@ -21,6 +21,17 @@ function commandUsage(command = 'root') {
     case 'index':
       return `Usage:
   dotdotgod index <root> [--json]`;
+    case 'config':
+      return `Usage:
+  dotdotgod config <root> [--json]
+  dotdotgod config init <root> [--force] [--json]
+
+Inspect or initialize the project-level dotdotgod config file.`;
+    case 'config init':
+      return `Usage:
+  dotdotgod config init <root> [--force] [--json]
+
+Create dotdotgod.config.json with the built-in default memory, traceability, and impact ranking policy.`;
     case 'status':
       return `Usage:
   dotdotgod status <root> [--json]`;
@@ -46,6 +57,8 @@ Ranks nodes related to a changed file. <root> is the project root; --changed is 
   dotdotgod help [command]
   dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]
   dotdotgod index <root> [--json]
+  dotdotgod config <root> [--json]
+  dotdotgod config init <root> [--force] [--json]
   dotdotgod status <root> [--json]
   dotdotgod load-snapshot <root> [--json]
   dotdotgod graph impact <root> --changed <path> [--compact] [--json]
@@ -91,8 +104,10 @@ function printVersion() {
 }
 
 function helpCommandFromArgs(args) {
-  if (args[0] === 'graph' && args[1]) return `graph ${args[1]}`;
-  return args[0] ?? 'root';
+  const nonHelp = args.filter((arg) => !isHelpToken(arg));
+  if (nonHelp[0] === 'graph' && nonHelp[1]) return `graph ${nonHelp[1]}`;
+  if (nonHelp[0] === 'config' && nonHelp[1] === 'init') return 'config init';
+  return nonHelp[0] ?? 'root';
 }
 
 export function parseCommon(argv) {
@@ -869,6 +884,35 @@ export function readMemoryConfig(root = '.') {
     }
   }
   return defaultMemoryConfig();
+}
+
+function serializableMemoryArea(area) {
+  return {
+    id: area.id,
+    label: area.label,
+    paths: [...(area.paths ?? [])],
+    excludePaths: [...(area.excludePaths ?? [])],
+    scope: area.scope,
+    freshness: area.freshness,
+    role: area.role,
+    priority: area.priority,
+    includeBodiesByDefault: area.includeBodiesByDefault !== false,
+  };
+}
+
+export function defaultDotdotgodConfigData() {
+  const config = defaultMemoryConfig();
+  return {
+    memory: {
+      areas: (config.areas ?? []).map(serializableMemoryArea),
+    },
+    traceability: cloneTraceabilityPolicy(config.traceability),
+    impactRanking: cloneImpactRankingPolicy(config.impactRanking),
+  };
+}
+
+export function defaultDotdotgodConfigText() {
+  return `${JSON.stringify(defaultDotdotgodConfigData(), null, 2)}\n`;
 }
 
 function memoryConfigSummary(config) {
@@ -1971,6 +2015,82 @@ export function buildMemoryAreas(index, limits = {}) {
   return { areas: all, total: all.length, omitted: 0, method: 'configured-path-classification', source: config.source ?? 'default' };
 }
 
+function parseConfigOptions(argv, allowForce = false, usageKey = 'config') {
+  const options = { root: '.', json: false, force: false };
+  let rootSet = false;
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--json') options.json = true;
+    else if (allowForce && arg === '--force') options.force = true;
+    else if (!arg.startsWith('-') && !rootSet) {
+      options.root = arg;
+      rootSet = true;
+    } else if (!arg.startsWith('-')) usage(`Unexpected argument: ${arg}`, usageKey);
+    else usage(`Unknown option: ${arg}`, usageKey);
+  }
+  options.root = resolve(options.root);
+  return options;
+}
+
+function configSourcePath(root, source) {
+  return source && source !== 'default' ? join(root, source) : null;
+}
+
+function configInitError(options, code, message, path = null) {
+  const payload = { ok: false, command: 'config init', root: options.root, path, created: false, overwritten: false, error: { code, message } };
+  if (options.json) {
+    console.log(JSON.stringify(payload, null, 2));
+    process.exit(2);
+  }
+  console.error(message);
+  process.exit(2);
+}
+
+function formatConfigOutput(payload) {
+  const errors = payload.errors ?? [];
+  const lines = [`dotdotgod config: ${payload.source}${errors.length > 0 ? ' (invalid; using defaults)' : ''}`];
+  lines.push(`- path: ${payload.path ?? 'none'}`);
+  lines.push(`- memory areas: ${payload.config.areas.length}`);
+  lines.push(`- traceability required: ${(payload.config.traceability.required ?? []).join(', ') || 'none'}`);
+  lines.push(`- traceability exclude: ${(payload.config.traceability.exclude ?? []).join(', ') || 'none'}`);
+  lines.push(`- impact ranking preset: ${payload.config.impactRanking.preset}`);
+  if (errors.length > 0) {
+    lines.push('- errors:');
+    for (const error of errors) lines.push(`  - ${error.code} ${error.file}: ${error.message}`);
+  }
+  return lines.join('\n');
+}
+
+export function runConfig(argv) {
+  const isInit = argv[0] === 'init';
+  const options = parseConfigOptions(isInit ? argv.slice(1) : argv, isInit, isInit ? 'config init' : 'config');
+  if (isInit) {
+    if (!existsSync(options.root)) configInitError(options, 'ROOT_NOT_FOUND', `Project root not found: ${options.root}`);
+    try {
+      if (!statSync(options.root).isDirectory()) configInitError(options, 'ROOT_NOT_DIRECTORY', `Project root is not a directory: ${options.root}`);
+    } catch {
+      configInitError(options, 'ROOT_NOT_FOUND', `Project root not found: ${options.root}`);
+    }
+    const target = join(options.root, 'dotdotgod.config.json');
+    const rcPath = join(options.root, '.dotdotgodrc.json');
+    if (existsSync(rcPath)) configInitError(options, 'CONFIG_RC_EXISTS', `.dotdotgodrc.json already exists; remove or migrate it before initializing dotdotgod.config.json.`, rcPath);
+    const existed = existsSync(target);
+    if (existed && !options.force) configInitError(options, 'CONFIG_EXISTS', `dotdotgod.config.json already exists. Re-run with --force to overwrite it.`, target);
+    writeFileSync(target, defaultDotdotgodConfigText());
+    const payload = { ok: true, command: 'config init', root: options.root, path: target, created: !existed, overwritten: existed };
+    if (options.json) console.log(JSON.stringify(payload, null, 2));
+    else console.log(`dotdotgod config init: ${existed ? 'overwrote' : 'created'} ${target}`);
+    return;
+  }
+
+  const config = readMemoryConfig(options.root);
+  const errors = config.errors ?? [];
+  const payload = { ok: errors.length === 0, command: 'config', root: options.root, source: config.source ?? 'default', path: configSourcePath(options.root, config.source), config: memoryConfigSummary(config), errors };
+  if (options.json) console.log(JSON.stringify(payload, null, 2));
+  else console.log(formatConfigOutput(payload));
+  if (errors.length > 0) process.exit(1);
+}
+
 export function runLoadSnapshot(argv) {
   const options = parseCommon(argv);
   const { status, index, metadata } = readFreshIndex(options.root);
@@ -2057,9 +2177,10 @@ export function runCli(argv = process.argv.slice(2)) {
   if (isVersionToken(command)) printVersion();
   if (command === 'help') usage('', helpCommandFromArgs(args));
   if (isHelpToken(command)) usage('');
-  if (hasHelpToken(args)) usage('', command === 'graph' ? helpCommandFromArgs(['graph', ...args.filter((arg) => !isHelpToken(arg))]) : command);
+  if (hasHelpToken(args)) usage('', helpCommandFromArgs([command, ...args]));
   if (command === 'validate') runValidate(args);
   else if (command === 'index') runIndex(args);
+  else if (command === 'config') runConfig(args);
   else if (command === 'status') runStatus(args);
   else if (command === 'load-snapshot') runLoadSnapshot(args);
   else if (command === 'graph') runGraph(args);

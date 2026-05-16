@@ -15,6 +15,7 @@ For projects using the dotdotgod CLI, behavior specs are validated for fenced `j
 - `MEMORY_AREA_CONFIG.md`: optional config for shared/local and fresh/stale memory-area policy.
 - `TRACEABILITY_CONFIG.md`: optional config for traceability enforcement paths.
 - `IMPACT_RANKING_CONFIG.md`: optional config for `graph impact` ranking presets, score breakdowns, compact output, PPR, and deterministic semantic links.
+- `CONFIG_COMMAND.md`: CLI behavior for inspecting and initializing project-level dotdotgod config files.
 - `CLI_INTERFACE.md`: baseline CLI help, version, subcommand help, and missing `graph impact --changed` behavior.
 - `CROSS_AGENT_SUPPORT.md`: cross-agent support contract for Pi, Claude Code, Codex, and shared docs workflows.
 - `WORKSPACE_VERIFICATION.md`: root verification, cache, pre-push, and package verify contract behavior.
