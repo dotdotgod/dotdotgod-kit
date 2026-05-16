@@ -6,6 +6,7 @@ import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 
 const bin = resolve('bin/dotdotgod.mjs');
+const cliPackage = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
 
 function createFixture() {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-cli-e2e-'));
@@ -70,6 +71,78 @@ function archiveBodyMemoryAreas() {
 }
 
 describe('dotdotgod CLI e2e', () => {
+  it('supports help and version discovery commands', () => {
+    for (const args of [[], ['--help'], ['-h'], ['help']]) {
+      const result = run(args);
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      assert.match(result.stdout, /Usage:/);
+      assert.match(result.stdout, /dotdotgod graph impact <root> --changed <path>/);
+      assert.equal(result.stderr, '');
+    }
+
+    for (const args of [['--version'], ['-v'], ['version']]) {
+      const result = run(args);
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      assert.equal(result.stdout.trim(), cliPackage.version);
+      assert.equal(result.stderr, '');
+    }
+
+    for (const [args, pattern] of [
+      [['validate', '--help'], /dotdotgod validate <root>/],
+      [['index', '-h'], /dotdotgod index <root>/],
+      [['status', 'help'], /dotdotgod status <root>/],
+      [['load-snapshot', '--help'], /dotdotgod load-snapshot <root>/],
+      [['graph', '--help'], /dotdotgod graph communities <root>/],
+      [['graph', 'impact', '--help'], /dotdotgod graph impact <root> --changed <path>/],
+      [['graph', 'query', '--help'], /Deprecated alias/],
+      [['graph', 'communities', '--help'], /dotdotgod graph communities <root>/],
+      [['help', 'graph', 'impact'], /dotdotgod graph impact <root> --changed <path>/],
+    ]) {
+      const result = run(args);
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      assert.match(result.stdout, pattern);
+      assert.equal(result.stderr, '');
+    }
+  });
+
+  it('keeps CLI usage errors on stderr and reports missing graph impact changed paths', () => {
+    const root = createFixture();
+
+    const unknown = run(['unknown']);
+    assert.equal(unknown.status, 2);
+    assert.equal(unknown.stdout, '');
+    assert.match(unknown.stderr, /Unknown command: unknown/);
+    assert.match(unknown.stderr, /Usage:/);
+
+    const badOption = run(['validate', '--unknown']);
+    assert.equal(badOption.status, 2);
+    assert.equal(badOption.stdout, '');
+    assert.match(badOption.stderr, /Unknown option: --unknown/);
+    assert.match(badOption.stderr, /dotdotgod validate <root>/);
+
+    const missingChanged = run(['graph', 'impact', root]);
+    assert.equal(missingChanged.status, 2);
+    assert.equal(missingChanged.stdout, '');
+    assert.match(missingChanged.stderr, /Missing required option: --changed <path>/);
+    assert.match(missingChanged.stderr, /dotdotgod graph impact <root> --changed <path>/);
+    assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
+
+    const missingChangedJson = run(['graph', 'query', root, '--json']);
+    assert.equal(missingChangedJson.status, 2);
+    assert.equal(missingChangedJson.stderr, '');
+    const payload = JSON.parse(missingChangedJson.stdout);
+    assert.equal(payload.ok, false);
+    assert.equal(payload.command, 'graph impact');
+    assert.equal(payload.deprecatedAliasUsed, true);
+    assert.equal(payload.error.code, 'MISSING_CHANGED');
+    assert.match(payload.usage, /dotdotgod graph query <root> --changed <path>/);
+
+    const missingChangedValueJson = run(['graph', 'impact', root, '--changed', '--json']);
+    assert.equal(missingChangedValueJson.status, 2);
+    assert.equal(JSON.parse(missingChangedValueJson.stdout).error.code, 'MISSING_CHANGED');
+    assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
+  });
+
   it('validates, indexes, reports status, snapshots, and graph impact results', () => {
     const root = createFixture();
 

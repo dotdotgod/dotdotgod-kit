@@ -15,6 +15,8 @@ Command-line tools for dotdotgod project memory. The CLI validates the docs scaf
 ## Commands
 
 ```bash
+dotdotgod --help
+dotdotgod --version
 dotdotgod validate .
 dotdotgod validate . --check-index
 dotdotgod status .
@@ -30,7 +32,9 @@ The cache uses `.dotdotgod/manifest.json` plus compact graph shards under `.dotd
 
 Memory-aware graph metadata is deterministic and path-based: files under `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive/README.md` get `memoryArea`, `memoryRole`, `retrievalPriority`, and `retrieval.signals` metadata. The graph also adds `memory_area:*` nodes, `belongs_to_area` edges, and `routes_to` edges from README indexes so curated docs maps become routing hints rather than plain links only.
 
-`load-snapshot` returns bounded `memoryAreas` summaries alongside cache, graph, community, and archive-policy metadata. `graph impact` returns a bounded impact report grouped into files, docs, tests, commands, events, package resources, and symbols, with related nodes annotated by retrieval priority and reason-derived signals. `graph query` remains as a deprecated alias for `graph impact`. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
+`--help`, `-h`, and `help` print usage to stdout; `--version`, `-v`, and `version` print the package version. Command-specific help is available with `dotdotgod <command> --help`, including nested graph commands such as `dotdotgod graph impact --help`.
+
+`load-snapshot` returns bounded `memoryAreas` summaries alongside cache, graph, community, and archive-policy metadata. `graph impact` returns a bounded impact report grouped into files, docs, tests, commands, events, package resources, and symbols, with related nodes annotated by retrieval priority and reason-derived signals. `graph impact` and the deprecated `graph query` alias require `--changed <path>` so impact ranking has a seed file. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
 
 ## Indexing Scope
 

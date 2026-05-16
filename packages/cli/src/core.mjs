@@ -10,17 +10,96 @@ const MANIFEST_FILE = 'manifest.json';
 const GRAPH_NODE_SHARDS = ['docs', 'packages', 'source'];
 const GRAPH_EDGE_SHARDS = ['imports', 'docs-links', 'tests', 'events', 'packages', 'symbols', 'commands', 'other'];
 
-function usage(message) {
-  if (message) console.error(message);
-  console.error(`Usage:
+const HELP_TOKENS = new Set(['help', '--help', '-h']);
+const VERSION_TOKENS = new Set(['version', '--version', '-v']);
+
+function commandUsage(command = 'root') {
+  switch (command) {
+    case 'validate':
+      return `Usage:
+  dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]`;
+    case 'index':
+      return `Usage:
+  dotdotgod index <root> [--json]`;
+    case 'status':
+      return `Usage:
+  dotdotgod status <root> [--json]`;
+    case 'load-snapshot':
+      return `Usage:
+  dotdotgod load-snapshot <root> [--json]`;
+    case 'graph':
+      return `Usage:
+  dotdotgod graph impact <root> --changed <path> [--json]
+  dotdotgod graph query <root> --changed <path> [--json]  # deprecated alias
+  dotdotgod graph communities <root> [--json]`;
+    case 'graph impact':
+      return `Usage:
+  dotdotgod graph impact <root> --changed <path> [--json]
+
+Ranks nodes related to a changed file. <root> is the project root; --changed is a project-relative file path.`;
+    case 'graph query':
+      return `Usage:
+  dotdotgod graph query <root> --changed <path> [--json]
+
+Deprecated alias for dotdotgod graph impact.`;
+    case 'graph communities':
+      return `Usage:
+  dotdotgod graph communities <root> [--json]`;
+    default:
+      return `Usage:
+  dotdotgod [--help|-h]
+  dotdotgod [--version|-v]
+  dotdotgod help [command]
   dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]
   dotdotgod index <root> [--json]
   dotdotgod status <root> [--json]
   dotdotgod load-snapshot <root> [--json]
-  dotdotgod graph impact <root> [--changed path] [--json]
-  dotdotgod graph query <root> [--changed path] [--json]  # deprecated alias
-  dotdotgod graph communities <root> [--json]`);
-  process.exit(message ? 2 : 0);
+  dotdotgod graph impact <root> --changed <path> [--json]
+  dotdotgod graph query <root> --changed <path> [--json]  # deprecated alias
+  dotdotgod graph communities <root> [--json]`;
+  }
+}
+
+function usage(message, command = 'root') {
+  const text = commandUsage(command);
+  if (message) {
+    console.error(message);
+    console.error(text);
+    process.exit(2);
+  }
+  console.log(text);
+  process.exit(0);
+}
+
+function isHelpToken(value) {
+  return HELP_TOKENS.has(value);
+}
+
+function hasHelpToken(argv) {
+  return argv.some((arg) => isHelpToken(arg));
+}
+
+function isVersionToken(value) {
+  return VERSION_TOKENS.has(value);
+}
+
+function readCliVersion() {
+  try {
+    const data = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    return typeof data.version === 'string' ? data.version : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+function printVersion() {
+  console.log(readCliVersion());
+  process.exit(0);
+}
+
+function helpCommandFromArgs(args) {
+  if (args[0] === 'graph' && args[1]) return `graph ${args[1]}`;
+  return args[0] ?? 'root';
 }
 
 export function parseCommon(argv) {
@@ -180,7 +259,7 @@ export function runValidate(argv) {
     else if (arg === '--no-link-check') options.linkCheck = false;
     else if (arg === '--json') options.json = true;
     else if (!arg.startsWith('-')) options.root = arg;
-    else usage(`Unknown option: ${arg}`);
+    else usage(`Unknown option: ${arg}`, 'validate');
   }
 
   const root = resolve(options.root);
@@ -1775,8 +1854,13 @@ export function parseGraphOptions(argv) {
   const filtered = [];
   let changed;
   for (let i = 0; i < argv.length; i += 1) {
-    if (argv[i] === '--changed') changed = argv[++i];
-    else filtered.push(argv[i]);
+    if (argv[i] === '--changed') {
+      const next = argv[i + 1];
+      if (next && !next.startsWith('-')) {
+        changed = next;
+        i += 1;
+      }
+    } else filtered.push(argv[i]);
   }
   const options = parseCommon(filtered);
   options.changed = changed;
@@ -1785,29 +1869,39 @@ export function parseGraphOptions(argv) {
 
 export function runGraph(argv) {
   const sub = argv[0];
-  const options = parseGraphOptions(argv.slice(1));
-  const { status, index, metadata } = readFreshIndex(options.root);
-  const impact = options.changed ? buildImpactReport(index, options.changed) : undefined;
   const isImpact = sub === 'impact' || sub === 'query';
+  if (!['impact', 'query', 'communities'].includes(sub)) usage(sub ? `Unknown graph command: ${sub}` : 'Missing graph command.', 'graph');
+  const options = parseGraphOptions(argv.slice(1));
+  if (isImpact && !options.changed) {
+    const message = 'Missing required option: --changed <path>. Run `dotdotgod graph impact <root> --changed <path>`.';
+    if (options.json) {
+      console.log(JSON.stringify({ ok: false, command: 'graph impact', deprecatedAliasUsed: sub === 'query' || undefined, root: options.root, error: { code: 'MISSING_CHANGED', message }, usage: commandUsage(sub === 'query' ? 'graph query' : 'graph impact') }, null, 2));
+      process.exit(2);
+    }
+    usage(message, sub === 'query' ? 'graph query' : 'graph impact');
+  }
+  const { status, index, metadata } = readFreshIndex(options.root);
+  const impact = isImpact ? buildImpactReport(index, options.changed) : undefined;
   const payload = isImpact
-    ? { ok: status.ok, command: 'graph impact', deprecatedAliasUsed: sub === 'query' || undefined, root: options.root, status, metadata, changed: options.changed, related: impact?.related ?? [], impact }
-    : sub === 'communities'
-      ? { ok: status.ok, command: 'graph communities', root: options.root, status, metadata, graph: graphSummary(index), communities: buildCommunities(index) }
-      : { ok: status.ok, command: `graph ${sub}`, root: options.root, status, metadata, graph: graphSummary(index) };
+    ? { ok: status.ok, command: 'graph impact', deprecatedAliasUsed: sub === 'query' || undefined, root: options.root, status, metadata, changed: options.changed, related: impact.related, impact }
+    : { ok: status.ok, command: 'graph communities', root: options.root, status, metadata, graph: graphSummary(index), communities: buildCommunities(index) };
   const refreshNote = metadata.cacheRefreshed ? ', refreshed' : '';
   if (options.json) console.log(JSON.stringify(payload, null, 2));
-  else if (isImpact) console.log(`graph impact: ${payload.related.length} related node(s), ${impact?.omittedRelated ?? 0} omitted (${status.status}${refreshNote} index)${sub === 'query' ? ' — graph query is deprecated; use graph impact instead.' : ''}`);
-  else if (sub === 'communities') console.log(`graph communities: ${payload.communities.communities.length}/${payload.communities.total} shown, ${payload.communities.omitted} omitted (${status.status}${refreshNote} index)`);
-  else console.log(`${payload.command}: ${payload.graph.nodes} nodes, ${payload.graph.edges} edges (${status.status}${refreshNote} index)`);
+  else if (isImpact) console.log(`graph impact: ${payload.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${status.status}${refreshNote} index)${sub === 'query' ? ' — graph query is deprecated; use graph impact instead.' : ''}`);
+  else console.log(`graph communities: ${payload.communities.communities.length}/${payload.communities.total} shown, ${payload.communities.omitted} omitted (${status.status}${refreshNote} index)`);
 }
 
 export function runCli(argv = process.argv.slice(2)) {
   const [command = 'help', ...args] = argv;
+  if (isVersionToken(command)) printVersion();
+  if (command === 'help') usage('', helpCommandFromArgs(args));
+  if (isHelpToken(command)) usage('');
+  if (hasHelpToken(args)) usage('', command === 'graph' ? helpCommandFromArgs(['graph', ...args.filter((arg) => !isHelpToken(arg))]) : command);
   if (command === 'validate') runValidate(args);
   else if (command === 'index') runIndex(args);
   else if (command === 'status') runStatus(args);
   else if (command === 'load-snapshot') runLoadSnapshot(args);
   else if (command === 'graph') runGraph(args);
-  else usage(command === 'help' || command === '--help' ? '' : `Unknown command: ${command}`);
+  else usage(`Unknown command: ${command}`);
 }
 
