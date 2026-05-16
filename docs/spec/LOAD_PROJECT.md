@@ -106,6 +106,7 @@ The command is intentionally a runtime extension entrypoint. It can later grow i
   "implementedBy": [
     "packages/pi/extensions/load-project/index.ts",
     "packages/pi/extensions/load-project/utils.ts",
+    "packages/shared/workflows/load.md",
     "packages/cli/src/core.mjs"
   ],
   "verifiedBy": [
@@ -115,6 +116,8 @@ The command is intentionally a runtime extension entrypoint. It can later grow i
     "docs/test/README.md"
   ],
   "relatedDocs": [
+    "docs/spec/CROSS_AGENT_SUPPORT.md",
+    "docs/arch/CROSS_AGENT_ARCHITECTURE.md",
     "docs/arch/EXTENSION_ARCHITECTURE.md",
     "docs/arch/VALIDATION_ARCHITECTURE.md"
   ],

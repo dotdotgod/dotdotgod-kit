@@ -10,7 +10,7 @@ The `dotdotgod` CLI provides predictable discovery commands for users and script
 - Top-level `dotdotgod --version`, `dotdotgod -v`, and `dotdotgod version` MUST print the `@dotdotgod/cli` package version to stdout and exit `0`.
 - Subcommand help MUST be available through `--help`, `-h`, or `help` without validating docs, reading caches, or refreshing graph indexes.
 - Unknown commands and invalid options MUST print diagnostics and usage to stderr and exit `2`.
-- `dotdotgod graph impact <root>` and the deprecated `dotdotgod graph query <root>` alias MUST require `--changed <path>`.
+- `dotdotgod graph impact <root>` and the deprecated `dotdotgod graph query <root>` alias MUST require `--changed <path>` and MAY include opt-in `--compact` output.
 - When `graph impact` or `graph query` is missing `--changed`, human output MUST print a usage error to stderr and exit `2` without creating or refreshing `.dotdotgod/`.
 - When `graph impact` or `graph query` is missing `--changed --json`, JSON output MUST include `ok: false`, `command: "graph impact"`, `error.code: "MISSING_CHANGED"`, and a usage string, then exit `2`.
 

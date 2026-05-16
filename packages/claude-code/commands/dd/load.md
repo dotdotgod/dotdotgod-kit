@@ -25,8 +25,10 @@ Do not modify files during the load pass unless the user explicitly asks for edi
    - If `dotdotgod` is installed or available in the repository, run `dotdotgod load-snapshot <root> --json`.
    - If the local environment allows package execution but no `dotdotgod` binary is available, optionally run `npx @dotdotgod/cli load-snapshot <root> --json`.
    - Treat the snapshot as the first-pass project-memory map for cache status, graph size, memory areas, related communities, and archive inclusion policy.
-   - Use `dotdotgod graph impact <root> --changed <path> --json` as a task-focused impact map when the user identifies a likely source/config/doc file.
+   - Use `dotdotgod graph impact <root> --changed <path> --compact --json` as a task-focused impact map when the user identifies a likely source/config/doc file.
+   - Fall back to raw `dotdotgod graph impact <root> --changed <path> --json` only when diagnostics need the full payload.
    - When graph impact surfaces traceability relations, inspect the related specs, tests, and docs before editing source.
+   - Related behavior docs: [load project](../../../docs/spec/LOAD_PROJECT.md), [cross-agent support](../../../docs/spec/CROSS_AGENT_SUPPORT.md), and [cross-agent architecture](../../../docs/arch/CROSS_AGENT_ARCHITECTURE.md).
    - If the CLI is unavailable, network/package execution is undesirable, or the command fails, continue with the manual README-index fallback below.
 3. Inspect baseline memory files when present:
    - `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `README.md`

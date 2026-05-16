@@ -127,13 +127,14 @@ describe('dotdotgod CLI e2e', () => {
     assert.match(missingChanged.stderr, /dotdotgod graph impact <root> --changed <path>/);
     assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
 
-    const missingChangedJson = run(['graph', 'query', root, '--json']);
+    const missingChangedJson = run(['graph', 'query', root, '--compact', '--json']);
     assert.equal(missingChangedJson.status, 2);
     assert.equal(missingChangedJson.stderr, '');
     const payload = JSON.parse(missingChangedJson.stdout);
     assert.equal(payload.ok, false);
     assert.equal(payload.command, 'graph impact');
     assert.equal(payload.deprecatedAliasUsed, true);
+    assert.equal(payload.compact, true);
     assert.equal(payload.error.code, 'MISSING_CHANGED');
     assert.match(payload.usage, /dotdotgod graph query <root> --changed <path>/);
 
@@ -161,7 +162,7 @@ describe('dotdotgod CLI e2e', () => {
     assert(existsSync(join(root, '.dotdotgod/manifest.json')));
     assert(existsSync(join(root, '.dotdotgod/graph/nodes/docs.json')));
     assert(existsSync(join(root, '.dotdotgod/graph/edges/imports.json')));
-    assert.equal(index.schemaVersion, 8);
+    assert.equal(index.schemaVersion, 9);
     assert.equal(typeof index.incremental.elapsedMs, 'number');
     assert(index.indexSizeBytes > 0);
 
@@ -212,9 +213,12 @@ describe('dotdotgod CLI e2e', () => {
     assert(['leiden', 'deterministic-domain-grouping'].includes(communities.communities.method));
     assert.equal(typeof communities.communities.fallback, 'boolean');
 
-    const impact = json(run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--json']));
+    const rawImpactResult = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--json']);
+    const impact = json(rawImpactResult);
     assert.equal(impact.command, 'graph impact');
+    assert.equal(impact.compact, undefined);
     assert.equal(impact.impact.ranking.method, 'personalized-pagerank+policy');
+    assert(impact.impact.ranking.weights);
     assert.deepEqual(impact.related, impact.impact.related);
     assert.equal(impact.related.every((node) => typeof node.impactScore === 'number' && node.scoreBreakdown), true);
     const changed = itemById(impact, 'file:packages/app/index.mjs');
@@ -236,9 +240,25 @@ describe('dotdotgod CLI e2e', () => {
     assert(!impact.related.some((item) => item.id.startsWith('file:docs/archive/plan/')));
     assert.equal(typeof impact.impact.omittedRelated, 'number');
 
-    const queryAlias = json(run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--json']));
+    const compactImpactResult = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--compact', '--json']);
+    const compactImpact = json(compactImpactResult);
+    assert.equal(compactImpact.compact, true);
+    assert.equal(compactImpact.impact.compact, true);
+    assert.equal(compactImpact.impact.ranking.method, 'personalized-pagerank+policy');
+    assert.equal(compactImpact.impact.ranking.weights, undefined);
+    assert.equal(compactImpact.related.length <= 10, true);
+    assert(compactImpact.impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/APP.md'));
+    assert(Buffer.byteLength(compactImpactResult.stdout) < Buffer.byteLength(rawImpactResult.stdout));
+
+    const compactText = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--compact']);
+    assert.equal(compactText.status, 0, compactText.stderr || compactText.stdout);
+    assert.match(compactText.stdout, /graph impact compact:/);
+    assert.match(compactText.stdout, /docs:/);
+
+    const queryAlias = json(run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--compact', '--json']));
     assert.equal(queryAlias.command, 'graph impact');
     assert.equal(queryAlias.deprecatedAliasUsed, true);
+    assert.equal(queryAlias.compact, true);
     assert.equal(queryAlias.impact.ranking.method, 'personalized-pagerank+policy');
     assert.equal(queryAlias.related.every((node) => typeof node.impactScore === 'number' && node.scoreBreakdown), true);
   });
@@ -280,6 +300,14 @@ describe('dotdotgod CLI e2e', () => {
     assert.match(measurement, /semantic=\d+/);
     assert.match(measurement, /related=\d+/);
     assert.match(measurement, /omitted=\d+/);
+
+    const quality = spawnSync(process.execPath, [join(repoRoot, 'scripts/evaluate-graph-impact.mjs'), repoRoot, '--json'], { cwd: repoRoot, encoding: 'utf8' });
+    assert.equal(quality.status, 0, quality.stderr || quality.stdout);
+    const qualityPayload = JSON.parse(quality.stdout);
+    assert.equal(qualityPayload.ok, true);
+    assert(qualityPayload.seedCount >= 5);
+    assert.equal(typeof qualityPayload.averages.graphPrecisionAt10, 'number');
+    assert.equal(typeof qualityPayload.averages.graphRecallMustAt10, 'number');
   });
 
   it('reports memory config validation failures without crashing runtime commands', () => {

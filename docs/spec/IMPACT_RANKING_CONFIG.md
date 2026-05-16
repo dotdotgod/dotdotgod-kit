@@ -51,7 +51,8 @@ Impact ranking policy lives in the same optional root config files as memory and
 - If `impactRanking` is absent, the CLI uses the built-in `balanced` preset.
 - Presets can be partially overridden by numeric weights, relation weights, boost maps, PPR settings, and semantic settings.
 - Runtime graph commands fall back to defaults when config is invalid; `dotdotgod validate` reports the config errors.
-- `graph impact` and the deprecated `graph query` alias preserve their existing `related` and grouped output while adding ranking metadata.
+- `graph impact` and the deprecated `graph query` alias preserve their existing raw `related` and grouped output while adding ranking metadata.
+- `--compact` is opt-in and returns an agent-facing grouped summary without changing the default raw JSON shape.
 
 ## Ranking Signals
 
@@ -61,7 +62,7 @@ The default score combines:
 - curated traceability (`implemented_by`, `verified_by`, `related_doc`, `verification_command`)
 - memory policy priority
 - verification/test signals
-- direct proximity signals such as imports, same-directory, command, route, or event links
+- direct proximity signals such as imports, markdown links, same-directory, command, route, or event links
 - deterministic semantic links from path/name/heading/symbol/command/event/package matches
 - freshness boost or stale penalty
 - archive-body penalty
@@ -108,6 +109,40 @@ Embedding-based similarity is not part of the default ranking path. If added lat
 
 The top-level `related` array mirrors `impact.related` for compatibility.
 
+`graph impact --compact --json` keeps cache/status metadata but compacts the impact body for agents:
+
+```json
+{
+  "compact": true,
+  "impact": {
+    "compact": true,
+    "ranking": {
+      "method": "personalized-pagerank+policy",
+      "preset": "balanced",
+      "configSource": "default"
+    },
+    "related": [
+      {
+        "id": "file:docs/spec/LOAD_PROJECT.md",
+        "type": "file",
+        "path": "docs/spec/LOAD_PROJECT.md",
+        "impactScore": 65.4,
+        "reasons": ["incoming:implemented_by"],
+        "scoreBreakdown": { "ppr": 22.4, "traceability": 30 }
+      }
+    ]
+  }
+}
+```
+
+Compact output omits full ranking weights, long retrieval signal lists, and unbounded raw node metadata. Use raw JSON for diagnostics.
+
+## Candidate Selection
+
+Ranking still computes explainable `impactScore` values for every candidate. Before returning the bounded first page, the CLI prefers curated/test/proximity candidates over pure semantic-only matches and caps low-actionability metadata nodes such as imports and dependencies when actionable files or docs are available.
+
+Semantic reasons remain visible in `reasons` and `scoreBreakdown`; they are demoted only for top-result selection.
+
 ## Traceability
 
 ```json dotdotgod
@@ -130,6 +165,8 @@ The top-level `related` array mirrors `impact.related` for compatibility.
   "verificationCommands": [
     "pnpm --filter @dotdotgod/cli test",
     "node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json",
+    "node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --compact --json",
+    "node scripts/evaluate-graph-impact.mjs . --json",
     "node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"
   ]
 }

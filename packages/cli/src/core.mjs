@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { spawnSync } from 'node:child_process';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 
-export const CACHE_VERSION = 8;
+export const CACHE_VERSION = 9;
 const CACHE_DIR = '.dotdotgod';
 const MANIFEST_FILE = 'manifest.json';
 const GRAPH_NODE_SHARDS = ['docs', 'packages', 'source'];
@@ -29,17 +29,17 @@ function commandUsage(command = 'root') {
   dotdotgod load-snapshot <root> [--json]`;
     case 'graph':
       return `Usage:
-  dotdotgod graph impact <root> --changed <path> [--json]
-  dotdotgod graph query <root> --changed <path> [--json]  # deprecated alias
+  dotdotgod graph impact <root> --changed <path> [--compact] [--json]
+  dotdotgod graph query <root> --changed <path> [--compact] [--json]  # deprecated alias
   dotdotgod graph communities <root> [--json]`;
     case 'graph impact':
       return `Usage:
-  dotdotgod graph impact <root> --changed <path> [--json]
+  dotdotgod graph impact <root> --changed <path> [--compact] [--json]
 
-Ranks nodes related to a changed file. <root> is the project root; --changed is a project-relative file path.`;
+Ranks nodes related to a changed file. <root> is the project root; --changed is a project-relative file path. Use --compact for an agent-facing grouped summary.`;
     case 'graph query':
       return `Usage:
-  dotdotgod graph query <root> --changed <path> [--json]
+  dotdotgod graph query <root> --changed <path> [--compact] [--json]
 
 Deprecated alias for dotdotgod graph impact.`;
     case 'graph communities':
@@ -54,8 +54,8 @@ Deprecated alias for dotdotgod graph impact.`;
   dotdotgod index <root> [--json]
   dotdotgod status <root> [--json]
   dotdotgod load-snapshot <root> [--json]
-  dotdotgod graph impact <root> --changed <path> [--json]
-  dotdotgod graph query <root> --changed <path> [--json]  # deprecated alias
+  dotdotgod graph impact <root> --changed <path> [--compact] [--json]
+  dotdotgod graph query <root> --changed <path> [--compact] [--json]  # deprecated alias
   dotdotgod graph communities <root> [--json]`;
   }
 }
@@ -624,7 +624,7 @@ const DEFAULT_IMPACT_RANKING_POLICY = {
   traceabilityBoosts: { implemented_by: 30, 'incoming:implemented_by': 30, verified_by: 25, 'incoming:verified_by': 25, verification_command: 15, 'incoming:verification_command': 15, related_doc: 12, 'incoming:related_doc': 12 },
   verificationBoosts: { verified_by: 15, 'incoming:verified_by': 15, verification_command: 12, 'incoming:verification_command': 12, 'test-path-proximity': 8, tests: 10, 'incoming:tests': 10 },
   semanticBoosts: { semantic_similarity: 8, 'incoming:semantic_similarity': 8, mentions_symbol: 6, 'incoming:mentions_symbol': 6, mentions_command: 6, 'incoming:mentions_command': 6, mentions_package: 4, 'incoming:mentions_package': 4 },
-  proximityBoosts: { imports: 10, 'incoming:imports': 10, 'imports-local-file': 8, 'same-directory': 4, 'shares-import': 3, handles_command: 6, 'incoming:handles_command': 6, emits_event: 5, 'incoming:emits_event': 5, routes_to: 5, 'incoming:routes_to': 5 },
+  proximityBoosts: { imports: 10, 'incoming:imports': 10, 'imports-local-file': 8, links_to: 6, 'incoming:links_to': 6, 'same-directory': 4, 'shares-import': 3, handles_command: 6, 'incoming:handles_command': 6, emits_event: 5, 'incoming:emits_event': 5, routes_to: 5, 'incoming:routes_to': 5 },
   semantic: { enabled: true, threshold: 0.5, topKPerFile: 5, includeArchiveBodies: false, signals: ['path', 'filename', 'heading', 'symbol', 'export', 'command', 'event', 'package'] },
 };
 const IMPACT_RANKING_PRESETS = {
@@ -637,7 +637,7 @@ const IMPACT_RANKING_PRESETS = {
 const SEMANTIC_RELATIONS = new Set(['semantic_similarity', 'mentions_symbol', 'mentions_command', 'mentions_package']);
 const IMPACT_RANKING_WEIGHT_KEYS = new Set(['ppr', 'traceability', 'memoryPolicy', 'verification', 'proximity', 'semantic', 'freshness', 'archivePenalty']);
 const IMPACT_RANKING_RELATION_KEYS = new Set(['imports', 'tests', 'implemented_by', 'verified_by', 'related_doc', 'verification_command', 'links_to', 'belongs_to_area', 'semantic_similarity', 'mentions_symbol', 'mentions_command', 'mentions_package']);
-const IMPACT_RANKING_REASON_KEYS = new Set(['implemented_by', 'incoming:implemented_by', 'verified_by', 'incoming:verified_by', 'verification_command', 'incoming:verification_command', 'related_doc', 'incoming:related_doc', 'test-path-proximity', 'tests', 'incoming:tests', 'semantic_similarity', 'incoming:semantic_similarity', 'mentions_symbol', 'incoming:mentions_symbol', 'mentions_command', 'incoming:mentions_command', 'mentions_package', 'incoming:mentions_package', 'imports', 'incoming:imports', 'imports-local-file', 'same-directory', 'shares-import', 'handles_command', 'incoming:handles_command', 'emits_event', 'incoming:emits_event', 'routes_to', 'incoming:routes_to']);
+const IMPACT_RANKING_REASON_KEYS = new Set(['implemented_by', 'incoming:implemented_by', 'verified_by', 'incoming:verified_by', 'verification_command', 'incoming:verification_command', 'related_doc', 'incoming:related_doc', 'test-path-proximity', 'tests', 'incoming:tests', 'semantic_similarity', 'incoming:semantic_similarity', 'mentions_symbol', 'incoming:mentions_symbol', 'mentions_command', 'incoming:mentions_command', 'mentions_package', 'incoming:mentions_package', 'imports', 'incoming:imports', 'imports-local-file', 'links_to', 'incoming:links_to', 'same-directory', 'shares-import', 'handles_command', 'incoming:handles_command', 'emits_event', 'incoming:emits_event', 'routes_to', 'incoming:routes_to']);
 const SEMANTIC_SIGNAL_KEYS = new Set(['path', 'filename', 'heading', 'symbol', 'export', 'command', 'event', 'package']);
 const DEFAULT_MEMORY_AREAS = [
   { id: 'rules', label: 'Agent Rules', paths: ['AGENTS.md'], scope: 'shared', freshness: 'fresh', role: 'agent-working-rules', priority: 100, includeBodiesByDefault: true },
@@ -1511,6 +1511,90 @@ function scoreImpactItem(item, seed, changedPath, policy, pprScores, maxPpr) {
   };
 }
 
+const CURATED_IMPACT_REASONS = new Set(['implemented_by', 'verified_by', 'related_doc', 'verification_command', 'tests', 'imports', 'links_to', 'routes_to', 'belongs_to_area', 'handles_command', 'emits_event', 'declares_test', 'imports-local-file', 'same-directory', 'shares-import', 'test-path-proximity']);
+const LOW_ACTIONABILITY_IMPACT_TYPES = new Set(['import', 'dependency', 'package', 'script', 'binary', 'heading', 'memory_area']);
+
+function baseImpactReason(reason = '') {
+  return reason.replace(/^incoming:/, '');
+}
+
+function isSemanticImpactReason(reason = '') {
+  return SEMANTIC_RELATIONS.has(baseImpactReason(reason));
+}
+
+function isCuratedImpactReason(reason = '') {
+  return CURATED_IMPACT_REASONS.has(baseImpactReason(reason));
+}
+
+function hasCuratedImpactReason(item) {
+  return (item.reasons ?? []).some((reason) => isCuratedImpactReason(reason));
+}
+
+function isSemanticOnlyImpactItem(item) {
+  const reasons = item.reasons ?? [];
+  return reasons.length > 0 && reasons.every((reason) => isSemanticImpactReason(reason));
+}
+
+function isLowActionabilityImpactItem(item) {
+  return LOW_ACTIONABILITY_IMPACT_TYPES.has(item.type);
+}
+
+function impactSelectionScore(item) {
+  let score = item.impactScore ?? 0;
+  if (hasCuratedImpactReason(item)) score += 4;
+  if (item.type === 'file' || item.type === 'test' || item.type === 'verification_command') score += 2;
+  if (isSemanticOnlyImpactItem(item)) score -= 12;
+  if (isLowActionabilityImpactItem(item)) score -= 15;
+  return score;
+}
+
+function compareImpactItems(seed) {
+  return (a, b) => {
+    if (a.id === seed) return -1;
+    if (b.id === seed) return 1;
+    return impactSelectionScore(b) - impactSelectionScore(a) || (b.impactScore ?? 0) - (a.impactScore ?? 0) || a.id.localeCompare(b.id);
+  };
+}
+
+function selectImpactItems(sortedItems, maxRelated, seed) {
+  const selected = [];
+  const selectedIds = new Set();
+  const deferred = [];
+  const firstPageLimit = Math.min(maxRelated, 10);
+  let semanticOnlyInFirstPage = 0;
+  let lowActionabilityInFirstPage = 0;
+  const firstPagePathCounts = new Map();
+  const add = (item, force = false) => {
+    if (selected.length >= maxRelated || selectedIds.has(item.id)) return;
+    const pathKey = item.path ?? item.id;
+    if (!force && item.id !== seed && selected.length < firstPageLimit) {
+      if (pathKey && (firstPagePathCounts.get(pathKey) ?? 0) >= 2) {
+        deferred.push(item);
+        return;
+      }
+      if (isLowActionabilityImpactItem(item) && lowActionabilityInFirstPage >= 2) {
+        deferred.push(item);
+        return;
+      }
+      if (isSemanticOnlyImpactItem(item) && semanticOnlyInFirstPage >= 3) {
+        deferred.push(item);
+        return;
+      }
+    }
+    selected.push(item);
+    selectedIds.add(item.id);
+    if (selected.length <= firstPageLimit && item.id !== seed) {
+      if (pathKey) firstPagePathCounts.set(pathKey, (firstPagePathCounts.get(pathKey) ?? 0) + 1);
+      if (isLowActionabilityImpactItem(item)) lowActionabilityInFirstPage += 1;
+      if (isSemanticOnlyImpactItem(item)) semanticOnlyInFirstPage += 1;
+    }
+  };
+  for (const item of sortedItems) if (item.id === seed) add(item, true);
+  for (const item of sortedItems) if (item.id !== seed) add(item);
+  for (const item of deferred) add(item, true);
+  return selected;
+}
+
 export function buildImpactReport(index, changedPath, limits = {}) {
   const graph = index?.graph ?? { nodes: [], edges: [] };
   const config = index?.memoryConfig ? { ...defaultMemoryConfig(), ...index.memoryConfig } : defaultMemoryConfig();
@@ -1574,12 +1658,8 @@ export function buildImpactReport(index, changedPath, limits = {}) {
       const scored = scoreImpactItem({ ...node, reasons: reasonList, retrieval }, seed, changedPath, policy, pprScores, candidatePprMax);
       return { ...node, reasons: reasonList, retrieval: { ...retrieval, signals: [...new Set([...(retrieval.signals ?? []), ...reasonSignals])] }, ...scored };
     })
-    .sort((a, b) => {
-      if (a.id === seed) return -1;
-      if (b.id === seed) return 1;
-      return (b.impactScore ?? 0) - (a.impactScore ?? 0) || a.id.localeCompare(b.id);
-    });
-  const related = relatedAll.slice(0, maxRelated);
+    .sort(compareImpactItems(seed));
+  const related = selectImpactItems(relatedAll, maxRelated, seed);
   for (const item of related) {
     if (item.type === 'file') {
       const area = docsArea(item.path);
@@ -1600,6 +1680,89 @@ export function buildImpactReport(index, changedPath, limits = {}) {
     groups,
     omittedRelated: Math.max(0, relatedAll.length - related.length),
   };
+}
+
+function compactScoreBreakdown(scoreBreakdown = {}) {
+  const compact = {};
+  for (const [key, value] of Object.entries(scoreBreakdown)) {
+    if (value !== 0 && value !== undefined) compact[key] = value;
+  }
+  return compact;
+}
+
+function compactImpactItem(item) {
+  const compact = {
+    id: item.id,
+    type: item.type,
+    impactScore: item.impactScore,
+    reasons: (item.reasons ?? []).slice(0, 6),
+    scoreBreakdown: compactScoreBreakdown(item.scoreBreakdown),
+  };
+  for (const key of ['path', 'area', 'name', 'command', 'target', 'kind', 'specifier', 'title']) {
+    if (item[key] !== undefined) compact[key] = item[key];
+  }
+  if (item.retrieval) {
+    compact.retrieval = {
+      area: item.retrieval.area,
+      role: item.retrieval.role,
+      priority: item.retrieval.priority,
+      freshness: item.retrieval.freshness,
+    };
+  }
+  return compact;
+}
+
+function compactImpactGroup(group = { items: [], omitted: 0 }, limit = 5) {
+  const items = (group.items ?? []).slice(0, limit).map(compactImpactItem);
+  return { items, omitted: (group.omitted ?? 0) + Math.max(0, (group.items?.length ?? 0) - items.length) };
+}
+
+export function buildCompactImpactReport(impact, limits = {}) {
+  const relatedLimit = limits.related ?? 10;
+  const groupLimit = limits.groupItems ?? 5;
+  const related = (impact.related ?? []).slice(0, relatedLimit).map(compactImpactItem);
+  const groupNames = ['files', 'docs', 'tests', 'commands', 'events', 'packageResources', 'symbols'];
+  const groups = Object.fromEntries(groupNames.map((name) => [name, compactImpactGroup(impact.groups?.[name], groupLimit)]));
+  const top10 = (impact.related ?? []).filter((item) => item.id !== `file:${impact.changed}`).slice(0, 10);
+  return {
+    changed: impact.changed,
+    compact: true,
+    ranking: {
+      method: impact.ranking?.method,
+      preset: impact.ranking?.preset,
+      configSource: impact.ranking?.configSource,
+    },
+    related,
+    groups,
+    omittedRelated: (impact.omittedRelated ?? 0) + Math.max(0, (impact.related?.length ?? 0) - related.length),
+    quality: {
+      rawRelated: impact.related?.length ?? 0,
+      compactRelated: related.length,
+      semanticOnlyTop10: top10.filter((item) => isSemanticOnlyImpactItem(item)).length,
+      curatedTop10: top10.filter((item) => hasCuratedImpactReason(item)).length,
+      lowActionabilityTop10: top10.filter((item) => isLowActionabilityImpactItem(item)).length,
+    },
+  };
+}
+
+function formatCompactImpactGroup(name, group) {
+  const items = group?.items ?? [];
+  if (items.length === 0) return [];
+  return [
+    `${name}:`,
+    ...items.map((item) => {
+      const label = item.path ?? item.command ?? item.name ?? item.target ?? item.id;
+      const reasons = (item.reasons ?? []).slice(0, 3).join(', ');
+      return `- ${label} (${item.impactScore}; ${reasons})`;
+    }),
+  ];
+}
+
+function formatCompactImpactOutput(payload, impact, sub) {
+  const refreshNote = payload.metadata.cacheRefreshed ? ', refreshed' : '';
+  const lines = [`graph impact compact: ${impact.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${payload.status.status}${refreshNote} index)${sub === 'query' ? ' — graph query is deprecated; use graph impact instead.' : ''}`];
+  for (const name of ['docs', 'tests', 'files', 'commands', 'events', 'packageResources', 'symbols']) lines.push(...formatCompactImpactGroup(name, impact.groups[name]));
+  return lines.join('\n');
 }
 
 const DURABLE_COMMUNITY_NODE_TYPES = new Set(['file', 'memory_area', 'test', 'command', 'event', 'package_resource', 'package', 'script', 'binary']);
@@ -1853,6 +2016,7 @@ export function runLoadSnapshot(argv) {
 export function parseGraphOptions(argv) {
   const filtered = [];
   let changed;
+  let compact = false;
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--changed') {
       const next = argv[i + 1];
@@ -1860,10 +2024,12 @@ export function parseGraphOptions(argv) {
         changed = next;
         i += 1;
       }
-    } else filtered.push(argv[i]);
+    } else if (argv[i] === '--compact') compact = true;
+    else filtered.push(argv[i]);
   }
   const options = parseCommon(filtered);
   options.changed = changed;
+  options.compact = compact;
   return options;
 }
 
@@ -1875,18 +2041,20 @@ export function runGraph(argv) {
   if (isImpact && !options.changed) {
     const message = 'Missing required option: --changed <path>. Run `dotdotgod graph impact <root> --changed <path>`.';
     if (options.json) {
-      console.log(JSON.stringify({ ok: false, command: 'graph impact', deprecatedAliasUsed: sub === 'query' || undefined, root: options.root, error: { code: 'MISSING_CHANGED', message }, usage: commandUsage(sub === 'query' ? 'graph query' : 'graph impact') }, null, 2));
+      console.log(JSON.stringify({ ok: false, command: 'graph impact', deprecatedAliasUsed: sub === 'query' || undefined, compact: options.compact || undefined, root: options.root, error: { code: 'MISSING_CHANGED', message }, usage: commandUsage(sub === 'query' ? 'graph query' : 'graph impact') }, null, 2));
       process.exit(2);
     }
     usage(message, sub === 'query' ? 'graph query' : 'graph impact');
   }
   const { status, index, metadata } = readFreshIndex(options.root);
-  const impact = isImpact ? buildImpactReport(index, options.changed) : undefined;
+  const rawImpact = isImpact ? buildImpactReport(index, options.changed) : undefined;
+  const impact = isImpact && options.compact ? buildCompactImpactReport(rawImpact) : rawImpact;
   const payload = isImpact
-    ? { ok: status.ok, command: 'graph impact', deprecatedAliasUsed: sub === 'query' || undefined, root: options.root, status, metadata, changed: options.changed, related: impact.related, impact }
+    ? { ok: status.ok, command: 'graph impact', deprecatedAliasUsed: sub === 'query' || undefined, compact: options.compact || undefined, root: options.root, status, metadata, changed: options.changed, related: impact.related, impact }
     : { ok: status.ok, command: 'graph communities', root: options.root, status, metadata, graph: graphSummary(index), communities: buildCommunities(index) };
   const refreshNote = metadata.cacheRefreshed ? ', refreshed' : '';
   if (options.json) console.log(JSON.stringify(payload, null, 2));
+  else if (isImpact && options.compact) console.log(formatCompactImpactOutput(payload, impact, sub));
   else if (isImpact) console.log(`graph impact: ${payload.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${status.status}${refreshNote} index)${sub === 'query' ? ' — graph query is deprecated; use graph impact instead.' : ''}`);
   else console.log(`graph communities: ${payload.communities.communities.length}/${payload.communities.total} shown, ${payload.communities.omitted} omitted (${status.status}${refreshNote} index)`);
 }
