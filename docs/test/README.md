@@ -10,6 +10,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `CONTEXT_MEASUREMENT.md`: context measurement commands and runtime context debug smoke checks.
 - `COMMAND_GUIDANCE.md`: environment-aware load-snapshot command guidance checks.
 - `IMPACT_RANKING_CONFIG.md`: configurable graph impact ranking and semantic-edge checks.
+- `CLI_INTERFACE.md`: baseline CLI help/version and invalid invocation checks.
 - `MANUAL_SMOKE.md`: adapter, Plan Mode, initializer, and publishing smoke checks.
 
 ## Verification Commands
@@ -47,6 +48,8 @@ pnpm --filter @dotdotgod/cli test
 Run CLI graph/cache smoke directly:
 
 ```bash
+node packages/cli/bin/dotdotgod.mjs --help
+node packages/cli/bin/dotdotgod.mjs --version
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --json
 node packages/cli/bin/dotdotgod.mjs graph communities . --json
 node packages/cli/bin/dotdotgod.mjs load-snapshot . --json
