@@ -9,7 +9,12 @@ const asJson = args.includes('--json');
 const asMarkdown = args.includes('--markdown') || !asJson;
 const outputIndex = args.indexOf('--output');
 const outputPath = outputIndex >= 0 ? args[outputIndex + 1] : undefined;
+const outputDirIndex = args.indexOf('--output-dir');
+const outputDir = outputDirIndex >= 0 ? args[outputDirIndex + 1] : undefined;
+const datedOutput = args.includes('--dated-output');
 const includeArchive = args.includes('--include-archive');
+const impactChangedIndex = args.indexOf('--impact-changed');
+const impactChangedPath = impactChangedIndex >= 0 ? args[impactChangedIndex + 1] : 'packages/cli/src/core.mjs';
 
 const markerFiles = ['AGENTS.md','CLAUDE.md','CODEX.md','README.md','docs/README.md','docs/spec/README.md','docs/test/README.md','docs/arch/README.md','docs/plan/README.md','docs/archive/README.md'];
 const memoryDirectories = ['docs/spec','docs/test','docs/arch','docs/plan'];
@@ -67,9 +72,15 @@ const planModeFullPrompt = extractBacktickExport('packages/pi/extensions/plan-mo
 const planModeCompactPrompt = extractBacktickExport('packages/pi/extensions/plan-mode/utils.ts', 'PLAN_MODE_COMPACT_CONTEXT_PROMPT');
 const loadSnapshotSample = cliJson('load-snapshot . --json');
 const loadSnapshotText = loadSnapshotSample ? JSON.stringify(loadSnapshotSample) : '';
+const graphImpactSample = impactChangedPath && existsSync(join(root, impactChangedPath)) ? cliJson(`graph impact . --changed ${JSON.stringify(impactChangedPath)} --json`) : null;
+const graphImpactText = graphImpactSample ? JSON.stringify(graphImpactSample) : '';
+const graphImpactRanking = graphImpactSample?.impact?.ranking?.method ?? 'unknown';
+const graphImpactScoredItems = graphImpactSample?.related?.filter((item) => typeof item.impactScore === 'number').length ?? 0;
+const graphImpactSemanticItems = graphImpactSample?.related?.filter((item) => (item.reasons ?? []).some((reason) => reason.includes('semantic') || reason.includes('mentions_'))).length ?? 0;
 const groups = [
   { name: 'Load prompt', files: 1, characters: loadPrompt.length, words: loadPrompt.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(loadPrompt.length / 4), notes: 'Generated from current /dd:load prompt shape' },
   { name: 'Load snapshot sample', files: loadSnapshotSample ? loadSnapshotSample.cache?.indexedFiles ?? 0 : 0, characters: loadSnapshotText.length, words: loadSnapshotText.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(loadSnapshotText.length / 4), notes: loadSnapshotSample ? `CLI snapshot JSON; refreshed=${loadSnapshotSample.metadata?.cacheRefreshed ?? false}; omitted communities=${loadSnapshotSample.quality?.omittedCommunities ?? 0}; omitted items=${loadSnapshotSample.quality?.omittedCommunityItems ?? 0}` : 'CLI snapshot unavailable' },
+  { name: 'Graph impact sample', files: graphImpactSample?.related?.length ?? 0, characters: graphImpactText.length, words: graphImpactText.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(graphImpactText.length / 4), notes: graphImpactSample ? `dotdotgod graph impact --changed ${impactChangedPath}; ranking=${graphImpactRanking}; scored=${graphImpactScoredItems}; semantic=${graphImpactSemanticItems}; related=${graphImpactSample.related?.length ?? 0}; omitted=${graphImpactSample.impact?.omittedRelated ?? 0}; refreshed=${graphImpactSample.metadata?.cacheRefreshed ?? false}` : `Graph impact unavailable for ${impactChangedPath}` },
   { name: 'Plan Mode full prompt', files: 1, characters: planModeFullPrompt.length, words: planModeFullPrompt.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(planModeFullPrompt.length / 4), notes: 'First active planning turn after /plan' },
   { name: 'Plan Mode compact reminder', files: 1, characters: planModeCompactPrompt.length, words: planModeCompactPrompt.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(planModeCompactPrompt.length / 4), notes: 'Later planning turns after the full prompt was injected' },
   measureFiles('Baseline memory', markerFiles, 'AGENTS/CLAUDE/CODEX/root/docs indexes'),
@@ -79,11 +90,19 @@ const groups = [
   measureFiles('Full archive', archiveAll, 'Not loaded by default'),
   measureFiles('Archive body excluded', archiveBody, 'Historical memory kept out of default summary'),
 ];
-const result = { measuredAt: new Date().toISOString(), commit: git('rev-parse --short HEAD') ?? null, dirty: Boolean(git('status --short')), approximation: 'approxTokens = ceil(characters / 4)', includeArchive, runtimeGaps: ['tool-call counts', 'post-load file reads', 'archive body reads', 'agent fallback behavior'], groups };
+const measuredAt = new Date().toISOString();
+const result = { measuredAt, commit: git('rev-parse --short HEAD') ?? null, dirty: Boolean(git('status --short')), approximation: 'approxTokens = ceil(characters / 4)', includeArchive, impactChangedPath, runtimeGaps: ['tool-call counts', 'post-load file reads', 'archive body reads', 'agent fallback behavior'], groups };
 function markdown(r) {
   const rows = r.groups.map((g) => `| ${g.name} | ${g.files} | ${g.characters} | ${g.words} | ${g.approxTokens} | ${g.notes} |`).join('\n');
   return `# Context Measurement Snapshot\n\nMeasured on: ${r.measuredAt}\nCommit: ${r.commit ?? 'unknown'}\nDirty worktree: ${r.dirty ? 'yes' : 'no'}\nApproximation: ${r.approximation}\n\n| Group | Files | Characters | Words | Approx tokens | Notes |\n| --- | ---: | ---: | ---: | ---: | --- |\n${rows}\n`;
 }
+function datedOutputPath() {
+  const stamp = measuredAt.replace(/[-:]/g, '_').replace(/\.\d{3}Z$/, 'Z').replace('T', '_');
+  const directory = outputDir ?? 'docs/archive/report/context-metrics';
+  return join(directory, `MEASURE_${stamp}.${asJson ? 'json' : 'md'}`);
+}
+
 const content = asJson ? JSON.stringify(result, null, 2) + '\n' : markdown(result);
-if (outputPath) { mkdirSync(dirname(outputPath), { recursive: true }); writeFileSync(outputPath, content); }
+const targetPath = outputPath ?? datedOutputPath();
+if (targetPath) { mkdirSync(dirname(targetPath), { recursive: true }); writeFileSync(targetPath, content); process.stdout.write(`${targetPath}\n`); }
 else process.stdout.write(content);
