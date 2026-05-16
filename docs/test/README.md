@@ -39,6 +39,12 @@ Run unit tests where workspace packages provide them:
 pnpm run verify:unit
 ```
 
+Check that package-level quality scripts are included in each package's `verify` script:
+
+```bash
+pnpm run verify:contract
+```
+
 Run CLI unit and e2e tests directly:
 
 ```bash
@@ -58,16 +64,24 @@ node packages/cli/bin/dotdotgod.mjs status . --json
 
 Confirm JSON includes schema/refresh metadata, graph counts, bounded summaries, retrieval hints, and archive policy. For graph impact, confirm traceability relations surface related specs/tests/docs.
 
-Run all workspace package checks:
+Run the optimized full workspace gate:
 
 ```bash
 pnpm run verify
 ```
 
-Run package dry-runs:
+`pnpm run verify` checks generated-resource drift, enforces the package `verify` contract, then delegates package-specific syntax/typecheck/test/resource checks to each package's `verify` script. Use `verify:types` and `verify:unit` for targeted direct checks, not as extra steps before the full gate.
+
+Run package dry-runs with the standalone safe wrapper:
 
 ```bash
 pnpm run pack:dry-run
+```
+
+Run only package tarball dry-runs after generated resources have already been checked:
+
+```bash
+pnpm run pack:dry-run:packages
 ```
 
 Run docs validation directly:
@@ -102,7 +116,7 @@ Husky lives at the workspace root and is installed by the root `prepare` script.
 Pre-push hook:
 
 ```bash
-pnpm run verify && pnpm run verify:cache && pnpm run pack:dry-run
+pnpm run verify && pnpm run verify:cache && pnpm run pack:dry-run:packages
 ```
 
 `verify:cache` runs docs validation, `dotdotgod index`, and `dotdotgod status`, so pre-push refreshes the ignored `.dotdotgod/` cache automatically before checking freshness.
@@ -113,4 +127,4 @@ Run it manually with:
 .husky/pre-push
 ```
 
-`pnpm run verify` includes generated-resource drift checks, so direct edits to generated adapter files fail until `pnpm run generate` is run or the shared source is updated. Husky is not required for package consumers and remains a development-only workflow.
+`pnpm run verify` includes generated-resource drift checks, so the pre-push hook uses `pack:dry-run:packages` instead of the standalone `pack:dry-run` wrapper to avoid repeating that check. Direct edits to generated adapter files fail until `pnpm run generate` is run or the shared source is updated. Husky is not required for package consumers and remains a development-only workflow.
