@@ -9,14 +9,16 @@ import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { recordContextMetric } from "../context-metrics/utils.js";
 import { buildLoadPrompt, collectSnapshot } from "../load-project/utils.js";
 import {
 	buildPlanCompactionInstructions,
 	buildPlanModeContextPrompt,
+	detectPlanExecutionIntent,
 	extractTodoItems,
+	resolveMentionedPlanPath,
 	resolvePlanModeTools,
 	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
@@ -386,6 +388,38 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		persistState();
 	}
 
+	function readPlanTodos(cwd: string, planPath: string): TodoItem[] {
+		try {
+			return extractTodoItems(readFileSync(resolve(cwd, planPath), "utf8"));
+		} catch {
+			return [];
+		}
+	}
+
+	function startExplicitPlanExecutionIfRequested(ctx: ExtensionContext): boolean {
+		const request = lastPlanningRequest ?? "";
+		if (!planModeEnabled || executionMode || !detectPlanExecutionIntent(request)) return false;
+
+		const planPath = resolveMentionedPlanPath(ctx.cwd, request, currentPlanPath, touchedPlanArchivePaths, planPathExists);
+		if (!planPath) return false;
+
+		currentPlanPath = planPath;
+		todoItems = readPlanTodos(ctx.cwd, planPath);
+		planModeEnabled = false;
+		executionMode = todoItems.length > 0;
+		activePlanTouched = false;
+		planningContextShapePending = false;
+		pendingPlanningLoadAfterCompaction = false;
+		pendingPlanningLoadPrompt = undefined;
+		pendingPlanningLoadReason = undefined;
+		activePlanModeTools = [];
+		pi.setActiveTools(NORMAL_MODE_TOOLS);
+		updateStatus(ctx);
+		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:execution-start", { todoCount: todoItems.length, planPath, explicit: true });
+		persistState();
+		return true;
+	}
+
 	function shapePlanningContextIfNeeded(ctx: ExtensionContext): void {
 		if (!planModeEnabled || executionMode) return;
 		const reason = getPlanCompactionReason(ctx.getContextUsage());
@@ -551,6 +585,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	pi.on("before_agent_start", async (_event, ctx) => {
 		if (planModeEnabled && !executionMode) {
 			updateLatestPlanningRequest(ctx);
+			startExplicitPlanExecutionIfRequested(ctx);
 		}
 
 		if (shouldShapePlanningContextOnAgentStart({ planModeEnabled, executionMode, planningContextShapePending })) {

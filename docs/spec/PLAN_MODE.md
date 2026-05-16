@@ -115,6 +115,8 @@ Plan Mode uses tiered hidden runtime instructions. The first active planning tur
 
 When the agent finishes planning after creating or updating an active plan markdown file under `docs/plan/`, plan mode asks whether to execute, stay in plan mode, or refine the plan.
 
+If the user explicitly asks to execute a named active plan, such as `execute docs/plan/<task-slug>/README.md` or `<task-slug> 진행해줘`, Plan Mode resolves that plan and enters execution even if the plan file was not modified in the current turn.
+
 - Plan files under `docs/plan/` remain the durable review artifact.
 - Plan Mode stores the current active plan README path in session state when active plan markdown is created or updated, so execution prompts, resume, and compaction summaries can refer to the exact plan after context changes.
 - Plan mode no longer renders a saved-plan file preview in the TUI.
@@ -126,11 +128,11 @@ When the agent finishes planning after creating or updating an active plan markd
 
 Plan mode extracts numbered executable steps from a `Plan:` section. Generic planning template labels such as `Target files and rationale`, `Implementation steps`, and `Verification method` are ignored so they do not become execution todos.
 
-When the user chooses to execute the plan:
+When the user chooses to execute the plan or explicitly asks to execute a resolved active plan:
 
 - Full tool access is restored.
-- The execute follow-up names the current active plan path when known.
-- Remaining steps are injected into execution context with the active plan path when known.
+- The execute follow-up or execution context names the current active plan path when known.
+- Remaining steps are loaded from the selected plan README when needed and injected into execution context with the active plan path when known.
 - The agent marks completed steps by including `[DONE:n]` in the same response that reports completion.
 - Final implementation or verification responses must include `[DONE:n]` for every step completed in that turn.
 - `/todos` displays completion progress.

@@ -4,14 +4,17 @@ import {
 	PLAN_COMPACTION_PERCENT_THRESHOLD,
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
 	buildPlanCompactionInstructions,
+	detectPlanExecutionIntent,
 	buildPlanModeContextPrompt,
 	extractDoneSteps,
 	extractTodoItems,
 	formatPlanCompactionFocus,
 	extractPathMentions,
+	extractPlanSlugMentions,
 	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
 	parsePlanModeExtraTools,
+	resolveMentionedPlanPath,
 	isDotdotgodCliCommand,
 	isSafeCommand,
 	isSafePlanArchiveCommand,
@@ -127,6 +130,50 @@ describe("plan-mode current plan path helpers", () => {
 		assert.equal(getCurrentPlanReadmePath("docs/plan/LandingSite/README.md"), undefined);
 		assert.equal(getCurrentPlanReadmePath("docs/plan/landing-site/notes.md"), undefined);
 		assert.equal(getCurrentPlanReadmePath("packages/pi/README.md"), undefined);
+	});
+});
+
+describe("plan-mode explicit execution helpers", () => {
+	it("detects explicit English and Korean requests to execute a plan", () => {
+		for (const request of [
+			"Execute the plan in docs/plan/impact-ranking-config/README.md.",
+			"execute the impact-ranking-config plan",
+			"start the plan in docs/plan/impact-ranking-config/README.md",
+			"impact-ranking-config 진행해줘",
+			"impact-ranking-config 플랜 시작하자",
+			"docs/plan/impact-ranking-config/README.md 실행해줘",
+		]) {
+			assert.equal(detectPlanExecutionIntent(request), true, request);
+		}
+	});
+
+	it("does not treat refinement or planning language as execution intent", () => {
+		for (const request of [
+			"impact-ranking-config 계획을 수정하자",
+			"이 플랜 더 다듬자",
+			"plan-mode 실행 질문 버그를 계획하자",
+			"refine the impact-ranking-config plan",
+		]) {
+			assert.equal(detectPlanExecutionIntent(request), false, request);
+		}
+	});
+
+	it("extracts plan slugs and resolves mentioned active plan paths", () => {
+		assert.deepEqual(extractPlanSlugMentions("Execute docs/plan/impact-ranking-config/README.md and plan-mode-specific-plan-execution"), [
+			"impact-ranking-config",
+			"plan-mode-specific-plan-execution",
+		]);
+
+		const exists = (_cwd: string, path: string): boolean => path === "docs/plan/impact-ranking-config/README.md" || path === "docs/plan/current-task/README.md";
+		assert.equal(
+			resolveMentionedPlanPath(".", "impact-ranking-config 진행해줘", undefined, [], exists),
+			"docs/plan/impact-ranking-config/README.md",
+		);
+		assert.equal(
+			resolveMentionedPlanPath(".", "진행해줘", "docs/plan/current-task/README.md", [], exists),
+			"docs/plan/current-task/README.md",
+		);
+		assert.equal(resolveMentionedPlanPath(".", "missing-plan 실행해줘", undefined, [], exists), undefined);
 	});
 });
 
