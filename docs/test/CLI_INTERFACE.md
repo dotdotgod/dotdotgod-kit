@@ -2,7 +2,7 @@
 
 ## Scope
 
-Verify baseline `dotdotgod` command discovery, version reporting, subcommand help, config command discovery, and invalid `graph impact` usage guidance.
+Verify baseline `dotdotgod` command discovery, version reporting, init/config command discovery, and invalid `graph impact` usage guidance.
 
 ## Automated Coverage
 
@@ -10,7 +10,7 @@ Verify baseline `dotdotgod` command discovery, version reporting, subcommand hel
 
 - Bare `dotdotgod`, `--help`, `-h`, and `help` print usage to stdout with exit `0`.
 - `--version`, `-v`, and `version` print the package version to stdout with exit `0`.
-- `validate`, `index`, `config`, `config init`, `status`, `load-snapshot`, `graph`, `graph impact`, and `graph communities` expose help without running command side effects.
+- `validate`, `init`, `index`, `config`, `config init`, `status`, `load-snapshot`, `graph`, `graph impact`, and `graph communities` expose help without running command side effects.
 - Unknown commands, removed graph subcommands such as `graph query`, and invalid options print diagnostics to stderr and exit `2`.
 - `graph impact` requires `--changed <path>` and does not create `.dotdotgod/` when the argument is missing.
 - JSON missing-argument output uses `ok: false` with `error.code: "MISSING_CHANGED"`, including when `--compact` is present.
@@ -23,6 +23,7 @@ pnpm --filter @dotdotgod/cli test
 node packages/cli/bin/dotdotgod.mjs --help
 node packages/cli/bin/dotdotgod.mjs --version
 node packages/cli/bin/dotdotgod.mjs validate --help
+node packages/cli/bin/dotdotgod.mjs init --help
 node packages/cli/bin/dotdotgod.mjs config --help
 node packages/cli/bin/dotdotgod.mjs config init --help
 node packages/cli/bin/dotdotgod.mjs graph impact --help

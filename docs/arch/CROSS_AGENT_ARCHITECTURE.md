@@ -26,8 +26,8 @@ dotdotgod
 
 - `workflows/load.md`: common project memory loading guidance, including snapshot-first CLI guidance with manual README-index fallback.
 - `workflows/plan.md`: common doc-first planning guidance.
-- `workflows/init.md`: common project initializer guidance with platform-specific script command placeholders.
-- `initializer/scripts/init_project.sh`: deterministic scaffold generator.
+- `workflows/init.md`: common project initializer guidance that uses `dotdotgod init` when available and provides platform-specific fallback script command placeholders when the CLI is absent.
+- `initializer/scripts/init_project.sh`: deterministic fallback scaffold generator mirroring `dotdotgod init`.
 - `initializer/references/agent-docs.md`: shared agent-doc naming reference.
 
 Shared guidance must not depend on one agent's tool names, shortcuts, or extension APIs. Platform wrappers, frontmatter, command names, and runtime enforcement stay in generated adapter resources or adapter code.
@@ -164,4 +164,4 @@ Codex verification should add:
 
 - Codex plugin discovery/load test
 - Codex skill trigger smoke tests for project loading, planning, and initialization
-- initializer dry-run parity across adapters
+- `dotdotgod init` dry-run and fallback initializer dry-run parity across adapters

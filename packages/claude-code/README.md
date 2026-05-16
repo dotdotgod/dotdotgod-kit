@@ -18,7 +18,7 @@ Claude Code adapter for dotdotgod's context curation workflow. It gives Claude C
 - Slash commands:
   - `/dd:load`: load project memory read-only.
   - `/dd:plan`: plan from docs before implementation.
-  - `/dd:init`: initialize shared agent docs and docs folders.
+  - `/dd:init`: initialize shared agent docs and docs folders, using `dotdotgod init` when available and the bundled fallback when not.
 - Skills:
   - `project-load`
   - `doc-first-planning`

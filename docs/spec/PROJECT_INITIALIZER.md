@@ -4,9 +4,15 @@
 
 `project-initializer` creates a conservative documentation and agent-instruction baseline for a software project.
 
-It is exposed as a Pi skill and uses a bundled POSIX shell script for deterministic file creation.
+It is exposed through the shared `dotdotgod init` CLI command and as generated Pi, Claude Code, and Codex initializer guidance. Adapter guidance uses the CLI command when it is already available and keeps the bundled POSIX shell script as an offline fallback, so missing CLI access never blocks baseline initialization.
 
 ## CLI Contract
+
+```bash
+dotdotgod init <project-root> [--project-name NAME] [--dotdot-setting] [--force] [--dry-run] [--json]
+```
+
+Fallback script contract, used when `dotdotgod` is unavailable or not executable:
 
 ```bash
 sh skills/project-initializer/scripts/init_project.sh <project-root> [--project-name NAME] [--dotdot-setting] [--force] [--dry-run]
@@ -30,12 +36,21 @@ It also ensures `.gitignore` contains:
 
 - `docs/plan`
 - `docs/archive`
+- `.dotdotgod`
+
+## CLI Availability Policy
+
+- Adapter initializer workflows MUST NOT require users to install `dotdotgod` before creating the baseline scaffold.
+- If `dotdotgod init` is unavailable because the CLI command is missing or not executable, adapters MUST use the bundled fallback script instead of failing initialization.
+- The fallback scaffold MUST preserve the same baseline docs indexes and local-memory `.gitignore` entries so agents can navigate `AGENTS.md` and README indexes before the CLI is installed.
+- CLI-only validation, graph cache, and load-snapshot features may be added later without changing the initialized docs shape.
 
 ## Overwrite Policy
 
 - Existing files are skipped by default.
 - `--force` replaces existing generated files only after moving the old file to `<name>.bak.<timestamp>`.
 - `--dry-run` reports intended create/update/replace actions without writing files.
+- `--json` is supported by `dotdotgod init` for structured action reporting.
 
 ## Project Name
 
@@ -64,7 +79,9 @@ Generated docs follow these conventions:
 
 - The initializer does not merge into existing files unless `--force` is explicitly used.
 - The initializer does not infer project stack beyond the project name.
-- `docs/plan` and `docs/archive` are local working-memory areas by default and are ignored by git unless a project deliberately changes that policy.
+- The initializer does not require the CLI in adapter contexts; missing CLI access must fall back to the bundled script.
+- The initializer does not require or create a project config file by default; use `dotdotgod config init` when a project wants editable policy.
+- `docs/plan`, `docs/archive`, and `.dotdotgod` are local working/cache areas by default and are ignored by git unless a project deliberately changes that policy.
 
 ## Traceability
 
@@ -72,6 +89,8 @@ Generated docs follow these conventions:
 {
   "kind": "spec",
   "implementedBy": [
+    "packages/cli/src/init.mjs",
+    "packages/cli/src/core.mjs",
     "packages/shared/initializer/scripts/init_project.sh",
     "packages/pi/skills/project-initializer/scripts/init_project.sh",
     "packages/claude-code/skills/project-initializer/scripts/init_project.sh",
@@ -79,14 +98,19 @@ Generated docs follow these conventions:
     "scripts/generate-adapters.mjs"
   ],
   "verifiedBy": [
-    "docs/test/README.md"
+    "packages/cli/test/e2e.test.mjs",
+    "docs/test/README.md",
+    "docs/test/MANUAL_SMOKE.md"
   ],
   "relatedDocs": [
+    "docs/spec/CLI_INTERFACE.md",
     "docs/arch/CROSS_AGENT_ARCHITECTURE.md",
     "docs/arch/DOCS_STRUCTURE.md"
   ],
   "verificationCommands": [
+    "node packages/cli/bin/dotdotgod.mjs init . --dry-run --project-name fixture-name",
     "sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name .",
+    "pnpm --filter @dotdotgod/cli test",
     "pnpm run verify:generated"
   ]
 }

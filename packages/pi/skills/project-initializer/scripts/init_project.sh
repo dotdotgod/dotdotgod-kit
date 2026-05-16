@@ -13,7 +13,7 @@ Initializes:
   docs/arch/README.md
   docs/plan/README.md
   docs/archive/README.md
-  .gitignore entries for docs/plan and docs/archive
+  .gitignore entries for docs/plan, docs/archive, and .dotdotgod
 EOF
 }
 
@@ -339,3 +339,4 @@ This directory is local-only and ignored by git by default."
 
 ensure_gitignore_entry "docs/plan"
 ensure_gitignore_entry "docs/archive"
+ensure_gitignore_entry ".dotdotgod"

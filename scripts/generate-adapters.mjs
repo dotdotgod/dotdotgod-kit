@@ -66,7 +66,7 @@ function command(frontmatter, title, intro, body) {
 const yaml = {
   load: `interface:\n  display_name: "Project Load"\n  short_description: "Load dotdotgod project memory."\n  default_prompt: "Load this project's dotdotgod memory and summarize rules, docs, commands, active plans, and open questions."\n`,
   plan: `interface:\n  display_name: "Doc-First Planning"\n  short_description: "Plan work from dotdotgod docs first."\n  default_prompt: "Plan this change from AGENTS.md, docs/spec, docs/test, docs/arch, and docs/plan before implementation."\n`,
-  init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize agent docs and local docs folders with shell."\n  default_prompt: "Initialize this project with AGENTS.md, CLAUDE.md, CODEX.md, docs folders, and local plan/archive gitignore entries."\n`,
+  init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize agent docs and local docs folders."\n  default_prompt: "Initialize this project with dotdotgod init when available, otherwise use the bundled fallback; include AGENTS.md, CLAUDE.md, CODEX.md, docs folders, and local memory gitignore entries."\n`,
 };
 
 write(

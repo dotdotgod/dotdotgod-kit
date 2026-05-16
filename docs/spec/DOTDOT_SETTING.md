@@ -9,6 +9,12 @@ The default initializer output must remain generic. Dotdot conventions are gener
 ## CLI Contract
 
 ```bash
+dotdotgod init <project-root> --dotdot-setting
+```
+
+If the CLI is unavailable, adapter initializer workflows use the bundled fallback script with the same option:
+
+```bash
 sh skills/project-initializer/scripts/init_project.sh --dotdot-setting <project-root>
 ```
 
@@ -52,6 +58,7 @@ Existing overwrite behavior remains unchanged:
 {
   "kind": "spec",
   "implementedBy": [
+    "packages/cli/src/init.mjs",
     "packages/shared/initializer/scripts/init_project.sh",
     "packages/pi/skills/project-initializer/scripts/init_project.sh",
     "packages/claude-code/skills/project-initializer/scripts/init_project.sh",
@@ -59,6 +66,7 @@ Existing overwrite behavior remains unchanged:
     "docs/arch/CODE_CONVENTIONS.md"
   ],
   "verifiedBy": [
+    "packages/cli/test/e2e.test.mjs",
     "docs/test/README.md"
   ],
   "relatedDocs": [
@@ -66,7 +74,9 @@ Existing overwrite behavior remains unchanged:
     "docs/arch/DOCS_STRUCTURE.md"
   ],
   "verificationCommands": [
+    "node packages/cli/bin/dotdotgod.mjs init . --dry-run --dotdot-setting --project-name fixture-name",
     "sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --dotdot-setting --project-name fixture-name .",
+    "pnpm --filter @dotdotgod/cli test",
     "pnpm run verify:generated"
   ]
 }

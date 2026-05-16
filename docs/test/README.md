@@ -58,6 +58,7 @@ Run CLI graph/cache smoke directly:
 ```bash
 node packages/cli/bin/dotdotgod.mjs --help
 node packages/cli/bin/dotdotgod.mjs --version
+node packages/cli/bin/dotdotgod.mjs init . --dry-run --project-name fixture-name
 node packages/cli/bin/dotdotgod.mjs config . --json
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --json
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --compact --json

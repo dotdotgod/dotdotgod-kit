@@ -70,10 +70,13 @@ Confirm `project-load`, `doc-first-planning`, and `project-initializer` skills a
 ## Initializer Parity
 
 ```bash
+node packages/cli/bin/dotdotgod.mjs init <fixture-root> --dry-run --project-name fixture-name
 sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name <fixture-root>
 sh packages/claude-code/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name <fixture-root>
 sh packages/codex/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name <fixture-root>
 ```
+
+Confirm each initializer path reports `docs/plan`, `docs/archive`, and `.dotdotgod` `.gitignore` entries. Also confirm adapter guidance does not stop when `dotdotgod` is absent; it should use the bundled shell fallback and still create the README indexes needed for manual project-memory loading.
 
 ## Published Pi Adapter Install
 
