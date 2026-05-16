@@ -10,9 +10,9 @@ Verify baseline `dotdotgod` command discovery, version reporting, subcommand hel
 
 - Bare `dotdotgod`, `--help`, `-h`, and `help` print usage to stdout with exit `0`.
 - `--version`, `-v`, and `version` print the package version to stdout with exit `0`.
-- `validate`, `index`, `status`, `load-snapshot`, `graph`, `graph impact`, `graph query`, and `graph communities` expose help without running command side effects.
-- Unknown commands and invalid options print diagnostics to stderr and exit `2`.
-- `graph impact` and deprecated `graph query` require `--changed <path>` and do not create `.dotdotgod/` when the argument is missing.
+- `validate`, `index`, `status`, `load-snapshot`, `graph`, `graph impact`, and `graph communities` expose help without running command side effects.
+- Unknown commands, removed graph subcommands such as `graph query`, and invalid options print diagnostics to stderr and exit `2`.
+- `graph impact` requires `--changed <path>` and does not create `.dotdotgod/` when the argument is missing.
 - JSON missing-argument output uses `ok: false` with `error.code: "MISSING_CHANGED"`, including when `--compact` is present.
 - Compact graph impact output remains opt-in and smaller than raw JSON.
 

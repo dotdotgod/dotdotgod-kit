@@ -51,7 +51,7 @@ Impact ranking policy lives in the same optional root config files as memory and
 - If `impactRanking` is absent, the CLI uses the built-in `balanced` preset.
 - Presets can be partially overridden by numeric weights, relation weights, boost maps, PPR settings, and semantic settings.
 - Runtime graph commands fall back to defaults when config is invalid; `dotdotgod validate` reports the config errors.
-- `graph impact` and the deprecated `graph query` alias preserve their existing raw `related` and grouped output while adding ranking metadata.
+- `graph impact` preserves its raw `related` and grouped output while adding ranking metadata.
 - `--compact` is opt-in and returns an agent-facing grouped summary without changing the default raw JSON shape.
 
 ## Ranking Signals

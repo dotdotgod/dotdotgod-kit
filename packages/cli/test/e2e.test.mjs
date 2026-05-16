@@ -94,7 +94,6 @@ describe('dotdotgod CLI e2e', () => {
       [['load-snapshot', '--help'], /dotdotgod load-snapshot <root>/],
       [['graph', '--help'], /dotdotgod graph communities <root>/],
       [['graph', 'impact', '--help'], /dotdotgod graph impact <root> --changed <path>/],
-      [['graph', 'query', '--help'], /Deprecated alias/],
       [['graph', 'communities', '--help'], /dotdotgod graph communities <root>/],
       [['help', 'graph', 'impact'], /dotdotgod graph impact <root> --changed <path>/],
     ]) {
@@ -127,16 +126,22 @@ describe('dotdotgod CLI e2e', () => {
     assert.match(missingChanged.stderr, /dotdotgod graph impact <root> --changed <path>/);
     assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
 
-    const missingChangedJson = run(['graph', 'query', root, '--compact', '--json']);
+    const removedQuery = run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--compact', '--json']);
+    assert.equal(removedQuery.status, 2);
+    assert.equal(removedQuery.stdout, '');
+    assert.match(removedQuery.stderr, /Unknown graph command: query/);
+    assert.match(removedQuery.stderr, /dotdotgod graph impact <root> --changed <path>/);
+    assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
+
+    const missingChangedJson = run(['graph', 'impact', root, '--compact', '--json']);
     assert.equal(missingChangedJson.status, 2);
     assert.equal(missingChangedJson.stderr, '');
     const payload = JSON.parse(missingChangedJson.stdout);
     assert.equal(payload.ok, false);
     assert.equal(payload.command, 'graph impact');
-    assert.equal(payload.deprecatedAliasUsed, true);
     assert.equal(payload.compact, true);
     assert.equal(payload.error.code, 'MISSING_CHANGED');
-    assert.match(payload.usage, /dotdotgod graph query <root> --changed <path>/);
+    assert.match(payload.usage, /dotdotgod graph impact <root> --changed <path>/);
 
     const missingChangedValueJson = run(['graph', 'impact', root, '--changed', '--json']);
     assert.equal(missingChangedValueJson.status, 2);
@@ -255,12 +260,10 @@ describe('dotdotgod CLI e2e', () => {
     assert.match(compactText.stdout, /graph impact compact:/);
     assert.match(compactText.stdout, /docs:/);
 
-    const queryAlias = json(run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--compact', '--json']));
-    assert.equal(queryAlias.command, 'graph impact');
-    assert.equal(queryAlias.deprecatedAliasUsed, true);
-    assert.equal(queryAlias.compact, true);
-    assert.equal(queryAlias.impact.ranking.method, 'personalized-pagerank+policy');
-    assert.equal(queryAlias.related.every((node) => typeof node.impactScore === 'number' && node.scoreBreakdown), true);
+    const removedQuery = run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--compact', '--json']);
+    assert.equal(removedQuery.status, 2);
+    assert.equal(removedQuery.stdout, '');
+    assert.match(removedQuery.stderr, /Unknown graph command: query/);
   });
 
   it('applies impact ranking presets, semantic thresholds, archive safety, and measurement output', () => {
