@@ -88,6 +88,9 @@ describe('dotdotgod CLI e2e', () => {
     assert(snapshot.quality.approxSnapshotTokens > 0);
     assert.equal(typeof snapshot.quality.omittedCommunities, 'number');
     assert.equal(typeof snapshot.quality.omittedMemoryAreaItems, 'number');
+    assert.equal(snapshot.commandGuidance.source, 'missing-install');
+    assert.equal(snapshot.commandGuidance.install, 'npm install -D @dotdotgod/cli');
+    assert.equal(snapshot.commandGuidance.validate, 'npx dotdotgod validate .');
     assert.equal(snapshot.memoryConfig.source, 'default');
     assert(snapshot.memoryPolicy.sharedAreas.includes('spec'));
     assert(snapshot.memoryPolicy.localAreas.includes('active-plan'));

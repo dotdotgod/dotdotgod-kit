@@ -8,6 +8,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `MEMORY_AREA_CONFIG.md`: memory-area config validation and snapshot smoke checks.
 - `TRACEABILITY_CONFIG.md`: configurable traceability enforcement validation smoke checks.
 - `CONTEXT_MEASUREMENT.md`: context measurement commands and runtime context debug smoke checks.
+- `COMMAND_GUIDANCE.md`: environment-aware load-snapshot command guidance checks.
 - `MANUAL_SMOKE.md`: adapter, Plan Mode, initializer, and publishing smoke checks.
 
 ## Verification Commands

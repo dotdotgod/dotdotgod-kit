@@ -69,7 +69,7 @@ Current extraction covers Markdown headings/links, `json dotdotgod` traceability
 
 Graph file nodes include deterministic memory-area metadata for dotdotgod structures. Optional memory-area config can override or extend classification while zero-config behavior stays compatible. README links also get `routes_to` edges with `CURATED_INDEX` confidence, making README indexes routing hints without semantic embeddings.
 
-Graph storage uses compact shards instead of one large JSON file. Community summaries use `leiden-ts` over a weighted durable-node projection, with deterministic domain grouping as fallback. Load snapshots expose bounded quality, community, memory-area, and archive-policy summaries.
+Graph storage uses compact shards instead of one large JSON file. Community summaries use `leiden-ts` over a weighted durable-node projection, with deterministic domain grouping as fallback. Load snapshots expose bounded quality, community, memory-area, archive-policy, and command-guidance summaries.
 
 ## Dependency Policy
 

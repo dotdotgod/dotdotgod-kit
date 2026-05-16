@@ -41,6 +41,16 @@ export interface LoadSnapshotRunResult {
 }
 
 interface LoadSnapshotLike {
+	commandGuidance?: {
+		source?: string;
+		packageManager?: string;
+		install?: string | null;
+		validate?: string;
+		loadSnapshot?: string;
+		index?: string;
+		status?: string;
+		verify?: string | null;
+	};
 	cache?: {
 		status?: string;
 		ok?: boolean;
@@ -241,6 +251,15 @@ export function formatLoadSnapshotSummary(result: LoadSnapshotRunResult, communi
 		`- Communities: method=${communities?.method ?? "unknown"}, fallback=${String(communities?.fallback ?? "unknown")}, shown=${formatCount(communities?.communities?.slice(0, communityLimit).length)}, total=${formatCount(communities?.total)}, omitted=${formatCount(communities?.omitted)}`,
 		`- Bounds: fullGraphIncluded=${String(snapshot.bounds?.fullGraphIncluded ?? false)}`,
 	];
+
+	const guidance = snapshot.commandGuidance;
+	if (guidance) {
+		lines.push(
+			`- Commands: source=${guidance.source ?? "unknown"}, packageManager=${guidance.packageManager ?? "unknown"}, validate=${guidance.validate ?? "unknown"}, loadSnapshot=${guidance.loadSnapshot ?? "unknown"}, index=${guidance.index ?? "unknown"}, status=${guidance.status ?? "unknown"}`,
+		);
+		if (guidance.install) lines.push(`  - Install CLI if needed: ${guidance.install}`);
+		if (guidance.verify) lines.push(`  - Verify: ${guidance.verify}`);
+	}
 
 	for (const area of memoryAreas?.areas?.slice(0, communityLimit) ?? []) {
 		lines.push(

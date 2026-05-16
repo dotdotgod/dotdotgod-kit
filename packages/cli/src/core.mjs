@@ -1357,6 +1357,52 @@ export function buildCommunities(index, limits = {}) {
   }
 }
 
+export function detectPackageManager(root) {
+  const packageFile = join(root, 'package.json');
+  if (existsSync(packageFile)) {
+    try {
+      const packageJson = JSON.parse(readFileSync(packageFile, 'utf8'));
+      if (typeof packageJson.packageManager === 'string' && packageJson.packageManager.trim()) {
+        const [name] = packageJson.packageManager.split('@');
+        if (name) return name;
+      }
+    } catch {}
+  }
+  if (existsSync(join(root, 'pnpm-lock.yaml'))) return 'pnpm';
+  if (existsSync(join(root, 'yarn.lock'))) return 'yarn';
+  if (existsSync(join(root, 'bun.lockb')) || existsSync(join(root, 'bun.lock'))) return 'bun';
+  if (existsSync(join(root, 'package-lock.json')) || existsSync(join(root, 'npm-shrinkwrap.json'))) return 'npm';
+  return 'npm';
+}
+
+function hasCliDependency(packageJson) {
+  return ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']
+    .some((field) => packageJson?.[field] && Object.prototype.hasOwnProperty.call(packageJson[field], '@dotdotgod/cli'));
+}
+
+function readRootPackageJson(root) {
+  try { return JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')); } catch { return null; }
+}
+
+export function detectCommandGuidance(root) {
+  const packageManager = detectPackageManager(root);
+  const packageJson = readRootPackageJson(root);
+  const hasLocalSource = existsSync(join(root, 'packages/cli/bin/dotdotgod.mjs')) && packageJson?.name === 'dotdotgod-workspace';
+  const hasProjectInstall = hasCliDependency(packageJson) || existsSync(join(root, 'node_modules/.bin/dotdotgod'));
+  const prefix = hasLocalSource ? 'node packages/cli/bin/dotdotgod.mjs' : 'npx dotdotgod';
+  const source = hasLocalSource ? 'local-source' : hasProjectInstall ? 'project-install' : 'missing-install';
+  return {
+    source,
+    packageManager,
+    install: source === 'missing-install' ? 'npm install -D @dotdotgod/cli' : null,
+    validate: source === 'local-source' ? `${prefix} validate . --include-local-memory` : `${prefix} validate .`,
+    loadSnapshot: `${prefix} load-snapshot . --json`,
+    index: `${prefix} index . --json`,
+    status: `${prefix} status . --json`,
+    verify: packageJson?.scripts?.verify ? `${packageManager} run verify` : null,
+  };
+}
+
 export function buildMemoryAreas(index, limits = {}) {
   const graph = index?.graph ?? { nodes: [], edges: [] };
   const itemLimit = limits.items ?? 4;
@@ -1407,7 +1453,8 @@ export function runLoadSnapshot(argv) {
     graphNodes: summary.nodes,
     graphEdges: summary.edges,
   };
-  let payload = { root: options.root, cache: status, metadata, graph: summary, memoryConfig, memoryPolicy, memoryAreas, communities, bounds, quality };
+  const commandGuidance = detectCommandGuidance(options.root);
+  let payload = { root: options.root, cache: status, metadata, graph: summary, memoryConfig, memoryPolicy, memoryAreas, communities, bounds, quality, commandGuidance };
   const serialized = JSON.stringify(payload);
   payload = { ...payload, quality: { ...quality, snapshotBytes: Buffer.byteLength(serialized), approxSnapshotTokens: Math.ceil(serialized.length / 4) } };
   if (options.json) console.log(JSON.stringify(payload, null, 2));

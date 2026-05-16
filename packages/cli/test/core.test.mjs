@@ -12,6 +12,8 @@ import {
   buildMemoryAreas,
   buildIndex,
   collectIndexFiles,
+  detectCommandGuidance,
+  detectPackageManager,
   extractAnchors,
   extractDotdotgodTraceabilityBlocks,
   extractLinks,
@@ -114,6 +116,37 @@ describe('CLI docs helpers', () => {
     assert.equal(memoryAreaForPath('docs/archive/OLD.md', config), 'local-history');
     assert.equal(shouldIndexPath('docs/archive/OLD.md', config), false);
     assert.equal(shouldIndexPath('docs/spec/FEATURE.md', config), true);
+  });
+
+  it('detects command guidance for local source, project install, and missing CLI projects', () => {
+    const local = fixture();
+    mkdirSync(join(local, 'packages/cli/bin'), { recursive: true });
+    writeFileSync(join(local, 'packages/cli/bin/dotdotgod.mjs'), '#!/usr/bin/env node\n');
+    writeFileSync(join(local, 'package.json'), JSON.stringify({ name: 'dotdotgod-workspace', packageManager: 'pnpm@10.0.0', scripts: { verify: 'pnpm run verify' } }, null, 2));
+    assert.equal(detectPackageManager(local), 'pnpm');
+    assert.deepEqual(detectCommandGuidance(local), {
+      source: 'local-source',
+      packageManager: 'pnpm',
+      install: null,
+      validate: 'node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory',
+      loadSnapshot: 'node packages/cli/bin/dotdotgod.mjs load-snapshot . --json',
+      index: 'node packages/cli/bin/dotdotgod.mjs index . --json',
+      status: 'node packages/cli/bin/dotdotgod.mjs status . --json',
+      verify: 'pnpm run verify',
+    });
+
+    const installed = fixture();
+    writeFileSync(join(installed, 'package.json'), JSON.stringify({ name: 'installed', devDependencies: { '@dotdotgod/cli': '^0.1.0' } }, null, 2));
+    assert.equal(detectCommandGuidance(installed).source, 'project-install');
+    assert.equal(detectCommandGuidance(installed).validate, 'npx dotdotgod validate .');
+
+    const missing = fixture();
+    writeFileSync(join(missing, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n');
+    const guidance = detectCommandGuidance(missing);
+    assert.equal(guidance.source, 'missing-install');
+    assert.equal(guidance.packageManager, 'pnpm');
+    assert.equal(guidance.install, 'npm install -D @dotdotgod/cli');
+    assert.equal(guidance.loadSnapshot, 'npx dotdotgod load-snapshot . --json');
   });
 
   it('loads configurable traceability scope with array path settings', () => {
