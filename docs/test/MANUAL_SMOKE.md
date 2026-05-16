@@ -35,6 +35,7 @@ Check that the loader prompt includes a compact `Load snapshot:` section with ca
 14. Confirm `--plan-extra-tools ctx_search,ctx_execute_file` adds only installed extra tools and the prompt renders the resolved tool list without contradicting allowed plan/archive markdown updates.
 15. In `/plan`, create a plan, choose execute, and confirm the follow-up names the active plan path.
 16. With extracted todos, confirm execution context includes `Active plan: docs/plan/<task-slug>/README.md`; after resume or planning compaction, `Current work focus:` preserves that path.
+17. In `/plan`, ask `Execute the plan in docs/plan/<task-slug>/README.md` for an existing active plan and confirm execution starts even if the plan file was not edited in that turn.
 
 ## Claude Code Adapter
 

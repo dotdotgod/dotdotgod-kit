@@ -253,6 +253,60 @@ export function getCurrentPlanReadmePath(path: string): string | undefined {
 	return `docs/plan/${match[1]}/README.md`;
 }
 
+export function detectPlanExecutionIntent(text: string): boolean {
+	const normalized = text.replace(/\s+/g, " ").trim();
+	if (!normalized) return false;
+
+	const refinementOnly = /(refine|revise|edit|modify|adjust|improve|update)\b.*\b(plan|proposal)|\b(plan|proposal)\b.*\b(refine|revise|edit|modify|adjust|improve|update)\b|수정하자|수정해줘|다듬|보완|개선|계획하자|계획을 세우|계획 만들어|플랜.*(수정|다듬|보완|개선)/i;
+	const explicitEnglishExecution = /\b(execute|start|run|begin|implement)\b.*\b(plan|docs\/plan\/[a-z0-9-]+\/README\.md|[a-z0-9]+(?:-[a-z0-9]+)+)\b|\b(proceed with|carry out)\b.*\b(plan|docs\/plan\/[a-z0-9-]+\/README\.md|[a-z0-9]+(?:-[a-z0-9]+)+)\b/i;
+	const explicitKoreanExecution = /(진행|시작|실행)(해줘|해주세요|하자|합시다|해보자|해|해라|시켜줘)/i;
+	const executeNow = /^(execute|start|run|begin|implement|proceed)\b/i;
+
+	const hasExecution = explicitEnglishExecution.test(normalized) || explicitKoreanExecution.test(normalized) || executeNow.test(normalized);
+	if (!hasExecution) return false;
+	if (refinementOnly.test(normalized) && !explicitEnglishExecution.test(normalized) && !explicitKoreanExecution.test(normalized)) return false;
+	return true;
+}
+
+export function extractPlanSlugMentions(text: string): string[] {
+	const slugs: string[] = [];
+	const seen = new Set<string>();
+	const add = (slug: string | undefined) => {
+		if (!slug || seen.has(slug)) return;
+		seen.add(slug);
+		slugs.push(slug);
+	};
+
+	for (const match of text.matchAll(/docs\/plan\/([a-z0-9]+(?:-[a-z0-9]+)*)\/(?:README\.md|[A-Z0-9]+(?:_[A-Z0-9]+)*\.md)/g)) {
+		add(match[1]);
+	}
+	for (const match of text.matchAll(/(?:^|[\s`"'(:])([a-z0-9]+(?:-[a-z0-9]+)+)(?=$|[\s`"'),.;:])/g)) {
+		add(match[1]);
+	}
+	return slugs;
+}
+
+export function resolveMentionedPlanPath(
+	cwd: string,
+	text: string | undefined,
+	currentPlanPath: string | undefined,
+	touchedPaths: readonly string[],
+	pathExists: (cwd: string, path: string) => boolean,
+): string | undefined {
+	const candidates = [
+		...extractPathMentions(text ?? "").map((path) => getCurrentPlanReadmePath(path)).filter((path): path is string => Boolean(path)),
+		...extractPlanSlugMentions(text ?? "").map((slug) => `docs/plan/${slug}/README.md`),
+		...(currentPlanPath ? [currentPlanPath] : []),
+		...touchedPaths.map((path) => getCurrentPlanReadmePath(path)).filter((path): path is string => Boolean(path)),
+	];
+	const seen = new Set<string>();
+	return candidates.find((path) => {
+		if (seen.has(path)) return false;
+		seen.add(path);
+		return pathExists(cwd, path);
+	});
+}
+
 export function extractPathMentions(text: string): string[] {
 	const paths: string[] = [];
 	const seen = new Set<string>();
