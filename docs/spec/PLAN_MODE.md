@@ -19,6 +19,7 @@ Pi has no built-in plan mode; this package provides the workflow as an extension
 While plan mode is active:
 
 - Reading files and searching the project are allowed.
+- The default active tool list is conservative; see `PLAN_MODE_TOOL_SETTINGS.md` for optional extra installed tools.
 - Read-only bash commands are allowed through an allowlist.
 - `edit` and `write` are allowed only for markdown files under:
   - `docs/plan/`
@@ -54,24 +55,21 @@ The plan should include:
 
 ## Planning Context Shaping
 
-After Plan Mode is enabled and the user sends the first planning request, Plan Mode shapes context in two directions before substantive planning continues:
+After Plan Mode is enabled, the first user planning request triggers one context-shaping pass:
 
-- If project memory is missing or stale, it queues a full curated project memory load for a safe follow-up point after the current prompt finishes.
-- If context is too large or noisy, it requests planning-focused compaction.
+- Queue a curated project-memory load if memory is missing or stale.
+- Request planning-focused compaction if context is too large or noisy.
+- If both are needed, compact first, then flush the queued load from `agent_end`.
 
-The full curated load uses the same default project memory surface as `/dd:load`: baseline memory files, docs indexes, specs, architecture, tests, and active plans. It does not mean reading every repository file or every archive body. Archive bodies remain excluded by default and should be read only through targeted lookup when relevant.
+The curated load uses the `/dd:load` default surface: baseline memory files, docs indexes, specs, architecture, tests, and active plans. It excludes full repository scans and archive bodies unless targeted.
 
-If compaction and load are both needed, Plan Mode requests compaction first, then queues the curated project memory load after compaction completes. Loading additional memory into an already-large context would make the context problem worse, but compaction alone cannot recover project docs that were never loaded.
-
-Queued planning loads are persisted in Plan Mode session state and flushed from a safe `agent_end` point with follow-up delivery. This avoids sending a new load prompt from `before_agent_start` while the agent is already processing another prompt.
-
-When the dotdotgod CLI is available, Plan Mode also runs a CLI planning-context check after any needed compaction and before the automatic project-memory load is flushed. The check runs validation, refreshes a bounded load snapshot, and runs `dotdotgod graph impact` for the best available current-work path when one can be inferred from the latest request, current active plan, or touched plan paths. If the CLI is unavailable, Plan Mode silently skips this enhancement.
+When the dotdotgod CLI is available, Plan Mode also validates, refreshes a bounded load snapshot, and runs `dotdotgod graph impact` for the best inferred current-work path. If the CLI is unavailable, this enhancement is skipped.
 
 ## Planning-Focused Compaction
 
-Plan mode automatically requests planning-focused compaction when context is large enough to hurt plan quality. It does not compact immediately when `/plan` is toggled on; it checks once after the first user planning request for that Plan Mode session. Later planning turns record debug metrics but do not automatically re-run load or compaction decisions.
+Plan Mode requests compaction only when context is likely to hurt plan quality. It checks once after the first planning request, not when `/plan` is toggled on; later turns record metrics but do not rerun load/compaction decisions.
 
-The extension passes planning-specific `customInstructions` to `ctx.compact()` so compaction preserves information useful for the next plan without retaining stale session history. Instructions start with the compaction reason, then include a `Current work focus:` section derived from available local state:
+The extension passes planning-specific `customInstructions` to `ctx.compact()`. Instructions start with the reason, then a `Current work focus:` section from local state:
 
 - latest user planning request
 - current active plan README path when known
@@ -81,7 +79,7 @@ The extension passes planning-specific `customInstructions` to `ctx.compact()` s
 - pending load-after-compaction state
 - persistent user/project constraints such as pnpm usage, archive policy, and Plan Mode source mutation restrictions
 
-The durable preservation rules then ask compaction to keep:
+Compaction should keep:
 
 - latest user request
 - user decisions and constraints
@@ -95,7 +93,7 @@ The durable preservation rules then ask compaction to keep:
 - unresolved risks, questions, and next steps
 - completed `[DONE:n]` markers when present
 
-Compaction demotes or omits old completed plans unless directly relevant, repeated project-load summaries, package publish history unless task-related, generic Plan Mode boilerplate recoverable from runtime prompts, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail.
+Compaction demotes old completed plans unless relevant, repeated project-load summaries, unrelated publish history, recoverable Plan Mode boilerplate, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail.
 
 Plan Mode compaction uses moderately proactive token criteria:
 
@@ -103,13 +101,13 @@ Plan Mode compaction uses moderately proactive token criteria:
 - context tokens within 32,000 tokens of the context window when window size is available
 - 100,000 context tokens as a fallback when only token count is available
 
-The extension skips compaction during execution mode and continues without blocking if compaction fails. Repeated automatic compaction/load during the same planning session is intentionally avoided; users can start a fresh planning session by toggling Plan Mode off and on when they want a new context-shaping decision.
+The extension skips compaction during execution mode and continues if compaction fails. Users can start a fresh context-shaping pass by toggling Plan Mode off and on.
 
 ## Debug Measurement
 
-When the Pi adapter is started with `--dd-context-debug`, Plan Mode records local JSONL measurement events for Plan Mode entry, the first-request context-shaping check, planning turn end, compaction request, compaction completion/error, and execution start.
+With `--dd-context-debug`, Plan Mode records local JSONL events for entry, first-request context shaping, planning turn end, compaction request/result, and execution start.
 
-Events include context usage when available, git state, compaction reason, current-work focus, queued/flushed planning-load state, CLI planning-context availability, entry counts, and todo counts where relevant. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
+Events include context usage when available, git state, compaction reason, current-work focus, queued/flushed load state, CLI context availability, entry counts, and todo counts. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
 
 ## Plan Review Choice
 
@@ -168,7 +166,8 @@ docs/archive/plan/<task-slug>/
   ],
   "relatedDocs": [
     "docs/arch/EXTENSION_ARCHITECTURE.md",
-    "docs/arch/CODE_CONVENTIONS.md"
+    "docs/arch/CODE_CONVENTIONS.md",
+    "docs/spec/PLAN_MODE_TOOL_SETTINGS.md"
   ],
   "verificationCommands": [
     "pnpm --filter @dotdotgod/pi test",

@@ -78,7 +78,7 @@ pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 ## Included
 
 - `project-initializer` skill: the starting point; creates `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs folders, README indexes, and local memory ignores.
-- `plan-mode` extension: read-first planning mode with restricted tools, docs/plan writes, execution tracking, tiered hidden prompts, and `/todos`.
+- `plan-mode` extension: read-first planning mode with restricted tools, optional `--plan-extra-tools` additions for installed external tools, docs/plan writes, execution tracking, tiered hidden prompts, and `/todos`.
 - `load-project` extension: read-only project context loading through `/load` and `/dd:load`, using `dotdotgod load-snapshot` when available with bounded cache, graph, memory-area, community, and archive-policy summaries plus a lightweight fallback.
 
 ## Expected Improvements

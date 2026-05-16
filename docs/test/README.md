@@ -8,6 +8,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `MEMORY_AREA_CONFIG.md`: memory-area config validation and snapshot smoke checks.
 - `TRACEABILITY_CONFIG.md`: configurable traceability enforcement validation smoke checks.
 - `CONTEXT_MEASUREMENT.md`: context measurement commands and runtime context debug smoke checks.
+- `MANUAL_SMOKE.md`: adapter, Plan Mode, initializer, and publishing smoke checks.
 
 ## Verification Commands
 
@@ -81,101 +82,13 @@ node packages/cli/bin/dotdotgod.mjs validate . --check-index
 
 ## Manual Smoke Tests
 
-Pi adapter local install:
+See `MANUAL_SMOKE.md` for adapter, Plan Mode, initializer, publishing, and README landing smoke checks.
 
-```bash
-pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
-```
+Memory area config smoke: see `MEMORY_AREA_CONFIG.md`.
 
-Pi load command aliases:
+Traceability config smoke: see `TRACEABILITY_CONFIG.md`.
 
-```text
-/load
-/dd:load
-```
-
-- Confirm the loader prompt includes a compact `Load snapshot:` section when `dotdotgod load-snapshot` is available.
-- Confirm the snapshot section reports cache status, lazy refresh metadata, graph counts, bounded memory-area summaries, bounded community summaries, and `fullGraphIncluded=false`.
-- Confirm `docs/archive/README.md` remains available as the archive map while archive bodies are not embedded by default.
-- Temporarily make the CLI unavailable and confirm `/dd:load` falls back to the lightweight marker/docs snapshot instead of failing.
-
-Plan mode review choice and todo extraction:
-
-1. Run `/plan`.
-2. Ask the agent to write or update a plan under `docs/plan/<task-slug>/README.md`.
-3. Confirm Pi asks whether to `Execute the plan / Stay in plan mode / Refine the plan` without rendering a saved-plan file preview.
-4. Confirm ordinary explanatory replies that do not touch `docs/plan/` do not show the action prompt or extract todos.
-5. Confirm the action prompt uses a short selector title and does not embed the full plan markdown.
-6. Confirm no `[plan-todo-list]` message or persistent todo widget is shown; use `/todos` for on-demand progress details.
-7. Confirm Plan Mode allows constrained housekeeping such as `mkdir -p docs/archive/plan`, `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`, and `rm -r docs/plan/<task-slug>`.
-8. Confirm Plan Mode still blocks housekeeping that touches source/config paths, such as `rm package.json` or `mv packages/pi docs/archive/plan/pi`.
-9. In a high-context session, enable `/plan` and confirm Pi does not immediately show a compaction or project-memory-load notification.
-10. Send the first planning request and confirm Pi shows `Planning context is large; compacting before continuing.` followed by `Planning compaction completed.` only when context thresholds are met.
-11. Confirm the Plan Mode compaction request uses planning-specific `customInstructions` that preserve decisions, active plan status, relevant docs, verification results, next steps, and `[DONE:n]` markers.
-12. Confirm compaction instructions include `Current work focus:` with the latest planning request, the current active plan README path when known, active/touched plan paths, todo state when present, pending load-after-compaction state, and archive/pnpm/source-mutation constraints.
-13. With the CLI available, confirm first Plan Mode context shaping adds validation, snapshot, and `graph impact`; with no CLI, confirm Plan Mode continues. Also confirm agent-requested dotdotgod CLI asks for one-command approval.
-14. Confirm a missing/stale project-memory load is queued and flushed after the active prompt finishes, without `Agent is already processing a prompt` runtime errors.
-15. Confirm later planning turns in the same Plan Mode session do not automatically trigger another load or compaction decision; context shaping runs only for the first planning request after Plan Mode is enabled.
-16. Confirm the first active planning turn receives the full hidden Plan Mode safety/workflow prompt and later planning turns receive only the compact hidden reminder while source/config mutation remains blocked.
-
-Claude Code adapter local plugin smoke:
-
-```bash
-claude --plugin-dir /Users/dotdot/Workspace/dotdotgod/packages/claude-code
-```
-
-Then confirm these commands are discoverable or invokable in the active Claude Code runtime:
-
-```text
-/dd:load
-/dd:plan
-/dd:init
-```
-
-For `/dd:load`, confirm the generated guidance prefers `dotdotgod load-snapshot <root> --json` when available, treats the snapshot as the first-pass project-memory map, keeps `docs/archive/README.md` as the archive map, and falls back to manual README-index reads when the CLI is unavailable.
-
-Codex adapter local plugin smoke:
-
-- Install or add `/Users/dotdot/Workspace/dotdotgod/packages/codex` with the current Codex local plugin workflow.
-- Confirm `project-load`, `doc-first-planning`, and `project-initializer` skills are discoverable.
-- Confirm command-like trigger phrases `dd:load`, `dd:plan`, and `dd:init` activate the expected workflows.
-- For `dd:load`, confirm the generated guidance prefers `dotdotgod load-snapshot <root> --json` when available, treats the snapshot as the first-pass project-memory map, keeps `docs/archive/README.md` as the archive map, and falls back to manual README-index reads when the CLI is unavailable.
-
-Plan Mode active-plan continuity smoke:
-
-- In `/plan`, create or update `docs/plan/<task-slug>/README.md`, choose execute, and confirm the follow-up names that path instead of only saying "the plan you just created".
-- With extracted todos, confirm hidden execution context includes `Active plan: docs/plan/<task-slug>/README.md`; after resume or planning compaction, confirm `Current work focus:` preserves the same path.
-
-Cross-agent planning parity smoke:
-
-- Confirm Claude Code `/dd:plan` and `doc-first-planning` guidance mention the written plan file as the durable review artifact and do not reference saved-plan preview UI.
-- Confirm Codex `doc-first-planning` guidance has the same planning workflow, archive housekeeping, and package-manager-aware verification guidance.
-- Confirm generated resources stay in sync with `packages/shared/workflows/plan.md` via `pnpm run verify:generated`.
-
-Initializer parity smoke:
-
-```bash
-sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name <fixture-root>
-sh packages/claude-code/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name <fixture-root>
-sh packages/codex/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name <fixture-root>
-```
-
-Pi adapter npm install after publish:
-
-```bash
-pi install npm:@dotdotgod/pi
-pi uninstall npm:@dotdotgod/pi
-```
-
-Confirmed after the first public `0.1.0` publish: install added the package successfully and uninstall removed it successfully.
-
-Memory area config smoke: see `MEMORY_AREA_CONFIG.md` for config validation, snapshot, and archive-body checks.
-
-Context measurement smoke: see `CONTEXT_MEASUREMENT.md` for measurement commands and runtime context debug checks.
-
-README landing review:
-
-- Confirm root/package READMEs lead with dotdotgod value and avoid implying Pi-style runtime enforcement for Claude Code or Codex adapters.
+Context measurement smoke: see `CONTEXT_MEASUREMENT.md`.
 
 ## Husky Pre-Push Hook
 

@@ -287,6 +287,21 @@ export function selectPlanImpactPath(
 	return candidates.find((path) => pathExists(cwd, path));
 }
 
+export const DEFAULT_PLAN_MODE_TOOLS = [
+	"read",
+	"bash",
+	"edit",
+	"write",
+	"grep",
+	"find",
+	"ls",
+	"questionnaire",
+	"web_search",
+	"code_search",
+	"fetch_content",
+	"get_search_content",
+];
+
 export const PLAN_COMPACTION_PERCENT_THRESHOLD = 60;
 export const PLAN_COMPACTION_TOKEN_FALLBACK = 100_000;
 export const PLAN_COMPACTION_CONTEXT_RESERVE = 32_000;
@@ -294,23 +309,51 @@ export const PLAN_COMPACTION_CONTEXT_RESERVE = 32_000;
 export const PLAN_MODE_COMPACTION_INSTRUCTIONS =
 	"Preserve only planning-critical context for dotdotgod Plan Mode. Prioritize the latest user request, active plan task slug/path/status, current target files, concrete user decisions and constraints, implementation decisions, verification commands/results, unresolved risks/questions, next steps, and completed [DONE:n] markers if present. Demote or omit old completed plans unless directly relevant, repeated project-load summaries, package publish history unless task-related, generic Plan Mode boilerplate recoverable from runtime prompts, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail. Summarize in a compact structure that lets the next assistant continue the current plan or execution without asking the user to repeat context.";
 
-export const PLAN_MODE_FULL_CONTEXT_PROMPT = `[PLAN MODE ACTIVE]
+export function parsePlanModeExtraTools(value: unknown): string[] {
+	if (typeof value !== "string") return [];
+	const seen = new Set<string>();
+	return value
+		.split(",")
+		.map((tool) => tool.trim())
+		.filter((tool) => /^[A-Za-z0-9_:-]+$/.test(tool))
+		.filter((tool) => {
+			if (seen.has(tool)) return false;
+			seen.add(tool);
+			return true;
+		});
+}
+
+export function resolvePlanModeTools(extraTools: unknown, availableTools?: readonly string[]): string[] {
+	const available = availableTools ? new Set(availableTools) : undefined;
+	const seen = new Set<string>();
+	const requested = [...DEFAULT_PLAN_MODE_TOOLS, ...parsePlanModeExtraTools(extraTools)];
+	return requested.filter((tool) => {
+		if (seen.has(tool)) return false;
+		if (available && !available.has(tool)) return false;
+		seen.add(tool);
+		return true;
+	});
+}
+
+export function buildPlanModeFullContextPrompt(allowedTools = DEFAULT_PLAN_MODE_TOOLS): string {
+	return `[PLAN MODE ACTIVE]
 You are in Plan Mode. This is a read-only exploration and design phase before code changes.
 
 Restrictions:
-- Allowed tools: read, bash, edit, write, grep, find, ls, questionnaire, web_search, code_search, fetch_content, get_search_content
+- Allowed tools: ${allowedTools.join(", ")}
 - edit/write are allowed only for markdown plan/archive files under docs/plan/ or docs/archive/.
 - Under docs/, directories must use kebab-case and markdown file names must use UPPER_SNAKE_CASE.md, including README.md.
 - Forbidden: source/code/config file mutation outside docs/plan/ and docs/archive/.
 - Bash is restricted to read-only allowlisted commands.
 
 Project context:
-- Read AGENTS.md and docs/README.md first when available.
+- Use already-loaded project memory and load-snapshot summaries first when available.
+- Read AGENTS.md and docs/README.md when they are missing, stale, or needed for the current task.
 - Treat project docs as the source of truth for stack, commands, conventions, and architecture.
 - Check docs/arch when code conventions, module boundaries, infrastructure/runtime dependencies, or integration constraints may affect the plan.
 
 Workflow:
-- Explore relevant files thoroughly before planning; ask clarifying questions with questionnaire when requirements are ambiguous.
+- Explore relevant files thoroughly before planning; ask clarifying questions when requirements are ambiguous, using questionnaire if available.
 - If planning compaction has just occurred, rely on the preserved planning summary plus current project docs before writing or refining the plan.
 - Use web_search, code_search, and fetch_content when library or web evidence is needed.
 - Manage active work under docs/plan/<task-slug>/README.md, with optional UPPER_SNAKE_CASE support files in the same task directory.
@@ -322,13 +365,14 @@ Always write the task README with scope, target files, implementation steps, ver
 
 In the final response, use a Plan: section only for concrete executable steps. Avoid generic template labels such as "Target files and rationale", "Implementation steps", or "Verification method" as numbered plan items.
 
-Do NOT attempt to make changes - just describe what you would do.`;
+Do not change source/code/config files in Plan Mode. You may create or update only the allowed docs/plan or docs/archive markdown files needed to produce the durable plan.`;
+}
 
 export const PLAN_MODE_COMPACT_CONTEXT_PROMPT = `[PLAN MODE ACTIVE]
 Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for UPPER_SNAKE_CASE markdown under docs/plan/ or docs/archive/; bash remains read-only allowlisted. Use AGENTS.md and docs indexes as source of truth when needed. Maintain the active task under docs/plan/<task-slug>/README.md and use a Plan: section only for concrete executable steps when ready.`;
 
-export function buildPlanModeContextPrompt(compact = false): string {
-	return compact ? PLAN_MODE_COMPACT_CONTEXT_PROMPT : PLAN_MODE_FULL_CONTEXT_PROMPT;
+export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS): string {
+	return compact ? PLAN_MODE_COMPACT_CONTEXT_PROMPT : buildPlanModeFullContextPrompt(allowedTools);
 }
 
 export interface PlanCompactionFocus {
