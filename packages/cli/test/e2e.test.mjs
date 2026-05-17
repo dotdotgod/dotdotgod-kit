@@ -60,6 +60,13 @@ function writeConfig(root, value) {
   writeFileSync(join(root, 'dotdotgod.config.json'), `${JSON.stringify(value, null, 2)}\n`);
 }
 
+function packDryRun(packageName) {
+  const workspaceRoot = resolve('../..');
+  const result = spawnSync('pnpm', ['--filter', packageName, 'pack', '--dry-run', '--json'], { cwd: workspaceRoot, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return JSON.parse(result.stdout);
+}
+
 function impactWithConfig(value) {
   const root = createFixture();
   writeConfig(root, value);
@@ -198,6 +205,16 @@ describe('dotdotgod CLI e2e', () => {
     json(run(['init', dotdotRoot, '--dotdot-setting', '--json']));
     assert.equal(existsSync(join(dotdotRoot, 'docs/arch/CODE_CONVENTIONS.md')), true);
     assert.match(readFileSync(join(dotdotRoot, 'AGENTS.md'), 'utf8'), /CODE_CONVENTIONS\.md/);
+  });
+
+  it('packages Claude Code and Codex hook documentation', () => {
+    for (const packageName of ['@dotdotgod/claude-code', '@dotdotgod/codex']) {
+      const payload = packDryRun(packageName);
+      const paths = new Set(payload.files.map((file) => file.path));
+      assert(paths.has('hooks/README.md'), `${packageName} package should include hooks/README.md`);
+      assert(paths.has('README.md'), `${packageName} package should include README.md`);
+      assert(paths.has('package.json'), `${packageName} package should include package.json`);
+    }
   });
 
   it('shows and initializes project config safely', () => {

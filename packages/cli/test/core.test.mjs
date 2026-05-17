@@ -115,6 +115,16 @@ function cloneConfigWithImpactRanking(impactRanking = {}) {
   return config;
 }
 
+function fencedBlocks(markdown, language) {
+  return [...markdown.matchAll(/```([^\n]*)\n([\s\S]*?)```/g)]
+    .filter((match) => match[1].trim().split(/\s+/)[0] === language)
+    .map((match) => match[2].trim());
+}
+
+function commandStringsFromHookConfig(config) {
+  return Object.values(config.hooks ?? {}).flatMap((groups) => groups.flatMap((group) => (group.hooks ?? []).map((hook) => hook.command).filter(Boolean)));
+}
+
 describe('CLI docs helpers', () => {
   it('validates dotdotgod naming conventions', () => {
     assert.equal(isKebabCase('graph-query'), true);
@@ -292,6 +302,61 @@ describe('CLI docs helpers', () => {
     assert.equal(requiresTraceability('docs/product/README.md', config), false);
     assert.equal(requiresTraceability('docs/product/DRAFT.md', config), false);
     assert.equal(requiresTraceability('docs/spec/FEATURE.md', config), false);
+  });
+
+  it('keeps Claude Code and Codex hook JSON examples parseable with supported events', () => {
+    const repoRoot = resolve('../..');
+    const docs = [
+      readFileSync(join(repoRoot, 'packages/claude-code/hooks/README.md'), 'utf8'),
+      readFileSync(join(repoRoot, 'packages/codex/hooks/README.md'), 'utf8'),
+    ];
+    const allowedEvents = new Set(['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'Stop']);
+
+    for (const doc of docs) {
+      const blocks = fencedBlocks(doc, 'json');
+      assert(blocks.length > 0);
+      for (const block of blocks) {
+        const parsed = JSON.parse(block);
+        assert(parsed.hooks && typeof parsed.hooks === 'object');
+        for (const [eventName, groups] of Object.entries(parsed.hooks)) {
+          assert(allowedEvents.has(eventName), `unexpected hook event: ${eventName}`);
+          assert(Array.isArray(groups), `hook event must be an array: ${eventName}`);
+          for (const group of groups) {
+            assert(Array.isArray(group.hooks), `hook group must include hooks: ${eventName}`);
+            for (const hook of group.hooks) {
+              assert.equal(hook.type, 'command');
+              assert.equal(typeof hook.command, 'string');
+              assert(hook.command.length > 0);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('keeps hook examples within dotdotgod safety policy', () => {
+    const repoRoot = resolve('../..');
+    const claudeHooks = readFileSync(join(repoRoot, 'packages/claude-code/hooks/README.md'), 'utf8');
+    const codexHooks = readFileSync(join(repoRoot, 'packages/codex/hooks/README.md'), 'utf8');
+    const allExampleText = [...fencedBlocks(claudeHooks, 'json'), ...fencedBlocks(codexHooks, 'json'), ...fencedBlocks(codexHooks, 'toml')].join('\n');
+
+    assert.doesNotMatch(allExampleText, /pnpm run verify/);
+    assert.doesNotMatch(allExampleText, /dotdotgod index\b/);
+    assert.doesNotMatch(allExampleText, /mv\s+docs\/plan/);
+    assert.doesNotMatch([...fencedBlocks(codexHooks, 'json'), ...fencedBlocks(codexHooks, 'toml')].join('\n'), /dotdotgod status \. --json/);
+    assert.match(codexHooks, /Codex stop hooks need Codex-compatible hook output/);
+    assert.match(codexHooks, /cache-aware/);
+    assert.match(claudeHooks, /explicitly in plan-only mode/);
+    assert.match(codexHooks, /explicitly in plan-only mode/);
+  });
+
+  it('keeps Codex TOML hook examples in the documented shape', () => {
+    const codexHooks = readFileSync(join(resolve('../..'), 'packages/codex/hooks/README.md'), 'utf8');
+    const blocks = fencedBlocks(codexHooks, 'toml');
+    assert(blocks.length > 0);
+    assert(blocks.some((block) => /\[\[hooks\.PostToolUse\]\]/.test(block)));
+    assert(blocks.some((block) => /\[\[hooks\.PostToolUse\.hooks\]\]/.test(block)));
+    assert(blocks.some((block) => /type\s*=\s*"command"/.test(block)));
   });
 });
 
