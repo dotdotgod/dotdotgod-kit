@@ -93,7 +93,7 @@ Prompt content should:
 
 ## Future Search Architecture
 
-Future memory search features should extend `load-project` rather than the initializer skill.
+Future memory search features should extend the runtime `load-project` entrypoint.
 
 Potential additions:
 

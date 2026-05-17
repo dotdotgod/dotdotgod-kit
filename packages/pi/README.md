@@ -54,7 +54,7 @@ docs/
   archive/README.md          # completed-work history map, ignored by git
 ```
 
-This is the core context curation idea: instead of putting more raw files into context, give the agent a predictable map of what matters, what product decisions have been made, where current intent lives, how to verify changes, and which past decisions are worth revisiting.
+This is the core context curation idea: give the agent a predictable map of what matters, what product decisions have been made, where current intent lives, how to verify changes, and which past decisions are worth revisiting.
 
 ## Install
 
@@ -83,11 +83,11 @@ pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 
 ## Expected Improvements
 
-- New sessions can start from the same durable project map instead of ad-hoc file scanning.
+- New sessions can start from the same durable project map.
 - Agents can distinguish stable project truth (`docs/spec`, `docs/arch`, `docs/test`) from current task intent (`docs/plan`).
 - README indexes act as routing tables: the CLI records them as `routes_to` edges, while docs paths become memory-area metadata for specs, architecture, tests, active plans, and archive maps.
 - Archive history stays discoverable without forcing every completed plan body into the default context.
-- Product intent, planning, and verification become explicit artifacts rather than hidden chat state.
+- Product intent, planning, and verification become explicit artifacts.
 - Graph/cache metadata stays bounded in `.dotdotgod/`, with agent-facing output limited to summaries, memory areas, omitted counts, and archive policy.
 
 ## Commands
@@ -112,13 +112,13 @@ The emphasis is different:
 
 - **Clear starting workflow:** the project-initializer skill creates a predictable memory scaffold before loading or planning.
 - **Better retrieval priors:** docs paths and README indexes become memory-area metadata, `belongs_to_area` edges, and README `routes_to` edges before graph impact routing begins.
-- **Lower default context pressure:** agents see bounded snapshots and README indexes instead of a full graph report by default, avoiding the case where a small question pays the cost of reading `GRAPH_REPORT` first.
+- **Lower default context pressure:** agents see bounded snapshots and README indexes by default, avoiding the case where a small question pays the cost of reading `GRAPH_REPORT` first.
 - **Safer task execution:** Plan Mode preserves intent, safety constraints, verification, and completed-step state with `[DONE:n]` markers.
 - **Better long-running project continuity:** active plans and archive indexes survive session resets, compaction, and agent handoff.
 - **Archive discipline:** `docs/archive/README.md` stays visible as the history map, while completed plan/report bodies are read only when targeted.
 - **Generic but conservative indexing:** the CLI follows gitignore-visible text/source/config files and avoids dependency, generated, cache, and secret-like paths by default, reducing the risk of repo-wide recursive indexing loops.
 - **Layered context by default:** the always-visible layer is the project map and bounded snapshot; source files and archive bodies stay in the targeted-read layer.
-- **Smaller skill surface:** the adapter keeps long-lived instructions focused on workflow and delegates repository facts to files and CLI snapshots instead of a large always-loaded skill report.
+- **Smaller skill surface:** the adapter keeps long-lived instructions focused on workflow and delegates repository facts to files and CLI snapshots.
 
 ### Where Graphify-style memory can be better
 

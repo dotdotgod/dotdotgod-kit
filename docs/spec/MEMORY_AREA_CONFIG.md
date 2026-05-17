@@ -9,7 +9,7 @@ The config makes four memory concepts explicit:
 - **Shared memory:** durable project memory intended to be committed and used by every agent, such as product specs, architecture docs, and test strategy.
 - **Local memory:** ignored project-local working memory that can help current agents without becoming shared repository history, such as active plans and archives.
 - **Fresh memory:** current or active memory that should be surfaced early during project loading, such as active plans or current docs indexes.
-- **Stale memory:** historical or completed memory that should remain available through maps, indexes, or targeted lookup instead of being loaded indiscriminately.
+- **Stale memory:** historical or completed memory that should remain available through maps, indexes, or targeted lookup.
 
 ## Config File
 

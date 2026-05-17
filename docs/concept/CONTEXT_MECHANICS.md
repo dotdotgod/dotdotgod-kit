@@ -9,7 +9,7 @@ A typical dotdotgod workflow is a loop that turns current work into future proje
 3. **Read stable docs first.** The docs map tells the agent where to find product truth, engineering constraints, verification expectations, active plans, and historical archives.
 4. **Plan in a durable file.** Current task intent is written to `docs/plan/<task-slug>/README.md` with scope, target files, risks, verification, and executable steps.
 5. **Keep planning separate from mutation.** In Pi, Plan Mode allows exploration and plan-file edits while blocking source/config changes until execution mode.
-6. **Compact planning context when needed.** If the planning context grows large after the user has requested planning work, Plan Mode requests compaction with planning-specific instructions instead of generic summarization. If both load and compaction are needed, compaction is requested first and the curated project memory load follows after compaction completes.
+6. **Compact planning context when needed.** If the planning context grows large after the user has requested planning work, Plan Mode requests compaction with planning-specific instructions. If both load and compaction are needed, compaction is requested first and the curated project memory load follows after compaction completes.
 7. **Execute explicit steps.** Execution starts from the written plan, and completed steps are marked with `[DONE:n]` markers.
 8. **Verify with project-specific checks.** Verification commands and manual smoke tests live in project docs.
 9. **Archive the outcome.** Completed plans move to `docs/archive/plan/<task-slug>/` so the result becomes reusable historical memory.
@@ -20,7 +20,7 @@ Plan Mode controls planning context in two directions after the user sends a pla
 
 ## How Plan Mode Compaction Helps Agents
 
-Plan Mode compaction is designed to preserve task-shaped context, not just make the conversation shorter.
+Plan Mode compaction is designed to preserve task-shaped context while shortening the conversation.
 
 When Plan Mode triggers compaction, it passes planning-specific instructions that preserve:
 
@@ -43,7 +43,7 @@ The docs structure is part of the agent interface.
 
 Predictable paths reduce search overhead. When an agent needs product behavior, it checks `docs/spec`. When it needs constraints or conventions, it checks `docs/arch`. When it needs verification, it checks `docs/test`. When it needs current task intent, it checks `docs/plan`.
 
-`README.md` files act as local tables of contents. They turn directories into navigable maps so agents can choose relevant files instead of scanning every document.
+`README.md` files act as local tables of contents. They turn directories into navigable maps so agents can choose relevant files.
 
 Naming rules also matter:
 
@@ -60,11 +60,11 @@ As a project grows, unstructured context becomes harder for agents to use. More 
 
 The dotdotgod structure keeps growth manageable:
 
-- stable rules stay in `AGENTS.md` instead of being repeated every session
+- stable rules stay in `AGENTS.md`
 - broad docs split into domain directories with README indexes
 - active intent stays isolated in `docs/plan`
 - completed work stays available in `docs/archive` but is not loaded indiscriminately
-- agents can follow indexes and select relevant memory instead of reading everything
+- agents can follow indexes and select relevant memory
 - optional CLI graph snapshots can surface bounded impact neighborhoods and domain communities for larger, multi-year projects
 - Pi, Claude Code, and Codex share the same vocabulary and directory contract
 

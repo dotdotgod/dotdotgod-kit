@@ -53,7 +53,7 @@ All supported agents should share these conventions:
 
 ## Workflow Parity
 
-Adapters should provide workflow parity rather than command parity.
+Adapters should provide workflow parity across each agent's native capabilities.
 
 Required workflows:
 

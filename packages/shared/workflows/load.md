@@ -27,7 +27,7 @@ Do not modify files during the load pass unless the user explicitly asks for edi
    - `docs/plan/README.md`
    - `docs/archive/README.md`
 4. Start with `AGENTS.md`, `README.md`, and `docs/README.md` when they are not already clear from the CLI snapshot or loaded context.
-5. Follow README indexes. Read relevant docs under `docs/spec`, `docs/test`, and `docs/arch` selectively instead of re-scanning every listed file unless the task needs a full refresh.
+5. Follow README indexes. Read relevant docs under `docs/spec`, `docs/test`, and `docs/arch` selectively unless the task needs a full refresh.
 6. List `docs/plan` entries first, then selectively read only relevant active plans.
 7. Use `docs/archive/README.md` as the archive history map. Do not scan archive bodies by default; read targeted completed plans under `docs/archive/plan/` or reports under `docs/archive/report/` only when directly relevant.
 8. Avoid broad reads of generated outputs, dependencies, databases, caches, secrets, and `.env*` contents.

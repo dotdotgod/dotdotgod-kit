@@ -65,7 +65,7 @@ docs/arch/conventions/DATA_LOADING.md
 
 Behavior specs may include fenced `json dotdotgod` traceability blocks as the final section to connect specs to source, tests, related docs, and verification commands.
 
-The dotdotgod CLI owns the schema and validation behavior. Docs may describe examples, but they are not the enforcement source. Architecture docs should stay focused on decisions, rules, rationale, and change guidance rather than forced one-to-one source mappings.
+The dotdotgod CLI owns the schema and validation behavior. Docs may describe examples, but they are not the enforcement source. Architecture docs should stay focused on decisions, rules, rationale, and change guidance.
 
 ## Code Convention Documents
 

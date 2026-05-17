@@ -6,13 +6,13 @@ Graphify-style graph generation can still be useful for exploration. The stronge
 
 ## Why generated semantic graphs fail structurally
 
-Graphify/GraphRAG-style approaches often combine AST extraction, LLM semantic extraction, embeddings, and chunk-level semantic query. The failure modes are not merely isolated implementation bugs; they follow from asking generated artifacts to infer durable project identity and operational relationships.
+Graphify/GraphRAG-style approaches often combine AST extraction, LLM semantic extraction, embeddings, and chunk-level semantic query. Their failure modes follow from asking generated artifacts to infer durable project identity and operational relationships.
 
 | Structural pressure | Why it matters |
 | --- | --- |
 | Identity is inferred, not owned. AST nodes, LLM semantic nodes, and embedding chunks use different identity systems. | Merge steps can lose edges when IDs do not align or create duplicate nodes when parallel chunks name the same entity differently. |
 | Meaning is probabilistic, but graph edges look authoritative. | Plausible LLM or embedding relationships can lack import, call, spec, or test evidence. Once stored as edges, they can pollute ranking and traversal. |
-| Semantic layers can disconnect from syntax. | A generated semantic layer can become a heuristic subgraph instead of reliable AST enrichment. |
+| Semantic layers can disconnect from syntax. | A generated semantic layer can become a heuristic subgraph with weak AST grounding. |
 | Incremental updates amplify uncertainty. | Non-deterministic extraction can create noisy diffs on unchanged source or desynchronize partial artifacts and semantic nodes. |
 | Chunk boundaries hide project intent. | Similarity retrieval may not know whether a chunk is product truth, architecture rationale, active plan, verification obligation, or historical archive. |
 | Cost and token limits shape memory. | Dense docs can hit truncation/cost pressure, and large monorepos can hit expensive graph-analysis behavior. The graph can reflect processing limits as much as project reality. |
@@ -27,7 +27,7 @@ Dotdotgod changes the control point. The durable source of truth is curated proj
 | --- | --- |
 | Structured memory areas: `docs/spec/`, `docs/arch/`, `docs/test/`, `docs/plan/`, and `docs/archive/README.md`. | Retrieval starts with intent before ranking begins: behavior, rationale, verification, active work, and history are separated. |
 | Traceability blocks with `implementedBy`, `verifiedBy`, `relatedDocs`, and `verificationCommands`. | Relationships are explicit, source-controlled, reviewable, and parsed deterministically. |
-| Validation of naming, links, anchors, traceability placement, config, markdown budgets, and cache/index state. | Memory quality becomes observable; broken contracts fail early instead of silently influencing context. |
+| Validation of naming, links, anchors, traceability placement, config, markdown budgets, and cache/index state. | Memory quality becomes observable; broken contracts fail early before they influence context. |
 | Impact ranking that demotes semantic-only links. | Semantic discovery remains useful, but curated traceability, verification links, proximity, memory policy, freshness, and changed-file PageRank carry stronger signal. |
 | Bounded load snapshots. | Agents receive cache status, indexed counts, memory areas, communities, omitted counts, command guidance, and archive policy without flooding context. |
 | Archive-body exclusion by default. | Historical memory remains discoverable through `docs/archive/README.md` without contaminating current work unless targeted. |
@@ -82,11 +82,11 @@ This maps classic quality-management ideas to agent work: requirements are expli
 
 Dotdotgod encodes the workflow philosophy already used by production-minded coding agents:
 
-- **Doc-first memory:** durable project knowledge belongs in docs, not only in chat history or generated cache.
+- **Doc-first memory:** durable project knowledge belongs in docs as the reviewable source of truth.
 - **Scoped changes:** agents should read context first, change only what the task requires, and avoid unrelated worktree damage.
 - **Traceable behavior:** behavior specs should connect to implementation, tests, docs, and commands.
 - **Plan/archive lifecycle:** active intent belongs in `docs/plan/`; completed work and historical notes belong in `docs/archive/`.
-- **Bounded context:** agents should receive compact snapshots and routing hints, then read targeted files, rather than loading everything.
+- **Bounded context:** agents should receive compact snapshots and routing hints, then read targeted files.
 - **Determinism before semantics:** deterministic checks and curated links should outrank semantic guesses.
 - **Human-reviewable contracts:** memory should be inspectable in normal code review, not hidden in model-generated artifacts.
 - **Verification as part of the loop:** a task is not production-ready until its verification path is known and run or explicitly documented.
@@ -95,7 +95,7 @@ The result is not magic correctness. Dotdotgod still depends on accurate documen
 
 ## When Graphify may be more appropriate
 
-Graphify can still be the better fit when the goal is exploration rather than governed execution:
+Graphify can still be the better fit for exploratory work:
 
 - unfamiliar or undocumented repositories where no curated project memory exists yet;
 - broad research discovery across many files where recall matters more than stable verification;

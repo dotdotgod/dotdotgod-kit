@@ -67,7 +67,7 @@ When the dotdotgod CLI is available, Plan Mode also validates, refreshes a bound
 
 ## Planning-Focused Compaction
 
-Plan Mode requests compaction only when context is likely to hurt plan quality. It checks once after the first planning request, not when `/plan` is toggled on; later turns record metrics but do not rerun load/compaction decisions.
+Plan Mode requests compaction only when context is likely to hurt plan quality. It checks once after the first planning request. Later turns record metrics but do not rerun load/compaction decisions.
 
 The extension passes planning-specific `customInstructions` to `ctx.compact()`. Instructions start with the reason, then a `Current work focus:` section from local state:
 

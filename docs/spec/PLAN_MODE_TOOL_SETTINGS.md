@@ -25,7 +25,7 @@ This lets users opt into external read-oriented tools, such as context-mode tool
 
 ## Prompt Requirements
 
-The full Plan Mode prompt must render the resolved active tool list rather than a stale hard-coded list.
+The full Plan Mode prompt must render the resolved active tool list from current settings.
 
 The prompt must not contradict Plan Mode permissions. It should clearly distinguish forbidden source/code/config mutation from allowed durable plan/archive markdown updates.
 

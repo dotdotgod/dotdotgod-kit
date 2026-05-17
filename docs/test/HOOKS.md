@@ -1,6 +1,6 @@
 # Hook Guidance Tests
 
-These checks cover optional Claude Code and Codex hook documentation. Hooks are opt-in examples, so current coverage is documentation and package-resource smoke testing rather than runtime hook execution.
+These checks cover optional Claude Code and Codex hook documentation. Hooks are opt-in examples, so current coverage is documentation and package-resource smoke testing. Runtime hook execution is outside this coverage.
 
 ## Automated Checks
 

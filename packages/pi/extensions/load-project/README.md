@@ -33,7 +33,7 @@ The agent is instructed to:
 - follow domain directories such as `docs/<area>/<domain>/README.md`
 - follow expanded convention directories such as `docs/arch/conventions/README.md`
 - list `docs/plan` first, then selectively read relevant active plan files
-- use `docs/archive/README.md` as the archive history map instead of scanning archive bodies by default
+- use `docs/archive/README.md` as the archive history map and avoid scanning archive bodies by default
 - distinguish completed plan archives under `docs/archive/plan/` from temporary reports under `docs/archive/report/` when targeted archive lookup is needed
 - summarize project purpose, working rules, commands, docs map, architecture/code conventions, active plans, relevant archives, and TODO/TBD items
 
@@ -41,4 +41,4 @@ The agent is instructed to:
 
 - The command itself does not modify files.
 - `/load` may conflict with other extensions, so `/dd:load` is always registered as the stable dotdotgod alias.
-- Future indexing/search behavior should extend this runtime entrypoint rather than the initializer skill.
+- Future indexing/search behavior should extend this runtime entrypoint.

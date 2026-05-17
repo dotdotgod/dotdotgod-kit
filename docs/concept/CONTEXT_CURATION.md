@@ -4,7 +4,7 @@
 
 dotdotgod is built around context curation: giving AI coding agents the project memory that matters, in a shape they can reliably use.
 
-The goal is not primarily to save tokens. Token reduction can happen as a side effect, but the real goal is to reduce context noise and preserve decision quality. Agents work better when product intent, design rationale, constraints, current intent, and verification history are easy to find instead of buried in raw chat history, repeated tool output, or stale instructions.
+The primary goal is to reduce context noise and preserve decision quality. Token reduction can happen as a side effect. Agents work better when product intent, design rationale, constraints, current intent, and verification history are easy to find in durable project memory.
 
 This makes dotdotgod useful for builders who want coding agents to help with implementation while keeping the source of truth for what should be built, why it should be built that way, and how it will be verified in durable project memory.
 
@@ -19,7 +19,7 @@ AI coding agents often start work from a noisy mix of context:
 - half-finished plans
 - product expectations hidden in issue text or chat
 - architecture constraints hidden in source files
-- verification standards that are implied instead of written down
+- unwritten verification standards
 - verification results that disappear after the session ends
 
 More context does not always help. If important project decisions are mixed with irrelevant history, agents may spend attention on the wrong details, re-ask solved questions, or infer rules that already exist somewhere else.
@@ -47,7 +47,7 @@ Effect: fewer repeated explanations and less instruction drift.
 
 ### `CLAUDE.md` and `CODEX.md`
 
-Thin agent-specific entrypoints that point back to `AGENTS.md` instead of becoming separate sources of truth.
+Thin agent-specific entrypoints that point back to `AGENTS.md` and keep one canonical source of truth.
 
 Effect: different agents start from the same rules.
 
@@ -67,7 +67,7 @@ Effect: implementation choices are less speculative because constraints and desi
 
 Test strategy, regression cases, coverage notes, and manual verification records.
 
-Effect: agents can verify changes using project-specific standards instead of generic guesses.
+Effect: agents can verify changes using project-specific standards.
 
 ### `docs/plan/`
 
@@ -79,7 +79,7 @@ Effect: current intent survives long sessions, compaction, and agent handoff.
 
 Completed plans, reports, investigations, payload captures, and historical notes.
 
-Effect: completed work becomes reusable project memory instead of disappearing into chat logs.
+Effect: completed work becomes reusable project memory.
 
 ### Adapter packages
 
@@ -113,7 +113,7 @@ Specs, architecture docs, and test docs give agents project-local truth before i
 
 ### Safer execution
 
-Plan-first workflows separate exploration from mutation. In Pi, Plan Mode restricts source/config changes while the agent investigates and writes the plan. Execution starts from explicit steps rather than ad-hoc edits.
+Plan-first workflows separate exploration from mutation. In Pi, Plan Mode restricts source/config changes while the agent investigates and writes the plan. Execution starts from explicit steps.
 
 ### Cross-agent consistency
 

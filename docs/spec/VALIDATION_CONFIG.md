@@ -33,7 +33,7 @@ Fields:
 - `maxChars`: positive integer character budget for markdown files. Default: `10000`.
 - `exclude`: array of exact repository-relative paths, `/**` subtree patterns, or `**/suffix` patterns that skip only `FILE_TOO_LONG` and `FILE_TOO_LARGE` checks.
 
-All path fields are arrays. Scalar path settings are invalid and should be repaired instead of silently coerced.
+All path fields are arrays. Scalar path settings are invalid and validation should report them for repair.
 
 ## Behavior
 
