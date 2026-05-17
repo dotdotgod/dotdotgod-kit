@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/claude-code",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "Claude Code adapter for dotdotgod project memory workflows.",
   "type": "module",
   "license": "Elastic-2.0",

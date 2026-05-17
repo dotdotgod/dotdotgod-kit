@@ -110,7 +110,7 @@ Codex adapter design should not depend on Pi-style command parity.
 
 Claude Code and Codex hooks are optional workflow accelerators, not required setup and not Pi Plan Mode parity. Adapter packages may document hook examples for session start, prompt submission, tool boundaries, and stop-time hygiene, but hooks must stay opt-in.
 
-Default examples should be advisory or read-only. `dotdotgod status` is safe for stop-time cache reporting because it does not rebuild the cache. `dotdotgod validate` is appropriate as an explicit validation hook. `dotdotgod load-snapshot` and `dotdotgod graph ...` are useful for context and impact, but they may lazily refresh `.dotdotgod/`, so hook docs must label them as cache-aware opt-ins with possible cache-refresh side effects.
+Default examples should be advisory or read-only. `dotdotgod status` is safe for stop-time cache reporting because it does not rebuild the cache. `dotdotgod validate . --include-local-memory --check-index` is appropriate as an explicit validation hook because it checks docs and markdown index fingerprints without refreshing the cache. `dotdotgod load-snapshot` and `dotdotgod graph ...` are useful for context and impact, but they may lazily refresh `.dotdotgod/`, so hook docs must label them as cache-aware opt-ins with possible cache-refresh side effects.
 
 Blocking hooks should be narrow and project-local. A `PreToolUse` plan-safety hook should block source/config writes only when an explicit plan-only state signal exists and the hook payload has been tested. Hooks must not auto-run full workspace verification, auto-run `dotdotgod index`, auto-initialize projects, or move plans to the archive.
 

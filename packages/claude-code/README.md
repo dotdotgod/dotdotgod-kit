@@ -1,6 +1,8 @@
 # @dotdotgod/claude-code
 
-Claude Code adapter for dotdotgod's context curation workflow. It gives Claude Code `dd:*` commands and skills that follow the same curated `AGENTS.md`, docs/spec, docs/test, docs/arch, docs/plan, and docs/archive contract used by the Pi and Codex adapters.
+> **Change a file, know what else must be checked.**
+
+Claude Code adapter for dotdotgod's context curation workflow. It gives Claude Code `/dd:load`, `/dd:plan`, `/dd:init`, and skills that follow the same curated `AGENTS.md`, docs/spec, docs/test, docs/arch, docs/plan, and docs/archive contract used by the Pi and Codex adapters.
 
 ## What Gets Better?
 

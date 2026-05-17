@@ -5,11 +5,11 @@ import { spawnSync } from 'node:child_process';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import { runInit } from './init.mjs';
 
-export const CACHE_VERSION = 9;
+export const CACHE_VERSION = 10;
 const CACHE_DIR = '.dotdotgod';
 const MANIFEST_FILE = 'manifest.json';
 const GRAPH_NODE_SHARDS = ['docs', 'packages', 'source'];
-const GRAPH_EDGE_SHARDS = ['imports', 'docs-links', 'tests', 'events', 'packages', 'symbols', 'commands', 'other'];
+const GRAPH_EDGE_SHARDS = ['docs-links', 'packages', 'other'];
 
 const HELP_TOKENS = new Set(['help', '--help', '-h']);
 const VERSION_TOKENS = new Set(['version', '--version', '-v']);
@@ -196,7 +196,7 @@ function isLocalRelativeTraceabilityPath(value) {
 }
 
 function traceabilityFieldError(file, code, field, message, line = null) {
-  return { file, line, code, message: `${field ? `Field "${field}": ` : ''}${message}\n\n${traceabilityExample()}` };
+  return { file, line, code, message: `${field ? `Field "${field}": ` : ''}${message}\nFix: update the traceability block so it matches the expected schema and points to existing project files or commands.\n\n${traceabilityExample()}` };
 }
 
 export function validateTraceabilityPlacement(content, root, file) {
@@ -282,7 +282,7 @@ export function runValidate(argv) {
   const errors = [];
   const markdownFiles = [];
   const fileCache = new Map();
-  const addError = (file, code, message, line = null) => errors.push({ file: rel(root, file), line, code, message });
+  const addError = (file, code, message, line = null, fix = null) => errors.push({ file: rel(root, file), line, code, message: fix ? `${message}\nFix: ${fix}` : message });
   const shouldSkipDir = (dir) => {
     const path = rel(root, dir);
     if (!path || path === '.') return false;
@@ -299,7 +299,7 @@ export function runValidate(argv) {
       if (entry.isDirectory()) {
         const docsRel = rel(docs, path);
         if (docsRel && !docsRel.startsWith('..')) {
-          for (const part of docsRel.split('/')) if (part && !isKebabCase(part)) addError(path, 'DIR_NAMING', `Directory must be kebab-case: ${part}`);
+          for (const part of docsRel.split('/')) if (part && !isKebabCase(part)) addError(path, 'DIR_NAMING', `Directory must be kebab-case: ${part}`, null, 'rename this docs directory to kebab-case and update any links that reference it.');
         }
         walk(path);
       } else if (entry.isFile() && entry.name.endsWith('.md')) markdownFiles.push(path);
@@ -316,27 +316,27 @@ export function runValidate(argv) {
   for (const file of markdownFiles) {
     const name = basename(file);
     const docsRel = rel(docs, file);
-    if (docsRel && !docsRel.startsWith('..') && !isUpperSnakeMarkdown(name)) addError(file, 'FILE_NAMING', `Markdown file must be UPPER_SNAKE_CASE.md or README.md: ${name}`);
+    if (docsRel && !docsRel.startsWith('..') && !isUpperSnakeMarkdown(name)) addError(file, 'FILE_NAMING', `Markdown file must be UPPER_SNAKE_CASE.md or README.md: ${name}`, null, 'rename the markdown file to UPPER_SNAKE_CASE.md or README.md and update any links that reference it.');
     const content = readFileSync(file, 'utf8');
     fileCache.set(file, content);
     const lines = content.split('\n').length;
     const path = rel(root, file);
     const skipSizeChecks = isMarkdownSizeExcluded(path, memoryConfig);
-    if (!skipSizeChecks && lines > maxLines) addError(file, 'FILE_TOO_LONG', `Markdown file has ${lines} lines; max is ${maxLines}`);
-    if (!skipSizeChecks && content.length > maxChars) addError(file, 'FILE_TOO_LARGE', `Markdown file has ${content.length} characters; max is ${maxChars}`);
+    if (!skipSizeChecks && lines > maxLines) addError(file, 'FILE_TOO_LONG', `Markdown file has ${lines} lines; max is ${maxLines}`, null, 'split the document into focused markdown files and update the nearest README.md index, or add a narrow validation.markdown.exclude entry if this file is intentionally oversized.');
+    if (!skipSizeChecks && content.length > maxChars) addError(file, 'FILE_TOO_LARGE', `Markdown file has ${content.length} characters; max is ${maxChars}`, null, 'split the document into focused markdown files and update the nearest README.md index, or add a narrow validation.markdown.exclude entry if this file is intentionally oversized.');
     if (requiresTraceability(rel(root, file), memoryConfig)) {
       const blocks = extractDotdotgodTraceabilityBlocks(content);
-      if (blocks.length === 0) addError(file, 'TRACEABILITY_MISSING', `Behavior specs must include a fenced \`json dotdotgod\` traceability block as the final section.\n\n${traceabilityExample()}`);
+      if (blocks.length === 0) addError(file, 'TRACEABILITY_MISSING', `Behavior specs must include a fenced \`json dotdotgod\` traceability block as the final section.\nFix: add a final \`## Traceability\` section with the expected \`json dotdotgod\` block and point it at the relevant source, tests, related docs, and verification commands.\n\n${traceabilityExample()}`);
       else for (const error of validateTraceabilityPlacement(content, root, file)) errors.push(error);
       for (const block of blocks) {
-        if (block.error) addError(file, 'TRACEABILITY_INVALID_JSON', `Invalid \`json dotdotgod\` block: ${block.error}\n\n${traceabilityExample()}`, block.line);
+        if (block.error) addError(file, 'TRACEABILITY_INVALID_JSON', `Invalid \`json dotdotgod\` block: ${block.error}\nFix: repair the fenced \`json dotdotgod\` block so it is valid JSON and still matches the expected schema.\n\n${traceabilityExample()}`, block.line);
         else for (const error of validateTraceabilityBlock(block.data, root, file, block.line)) errors.push(error);
       }
     }
   }
   const byDir = new Map();
   for (const file of markdownFiles) byDir.set(dirname(file), [...(byDir.get(dirname(file)) ?? []), file]);
-  for (const [dir, files] of byDir) if (files.length > 1 && !files.some((file) => basename(file) === 'README.md')) addError(dir, 'MISSING_README', 'Directory with multiple markdown files must include README.md');
+  for (const [dir, files] of byDir) if (files.length > 1 && !files.some((file) => basename(file) === 'README.md')) addError(dir, 'MISSING_README', 'Directory with multiple markdown files must include README.md', null, 'add a README.md in this directory that indexes the important markdown files and their purpose.');
   if (options.linkCheck) {
     for (const [file, content] of fileCache) {
       const fileDir = dirname(file);
@@ -346,12 +346,12 @@ export function runValidate(argv) {
         const anchor = hashIndex === -1 ? '' : href.slice(hashIndex + 1);
         const target = pathPart ? resolve(fileDir, pathPart) : file;
         if (pathPart && !existsSync(target)) {
-          addError(file, 'BROKEN_LINK', `Local link target does not exist: ${pathPart}`, line);
+          addError(file, 'BROKEN_LINK', `Local link target does not exist: ${pathPart}`, line, 'update the link target to an existing local file, create the intended file, or remove the stale link.');
           continue;
         }
         if (anchor && extname(target) === '.md') {
           const targetContent = fileCache.get(target) ?? (existsSync(target) ? readFileSync(target, 'utf8') : '');
-          if (targetContent && !extractAnchors(targetContent).has(decodeURIComponent(anchor))) addError(file, 'BROKEN_ANCHOR', `Local anchor target does not exist: ${href}`, line);
+          if (targetContent && !extractAnchors(targetContent).has(decodeURIComponent(anchor))) addError(file, 'BROKEN_ANCHOR', `Local anchor target does not exist: ${href}`, line, 'update the fragment to a heading that exists in the target markdown file, or add the missing heading.');
         }
       }
     }
@@ -359,10 +359,10 @@ export function runValidate(argv) {
   if (options.checkIndex) {
     const index = readIndex(root);
     if (!index) {
-      addError(cacheFile(root), 'INDEX_MISSING', 'Expected .dotdotgod index cache. Run `dotdotgod index <root>` or a lazy-refreshing command such as `dotdotgod load-snapshot <root> --json`.');
+      addError(cacheFile(root), 'INDEX_MISSING', 'Expected .dotdotgod index cache.', null, 'run `dotdotgod index <root>` or a lazy-refreshing command such as `dotdotgod load-snapshot <root> --json`.');
     } else {
       const schemaVersion = index.schemaVersion ?? index.version ?? null;
-      if (schemaVersion !== CACHE_VERSION) addError(cacheFile(root), 'INDEX_SCHEMA_MISMATCH', `Index schema is ${String(schemaVersion)}; expected ${CACHE_VERSION}. Run \`dotdotgod index <root>\`.`);
+      if (schemaVersion !== CACHE_VERSION) addError(cacheFile(root), 'INDEX_SCHEMA_MISMATCH', `Index schema is ${String(schemaVersion)}; expected ${CACHE_VERSION}.`, null, 'run `dotdotgod index <root>` to rebuild the cache with the current schema.');
       const indexed = new Map((index.files ?? []).map((file) => [file.path, file.sha256]));
       const indexableMarkdownPaths = new Set(collectIndexFiles(root, memoryConfig).map((file) => rel(root, file)).filter((path) => path.endsWith('.md')));
       for (const file of markdownFiles) {
@@ -370,8 +370,8 @@ export function runValidate(argv) {
         if (!indexableMarkdownPaths.has(path)) continue;
         const indexedHash = indexed.get(path);
         const currentHash = fingerprint(file);
-        if (!indexedHash) addError(file, 'INDEX_MISSING_FILE', 'Markdown file is not present in the current graph index. Run `dotdotgod index <root>`.');
-        else if (indexedHash !== currentHash) addError(file, 'INDEX_STALE', 'Markdown fingerprint differs from the current graph index. Run `dotdotgod index <root>` or a lazy-refreshing command such as `dotdotgod load-snapshot <root> --json`.');
+        if (!indexedHash) addError(file, 'INDEX_MISSING_FILE', 'Markdown file is not present in the current graph index.', null, 'run `dotdotgod index <root>` to refresh the graph index.');
+        else if (indexedHash !== currentHash) addError(file, 'INDEX_STALE', 'Markdown fingerprint differs from the current graph index.', null, 'run `dotdotgod index <root>` or a lazy-refreshing command such as `dotdotgod load-snapshot <root> --json`.');
       }
     }
   }
@@ -382,17 +382,17 @@ export function runValidate(argv) {
       if (!existsSync(areaRoot)) continue;
       for (const entry of readdirSync(areaRoot, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue;
-        if (!isKebabCase(entry.name)) addError(join(areaRoot, entry.name), 'SLUG_NAMING', `Archive/plan/report slug must be kebab-case: ${entry.name}`);
+        if (!isKebabCase(entry.name)) addError(join(areaRoot, entry.name), 'SLUG_NAMING', `Archive/plan/report slug must be kebab-case: ${entry.name}`, null, 'rename the task/report directory to kebab-case and update any README index links that reference it.');
         const readme = join(areaRoot, entry.name, 'README.md');
-        if (!existsSync(readme)) addError(readme, 'MISSING_README', `Expected README.md in docs/${area}/${entry.name}/`);
+        if (!existsSync(readme)) addError(readme, 'MISSING_README', `Expected README.md in docs/${area}/${entry.name}/`, null, 'add a README.md that summarizes the task/report and links any supporting files.');
       }
     }
   }
   const gitignore = join(root, '.gitignore');
-  if (!existsSync(gitignore)) addError(gitignore, 'MISSING_GITIGNORE', 'Expected .gitignore');
+  if (!existsSync(gitignore)) addError(gitignore, 'MISSING_GITIGNORE', 'Expected .gitignore', null, 'create .gitignore and include docs/plan, docs/archive, and .dotdotgod entries.');
   else {
     const content = readFileSync(gitignore, 'utf8').split('\n').map((line) => line.trim());
-    for (const required of ['docs/plan', 'docs/archive', CACHE_DIR]) if (!content.includes(required)) addError(gitignore, 'MISSING_GITIGNORE_ENTRY', `Expected .gitignore entry: ${required}`);
+    for (const required of ['docs/plan', 'docs/archive', CACHE_DIR]) if (!content.includes(required)) addError(gitignore, 'MISSING_GITIGNORE_ENTRY', `Expected .gitignore entry: ${required}`, null, `add ${required} to .gitignore so local plans, archives, and cache files stay untracked.`);
   }
 
   if (options.json) console.log(JSON.stringify({ ok: errors.length === 0, errors }, null, 2));
@@ -507,13 +507,8 @@ function graphNodeShard(node) {
 }
 
 function graphEdgeShard(edge) {
-  if (edge.relation === 'imports') return 'imports';
   if (edge.relation === 'links_to' || edge.relation === 'routes_to' || edge.relation === 'contains_heading' || edge.relation === 'implemented_by' || edge.relation === 'verified_by' || edge.relation === 'related_doc' || edge.relation === 'verification_command' || SEMANTIC_RELATIONS.has(edge.relation)) return 'docs-links';
-  if (edge.relation === 'declares_test' || edge.relation === 'tests') return 'tests';
-  if (edge.relation === 'emits_event') return 'events';
   if (edge.relation === 'declares_package' || edge.relation === 'declares_script' || edge.relation === 'declares_bin' || edge.relation === 'depends_on' || edge.relation === 'includes_resource') return 'packages';
-  if (edge.relation === 'declares' || edge.relation === 'exports' || edge.relation === 'exports_symbol') return 'symbols';
-  if (edge.relation === 'handles_command') return 'commands';
   return 'other';
 }
 
@@ -631,8 +626,6 @@ const DEFAULT_IMPACT_RANKING_POLICY = {
   weights: { ppr: 40, traceability: 30, memoryPolicy: 10, verification: 15, proximity: 10, semantic: 10, freshness: 5, archivePenalty: -25 },
   ppr: { enabled: true, damping: 0.85, iterations: 20, tolerance: 0.000001 },
   relationWeights: {
-    imports: 4,
-    tests: 4,
     implemented_by: 4,
     verified_by: 4,
     related_doc: 3,
@@ -640,15 +633,13 @@ const DEFAULT_IMPACT_RANKING_POLICY = {
     links_to: 2,
     belongs_to_area: 2,
     semantic_similarity: 2,
-    mentions_symbol: 2,
-    mentions_command: 2,
     mentions_package: 1,
   },
   traceabilityBoosts: { implemented_by: 30, 'incoming:implemented_by': 30, verified_by: 25, 'incoming:verified_by': 25, verification_command: 15, 'incoming:verification_command': 15, related_doc: 12, 'incoming:related_doc': 12 },
-  verificationBoosts: { verified_by: 15, 'incoming:verified_by': 15, verification_command: 12, 'incoming:verification_command': 12, 'test-path-proximity': 8, tests: 10, 'incoming:tests': 10 },
-  semanticBoosts: { semantic_similarity: 8, 'incoming:semantic_similarity': 8, mentions_symbol: 6, 'incoming:mentions_symbol': 6, mentions_command: 6, 'incoming:mentions_command': 6, mentions_package: 4, 'incoming:mentions_package': 4 },
-  proximityBoosts: { imports: 10, 'incoming:imports': 10, 'imports-local-file': 8, links_to: 6, 'incoming:links_to': 6, 'same-directory': 4, 'shares-import': 3, handles_command: 6, 'incoming:handles_command': 6, emits_event: 5, 'incoming:emits_event': 5, routes_to: 5, 'incoming:routes_to': 5 },
-  semantic: { enabled: true, threshold: 0.5, topKPerFile: 5, includeArchiveBodies: false, signals: ['path', 'filename', 'heading', 'symbol', 'export', 'command', 'event', 'package'] },
+  verificationBoosts: { verified_by: 15, 'incoming:verified_by': 15, verification_command: 12, 'incoming:verification_command': 12 },
+  semanticBoosts: { semantic_similarity: 8, 'incoming:semantic_similarity': 8, mentions_package: 4, 'incoming:mentions_package': 4 },
+  proximityBoosts: { links_to: 6, 'incoming:links_to': 6, routes_to: 5, 'incoming:routes_to': 5 },
+  semantic: { enabled: true, threshold: 0.5, topKPerFile: 5, includeArchiveBodies: false, signals: ['path', 'filename', 'heading', 'package'] },
 };
 const IMPACT_RANKING_PRESETS = {
   balanced: {},
@@ -657,11 +648,11 @@ const IMPACT_RANKING_PRESETS = {
   'test-focused': { weights: { ppr: 35, traceability: 25, memoryPolicy: 8, verification: 25, proximity: 10, semantic: 7, freshness: 5, archivePenalty: -25 } },
   'archive-aware': { weights: { ppr: 35, traceability: 25, memoryPolicy: 10, verification: 15, proximity: 10, semantic: 8, freshness: 3, archivePenalty: -10 } },
 };
-const SEMANTIC_RELATIONS = new Set(['semantic_similarity', 'mentions_symbol', 'mentions_command', 'mentions_package']);
+const SEMANTIC_RELATIONS = new Set(['semantic_similarity', 'mentions_package']);
 const IMPACT_RANKING_WEIGHT_KEYS = new Set(['ppr', 'traceability', 'memoryPolicy', 'verification', 'proximity', 'semantic', 'freshness', 'archivePenalty']);
-const IMPACT_RANKING_RELATION_KEYS = new Set(['imports', 'tests', 'implemented_by', 'verified_by', 'related_doc', 'verification_command', 'links_to', 'belongs_to_area', 'semantic_similarity', 'mentions_symbol', 'mentions_command', 'mentions_package']);
-const IMPACT_RANKING_REASON_KEYS = new Set(['implemented_by', 'incoming:implemented_by', 'verified_by', 'incoming:verified_by', 'verification_command', 'incoming:verification_command', 'related_doc', 'incoming:related_doc', 'test-path-proximity', 'tests', 'incoming:tests', 'semantic_similarity', 'incoming:semantic_similarity', 'mentions_symbol', 'incoming:mentions_symbol', 'mentions_command', 'incoming:mentions_command', 'mentions_package', 'incoming:mentions_package', 'imports', 'incoming:imports', 'imports-local-file', 'links_to', 'incoming:links_to', 'same-directory', 'shares-import', 'handles_command', 'incoming:handles_command', 'emits_event', 'incoming:emits_event', 'routes_to', 'incoming:routes_to']);
-const SEMANTIC_SIGNAL_KEYS = new Set(['path', 'filename', 'heading', 'symbol', 'export', 'command', 'event', 'package']);
+const IMPACT_RANKING_RELATION_KEYS = new Set(['implemented_by', 'verified_by', 'related_doc', 'verification_command', 'links_to', 'belongs_to_area', 'semantic_similarity', 'mentions_package']);
+const IMPACT_RANKING_REASON_KEYS = new Set(['implemented_by', 'incoming:implemented_by', 'verified_by', 'incoming:verified_by', 'verification_command', 'incoming:verification_command', 'related_doc', 'incoming:related_doc', 'semantic_similarity', 'incoming:semantic_similarity', 'mentions_package', 'incoming:mentions_package', 'links_to', 'incoming:links_to', 'routes_to', 'incoming:routes_to']);
+const SEMANTIC_SIGNAL_KEYS = new Set(['path', 'filename', 'heading', 'package']);
 const DEFAULT_MEMORY_AREAS = [
   { id: 'rules', label: 'Agent Rules', paths: ['AGENTS.md'], scope: 'shared', freshness: 'fresh', role: 'agent-working-rules', priority: 100, includeBodiesByDefault: true },
   { id: 'agent-entrypoint', label: 'Agent Entrypoints', paths: ['CLAUDE.md', 'CODEX.md'], scope: 'shared', freshness: 'fresh', role: 'agent-specific-entrypoint', priority: 85, includeBodiesByDefault: true },
@@ -828,7 +819,11 @@ function validateNumberMap(map, keys, min, max) {
 
 export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.config.json') {
   const errors = [];
-  const add = (code, field, message) => errors.push({ file: rel(root, resolve(root, file)), code, message: `${field ? `Field "${field}": ` : ''}${message}` });
+  const add = (code, field, message, fix = null) => errors.push({
+    file: rel(root, resolve(root, file)),
+    code,
+    message: `${field ? `Field "${field}": ` : ''}${message}\nFix: ${fix ?? `update ${field ?? 'this config'} in ${file} to match the expected dotdotgod config schema.`}`,
+  });
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     add('MEMORY_CONFIG_INVALID', null, 'Config must be a JSON object.');
     return errors;
@@ -939,7 +934,7 @@ export function readMemoryConfig(root = '.') {
       const impactRanking = normalizeImpactRankingPolicy(data.impactRanking);
       return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, validation, impactRanking, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, source: name, errors: [] };
     } catch (error) {
-      return { ...defaultMemoryConfig(), source: name, errors: [{ file: name, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}` }] };
+      return { ...defaultMemoryConfig(), source: name, errors: [{ file: name, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}\nFix: repair ${name} so it is valid JSON, or regenerate the default config with \`dotdotgod config init <root> --force\` if you want to reset it.` }] };
     }
   }
   return defaultMemoryConfig();
@@ -1140,83 +1135,6 @@ function isTestPath(path = '') {
   return /(^|\/)(test|tests)\//.test(path) || /\.(test|spec)\.(mjs|cjs|js|jsx|ts|tsx)$/.test(path);
 }
 
-function addSymbol(graph, fileId, path, name, exported = false) {
-  if (!name) return;
-  const id = `symbol:${path}#${name}`;
-  addNode(graph, id, 'symbol', { name, path });
-  addEdge(graph, fileId, id, 'declares', { confidence: 'EXTRACTED' });
-  if (exported) {
-    const exportId = `export:${path}#${name}`;
-    addNode(graph, exportId, 'export', { name, path });
-    addEdge(graph, fileId, exportId, 'exports', { confidence: 'EXTRACTED' });
-    addEdge(graph, exportId, id, 'exports_symbol', { confidence: 'EXTRACTED' });
-  }
-}
-
-export function extractScriptGraph(root, file, graph) {
-  const path = rel(root, file);
-  const fileId = `file:${path}`;
-  const content = readFileSync(file, 'utf8');
-  const importRe = /^\s*import(?:\s+type)?[\s\S]*?from\s+['"]([^'"]+)['"]|^\s*import\s+['"]([^'"]+)['"]/gm;
-  let match;
-  while ((match = importRe.exec(content)) !== null) {
-    const spec = match[1] || match[2];
-    const id = `import:${spec}`;
-    addNode(graph, id, 'import', { specifier: spec });
-    addEdge(graph, fileId, id, 'imports', { confidence: 'EXTRACTED' });
-  }
-
-  const lines = content.split('\n');
-  let depth = 0;
-  for (const line of lines) {
-    const topLevel = depth === 0;
-    const trimmed = line.trim();
-    if (topLevel) {
-      let declaration = trimmed.match(/^(export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/);
-      if (!declaration) declaration = trimmed.match(/^(export\s+)?class\s+([A-Za-z_$][\w$]*)/);
-      if (!declaration) declaration = trimmed.match(/^(export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/);
-      if (declaration) addSymbol(graph, fileId, path, declaration[2], Boolean(declaration[1]));
-    }
-    const withoutStrings = line.replace(/(['"`])(?:\\.|(?!\1).)*\1/g, '');
-    depth += (withoutStrings.match(/{/g) ?? []).length;
-    depth -= (withoutStrings.match(/}/g) ?? []).length;
-    if (depth < 0) depth = 0;
-  }
-
-  const exportListRe = /^\s*export\s*{([^}]+)}/gm;
-  while ((match = exportListRe.exec(content)) !== null) {
-    for (const item of match[1].split(',')) {
-      const name = item.trim().split(/\s+as\s+/)[0]?.trim();
-      if (name) addSymbol(graph, fileId, path, name, true);
-    }
-  }
-
-  const commandRe = /\.registerCommand\(\s*['"]([^'"]+)['"]/g;
-  while ((match = commandRe.exec(content)) !== null) {
-    const name = match[1];
-    const id = `command:${name}`;
-    addNode(graph, id, 'command', { name });
-    addEdge(graph, fileId, id, 'handles_command', { confidence: 'EXTRACTED' });
-  }
-
-  if (isTestPath(path)) {
-    const id = `test:${path}`;
-    addNode(graph, id, 'test', { path });
-    addEdge(graph, fileId, id, 'declares_test', { confidence: 'INFERRED' });
-    for (const edge of graph.edges.filter((edge) => edge.source === fileId && edge.relation === 'imports')) {
-      addEdge(graph, id, edge.target, 'tests', { confidence: 'INFERRED' });
-    }
-  }
-
-  const eventRe = /['"]((?!node:)[a-z][a-z0-9-]*-[a-z0-9-]*:[a-z0-9:-]+)['"]/g;
-  while ((match = eventRe.exec(content)) !== null) {
-    const name = match[1];
-    const id = `event:${name}`;
-    addNode(graph, id, 'event', { name });
-    addEdge(graph, fileId, id, 'emits_event', { confidence: 'EXTRACTED' });
-  }
-}
-
 const TOKEN_STOPWORDS = new Set(['a', 'an', 'and', 'app', 'bin', 'code', 'config', 'docs', 'file', 'index', 'lib', 'md', 'mjs', 'node', 'package', 'readme', 'src', 'test', 'tests', 'the', 'ts', 'tsx', 'utils']);
 
 function splitCamelCase(value = '') {
@@ -1250,10 +1168,8 @@ function jaccard(a, b) {
 function semanticSignalScore(source, target) {
   const path = jaccard(source.pathTokens, target.pathTokens);
   const heading = Math.max(jaccard(source.headingTokens, target.headingTokens), jaccard(source.headingTokens, target.allTokens), jaccard(source.allTokens, target.headingTokens));
-  const symbol = Math.max(jaccard(source.symbolTokens, target.symbolTokens), jaccard(source.headingTokens, target.symbolTokens), jaccard(source.symbolTokens, target.headingTokens));
-  const command = Math.max(jaccard(source.commandTokens, target.commandTokens), jaccard(source.allTokens, target.commandTokens), jaccard(source.commandTokens, target.allTokens));
   const pkg = Math.max(jaccard(source.packageTokens, target.packageTokens), jaccard(source.allTokens, target.packageTokens), jaccard(source.packageTokens, target.allTokens));
-  return { path, filename: path, heading, symbol, export: symbol, command, event: command, package: pkg };
+  return { path, filename: path, heading, package: pkg };
 }
 
 function semanticProfileForFile(fileNode, graph) {
@@ -1263,8 +1179,6 @@ function semanticProfileForFile(fileNode, graph) {
     retrieval: fileNode.retrieval,
     pathTokens: new Set(),
     headingTokens: new Set(),
-    symbolTokens: new Set(),
-    commandTokens: new Set(),
     packageTokens: new Set(),
     allTokens: new Set(),
   };
@@ -1277,19 +1191,15 @@ function semanticProfileForFile(fileNode, graph) {
     const target = nodeById.get(edge.target);
     if (!target) continue;
     if (edge.relation === 'contains_heading') addTokens(profile.headingTokens, target.title ?? target.id);
-    if (edge.relation === 'declares' || edge.relation === 'exports') addTokens(profile.symbolTokens, target.name ?? target.id);
-    if (edge.relation === 'handles_command' || edge.relation === 'emits_event' || edge.relation === 'declares_script') addTokens(profile.commandTokens, target.name ?? target.command ?? target.id);
     if (edge.relation === 'declares_package' || edge.relation === 'declares_bin' || edge.relation === 'includes_resource' || edge.relation === 'depends_on') addTokens(profile.packageTokens, target.name ?? target.target ?? target.id);
   }
-  for (const set of [profile.pathTokens, profile.headingTokens, profile.symbolTokens, profile.commandTokens, profile.packageTokens]) {
+  for (const set of [profile.pathTokens, profile.headingTokens, profile.packageTokens]) {
     for (const token of set) profile.allTokens.add(token);
   }
   return profile;
 }
 
 function semanticRelationForProfiles(source, target, scores) {
-  if (scores.symbol >= 0.5 && (source.headingTokens.size > 0 || target.headingTokens.size > 0)) return 'mentions_symbol';
-  if (scores.command >= 0.5) return 'mentions_command';
   if (scores.package >= 0.5) return 'mentions_package';
   return 'semantic_similarity';
 }
@@ -1346,7 +1256,6 @@ export function buildGraph(root, files, config = readMemoryConfig(root)) {
     addMemoryAreaMembership(graph, fileId, path, config);
     if (path.endsWith('.md')) extractMarkdownGraph(root, file, graph, config);
     else if (basename(file) === 'package.json') extractPackageGraph(root, file, graph);
-    else if (/\.(mjs|cjs|js|jsx|ts|tsx)$/.test(path)) extractScriptGraph(root, file, graph);
   }
   return graph;
 }
@@ -1515,13 +1424,6 @@ function docsArea(path = '') {
   return undefined;
 }
 
-function fileFromImport(changedPath, specifier) {
-  if (!specifier?.startsWith('.')) return undefined;
-  const base = dirname(changedPath);
-  const candidate = rel('.', resolve(base, specifier));
-  return candidate.replace(/^\.\//, '');
-}
-
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -1609,8 +1511,8 @@ function scoreImpactItem(item, seed, changedPath, policy, pprScores, maxPpr) {
   };
 }
 
-const CURATED_IMPACT_REASONS = new Set(['implemented_by', 'verified_by', 'related_doc', 'verification_command', 'tests', 'imports', 'links_to', 'routes_to', 'belongs_to_area', 'handles_command', 'emits_event', 'declares_test', 'imports-local-file', 'same-directory', 'shares-import', 'test-path-proximity']);
-const LOW_ACTIONABILITY_IMPACT_TYPES = new Set(['import', 'dependency', 'package', 'script', 'binary', 'heading', 'memory_area']);
+const CURATED_IMPACT_REASONS = new Set(['implemented_by', 'verified_by', 'related_doc', 'verification_command', 'links_to', 'routes_to', 'belongs_to_area']);
+const LOW_ACTIONABILITY_IMPACT_TYPES = new Set(['dependency', 'package', 'script', 'binary', 'heading', 'memory_area']);
 
 function baseImpactReason(reason = '') {
   return reason.replace(/^incoming:/, '');
@@ -1728,22 +1630,6 @@ export function buildImpactReport(index, changedPath, limits = {}) {
     if (relatedIds.has(edge.source) && edge.target !== seed) addReason(edge.target, edge.relation);
   }
 
-  const changedDir = dirname(changedPath).replaceAll('\\', '/');
-  for (const node of graph.nodes) {
-    if (node.type === 'file' && node.path !== changedPath && dirname(node.path).replaceAll('\\', '/') === changedDir) addReason(node.id, 'same-directory');
-    if (node.type === 'test' && (node.path.includes(basename(changedPath).replace(/\.(mjs|cjs|js|jsx|ts|tsx)$/, '')) || node.path.includes(changedDir))) addReason(node.id, 'test-path-proximity');
-  }
-
-  const seedImports = graph.edges.filter((edge) => edge.source === seed && edge.relation === 'imports').map((edge) => nodeById.get(edge.target)?.specifier).filter(Boolean);
-  for (const specifier of seedImports) {
-    const importedPath = fileFromImport(changedPath, specifier);
-    if (importedPath) addReason(`file:${importedPath}`, 'imports-local-file');
-    for (const edge of graph.edges) {
-      const node = nodeById.get(edge.target);
-      if (edge.relation === 'imports' && node?.specifier === specifier && edge.source !== seed) addReason(edge.source, 'shares-import');
-    }
-  }
-
   const pprScores = buildPersonalizedPageRank(graph, seed, policy);
   const candidatePprMax = Math.max(0, ...[...relatedIds].filter((id) => id !== seed).map((id) => pprScores.get(id) ?? 0));
   const relatedAll = [...relatedIds]
@@ -1768,7 +1654,6 @@ export function buildImpactReport(index, changedPath, limits = {}) {
     else if (item.type === 'command') addImpactItem(groups.commands, item, limits.commands ?? 10);
     else if (item.type === 'event') addImpactItem(groups.events, item, limits.events ?? 10);
     else if (item.type === 'package_resource') addImpactItem(groups.packageResources, item, limits.packageResources ?? 10);
-    else if (item.type === 'symbol' || item.type === 'export') addImpactItem(groups.symbols, item, limits.symbols ?? 10);
   }
 
   return {
@@ -1863,7 +1748,7 @@ function formatCompactImpactOutput(payload, impact) {
   return lines.join('\n');
 }
 
-const DURABLE_COMMUNITY_NODE_TYPES = new Set(['file', 'memory_area', 'test', 'command', 'event', 'package_resource', 'package', 'script', 'binary']);
+const DURABLE_COMMUNITY_NODE_TYPES = new Set(['file', 'memory_area', 'package_resource', 'package', 'script', 'binary']);
 
 function communityKeyForNode(node) {
   if (node.type === 'memory_area') return `memory-${node.area}`;
@@ -1895,9 +1780,9 @@ function addBounded(list, value, limit) {
 }
 
 function relationWeight(relation) {
-  if (relation === 'imports' || relation === 'tests' || relation === 'handles_command' || relation === 'implemented_by' || relation === 'verified_by') return 4;
-  if (relation === 'emits_event' || relation === 'includes_resource' || relation === 'routes_to' || relation === 'related_doc' || relation === 'verification_command') return 3;
-  if (relation === 'links_to' || relation === 'belongs_to_area' || relation === 'declares_package' || relation === 'declares_bin' || relation === 'semantic_similarity' || relation === 'mentions_symbol' || relation === 'mentions_command') return 2;
+  if (relation === 'implemented_by' || relation === 'verified_by') return 4;
+  if (relation === 'includes_resource' || relation === 'routes_to' || relation === 'related_doc' || relation === 'verification_command') return 3;
+  if (relation === 'links_to' || relation === 'belongs_to_area' || relation === 'declares_package' || relation === 'declares_bin' || relation === 'semantic_similarity') return 2;
   if (relation === 'mentions_package') return 1;
   return 1;
 }
@@ -2250,4 +2135,3 @@ export function runCli(argv = process.argv.slice(2)) {
   else if (command === 'graph') runGraph(args);
   else usage(`Unknown command: ${command}`);
 }
-

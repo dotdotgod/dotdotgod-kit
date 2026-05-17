@@ -25,7 +25,7 @@ Impact ranking policy lives in the same optional root config files as memory and
       "memoryPolicy": 10,
       "verification": 15,
       "proximity": 10,
-      "semantic": 10,
+      "routing": 10,
       "freshness": 5,
       "archivePenalty": -25
     },
@@ -35,12 +35,12 @@ Impact ranking policy lives in the same optional root config files as memory and
       "iterations": 20,
       "tolerance": 0.000001
     },
-    "semantic": {
+    "routing": {
       "enabled": true,
       "threshold": 0.5,
       "topKPerFile": 5,
       "includeArchiveBodies": false,
-      "signals": ["path", "filename", "heading", "symbol", "export", "command", "event", "package"]
+      "signals": ["path", "filename", "heading", "readme", "memoryArea", "package"]
     }
   }
 }
@@ -49,7 +49,7 @@ Impact ranking policy lives in the same optional root config files as memory and
 ## Behavior
 
 - If `impactRanking` is absent, the CLI uses the built-in `balanced` preset.
-- Presets can be partially overridden by numeric weights, relation weights, boost maps, PPR settings, and semantic settings.
+- Presets can be partially overridden by numeric weights, relation weights, boost maps, PPR settings, and routing settings.
 - Runtime graph commands fall back to defaults when config is invalid; `dotdotgod validate` reports the config errors.
 - `graph impact` preserves its raw `related` and grouped output while adding ranking metadata.
 - `--compact` is opt-in and returns an agent-facing grouped summary without changing the default raw JSON shape.
@@ -62,16 +62,16 @@ The default score combines:
 - curated traceability (`implemented_by`, `verified_by`, `related_doc`, `verification_command`)
 - memory policy priority
 - verification/test signals
-- direct proximity signals such as imports, markdown links, same-directory, command, route, or event links
-- deterministic semantic links from path/name/heading/symbol/command/event/package matches
+- direct proximity signals such as markdown links, README routes, package/resource links
+- deterministic routing hints from path, filename, heading, README, memory-area, and package metadata matches
 - freshness boost or stale penalty
 - archive-body penalty
 
-Curated traceability remains higher confidence than deterministic semantic links.
+Curated traceability remains higher confidence than deterministic routing hints.
 
-## Semantic Links
+## Routing Hints
 
-Default semantic links are deterministic and lexical. They use explicit project artifacts such as file paths, markdown headings, exported symbols, commands, events, package names, binaries, and package resources.
+Default routing hints are deterministic and lexical. They use explicit project artifacts such as file paths, markdown headings, README indexes, memory-area policy, package names, binaries, and package resources.
 
 Embedding-based similarity is not part of the default ranking path. If added later, it should be opt-in and used for audit or repair suggestions, not as a substitute for consistent terminology, glossary aliases, or traceability blocks.
 
@@ -97,7 +97,7 @@ Embedding-based similarity is not part of the default ranking path. If added lat
           "memoryPolicy": 8,
           "verification": 0,
           "proximity": 0,
-          "semantic": 6,
+          "routing": 6,
           "freshness": 5,
           "archivePenalty": 0
         }
@@ -139,9 +139,9 @@ Compact output omits full ranking weights, long retrieval signal lists, and unbo
 
 ## Candidate Selection
 
-Ranking still computes explainable `impactScore` values for every candidate. Before returning the bounded first page, the CLI prefers curated/test/proximity candidates over pure semantic-only matches and caps low-actionability metadata nodes such as imports and dependencies when actionable files or docs are available.
+Ranking still computes explainable `impactScore` values for every candidate. Before returning the bounded first page, the CLI prefers curated/test/proximity candidates over low-confidence routing-only matches and caps low-actionability metadata nodes such as dependencies when actionable files or docs are available.
 
-Semantic reasons remain visible in `reasons` and `scoreBreakdown`; they are demoted only for top-result selection.
+Routing reasons remain visible in `reasons` and `scoreBreakdown`; they are demoted only for top-result selection.
 
 ## Traceability
 

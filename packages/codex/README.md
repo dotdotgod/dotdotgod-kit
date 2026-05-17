@@ -1,6 +1,8 @@
 # @dotdotgod/codex
 
-Codex adapter for dotdotgod's context curation workflow. It packages reusable skills that help Codex load curated project memory, plan from docs before implementation, and initialize the shared agent documentation scaffold.
+> **Change a file, know what else must be checked.**
+
+Codex adapter for dotdotgod's context curation workflow. It packages reusable skills that help Codex load curated project memory, plan from docs before implementation, and initialize the shared agent documentation scaffold so changes start with the right specs, tests, plans, and archive map.
 
 ## What Gets Better?
 

@@ -8,7 +8,7 @@ These checks cover optional Claude Code and Codex hook documentation. Hooks are 
 - `pnpm --filter @dotdotgod/claude-code run verify` confirms `packages/claude-code/hooks/README.md` is a required adapter resource.
 - `pnpm --filter @dotdotgod/codex run verify` confirms `packages/codex/hooks/README.md` is a required adapter resource.
 - `pnpm run verify:generated` confirms generated commands and skills did not drift when hook docs are updated manually.
-- `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory` confirms hook-related docs, links, and traceability stay valid.
+- `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index` confirms hook-related docs, links, traceability, and markdown index freshness stay valid after indexing.
 
 ## Manual Smoke Checks
 
@@ -23,12 +23,14 @@ For Codex hook examples:
 
 - confirm examples are documented as optional trusted configuration-layer hooks
 - confirm examples include `hooks.json` and inline `config.toml` shapes
+- confirm validation examples use `dotdotgod validate . --include-local-memory --check-index`
+- confirm docs tell users to open `/hooks` and approve trusted hooks when Codex reports that a hook needs review
 - confirm docs do not imply Codex has Claude/Pi slash-command parity
 - confirm strict plan-safety docs note Codex tool-interception limitations
 
 For both adapters:
 
 - `dotdotgod status` may be shown as read-only cache reporting, but Codex Stop examples must not return raw status JSON as hook output
-- `dotdotgod validate` may be shown as explicit opt-in validation
+- `dotdotgod validate . --include-local-memory --check-index` may be shown as explicit opt-in validation and index-freshness checking
 - `dotdotgod load-snapshot` and `dotdotgod graph` must be labeled cache-aware because they can lazily refresh `.dotdotgod/`
 - `dotdotgod index`, `pnpm run verify:cache`, full `pnpm run verify`, and archive moves must not be default automatic hook actions
