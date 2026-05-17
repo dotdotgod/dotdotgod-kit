@@ -62,6 +62,7 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - `dotdotgod validate --check-index` does not refresh the cache; it reports missing, schema-mismatched, missing-file, or stale markdown fingerprints so agents can run `dotdotgod index` or a lazy-refreshing read command intentionally.
 - Lazy refresh output includes `metadata.cacheRefreshed`, refresh reason, elapsed timing, rebuild mode, changed-file count, and cache size details so callers can tell when and why a read command updated `.dotdotgod/`.
 - Completion hooks that refresh the index are optional; the default workflow relies on lazy refresh instead of mutating the cache after every task.
+- Claude Code and Codex hook examples should prefer `dotdotgod status` for read-only stop-time cache reporting and `dotdotgod validate` for explicit docs validation. Hook examples that call `load-snapshot`, `graph`, `index`, or `verify:cache` must describe the cache-refresh side effect or keep those commands opt-in.
 - `pnpm run verify:cache` validates docs, runs `dotdotgod index`, and then checks `dotdotgod status`, so local verification and Husky pre-push refresh stale cache automatically before asserting freshness.
 - The Husky pre-push hook runs `verify:cache`, so it may update the ignored `.dotdotgod/` cache as a local side effect while keeping tracked source/docs changes explicit.
 
