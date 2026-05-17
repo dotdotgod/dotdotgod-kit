@@ -41,7 +41,7 @@ pnpm run verify
 - `docs/test/`: test strategy, regression cases, manual verification notes.
 - `docs/arch/`: architecture decisions, code conventions, module boundaries, data flow, infrastructure/runtime dependencies, integration boundaries, and migration design.
 - `docs/`: all directories use kebab-case; all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
-- `docs/`: prefer keeping individual markdown files under 200 lines and under 10,000 characters; split larger docs into focused UPPER_SNAKE_CASE files and keep `README.md` as the index/overview.
+- `docs/`: prefer keeping individual markdown files under the configured markdown validation budgets (default 200 lines and 10,000 characters); split larger docs into focused UPPER_SNAKE_CASE files and keep `README.md` as the index/overview unless a narrow size-check exception is configured.
 - `docs/`: when adding, renaming, splitting, moving, or archiving docs, update the nearest relevant `README.md` index/table of contents in the same change.
 - `docs/`: each docs subdirectory `README.md` acts as the local table of contents; list important files, task directories, status, and a one-line purpose for each entry.
 - `docs/`: start small with a single focused markdown file; when one domain grows into multiple docs, promote it to `docs/<area>/<domain>/README.md` plus related UPPER_SNAKE_CASE files in that directory.

@@ -37,7 +37,7 @@ Inspect or initialize the project-level dotdotgod config file.`;
       return `Usage:
   dotdotgod config init <root> [--force] [--json]
 
-Create dotdotgod.config.json with the built-in default memory, traceability, and impact ranking policy.`;
+Create dotdotgod.config.json with the built-in default memory, traceability, validation, and impact ranking policy.`;
     case 'status':
       return `Usage:
   dotdotgod status <root> [--json]`;
@@ -264,7 +264,7 @@ export function extractAnchors(content) {
 }
 
 export function runValidate(argv) {
-  const options = { root: '.', includeLocalMemory: false, checkIndex: false, maxLines: 200, maxChars: 10000, linkCheck: true, json: false };
+  const options = { root: '.', includeLocalMemory: false, checkIndex: false, maxLines: null, maxChars: null, linkCheck: true, json: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--include-local-memory') options.includeLocalMemory = true;
@@ -308,6 +308,9 @@ export function runValidate(argv) {
 
   if (!existsSync(docs)) usage(`docs directory not found: ${docs}`);
   const memoryConfig = readMemoryConfig(root);
+  const validationPolicy = cloneValidationPolicy(memoryConfig.validation ?? DEFAULT_VALIDATION_POLICY);
+  const maxLines = options.maxLines ?? validationPolicy.markdown.maxLines;
+  const maxChars = options.maxChars ?? validationPolicy.markdown.maxChars;
   for (const error of memoryConfig.errors ?? []) errors.push(error);
   walk(docs);
   for (const file of markdownFiles) {
@@ -317,8 +320,10 @@ export function runValidate(argv) {
     const content = readFileSync(file, 'utf8');
     fileCache.set(file, content);
     const lines = content.split('\n').length;
-    if (lines > options.maxLines) addError(file, 'FILE_TOO_LONG', `Markdown file has ${lines} lines; max is ${options.maxLines}`);
-    if (content.length > options.maxChars) addError(file, 'FILE_TOO_LARGE', `Markdown file has ${content.length} characters; max is ${options.maxChars}`);
+    const path = rel(root, file);
+    const skipSizeChecks = isMarkdownSizeExcluded(path, memoryConfig);
+    if (!skipSizeChecks && lines > maxLines) addError(file, 'FILE_TOO_LONG', `Markdown file has ${lines} lines; max is ${maxLines}`);
+    if (!skipSizeChecks && content.length > maxChars) addError(file, 'FILE_TOO_LARGE', `Markdown file has ${content.length} characters; max is ${maxChars}`);
     if (requiresTraceability(rel(root, file), memoryConfig)) {
       const blocks = extractDotdotgodTraceabilityBlocks(content);
       if (blocks.length === 0) addError(file, 'TRACEABILITY_MISSING', `Behavior specs must include a fenced \`json dotdotgod\` traceability block as the final section.\n\n${traceabilityExample()}`);
@@ -618,6 +623,9 @@ const DEFAULT_TRACEABILITY_POLICY = {
   required: ['docs/spec/**'],
   exclude: ['**/README.md'],
 };
+const DEFAULT_VALIDATION_POLICY = {
+  markdown: { maxLines: 200, maxChars: 10000, exclude: [] },
+};
 const DEFAULT_IMPACT_RANKING_POLICY = {
   preset: 'balanced',
   weights: { ppr: 40, traceability: 30, memoryPolicy: 10, verification: 15, proximity: 10, semantic: 10, freshness: 5, archivePenalty: -25 },
@@ -682,6 +690,16 @@ function cloneTraceabilityPolicy(policy = DEFAULT_TRACEABILITY_POLICY) {
   };
 }
 
+function cloneValidationPolicy(policy = DEFAULT_VALIDATION_POLICY) {
+  return {
+    markdown: {
+      maxLines: policy.markdown?.maxLines ?? DEFAULT_VALIDATION_POLICY.markdown.maxLines,
+      maxChars: policy.markdown?.maxChars ?? DEFAULT_VALIDATION_POLICY.markdown.maxChars,
+      exclude: [...(policy.markdown?.exclude ?? [])],
+    },
+  };
+}
+
 function cloneImpactRankingPolicy(policy = DEFAULT_IMPACT_RANKING_POLICY) {
   return {
     preset: policy.preset ?? 'balanced',
@@ -703,7 +721,7 @@ function normalizeImpactRankingPolicy(raw) {
 }
 
 export function defaultMemoryConfig() {
-  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), impactRanking: cloneImpactRankingPolicy() };
+  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy() };
 }
 
 function normalizePathPattern(value = '') {
@@ -762,6 +780,23 @@ function normalizeTraceabilityPolicy(raw) {
   };
 }
 
+function normalizeValidationPolicy(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return cloneValidationPolicy();
+  const markdown = raw.markdown && typeof raw.markdown === 'object' && !Array.isArray(raw.markdown) ? raw.markdown : {};
+  return cloneValidationPolicy({
+    markdown: {
+      maxLines: Number.isInteger(markdown.maxLines) ? markdown.maxLines : DEFAULT_VALIDATION_POLICY.markdown.maxLines,
+      maxChars: Number.isInteger(markdown.maxChars) ? markdown.maxChars : DEFAULT_VALIDATION_POLICY.markdown.maxChars,
+      exclude: Array.isArray(markdown.exclude) ? markdown.exclude.map(normalizePathPattern) : [],
+    },
+  });
+}
+
+function isMarkdownSizeExcluded(path = '', config = defaultMemoryConfig()) {
+  const policy = config.validation ?? DEFAULT_VALIDATION_POLICY;
+  return (policy.markdown?.exclude ?? []).some((pattern) => matchMemoryPattern(path, pattern));
+}
+
 export function requiresTraceability(path = '', config = defaultMemoryConfig()) {
   const policy = config.traceability ?? DEFAULT_TRACEABILITY_POLICY;
   const excluded = (policy.exclude ?? []).some((pattern) => matchMemoryPattern(path, pattern));
@@ -807,6 +842,22 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
       else if (traceability.required.some((value) => !isValidPathPattern(value))) add('TRACEABILITY_CONFIG_INVALID_REQUIRED', 'traceability.required', 'Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
       if (traceability.exclude !== undefined && !Array.isArray(traceability.exclude)) add('TRACEABILITY_CONFIG_INVALID_EXCLUDE', 'traceability.exclude', 'Expected an array of path strings.');
       else if (Array.isArray(traceability.exclude) && traceability.exclude.some((value) => !isValidPathPattern(value))) add('TRACEABILITY_CONFIG_INVALID_EXCLUDE', 'traceability.exclude', 'Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+    }
+  }
+  const validation = data.validation;
+  if (validation !== undefined) {
+    if (!validation || typeof validation !== 'object' || Array.isArray(validation)) {
+      add('VALIDATION_CONFIG_INVALID', 'validation', 'Expected an object.');
+    } else if (validation.markdown !== undefined) {
+      const markdown = validation.markdown;
+      if (!markdown || typeof markdown !== 'object' || Array.isArray(markdown)) {
+        add('VALIDATION_CONFIG_INVALID_MARKDOWN', 'validation.markdown', 'Expected an object.');
+      } else {
+        if (markdown.maxLines !== undefined && (!Number.isInteger(markdown.maxLines) || markdown.maxLines < 1)) add('VALIDATION_CONFIG_INVALID_MAX_LINES', 'validation.markdown.maxLines', 'Expected a positive integer.');
+        if (markdown.maxChars !== undefined && (!Number.isInteger(markdown.maxChars) || markdown.maxChars < 1)) add('VALIDATION_CONFIG_INVALID_MAX_CHARS', 'validation.markdown.maxChars', 'Expected a positive integer.');
+        if (markdown.exclude !== undefined && !Array.isArray(markdown.exclude)) add('VALIDATION_CONFIG_INVALID_EXCLUDE', 'validation.markdown.exclude', 'Expected an array of path strings.');
+        else if (Array.isArray(markdown.exclude) && markdown.exclude.some((value) => !isValidPathPattern(value))) add('VALIDATION_CONFIG_INVALID_EXCLUDE', 'validation.markdown.exclude', 'Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+      }
     }
   }
   const impactRanking = data.impactRanking;
@@ -884,8 +935,9 @@ export function readMemoryConfig(root = '.') {
       if (errors.length > 0) return { ...defaultMemoryConfig(), source: name, errors };
       const configuredAreas = data.memory?.areas?.map(normalizeMemoryArea) ?? [];
       const traceability = data.traceability === undefined ? cloneTraceabilityPolicy() : normalizeTraceabilityPolicy(data.traceability);
+      const validation = data.validation === undefined ? cloneValidationPolicy() : normalizeValidationPolicy(data.validation);
       const impactRanking = normalizeImpactRankingPolicy(data.impactRanking);
-      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, impactRanking, errors: [] } : { ...defaultMemoryConfig(), traceability, impactRanking, source: name, errors: [] };
+      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, validation, impactRanking, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, source: name, errors: [] };
     } catch (error) {
       return { ...defaultMemoryConfig(), source: name, errors: [{ file: name, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}` }] };
     }
@@ -914,6 +966,7 @@ export function defaultDotdotgodConfigData() {
       areas: (config.areas ?? []).map(serializableMemoryArea),
     },
     traceability: cloneTraceabilityPolicy(config.traceability),
+    validation: cloneValidationPolicy(config.validation),
     impactRanking: cloneImpactRankingPolicy(config.impactRanking),
   };
 }
@@ -937,6 +990,7 @@ function memoryConfigSummary(config) {
       includeBodiesByDefault: area.includeBodiesByDefault !== false,
     })),
     traceability: cloneTraceabilityPolicy(config.traceability ?? DEFAULT_TRACEABILITY_POLICY),
+    validation: cloneValidationPolicy(config.validation ?? DEFAULT_VALIDATION_POLICY),
     impactRanking: cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY),
   };
 }
@@ -2060,6 +2114,8 @@ function formatConfigOutput(payload) {
   lines.push(`- memory areas: ${payload.config.areas.length}`);
   lines.push(`- traceability required: ${(payload.config.traceability.required ?? []).join(', ') || 'none'}`);
   lines.push(`- traceability exclude: ${(payload.config.traceability.exclude ?? []).join(', ') || 'none'}`);
+  lines.push(`- validation markdown: maxLines=${payload.config.validation.markdown.maxLines}, maxChars=${payload.config.validation.markdown.maxChars}`);
+  lines.push(`- validation markdown exclude: ${(payload.config.validation.markdown.exclude ?? []).join(', ') || 'none'}`);
   lines.push(`- impact ranking preset: ${payload.config.impactRanking.preset}`);
   if (errors.length > 0) {
     lines.push('- errors:');

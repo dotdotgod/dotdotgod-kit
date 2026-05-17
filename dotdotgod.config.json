@@ -1,0 +1,7 @@
+{
+  "validation": {
+    "markdown": {
+      "exclude": ["docs/archive/README.md"]
+    }
+  }
+}

@@ -64,7 +64,7 @@ Generated docs follow these conventions:
 - Projects using the dotdotgod CLI should run `dotdotgod validate` after docs changes; the CLI owns machine-readable traceability validation for behavior specs and expects traceability as the final section.
 - Directories under `docs/` use kebab-case.
 - Markdown file names under `docs/` use UPPER_SNAKE_CASE, including `README.md`.
-- Individual markdown files should preferably stay under 200 lines and under 10,000 characters.
+- Individual markdown files should preferably stay under the configured markdown validation budgets, which default to 200 lines and 10,000 characters.
 - Large docs should be split into focused UPPER_SNAKE_CASE files while `README.md` remains the index/overview.
 - Adding, renaming, splitting, moving, or archiving docs should update the nearest relevant `README.md` index/table of contents in the same change.
 - When one domain grows into multiple docs, promote it to `docs/<area>/<domain>/README.md` plus related UPPER_SNAKE_CASE files in that directory.

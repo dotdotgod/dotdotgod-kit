@@ -10,7 +10,7 @@ This directory keeps project knowledge close to the code.
 
 - All directories under `docs/` use kebab-case.
 - All markdown file names under `docs/` use UPPER_SNAKE_CASE, including `README.md`.
-- Prefer keeping individual markdown files under 200 lines and under 10,000 characters; split larger docs into focused UPPER_SNAKE_CASE files and keep `README.md` as the index/overview.
+- Prefer keeping individual markdown files under the configured markdown validation budgets (default 200 lines and 10,000 characters); split larger docs into focused UPPER_SNAKE_CASE files and keep `README.md` as the index/overview unless a narrow size-check exception is configured.
 
 ## Indexing
 
@@ -20,9 +20,9 @@ This directory keeps project knowledge close to the code.
 
 ## Map
 
-- `concept/`: core ideas behind dotdotgod, including context curation and why the docs structure improves AI-agent work.
-- `spec/`: product behavior, API contracts, user-facing requirements. Current specs include `PROJECT_INITIALIZER.md`, `DOTDOT_SETTING.md`, `PLAN_MODE.md`, `PLAN_MODE_TOOL_SETTINGS.md`, `LOAD_PROJECT.md`, `MEMORY_AREA_CONFIG.md`, `TRACEABILITY_CONFIG.md`, `IMPACT_RANKING_CONFIG.md`, `CONFIG_COMMAND.md`, `CLI_INTERFACE.md`, and `CROSS_AGENT_SUPPORT.md`.
-- `test/`: test strategy, coverage notes, regression cases, and manual verification records.
+- `concept/`: core ideas behind dotdotgod, including context curation, Graphify comparison, measurement, and why the docs structure improves AI-agent work.
+- `spec/`: product behavior, API contracts, user-facing requirements. Current specs include `PROJECT_INITIALIZER.md`, `DOTDOT_SETTING.md`, `PLAN_MODE.md`, `PLAN_MODE_TOOL_SETTINGS.md`, `LOAD_PROJECT.md`, `MEMORY_AREA_CONFIG.md`, `TRACEABILITY_CONFIG.md`, `VALIDATION_CONFIG.md`, `IMPACT_RANKING_CONFIG.md`, `CONFIG_COMMAND.md`, `CLI_INTERFACE.md`, and `CROSS_AGENT_SUPPORT.md`.
+- `test/`: test strategy, coverage notes, regression cases, and manual verification records. Current validation-related tests include `TRACEABILITY_CONFIG.md`, `VALIDATION_CONFIG.md`, and `CONFIG_COMMAND.md`.
 - `arch/`: architecture decisions, code conventions, module boundaries, data flow, infrastructure/runtime dependencies, integration boundaries, and migration design. Current architecture docs include `CODE_CONVENTIONS.md`, `DOCS_STRUCTURE.md`, `EXTENSION_ARCHITECTURE.md`, `CROSS_AGENT_ARCHITECTURE.md`, `VALIDATION_ARCHITECTURE.md`, `MEMORY_AREA_CONFIG.md`, and `IMPACT_RANKING_CONFIG.md`.
 - `plan/`: local active implementation plans. Create one kebab-case directory per task (`plan/<task-slug>/`), keep the task overview/index in that directory's `README.md`, and add supporting UPPER_SNAKE_CASE plan files alongside it. See `plan/README.md` for the current local active plan index. Ignored by git by default.
 - `archive/`: local completed plans, temporary reports, historical notes, payload captures, and investigation notes. Move completed plan task directories to `archive/plan/<task-slug>/`; put temporary reports and investigations under `archive/report/<report-slug>/`. See `archive/README.md` for the local archive index. Ignored by git by default.

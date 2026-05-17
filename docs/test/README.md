@@ -7,6 +7,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `README.md`: test documentation scope, verification commands, and manual smoke checks.
 - `MEMORY_AREA_CONFIG.md`: memory-area config validation and snapshot smoke checks.
 - `TRACEABILITY_CONFIG.md`: configurable traceability enforcement validation smoke checks.
+- `VALIDATION_CONFIG.md`: markdown validation budget and size-check exclusion coverage.
 - `CONTEXT_MEASUREMENT.md`: context measurement commands and runtime context debug smoke checks.
 - `COMMAND_GUIDANCE.md`: environment-aware load-snapshot command guidance checks.
 - `IMPACT_RANKING_CONFIG.md`: configurable graph impact ranking, compact output, semantic-edge, and selection-noise checks.
@@ -112,6 +113,8 @@ See `MANUAL_SMOKE.md` for adapter, Plan Mode, initializer, publishing, and READM
 Memory area config smoke: see `MEMORY_AREA_CONFIG.md`.
 
 Traceability config smoke: see `TRACEABILITY_CONFIG.md`.
+
+Validation config smoke: see `VALIDATION_CONFIG.md`.
 
 Context measurement smoke: see `CONTEXT_MEASUREMENT.md`.
 

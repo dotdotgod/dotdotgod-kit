@@ -32,17 +32,19 @@ The validator owns dotdotgod-specific structure checks:
 - Optional `--check-index` validation compares current markdown fingerprints with `.dotdotgod/manifest.json` so stale graph indexes are visible without running `status` separately.
 - `docs/` directory names are kebab-case.
 - Markdown files under `docs/` are UPPER_SNAKE_CASE or `README.md`.
-- Markdown files stay within configurable line and character budgets.
+- Markdown files stay within configurable line and character budgets unless they match an explicit markdown size-check exclusion.
 - Directories with multiple markdown files include `README.md`.
 - Local markdown links point to existing files.
 - Local markdown anchors point to existing headings.
-- Optional `dotdotgod.config.json` or `.dotdotgodrc.json` memory-area, traceability, and impact-ranking config uses valid array-based path fields, shared/local and fresh/stale area fields, and supported traceability/include/exclude/ranking settings.
+- Optional `dotdotgod.config.json` or `.dotdotgodrc.json` memory-area, traceability, validation, and impact-ranking config uses valid array-based path fields, shared/local and fresh/stale area fields, supported validation budgets, and supported traceability/include/exclude/ranking settings.
 - `docs/plan`, `docs/archive/plan`, and `docs/archive/report` use expected task/report shapes.
 - `.gitignore` contains `docs/plan`, `docs/archive`, and `.dotdotgod`.
 
 The validator does not own general markdown style formatting. Use tools such as Prettier or markdownlint separately if a project wants style linting.
 
 Traceability validation is CLI-owned because project docs are user-editable. Errors include block-shape and property guidance. Projects may configure enforced path arrays, but valid traceability blocks share one schema.
+
+Markdown size validation uses `validation.markdown.maxLines`, `validation.markdown.maxChars`, and `validation.markdown.exclude` from project config. CLI `--max-lines` and `--max-chars` override configured numeric budgets for one validation run. Size exclusions skip only `FILE_TOO_LONG` and `FILE_TOO_LARGE`; all other validation rules still apply.
 
 ## Cache and Stale-Index Policy
 

@@ -8,6 +8,8 @@ It is for builders who use coding agents but still want product intent, design r
 
 Repository: <https://github.com/dotdotgod/dotdotgod>
 
+For an evidence-backed comparison with Graphify-style memory, see [`docs/concept/GRAPHIFY_COMPARISON.md`](docs/concept/GRAPHIFY_COMPARISON.md).
+
 ## Core Idea
 
 Agents work better from shaped project memory than from raw conversation history. dotdotgod turns scattered repo knowledge into a reusable context system that keeps product decisions reviewable while coding agents do the implementation work:
