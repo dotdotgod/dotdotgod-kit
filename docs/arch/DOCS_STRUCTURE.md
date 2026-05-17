@@ -25,7 +25,7 @@ Prefer keeping individual markdown files under:
 - 200 lines
 - 10,000 characters
 
-When either guideline is exceeded, split the document into focused UPPER_SNAKE_CASE files and keep `README.md` as the index/overview.
+When either guideline is exceeded, split the document into focused UPPER_SNAKE_CASE files and keep `README.md` as the index/overview. Projects may adjust the CLI enforcement budgets or exempt explicit paths with `validation.markdown` config, but exceptions should stay narrow and intentional.
 
 ## README as Local Table of Contents
 

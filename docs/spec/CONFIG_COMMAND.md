@@ -25,6 +25,8 @@ Human output summarizes:
 - config path when a file is present
 - memory-area count
 - traceability required/exclude patterns
+- markdown validation line and character budgets
+- markdown validation size-check exclude patterns
 - impact ranking preset
 - config validation errors, when present
 
@@ -50,6 +52,7 @@ The init command creates `dotdotgod.config.json` with the current built-in defau
 
 - `memory.areas`
 - `traceability`
+- `validation.markdown`
 - `impactRanking`
 
 The generated file must validate with `dotdotgod validate`.
@@ -94,6 +97,7 @@ JSON output for init errors includes `ok: false`, `command: "config init"`, `roo
   "relatedDocs": [
     "docs/spec/MEMORY_AREA_CONFIG.md",
     "docs/spec/TRACEABILITY_CONFIG.md",
+    "docs/spec/VALIDATION_CONFIG.md",
     "docs/spec/IMPACT_RANKING_CONFIG.md",
     "docs/spec/CLI_INTERFACE.md",
     "docs/arch/MEMORY_AREA_CONFIG.md"

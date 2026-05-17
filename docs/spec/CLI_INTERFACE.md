@@ -15,6 +15,7 @@ The `dotdotgod` CLI provides predictable discovery commands for users and script
 - Removed graph subcommands such as `graph query` MUST print an unknown graph command error to stderr and exit `2` without creating or refreshing `.dotdotgod/`.
 - When `graph impact` is missing `--changed`, human output MUST print a usage error to stderr and exit `2` without creating or refreshing `.dotdotgod/`.
 - When `graph impact` is missing `--changed --json`, JSON output MUST include `ok: false`, `command: "graph impact"`, `error.code: "MISSING_CHANGED"`, and a usage string, then exit `2`.
+- `dotdotgod validate --max-lines <n>` and `--max-chars <n>` MUST override configured markdown validation budgets for that invocation only.
 
 ## Traceability
 
@@ -23,7 +24,7 @@ The `dotdotgod` CLI provides predictable discovery commands for users and script
   "kind": "spec",
   "implementedBy": ["packages/cli/src/core.mjs", "packages/cli/src/init.mjs"],
   "verifiedBy": ["packages/cli/test/e2e.test.mjs", "docs/test/CLI_INTERFACE.md"],
-  "relatedDocs": ["packages/cli/README.md", "docs/test/README.md", "docs/spec/PROJECT_INITIALIZER.md", "docs/spec/CONFIG_COMMAND.md"],
+  "relatedDocs": ["packages/cli/README.md", "docs/test/README.md", "docs/spec/PROJECT_INITIALIZER.md", "docs/spec/CONFIG_COMMAND.md", "docs/spec/VALIDATION_CONFIG.md"],
   "verificationCommands": ["pnpm --filter @dotdotgod/cli test", "node packages/cli/bin/dotdotgod.mjs --help", "node packages/cli/bin/dotdotgod.mjs --version", "node packages/cli/bin/dotdotgod.mjs init --help", "node packages/cli/bin/dotdotgod.mjs config --help"]
 }
 ```

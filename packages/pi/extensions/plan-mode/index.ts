@@ -58,13 +58,6 @@ function isAssistantMessage(m: AgentMessage): m is AssistantMessage {
 	return m.role === "assistant" && Array.isArray(m.content);
 }
 
-function getTextContent(message: AssistantMessage): string {
-	return message.content
-		.filter((block): block is TextContent => block.type === "text")
-		.map((block) => block.text)
-		.join("\n");
-}
-
 function getMessageText(message: AgentMessage): string {
 	if (!("content" in message)) return "";
 	const content = message.content;
@@ -644,7 +637,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 		if (!executionMode || todoItems.length === 0) return;
 		if (!isAssistantMessage(event.message)) return;
 
-		const text = getTextContent(event.message);
+		const text = getMessageText(event.message);
 		if (markCompletedSteps(text, todoItems) > 0) {
 			updateStatus(ctx);
 		}
@@ -671,7 +664,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 
 		const lastAssistant = [...event.messages].reverse().find(isAssistantMessage);
 		if (lastAssistant) {
-			const extracted = extractTodoItems(getTextContent(lastAssistant));
+			const extracted = extractTodoItems(getMessageText(lastAssistant));
 			if (extracted.length > 0) {
 				todoItems = extracted;
 			}
@@ -784,7 +777,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 					messages.push(entry.message as AssistantMessage);
 				}
 			}
-			const allText = messages.map(getTextContent).join("\n");
+			const allText = messages.map(getMessageText).join("\n");
 			markCompletedSteps(allText, todoItems);
 		}
 

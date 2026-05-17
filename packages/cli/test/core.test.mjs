@@ -165,6 +165,9 @@ describe('CLI docs helpers', () => {
     assert.deepEqual(validateMemoryConfigData(data), []);
     assert(data.memory.areas.some((area) => area.id === 'archive-body' && area.includeBodiesByDefault === false));
     assert.deepEqual(data.traceability.required, ['docs/spec/**']);
+    assert.equal(data.validation.markdown.maxLines, 200);
+    assert.equal(data.validation.markdown.maxChars, 10000);
+    assert.deepEqual(data.validation.markdown.exclude, []);
     assert.equal(data.impactRanking.preset, 'balanced');
     assert.equal(JSON.parse(defaultDotdotgodConfigText()).impactRanking.preset, 'balanced');
 
@@ -241,6 +244,34 @@ describe('CLI docs helpers', () => {
     assert.equal(config.impactRanking.weights.traceability, 35);
     assert.equal(config.impactRanking.ppr.enabled, false);
     assert.equal(config.impactRanking.semantic.threshold, 0.4);
+  });
+
+  it('loads configurable markdown validation budgets and exclusions', () => {
+    const root = fixture();
+    writeFixtureJson(root, 'dotdotgod.config.json', {
+      validation: {
+        markdown: {
+          maxLines: 250,
+          maxChars: 12000,
+          exclude: ['docs/archive/README.md', 'docs/generated/**'],
+        },
+      },
+    });
+    const config = readMemoryConfig(root);
+    assert.equal(config.validation.markdown.maxLines, 250);
+    assert.equal(config.validation.markdown.maxChars, 12000);
+    assert.deepEqual(config.validation.markdown.exclude, ['docs/archive/README.md', 'docs/generated/**']);
+
+    const invalid = validateMemoryConfigData({ validation: { markdown: { maxLines: 0, maxChars: 'bad', exclude: 'docs/archive/README.md' } } }, root);
+    const codes = new Set(invalid.map((error) => error.code));
+    assert(codes.has('VALIDATION_CONFIG_INVALID_MAX_LINES'));
+    assert(codes.has('VALIDATION_CONFIG_INVALID_MAX_CHARS'));
+    assert(codes.has('VALIDATION_CONFIG_INVALID_EXCLUDE'));
+
+    writeFixtureJson(root, 'dotdotgod.config.json', { validation: { markdown: { maxLines: 0 } } });
+    const fallback = readMemoryConfig(root);
+    assert(fallback.errors.some((error) => error.code === 'VALIDATION_CONFIG_INVALID_MAX_LINES'));
+    assert.equal(fallback.validation.markdown.maxLines, 200);
   });
 
   it('loads configurable traceability scope with array path settings', () => {

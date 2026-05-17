@@ -14,6 +14,7 @@ For projects using the dotdotgod CLI, behavior specs are validated for fenced `j
 - `LOAD_PROJECT.md`: `/load` and `/dd:load` read-only project memory loading behavior.
 - `MEMORY_AREA_CONFIG.md`: optional config for shared/local and fresh/stale memory-area policy.
 - `TRACEABILITY_CONFIG.md`: optional config for traceability enforcement paths.
+- `VALIDATION_CONFIG.md`: optional config for markdown validation size budgets and explicit size-check exclusions.
 - `IMPACT_RANKING_CONFIG.md`: optional config for `graph impact` ranking presets, score breakdowns, compact output, PPR, and deterministic semantic links.
 - `CONFIG_COMMAND.md`: CLI behavior for inspecting and initializing project-level dotdotgod config files.
 - `CLI_INTERFACE.md`: baseline CLI help, version, subcommand help, and missing `graph impact --changed` behavior.

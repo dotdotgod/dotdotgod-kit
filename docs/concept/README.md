@@ -7,5 +7,6 @@ This area explains the core ideas behind dotdotgod and why its documentation str
 - `README.md`: concept documentation scope and local table of contents.
 - `CONTEXT_CURATION.md`: why dotdotgod focuses on curated project context, how its memory layers and optional graph index fit together, and what effects to expect.
 - `CONTEXT_MECHANICS.md`: how the workflow, Plan Mode compaction, naming rules, scale effects, and token-usage framing work in practice.
+- `GRAPHIFY_COMPARISON.md`: evidence-backed comparison explaining why dotdotgod's curated project-memory model can be a better default than a single Graphify-style graph.
 - `MEASUREMENT_DESIGN.md`: metrics, current snapshot, commands, reporting guidance, and guardrails for context measurement.
 - `MEASUREMENT_METHODS.md`: static, runtime, scenario, and archive-growth measurement procedures.

@@ -218,11 +218,15 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(existsSync(join(root, 'dotdotgod.config.json')), true);
     const initialized = JSON.parse(readFileSync(join(root, 'dotdotgod.config.json'), 'utf8'));
     assert.equal(initialized.impactRanking.preset, 'balanced');
+    assert.equal(initialized.validation.markdown.maxLines, 200);
+    assert.equal(initialized.validation.markdown.maxChars, 10000);
+    assert.deepEqual(initialized.validation.markdown.exclude, []);
     assert(initialized.memory.areas.some((area) => area.id === 'archive-body' && area.includeBodiesByDefault === false));
 
     const showConfigured = json(run(['config', root, '--json']));
     assert.equal(showConfigured.source, 'dotdotgod.config.json');
     assert.match(showConfigured.path, /dotdotgod\.config\.json$/);
+    assert.equal(showConfigured.config.validation.markdown.maxLines, 200);
 
     const refused = run(['config', 'init', root, '--json']);
     assert.equal(refused.status, 2);
@@ -240,14 +244,35 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(JSON.parse(rcRefused.stdout).error.code, 'CONFIG_RC_EXISTS');
 
     const invalidRoot = createFixture();
-    writeFileSync(join(invalidRoot, 'dotdotgod.config.json'), '{"memory":{"areas":"bad"}}\n');
+    writeFileSync(join(invalidRoot, 'dotdotgod.config.json'), '{"memory":{"areas":"bad"},"validation":{"markdown":{"maxLines":0}}}\n');
     const invalid = run(['config', invalidRoot, '--json']);
     assert.equal(invalid.status, 1);
     const invalidPayload = JSON.parse(invalid.stdout);
     assert.equal(invalidPayload.ok, false);
     assert.equal(invalidPayload.source, 'dotdotgod.config.json');
     assert(invalidPayload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_FIELD'));
+    assert(invalidPayload.errors.some((error) => error.code === 'VALIDATION_CONFIG_INVALID_MAX_LINES'));
     assert.equal(existsSync(join(invalidRoot, '.dotdotgod/manifest.json')), false);
+  });
+
+  it('supports configured markdown size budgets and size-check exclusions', () => {
+    const root = createFixture();
+    const large = `${'# Big Archive\n\n'}${'x'.repeat(10050)}\n`;
+    writeFileSync(join(root, 'docs/archive/README.md'), large);
+
+    const defaultFailure = run(['validate', root, '--include-local-memory', '--json']);
+    assert.equal(defaultFailure.status, 1);
+    assert(JSON.parse(defaultFailure.stdout).errors.some((error) => error.code === 'FILE_TOO_LARGE' && error.file === 'docs/archive/README.md'));
+
+    writeConfig(root, { validation: { markdown: { exclude: ['docs/archive/README.md'] } } });
+    assert.equal(json(run(['validate', root, '--include-local-memory', '--json'])).ok, true);
+
+    writeConfig(root, { validation: { markdown: { maxChars: 12000, maxLines: 200 } } });
+    assert.equal(json(run(['validate', root, '--include-local-memory', '--json'])).ok, true);
+
+    const cliOverride = run(['validate', root, '--include-local-memory', '--max-chars', '10000', '--json']);
+    assert.equal(cliOverride.status, 1);
+    assert(JSON.parse(cliOverride.stdout).errors.some((error) => error.code === 'FILE_TOO_LARGE'));
   });
 
   it('validates, indexes, reports status, snapshots, and graph impact results', () => {
