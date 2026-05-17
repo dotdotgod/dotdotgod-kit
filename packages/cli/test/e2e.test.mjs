@@ -76,6 +76,7 @@ describe('dotdotgod CLI e2e', () => {
       const result = run(args);
       assert.equal(result.status, 0, result.stdout + result.stderr);
       assert.match(result.stdout, /Usage:/);
+      assert.match(result.stdout, /dotdotgod init <root>/);
       assert.match(result.stdout, /dotdotgod graph impact <root> --changed <path>/);
       assert.equal(result.stderr, '');
     }
@@ -89,6 +90,8 @@ describe('dotdotgod CLI e2e', () => {
 
     for (const [args, pattern] of [
       [['validate', '--help'], /dotdotgod validate <root>/],
+      [['init', '--help'], /dotdotgod init <root>/],
+      [['help', 'init'], /dotdotgod init <root>/],
       [['index', '-h'], /dotdotgod index <root>/],
       [['config', '--help'], /dotdotgod config init <root>/],
       [['config', 'init', '--help'], /dotdotgod config init <root> \[--force\]/],
@@ -150,6 +153,51 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(missingChangedValueJson.status, 2);
     assert.equal(JSON.parse(missingChangedValueJson.stdout).error.code, 'MISSING_CHANGED');
     assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
+  });
+
+  it('initializes project scaffold through dotdotgod init', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'dotdotgod-init-e2e-'));
+    const root = join(parent, 'project');
+
+    const dryRun = json(run(['init', root, '--project-name', 'Fixture App', '--dry-run', '--json']));
+    assert.equal(dryRun.command, 'init');
+    assert.equal(dryRun.dryRun, true);
+    assert.equal(existsSync(join(root, 'AGENTS.md')), false);
+    assert(dryRun.actions.some((item) => item.status === 'would_create' && item.path.endsWith('/AGENTS.md')));
+    assert(dryRun.actions.some((item) => item.status === 'would_create' && item.path.endsWith('/.gitignore') && item.add === '.dotdotgod'));
+
+    const initialized = json(run(['init', root, '--project-name', 'Fixture App', '--json']));
+    assert.equal(initialized.command, 'init');
+    assert.equal(initialized.projectName, 'Fixture App');
+    assert.equal(existsSync(join(root, 'AGENTS.md')), true);
+    assert.equal(existsSync(join(root, 'CLAUDE.md')), true);
+    assert.equal(existsSync(join(root, 'CODEX.md')), true);
+    assert.equal(existsSync(join(root, 'docs/spec/README.md')), true);
+    assert.equal(existsSync(join(root, 'docs/test/README.md')), true);
+    assert.equal(existsSync(join(root, 'docs/arch/README.md')), true);
+    assert.equal(existsSync(join(root, 'docs/plan/README.md')), true);
+    assert.equal(existsSync(join(root, 'docs/archive/README.md')), true);
+    assert.match(readFileSync(join(root, 'AGENTS.md'), 'utf8'), /Name: Fixture App/);
+    const gitignoreEntries = readFileSync(join(root, '.gitignore'), 'utf8').trim().split(/\r?\n/);
+    assert(gitignoreEntries.includes('docs/plan'));
+    assert(gitignoreEntries.includes('docs/archive'));
+    assert(gitignoreEntries.includes('.dotdotgod'));
+    assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
+    assert.equal(json(run(['validate', root, '--include-local-memory', '--json'])).ok, true);
+
+    const skipped = json(run(['init', root, '--json']));
+    assert(skipped.actions.some((item) => item.status === 'skipped' && item.path.endsWith('/AGENTS.md')));
+
+    const forced = json(run(['init', root, '--force', '--json']));
+    const replacedAgents = forced.actions.find((item) => item.path.endsWith('/AGENTS.md'));
+    assert.equal(replacedAgents.status, 'replaced');
+    assert.match(replacedAgents.backup, /AGENTS\.md\.bak\./);
+    assert.equal(existsSync(replacedAgents.backup), true);
+
+    const dotdotRoot = mkdtempSync(join(tmpdir(), 'dotdotgod-init-dotdot-'));
+    json(run(['init', dotdotRoot, '--dotdot-setting', '--json']));
+    assert.equal(existsSync(join(dotdotRoot, 'docs/arch/CODE_CONVENTIONS.md')), true);
+    assert.match(readFileSync(join(dotdotRoot, 'AGENTS.md'), 'utf8'), /CODE_CONVENTIONS\.md/);
   });
 
   it('shows and initializes project config safely', () => {

@@ -8,7 +8,7 @@ The adapter is designed for builders who want coding agents to help with impleme
 
 ## Start Here: Run the Project Initializer Skill
 
-After installing the package, open Pi in your repository and ask it to initialize or normalize the project memory scaffold. The bundled skill is named `project-initializer`; you do not need to run its internal script yourself.
+After installing the package, open Pi in your repository and ask it to initialize or normalize the project memory scaffold. The bundled skill is named `project-initializer`; it uses `dotdotgod init` when the CLI is already available, but it does not require the CLI and falls back to its bundled shell script when needed.
 
 Use natural language in Pi:
 
@@ -31,7 +31,7 @@ The initializer is the first step: it creates the structure that later lets `/dd
 
 ## What You Get
 
-- **Project initializer skill:** create `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs indexes, active-plan space, archive map, and local memory ignores.
+- **Project initializer skill:** create `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs indexes, active-plan space, archive map, and local memory/cache ignores.
 - **Structured project memory:** give project knowledge a stable home before the agent starts loading or planning.
 - **Task-directed loading:** `/dd:load` starts from a bounded `dotdotgod load-snapshot` map with memory-area summaries when available, then reads only relevant docs.
 - **Safer planning:** `/plan` keeps source/config changes blocked while the agent writes or updates a durable plan under `docs/plan/`.
@@ -77,7 +77,7 @@ pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 
 ## Included
 
-- `project-initializer` skill: the starting point; creates `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs folders, README indexes, and local memory ignores.
+- `project-initializer` skill: the starting point; creates `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs folders, README indexes, and local memory/cache ignores.
 - `plan-mode` extension: read-first planning mode with restricted tools, optional `--plan-extra-tools` additions for installed external tools, docs/plan writes, execution tracking, tiered hidden prompts, and `/todos`.
 - `load-project` extension: read-only project context loading through `/load` and `/dd:load`, using `dotdotgod load-snapshot` when available with bounded cache, graph, memory-area, community, and archive-policy summaries plus a lightweight fallback.
 

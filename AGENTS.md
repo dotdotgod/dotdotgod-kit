@@ -29,7 +29,7 @@ Document project-specific commands here as they become available:
 pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 
 # Run the project initializer dry-run against the current project
-sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --project-name dotdotgod .
+node packages/cli/bin/dotdotgod.mjs init . --dry-run --project-name dotdotgod
 
 # Verify all workspace packages
 pnpm run verify

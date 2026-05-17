@@ -3,6 +3,7 @@ import { Graph, leiden } from 'leiden-ts';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
+import { runInit } from './init.mjs';
 
 export const CACHE_VERSION = 9;
 const CACHE_DIR = '.dotdotgod';
@@ -18,6 +19,11 @@ function commandUsage(command = 'root') {
     case 'validate':
       return `Usage:
   dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]`;
+    case 'init':
+      return `Usage:
+  dotdotgod init <root> [--project-name NAME] [--dotdot-setting] [--force] [--dry-run] [--json]
+
+Create AGENTS.md, agent entrypoints, docs indexes, and local memory gitignore entries.`;
     case 'index':
       return `Usage:
   dotdotgod index <root> [--json]`;
@@ -56,6 +62,7 @@ Ranks nodes related to a changed file. <root> is the project root; --changed is 
   dotdotgod [--version|-v]
   dotdotgod help [command]
   dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]
+  dotdotgod init <root> [--project-name NAME] [--dotdot-setting] [--force] [--dry-run] [--json]
   dotdotgod index <root> [--json]
   dotdotgod config <root> [--json]
   dotdotgod config init <root> [--force] [--json]
@@ -2179,6 +2186,7 @@ export function runCli(argv = process.argv.slice(2)) {
   if (isHelpToken(command)) usage('');
   if (hasHelpToken(args)) usage('', helpCommandFromArgs([command, ...args]));
   if (command === 'validate') runValidate(args);
+  else if (command === 'init') runInit(args, usage);
   else if (command === 'index') runIndex(args);
   else if (command === 'config') runConfig(args);
   else if (command === 'status') runStatus(args);

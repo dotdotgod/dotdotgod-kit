@@ -119,7 +119,13 @@ Then start Pi in the target repository and run the initializer skill by asking:
 Initialize this project with dotdotgod.
 ```
 
-The bundled `project-initializer` skill creates or normalizes `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive`. That scaffold is what makes later `/dd:load` and `/plan` turns structured instead of ad-hoc.
+The bundled `project-initializer` skill creates or normalizes `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive`. When the CLI is already available, the same scaffold can be created with:
+
+```bash
+npx @dotdotgod/cli init .
+```
+
+If the CLI is not available, the initializer uses its bundled shell fallback and the README indexes still give agents a working project-memory map. That scaffold is what makes later `/dd:load` and `/plan` turns structured instead of ad-hoc.
 
 CLI validation:
 

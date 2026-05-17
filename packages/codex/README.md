@@ -18,7 +18,7 @@ Codex adapter for dotdotgod's context curation workflow. It packages reusable sk
 - Skills:
   - `project-load`: load project memory read-only.
   - `doc-first-planning`: plan from docs before implementation.
-  - `project-initializer`: initialize shared agent docs and docs folders.
+  - `project-initializer`: initialize shared agent docs and docs folders, using `dotdotgod init` when available and the bundled fallback when not.
 
 Codex may not expose the same slash-command model as Pi or Claude Code. Treat `dd:load`, `dd:plan`, and `dd:init` as command-like trigger phrases for these skills unless the active Codex plugin runtime provides direct command registration.
 
