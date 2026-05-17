@@ -14,6 +14,8 @@ import {
   buildIndex,
   buildCompactImpactReport,
   collectIndexFiles,
+  defaultDotdotgodConfigData,
+  defaultDotdotgodConfigText,
   defaultMemoryConfig,
   detectCommandGuidance,
   detectPackageManager,
@@ -156,6 +158,21 @@ describe('CLI docs helpers', () => {
     assert.equal(memoryAreaForPath('docs/archive/README.md'), 'archive-map');
     assert.equal(isReadmeIndexPath('docs/spec/README.md'), true);
     assert(retrievalPriorityForPath('docs/plan/task/README.md') > retrievalPriorityForPath('packages/tool/index.mjs'));
+  });
+
+  it('serializes the built-in policy as a valid project config template', () => {
+    const data = defaultDotdotgodConfigData();
+    assert.deepEqual(validateMemoryConfigData(data), []);
+    assert(data.memory.areas.some((area) => area.id === 'archive-body' && area.includeBodiesByDefault === false));
+    assert.deepEqual(data.traceability.required, ['docs/spec/**']);
+    assert.equal(data.impactRanking.preset, 'balanced');
+    assert.equal(JSON.parse(defaultDotdotgodConfigText()).impactRanking.preset, 'balanced');
+
+    const root = fixture();
+    writeFixtureFile(root, 'dotdotgod.config.json', defaultDotdotgodConfigText());
+    const config = readMemoryConfig(root);
+    assert.equal(config.source, 'dotdotgod.config.json');
+    assert.equal(memoryAreaForPath('docs/archive/OLD.md', config), 'archive-body');
   });
 
   it('loads optional memory area config for shared/local and fresh/stale policy', () => {

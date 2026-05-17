@@ -11,6 +11,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `COMMAND_GUIDANCE.md`: environment-aware load-snapshot command guidance checks.
 - `IMPACT_RANKING_CONFIG.md`: configurable graph impact ranking, compact output, semantic-edge, and selection-noise checks.
 - `GRAPH_IMPACT_QUALITY.md`: graph impact quality scoring script, metrics, and baseline comparison checks.
+- `CONFIG_COMMAND.md`: project-level config show/init command checks.
 - `CLI_INTERFACE.md`: baseline CLI help/version and invalid invocation checks.
 - `MANUAL_SMOKE.md`: adapter, Plan Mode, initializer, and publishing smoke checks.
 
@@ -57,6 +58,7 @@ Run CLI graph/cache smoke directly:
 ```bash
 node packages/cli/bin/dotdotgod.mjs --help
 node packages/cli/bin/dotdotgod.mjs --version
+node packages/cli/bin/dotdotgod.mjs config . --json
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --json
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --compact --json
 node scripts/evaluate-graph-impact.mjs . --json

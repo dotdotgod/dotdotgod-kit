@@ -36,7 +36,7 @@ The validator owns dotdotgod-specific structure checks:
 - Directories with multiple markdown files include `README.md`.
 - Local markdown links point to existing files.
 - Local markdown anchors point to existing headings.
-- Optional `dotdotgod.config.json` or `.dotdotgodrc.json` memory-area and traceability config uses valid array-based path fields, shared/local and fresh/stale area fields, and supported traceability include/exclude patterns.
+- Optional `dotdotgod.config.json` or `.dotdotgodrc.json` memory-area, traceability, and impact-ranking config uses valid array-based path fields, shared/local and fresh/stale area fields, and supported traceability/include/exclude/ranking settings.
 - `docs/plan`, `docs/archive/plan`, and `docs/archive/report` use expected task/report shapes.
 - `.gitignore` contains `docs/plan`, `docs/archive`, and `.dotdotgod`.
 
@@ -67,7 +67,7 @@ The index records fingerprints, cache/schema metadata, and a deterministic graph
 
 Current extraction covers Markdown headings/links, `json dotdotgod` traceability blocks, package metadata/resources, TypeScript/JavaScript imports and declarations, Pi command registrations, inferred tests, and metric-event strings. Other supported text files become metadata-only file nodes until dedicated extractors exist.
 
-Graph file nodes include deterministic memory-area metadata for dotdotgod structures. Optional memory-area config can override or extend classification while zero-config behavior stays compatible. README links also get `routes_to` edges with `CURATED_INDEX` confidence, making README indexes routing hints without semantic embeddings.
+Graph file nodes include deterministic memory-area metadata for dotdotgod structures. Optional memory-area config can override or extend classification while zero-config behavior stays compatible. `dotdotgod config` exposes the resolved root-scoped policy, and `dotdotgod config init` materializes the built-in defaults without adding global or cascading config lookup. README links also get `routes_to` edges with `CURATED_INDEX` confidence, making README indexes routing hints without semantic embeddings.
 
 Graph storage uses compact shards instead of one large JSON file. Community summaries use `leiden-ts` over a weighted durable-node projection, with deterministic domain grouping as fallback. Impact reports use configurable ranking with curated traceability, memory policy, deterministic semantic edges, score breakdowns, and changed-file PPR. Load snapshots expose bounded quality, community, memory-area, archive-policy, and command-guidance summaries.
 
