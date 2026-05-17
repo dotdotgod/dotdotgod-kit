@@ -6,16 +6,16 @@ Graphify-style graph generation can still be useful for exploration. The stronge
 
 ## Why generated semantic graphs fail structurally
 
-Graphify/GraphRAG-style approaches often combine AST extraction, LLM semantic extraction, embeddings, and chunk-level semantic query. The reported failure modes are not merely isolated bugs; they follow from asking generated artifacts to infer durable project identity and operational relationships.
+Graphify/GraphRAG-style approaches often combine AST extraction, LLM semantic extraction, embeddings, and chunk-level semantic query. The failure modes are not merely isolated implementation bugs; they follow from asking generated artifacts to infer durable project identity and operational relationships.
 
 | Structural pressure | Why it matters |
 | --- | --- |
-| Identity is inferred, not owned. AST nodes, LLM semantic nodes, and embedding chunks use different identity systems. | Merge steps can lose edges when IDs do not align (`safishamsi/graphify#390`) or create duplicate nodes when parallel chunks name the same entity differently (`#451`). |
-| Meaning is probabilistic, but graph edges look authoritative. | Plausible LLM or embedding relationships can lack import, call, spec, or test evidence. Once stored as edges, they can pollute ranking and traversal (`#543`). |
-| Semantic layers can disconnect from syntax. | A generated semantic layer can become a heuristic subgraph instead of reliable AST enrichment (`#198`). |
-| Incremental updates amplify uncertainty. | Non-deterministic extraction can create noisy diffs on unchanged source (`#741`) or desynchronize partial artifacts and semantic nodes (`#423`, `#479`, `#562`, `#653`). |
+| Identity is inferred, not owned. AST nodes, LLM semantic nodes, and embedding chunks use different identity systems. | Merge steps can lose edges when IDs do not align or create duplicate nodes when parallel chunks name the same entity differently. |
+| Meaning is probabilistic, but graph edges look authoritative. | Plausible LLM or embedding relationships can lack import, call, spec, or test evidence. Once stored as edges, they can pollute ranking and traversal. |
+| Semantic layers can disconnect from syntax. | A generated semantic layer can become a heuristic subgraph instead of reliable AST enrichment. |
+| Incremental updates amplify uncertainty. | Non-deterministic extraction can create noisy diffs on unchanged source or desynchronize partial artifacts and semantic nodes. |
 | Chunk boundaries hide project intent. | Similarity retrieval may not know whether a chunk is product truth, architecture rationale, active plan, verification obligation, or historical archive. |
-| Cost and token limits shape memory. | Dense docs can hit truncation/cost pressure (`#730`), and large monorepos can hit expensive graph-analysis behavior (`#341`). The graph can reflect processing limits as much as project reality. |
+| Cost and token limits shape memory. | Dense docs can hit truncation/cost pressure, and large monorepos can hit expensive graph-analysis behavior. The graph can reflect processing limits as much as project reality. |
 
 The core structural issue is that semantic plausibility is not the same as production dependency. A generated graph can be useful for discovery while still being a weak source of truth for governed execution.
 
@@ -115,17 +115,3 @@ Dotdotgod sources:
 - [`docs/arch/IMPACT_RANKING_CONFIG.md`](../arch/IMPACT_RANKING_CONFIG.md) — deterministic semantic edges, score components, semantic-only demotion, and bounded output.
 - [`docs/arch/VALIDATION_ARCHITECTURE.md`](../arch/VALIDATION_ARCHITECTURE.md) — validator boundaries, traceability checks, cache/index safety, and docs structure rules.
 - [`docs/spec/LOAD_PROJECT.md`](../spec/LOAD_PROJECT.md) — bounded load snapshots and archive-body exclusion.
-
-Graphify issue sources:
-
-- <https://github.com/safishamsi/graphify/issues/198>
-- <https://github.com/safishamsi/graphify/issues/390>
-- <https://github.com/safishamsi/graphify/issues/451>
-- <https://github.com/safishamsi/graphify/issues/543>
-- <https://github.com/safishamsi/graphify/issues/741>
-- <https://github.com/safishamsi/graphify/issues/423>
-- <https://github.com/safishamsi/graphify/issues/479>
-- <https://github.com/safishamsi/graphify/issues/562>
-- <https://github.com/safishamsi/graphify/issues/653>
-- <https://github.com/safishamsi/graphify/issues/730>
-- <https://github.com/safishamsi/graphify/issues/341>
