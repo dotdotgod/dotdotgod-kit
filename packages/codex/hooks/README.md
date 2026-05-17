@@ -94,5 +94,5 @@ A strict script must read hook JSON from stdin, confirm the session is explicitl
 - Do not move active plans to `docs/archive/` automatically.
 - Do not block all source writes without an explicit plan-only state signal.
 - Do not imply Codex has Claude/Pi slash-command parity.
-- Do not treat `dotdotgod load-snapshot` as side-effect-free in strict hooks; it may lazily refresh the ignored `.dotdotgod/` cache.
+- Treat `dotdotgod load-snapshot` as a cache-aware opt-in, not as a side-effect-free strict hook; it may lazily refresh the ignored `.dotdotgod/` cache.
 - Do not return raw `dotdotgod status` JSON from `Stop`; Codex stop hooks need Codex-compatible hook output. Use a tested wrapper if you want stop-time status reporting.

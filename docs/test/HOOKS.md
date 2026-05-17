@@ -4,8 +4,9 @@ These checks cover optional Claude Code and Codex hook documentation. Hooks are 
 
 ## Automated Checks
 
-- `pnpm --filter @dotdotgod/claude-code run verify` confirms `packages/claude-code/hooks/README.md` is packaged as a required adapter resource.
-- `pnpm --filter @dotdotgod/codex run verify` confirms `packages/codex/hooks/README.md` is packaged as a required adapter resource.
+- `pnpm --filter @dotdotgod/cli test` parses hook README JSON examples, checks Codex TOML example shape, enforces hook safety policy constraints, and confirms Claude Code/Codex package dry-runs include `hooks/README.md`.
+- `pnpm --filter @dotdotgod/claude-code run verify` confirms `packages/claude-code/hooks/README.md` is a required adapter resource.
+- `pnpm --filter @dotdotgod/codex run verify` confirms `packages/codex/hooks/README.md` is a required adapter resource.
 - `pnpm run verify:generated` confirms generated commands and skills did not drift when hook docs are updated manually.
 - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory` confirms hook-related docs, links, and traceability stay valid.
 
