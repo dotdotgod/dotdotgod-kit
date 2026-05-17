@@ -22,6 +22,12 @@ Codex adapter for dotdotgod's context curation workflow. It packages reusable sk
 
 Codex may not expose the same slash-command model as Pi or Claude Code. Treat `dd:load`, `dd:plan`, and `dd:init` as command-like trigger phrases for these skills unless the active Codex plugin runtime provides direct command registration.
 
+## Optional Hooks
+
+Codex can run lifecycle hooks from trusted Codex configuration layers. dotdotgod does not require hooks: the bundled skills and `dd:load`, `dd:plan`, and `dd:init` trigger phrases work without them.
+
+Use hooks only when you want opt-in reminders or validation around the same workflow. See [`hooks/README.md`](hooks/README.md) for advisory examples and stricter plan-safety patterns.
+
 ## Local Development
 
 Run package checks:

@@ -13,6 +13,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `IMPACT_RANKING_CONFIG.md`: configurable graph impact ranking, compact output, semantic-edge, and selection-noise checks.
 - `GRAPH_IMPACT_QUALITY.md`: graph impact quality scoring script, metrics, and baseline comparison checks.
 - `CONFIG_COMMAND.md`: project-level config show/init command checks.
+- `HOOKS.md`: optional Claude Code and Codex hook documentation and package-resource smoke checks.
 - `CLI_INTERFACE.md`: baseline CLI help/version and invalid invocation checks.
 - `MANUAL_SMOKE.md`: adapter, Plan Mode, initializer, and publishing smoke checks.
 
@@ -115,6 +116,8 @@ Memory area config smoke: see `MEMORY_AREA_CONFIG.md`.
 Traceability config smoke: see `TRACEABILITY_CONFIG.md`.
 
 Validation config smoke: see `VALIDATION_CONFIG.md`.
+
+Hook guidance smoke: see `HOOKS.md`.
 
 Context measurement smoke: see `CONTEXT_MEASUREMENT.md`.
 

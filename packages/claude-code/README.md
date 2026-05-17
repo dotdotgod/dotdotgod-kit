@@ -24,6 +24,12 @@ Claude Code adapter for dotdotgod's context curation workflow. It gives Claude C
   - `doc-first-planning`
   - `project-initializer`
 
+## Optional Hooks
+
+Claude Code can run local lifecycle hooks from Claude settings. dotdotgod does not require hooks: `/dd:load`, `/dd:plan`, `/dd:init`, and the bundled skills work without them.
+
+Use hooks only when you want opt-in reminders or validation around the same workflow. See [`hooks/README.md`](hooks/README.md) for advisory examples and stricter plan-safety patterns.
+
 ## Local Development
 
 Use the package as a local Claude Code plugin directory while developing:

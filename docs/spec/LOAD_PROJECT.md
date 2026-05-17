@@ -88,6 +88,10 @@ The snapshot includes `commandGuidance` so agents see environment-aware commands
 
 Installing `@dotdotgod/pi` does not provide the `dotdotgod` binary.
 
+## Hook Integration
+
+Claude Code and Codex adapters may document optional start hooks that remind agents to use `dotdotgod load-snapshot <root> --json` or `/dd:load`/`dd:load` when project memory is needed. Those hooks do not replace the explicit load workflow. `load-snapshot` remains a bounded agent-facing map and may lazily refresh `.dotdotgod/` cache metadata when the cache is missing or stale, so hook examples should label automatic snapshot calls as cache-aware opt-ins.
+
 ## Future Extension Points
 
 The command is intentionally a runtime extension entrypoint. It can later grow into:
@@ -107,7 +111,9 @@ The command is intentionally a runtime extension entrypoint. It can later grow i
     "packages/pi/extensions/load-project/index.ts",
     "packages/pi/extensions/load-project/utils.ts",
     "packages/shared/workflows/load.md",
-    "packages/cli/src/core.mjs"
+    "packages/cli/src/core.mjs",
+    "packages/claude-code/hooks/README.md",
+    "packages/codex/hooks/README.md"
   ],
   "verifiedBy": [
     "packages/pi/test/load-project-utils.test.ts",

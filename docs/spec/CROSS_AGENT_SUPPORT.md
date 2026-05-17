@@ -25,6 +25,7 @@ Current adapter support.
 - Initialization: `project-initializer` skill and `/dd:init` command.
 - Project loading: `project-load` skill and `/dd:load` command.
 - Planning workflow: `doc-first-planning` skill and `/dd:plan` command.
+- Optional lifecycle hook guidance for advisory project-memory reminders, validation, and narrowly scoped plan-safety patterns.
 - `CLAUDE.md` remains a thin project entrypoint that imports or points to `AGENTS.md`.
 
 ### Codex
@@ -35,6 +36,7 @@ Current adapter support.
 - Skills: `project-initializer`, `project-load`, and `doc-first-planning`.
 - Codex reads `AGENTS.md` as a primary project instruction source.
 - `dd:init`, `dd:load`, and `dd:plan` are command-like trigger phrases unless the active Codex runtime provides direct command registration.
+- Optional lifecycle hook guidance for trusted Codex configuration layers.
 - `CODEX.md` remains a thin project entrypoint that points to `AGENTS.md`.
 
 ## Shared Contract
@@ -65,6 +67,7 @@ Optional workflows:
 - slash commands matching `dd:*` names
 - keyboard shortcuts
 - tool filtering or permission hooks
+- lifecycle hooks for advisory load/plan reminders, validation, and narrowly scoped plan-safety checks
 - project memory indexing/search
 - CLI-backed load snapshots where shell or package execution is available
 
@@ -93,6 +96,8 @@ New package, command, and tool names should use dotdotgod and `dd` prefixes.
     "packages/claude-code/commands/dd/load.md",
     "packages/claude-code/skills/project-load/SKILL.md",
     "packages/codex/skills/project-load/SKILL.md",
+    "packages/claude-code/hooks/README.md",
+    "packages/codex/hooks/README.md",
     "packages/claude-code/.claude-plugin/plugin.json",
     "packages/codex/.codex-plugin/plugin.json",
     "scripts/generate-adapters.mjs"

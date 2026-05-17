@@ -17,12 +17,13 @@
     "planning"
   ],
   "scripts": {
-    "verify": "node -e \"const fs=require('fs'); const req=['.codex-plugin/plugin.json','skills/project-load/SKILL.md','skills/doc-first-planning/SKILL.md','skills/project-initializer/SKILL.md','skills/project-initializer/scripts/init_project.sh']; JSON.parse(fs.readFileSync('.codex-plugin/plugin.json','utf8')); for (const f of req) { if (!fs.existsSync(f)) throw new Error('missing '+f); } console.log('codex adapter ok')\"",
+    "verify": "node -e \"const fs=require('fs'); const req=['.codex-plugin/plugin.json','skills/project-load/SKILL.md','skills/doc-first-planning/SKILL.md','skills/project-initializer/SKILL.md','skills/project-initializer/scripts/init_project.sh','hooks/README.md']; JSON.parse(fs.readFileSync('.codex-plugin/plugin.json','utf8')); for (const f of req) { if (!fs.existsSync(f)) throw new Error('missing '+f); } console.log('codex adapter ok')\"",
     "pack:dry-run": "pnpm pack --dry-run --json"
   },
   "files": [
     ".codex-plugin",
     "skills",
+    "hooks",
     "README.md",
     "LICENSE"
   ]
