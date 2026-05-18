@@ -8,7 +8,7 @@ It is for builders who use coding agents and still want product intent, design r
 
 Repository: <https://github.com/dotdotgod/dotdotgod>
 
-For an evidence-backed comparison with Graphify-style memory, see [`docs/concept/GRAPHIFY_COMPARISON.md`](docs/concept/GRAPHIFY_COMPARISON.md).
+For evidence-backed comparisons, see [`docs/concept/GRAPHIFY_COMPARISON.md`](docs/concept/GRAPHIFY_COMPARISON.md) for Graphify-style memory and [`docs/concept/LAT_MD_COMPARISON.md`](docs/concept/LAT_MD_COMPARISON.md) for lat.md's markdown knowledge graph model.
 
 ## Core Idea
 
