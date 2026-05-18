@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/pi",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "Pi adapter for dotdotgod: project-initializer skill, shared docs scaffold, plan/archive workflow, and project loading extensions.",
   "type": "module",
   "license": "Elastic-2.0",
@@ -53,13 +53,13 @@
     "README.md",
     "LICENSE"
   ],
-  "homepage": "https://github.com/dotdotgod/dotdotgod/tree/main/packages/pi#readme",
+  "homepage": "https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/pi#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dotdotgod/dotdotgod.git",
+    "url": "git+https://github.com/dotdotgod/dotdotgod-kit.git",
     "directory": "packages/pi"
   },
   "bugs": {
-    "url": "https://github.com/dotdotgod/dotdotgod/issues"
+    "url": "https://github.com/dotdotgod/dotdotgod-kit/issues"
   }
 }

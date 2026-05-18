@@ -27,7 +27,7 @@ Dotdotgod is a project-memory system for AI coding agents. Its core idea is to m
 
 That maintained graph powers high-quality `dotdotgod graph impact` results. The fixed docs structure gives every agent a high-signal baseline load context, so work starts from durable project truth instead of raw chat history or broad repository scans.
 
-Repository: <https://github.com/dotdotgod/dotdotgod>
+Repository: <https://github.com/dotdotgod/dotdotgod-kit>
 
 For the detailed workflow diagram, docs management rules, graph sources, and memory categories, see [Context mechanics](docs/concept/CONTEXT_MECHANICS.md) and [Context curation](docs/concept/CONTEXT_CURATION.md). For an evidence-backed comparison, see [`docs/concept/GRAPHIFY_COMPARISON.md`](docs/concept/GRAPHIFY_COMPARISON.md).
 
@@ -137,7 +137,7 @@ Read the detailed concept docs: [Context curation](docs/concept/CONTEXT_CURATION
 | [`@dotdotgod/claude-code`](packages/claude-code/README.md) | Claude Code `dd:*` commands and project memory skills. |
 | [`@dotdotgod/codex`](packages/codex/README.md) | Codex project memory skills and `dd:*` trigger phrases. |
 
-Current public package version: `0.1.19`.
+Current public package version: `0.1.20`.
 
 ## Quick Start
 
