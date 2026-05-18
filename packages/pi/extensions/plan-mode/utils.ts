@@ -214,9 +214,12 @@ export function isDotdotgodCliCommand(command: string): boolean {
 export function isAutoAllowedDotdotgodPlanModeCommand(command: string): boolean {
 	const args = getDotdotgodCliArgs(command);
 	if (!args || args.length === 0) return false;
-	if (args[0] === "expand") return true;
-	if (args[0] === "index") return true;
-	return args[0] === "graph" && args[1] === "impact";
+	const commandName = args[0];
+	const subcommand = args[1];
+	if (["status", "load-snapshot", "resolve", "expand", "index"].includes(commandName ?? "")) return true;
+	if (commandName === "config") return subcommand !== "init";
+	if (commandName === "graph") return subcommand === "impact" || subcommand === "communities";
+	return false;
 }
 
 export interface PlanModeBashApproval {

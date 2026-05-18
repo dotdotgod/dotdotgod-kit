@@ -39,6 +39,7 @@ This SDLC framing maps common Claude Code guidance about a project brain to dotd
 
 - Use `/dd:load` or the `project-load` skill when you intentionally want a curated project-memory load.
 - Use `/dd:plan` or the `doc-first-planning` skill before implementation, refactors, migrations, or multi-step work.
+- During planning, prefer bounded dotdotgod context/status helpers: `status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and intentional `index` refreshes. Do not run mutating scaffold/config commands such as `init` or `config init` from hooks unless the user explicitly requested that setup.
 - Use hooks for small reminders at session start, prompt submission, tool boundaries, or stop time.
 
 ## Opt-In Levels
@@ -159,6 +160,7 @@ A strict script must read hook JSON from stdin, confirm the session is explicitl
 
 - Do not run `pnpm run verify` after every tool call.
 - Do not run `dotdotgod index` as an automatic stop hook.
+- Do not run `dotdotgod init` or `dotdotgod config init` automatically.
 - Do not move active plans to `docs/archive/` automatically.
 - Do not block all source writes without an explicit plan-only state signal.
 - Do not treat `dotdotgod load-snapshot` as side-effect-free in strict hooks; it may lazily refresh the ignored `.dotdotgod/` cache.

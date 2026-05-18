@@ -29,7 +29,8 @@ While plan mode is active:
   - `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`
   - `rm -r docs/plan/<task-slug>` or `rm docs/archive/plan/<task-slug>/README.md`
 - Product/source/config changes outside those directories are blocked.
-- Agent-requested dotdotgod CLI bash commands that are not otherwise allowlisted require explicit one-command user approval before they run in Plan Mode.
+- Bounded dotdotgod context/status commands are auto-allowed when invoked directly as `dotdotgod ...` or through the local source CLI path `node packages/cli/bin/dotdotgod.mjs ...`: `status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and `index`.
+- Agent-requested dotdotgod CLI bash commands that are not otherwise allowlisted, including `init`, `config init`, unknown commands, shell chaining, redirects, pipes, command substitution, and package-runner wrappers, require explicit one-command user approval or remain blocked before they run in Plan Mode.
 
 ## Plan File Shape
 
@@ -63,7 +64,7 @@ After Plan Mode is enabled, the first user planning request triggers one context
 
 The curated load uses the `/dd:load` default surface: baseline memory files, docs indexes, specs, architecture, tests, and active plans. It excludes full repository scans and archive bodies unless targeted.
 
-When the dotdotgod CLI is available, Plan Mode validates, refreshes a bounded load snapshot, and runs advisory `dotdotgod graph impact --compact --json` checks for a small bounded set of likely target files inferred from the latest planning request and active plan content. Impact results include group counts plus top related specs, tests, docs, commands, nearby files, `impactScore`, and reason snippets when the CLI supports impact ranking. The agent uses this summary to strengthen target files, risks, and verification steps before execution. If the CLI is unavailable or impact lookup fails, this enhancement is skipped and planning continues from README indexes and traceability docs.
+When the dotdotgod CLI is available, Plan Mode validates, refreshes a bounded load snapshot, and runs advisory `dotdotgod graph impact --compact --json` checks for a small bounded set of likely target files inferred from the latest planning request and active plan content. Impact results include group counts plus top related specs, tests, docs, commands, nearby files, `impactScore`, and reason snippets when the CLI supports impact ranking. The agent uses this summary to strengthen target files, risks, and verification steps before execution. User- or agent-requested bounded context/status commands use the same allowlist described above. If the CLI is unavailable or impact lookup fails, this enhancement is skipped and planning continues from README indexes and traceability docs.
 
 ## Planning-Focused Compaction
 
