@@ -18,10 +18,12 @@ Do not modify files during the load pass unless the user explicitly asks for edi
    - Check current directory, git root, branch, and dirty worktree status.
    - Mention user changes and avoid reverting or cleaning them.
 2. Prefer the bounded CLI snapshot when available.
+   - If the user prompt contains explicit project-memory refs such as `[[PLAN_MODE]]`, run `dotdotgod expand <root> "<prompt>" --json` before broad `grep` or `find` scans, then read the resolved candidates selectively.
    - If `dotdotgod` is installed or available in the repository, run `dotdotgod load-snapshot <root> --json`.
    - If the local environment allows package execution but no `dotdotgod` binary is available, optionally run `npx @dotdotgod/cli load-snapshot <root> --json`.
    - Treat the snapshot as the first-pass project-memory map for cache status, graph size, memory areas, related communities, and archive inclusion policy.
    - Use `dotdotgod graph impact <root> --changed <path> --compact --json` as a task-focused impact map when the user identifies a likely source/config/doc file.
+   - Use `grep` or `find` after `expand`, impact, and targeted reads when the task needs fallback discovery or raw source text search.
    - Fall back to raw `dotdotgod graph impact <root> --changed <path> --json` only when diagnostics need the full payload.
    - When graph impact surfaces traceability relations, inspect the related specs, tests, and docs before editing source.
    - Related behavior docs: [load project](../../../docs/spec/LOAD_PROJECT.md), [cross-agent support](../../../docs/spec/CROSS_AGENT_SUPPORT.md), and [cross-agent architecture](../../../docs/arch/CROSS_AGENT_ARCHITECTURE.md).
