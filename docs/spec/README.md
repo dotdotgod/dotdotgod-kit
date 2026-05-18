@@ -2,7 +2,18 @@
 
 Use this area for behavior specs, API contracts, and product requirements.
 
-For projects using the dotdotgod CLI, behavior specs are validated for fenced `json dotdotgod` traceability blocks as the final section. The default enforced path is `docs/spec/**` except README files, and projects can override that path list with optional traceability config. The CLI owns the schema and prints property-level repair guidance when validation fails.
+For projects using the dotdotgod CLI, `docs/spec/**` has two default roles. It is stable shared/fresh project memory through the memory-area policy, and behavior specs under it are validated for fenced `json dotdotgod` traceability blocks as the final section. The default enforced path is `docs/spec/**` except README files, and projects can customize memory classification with `memory.areas` or override traceability enforcement paths with optional traceability config. The CLI owns the schema and prints property-level repair guidance when validation fails.
+
+## Config Overview
+
+Project-level config is optional and lives in `dotdotgod.config.json` or `.dotdotgodrc.json`. Use `dotdotgod config <root>` to inspect the resolved policy and `dotdotgod config init <root>` to create an editable default file. Focused config specs:
+
+- `MEMORY_AREA_CONFIG.md`: `memory.areas`, including shared/local scope, fresh/stale freshness, priorities, and archive-body inclusion.
+- `TRACEABILITY_CONFIG.md`: `traceability.required` and `traceability.exclude` paths for validation enforcement.
+- `VALIDATION_CONFIG.md`: `validation.markdown` line/character budgets and size-check excludes.
+- `IMPACT_RANKING_CONFIG.md`: `impactRanking` presets, weights, PPR, routing hints, and compact output.
+- `REFERENCE_EXPANSION.md`: `referenceExpansion.fuzzy.lowSignal.add/remove` for fuzzy prompt matching.
+- `CONFIG_COMMAND.md`: config discovery, JSON output, initialization, invalid-config fallback, and user-facing repair behavior.
 
 ## Index
 

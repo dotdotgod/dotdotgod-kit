@@ -37,7 +37,18 @@ Curated context means project memory is:
 
 This makes the useful context more available without dumping every possible detail into every turn. Coding agents can help draft and maintain the documents, but the project still keeps a stable source of truth outside the chat transcript.
 
-## Memory Layers
+## Memory Layers and Categories
+
+Dotdotgod separates memory by both **where it lives** and **how agents should treat it**:
+
+- **Shared memory** is durable project truth intended to be committed and reused by every agent.
+- **Local memory** is project-local working memory, usually ignored by git, for active plans and archives.
+- **Fresh memory** is current or active context that should be surfaced early.
+- **Stale memory** is historical context that remains available through indexes or targeted lookup.
+- **Stable docs** (`docs/spec`, `docs/arch`, `docs/test`) describe product truth, rationale, and verification.
+- **Current plans** (`docs/plan`) describe active intent before and during implementation.
+- **Historical archives** (`docs/archive`) preserve completed work without loading every old body by default.
+- **Cache and snapshot metadata** in `.dotdotgod/` is bounded retrieval metadata derived from files; it is not the source of truth.
 
 ### `AGENTS.md`
 
@@ -53,9 +64,9 @@ Effect: different agents start from the same rules.
 
 ### `docs/spec/`
 
-Product behavior, API contracts, and user-facing requirements.
+Product behavior, API contracts, and user-facing requirements. By default, this area has two roles: it is stable shared/fresh project memory for agents, and it is the default traceability-enforced spec path where behavior docs must end with `json dotdotgod` blocks. Projects can customize both concepts separately with `memory.areas` and `traceability.required` / `traceability.exclude` config.
 
-Effect: agents can check what the project is supposed to do before changing how it works, and product intent stays reviewable across tasks.
+Effect: agents can check what the project is supposed to do before changing how it works, product intent stays reviewable across tasks, and configured specs stay connected to source, tests, related docs, and verification commands.
 
 ### `docs/arch/`
 
@@ -89,7 +100,9 @@ Effect: project context is portable across tools.
 
 ### Optional graph index
 
-The dotdotgod CLI can build a deterministic graph over curated project scopes. This borrows the useful lesson from Graphify-style systems: structural edges can help agents find side effects and navigation neighborhoods. dotdotgod still stays docs-first and curated-scope-first. The graph is an acceleration layer for load snapshots and impact queries, not a repo-wide memory dump or a token-saving identity.
+The dotdotgod CLI can build a deterministic graph over curated project scopes. Traceability blocks are one high-confidence source, but they are not the whole graph. The index also records Markdown links, README routing edges, headings and anchors, package/source/test/config metadata, memory-area membership, commands, events, and deterministic lexical/package routing hints where configured.
+
+The graph is an acceleration layer for load snapshots, reference expansion, impact queries, and community summaries. It is not a repo-wide memory dump, a vector database, or the source of truth; it points agents back to bounded files they can inspect.
 
 Effect: agents can see bounded related files, docs, tests, commands, events, package resources, and communities without loading every source file or archive body.
 

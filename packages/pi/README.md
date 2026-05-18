@@ -1,16 +1,28 @@
 # @dotdotgod/pi
 
+[![npm version](https://img.shields.io/npm/v/@dotdotgod/pi.svg)](https://www.npmjs.com/package/@dotdotgod/pi) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod-181717?logo=github)](https://github.com/dotdotgod/dotdotgod/tree/main/packages/pi) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](../../LICENSE)
+
 > **Change a file, know what else must be checked.**
 
-Pi adapter for dotdotgod's context curation workflow. **Start with the `project-initializer` skill**: it creates the structured project memory scaffold that lets `/dd:load` and `/plan` start source changes with the right specs, tests, commands, and task intent in view.
+Pi adapter for dotdotgod's context curation workflow. It gives Pi the most complete dotdotgod loop: initialize a project-memory scaffold, load bounded context, plan before source edits, execute explicit steps, verify, and archive completed work.
 
-Use it when you want Pi to turn a repository into durable agent memory: shared rules, specs, architecture, test strategy, active plans, archived decisions, and a bounded load snapshot.
+Impact/context in practice:
 
-The adapter is designed for builders who want coding agents to help with implementation while product intent, design rationale, verification standards, and project memory stay explicit. The initializer, `/dd:load`, and `/plan` workflow give those decisions a stable place outside the chat transcript.
+```text
+Initialize docs scaffold → /dd:load bounded memory → /plan durable intent
+        ↓                         ↓                         ↓
+ specs/arch/tests/archive map   graph/cache summaries       execute + verify + archive
+```
+
+Use this package when you want Pi to make repository work start from stable specs, tests, architecture, active plans, archive maps, and graph/cache metadata instead of raw chat history.
 
 ## Start Here: Run the Project Initializer Skill
 
-After installing the package, open Pi in your repository and ask it to initialize or normalize the project memory scaffold. The bundled skill is named `project-initializer`; it uses `dotdotgod init` when the CLI is already available, but it does not require the CLI and falls back to its bundled shell script when needed.
+After installing the package, open Pi in your repository and ask it to initialize or normalize the project memory scaffold. The bundled skill is named `project-initializer`; it uses `dotdotgod init` when the CLI is available, but it also includes a shell fallback.
+
+```bash
+pi install npm:@dotdotgod/pi
+```
 
 Use natural language in Pi:
 
@@ -22,24 +34,23 @@ Create a doc-first project baseline for this repository.
 
 A good first-run flow is:
 
-1. Install the package with `pi install npm:@dotdotgod/pi`.
+1. Install the package.
 2. Start Pi in the target repository.
 3. Ask: `Initialize this project with dotdotgod.`
 4. Review the files the skill plans to create or skip.
 5. Let the skill create the scaffold.
-6. Then use `/dd:load` to load the new project memory and `/plan` for implementation planning.
-
-The initializer is the first step: it creates the structure that later lets `/dd:load` find the right context and `/plan` write durable task intent before implementation begins.
+6. Run `/dd:load` to load bounded project memory.
+7. Use `/plan` before implementation work.
 
 ## What You Get
 
 - **Project initializer skill:** create `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs indexes, active-plan space, archive map, and local memory/cache ignores.
-- **Structured project memory:** give project knowledge a stable home before the agent starts loading or planning.
-- **Task-directed loading:** `/dd:load` starts from a bounded `dotdotgod load-snapshot` map with memory-area summaries when available, then reads only relevant docs.
-- **Safer planning:** `/plan` keeps source/config changes blocked while the agent writes or updates a durable plan under `docs/plan/`.
-- **Execution continuity:** completed plan steps are reported with explicit `[DONE:n]` markers, making progress recoverable after long sessions or compaction.
-- **Reusable history:** completed work moves to `docs/archive/plan/`, while `docs/archive/README.md` remains the lightweight history map for future tasks.
-- **Cross-agent conventions:** the same `AGENTS.md`, docs, plan, and archive structure also works with dotdotgod's Claude Code and Codex adapters.
+- **Task-directed loading:** `/dd:load` starts from `dotdotgod load-snapshot` when available, then reads only relevant docs.
+- **Safe planning:** `/plan` keeps source/config changes blocked while the agent writes or updates durable task intent under `docs/plan/`.
+- **Impact-aware context shaping:** Plan Mode can use `dotdotgod expand --with-impact` for explicit `[[...]]` refs and `expand --fuzzy --with-impact` for high-signal natural references.
+- **Execution continuity:** completed plan steps are reported with explicit `[DONE:n]` markers so progress survives long sessions and compaction.
+- **Reusable history:** completed work moves to `docs/archive/plan/`, while `docs/archive/README.md` remains the lightweight history map.
+- **Cross-agent conventions:** the same `AGENTS.md`, docs, plan, and archive structure works with dotdotgod's CLI, Claude Code, and Codex packages.
 
 ## The Memory Shape Initialized by the Skill
 
@@ -56,34 +67,13 @@ docs/
   archive/README.md          # completed-work history map, ignored by git
 ```
 
-This is the core context curation idea: give the agent a predictable map of what matters, what product decisions have been made, where current intent lives, how to verify changes, and which past decisions are worth revisiting.
+By default, `docs/spec/**` has two roles: it is stable shared/fresh project memory, and it is the traceability-enforced behavior-spec path. Those knobs are separate: projects can customize memory classification with `memory.areas` and traceability enforcement with `traceability.required` / `traceability.exclude`.
 
-## Install
+## Graph and Bounded Loading
 
-```bash
-pi install npm:@dotdotgod/pi
-```
+The Pi adapter relies on the CLI graph when available but does not ask agents to read a giant graph report. `load-snapshot` returns bounded cache status, graph size, memory areas, communities, and archive policy. `graph impact` and reference expansion can surface related specs, tests, source, and config for a change before broad scanning.
 
-For local development:
-
-```bash
-pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
-```
-
-## Included
-
-- `project-initializer` skill: the starting point; creates `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs folders, README indexes, and local memory/cache ignores.
-- `plan-mode` extension: read-first planning mode with restricted tools, optional `--plan-extra-tools` additions for installed external tools, docs/plan writes, execution tracking, tiered hidden prompts, and `/todos`.
-- `load-project` extension: read-only project context loading through `/load` and `/dd:load`, using `dotdotgod load-snapshot` when available with bounded cache, graph, memory-area, community, and archive-policy summaries plus a lightweight fallback.
-
-## Expected Improvements
-
-- New sessions can start from the same durable project map.
-- Agents can distinguish stable project truth (`docs/spec`, `docs/arch`, `docs/test`) from current task intent (`docs/plan`).
-- README indexes act as routing tables: the CLI records them as `routes_to` edges, while docs paths become memory-area metadata for specs, architecture, tests, active plans, and archive maps.
-- Archive history stays discoverable without forcing every completed plan body into the default context.
-- Product intent, planning, and verification become explicit artifacts.
-- Graph/cache metadata stays bounded in `.dotdotgod/`, with agent-facing output limited to summaries, memory areas, omitted counts, and archive policy.
+The graph uses more than traceability blocks: Markdown links, README routes, headings, package metadata, memory-area membership, commands, tests, and deterministic routing hints all contribute. Archive bodies are excluded by default; `docs/archive/README.md` is the map.
 
 ## Commands
 
@@ -94,10 +84,24 @@ pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
 /dd:load   Stable namespaced alias for project memory loading.
 ```
 
+## Included
+
+- `project-initializer` skill: the starting point for `AGENTS.md`, thin agent entrypoints, docs folders, README indexes, and local memory/cache ignores.
+- `plan-mode` extension: read-first planning mode with restricted tools, optional `--plan-extra-tools`, docs/plan writes, execution tracking, tiered hidden prompts, and `/todos`.
+- `load-project` extension: read-only project context loading through `/load` and `/dd:load`.
+
+## Local Development
+
+```bash
+pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
+pnpm --filter @dotdotgod/pi run verify
+pnpm --filter @dotdotgod/pi run pack:dry-run
+```
+
+## Learn More
+
+See the [root README](../../README.md), [GitHub repository](https://github.com/dotdotgod/dotdotgod), [`docs/concept/CONTEXT_CURATION.md`](../../docs/concept/CONTEXT_CURATION.md), [`docs/concept/CONTEXT_MECHANICS.md`](../../docs/concept/CONTEXT_MECHANICS.md), [`docs/spec/MEMORY_AREA_CONFIG.md`](../../docs/spec/MEMORY_AREA_CONFIG.md), and [`docs/spec/TRACEABILITY_CONFIG.md`](../../docs/spec/TRACEABILITY_CONFIG.md).
+
 ## Compared with Graphify-Style Memory
 
-The Pi adapter focuses on workflow: initialize the project memory scaffold, load a bounded snapshot, plan before source edits, and archive completed work for future sessions. `/dd:load` uses graph/cache output as a compact map, then relies on targeted reads for detail.
-
-Graphify-style memory can be useful for broad automatic extraction across large or messy corpora. dotdotgod is stronger when you want durable project rules, specs, tests, plans, and archive maps to define the review path before an agent changes files.
-
-See the workspace root README and [`docs/concept/GRAPHIFY_COMPARISON.md`](../../docs/concept/GRAPHIFY_COMPARISON.md) for the full comparison.
+The Pi adapter focuses on workflow: initialize the project memory scaffold, load a bounded snapshot, plan before source edits, and archive completed work for future sessions. Graph/cache output is a compact map; detail still comes from targeted file reads.

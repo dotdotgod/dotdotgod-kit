@@ -4,7 +4,7 @@
 
 The dotdotgod CLI supports configurable traceability enforcement paths so projects can decide which behavior documents must include final fenced `json dotdotgod` traceability blocks.
 
-The default remains unchanged: projects without config require traceability for markdown files under `docs/spec/**` except README files.
+The default remains unchanged: projects without config require traceability for markdown files under `docs/spec/**` except README files. This enforcement role is separate from memory-area classification: `docs/spec/**` is also shared/fresh stable memory by default, but projects can customize memory areas and traceability paths independently.
 
 ## Config File
 
@@ -51,6 +51,19 @@ All path fields are arrays. Scalar string path settings are invalid and validati
 ```
 
 With this config, `docs/product/FEATURE.md` and `docs/requirements/REQ.md` require traceability, while `docs/spec/FEATURE.md` no longer fails solely because it lacks a traceability block.
+
+## Example: Enforce Only Selected Specs
+
+```json
+{
+  "traceability": {
+    "required": ["docs/spec/api/**", "docs/spec/SECURITY.md"],
+    "exclude": ["**/README.md", "docs/spec/api/DRAFTS/**"]
+  }
+}
+```
+
+This policy requires traceability for API specs and one exact security spec, skips README indexes, and leaves draft API notes outside enforcement. Traceability blocks can still be parsed from any markdown file that contains them; these paths only decide which files fail validation when the block is missing.
 
 ## Traceability
 

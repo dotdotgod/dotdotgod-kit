@@ -1,26 +1,46 @@
 # @dotdotgod/claude-code
 
+[![npm version](https://img.shields.io/npm/v/@dotdotgod/claude-code.svg)](https://www.npmjs.com/package/@dotdotgod/claude-code) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod-181717?logo=github)](https://github.com/dotdotgod/dotdotgod/tree/main/packages/claude-code) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](../../LICENSE)
+
 > **Change a file, know what else must be checked.**
 
-Claude Code adapter for dotdotgod's context curation workflow. It gives Claude Code `/dd:load`, `/dd:plan`, `/dd:init`, and skills that follow the same curated `AGENTS.md`, docs/spec, docs/test, docs/arch, docs/plan, and docs/archive contract used by the Pi and Codex adapters.
+Claude Code adapter for dotdotgod's context curation workflow. It packages `/dd:init`, `/dd:load`, `/dd:plan`, and matching skills so Claude Code can start from bounded project memory instead of rediscovering specs, tests, plans, and archives from scratch.
+
+Impact/context in practice:
+
+```text
+/dd:init creates the memory scaffold
+/dd:load reads a bounded snapshot and relevant docs
+/dd:plan writes durable task intent before implementation
+```
+
+The same project-memory graph that powers `dotdotgod graph impact` can surface likely related docs, tests, source, and config for changed files. The graph is not only traceability: it also uses Markdown links, README routes, headings, package metadata, memory-area membership, commands, tests, and deterministic routing hints.
 
 ## What Gets Better?
 
-- `/dd:load` starts from curated project memory.
-- Load guidance prefers `dotdotgod load-snapshot <root> --json` when the CLI is available, then falls back to README-index reads.
-- Claude Code can use docs structure as retrieval intent: specs for behavior, architecture for rationale, tests for verification, plans for current work, and archive indexes for past decisions.
-- Product intent, design rationale, and verification standards stay in durable docs.
-- `/dd:plan` writes or updates durable task intent in `docs/plan/<task-slug>/README.md` before implementation.
 - `/dd:init` bootstraps shared agent instructions and docs folders for future context curation.
+- `/dd:load` prefers `dotdotgod load-snapshot <root> --json` when the CLI is available, then falls back to README-index reads.
+- Claude Code can use docs structure as retrieval intent: specs for behavior, architecture for rationale, tests for verification, plans for current work, and archive indexes for past decisions.
+- `/dd:plan` writes or updates durable task intent in `docs/plan/<task-slug>/README.md` before implementation.
+- Product intent, design rationale, verification standards, and completed work stay in durable files rather than chat history.
 - Skills mirror the commands so natural-language requests can use the same workflows.
+
+## Shared Memory and Traceability Model
+
+By default, `docs/spec/**` has two roles: it is stable shared/fresh project memory, and it is the traceability-enforced behavior-spec path. These concepts are independent:
+
+- `memory.areas` customizes memory classification, freshness, local/shared scope, priorities, and archive-body inclusion.
+- `traceability.required` / `traceability.exclude` customizes which markdown paths must end with `json dotdotgod` blocks.
+
+`docs/archive/README.md` is the history map. Archive bodies remain targeted historical memory and should not be read broadly by default.
 
 ## Included
 
 - Claude Code plugin manifest: `.claude-plugin/plugin.json`
 - Slash commands:
+  - `/dd:init`: initialize shared agent docs and docs folders, using `dotdotgod init` when available and the bundled fallback when not.
   - `/dd:load`: load project memory read-only.
   - `/dd:plan`: plan from docs before implementation.
-  - `/dd:init`: initialize shared agent docs and docs folders, using `dotdotgod init` when available and the bundled fallback when not.
 - Skills:
   - `project-load`
   - `doc-first-planning`
@@ -28,9 +48,18 @@ Claude Code adapter for dotdotgod's context curation workflow. It gives Claude C
 
 ## Optional Hooks
 
-Claude Code can run local lifecycle hooks from Claude settings. dotdotgod does not require hooks: `/dd:load`, `/dd:plan`, `/dd:init`, and the bundled skills work without them.
+Claude Code can run local lifecycle hooks from Claude settings. dotdotgod does not require hooks: `/dd:init`, `/dd:load`, `/dd:plan`, and the bundled skills work without them.
 
-Use hooks only when you want opt-in reminders, validation, or local safety rails around the same SDLC loop: plan, implement, verify, review, and archive. The hook surface changes over time, so examples stay advisory, avoid unavailable plan-mode transition hooks, and rely on current lifecycle events such as `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolBatch`, `Stop`, `StopFailure`, and `SessionEnd`. See [`hooks/README.md`](hooks/README.md) for current lifecycle notes, advisory examples, and stricter plan-safety patterns.
+Use hooks only when you want opt-in reminders, validation, or local safety rails around the same SDLC loop: plan, implement, verify, review, and archive. The hook surface changes over time, so examples stay advisory and avoid claiming unavailable plan-mode transition hooks. See [`hooks/README.md`](hooks/README.md) for current lifecycle notes, advisory examples, and stricter plan-safety patterns.
+
+## Shared Contract
+
+- `AGENTS.md` remains canonical.
+- `CLAUDE.md` stays thin and imports or points to `AGENTS.md`.
+- Active plans use `docs/plan/<task-slug>/README.md`.
+- Completed plans move to `docs/archive/plan/<task-slug>/`.
+- Temporary reports move to `docs/archive/report/<report-slug>/`.
+- `docs/archive/README.md` is the archive map; archive bodies should be read only when targeted.
 
 ## Local Development
 
@@ -47,17 +76,10 @@ pnpm --filter @dotdotgod/claude-code run verify
 pnpm --filter @dotdotgod/claude-code run pack:dry-run
 ```
 
-## Shared Contract
+## Learn More
 
-- `AGENTS.md` remains canonical.
-- `CLAUDE.md` stays thin and imports or points to `AGENTS.md`.
-- Active plans use `docs/plan/<task-slug>/README.md`.
-- Completed plans move to `docs/archive/plan/<task-slug>/`.
-- Temporary reports move to `docs/archive/report/<report-slug>/`.
-- `docs/archive/README.md` is the archive map; archive bodies should be read only when targeted.
+See the [root README](../../README.md), [GitHub repository](https://github.com/dotdotgod/dotdotgod), [`docs/concept/CONTEXT_CURATION.md`](../../docs/concept/CONTEXT_CURATION.md), [`docs/concept/CONTEXT_MECHANICS.md`](../../docs/concept/CONTEXT_MECHANICS.md), [`docs/spec/MEMORY_AREA_CONFIG.md`](../../docs/spec/MEMORY_AREA_CONFIG.md), and [`docs/spec/TRACEABILITY_CONFIG.md`](../../docs/spec/TRACEABILITY_CONFIG.md).
 
 ## Compared with Graphify-Style Memory
 
-This adapter is guidance-oriented. It asks Claude Code to prefer a bounded dotdotgod load snapshot when available, avoid broad archive scans, and follow README indexes before reading raw files.
-
-The strength is structured retrieval: project docs declare which files are rules, specs, architecture, verification, active intent, or historical memory. That keeps the memory layer useful on small tasks where a large graph report would be overhead.
+This adapter is guidance-oriented. It asks Claude Code to prefer a bounded dotdotgod load snapshot when available, avoid broad archive scans, and follow README indexes before reading raw files. The strength is structured retrieval from project-declared memory, not a giant graph report.

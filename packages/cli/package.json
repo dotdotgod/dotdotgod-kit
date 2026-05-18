@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/cli",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "CLI for dotdotgod validation, project memory snapshots, and graph indexing.",
   "type": "module",
   "license": "Elastic-2.0",
@@ -11,12 +11,16 @@
     "dotdotgod": "./bin/dotdotgod.mjs"
   },
   "keywords": [
-    "dotdotgod",
-    "docs",
-    "markdown",
-    "validator",
     "agent-memory",
-    "knowledge-graph"
+    "ai-coding-agent",
+    "context-curation",
+    "docs",
+    "dotdotgod",
+    "graph-impact",
+    "knowledge-graph",
+    "markdown",
+    "traceability",
+    "validator"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
@@ -31,5 +35,14 @@
   ],
   "dependencies": {
     "leiden-ts": "^0.1.0"
+  },
+  "homepage": "https://github.com/dotdotgod/dotdotgod/tree/main/packages/cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dotdotgod/dotdotgod.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/dotdotgod/dotdotgod/issues"
   }
 }

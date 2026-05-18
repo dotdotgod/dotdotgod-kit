@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/pi",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "Pi adapter for dotdotgod: project-initializer skill, shared docs scaffold, plan/archive workflow, and project loading extensions.",
   "type": "module",
   "license": "Elastic-2.0",
@@ -8,19 +8,23 @@
     "access": "public"
   },
   "keywords": [
-    "pi-package",
+    "agent-memory",
+    "ai-agent",
+    "context-curation",
+    "context-loader",
+    "documentation",
+    "dotdotgod",
+    "extension",
+    "graph-impact",
     "pi",
     "pi-coding-agent",
-    "ai-agent",
-    "project-memory",
-    "agent-memory",
-    "documentation",
-    "skill",
-    "extension",
-    "project-initializer",
+    "pi-package",
     "plan-mode",
+    "project-initializer",
     "project-loader",
-    "context-loader"
+    "project-memory",
+    "skill",
+    "traceability"
   ],
   "scripts": {
     "syntax": "node --check extensions/context-metrics/utils.ts && node --check extensions/load-project/index.ts && node --check extensions/load-project/utils.ts && node --check extensions/plan-mode/index.ts && node --check extensions/plan-mode/utils.ts",
@@ -48,5 +52,14 @@
     "extensions",
     "README.md",
     "LICENSE"
-  ]
+  ],
+  "homepage": "https://github.com/dotdotgod/dotdotgod/tree/main/packages/pi#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dotdotgod/dotdotgod.git",
+    "directory": "packages/pi"
+  },
+  "bugs": {
+    "url": "https://github.com/dotdotgod/dotdotgod/issues"
+  }
 }
