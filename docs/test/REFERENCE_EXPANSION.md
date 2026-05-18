@@ -30,6 +30,10 @@ The feature should prove that reference expansion uses the existing dotdotgod gr
 - prompt expansion across multiple `[[refs]]`;
 - archive body exclusion by default.
 
+## Adapter Workflow Coverage
+
+Pi Plan Mode should detect explicit `[[...]]` refs in the latest planning request, run bounded `expand --with-impact` context shaping when available, and continue planning if expansion fails. Claude Code and Codex hook docs should describe `expand` reminders as optional/advisory only.
+
 ## Smoke Commands
 
 ```bash

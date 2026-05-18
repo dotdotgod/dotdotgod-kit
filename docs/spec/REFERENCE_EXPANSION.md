@@ -89,13 +89,19 @@ Human output MUST stay compact and include candidate paths, scores, and ambiguit
 
 `expand --with-impact` MAY attach a compact impact report for the top file candidate of each resolved reference. The impact output MUST remain bounded and MUST use the same archive policy as graph impact reports.
 
+## Adapter Workflow Adoption
+
+Agent load and planning workflows MAY prefer `dotdotgod expand` before broad `grep` or `find` scans when the user prompt contains explicit `[[...]]` project-memory references. This preference MUST remain scoped to reference resolution; `grep` and `find` remain valid fallback and raw source text-search tools.
+
+Pi Plan Mode MAY run `expand --with-impact` during context shaping for explicit `[[...]]` refs and include a bounded summary in the planning prompt. Claude Code and Codex hook examples MAY remind users or agents to run `expand`, but hooks MUST remain optional/advisory guardrails and MUST NOT block `grep` or `find`.
+
 ## Traceability
 
 ```json dotdotgod
 {
   "kind": "spec",
-  "implementedBy": ["packages/cli/src/core.mjs"],
-  "verifiedBy": ["packages/cli/test/core.test.mjs", "packages/cli/test/e2e.test.mjs", "docs/test/REFERENCE_EXPANSION.md"],
+  "implementedBy": ["packages/cli/src/core.mjs", "packages/pi/extensions/plan-mode/index.ts", "packages/pi/extensions/plan-mode/utils.ts"],
+  "verifiedBy": ["packages/cli/test/core.test.mjs", "packages/cli/test/e2e.test.mjs", "packages/pi/test/plan-mode-utils.test.ts", "docs/test/REFERENCE_EXPANSION.md"],
   "relatedDocs": ["docs/spec/CLI_INTERFACE.md", "docs/spec/LOAD_PROJECT.md", "docs/arch/VALIDATION_ARCHITECTURE.md", "docs/concept/LAT_MD_COMPARISON.md"],
   "verificationCommands": ["pnpm --filter @dotdotgod/cli test", "node packages/cli/bin/dotdotgod.mjs resolve . PLAN_MODE --json", "node packages/cli/bin/dotdotgod.mjs expand . \"Update [[PLAN_MODE]] and [[HOOKS]]\" --json"]
 }

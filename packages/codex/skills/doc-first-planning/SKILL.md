@@ -30,10 +30,12 @@ Prefer live repository docs in this order:
    - Preserve user edits and unrelated dirty worktree changes.
    - If the session is long or noisy, suggest a user-initiated planning-focused compaction before writing or revising the plan; do not compact automatically because compaction is lossy.
 2. Gather evidence before planning.
+   - When the request contains explicit project-memory refs such as `[[PLAN_MODE]]`, run `dotdotgod expand <root> "<request>" --json` before broad `grep` or `find` scans, then read the resolved candidates selectively.
    - Search docs by domain terms from the user request.
    - Read nearest README indexes and relevant focused docs.
    - For behavior changes, prefer specs with CLI-enforced fenced `json dotdotgod` traceability blocks in the final section; use their source, test, related-doc, and verification-command mappings before editing code.
    - When the dotdotgod CLI is available and likely target files are known, run `dotdotgod graph impact <root> --changed <path> --compact --json` for a small bounded set of those files. Use the related specs, tests, docs, commands, scores, and reasons to strengthen target files, risks, and verification steps. If impact lookup fails or the CLI is unavailable, continue with README-index and traceability fallback evidence.
+   - Use `grep` or `find` after reference expansion, impact, and targeted reads when the task needs fallback discovery or raw source text search.
    - Read code only after docs identify likely module boundaries, impact output points to relevant files, or docs are missing/stale.
 3. Create or update the active plan at:
 

@@ -17,7 +17,8 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 - Under `docs/`, all directories use kebab-case and all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
 - Each task directory keeps its overview and index in `README.md`; supporting plan files such as `RESEARCH_NOTES.md` or `VERIFICATION.md` live alongside it.
 - Plan mode does not render saved-plan file previews in the TUI; users review the durable markdown plan file when needed.
-- Execute/stay/refine choices are shown only after an active plan markdown file under `docs/plan/` is created or updated.
+- Execute/stay/refine choices are shown after every active plan markdown file under `docs/plan/` is created or updated.
+- When the latest planning request contains explicit `[[...]]` refs, Plan Mode adds bounded `dotdotgod expand` results to planning context before broad search.
 - Completed task directories should be moved to `docs/archive/plan/<task-slug>/` after execution and verification.
 - Plans are encouraged to include target files, risks, and verification steps.
 
@@ -50,6 +51,7 @@ Allowed:
 - Plan/archive markdown updates under `docs/plan/` and `docs/archive/`: `edit`, `write`
 - Directory names under `docs/` must be kebab-case; markdown file names must be UPPER_SNAKE_CASE.md
 - Read-only bash commands: `rg`, `git status`, `git diff`, `yarn info`, `npm view`, etc.
+- Bounded dotdotgod context commands: `dotdotgod graph impact ...`, `dotdotgod expand ...`, and `dotdotgod index ...`.
 - Plan/archive housekeeping bash commands when every affected path stays under `docs/plan/` or `docs/archive/`: `mkdir -p docs/archive/plan`, `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`, `rm -r docs/plan/<task-slug>`
 - Web/document research: `web_search`, `code_search`, `fetch_content`, `get_search_content`
 

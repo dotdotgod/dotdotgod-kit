@@ -193,18 +193,30 @@ export function isSafeCommand(command: string): boolean {
 	return !isDestructive && isSafe;
 }
 
-export function isDotdotgodCliCommand(command: string): boolean {
-	if (/[;&|<>`$\n\r]/.test(command)) return false;
+export function getDotdotgodCliArgs(command: string): string[] | undefined {
+	if (/[;&|<>`$\n\r]/.test(command)) return undefined;
 
 	const tokens = tokenizeShellCommand(command.trim());
-	if (!tokens || tokens.length === 0) return false;
+	if (!tokens || tokens.length === 0) return undefined;
 
-	const [program, script] = tokens;
-	if (program === "dotdotgod") return true;
-	if (program !== "node" || !script || script.startsWith("-")) return false;
+	const [program, script, ...rest] = tokens;
+	if (program === "dotdotgod") return tokens.slice(1);
+	if (program !== "node" || !script || script.startsWith("-")) return undefined;
 
 	const normalizedScript = script.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
-	return normalizedScript === "packages/cli/bin/dotdotgod.mjs";
+	return normalizedScript === "packages/cli/bin/dotdotgod.mjs" ? rest : undefined;
+}
+
+export function isDotdotgodCliCommand(command: string): boolean {
+	return getDotdotgodCliArgs(command) !== undefined;
+}
+
+export function isAutoAllowedDotdotgodPlanModeCommand(command: string): boolean {
+	const args = getDotdotgodCliArgs(command);
+	if (!args || args.length === 0) return false;
+	if (args[0] === "expand") return true;
+	if (args[0] === "index") return true;
+	return args[0] === "graph" && args[1] === "impact";
 }
 
 export interface PlanModeBashApproval {
@@ -221,6 +233,8 @@ export async function shouldAllowPlanModeBashCommand(command: string, approval?:
 	if (isSafeCommand(command)) return { allow: true };
 
 	if (isDotdotgodCliCommand(command)) {
+		if (isAutoAllowedDotdotgodPlanModeCommand(command)) return { allow: true };
+
 		if (!approval?.hasUI) {
 			return {
 				allow: false,
@@ -359,6 +373,52 @@ export function selectPlanImpactPaths(
 		if (selected.length >= limit) break;
 	}
 	return selected;
+}
+
+export function hasExplicitBracketReferences(text: string | undefined): boolean {
+	return /\[\[[^\]\n]+\]\]/.test(text ?? "");
+}
+
+function formatCandidatePath(candidate: Record<string, unknown>): string | undefined {
+	const path = typeof candidate.path === "string" ? candidate.path : undefined;
+	if (!path) return undefined;
+	const title = typeof candidate.title === "string" && candidate.title ? `#${candidate.title}` : "";
+	const score = typeof candidate.score === "number" ? ` score=${candidate.score}` : "";
+	return `${path}${title}${score}`;
+}
+
+export function formatReferenceExpansionSummary(data: unknown, candidateLimit = 3, impactLimit = 3): string {
+	const payload = data && typeof data === "object" ? (data as Record<string, unknown>) : undefined;
+	const refs = Array.isArray(payload?.refs) ? payload.refs : [];
+	if (refs.length === 0) return "";
+
+	const lines = ["Reference expansion:"];
+	for (const refValue of refs) {
+		const ref = refValue && typeof refValue === "object" ? (refValue as Record<string, unknown>) : undefined;
+		if (!ref) continue;
+		const query = String(ref.query ?? ref.input ?? "unknown");
+		const ambiguous = ref.ambiguous === true ? " ambiguous" : "";
+		const omitted = typeof ref.omitted === "number" && ref.omitted > 0 ? `; omitted=${ref.omitted}` : "";
+		lines.push(`- ${query}:${ambiguous}${omitted}`);
+
+		const candidates = Array.isArray(ref.candidates) ? ref.candidates : [];
+		for (const candidateValue of candidates.slice(0, candidateLimit)) {
+			const candidate = candidateValue && typeof candidateValue === "object" ? (candidateValue as Record<string, unknown>) : undefined;
+			if (!candidate) continue;
+			const formatted = formatCandidatePath(candidate);
+			if (formatted) lines.push(`  - ${formatted}`);
+		}
+
+		const impact = ref.impact && typeof ref.impact === "object" ? (ref.impact as Record<string, unknown>) : undefined;
+		const related = Array.isArray(impact?.related) ? impact.related : [];
+		const impactPaths = related
+			.slice(0, impactLimit)
+			.map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>) : undefined))
+			.map((item) => (typeof item?.path === "string" ? item.path : undefined))
+			.filter((path): path is string => Boolean(path));
+		if (impactPaths.length > 0) lines.push(`  impact=${impactPaths.join(", ")}`);
+	}
+	return lines.length > 1 ? lines.join("\n") : "";
 }
 
 export function selectPlanImpactPath(
@@ -514,6 +574,18 @@ export interface PlanningContextShapeTriggerState {
 
 export function shouldShapePlanningContextOnAgentStart(state: PlanningContextShapeTriggerState): boolean {
 	return state.planModeEnabled && !state.executionMode && state.planningContextShapePending;
+}
+
+export interface PlanChoiceTriggerState {
+	planModeEnabled: boolean;
+	executionMode: boolean;
+	hasUI: boolean;
+	pendingPlanChoicePath?: string | undefined;
+	activePlanTouched?: boolean | undefined;
+}
+
+export function shouldPromptForPlanChoice(state: PlanChoiceTriggerState): boolean {
+	return state.planModeEnabled && !state.executionMode && state.hasUI && Boolean(state.pendingPlanChoicePath || state.activePlanTouched);
 }
 
 function formatFocusList(label: string, values: string[] | undefined): string | undefined {

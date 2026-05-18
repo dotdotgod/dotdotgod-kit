@@ -10,12 +10,15 @@ import {
 	extractTodoItems,
 	formatCompactImpactSummary,
 	formatPlanCompactionFocus,
+	formatReferenceExpansionSummary,
 	extractPathMentions,
 	extractPlanSlugMentions,
 	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
+	hasExplicitBracketReferences,
 	parsePlanModeExtraTools,
 	resolveMentionedPlanPath,
+	isAutoAllowedDotdotgodPlanModeCommand,
 	isDotdotgodCliCommand,
 	isSafeCommand,
 	isSafePlanArchiveCommand,
@@ -24,6 +27,7 @@ import {
 	selectPlanImpactPath,
 	selectPlanImpactPaths,
 	shouldAllowPlanModeBashCommand,
+	shouldPromptForPlanChoice,
 	shouldShapePlanningContextOnAgentStart,
 	type TodoItem,
 } from "../extensions/plan-mode/utils.ts";
@@ -89,7 +93,27 @@ describe("plan-mode command safety", () => {
 		}
 	});
 
-	it("asks for one-command approval before allowing dotdotgod CLI in Plan Mode", async () => {
+	it("automatically allows bounded dotdotgod context commands in Plan Mode", async () => {
+		for (const command of [
+			"dotdotgod graph impact . --changed packages/pi/index.ts --compact --json",
+			"dotdotgod expand . 'Update [[PLAN_MODE]]' --json",
+			"dotdotgod index .",
+			"node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/index.ts --compact --json",
+			"node ./packages/cli/bin/dotdotgod.mjs expand . 'Update [[PLAN_MODE]]' --json",
+			"node packages/cli/bin/dotdotgod.mjs index .",
+		]) {
+			assert.equal(isDotdotgodCliCommand(command), true, command);
+			assert.equal(isAutoAllowedDotdotgodPlanModeCommand(command), true, command);
+			assert.deepEqual(await shouldAllowPlanModeBashCommand(command), { allow: true }, command);
+		}
+
+		for (const command of ["dotdotgod validate .", "dotdotgod init .", "node packages/cli/bin/dotdotgod.mjs config init ."]) {
+			assert.equal(isDotdotgodCliCommand(command), true, command);
+			assert.equal(isAutoAllowedDotdotgodPlanModeCommand(command), false, command);
+		}
+	});
+
+	it("asks for one-command approval before allowing other dotdotgod CLI in Plan Mode", async () => {
 		let prompts = 0;
 		assert.deepEqual(await shouldAllowPlanModeBashCommand("grep foo README.md"), { allow: true });
 		assert.deepEqual(
@@ -210,6 +234,32 @@ describe("plan-mode CLI context helpers", () => {
 		assert.equal(selectPlanImpactPath(".", "No source file here", "docs/plan/task/README.md", [], exists), undefined);
 	});
 
+	it("detects explicit bracket refs and formats reference expansion summaries", () => {
+		assert.equal(hasExplicitBracketReferences("Update [[PLAN_MODE]]"), true);
+		assert.equal(hasExplicitBracketReferences("Update PLAN_MODE"), false);
+
+		const summary = formatReferenceExpansionSummary({
+			refs: [
+				{
+					query: "PLAN_MODE",
+					ambiguous: true,
+					omitted: 2,
+					candidates: [
+						{ path: "docs/spec/PLAN_MODE.md", score: 118 },
+						{ path: "docs/test/MANUAL_SMOKE.md", title: "Plan Mode", score: 91 },
+					],
+					impact: { related: [{ path: "docs/spec/PLAN_MODE.md" }, { path: "packages/pi/extensions/plan-mode/index.ts" }] },
+				},
+			],
+		});
+		assert.match(summary, /Reference expansion/);
+		assert.match(summary, /PLAN_MODE: ambiguous; omitted=2/);
+		assert.match(summary, /docs\/spec\/PLAN_MODE\.md score=118/);
+		assert.match(summary, /docs\/test\/MANUAL_SMOKE\.md#Plan Mode score=91/);
+		assert.match(summary, /impact=docs\/spec\/PLAN_MODE\.md, packages\/pi\/extensions\/plan-mode\/index\.ts/);
+		assert.equal(formatReferenceExpansionSummary({ refs: [] }), "");
+	});
+
 	it("formats compact impact summaries with top related items", () => {
 		const summary = formatCompactImpactSummary("packages/pi/index.ts", {
 			impact: {
@@ -313,6 +363,16 @@ describe("plan-mode context shaping trigger", () => {
 		assert.equal(shouldShapePlanningContextOnAgentStart({ planModeEnabled: false, executionMode: false, planningContextShapePending: true }), false);
 		assert.equal(shouldShapePlanningContextOnAgentStart({ planModeEnabled: true, executionMode: true, planningContextShapePending: true }), false);
 		assert.equal(shouldShapePlanningContextOnAgentStart({ planModeEnabled: true, executionMode: false, planningContextShapePending: false }), false);
+	});
+});
+
+describe("plan-mode plan choice trigger", () => {
+	it("asks after every active plan file create or update", () => {
+		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: false, hasUI: true, pendingPlanChoicePath: "docs/plan/task/README.md" }), true);
+		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: false, hasUI: true, activePlanTouched: true }), true);
+		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: false, hasUI: true }), false);
+		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: true, hasUI: true, pendingPlanChoicePath: "docs/plan/task/README.md" }), false);
+		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: false, hasUI: false, pendingPlanChoicePath: "docs/plan/task/README.md" }), false);
 	});
 });
 

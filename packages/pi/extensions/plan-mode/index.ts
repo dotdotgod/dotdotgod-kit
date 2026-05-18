@@ -19,12 +19,15 @@ import {
 	detectPlanExecutionIntent,
 	extractTodoItems,
 	formatCompactImpactSummary,
+	formatReferenceExpansionSummary,
+	hasExplicitBracketReferences,
 	resolveMentionedPlanPath,
 	resolvePlanModeTools,
 	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
 	selectPlanImpactPaths,
 	shouldAllowPlanModeBashCommand,
+	shouldPromptForPlanChoice,
 	shouldShapePlanningContextOnAgentStart,
 	markCompletedSteps,
 	type PlanCompactionFocus,
@@ -189,6 +192,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let executionMode = false;
 	let todoItems: TodoItem[] = [];
 	let activePlanTouched = false;
+	let pendingPlanChoicePath: string | undefined;
 	let planCompactionInFlight = false;
 	let lastPlanCompactionEntryCount: number | undefined;
 	let lastPlanCompactionReason: string | undefined;
@@ -377,8 +381,19 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 		const impactPaths = selectPlanImpactPaths(ctx.cwd, lastPlanningRequest, currentPlanPath, currentPlanContent, touchedPlanArchivePaths, planPathExists);
 		const impacts = impactPaths.map((path) => ({ path, result: runDotdotgodCli(ctx.cwd, ["graph", "impact", ctx.cwd, "--changed", path, "--compact", "--json"]) }));
-		planningCliContextSummary = formatPlanCliContextSummary(validate, snapshot, impacts);
-		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:cli-context", { hasSummary: Boolean(planningCliContextSummary), impactPaths });
+		const contextParts = [formatPlanCliContextSummary(validate, snapshot, impacts)];
+		let referenceExpansionSummary = "";
+		if (hasExplicitBracketReferences(lastPlanningRequest)) {
+			const expansion = runDotdotgodCli(ctx.cwd, ["expand", ctx.cwd, lastPlanningRequest ?? "", "--json", "--with-impact"]);
+			if (expansion.ok) {
+				referenceExpansionSummary = formatReferenceExpansionSummary(expansion.data);
+				if (referenceExpansionSummary) contextParts.push(referenceExpansionSummary);
+			} else {
+				recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:reference-expansion-unavailable", { error: expansion.error });
+			}
+		}
+		planningCliContextSummary = contextParts.filter(Boolean).join("\n\n");
+		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:cli-context", { hasSummary: Boolean(planningCliContextSummary), impactPaths, referenceExpansion: Boolean(referenceExpansionSummary) });
 		persistState();
 	}
 
@@ -402,6 +417,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		planModeEnabled = false;
 		executionMode = todoItems.length > 0;
 		activePlanTouched = false;
+		pendingPlanChoicePath = undefined;
 		planningContextShapePending = false;
 		pendingPlanningLoadAfterCompaction = false;
 		pendingPlanningLoadPrompt = undefined;
@@ -436,6 +452,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		executionMode = false;
 		todoItems = [];
 		activePlanTouched = false;
+		pendingPlanChoicePath = undefined;
 		if (planModeEnabled) currentPlanPath = undefined;
 		planModeFullPromptInjected = false;
 		planningCliContextSummary = undefined;
@@ -467,6 +484,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			todos: todoItems,
 			executing: executionMode,
 			activePlanTouched,
+			pendingPlanChoicePath,
 			lastPlanCompactionEntryCount,
 			lastPlanCompactionReason,
 			lastPlanningLoadEntryCount,
@@ -538,6 +556,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			if (isActivePlanMarkdownPath(ctx.cwd, path)) {
 				activePlanTouched = true;
 				currentPlanPath = getCurrentPlanReadmePath(path) ?? currentPlanPath;
+				pendingPlanChoicePath = currentPlanPath;
 			}
 		}
 	});
@@ -646,8 +665,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 	});
 
 	pi.on("agent_end", async (event, ctx) => {
-		if (planModeEnabled && !executionMode && flushPendingPlanningLoad(ctx)) return;
-
 		if (executionMode && todoItems.length > 0) {
 			if (todoItems.every((t) => t.completed)) {
 				executionMode = false;
@@ -659,31 +676,41 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			return;
 		}
 
-		if (!planModeEnabled || !ctx.hasUI) return;
-		if (!activePlanTouched) return;
+		if (!planModeEnabled) return;
+		const shouldShowChoice = shouldPromptForPlanChoice({ planModeEnabled, executionMode, hasUI: ctx.hasUI, pendingPlanChoicePath, activePlanTouched });
+		if (!shouldShowChoice) {
+			if (!pendingPlanChoicePath && !activePlanTouched && flushPendingPlanningLoad(ctx)) return;
+			return;
+		}
 		activePlanTouched = false;
 
-		const lastAssistant = [...event.messages].reverse().find(isAssistantMessage);
-		if (lastAssistant) {
-			const extracted = extractTodoItems(getMessageText(lastAssistant));
-			if (extracted.length > 0) {
-				todoItems = extracted;
+		const inferredPlanPath = pendingPlanChoicePath ?? currentPlanPath ?? getCurrentPlanReadmePath(touchedPlanArchivePaths.find((path) => path.startsWith("docs/plan/")) ?? "");
+		const savedTodos = inferredPlanPath ? readPlanTodos(ctx.cwd, inferredPlanPath) : [];
+		if (savedTodos.length > 0) {
+			todoItems = savedTodos;
+		} else {
+			const lastAssistant = [...event.messages].reverse().find(isAssistantMessage);
+			if (lastAssistant) {
+				const extracted = extractTodoItems(getMessageText(lastAssistant));
+				if (extracted.length > 0) {
+					todoItems = extracted;
+				}
 			}
 		}
 
-		const inferredPlanPath = currentPlanPath ?? getCurrentPlanReadmePath(touchedPlanArchivePaths.find((path) => path.startsWith("docs/plan/")) ?? "");
 		const actionChoices = [
 			todoItems.length > 0 ? "Execute the plan (track progress)" : "Execute the plan",
 			"Stay in plan mode",
 			"Refine the plan",
 		];
 		const choice = await ctx.ui.select("Plan mode - choose next action", actionChoices);
+		pendingPlanChoicePath = undefined;
 
 		if (choice?.startsWith("Execute the plan")) {
 			planModeEnabled = false;
 			planningContextShapePending = false;
 			executionMode = todoItems.length > 0;
-			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:execution-start", { todoCount: todoItems.length });
+			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:execution-start", { todoCount: todoItems.length, planPath: inferredPlanPath });
 			pi.setActiveTools(NORMAL_MODE_TOOLS);
 			updateStatus(ctx);
 
@@ -703,6 +730,9 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			if (refinement?.trim()) {
 				pi.sendUserMessage(refinement.trim());
 			}
+			persistState();
+		} else {
+			persistState();
 		}
 	});
 
@@ -723,6 +753,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 						todos?: TodoItem[];
 						executing?: boolean;
 						activePlanTouched?: boolean;
+						pendingPlanChoicePath?: string;
 						lastPlanCompactionEntryCount?: number;
 						lastPlanCompactionReason?: string;
 						lastPlanningLoadEntryCount?: number;
@@ -745,6 +776,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			todoItems = planModeEntry.data.todos ?? todoItems;
 			executionMode = planModeEntry.data.executing ?? executionMode;
 			activePlanTouched = planModeEntry.data.activePlanTouched ?? activePlanTouched;
+			pendingPlanChoicePath = planModeEntry.data.pendingPlanChoicePath ?? pendingPlanChoicePath;
 			lastPlanCompactionEntryCount = planModeEntry.data.lastPlanCompactionEntryCount ?? lastPlanCompactionEntryCount;
 			lastPlanCompactionReason = planModeEntry.data.lastPlanCompactionReason ?? lastPlanCompactionReason;
 			lastPlanningLoadEntryCount = planModeEntry.data.lastPlanningLoadEntryCount ?? lastPlanningLoadEntryCount;
