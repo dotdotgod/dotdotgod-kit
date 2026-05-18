@@ -3,18 +3,25 @@
 > **Change a file, know what else must be checked.**
 
 ```bash
-$ dotdotgod graph impact . --changed packages/cli/src/core.mjs
+$ dotdotgod graph impact . --changed packages/cli/src/core.mjs --compact
 ```
 
 ```text
-Impact results, abbreviated:
-- docs/spec/CONFIG_COMMAND.md
-- docs/spec/REFERENCE_EXPANSION.md
-- docs/spec/MEMORY_AREA_CONFIG.md
-- packages/cli/test/core.test.mjs
+docs:
+- docs/spec/REFERENCE_EXPANSION.md (91; incoming:implemented_by, semantic_similarity)
+- docs/test/REFERENCE_EXPANSION.md (65.3; verified_by, semantic_similarity)
+- docs/spec/LOAD_PROJECT.md (35.8; related_doc, semantic_similarity)
+
+tests:
+- packages/cli/test/core.test.mjs (78.6; semantic_similarity, incoming:semantic_similarity, verified_by)
+- packages/cli/test/e2e.test.mjs (51.4; verified_by)
+
+files:
+- packages/cli/src/core.mjs (100; changed-file)
+- packages/pi/extensions/plan-mode/index.ts (45; implemented_by, semantic_similarity)
 ```
 
-`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints. Add `--compact` when an agent needs a smaller grouped summary.
+`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
 
 Dotdotgod is a context curation kit for AI coding agents. It turns specs, architecture notes, tests, commands, active plans, archives, and graph/cache metadata into bounded project memory for safer agent work.
 
@@ -119,7 +126,7 @@ Read the detailed concept docs: [Context curation](docs/concept/CONTEXT_CURATION
 | [`@dotdotgod/claude-code`](packages/claude-code/README.md) | Claude Code `dd:*` commands and project memory skills. |
 | [`@dotdotgod/codex`](packages/codex/README.md) | Codex project memory skills and `dd:*` trigger phrases. |
 
-Current public package version: `0.1.18`.
+Current public package version: `0.1.19`.
 
 ## Quick Start
 

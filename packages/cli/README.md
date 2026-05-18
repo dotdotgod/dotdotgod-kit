@@ -4,21 +4,28 @@
 
 > **Change a file, know what else must be checked.**
 
-Command-line tools for dotdotgod project memory. The CLI initializes the docs scaffold, validates project-memory docs, builds the local graph/cache, returns bounded load snapshots, expands project-memory references, and ranks likely related docs/tests/source/config for changed files.
-
 ```bash
 $ dotdotgod graph impact . --changed packages/cli/src/core.mjs --compact
 ```
 
 ```text
-Related docs/tests/config:
-- docs/spec/CONFIG_COMMAND.md
-- docs/spec/REFERENCE_EXPANSION.md
-- docs/spec/MEMORY_AREA_CONFIG.md
-- packages/cli/test/core.test.mjs
+docs:
+- docs/spec/REFERENCE_EXPANSION.md (91; incoming:implemented_by, semantic_similarity)
+- docs/test/REFERENCE_EXPANSION.md (65.3; verified_by, semantic_similarity)
+- docs/spec/LOAD_PROJECT.md (35.8; related_doc, semantic_similarity)
+
+tests:
+- packages/cli/test/core.test.mjs (78.6; semantic_similarity, incoming:semantic_similarity, verified_by)
+- packages/cli/test/e2e.test.mjs (51.4; verified_by)
+
+files:
+- packages/cli/src/core.mjs (100; changed-file)
+- packages/pi/extensions/plan-mode/index.ts (45; implemented_by, semantic_similarity)
 ```
 
-`graph impact` is not only traceability lookup. It uses a project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory-area membership, commands, tests, and deterministic routing hints.
+`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
+
+Command-line tools for dotdotgod project memory. The CLI initializes the docs scaffold, validates project-memory docs, builds the local graph/cache, returns bounded load snapshots, expands project-memory references, and ranks likely related docs/tests/source/config for changed files.
 
 ## Why Use It?
 
