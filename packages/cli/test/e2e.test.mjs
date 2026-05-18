@@ -106,6 +106,8 @@ describe('dotdotgod CLI e2e', () => {
       [['help', 'config', 'init'], /dotdotgod config init <root> \[--force\]/],
       [['status', 'help'], /dotdotgod status <root>/],
       [['load-snapshot', '--help'], /dotdotgod load-snapshot <root>/],
+      [['resolve', '--help'], /dotdotgod resolve <root> <ref>/],
+      [['expand', '--help'], /dotdotgod expand <root> <prompt>/],
       [['graph', '--help'], /dotdotgod graph communities <root>/],
       [['graph', 'impact', '--help'], /dotdotgod graph impact <root> --changed <path>/],
       [['graph', 'communities', '--help'], /dotdotgod graph communities <root>/],
@@ -161,6 +163,34 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(missingChangedValueJson.status, 2);
     assert.equal(JSON.parse(missingChangedValueJson.stdout).error.code, 'MISSING_CHANGED');
     assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
+  });
+
+  it('resolves and expands references from the graph index', () => {
+    const root = createFixture();
+
+    const missingResolve = run(['resolve', root]);
+    assert.equal(missingResolve.status, 2);
+    assert.match(missingResolve.stderr, /Missing required argument: <ref>/);
+    assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
+
+    const resolved = json(run(['resolve', root, 'APP', '--json']));
+    assert.equal(resolved.command, 'resolve');
+    assert.equal(resolved.metadata.cacheRefreshed, true);
+    assert.equal(resolved.refs[0].top.path, 'docs/spec/APP.md');
+    assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), true);
+
+    const expanded = json(run(['expand', root, 'Update [[APP]] and [[ROUTING_POLICY_NOTES|notes]]', '--json']));
+    assert.equal(expanded.command, 'expand');
+    assert.equal(expanded.refs.length, 2);
+    assert.equal(expanded.refs[0].top.path, 'docs/spec/APP.md');
+    assert.equal(expanded.refs[1].top.path, 'docs/arch/ROUTING_POLICY_NOTES.md');
+
+    const missingPromptRefs = run(['expand', root, 'Update app']);
+    assert.equal(missingPromptRefs.status, 2);
+    assert.match(missingPromptRefs.stderr, /No \[\[refs\]\] found/);
+
+    const archiveDefault = json(run(['resolve', root, 'routing policy archive', '--json']));
+    assert.equal(archiveDefault.refs[0].candidates.some((item) => item.path.startsWith('docs/archive/plan/')), false);
   });
 
   it('initializes project scaffold through dotdotgod init', () => {

@@ -15,6 +15,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `CONFIG_COMMAND.md`: project-level config show/init command checks.
 - `HOOKS.md`: optional Claude Code and Codex hook documentation and package-resource smoke checks.
 - `CLI_INTERFACE.md`: baseline CLI help/version and invalid invocation checks.
+- `REFERENCE_EXPANSION.md`: reference resolution and prompt-time expansion regression and smoke checks.
 - `MANUAL_SMOKE.md`: adapter, Plan Mode, initializer, and publishing smoke checks.
 
 ## Verification Commands
