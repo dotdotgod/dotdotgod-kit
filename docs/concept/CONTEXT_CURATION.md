@@ -104,6 +104,8 @@ The dotdotgod CLI can build a deterministic graph over curated project scopes. T
 
 The graph is an acceleration layer for load snapshots, reference expansion, impact queries, and community summaries. It is not a repo-wide memory dump, a vector database, or the source of truth; it points agents back to bounded files they can inspect.
 
+Graph precision depends on useful project boundaries. If one source file owns many unrelated behaviors, impact results will correctly reveal that hotspot but still collapse many edges onto the same file. Split large mixed-responsibility files and docs by behavior so graph output can point agents to narrower modules, tests, and specs.
+
 Effect: agents can see bounded related files, docs, tests, commands, events, package resources, and communities without loading every source file or archive body.
 
 ## Why the Expected Effects Happen
