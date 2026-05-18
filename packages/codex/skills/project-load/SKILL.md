@@ -18,6 +18,7 @@ Do not modify files during the load pass unless the user explicitly asks for edi
    - Mention user changes and avoid reverting or cleaning them.
 2. Prefer the bounded CLI snapshot when available.
    - If the user prompt contains explicit project-memory refs such as `[[PLAN_MODE]]`, run `dotdotgod expand <root> "<prompt>" --json` before broad `grep` or `find` scans, then read the resolved candidates selectively.
+   - If the prompt has high-signal natural refs such as `PLAN_MODE`, `docs/spec/PLAN_MODE.md`, or quoted doc names, use `dotdotgod expand <root> "<prompt>" --fuzzy --json` before broad scans; avoid fuzzy expansion for low-signal generic words alone and respect configured fuzzy low-signal add/remove terms.
    - If `dotdotgod` is installed or available in the repository, run `dotdotgod load-snapshot <root> --json`.
    - If the local environment allows package execution but no `dotdotgod` binary is available, optionally run `npx @dotdotgod/cli load-snapshot <root> --json`.
    - Treat the snapshot as the first-pass project-memory map for cache status, graph size, memory areas, related communities, and archive inclusion policy.

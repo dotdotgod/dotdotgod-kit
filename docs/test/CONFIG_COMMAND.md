@@ -9,14 +9,14 @@ These checks cover `dotdotgod config` and `dotdotgod config init` behavior for p
 `packages/cli/test/core.test.mjs` verifies that the generated default config template:
 
 - is valid according to the shared config validator
-- includes default memory areas, traceability policy, markdown validation policy, and impact ranking policy
+- includes default memory areas, traceability policy, markdown validation policy, impact ranking policy, and fuzzy reference expansion low-signal add/remove policy
 - can be written as `dotdotgod.config.json` and read back by the CLI config loader
 
 `packages/cli/test/e2e.test.mjs` verifies:
 
 - `dotdotgod config <root> --json` reports default config without creating `.dotdotgod/`
 - `dotdotgod config init <root> --json` creates `dotdotgod.config.json`
-- generated config contains the default archive-body exclusion, markdown validation budgets, and balanced impact ranking preset
+- generated config contains the default archive-body exclusion, markdown validation budgets, balanced impact ranking preset, and fuzzy low-signal add/remove settings
 - show output reports `dotdotgod.config.json` after initialization
 - init refuses to overwrite an existing config without `--force`
 - init with `--force` overwrites `dotdotgod.config.json`

@@ -9,7 +9,7 @@ The `dotdotgod` CLI provides predictable discovery commands for users and script
 - Top-level `dotdotgod --help`, `dotdotgod -h`, `dotdotgod help`, and bare `dotdotgod` MUST print usage to stdout and exit `0`.
 - Top-level `dotdotgod --version`, `dotdotgod -v`, and `dotdotgod version` MUST print the `@dotdotgod/cli` package version to stdout and exit `0`.
 - Subcommand help MUST be available through `--help`, `-h`, or `help` without validating docs, reading caches, refreshing graph indexes, or initializing files.
-- `dotdotgod resolve <root> <ref>` and `dotdotgod expand <root> <prompt>` MUST expose help without cache side effects and MUST support `--json`, `--max-results <n>`, and `--include-archive`; `expand` MUST also support `--with-impact`.
+- `dotdotgod resolve <root> <ref>` and `dotdotgod expand <root> <prompt>` MUST expose help without cache side effects and MUST support `--json`, `--max-results <n>`, and `--include-archive`; `expand` MUST also support `--with-impact` and opt-in `--fuzzy` natural-reference extraction.
 - Nested subcommand help MUST be available for `graph impact`, `graph communities`, and `config init`.
 - Unknown commands and invalid options MUST print diagnostics and usage to stderr and exit `2`.
 - `dotdotgod graph impact <root>` MUST require `--changed <path>` and MAY include opt-in `--compact` output.

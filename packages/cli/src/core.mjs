@@ -49,7 +49,7 @@ Create dotdotgod.config.json with the built-in default memory, traceability, val
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]`;
     case 'expand':
       return `Usage:
-  dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--json]`;
+  dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]`;
     case 'graph':
       return `Usage:
   dotdotgod graph impact <root> --changed <path> [--compact] [--json]
@@ -75,7 +75,7 @@ Ranks nodes related to a changed file. <root> is the project root; --changed is 
   dotdotgod status <root> [--json]
   dotdotgod load-snapshot <root> [--json]
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]
-  dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--json]
+  dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]
   dotdotgod graph impact <root> --changed <path> [--compact] [--json]
   dotdotgod graph communities <root> [--json]`;
   }
@@ -661,6 +661,10 @@ const IMPACT_RANKING_WEIGHT_KEYS = new Set(['ppr', 'traceability', 'memoryPolicy
 const IMPACT_RANKING_RELATION_KEYS = new Set(['implemented_by', 'verified_by', 'related_doc', 'verification_command', 'links_to', 'belongs_to_area', 'semantic_similarity', 'mentions_package']);
 const IMPACT_RANKING_REASON_KEYS = new Set(['implemented_by', 'incoming:implemented_by', 'verified_by', 'incoming:verified_by', 'verification_command', 'incoming:verification_command', 'related_doc', 'incoming:related_doc', 'semantic_similarity', 'incoming:semantic_similarity', 'mentions_package', 'incoming:mentions_package', 'links_to', 'incoming:links_to', 'routes_to', 'incoming:routes_to']);
 const SEMANTIC_SIGNAL_KEYS = new Set(['path', 'filename', 'heading', 'package']);
+const DEFAULT_FUZZY_LOW_SIGNAL_TERMS = [
+  'a', 'an', 'and', 'are', 'as', 'by', 'docs', 'document', 'for', 'from', 'it', 'of', 'on', 'plan', 'test', 'the', 'to', 'update', 'version', 'with',
+  '계획', '문서', '수정', '업데이트', '버전', '정보', '확인', '테스트',
+];
 const DEFAULT_MEMORY_AREAS = [
   { id: 'rules', label: 'Agent Rules', paths: ['AGENTS.md'], scope: 'shared', freshness: 'fresh', role: 'agent-working-rules', priority: 100, includeBodiesByDefault: true },
   { id: 'agent-entrypoint', label: 'Agent Entrypoints', paths: ['CLAUDE.md', 'CODEX.md'], scope: 'shared', freshness: 'fresh', role: 'agent-specific-entrypoint', priority: 85, includeBodiesByDefault: true },
@@ -713,6 +717,30 @@ function cloneImpactRankingPolicy(policy = DEFAULT_IMPACT_RANKING_POLICY) {
   };
 }
 
+function normalizeLowSignalTerm(value = '') {
+  return String(value).trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function uniqueNormalizedTerms(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map(normalizeLowSignalTerm).filter(Boolean))];
+}
+
+function cloneReferenceExpansionPolicy(policy = {}) {
+  const lowSignal = policy.fuzzy?.lowSignal ?? {};
+  const defaults = uniqueNormalizedTerms(lowSignal.defaults ?? DEFAULT_FUZZY_LOW_SIGNAL_TERMS);
+  const add = uniqueNormalizedTerms(lowSignal.add ?? []);
+  const remove = uniqueNormalizedTerms(lowSignal.remove ?? []);
+  const terms = new Set(defaults);
+  for (const term of remove) terms.delete(term);
+  for (const term of add) terms.add(term);
+  return { fuzzy: { lowSignal: { defaults, add, remove, terms: [...terms].sort() } } };
+}
+
+function normalizeReferenceExpansionPolicy(raw) {
+  const lowSignal = raw?.fuzzy?.lowSignal ?? {};
+  return cloneReferenceExpansionPolicy({ fuzzy: { lowSignal: { add: lowSignal.add, remove: lowSignal.remove } } });
+}
+
 function normalizeImpactRankingPolicy(raw) {
   const presetName = typeof raw?.preset === 'string' ? raw.preset : 'balanced';
   const preset = IMPACT_RANKING_PRESETS[presetName] ?? IMPACT_RANKING_PRESETS.balanced;
@@ -720,7 +748,7 @@ function normalizeImpactRankingPolicy(raw) {
 }
 
 export function defaultMemoryConfig() {
-  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy() };
+  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy() };
 }
 
 function normalizePathPattern(value = '') {
@@ -863,6 +891,26 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
       }
     }
   }
+  const referenceExpansion = data.referenceExpansion;
+  if (referenceExpansion !== undefined) {
+    if (!referenceExpansion || typeof referenceExpansion !== 'object' || Array.isArray(referenceExpansion)) {
+      add('REFERENCE_EXPANSION_CONFIG_INVALID', 'referenceExpansion', 'Expected an object.');
+    } else if (referenceExpansion.fuzzy !== undefined) {
+      const fuzzy = referenceExpansion.fuzzy;
+      if (!fuzzy || typeof fuzzy !== 'object' || Array.isArray(fuzzy)) {
+        add('REFERENCE_EXPANSION_CONFIG_INVALID_FUZZY', 'referenceExpansion.fuzzy', 'Expected an object.');
+      } else if (fuzzy.lowSignal !== undefined) {
+        const lowSignal = fuzzy.lowSignal;
+        if (!lowSignal || typeof lowSignal !== 'object' || Array.isArray(lowSignal)) {
+          add('REFERENCE_EXPANSION_CONFIG_INVALID_LOW_SIGNAL', 'referenceExpansion.fuzzy.lowSignal', 'Expected an object.');
+        } else {
+          for (const key of ['add', 'remove']) {
+            if (lowSignal[key] !== undefined && (!Array.isArray(lowSignal[key]) || lowSignal[key].some((value) => typeof value !== 'string' || !value.trim()))) add('REFERENCE_EXPANSION_CONFIG_INVALID_LOW_SIGNAL_TERMS', `referenceExpansion.fuzzy.lowSignal.${key}`, 'Expected an array of non-empty strings.');
+          }
+        }
+      }
+    }
+  }
   const impactRanking = data.impactRanking;
   if (impactRanking !== undefined) {
     if (!impactRanking || typeof impactRanking !== 'object' || Array.isArray(impactRanking)) {
@@ -940,7 +988,8 @@ export function readMemoryConfig(root = '.') {
       const traceability = data.traceability === undefined ? cloneTraceabilityPolicy() : normalizeTraceabilityPolicy(data.traceability);
       const validation = data.validation === undefined ? cloneValidationPolicy() : normalizeValidationPolicy(data.validation);
       const impactRanking = normalizeImpactRankingPolicy(data.impactRanking);
-      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, validation, impactRanking, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, source: name, errors: [] };
+      const referenceExpansion = normalizeReferenceExpansionPolicy(data.referenceExpansion);
+      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, referenceExpansion, source: name, errors: [] };
     } catch (error) {
       return { ...defaultMemoryConfig(), source: name, errors: [{ file: name, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}\nFix: repair ${name} so it is valid JSON, or regenerate the default config with \`dotdotgod config init <root> --force\` if you want to reset it.` }] };
     }
@@ -971,6 +1020,7 @@ export function defaultDotdotgodConfigData() {
     traceability: cloneTraceabilityPolicy(config.traceability),
     validation: cloneValidationPolicy(config.validation),
     impactRanking: cloneImpactRankingPolicy(config.impactRanking),
+    referenceExpansion: { fuzzy: { lowSignal: { add: [], remove: [] } } },
   };
 }
 
@@ -995,6 +1045,7 @@ function memoryConfigSummary(config) {
     traceability: cloneTraceabilityPolicy(config.traceability ?? DEFAULT_TRACEABILITY_POLICY),
     validation: cloneValidationPolicy(config.validation ?? DEFAULT_VALIDATION_POLICY),
     impactRanking: cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY),
+    referenceExpansion: cloneReferenceExpansionPolicy(config.referenceExpansion),
   };
 }
 
@@ -2010,6 +2061,8 @@ function formatConfigOutput(payload) {
   lines.push(`- validation markdown: maxLines=${payload.config.validation.markdown.maxLines}, maxChars=${payload.config.validation.markdown.maxChars}`);
   lines.push(`- validation markdown exclude: ${(payload.config.validation.markdown.exclude ?? []).join(', ') || 'none'}`);
   lines.push(`- impact ranking preset: ${payload.config.impactRanking.preset}`);
+  const lowSignal = payload.config.referenceExpansion?.fuzzy?.lowSignal ?? { terms: [], add: [], remove: [] };
+  lines.push(`- fuzzy low-signal terms: ${(lowSignal.terms ?? []).join(', ') || 'none'} (add: ${(lowSignal.add ?? []).join(', ') || 'none'}; remove: ${(lowSignal.remove ?? []).join(', ') || 'none'})`);
   if (errors.length > 0) {
     lines.push('- errors:');
     for (const error of errors) lines.push(`  - ${error.code} ${error.file}: ${error.message}`);
@@ -2098,6 +2151,21 @@ export function extractBracketReferences(prompt = '') {
   return refs;
 }
 
+function fuzzyLowSignalSet(policy = defaultMemoryConfig().referenceExpansion) {
+  return new Set(cloneReferenceExpansionPolicy(policy).fuzzy.lowSignal.terms);
+}
+
+function fuzzyPhraseAllowed(value = '', lowSignalTerms = fuzzyLowSignalSet()) {
+  const normalized = normalizeLowSignalTerm(value);
+  if (normalized.length < 3) return false;
+  if (lowSignalTerms.has(normalized)) return false;
+  return /[a-z0-9가-힣]/i.test(normalized);
+}
+
+function fuzzyTokenKey(value = '') {
+  return String(value).trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 export function normalizeReferenceAlias(value = '') {
   return String(value)
     .trim()
@@ -2150,6 +2218,54 @@ function referenceCandidateAliases(node) {
     for (const alias of [node.title, anchor, fileStem && node.title ? `${fileStem}#${node.title}` : '', fileStem && anchor ? `${fileStem}#${anchor}` : '', path && node.title ? `${path}#${node.title}` : '', path && anchor ? `${path}#${anchor}` : '']) entries.push({ alias, kind: 'heading' });
   }
   return entries.filter((entry) => entry.alias);
+}
+
+export function extractFuzzyReferences(prompt = '', index = null, options = {}) {
+  const text = String(prompt ?? '');
+  const masked = text.replace(/\[\[[^\]\n]+\]\]/g, ' ');
+  const seen = new Set((options.existingTargets ?? []).map((value) => fuzzyTokenKey(value)));
+  const lowSignalTerms = fuzzyLowSignalSet(options.referenceExpansion ?? options.memoryConfig?.referenceExpansion ?? index?.memoryConfig?.referenceExpansion);
+  const refs = [];
+  const add = (target, reason, confidence = 'medium') => {
+    const clean = String(target ?? '').trim().replace(/^['"`]+|['"`]+$/g, '').replace(/\s+/g, ' ');
+    if (!fuzzyPhraseAllowed(clean, lowSignalTerms)) return;
+    const key = fuzzyTokenKey(clean);
+    if (seen.has(key)) return;
+    seen.add(key);
+    refs.push({ raw: clean, target: clean, source: 'fuzzy', confidence, reasons: [reason] });
+  };
+
+  for (const match of masked.matchAll(/(?:^|\s)([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+(?:#[A-Za-z0-9 _-]+)?|[A-Z0-9]{3,})(?=$|\s|[.,:;!?])/g)) add(match[1], 'uppercase_identifier', 'high');
+  for (const match of masked.matchAll(/(?:^|\s)((?:\.?\/?(?:docs|packages|src|test|spec|arch|plan|archive)\/)?[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+(?:\.md)?(?:#[A-Za-z0-9 _-]+)?)(?=$|\s|[.,:;!?])/g)) add(match[1].replace(/^\.\//, ''), 'path_like', 'high');
+  for (const match of masked.matchAll(/[`"']([^`"'\n]{4,80})[`"']/g)) add(match[1], 'quoted_phrase', 'medium');
+
+  const graph = index?.graph ?? null;
+  if (graph) {
+    const lower = ` ${masked.toLowerCase().replace(/[^a-z0-9가-힣/#._-]+/gi, ' ')} `;
+    const aliasByKey = new Map();
+    for (const node of graph.nodes ?? []) {
+      if (!['file', 'heading'].includes(node.type)) continue;
+      const path = referencePathForNode(node);
+      if (options.includeArchive !== true && isArchiveBodyPath(path)) continue;
+      for (const entry of referenceCandidateAliases(node)) {
+        const alias = String(entry.alias ?? '').replace(/\.md$/i, '').replace(/[_-]+/g, ' ').trim();
+        if (!fuzzyPhraseAllowed(alias, lowSignalTerms)) continue;
+        const words = alias.split(/[\s/]+/).filter(Boolean);
+        if (words.length > 3 || words.some((word) => lowSignalTerms.has(normalizeLowSignalTerm(word)))) continue;
+        const key = fuzzyTokenKey(alias);
+        const previous = aliasByKey.get(key);
+        const priority = Number(node.retrievalPriority ?? node.retrieval?.priority ?? 30);
+        if (!previous || priority > previous.priority) aliasByKey.set(key, { alias, priority });
+      }
+    }
+    for (const { alias } of [...aliasByKey.values()].sort((a, b) => b.priority - a.priority || b.alias.length - a.alias.length)) {
+      const escaped = alias.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '[\\s_-]+');
+      const pattern = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i');
+      if (pattern.test(lower)) add(alias, 'known_alias', 'medium');
+      if (refs.length >= (options.maxFuzzyRefs ?? 5)) break;
+    }
+  }
+  return refs.slice(0, options.maxFuzzyRefs ?? 5);
 }
 
 function incomingRouteBonus(graph, nodeId) {
@@ -2205,7 +2321,7 @@ export function resolveReferenceCandidates(index, ref, options = {}) {
 
 function parseReferenceOptions(argv, command) {
   const filtered = [];
-  const options = { maxResults: DEFAULT_REFERENCE_LIMIT, includeArchive: false, withImpact: false };
+  const options = { maxResults: DEFAULT_REFERENCE_LIMIT, includeArchive: false, withImpact: false, fuzzy: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--max-results') {
@@ -2215,6 +2331,10 @@ function parseReferenceOptions(argv, command) {
       i += 1;
     } else if (arg === '--include-archive') options.includeArchive = true;
     else if (arg === '--with-impact') options.withImpact = true;
+    else if (arg === '--fuzzy') {
+      if (command !== 'expand') usage(`Unknown option: ${arg}`, command);
+      options.fuzzy = true;
+    }
     else if (arg === '--json') filtered.push(arg);
     else if (arg.startsWith('-')) usage(`Unknown option: ${arg}`, command);
     else filtered.push(arg);
@@ -2260,9 +2380,13 @@ export function runExpand(argv) {
   const prompt = options.rootArgv?.join(' ');
   if (!prompt) usage('Missing required argument: <prompt>.', 'expand');
   const refsInPrompt = extractBracketReferences(prompt);
-  if (refsInPrompt.length === 0) usage('No [[refs]] found in prompt.', 'expand');
+  if (refsInPrompt.length === 0 && !options.fuzzy) usage('No [[refs]] found in prompt.', 'expand');
   const { status, index, metadata } = readFreshIndex(options.root);
-  let refs = refsInPrompt.map((item) => resolveReferenceCandidates(index, item.target, options));
+  const fuzzyRefs = options.fuzzy ? extractFuzzyReferences(prompt, index, { ...options, memoryConfig: readMemoryConfig(options.root), existingTargets: refsInPrompt.map((item) => item.target) }) : [];
+  let refs = [
+    ...refsInPrompt.map((item) => ({ ...resolveReferenceCandidates(index, item.target, options), source: 'explicit', raw: item.raw, label: item.label })),
+    ...fuzzyRefs.map((item) => ({ ...resolveReferenceCandidates(index, item.target, options), source: 'fuzzy', raw: item.raw, confidence: item.confidence, reasons: item.reasons })),
+  ];
   if (options.withImpact) refs = refs.map((item) => attachImpactToRef(index, item));
   const payload = { ok: status.ok, command: 'expand', root: options.root, prompt, status, metadata, refs, omitted: refs.reduce((sum, item) => sum + item.omitted, 0) };
   if (options.json) console.log(JSON.stringify(payload, null, 2));

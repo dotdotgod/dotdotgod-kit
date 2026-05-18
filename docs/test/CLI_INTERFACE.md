@@ -10,7 +10,7 @@ Verify baseline `dotdotgod` command discovery, version reporting, init/config co
 
 - Bare `dotdotgod`, `--help`, `-h`, and `help` print usage to stdout with exit `0`.
 - `--version`, `-v`, and `version` print the package version to stdout with exit `0`.
-- `validate`, `init`, `index`, `config`, `config init`, `status`, `load-snapshot`, `resolve`, `expand`, `graph`, `graph impact`, and `graph communities` expose help without running command side effects.
+- `validate`, `init`, `index`, `config`, `config init`, `status`, `load-snapshot`, `resolve`, `expand`, `graph`, `graph impact`, and `graph communities` expose help without running command side effects, and `expand --help` lists `--fuzzy`.
 - Unknown commands, removed graph subcommands such as `graph query`, and invalid options print diagnostics to stderr and exit `2`.
 - `graph impact` requires `--changed <path>` and does not create `.dotdotgod/` when the argument is missing.
 - JSON missing-argument output uses `ok: false` with `error.code: "MISSING_CHANGED"`, including when `--compact` is present.

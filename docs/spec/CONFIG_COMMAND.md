@@ -28,6 +28,7 @@ Human output summarizes:
 - markdown validation line and character budgets
 - markdown validation size-check exclude patterns
 - impact ranking preset
+- fuzzy reference expansion low-signal policy
 - config validation errors, when present
 
 JSON output includes:
@@ -54,8 +55,9 @@ The init command creates `dotdotgod.config.json` with the current built-in defau
 - `traceability`
 - `validation.markdown`
 - `impactRanking`
+- `referenceExpansion.fuzzy.lowSignal.add/remove`
 
-The generated file must validate with `dotdotgod validate`.
+The generated file must validate with `dotdotgod validate`. The generated reference-expansion section uses empty `add` and `remove` arrays; the resolved defaults remain visible in `dotdotgod config <root> --json` output.
 
 Overwrite behavior:
 

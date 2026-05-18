@@ -107,7 +107,7 @@ describe('dotdotgod CLI e2e', () => {
       [['status', 'help'], /dotdotgod status <root>/],
       [['load-snapshot', '--help'], /dotdotgod load-snapshot <root>/],
       [['resolve', '--help'], /dotdotgod resolve <root> <ref>/],
-      [['expand', '--help'], /dotdotgod expand <root> <prompt>/],
+      [['expand', '--help'], /--fuzzy/],
       [['graph', '--help'], /dotdotgod graph communities <root>/],
       [['graph', 'impact', '--help'], /dotdotgod graph impact <root> --changed <path>/],
       [['graph', 'communities', '--help'], /dotdotgod graph communities <root>/],
@@ -167,6 +167,8 @@ describe('dotdotgod CLI e2e', () => {
 
   it('resolves and expands references from the graph index', () => {
     const root = createFixture();
+    writeFileSync(join(root, 'docs/spec/VERSION.md'), '# Version Policy\n');
+    writeFileSync(join(root, 'docs/spec/ISSUE.md'), '# Issue Policy\n');
 
     const missingResolve = run(['resolve', root]);
     assert.equal(missingResolve.status, 2);
@@ -184,6 +186,26 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(expanded.refs.length, 2);
     assert.equal(expanded.refs[0].top.path, 'docs/spec/APP.md');
     assert.equal(expanded.refs[1].top.path, 'docs/arch/ROUTING_POLICY_NOTES.md');
+
+    const fuzzyExpanded = json(run(['expand', root, 'APP 수정하자', '--fuzzy', '--json']));
+    assert.equal(fuzzyExpanded.refs[0].source, 'fuzzy');
+    assert.equal(fuzzyExpanded.refs[0].top.path, 'docs/spec/APP.md');
+
+    const fuzzyEmpty = json(run(['expand', root, 'hello world', '--fuzzy', '--json']));
+    assert.equal(fuzzyEmpty.refs.length, 0);
+
+    const defaultLowSignal = json(run(['expand', root, 'Update version docs', '--fuzzy', '--json']));
+    assert.equal(defaultLowSignal.refs.length, 0);
+    writeConfig(root, { referenceExpansion: { fuzzy: { lowSignal: { add: ['issue'], remove: ['version'] } } } });
+    const removedLowSignal = json(run(['expand', root, 'Update version docs', '--fuzzy', '--json']));
+    assert.equal(removedLowSignal.refs[0].top.path, 'docs/spec/VERSION.md');
+    const addedLowSignal = json(run(['expand', root, 'Update issue docs', '--fuzzy', '--json']));
+    assert.equal(addedLowSignal.refs.length, 0);
+
+    const mixedExpanded = json(run(['expand', root, 'Update [[APP]] and routing policy notes', '--fuzzy', '--with-impact', '--json']));
+    assert.equal(mixedExpanded.refs.length >= 2, true);
+    assert.equal(mixedExpanded.refs[0].source, 'explicit');
+    assert(mixedExpanded.refs[0].impact);
 
     const missingPromptRefs = run(['expand', root, 'Update app']);
     assert.equal(missingPromptRefs.status, 2);
@@ -256,6 +278,7 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(showDefault.source, 'default');
     assert.equal(showDefault.path, null);
     assert.equal(showDefault.config.impactRanking.preset, 'balanced');
+    assert(showDefault.config.referenceExpansion.fuzzy.lowSignal.terms.includes('version'));
     assert(showDefault.config.areas.some((area) => area.id === 'active-plan'));
     assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
 
@@ -269,6 +292,7 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(initialized.validation.markdown.maxLines, 200);
     assert.equal(initialized.validation.markdown.maxChars, 10000);
     assert.deepEqual(initialized.validation.markdown.exclude, []);
+    assert.deepEqual(initialized.referenceExpansion.fuzzy.lowSignal, { add: [], remove: [] });
     assert(initialized.memory.areas.some((area) => area.id === 'archive-body' && area.includeBodiesByDefault === false));
 
     const showConfigured = json(run(['config', root, '--json']));
@@ -300,6 +324,11 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(invalidPayload.source, 'dotdotgod.config.json');
     assert(invalidPayload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_FIELD' && /Fix: update memory\.areas/.test(error.message)));
     assert(invalidPayload.errors.some((error) => error.code === 'VALIDATION_CONFIG_INVALID_MAX_LINES' && /Fix: update validation\.markdown\.maxLines/.test(error.message)));
+    const invalidReferenceRoot = createFixture();
+    writeConfig(invalidReferenceRoot, { referenceExpansion: { fuzzy: { lowSignal: { add: ['ok', ''] } } } });
+    const invalidReference = run(['config', invalidReferenceRoot, '--json']);
+    assert.equal(invalidReference.status, 1);
+    assert(JSON.parse(invalidReference.stdout).errors.some((error) => error.code === 'REFERENCE_EXPANSION_CONFIG_INVALID_LOW_SIGNAL_TERMS'));
     assert.equal(existsSync(join(invalidRoot, '.dotdotgod/manifest.json')), false);
   });
 
