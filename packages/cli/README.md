@@ -7,11 +7,11 @@ Command-line tools for dotdotgod project memory. The CLI validates the docs scaf
 - Initialize the shared agent docs and documentation scaffold with `dotdotgod init`.
 - Replace ad-hoc docs checks with `dotdotgod validate`.
 - Build `.dotdotgod/` as a local, ignored cache of file fingerprints and compact graph shards.
-- Use `load-snapshot` as the bounded first-pass map for agent loading instead of embedding every doc or archive body.
+- Use `load-snapshot` as the bounded first-pass map for agent loading.
 - Query likely side effects with grouped, bounded graph impact reports.
-- Turn dotdotgod's docs structure into retrieval priors: specs, architecture, tests, active plans, and archive maps become explicit memory-area hints instead of generic files.
+- Turn dotdotgod's docs structure into retrieval priors: specs, architecture, tests, active plans, and archive maps become explicit memory-area hints.
 - Keep product intent, design rationale, and verification standards discoverable as structured project memory for coding agents.
-- Keep indexing generic: discovery follows gitignore-visible files and supported text/source/config formats rather than assuming a pnpm monorepo.
+- Keep indexing generic: discovery follows gitignore-visible files and supported text/source/config formats across repository shapes.
 
 ## Commands
 
@@ -35,7 +35,7 @@ dotdotgod graph communities .
 
 The cache uses `.dotdotgod/manifest.json` plus compact graph shards under `.dotdotgod/graph/` so larger long-running projects do not require one giant JSON file. `status` is read-only and reports whether the cache is missing, fresh, stale, or schema-incompatible. `load-snapshot` and `graph` commands lazily refresh a missing/stale cache before producing agent-facing output and include refresh reason, elapsed timing, changed-file count, schema version, cache size, and archive inclusion policy in JSON output when available.
 
-Memory-aware graph metadata is deterministic and path-based: files under `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive/README.md` get `memoryArea`, `memoryRole`, `retrievalPriority`, and `retrieval.signals` metadata. The graph also adds `memory_area:*` nodes, `belongs_to_area` edges, and `routes_to` edges from README indexes so curated docs maps become routing hints rather than plain links only.
+Memory-aware graph metadata is deterministic and path-based: files under `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive/README.md` get `memoryArea`, `memoryRole`, `retrievalPriority`, and `retrieval.signals` metadata. The graph also adds `memory_area:*` nodes, `belongs_to_area` edges, and `routes_to` edges from README indexes so curated docs maps become routing hints.
 
 `--help`, `-h`, and `help` print usage to stdout; `--version`, `-v`, and `version` print the package version. Command-specific help is available with `dotdotgod <command> --help`, including `dotdotgod init --help` and nested commands such as `dotdotgod graph impact --help` and `dotdotgod config init --help`.
 

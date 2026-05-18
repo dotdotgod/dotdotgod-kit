@@ -53,7 +53,7 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - `.dotdotgod/` is ignored by git.
 - The cache manifest is `.dotdotgod/manifest.json`.
 - Compact graph shards live under `.dotdotgod/graph/nodes/` and `.dotdotgod/graph/edges/`.
-- Cache entries use content hashes, not only modified times, to detect stale files.
+- Cache entries use content hashes to detect stale files.
 - Cache manifests include a schema version; incompatible schemas are reported as `schema-mismatch` and rebuilt by `index` or lazy-refreshing read commands.
 - The index records whether archive bodies were included; default indexes exclude archive bodies.
 - `dotdotgod status <root>` reports `missing`, `fresh`, or `stale` from file fingerprints and schema state without rebuilding the graph.
@@ -61,7 +61,7 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - Agent-facing read commands such as `dotdotgod load-snapshot` and `dotdotgod graph ...` lazily refresh missing or stale caches before returning output.
 - `dotdotgod validate --check-index` does not refresh the cache; it reports missing, schema-mismatched, missing-file, or stale markdown fingerprints so agents can run `dotdotgod index` or a lazy-refreshing read command intentionally.
 - Lazy refresh output includes `metadata.cacheRefreshed`, refresh reason, elapsed timing, rebuild mode, changed-file count, and cache size details so callers can tell when and why a read command updated `.dotdotgod/`.
-- Completion hooks that refresh the index are optional; the default workflow relies on lazy refresh instead of mutating the cache after every task.
+- Completion hooks that refresh the index are optional; the default workflow relies on lazy refresh and avoids mutating the cache after every task.
 - Claude Code and Codex hook examples should prefer `dotdotgod status` for read-only stop-time cache reporting and `dotdotgod validate` for explicit docs validation. Hook examples that call `load-snapshot`, `graph`, `index`, or `verify:cache` must describe the cache-refresh side effect or keep those commands opt-in.
 - `pnpm run verify:cache` validates docs, runs `dotdotgod index`, and then checks `dotdotgod status`, so local verification and Husky pre-push refresh stale cache automatically before asserting freshness.
 - The Husky pre-push hook runs `verify:cache`, so it may update the ignored `.dotdotgod/` cache as a local side effect while keeping tracked source/docs changes explicit.
@@ -72,7 +72,7 @@ Current extraction covers Markdown headings/links, `json dotdotgod` traceability
 
 Graph file nodes include deterministic memory-area metadata for dotdotgod structures. Optional memory-area config can override or extend classification while zero-config behavior stays compatible. `dotdotgod config` exposes the resolved root-scoped policy, and `dotdotgod config init` materializes the built-in defaults without adding global or cascading config lookup. README links also get `routes_to` edges with `CURATED_INDEX` confidence, making README indexes routing hints without semantic embeddings.
 
-Graph storage uses compact shards instead of one large JSON file. Community summaries use `leiden-ts` over a weighted durable-node projection, with deterministic domain grouping as fallback. Impact reports use configurable ranking with curated traceability, memory policy, deterministic semantic edges, score breakdowns, and changed-file PPR. Load snapshots expose bounded quality, community, memory-area, archive-policy, and command-guidance summaries.
+Graph storage uses compact shards. Community summaries use `leiden-ts` over a weighted durable-node projection, with deterministic domain grouping as fallback. Impact reports use configurable ranking with curated traceability, memory policy, deterministic semantic edges, score breakdowns, and changed-file PPR. Load snapshots expose bounded quality, community, memory-area, archive-policy, and command-guidance summaries.
 
 ## Dependency Policy
 

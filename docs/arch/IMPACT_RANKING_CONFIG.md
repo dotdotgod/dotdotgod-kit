@@ -70,4 +70,4 @@ The feature is additive:
 
 ## Traceability Discipline
 
-Embedding similarity is intentionally absent from defaults. If embeddings are added later, they should be opt-in and should surface terminology inconsistencies for repair instead of hiding mismatched project language.
+Embedding similarity is intentionally absent from defaults. If embeddings are added later, they should be opt-in and should surface terminology inconsistencies for repair.

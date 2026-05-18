@@ -139,4 +139,4 @@ Run it manually with:
 .husky/pre-push
 ```
 
-`pnpm run verify` includes generated-resource drift checks, so the pre-push hook uses `pack:dry-run:packages` instead of the standalone `pack:dry-run` wrapper to avoid repeating that check. Direct edits to generated adapter files fail until `pnpm run generate` is run or the shared source is updated. Husky is not required for package consumers and remains a development-only workflow.
+`pnpm run verify` includes generated-resource drift checks, so the pre-push hook uses `pack:dry-run:packages` to avoid repeating that check through the standalone `pack:dry-run` wrapper. Direct edits to generated adapter files fail until `pnpm run generate` is run or the shared source is updated. Husky is not required for package consumers and remains a development-only workflow.

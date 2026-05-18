@@ -45,7 +45,7 @@ Supported patterns are intentionally small:
 - subtree patterns ending in `/**`, such as `docs/spec/**`
 - suffix patterns starting with `**/`, such as `**/README.md`, for traceability exclusions
 
-All configurable path fields are arrays. Scalar strings are validation errors rather than silently coerced values.
+All configurable path fields are arrays. Scalar strings are validation errors.
 
 The first matching area classifies a path after exclusions are applied. The default order places `archive-map` before `archive-body` so the archive README stays visible while the rest of the archive remains excluded.
 
@@ -87,7 +87,7 @@ The snapshot remains a navigation layer. It does not embed the full graph or arc
 
 ## Validation Policy
 
-Validation owns schema checks for the optional config, but it does not require projects to create a config file. Memory scope and git tracking are related but separate: local-memory defaults still require `docs/plan`, `docs/archive`, and `.dotdotgod` to be ignored, while custom memory scopes can be introduced without turning every scope decision into a gitignore rule.
+Validation owns schema checks for the optional config. Projects may omit the config file. Memory scope and git tracking are related but separate: local-memory defaults still require `docs/plan`, `docs/archive`, and `.dotdotgod` to be ignored. Custom memory scopes do not automatically create gitignore rules.
 
 The same config file can define `traceability.required` and `traceability.exclude` arrays. When absent, the default traceability policy requires `docs/spec/**` and excludes `**/README.md`. Custom required arrays replace the default list, which lets projects move behavior-traceability enforcement to other shared documentation areas while keeping the traceability block schema unchanged.
 

@@ -53,7 +53,7 @@ The result is a project load that is repeatable, bounded, and task-directed. New
 
 ## Why This Structure Is the Strength
 
-Dotdotgod's advantage is not just that it can index files. It gives the index and the agent a project-defined memory model before retrieval starts.
+Dotdotgod's advantage is its project-defined memory model. The index and the agent know the intended retrieval structure before retrieval starts.
 
 - **Meaningful nodes from structure:** `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive` become memory-area metadata that tells the agent whether a file is product truth, architecture rationale, verification knowledge, current intent, or historical memory.
 - **README indexes as routing tables:** docs indexes become curated `routes_to` edges that point agents to the right file before they scan raw source.
@@ -65,12 +65,12 @@ Dotdotgod's advantage is not just that it can index files. It gives the index an
 ## What Context Curation Improves
 
 - **Less context noise:** important constraints are not buried under chat history and repeated tool output.
-- **Better retrieval precision:** the docs structure provides path-based memory-area metadata, routing edges, and retrieval hints instead of treating every file as equally meaningful.
+- **Better retrieval precision:** the docs structure provides path-based memory-area metadata, routing edges, and retrieval hints so files carry different project meanings.
 - **Better continuity:** active plans and archived outcomes survive across sessions, compaction, and agent handoff.
 - **Fewer repeated explanations:** canonical instructions and docs become reusable project memory.
 - **Less speculative work:** agents start from specs, architecture, tests, and project rules before changing code.
 - **Safer execution:** planning happens before source changes, and execution follows explicit steps.
-- **Reusable history:** completed plans and reports become future context instead of disappearing into chat logs.
+- **Reusable history:** completed plans and reports remain available as future context.
 
 ## Current Capabilities
 
@@ -78,7 +78,7 @@ Dotdotgod's advantage is not just that it can index files. It gives the index an
 - **Read-only project load:** `/dd:load` and adapter load workflows prefer a bounded `dotdotgod load-snapshot` map before reading individual docs.
 - **Safe planning loop:** Pi Plan Mode restricts source/config mutation until a durable plan exists, tracks explicit `[DONE:n]` execution markers, and archives completed work.
 - **Unified CLI:** `@dotdotgod/cli` owns validation, cache/index/status, load snapshots, configurable memory-area summaries, graph impact queries, and community summaries.
-- **Generic indexing:** indexing is gitignore-aware rather than pnpm-monorepo-specific, with support for common plain-text docs, source, scripts, config, web, and infrastructure files.
+- **Generic indexing:** indexing is gitignore-aware and supports common plain-text docs, source, scripts, config, web, and infrastructure files across repository shapes.
 - **Bounded graph output:** full graph data stays in `.dotdotgod/`; agent-facing commands return compact summaries, omitted counts, schema/cache metadata, and archive inclusion policy.
 - **Cross-agent adapters:** Pi, Claude Code, and Codex share the same docs-first workflow while respecting each agent's native extension model.
 
@@ -91,7 +91,7 @@ Graphify-style systems can be useful when a large corpus is indexed once and que
 - **Layered memory, not one big report:** project map and bounded snapshot are the default layer; source files and archive bodies are targeted-read layers.
 - **Gitignore-aware scope:** the index follows project visibility rules and excludes dependency/generated/cache paths by default.
 - **Archive bodies excluded by default:** `docs/archive/README.md` remains the history map, while completed plan/report bodies are read only when targeted.
-- **Deterministic first pass:** current graph extraction uses local file metadata, Markdown links/headings, package metadata, imports, exports, commands, tests, and events instead of broad LLM extraction.
+- **Deterministic first pass:** current graph extraction uses local file metadata, Markdown links/headings, package metadata, imports, exports, commands, tests, and events.
 - **Token saving is not the product:** reduced context is a side effect; the goal is giving agents the right memory at the right time.
 
 Read the detailed concept docs: [Context curation](docs/concept/CONTEXT_CURATION.md), [Context mechanics](docs/concept/CONTEXT_MECHANICS.md), and [Measurement design](docs/concept/MEASUREMENT_DESIGN.md).
@@ -105,7 +105,7 @@ Read the detailed concept docs: [Context curation](docs/concept/CONTEXT_CURATION
 | [`@dotdotgod/claude-code`](packages/claude-code/README.md) | Claude Code `dd:*` commands and project memory skills. |
 | [`@dotdotgod/codex`](packages/codex/README.md) | Codex project memory skills and `dd:*` trigger phrases. |
 
-Current public package version: `0.1.13`.
+Current public package version: `0.1.14`.
 
 ## Quick Start
 
@@ -127,7 +127,7 @@ The bundled `project-initializer` skill creates or normalizes `AGENTS.md`, thin 
 npx @dotdotgod/cli init .
 ```
 
-If the CLI is not available, the initializer uses its bundled shell fallback and the README indexes still give agents a working project-memory map. That scaffold is what makes later `/dd:load` and `/plan` turns structured instead of ad-hoc.
+If the CLI is not available, the initializer uses its bundled shell fallback and the README indexes still give agents a working project-memory map. That scaffold gives later `/dd:load` and `/plan` turns a stable structure.
 
 CLI validation:
 

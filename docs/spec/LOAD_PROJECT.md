@@ -50,7 +50,7 @@ The loader prompt asks the agent to:
 - use the `load-snapshot` summary first when present, including cache status, lazy refresh metadata, graph size, bounded memory-area summaries, bounded community summaries, and archive inclusion policy
 - start with `AGENTS.md`, `README.md`, and `docs/README.md` when they are not already clear from the loaded context
 - summarize product, architecture, code conventions, infrastructure/runtime dependencies, and verification context
-- inspect docs/spec, docs/arch, and docs/test selectively instead of re-scanning every listed file unless a task needs a full refresh
+- inspect docs/spec, docs/arch, and docs/test selectively unless a task needs a full refresh
 - follow `README.md` indexes, including domain directories such as `docs/<area>/<domain>/README.md`
 - follow expanded convention directories such as `docs/arch/conventions/README.md`
 - list `docs/plan` first and read only relevant active plan files

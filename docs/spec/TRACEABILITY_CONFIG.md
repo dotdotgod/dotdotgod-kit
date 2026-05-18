@@ -29,13 +29,13 @@ Fields:
 - `required`: array of exact repository-relative paths, `/**` subtree patterns, or `**/suffix` patterns that require traceability.
 - `exclude`: optional array of exact repository-relative paths, `/**` subtree patterns, or `**/suffix` patterns removed from enforcement.
 
-All path fields are arrays. Scalar string path settings are invalid and should be repaired instead of silently coerced.
+All path fields are arrays. Scalar string path settings are invalid and validation should report them for repair.
 
 ## Behavior
 
 - If `traceability` is absent, the CLI uses the default policy: `required: ["docs/spec/**"]`, `exclude: ["**/README.md"]`.
 - If `traceability.required` is an empty array, no files require traceability. This is allowed only through explicit config.
-- Custom `required` replaces the default list instead of merging with it.
+- Custom `required` uses replacement semantics for the default list.
 - Traceability block parsing and graph extraction still work in any markdown file that contains a valid block; the config only controls which files fail validation when the block is missing or invalid.
 - Invalid config is reported by `dotdotgod validate`. Runtime commands fall back to the default policy so read-only snapshot and graph commands remain usable.
 

@@ -41,7 +41,7 @@ It also ensures `.gitignore` contains:
 ## CLI Availability Policy
 
 - Adapter initializer workflows MUST NOT require users to install `dotdotgod` before creating the baseline scaffold.
-- If `dotdotgod init` is unavailable because the CLI command is missing or not executable, adapters MUST use the bundled fallback script instead of failing initialization.
+- If `dotdotgod init` is unavailable because the CLI command is missing or not executable, adapters MUST use the bundled fallback script so initialization can continue.
 - The fallback scaffold MUST preserve the same baseline docs indexes and local-memory `.gitignore` entries so agents can navigate `AGENTS.md` and README indexes before the CLI is installed.
 - CLI-only validation, graph cache, and load-snapshot features may be added later without changing the initialized docs shape.
 
