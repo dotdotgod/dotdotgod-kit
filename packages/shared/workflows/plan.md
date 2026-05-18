@@ -26,7 +26,8 @@ Prefer live repository docs in this order:
    - Search docs by domain terms from the user request.
    - Read nearest README indexes and relevant focused docs.
    - For behavior changes, prefer specs with CLI-enforced fenced `json dotdotgod` traceability blocks in the final section; use their source, test, related-doc, and verification-command mappings before editing code.
-   - Read code only after docs identify likely module boundaries, or when docs are missing/stale.
+   - When the dotdotgod CLI is available and likely target files are known, run `dotdotgod graph impact <root> --changed <path> --compact --json` for a small bounded set of those files. Use the related specs, tests, docs, commands, scores, and reasons to strengthen target files, risks, and verification steps. If impact lookup fails or the CLI is unavailable, continue with README-index and traceability fallback evidence.
+   - Read code only after docs identify likely module boundaries, impact output points to relevant files, or docs are missing/stale.
 3. Create or update the active plan at:
 
    ```text
@@ -37,6 +38,7 @@ Prefer live repository docs in this order:
 5. Include:
    - scope and current status
    - target files and rationale
+   - impact-derived related files/checks when available
    - implementation steps
    - risks and edge cases when useful
    - verification method

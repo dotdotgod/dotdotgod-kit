@@ -326,6 +326,41 @@ export function extractPathMentions(text: string): string[] {
 	return paths;
 }
 
+function isLikelyImpactTarget(path: string): boolean {
+	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
+	if (!normalized || normalized.startsWith(".") || normalized.includes("..")) return false;
+	if (normalized.startsWith("docs/plan/") || normalized.startsWith("docs/archive/")) return false;
+	if (normalized.startsWith(".dotdotgod/") || normalized.startsWith("node_modules/") || normalized.startsWith("dist/") || normalized.startsWith("build/") || normalized.startsWith("coverage/")) return false;
+	return /[.][A-Za-z0-9]+$/.test(normalized);
+}
+
+export function selectPlanImpactPaths(
+	cwd: string,
+	latestRequest: string | undefined,
+	currentPlanPath: string | undefined,
+	currentPlanContent: string | undefined,
+	touchedPaths: readonly string[],
+	pathExists: (cwd: string, path: string) => boolean,
+	limit = 3,
+): string[] {
+	const candidates = [
+		...extractPathMentions(latestRequest ?? ""),
+		...extractPathMentions(currentPlanContent ?? ""),
+		...(currentPlanPath ? [currentPlanPath] : []),
+		...touchedPaths,
+	];
+	const selected: string[] = [];
+	const seen = new Set<string>();
+	for (const path of candidates) {
+		const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
+		if (seen.has(normalized) || !isLikelyImpactTarget(normalized) || !pathExists(cwd, normalized)) continue;
+		seen.add(normalized);
+		selected.push(normalized);
+		if (selected.length >= limit) break;
+	}
+	return selected;
+}
+
 export function selectPlanImpactPath(
 	cwd: string,
 	latestRequest: string | undefined,
@@ -333,12 +368,38 @@ export function selectPlanImpactPath(
 	touchedPaths: readonly string[],
 	pathExists: (cwd: string, path: string) => boolean,
 ): string | undefined {
-	const candidates = [
-		...extractPathMentions(latestRequest ?? ""),
-		...(currentPlanPath ? [currentPlanPath] : []),
-		...touchedPaths,
-	];
-	return candidates.find((path) => pathExists(cwd, path));
+	return selectPlanImpactPaths(cwd, latestRequest, currentPlanPath, undefined, touchedPaths, pathExists, 1)[0];
+}
+
+function impactRecord(value: unknown): Record<string, unknown> | undefined {
+	return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
+}
+
+function impactPathOf(item: Record<string, unknown>): string {
+	return String(item.path ?? item.id ?? item.name ?? item.command ?? "unknown");
+}
+
+export function formatCompactImpactSummary(changedPath: string, payload: unknown, topLimit = 5): string {
+	const data = impactRecord(payload);
+	const impact = impactRecord(data?.impact);
+	const groups = impactRecord(impact?.groups);
+	if (!data || !impact || !groups) return `- Impact: skipped or unavailable for ${changedPath}.`;
+
+	const groupCount = (name: string): number => {
+		const items = impactRecord(groups[name])?.items;
+		return Array.isArray(items) ? items.length : 0;
+	};
+	const related = Array.isArray(impact.related) ? impact.related : [];
+	const topItems = related
+		.filter((item): item is Record<string, unknown> => Boolean(impactRecord(item)) && impactPathOf(item as Record<string, unknown>) !== changedPath && impactPathOf(item as Record<string, unknown>) !== `file:${changedPath}`)
+		.slice(0, topLimit)
+		.map((item) => {
+			const score = typeof item.impactScore === "number" ? ` score=${Math.round(item.impactScore * 10) / 10}` : "";
+			const reasons = Array.isArray(item.reasons) ? item.reasons.slice(0, 3).map(String).join("+") : "";
+			return `${impactPathOf(item)}${score}${reasons ? ` reasons=${reasons}` : ""}`;
+		});
+	const top = topItems.length > 0 ? `; top=${topItems.join(" | ")}` : "";
+	return `- Impact: changed=${changedPath}; docs=${groupCount("docs")}; tests=${groupCount("tests")}; files=${groupCount("files")}; commands=${groupCount("commands")}; events=${groupCount("events")}${top}`;
 }
 
 export const DEFAULT_PLAN_MODE_TOOLS = [
@@ -412,10 +473,11 @@ Workflow:
 - Use web_search, code_search, and fetch_content when library or web evidence is needed.
 - Manage active work under docs/plan/<task-slug>/README.md, with optional UPPER_SNAKE_CASE support files in the same task directory.
 - When one docs domain grows into multiple files, group it under docs/<area>/<domain>/README.md plus supporting UPPER_SNAKE_CASE files.
-- Include scope, status, target files, risks, verification, and a final archive step to docs/archive/plan/<task-slug>/.
+- Include scope, status, target files, impact-informed related files, risks, verification, and a final archive step to docs/archive/plan/<task-slug>/.
+- When dotdotgod CLI impact summaries are available, use the related specs, tests, docs, commands, scores, and reasons to strengthen target files, verification, and risks before asking for execution.
 - Do not change product/source files in plan mode. Only maintain docs/plan or docs/archive markdown files and produce an executable plan.
 
-Always write the task README with scope, target files, implementation steps, verification, risks when useful, and archive housekeeping.
+Always write the task README with scope, target files, impact-informed related files/checks, implementation steps, verification, risks when useful, and archive housekeeping.
 
 In the final response, use a Plan: section only for concrete executable steps. Avoid generic template labels such as "Target files and rationale", "Implementation steps", or "Verification method" as numbered plan items.
 
