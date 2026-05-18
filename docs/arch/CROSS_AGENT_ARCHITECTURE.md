@@ -108,9 +108,11 @@ Codex adapter design should not depend on Pi-style command parity.
 
 ## Hook Boundaries
 
-Claude Code and Codex hooks are optional workflow accelerators, not required setup and not Pi Plan Mode parity. Adapter packages may document hook examples for session start, prompt submission, tool boundaries, and stop-time hygiene, but hooks must stay opt-in.
+Claude Code and Codex hooks are optional workflow accelerators, not required setup and not Pi Plan Mode parity. Adapter packages may document hook examples for session start, prompt submission, tool boundaries, batch-level feedback, stop-time hygiene, failure logging, and session cleanup, but hooks must stay opt-in.
 
 Default examples should be advisory or read-only. `dotdotgod status` is safe for stop-time cache reporting because it does not rebuild the cache. `dotdotgod validate . --include-local-memory --check-index` is appropriate as an explicit validation hook because it checks docs and markdown index fingerprints without refreshing the cache. `dotdotgod load-snapshot` and `dotdotgod graph ...` are useful for context and impact, but they may lazily refresh `.dotdotgod/`, so hook docs must label them as cache-aware opt-ins with possible cache-refresh side effects.
+
+Claude Code hook guidance may reference current lifecycle events such as `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolBatch`, `Stop`, `StopFailure`, and `SessionEnd` when useful. It must not present undocumented plan-mode transition hooks such as `PrePlanMode`, `PostPlanMode`, plan accept, or plan reject as available unless Claude Code officially documents them. SDLC guidance should frame hooks as optional guardrails around plan, implement, verify, review, and archive phases, with `AGENTS.md` remaining the cross-agent project brain.
 
 Blocking hooks should be narrow and project-local. A `PreToolUse` plan-safety hook should block source/config writes only when an explicit plan-only state signal exists and the hook payload has been tested. Hooks must not auto-run full workspace verification, auto-run `dotdotgod index`, auto-initialize projects, or move plans to the archive.
 

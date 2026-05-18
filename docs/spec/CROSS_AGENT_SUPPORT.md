@@ -25,7 +25,7 @@ Current adapter support.
 - Initialization: `project-initializer` skill and `/dd:init` command.
 - Project loading: `project-load` skill and `/dd:load` command.
 - Planning workflow: `doc-first-planning` skill and `/dd:plan` command.
-- Optional lifecycle hook guidance for advisory project-memory reminders, validation, and narrowly scoped plan-safety patterns.
+- Optional lifecycle hook guidance for advisory project-memory reminders, SDLC guardrails, validation, failure logging, and narrowly scoped plan-safety patterns using documented Claude Code hook events.
 - `CLAUDE.md` remains a thin project entrypoint that imports or points to `AGENTS.md`.
 
 ### Codex
@@ -67,7 +67,7 @@ Optional workflows:
 - slash commands matching `dd:*` names
 - keyboard shortcuts
 - tool filtering or permission hooks
-- lifecycle hooks for advisory load/plan reminders, validation, and narrowly scoped plan-safety checks
+- lifecycle hooks for advisory load/plan reminders, SDLC guardrails, validation, failure logging, and narrowly scoped plan-safety checks
 - project memory indexing/search
 - CLI-backed load snapshots where shell or package execution is available
 

@@ -30,7 +30,7 @@ Claude Code adapter for dotdotgod's context curation workflow. It gives Claude C
 
 Claude Code can run local lifecycle hooks from Claude settings. dotdotgod does not require hooks: `/dd:load`, `/dd:plan`, `/dd:init`, and the bundled skills work without them.
 
-Use hooks only when you want opt-in reminders or validation around the same workflow. See [`hooks/README.md`](hooks/README.md) for advisory examples and stricter plan-safety patterns.
+Use hooks only when you want opt-in reminders, validation, or local safety rails around the same SDLC loop: plan, implement, verify, review, and archive. The hook surface changes over time, so examples stay advisory, avoid unavailable plan-mode transition hooks, and rely on current lifecycle events such as `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolBatch`, `Stop`, `StopFailure`, and `SessionEnd`. See [`hooks/README.md`](hooks/README.md) for current lifecycle notes, advisory examples, and stricter plan-safety patterns.
 
 ## Local Development
 

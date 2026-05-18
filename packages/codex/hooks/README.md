@@ -68,6 +68,27 @@ Use validation hooks only by explicit opt-in. They are useful for docs-heavy ses
 
 A `UserPromptSubmit` hook can add a reminder for implementation-like prompts. Keep the command fast and non-mutating. Prefer reminders over automatic planning because `dd:plan` and the planning skill are the explicit durable workflow.
 
+For planning-like prompts, use an advisory reminder that asks Codex to identify the complete target file list and run graph impact checks for every target file before finalizing the plan:
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "plan|planning|플랜|계획",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf '%s\\n' 'dotdotgod: for planning work, identify the complete target file list, run dotdotgod graph impact . --changed <path> --compact for every target file, and use the impact output to strengthen related docs, risks, and verification steps before finalizing the plan. If target files change during implementation, update the plan and rerun impact for the added files.'",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
 ## Strict Plan Safety Pattern
 
 Strict safety belongs in a local script, not a generic package default:
