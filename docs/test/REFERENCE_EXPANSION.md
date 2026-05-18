@@ -4,7 +4,7 @@
 
 Verify `dotdotgod resolve` and `dotdotgod expand` behavior for indexed project-memory references.
 
-The feature should prove that reference expansion uses the existing dotdotgod graph/cache instead of a new repository scan, keeps output bounded, and preserves archive-body exclusion by default.
+The feature should prove that reference expansion uses the existing dotdotgod graph/cache instead of a new repository scan, keeps output bounded, and preserves archive-body exclusion by default. Explicit `[[...]]` references are the rigorous path; fuzzy expansion is only an opt-in recall helper and must not turn low-signal wording into authoritative matches.
 
 ## Automated Coverage
 
@@ -60,7 +60,7 @@ node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-in
 - JSON output includes `status` and `metadata` fields, including `cacheRefreshed`.
 - Archive plan bodies are absent unless `--include-archive` is provided.
 - Output remains bounded and reports omitted candidate counts.
-- Fuzzy output marks fuzzy refs with source/confidence metadata and returns no confident refs for low-signal prompts.
+- Fuzzy output marks fuzzy refs with source/confidence metadata, returns no confident refs for low-signal prompts, and does not change exact explicit-reference behavior.
 - Project config can add or remove fuzzy low-signal terms without changing explicit `[[...]]` expansion behavior.
 
 ## Manual Review Notes

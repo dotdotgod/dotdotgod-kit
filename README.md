@@ -3,18 +3,18 @@
 > **Change a file, know what else must be checked.**
 
 ```bash
-$ dotdotgod graph impact . --changed packages/cli/src/core.mjs --compact
+$ dotdotgod graph impact . --changed packages/cli/src/core.mjs
 ```
 
 ```text
-Related docs/tests/config:
+Impact results, abbreviated:
 - docs/spec/CONFIG_COMMAND.md
 - docs/spec/REFERENCE_EXPANSION.md
 - docs/spec/MEMORY_AREA_CONFIG.md
 - packages/cli/test/core.test.mjs
 ```
 
-`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
+`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints. Add `--compact` when an agent needs a smaller grouped summary.
 
 Dotdotgod is a context curation kit for AI coding agents. It turns specs, architecture notes, tests, commands, active plans, archives, and graph/cache metadata into bounded project memory for safer agent work.
 
@@ -22,7 +22,7 @@ It is for builders who use coding agents and still want product intent, design r
 
 Repository: <https://github.com/dotdotgod/dotdotgod>
 
-For the detailed workflow diagram, docs management rules, graph sources, and memory categories, see [Context mechanics](docs/concept/CONTEXT_MECHANICS.md) and [Context curation](docs/concept/CONTEXT_CURATION.md). For evidence-backed comparisons, see [`docs/concept/GRAPHIFY_COMPARISON.md`](docs/concept/GRAPHIFY_COMPARISON.md) and [`docs/concept/LAT_MD_COMPARISON.md`](docs/concept/LAT_MD_COMPARISON.md).
+For the detailed workflow diagram, docs management rules, graph sources, and memory categories, see [Context mechanics](docs/concept/CONTEXT_MECHANICS.md) and [Context curation](docs/concept/CONTEXT_CURATION.md). For an evidence-backed comparison, see [`docs/concept/GRAPHIFY_COMPARISON.md`](docs/concept/GRAPHIFY_COMPARISON.md).
 
 ## Core Idea
 
