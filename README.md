@@ -2,13 +2,27 @@
 
 > **Change a file, know what else must be checked.**
 
-Dotdotgod is a context curation kit for AI coding agents. It turns specs, architecture notes, tests, commands, active plans, and archives into project memory for safer agent work.
+```bash
+$ dotdotgod graph impact . --changed packages/cli/src/core.mjs --compact
+```
+
+```text
+Related docs/tests/config:
+- docs/spec/CONFIG_COMMAND.md
+- docs/spec/REFERENCE_EXPANSION.md
+- docs/spec/MEMORY_AREA_CONFIG.md
+- packages/cli/test/core.test.mjs
+```
+
+`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
+
+Dotdotgod is a context curation kit for AI coding agents. It turns specs, architecture notes, tests, commands, active plans, archives, and graph/cache metadata into bounded project memory for safer agent work.
 
 It is for builders who use coding agents and still want product intent, design rationale, verification standards, and project memory to remain clear and durable. Coding agents can help write, refine, and navigate the documents, while the project keeps a stable source of truth for what should be built, why, and how it is verified.
 
 Repository: <https://github.com/dotdotgod/dotdotgod>
 
-For evidence-backed comparisons, see [`docs/concept/GRAPHIFY_COMPARISON.md`](docs/concept/GRAPHIFY_COMPARISON.md) for Graphify-style memory and [`docs/concept/LAT_MD_COMPARISON.md`](docs/concept/LAT_MD_COMPARISON.md) for lat.md's markdown knowledge graph model.
+For the detailed workflow diagram, docs management rules, graph sources, and memory categories, see [Context mechanics](docs/concept/CONTEXT_MECHANICS.md) and [Context curation](docs/concept/CONTEXT_CURATION.md). For evidence-backed comparisons, see [`docs/concept/GRAPHIFY_COMPARISON.md`](docs/concept/GRAPHIFY_COMPARISON.md) and [`docs/concept/LAT_MD_COMPARISON.md`](docs/concept/LAT_MD_COMPARISON.md).
 
 ## Core Idea
 
@@ -105,7 +119,7 @@ Read the detailed concept docs: [Context curation](docs/concept/CONTEXT_CURATION
 | [`@dotdotgod/claude-code`](packages/claude-code/README.md) | Claude Code `dd:*` commands and project memory skills. |
 | [`@dotdotgod/codex`](packages/codex/README.md) | Codex project memory skills and `dd:*` trigger phrases. |
 
-Current public package version: `0.1.17`.
+Current public package version: `0.1.18`.
 
 ## Quick Start
 

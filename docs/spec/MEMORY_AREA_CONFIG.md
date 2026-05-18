@@ -44,7 +44,7 @@ Without config, the CLI behaves as if these areas were configured:
 - `CLAUDE.md` and `CODEX.md`: shared fresh agent entrypoints.
 - `README.md`: shared fresh project overview.
 - `docs/README.md`: shared fresh docs index.
-- `docs/spec/**`: shared fresh product specs.
+- `docs/spec/**`: shared fresh product specs. This memory classification is separate from the default traceability enforcement path, which also targets `docs/spec/**` unless `traceability` config changes it.
 - `docs/arch/**`: shared fresh architecture docs.
 - `docs/test/**`: shared fresh verification knowledge.
 - `docs/plan/**`: local fresh active-plan memory.

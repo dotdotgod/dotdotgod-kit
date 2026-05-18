@@ -43,6 +43,16 @@ JSON output includes:
 
 If the project config is invalid, `ok` is `false`, errors use the same validation shape as `dotdotgod validate`, and the displayed `config` is the default fallback policy. The command exits non-zero for invalid config, but it must not crash.
 
+## Policy Families
+
+The config command surfaces the same policy families that validation, snapshots, reference expansion, and graph impact use:
+
+- `memory.areas`: ordered path classifiers for shared/local and fresh/stale project memory.
+- `traceability.required` and `traceability.exclude`: path rules that decide which markdown files must end with a valid `json dotdotgod` block.
+- `validation.markdown`: line/character budgets and narrow size-check exclusions.
+- `impactRanking`: presets, weights, PPR, relation boosts, routing hints, and compact impact behavior.
+- `referenceExpansion.fuzzy.lowSignal`: `add`/`remove` term lists that tune low-signal fuzzy prompt matching without replacing built-in defaults.
+
 ## Init Command
 
 ```bash

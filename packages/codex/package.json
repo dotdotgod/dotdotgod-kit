@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/codex",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "Codex adapter for dotdotgod project memory workflows.",
   "type": "module",
   "license": "Elastic-2.0",
@@ -8,13 +8,17 @@
     "access": "public"
   },
   "keywords": [
-    "codex",
-    "dotdotgod",
     "agent-memory",
+    "ai-coding-agent",
+    "codex",
+    "context-curation",
     "documentation",
+    "dotdotgod",
+    "graph-impact",
+    "planning",
     "plugin",
     "project-memory",
-    "planning"
+    "traceability"
   ],
   "scripts": {
     "verify": "node -e \"const fs=require('fs'); const req=['.codex-plugin/plugin.json','skills/project-load/SKILL.md','skills/doc-first-planning/SKILL.md','skills/project-initializer/SKILL.md','skills/project-initializer/scripts/init_project.sh','hooks/README.md']; JSON.parse(fs.readFileSync('.codex-plugin/plugin.json','utf8')); for (const f of req) { if (!fs.existsSync(f)) throw new Error('missing '+f); } console.log('codex adapter ok')\"",
@@ -26,5 +30,14 @@
     "hooks",
     "README.md",
     "LICENSE"
-  ]
+  ],
+  "homepage": "https://github.com/dotdotgod/dotdotgod/tree/main/packages/codex#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dotdotgod/dotdotgod.git",
+    "directory": "packages/codex"
+  },
+  "bugs": {
+    "url": "https://github.com/dotdotgod/dotdotgod/issues"
+  }
 }
