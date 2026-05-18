@@ -16,6 +16,12 @@ Dotdot code conventions for keeping implementation simple and maintainable.
 - Review files approaching 250 lines for focused extraction by responsibility.
 - Split by behavior or responsibility, not by arbitrary layers.
 
+## Dotdotgod Impact Hotspots
+
+- Treat repeated `dotdotgod graph impact` results that collapse onto one large file as a design signal, not as normal precision.
+- Dotdotgod impact reveals mixed-responsibility hotspots; it does not replace focused module boundaries.
+- When unrelated changes keep pointing to the same source file, split the file by behavior so impact results, tests, and docs can map to narrower responsibilities.
+
 ## Extraction and Testability
 
 - Prefer extracting pure helpers when behavior can be tested without runtime dependencies.

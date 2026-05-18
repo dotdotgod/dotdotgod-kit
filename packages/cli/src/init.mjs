@@ -191,6 +191,8 @@ Dotdot code conventions for keeping implementation simple and maintainable.
 - Do not abstract code that is not reused.
 - If code grows beyond 150 lines, consider splitting or extracting focused units even when it is not reused.
 - Review files approaching 250 lines for focused extraction by responsibility.
+- Treat repeated \`dotdotgod graph impact\` results that collapse onto one large file as a design signal to split mixed responsibilities by behavior.
+- Dotdotgod impact reveals hotspots but does not replace focused module boundaries.
 - Prefer extracting pure helpers when behavior can be tested without runtime dependencies.
 - Keep runtime integration explicit and local until a stable reuse pattern appears.
 - Do not abstract reused code when the reused behavior is likely to split into separate features or flows later.
