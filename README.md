@@ -21,11 +21,11 @@ files:
 - packages/pi/extensions/plan-mode/index.ts (45; implemented_by, semantic_similarity)
 ```
 
-`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
+`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant.
 
-Dotdotgod is a context curation kit for AI coding agents. It turns specs, architecture notes, tests, commands, active plans, archives, and graph/cache metadata into bounded project memory for safer agent work.
+Dotdotgod is a project-memory system for AI coding agents. Its core idea is to make the repository's knowledge graph explicit and maintainable: specs, tests, architecture notes, README routes, traceability blocks, plans, archives, commands, and package metadata become deliberate links that agents help keep current.
 
-It is for builders who use coding agents and still want product intent, design rationale, verification standards, and project memory to remain clear and durable. Coding agents can help write, refine, and navigate the documents, while the project keeps a stable source of truth for what should be built, why, and how it is verified.
+That maintained graph powers high-quality `dotdotgod graph impact` results. The fixed docs structure gives every agent a high-signal baseline load context, so work starts from durable project truth instead of raw chat history or broad repository scans.
 
 Repository: <https://github.com/dotdotgod/dotdotgod>
 
@@ -33,14 +33,24 @@ For the detailed workflow diagram, docs management rules, graph sources, and mem
 
 ## Core Idea
 
-Agents work better from shaped project memory than from raw conversation history. dotdotgod turns scattered repo knowledge into a reusable context system that keeps product decisions reviewable while coding agents do the implementation work:
+Dotdotgod keeps agent context quality high through two maintained surfaces:
 
-- `AGENTS.md` for canonical working rules.
-- `docs/spec/` for product truth and expected behavior.
-- `docs/arch/` for engineering constraints and boundaries.
-- `docs/test/` for verification knowledge.
-- `docs/plan/` for active task intent and executable plans.
-- `docs/archive/` for completed decisions, reports, and reusable historical memory.
+1. **Explicit knowledge-graph links for impact quality.** README indexes, Markdown links, behavior traceability blocks, memory-area metadata, package metadata, commands, tests, and deterministic routing hints are maintained as project artifacts. Agents use and update those links while planning, implementing, verifying, and archiving work.
+2. **Fixed load context for baseline quality.** `AGENTS.md`, thin agent entrypoints, docs indexes, specs, architecture notes, test docs, active plans, and the archive map give every supported agent a predictable first-pass memory surface.
+
+The graph is not a giant opaque report. It is a local cache derived from explicit project files, and it points agents back to bounded docs, tests, source, commands, and package resources they can inspect. The docs structure is not just scaffolding; it is the stable load interface that keeps product intent, design rationale, verification standards, current plans, and historical outcomes in durable places.
+
+## How the Maintained Graph Stays Useful
+
+`dotdotgod graph impact` works because the repository keeps meaningful links fresh:
+
+- **Traceability blocks** connect behavior specs to source, tests, related docs, and verification commands.
+- **README indexes** act as routing tables for agents and graph extraction.
+- **Memory areas** mark files as rules, project overview, behavior truth, architecture rationale, verification knowledge, active task intent, or archive history.
+- **Plans and archives** turn current work and completed decisions into reusable project memory.
+- **Package/source/test metadata** adds deterministic edges without asking the agent to read every file.
+
+The quality target is simple: when a file changes, impact output should quickly show the docs, tests, commands, and neighboring files that deserve review. If impact results become noisy, the fix is to improve the maintained links or split mixed-responsibility files—not to dump more context into the agent.
 
 ## What Initialization Creates
 
@@ -74,19 +84,20 @@ The result is a project load that is repeatable, bounded, and task-directed. New
 
 ## Why This Structure Is the Strength
 
-Dotdotgod's advantage is its project-defined memory model. The index and the agent know the intended retrieval structure before retrieval starts.
+Dotdotgod's advantage is not that it creates folders once. The advantage is that the project keeps a small set of meaning-rich files and links maintained over time.
 
-- **Meaningful nodes from structure:** `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive` become memory-area metadata that tells the agent whether a file is product truth, architecture rationale, verification knowledge, current intent, or historical memory.
-- **README indexes as routing tables:** docs indexes become curated `routes_to` edges that point agents to the right file before they scan raw source.
-- **Active and historical memory stay separate:** `docs/plan` carries current work; `docs/archive/README.md` maps completed work without loading every old plan body.
+- **Impact context stays reviewable:** explicit links let `graph impact` explain why a spec, test, doc, command, or source file is related.
+- **Load context stays repeatable:** every agent can start from the same rules, indexes, memory areas, active plans, and archive map.
 - **Retrieval starts with intent:** behavior questions route to specs, design questions route to architecture, verification questions route to tests, current-work questions route to plans, and past-decision questions route through the archive map.
-- **Graph/cache output stays bounded:** the full graph remains local in `.dotdotgod/`; agents receive compact snapshots, memory-area summaries, omitted counts, schema/cache metadata, and archive policy.
+- **Active and historical memory stay separate:** `docs/plan` carries current work; `docs/archive/README.md` maps completed work without loading every old plan body.
+- **Graph/cache output stays bounded:** the full graph remains local in `.dotdotgod/`; agents receive compact snapshots, memory-area summaries, omitted counts, schema/cache metadata, impact groups, and archive policy.
 - **Memory policy can be explicit:** projects can keep the default shared/local and fresh/stale memory areas or define them in `dotdotgod.config.json`.
 
 ## What Context Curation Improves
 
 - **Less context noise:** important constraints are not buried under chat history and repeated tool output.
-- **Better retrieval precision:** the docs structure provides path-based memory-area metadata, routing edges, and retrieval hints so files carry different project meanings.
+- **Better impact precision:** explicit maintained links make `graph impact` point to likely docs, tests, commands, source, and config with inspectable reasons.
+- **Better load precision:** the fixed docs structure gives agents a high-signal baseline map before targeted reads.
 - **Better continuity:** active plans and archived outcomes survive across sessions, compaction, and agent handoff.
 - **Fewer repeated explanations:** canonical instructions and docs become reusable project memory.
 - **Less speculative work:** agents start from specs, architecture, tests, and project rules before changing code.

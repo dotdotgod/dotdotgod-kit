@@ -25,14 +25,14 @@ files:
 
 `graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
 
-Command-line tools for dotdotgod project memory. The CLI initializes the docs scaffold, validates project-memory docs, builds the local graph/cache, returns bounded load snapshots, expands project-memory references, and ranks likely related docs/tests/source/config for changed files.
+Command-line tools for dotdotgod project memory. The CLI turns explicit, maintained project links into a local graph/cache: README routes, Markdown links, traceability blocks, memory areas, package metadata, commands, tests, and deterministic routing hints. That maintained graph powers `graph impact`, while the initialized docs surface keeps agent load context high signal.
 
 ## Why Use It?
 
 - Initialize `AGENTS.md`, thin agent entrypoints, docs indexes, active-plan space, archive map, and local cache ignores with `dotdotgod init`.
 - Replace ad-hoc docs checks with `dotdotgod validate`.
-- Build `.dotdotgod/` as a local ignored cache of file fingerprints and compact graph shards.
-- Use `load-snapshot` as a bounded first-pass map for agent loading.
+- Build `.dotdotgod/` as a local ignored cache of file fingerprints and compact graph shards derived from maintained project links.
+- Use `load-snapshot` as a bounded first-pass map for high-quality agent loading.
 - Resolve explicit `[[...]]` references or high-signal fuzzy references before broad text search.
 - Query safe review scope for a changed file with grouped, bounded impact reports.
 - Inspect or initialize project config with `dotdotgod config` and `dotdotgod config init`.
@@ -97,4 +97,4 @@ Default exclusions include dependency, generated, cache, and secret-like paths s
 
 ## Compared with Graphify-Style Reports
 
-The CLI is not designed to make agents read a giant graph report. The full graph stays local; agent-facing output is bounded. The strength is project-declared structure before extraction: docs areas, README indexes, traceability blocks, package metadata, and memory policy tell agents which files are behavior truth, architecture rationale, verification, current intent, or historical memory before they read source.
+The CLI is not designed to make agents read a giant graph report. The full graph stays local; agent-facing output is bounded. The strength is explicit project-maintained links before extraction: docs areas, README indexes, traceability blocks, package metadata, commands, tests, and memory policy tell agents which files are behavior truth, architecture rationale, verification, current intent, or historical memory before they read source.

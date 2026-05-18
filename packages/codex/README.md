@@ -25,13 +25,14 @@ files:
 
 `graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
 
-Codex adapter for dotdotgod's context curation workflow. It packages reusable skills that help Codex initialize shared agent docs, load bounded project memory, and plan from docs before implementation.
+Codex adapter for dotdotgod's context curation workflow. It packages reusable skills that help Codex initialize the fixed load-context surface, load bounded project memory, and plan from explicit maintained graph links before implementation.
 
 ## What Gets Better?
 
 - Codex can start from `AGENTS.md` and the dotdotgod docs map.
 - Load guidance prefers `dotdotgod load-snapshot <root> --json` when the CLI is available, then falls back to README-index reads.
 - Codex can use docs structure as retrieval intent: specs for behavior, architecture for rationale, tests for verification, plans for current work, and archive indexes for past decisions.
+- Planning guidance encourages agents to keep README routes, traceability blocks, plans, and archives current so `graph impact` remains useful.
 - Planning work captures current intent in `docs/plan/<task-slug>/README.md` before implementation.
 - Completed plans and temporary reports use the same archive structure as Pi and Claude Code, turning outcomes into future context.
 - `dd:load`, `dd:plan`, and `dd:init` can be used as command-like trigger phrases where direct slash commands are unavailable.
@@ -85,4 +86,4 @@ See the [root README](../../README.md), [GitHub repository](https://github.com/d
 
 ## Compared with Graphify-Style Memory
 
-This adapter packages reusable workflow skills. It guides Codex to prefer a bounded dotdotgod load snapshot when available, avoid broad archive scans, and follow README indexes before reading raw files. The strength is structured retrieval from project-declared memory, not a giant graph report.
+This adapter packages reusable workflow skills. It guides Codex to prefer a bounded dotdotgod load snapshot when available, avoid broad archive scans, and follow README indexes before reading raw files. The strength is structured retrieval from explicit project-maintained links and the fixed docs surface, not a giant graph report.
