@@ -52,7 +52,7 @@ Allowed:
 - Plan/archive markdown updates under `docs/plan/` and `docs/archive/`: `edit`, `write`
 - Directory names under `docs/` must be kebab-case; markdown file names must be UPPER_SNAKE_CASE.md
 - Read-only bash commands: `rg`, `git status`, `git diff`, `yarn info`, `npm view`, etc.
-- Bounded dotdotgod context commands: `dotdotgod graph impact ...`, `dotdotgod expand ...`, and `dotdotgod index ...`.
+- Bounded dotdotgod context/status commands: `dotdotgod status ...`, `dotdotgod load-snapshot ...`, `dotdotgod resolve ...`, `dotdotgod expand ...`, `dotdotgod graph impact ...`, `dotdotgod graph communities ...`, `dotdotgod config ...`, and `dotdotgod index ...`.
 - Plan/archive housekeeping bash commands when every affected path stays under `docs/plan/` or `docs/archive/`: `mkdir -p docs/archive/plan`, `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`, `rm -r docs/plan/<task-slug>`
 - Web/document research: `web_search`, `code_search`, `fetch_content`, `get_search_content`
 

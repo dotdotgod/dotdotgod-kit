@@ -40,7 +40,7 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 `plan-mode` owns runtime planning behavior:
 
 - Entry points: `/plan`, `/todos`, and `Ctrl+Alt+P`.
-- Tooling: planning/execution tool switching, optional `--plan-extra-tools`, plan/archive markdown write filters, read-only bash allowlist, and one-command approval for agent-requested dotdotgod CLI commands.
+- Tooling: planning/execution tool switching, optional `--plan-extra-tools`, plan/archive markdown write filters, read-only bash allowlist, auto-allowed bounded dotdotgod context/status commands, and one-command approval for other agent-requested dotdotgod CLI commands.
 - State: mode flags, todos, active plan README, touched plan/archive paths, latest planning request, first-request context shaping, queued planning-load delivery, compaction debounce, and CLI planning-context summary with advisory impact results for likely target files.
 - UX: concise execute/stay/refine review prompt after active plan updates, without saved-plan preview rendering.
 - Context shaping: one-time planning-focused compaction/load decisions after the first planning request, plus optional validation, bounded load-snapshot refresh, and bounded multi-file `graph impact --compact --json` summaries when the CLI is available.

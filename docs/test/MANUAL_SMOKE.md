@@ -29,13 +29,14 @@ Check that the loader prompt includes a compact `Load snapshot:` section with ca
 8. In a high-context session, confirm compaction is checked after the first planning request, not immediately when `/plan` is enabled.
 9. Confirm planning compaction preserves current work, active/touched plan paths, todos, verification, pending load state, and `[DONE:n]` markers.
 10. With the CLI available, confirm first-turn context shaping adds validation, snapshot, and graph impact; without the CLI, Plan Mode continues.
-11. Confirm a queued project-memory load flushes after the active prompt without `Agent is already processing a prompt` errors.
-12. Confirm later planning turns do not automatically repeat load/compaction decisions.
-13. Confirm the first active planning turn receives the full hidden prompt, later turns receive the compact reminder, and both keep source/config mutation blocked.
-14. Confirm `--plan-extra-tools ctx_search,ctx_execute_file` adds only installed extra tools and the prompt renders the resolved tool list without contradicting allowed plan/archive markdown updates.
-15. In `/plan`, create a plan, choose execute, and confirm the follow-up names the active plan path.
-16. With extracted todos, confirm execution context includes `Active plan: docs/plan/<task-slug>/README.md`; after resume or planning compaction, `Current work focus:` preserves that path.
-17. In `/plan`, ask `Execute the plan in docs/plan/<task-slug>/README.md` for an existing active plan and confirm execution starts even if the plan file was not edited in that turn.
+11. In Plan Mode, confirm direct bounded dotdotgod context/status commands are allowed without prompting (`status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and `index`), while `init`, `config init`, unknown commands, shell chaining, redirects, pipes, command substitution, and package-runner wrappers remain blocked or require explicit approval.
+12. Confirm a queued project-memory load flushes after the active prompt without `Agent is already processing a prompt` errors.
+13. Confirm later planning turns do not automatically repeat load/compaction decisions.
+14. Confirm the first active planning turn receives the full hidden prompt, later turns receive the compact reminder, and both keep source/config mutation blocked.
+15. Confirm `--plan-extra-tools ctx_search,ctx_execute_file` adds only installed extra tools and the prompt renders the resolved tool list without contradicting allowed plan/archive markdown updates.
+16. In `/plan`, create a plan, choose execute, and confirm the follow-up names the active plan path.
+17. With extracted todos, confirm execution context includes `Active plan: docs/plan/<task-slug>/README.md`; after resume or planning compaction, `Current work focus:` preserves that path.
+18. In `/plan`, ask `Execute the plan in docs/plan/<task-slug>/README.md` for an existing active plan and confirm execution starts even if the plan file was not edited in that turn.
 
 ## Claude Code Adapter
 

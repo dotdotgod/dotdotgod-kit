@@ -94,13 +94,20 @@ describe("plan-mode command safety", () => {
 		}
 	});
 
-	it("automatically allows bounded dotdotgod context commands in Plan Mode", async () => {
+	it("automatically allows bounded dotdotgod context and status commands in Plan Mode", async () => {
 		for (const command of [
-			"dotdotgod graph impact . --changed packages/pi/index.ts --compact --json",
+			"dotdotgod status . --json",
+			"dotdotgod load-snapshot . --json",
+			"dotdotgod resolve . PLAN_MODE --json",
 			"dotdotgod expand . 'Update [[PLAN_MODE]]' --json",
+			"dotdotgod graph impact . --changed packages/pi/index.ts --compact --json",
+			"dotdotgod graph communities . --json",
+			"dotdotgod config . --json",
 			"dotdotgod index .",
+			"node packages/cli/bin/dotdotgod.mjs status . --json",
 			"node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/index.ts --compact --json",
 			"node ./packages/cli/bin/dotdotgod.mjs expand . 'Update [[PLAN_MODE]]' --json",
+			"node packages/cli/bin/dotdotgod.mjs config . --json",
 			"node packages/cli/bin/dotdotgod.mjs index .",
 		]) {
 			assert.equal(isDotdotgodCliCommand(command), true, command);
@@ -108,7 +115,15 @@ describe("plan-mode command safety", () => {
 			assert.deepEqual(await shouldAllowPlanModeBashCommand(command), { allow: true }, command);
 		}
 
-		for (const command of ["dotdotgod validate .", "dotdotgod init .", "node packages/cli/bin/dotdotgod.mjs config init ."]) {
+		for (const command of [
+			"dotdotgod validate .",
+			"dotdotgod init .",
+			"dotdotgod impact . --changed packages/pi/index.ts",
+			"dotdotgod graph query .",
+			"dotdotgod unknown .",
+			"dotdotgod config init .",
+			"node packages/cli/bin/dotdotgod.mjs config init .",
+		]) {
 			assert.equal(isDotdotgodCliCommand(command), true, command);
 			assert.equal(isAutoAllowedDotdotgodPlanModeCommand(command), false, command);
 		}
