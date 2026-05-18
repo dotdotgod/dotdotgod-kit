@@ -62,17 +62,17 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - `dotdotgod validate --check-index` does not refresh the cache; it reports missing, schema-mismatched, missing-file, or stale markdown fingerprints so agents can run `dotdotgod index` or a lazy-refreshing read command intentionally.
 - Lazy refresh output includes `metadata.cacheRefreshed`, refresh reason, elapsed timing, rebuild mode, changed-file count, and cache size details so callers can tell when and why a read command updated `.dotdotgod/`.
 - Completion hooks that refresh the index are optional; the default workflow relies on lazy refresh and avoids mutating the cache after every task.
-- Claude Code and Codex hook examples should prefer `dotdotgod status` for read-only stop-time cache reporting and `dotdotgod validate` for explicit docs validation. Hook examples that call `load-snapshot`, `graph`, `index`, or `verify:cache` must describe the cache-refresh side effect or keep those commands opt-in.
+- Claude Code and Codex hook examples should prefer `dotdotgod status` for read-only stop-time cache reporting and `dotdotgod validate . --include-local-memory --check-index` for explicit docs validation plus markdown index-fingerprint checks. Hook examples that call `load-snapshot`, `graph`, `index`, or `verify:cache` must describe the cache-refresh side effect or keep those commands opt-in.
 - `pnpm run verify:cache` validates docs, runs `dotdotgod index`, and then checks `dotdotgod status`, so local verification and Husky pre-push refresh stale cache automatically before asserting freshness.
 - The Husky pre-push hook runs `verify:cache`, so it may update the ignored `.dotdotgod/` cache as a local side effect while keeping tracked source/docs changes explicit.
 
-The index records fingerprints, cache/schema metadata, and a deterministic graph. Discovery is gitignore-aware through `git ls-files --cached --others --exclude-standard`, with a conservative directory-walk fallback. Supported files include common docs, source, script, config, web, and infrastructure formats.
+The index records fingerprints, cache/schema metadata, and a deterministic routing graph. Discovery is gitignore-aware through `git ls-files --cached --others --exclude-standard`, with a conservative directory-walk fallback. Supported files include common docs, package metadata, config, web, and infrastructure formats.
 
-Current extraction covers Markdown headings/links, `json dotdotgod` traceability blocks, package metadata/resources, TypeScript/JavaScript imports and declarations, Pi command registrations, inferred tests, and metric-event strings. Other supported text files become metadata-only file nodes until dedicated extractors exist.
+Current extraction covers Markdown headings/links, `json dotdotgod` traceability blocks, README routing links, package metadata/resources, and dotdotgod memory-area membership. Other supported text files become metadata-only file nodes until a docs/package routing rule needs them.
 
-Graph file nodes include deterministic memory-area metadata for dotdotgod structures. Optional memory-area config can override or extend classification while zero-config behavior stays compatible. `dotdotgod config` exposes the resolved root-scoped policy, and `dotdotgod config init` materializes the built-in defaults without adding global or cascading config lookup. README links also get `routes_to` edges with `CURATED_INDEX` confidence, making README indexes routing hints without semantic embeddings.
+Graph file nodes include deterministic memory-area metadata for dotdotgod structures. Optional memory-area config can override or extend classification while zero-config behavior stays compatible. `dotdotgod config` exposes the resolved root-scoped policy, and `dotdotgod config init` materializes the built-in defaults without adding global or cascading config lookup. README links also get `routes_to` edges with `CURATED_INDEX` confidence, making README indexes routing hints without embeddings.
 
-Graph storage uses compact shards. Community summaries use `leiden-ts` over a weighted durable-node projection, with deterministic domain grouping as fallback. Impact reports use configurable ranking with curated traceability, memory policy, deterministic semantic edges, score breakdowns, and changed-file PPR. Load snapshots expose bounded quality, community, memory-area, archive-policy, and command-guidance summaries.
+Graph storage uses compact shards. Community summaries use `leiden-ts` over a weighted durable-node projection, with deterministic domain grouping as fallback. Impact reports use configurable ranking with curated traceability, docs-area routing, package/resource hints, memory policy, score breakdowns, and changed-file PPR. Load snapshots expose bounded quality, community, memory-area, archive-policy, and command-guidance summaries.
 
 ## Dependency Policy
 
@@ -80,10 +80,9 @@ Validation remains dependency-free and uses Node built-ins.
 
 Future dependencies are allowed only when the extra correctness outweighs package complexity:
 
-- Tree-sitter parser packages for deterministic AST extraction.
 - `leiden-ts`: pure TypeScript Leiden community detection for bounded graph community summaries.
 - `github-slugger`: if heading anchor compatibility needs to match GitHub more exactly.
-- `remark-parse`: if markdown link parsing requires AST-level accuracy.
+- `remark-parse`: if markdown link parsing requires parser-level accuracy.
 - `markdownlint-cli`: as a companion tool, not a core dependency.
 - `lychee`: as an optional external link checker, not a bundled binary.
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Impact ranking turns `dotdotgod graph impact` into an explainable retrieval layer for changed-file work. It combines structural graph signals, curated docs traceability, deterministic semantic hints, and memory policy metadata.
+Impact ranking turns `dotdotgod graph impact` into an explainable retrieval layer for changed-file work. It combines curated docs traceability, docs-area routing, package/resource routing, and memory policy metadata.
 
 ## Config Resolution
 
@@ -13,13 +13,12 @@ Invalid config is reported by `validate`, but runtime graph commands use default
 ## Ranking Pipeline
 
 1. Build or refresh the indexed project graph.
-2. Add deterministic semantic edges from existing graph nodes.
-3. Collect direct neighbors and limited expanded neighbors from traceability and semantic relations.
-4. Compute changed-file Personalized PageRank over weighted graph edges.
-5. Score each related item with `scoreBreakdown`.
-6. Sort by selection score, keeping the changed file first while preserving each item's explainable `impactScore`.
-7. Demote pure semantic-only matches and cap low-actionability metadata nodes on the first page when actionable files/docs/tests exist.
-8. Preserve bounded grouped output and omitted counts.
+2. Collect direct neighbors and limited expanded neighbors from traceability, README routing, docs-area, package/resource, and memory-policy relations.
+3. Compute changed-file Personalized PageRank over weighted graph edges.
+4. Score each related item with `scoreBreakdown`.
+5. Sort by selection score, keeping the changed file first while preserving each item's explainable `impactScore`.
+6. Cap low-actionability metadata nodes on the first page when actionable files/docs/tests exist.
+7. Preserve bounded grouped output and omitted counts.
 
 ## Score Components
 
@@ -27,28 +26,27 @@ Invalid config is reported by `validate`, but runtime graph commands use default
 - `traceability`: curated docs links such as `implemented_by` and `verified_by`.
 - `memoryPolicy`: normalized memory-area retrieval priority.
 - `verification`: tests and verification commands.
-- `proximity`: imports, links, same-directory, shared imports, routes, commands, and events.
-- `semantic`: deterministic lexical/name/heading/symbol/command/event/package hints.
+- `proximity`: markdown links, README routes, and package/resource relationships.
+- `routing`: deterministic docs/package/memory-policy hints from configured memory areas, headings, README indexes, and package metadata.
 - `freshness`: fresh memory boost or stale memory penalty.
 - `archivePenalty`: protects historical archive bodies from default over-retrieval.
 
-## Deterministic Semantic Edges
+## Deterministic Routing Hints
 
-Semantic edges are generated without embeddings. They derive from:
+Routing hints are generated without embeddings. They derive from:
 
 - path and filename tokens
 - markdown headings and anchors
-- exported symbols and declarations
-- commands and events
 - package names, binaries, dependencies, and package resources
+- configured memory areas and README indexes
 
-Semantic edge metadata records confidence, score, matched terms, and contributing signals. These edges are lower-confidence than curated traceability and have lower relation weights.
+Routing metadata records confidence, score, matched terms, and contributing signals. These hints are lower-confidence than curated traceability and have lower relation weights.
 
-Archive bodies are excluded from semantic edge generation by default unless the project explicitly opts in.
+Archive bodies are excluded from default routing-hint generation unless the project explicitly opts in.
 
 ## PPR Policy
 
-Personalized PageRank is seeded by the changed file and runs with bounded iterations. The impact graph treats weighted edges as bidirectional for retrieval so incoming traceability can guide source-to-doc impact queries.
+Personalized PageRank is seeded by the changed file and runs with bounded iterations. The impact graph treats weighted edges as bidirectional for retrieval so incoming traceability can guide changed-file-to-doc impact queries.
 
 PPR is normalized against candidate results, not the entire graph, then capped by the configured `ppr` score weight.
 

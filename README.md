@@ -1,10 +1,10 @@
 # dotdotgod
 
-dotdotgod is a context curation kit for AI coding agents.
+> **Change a file, know what else must be checked.**
 
-It is not primarily about saving tokens. It is about giving agents the right project memory: rules, decisions, current intent, architecture, verification history, and completed work, organized so agents can continue without rediscovering the project.
+Dotdotgod is a context curation kit for AI coding agents. It turns specs, architecture notes, tests, commands, active plans, and archives into project memory for safer agent work.
 
-It is for builders who use coding agents but still want product intent, design rationale, verification standards, and project memory to remain clear and durable. Coding agents can help write, refine, and navigate the documents, but the project still needs a stable source of truth for what should be built, why, and how it is verified.
+It is for builders who use coding agents and still want product intent, design rationale, verification standards, and project memory to remain clear and durable. Coding agents can help write, refine, and navigate the documents, while the project keeps a stable source of truth for what should be built, why, and how it is verified.
 
 Repository: <https://github.com/dotdotgod/dotdotgod>
 

@@ -13,10 +13,16 @@ Use hooks only when you want opt-in reminders, lightweight validation, or local 
 ## Opt-In Levels
 
 - `advisory`: print reminders or read-only status only.
-- `validate`: run `dotdotgod validate` after docs work or at stop time.
+- `validate`: run `dotdotgod validate . --include-local-memory --check-index` after docs work or at stop time.
 - `strict-plan-safety`: add local blocking scripts only when a reliable plan-only state signal exists.
 
 Start with advisory hooks. Do not enable blocking hooks until you have tested the hook payload, Codex trust state, and your local policy script.
+
+## Review Before First Run
+
+Codex may detect a configured hook but keep it disabled until you review it. If Codex shows `1 hook needs review before it can run. Open /hooks to review it.`, open `/hooks`, inspect the command, and approve only commands you trust.
+
+After approval, trigger a small supported edit such as an `apply_patch` documentation comment change and confirm the hook status message or command output appears. If the hook was added while a Codex session was already running, restart Codex before the smoke test so the current configuration is loaded.
 
 ## Advisory `hooks.json` Example
 
@@ -51,12 +57,12 @@ matcher = "Edit|Write|apply_patch"
 
 [[hooks.PostToolUse.hooks]]
 type = "command"
-command = "sh .codex/hooks/validate-docs-if-needed.sh"
+command = "dotdotgod validate . --include-local-memory --check-index"
 timeout = 120
-statusMessage = "Checking dotdotgod docs when relevant"
+statusMessage = "Checking dotdotgod docs and index freshness"
 ```
 
-Use validation hooks only by explicit opt-in. They are useful for docs-heavy sessions but can be noisy if they run after every supported edit. Prefer a local wrapper that filters to docs-related edits or writes validation logs without returning invalid hook output.
+Use validation hooks only by explicit opt-in. They are useful for docs-heavy sessions but can be noisy if they run after every supported edit. `--check-index` compares current markdown fingerprints with `.dotdotgod/manifest.json` without refreshing the cache; if the only failure is an index freshness error, run `dotdotgod index .` or `pnpm run verify:cache` intentionally.
 
 ## Prompt Reminder Pattern
 

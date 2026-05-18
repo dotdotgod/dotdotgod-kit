@@ -1,6 +1,8 @@
 # @dotdotgod/cli
 
-Command-line tools for dotdotgod project memory. The CLI validates the docs scaffold, builds a local graph/cache, reports cache freshness, and returns bounded project-memory snapshots for agents.
+> **Change a file, know what else must be checked.**
+
+Command-line tools for dotdotgod project memory. The CLI validates the docs scaffold, builds a local graph/cache, reports cache freshness, returns bounded project-memory snapshots, and uses `graph impact` to surface the docs, tests, commands, and nearby files related to a changed file.
 
 ## Why Use It?
 
@@ -8,7 +10,7 @@ Command-line tools for dotdotgod project memory. The CLI validates the docs scaf
 - Replace ad-hoc docs checks with `dotdotgod validate`.
 - Build `.dotdotgod/` as a local, ignored cache of file fingerprints and compact graph shards.
 - Use `load-snapshot` as the bounded first-pass map for agent loading.
-- Query likely side effects with grouped, bounded graph impact reports.
+- Query the safe review scope for a changed file with grouped, bounded graph impact reports.
 - Turn dotdotgod's docs structure into retrieval priors: specs, architecture, tests, active plans, and archive maps become explicit memory-area hints.
 - Keep product intent, design rationale, and verification standards discoverable as structured project memory for coding agents.
 - Keep indexing generic: discovery follows gitignore-visible files and supported text/source/config formats across repository shapes.
@@ -31,7 +33,7 @@ dotdotgod graph impact . --changed <path> --compact
 dotdotgod graph communities .
 ```
 
-`init` creates the shared agent docs, docs indexes, local plan/archive areas, and `.gitignore` entries for local memory and `.dotdotgod/` cache files. `validate` replaces the previous standalone docs validator package. It checks docs structure, local Markdown links, CLI-enforced spec traceability blocks, and traceability target paths. With `--check-index`, it also compares current Markdown fingerprints with `.dotdotgod/manifest.json` and reports stale or missing graph index entries without refreshing the cache. `config` shows the resolved root-scoped project config without refreshing the graph cache, and `config init` writes `dotdotgod.config.json` from the built-in defaults when a project wants editable policy. Graph indexing currently extracts a deterministic first-pass graph from Markdown headings/links, README routing links, package metadata/resources, TypeScript/JavaScript imports, exports, top-level declarations, Pi command registrations, inferred tests, metric-event string literals, and dotdotgod memory-area membership. Other supported plain-text/source/config files are indexed as file metadata until dedicated extractors are added.
+`init` creates the shared agent docs, docs indexes, local plan/archive areas, and `.gitignore` entries for local memory and `.dotdotgod/` cache files. `validate` replaces the previous standalone docs validator package. It checks docs structure, local Markdown links, CLI-enforced spec traceability blocks, and traceability target paths. With `--check-index`, it also compares current Markdown fingerprints with `.dotdotgod/manifest.json` and reports stale or missing graph index entries without refreshing the cache. `config` shows the resolved root-scoped project config without refreshing the graph cache, and `config init` writes `dotdotgod.config.json` from the built-in defaults when a project wants editable policy. Graph indexing currently extracts a deterministic routing graph from Markdown headings/links, README routing links, package metadata/resources, and dotdotgod memory-area membership. Other supported plain-text/source/config files are indexed as file metadata until docs/package routing rules need them.
 
 The cache uses `.dotdotgod/manifest.json` plus compact graph shards under `.dotdotgod/graph/` so larger long-running projects do not require one giant JSON file. `status` is read-only and reports whether the cache is missing, fresh, stale, or schema-incompatible. `load-snapshot` and `graph` commands lazily refresh a missing/stale cache before producing agent-facing output and include refresh reason, elapsed timing, changed-file count, schema version, cache size, and archive inclusion policy in JSON output when available.
 
@@ -39,7 +41,7 @@ Memory-aware graph metadata is deterministic and path-based: files under `docs/s
 
 `--help`, `-h`, and `help` print usage to stdout; `--version`, `-v`, and `version` print the package version. Command-specific help is available with `dotdotgod <command> --help`, including `dotdotgod init --help` and nested commands such as `dotdotgod graph impact --help` and `dotdotgod config init --help`.
 
-`load-snapshot` returns bounded `memoryAreas` summaries alongside cache, graph, community, and archive-policy metadata. `graph impact` returns a bounded impact report grouped into files, docs, tests, commands, events, package resources, and symbols, with related nodes annotated by retrieval priority and reason-derived signals. Use `graph impact --compact` for a smaller agent-facing grouped summary; use raw `--json` for diagnostics. `graph impact` requires `--changed <path>` so impact ranking has a seed file. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
+`load-snapshot` returns bounded `memoryAreas` summaries alongside cache, graph, community, and archive-policy metadata. `graph impact` returns a bounded impact report grouped into files, docs, tests, package resources, memory areas, and deterministic routing hints, with related nodes annotated by retrieval priority and reason-derived signals. Use `graph impact --compact` for a smaller agent-facing grouped summary; use raw `--json` for diagnostics. `graph impact` requires `--changed <path>` so impact ranking has a seed file. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
 
 ## Indexing Scope
 

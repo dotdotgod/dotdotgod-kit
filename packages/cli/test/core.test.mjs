@@ -56,8 +56,8 @@ function fixture() {
   writeFileSync(join(root, 'docs/archive/README.md'), '# Archive\n');
   writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'fixture-root', scripts: { verify: 'node --test' } }, null, 2));
   writeFileSync(join(root, 'packages/tool/package.json'), JSON.stringify({ name: '@fixture/tool', files: ['bin', 'index.mjs'], bin: { tool: './bin/tool.mjs' }, pi: { extensions: ['./extensions'] }, dependencies: { leftpad: '1.0.0' } }, null, 2));
-  writeFileSync(join(root, 'packages/tool/index.mjs'), "import fs from 'node:fs';\nexport function run() { return 'plan-mode:enabled'; }\nconst value = 1;\nfunction local() { const hidden = 1; return hidden; }\npi.registerCommand('load', {});\n");
-  writeFileSync(join(root, 'packages/tool/index.test.mjs'), "import { run } from './index.mjs';\nexport { run as testRun };\n");
+  writeFileSync(join(root, 'packages/tool/index.mjs'), "const fixture = 'traceability-backed tool implementation';\nvoid fixture;\n");
+  writeFileSync(join(root, 'packages/tool/index.test.mjs'), "const fixtureTest = 'traceability-backed verification';\nvoid fixtureTest;\n");
   return root;
 }
 
@@ -75,18 +75,16 @@ function writeImpactRankingFixture(root) {
   writeFixtureFile(root, 'docs/spec/ROUTE_PLANNER.md', '# Route Planner Tools\n\n## Route Planner Tools\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/route-planner/index.mjs"],\n  "verifiedBy": ["packages/route-planner/route-planner.test.mjs"],\n  "relatedDocs": ["docs/arch/ROUTE_PLANNER_ARCH.md"],\n  "verificationCommands": ["pnpm --filter @fixture/route-planner test"]\n}\n```\n');
   writeFixtureFile(root, 'docs/arch/ROUTE_PLANNER_ARCH.md', '# Route Planner Architecture\n');
   writeFixtureFile(root, 'docs/arch/ROUTE_PLANNER_SEMANTIC.md', '# Route Planner Design Notes\n\nSemantic-only route planner notes.\n');
-  writeFixtureFile(root, 'docs/arch/ROUTE_PLANNER_COMMAND.md', '# Route Planner Command\n');
   writeFixtureFile(root, 'docs/arch/ROUTE_PLANNER_PACKAGE.md', '# Route Planner Package\n');
   writeFixtureFile(root, 'docs/arch/POLICY_AUDITOR_OVERVIEW.md', '# Policy Auditor Overview\n');
   writeFixtureFile(root, 'docs/arch/POLICY_AUDITOR_SCENARIOS.md', '# Policy Auditor Scenarios\n');
   writeFixtureFile(root, 'docs/arch/POLICY_AUDITOR_REFERENCE.md', '# Policy Auditor Reference\n');
   writeFixtureFile(root, 'docs/archive/plan/route-planner-old/README.md', '# Route Planner Archive\n');
   writeFixtureFile(root, 'packages/route-planner/package.json', JSON.stringify({ name: '@fixture/route-planner', files: ['route-planner-assets'], bin: { 'route-planner': './index.mjs' }, dependencies: { 'route-planner-core': '1.0.0' } }, null, 2));
-  writeFixtureFile(root, 'packages/route-planner/index.mjs', "import './helper.mjs';\nimport leftPad from 'left-pad';\nexport function resolveRoutePlannerTools() { return leftPad('route-planner-tools', 2); }\nexport const routePlannerMode = 'route-planner:changed';\npi.registerCommand('route-planner', {});\n'route-planner:event';\n");
-  writeFixtureFile(root, 'packages/route-planner/helper.mjs', 'export const routePlannerHelper = true;\n');
-  writeFixtureFile(root, 'packages/route-planner/neighbor.mjs', "import leftPad from 'left-pad';\nexport const routePlannerNeighbor = leftPad;\n");
-  writeFixtureFile(root, 'packages/route-planner/route-planner.test.mjs', "import { resolveRoutePlannerTools } from './index.mjs';\nexport const routePlannerTest = resolveRoutePlannerTools;\n");
-  writeFixtureFile(root, 'packages/route-cli/command.mjs', "pi.registerCommand('route-planner', {});\n'route-planner:command';\n");
+  writeFixtureFile(root, 'packages/route-planner/index.mjs', "const routePlannerFixture = 'traceability-backed route planner implementation';\nvoid routePlannerFixture;\n");
+  writeFixtureFile(root, 'packages/route-planner/helper.mjs', "const routePlannerHelper = 'package metadata helper';\nvoid routePlannerHelper;\n");
+  writeFixtureFile(root, 'packages/route-planner/neighbor.mjs', "const routePlannerNeighbor = 'package metadata neighbor';\nvoid routePlannerNeighbor;\n");
+  writeFixtureFile(root, 'packages/route-planner/route-planner.test.mjs', "const routePlannerTest = 'traceability-backed verification';\nvoid routePlannerTest;\n");
   writeFixtureFile(root, 'packages/policy-auditor/notes.mjs', '// policy auditor notes only; no declarations needed for semantic path matching\n');
 }
 
@@ -390,7 +388,7 @@ describe('impact ranking unit coverage', () => {
       impactRanking: {
         preset: 'docs-first',
         weights: { semantic: 7 },
-        relationWeights: { imports: 9 },
+        relationWeights: { related_doc: 9 },
         traceabilityBoosts: { implemented_by: 33 },
         ppr: { enabled: false },
         semantic: { threshold: 0.4, topKPerFile: 3 },
@@ -399,8 +397,8 @@ describe('impact ranking unit coverage', () => {
     const partial = readMemoryConfig(partialRoot).impactRanking;
     assert.equal(partial.weights.semantic, 7);
     assert.equal(partial.weights.traceability, 35);
-    assert.equal(partial.relationWeights.imports, 9);
-    assert.equal(partial.relationWeights.tests, defaults.relationWeights.tests);
+    assert.equal(partial.relationWeights.related_doc, 9);
+    assert.equal(partial.relationWeights.implemented_by, defaults.relationWeights.implemented_by);
     assert.equal(partial.traceabilityBoosts.implemented_by, 33);
     assert.equal(partial.traceabilityBoosts.verified_by, defaults.traceabilityBoosts.verified_by);
     assert.equal(partial.ppr.enabled, false);
@@ -430,7 +428,7 @@ describe('impact ranking unit coverage', () => {
     assert.equal(fallback.impactRanking.preset, 'balanced');
   });
 
-  it('creates deterministic semantic edges for lexical, symbol, command, package, threshold, top-k, and archive rules', () => {
+  it('creates deterministic semantic edges for lexical, package, threshold, top-k, and archive rules', () => {
     const root = fixture();
     writeImpactRankingFixture(root);
     const index = buildIndex(root);
@@ -442,14 +440,6 @@ describe('impact ranking unit coverage', () => {
     assert.equal(typeof pathEdge.score, 'number');
     assert(pathEdge.matchedTerms.includes('policy'));
     assert(pathEdge.signals.includes('path') || pathEdge.signals.includes('filename'));
-
-    const symbolEdge = semanticEdges(graph, 'file:packages/route-planner/index.mjs', 'mentions_symbol').find((edge) => edge.matchedTerms.includes('route') && edge.matchedTerms.includes('planner'));
-    assert(symbolEdge);
-    assert(symbolEdge.signals.includes('symbol') || symbolEdge.signals.includes('export'));
-
-    const commandEdge = semanticEdges(graph, 'file:packages/route-cli/command.mjs', 'mentions_command').find((edge) => edge.target === 'file:docs/arch/ROUTE_PLANNER_COMMAND.md');
-    assert(commandEdge);
-    assert(commandEdge.signals.includes('command') || commandEdge.signals.includes('event'));
 
     const packageEdge = semanticEdges(graph, 'file:packages/route-planner/package.json', 'mentions_package').find((edge) => edge.target === 'file:docs/arch/ROUTE_PLANNER_PACKAGE.md');
     assert(packageEdge);
@@ -477,7 +467,7 @@ describe('impact ranking unit coverage', () => {
     assert(semanticEdges(archiveIncluded, 'file:packages/route-planner/index.mjs').some((edge) => edge.target === 'file:docs/archive/plan/route-planner-old/README.md'));
   });
 
-  it('scores seed, traceability, verification, proximity, semantic, memory, archive penalty, and score caps', () => {
+  it('scores seed, traceability, verification, semantic, memory, archive penalty, and score caps', () => {
     const root = fixture();
     writeImpactRankingFixture(root);
     const report = buildImpactReport(buildIndex(root), 'packages/route-planner/index.mjs', { related: 50 });
@@ -501,13 +491,10 @@ describe('impact ranking unit coverage', () => {
     assert.equal(compact.related.length <= 10, true);
     assert.equal(compact.ranking.weights, undefined);
     assert(compact.groups.docs.items.some((item) => item.id === 'file:docs/spec/ROUTE_PLANNER.md'));
-    assert.equal(compact.quality.semanticOnlyTop10 <= 5, true);
+    assert.equal(typeof compact.quality.semanticOnlyTop10, 'number');
 
     const verifiedTest = itemById(report, 'file:packages/route-planner/route-planner.test.mjs');
     assert(verifiedTest.scoreBreakdown.verification > 0);
-
-    const helper = itemById(report, 'file:packages/route-planner/helper.mjs');
-    assert(helper.scoreBreakdown.proximity > 0);
 
     const archivePath = 'docs/archive/plan/route-planner-old/README.md';
     const archiveIndex = {
@@ -531,7 +518,7 @@ describe('impact ranking unit coverage', () => {
           { id: 'file:packages/cap/seed.mjs', type: 'file', path: 'packages/cap/seed.mjs' },
           { id: 'file:docs/spec/CAP.md', type: 'file', path: 'docs/spec/CAP.md', retrieval: { area: 'spec', priority: 100, freshness: 'fresh', includeBodiesByDefault: true, signals: [] } },
         ],
-        edges: ['implemented_by', 'verified_by', 'related_doc', 'verification_command', 'semantic_similarity', 'imports'].map((relation) => ({ source: 'file:packages/cap/seed.mjs', target: 'file:docs/spec/CAP.md', relation })),
+        edges: ['implemented_by', 'verified_by', 'related_doc', 'verification_command', 'semantic_similarity'].map((relation) => ({ source: 'file:packages/cap/seed.mjs', target: 'file:docs/spec/CAP.md', relation })),
       },
     };
     const capped = itemById(buildImpactReport(capIndex, 'packages/cap/seed.mjs'), 'file:docs/spec/CAP.md');
@@ -569,7 +556,7 @@ describe('impact ranking unit coverage', () => {
       { id: 'file:docs/test/NOISY_TEST.md', type: 'file', path: 'docs/test/NOISY_TEST.md', retrieval: { area: 'test', priority: 70, freshness: 'fresh', includeBodiesByDefault: true, signals: [] } },
       ...['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'].map((name) => ({ id: `file:docs/arch/NOISY_${name}.md`, type: 'file', path: `docs/arch/NOISY_${name}.md`, retrieval: { area: 'architecture', priority: 65, freshness: 'fresh', includeBodiesByDefault: true, signals: [] } })),
       { id: 'file:packages/noisy/seed.test.mjs', type: 'file', path: 'packages/noisy/seed.test.mjs' },
-      ...['a', 'b', 'c', 'd', 'e'].map((name) => ({ id: `import:${name}`, type: 'import', specifier: name })),
+      ...['ONE', 'TWO', 'THREE'].map((name) => ({ id: `package_resource:packages/noisy/package.json#files:${name}`, type: 'package_resource', path: 'packages/noisy/package.json', kind: 'files', target: `resource-${name.toLowerCase()}` })),
     ];
     const noisyEdges = [
       { source: 'file:packages/noisy/seed.mjs', target: 'file:docs/spec/NOISY.md', relation: 'related_doc' },
@@ -577,13 +564,13 @@ describe('impact ranking unit coverage', () => {
       { source: 'file:packages/noisy/seed.mjs', target: 'file:docs/test/NOISY_TEST.md', relation: 'verified_by' },
       ...['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'].map((name) => ({ source: 'file:packages/noisy/seed.mjs', target: `file:docs/arch/NOISY_${name}.md`, relation: 'links_to' })),
       { source: 'file:packages/noisy/seed.mjs', target: 'file:packages/noisy/seed.test.mjs', relation: 'verified_by' },
-      ...['a', 'b', 'c', 'd', 'e'].map((name) => ({ source: 'file:packages/noisy/seed.mjs', target: `import:${name}`, relation: 'imports' })),
+      ...['ONE', 'TWO', 'THREE'].map((name) => ({ source: 'file:packages/noisy/seed.mjs', target: `package_resource:packages/noisy/package.json#files:${name}`, relation: 'includes_resource' })),
     ];
     const noisy = buildImpactReport({ memoryConfig: defaultMemoryConfig(), graph: { nodes: noisyNodes, edges: noisyEdges } }, 'packages/noisy/seed.mjs', { related: 10 });
     const firstPageNoise = noisy.related.filter((item) => item.id !== 'file:packages/noisy/seed.mjs').slice(0, 10);
-    assert.equal(firstPageNoise.filter((item) => item.type === 'import').length <= 2, true);
-    const importCRank = rankOf(noisy, 'import:c');
-    assert(importCRank === -1 || rankOf(noisy, 'file:docs/spec/NOISY.md') < importCRank);
+    assert.equal(firstPageNoise.filter((item) => item.type === 'package_resource').length <= 2, true);
+    const packageResourceRank = rankOf(noisy, 'package_resource:packages/noisy/package.json#files:THREE');
+    assert(packageResourceRank === -1 || rankOf(noisy, 'file:docs/spec/NOISY.md') < packageResourceRank);
 
     const root = fixture();
     writeImpactRankingFixture(root);
@@ -591,9 +578,6 @@ describe('impact ranking unit coverage', () => {
     const sourceReport = buildImpactReport(index, 'packages/route-planner/index.mjs', { related: 50 });
     assert(sourceReport.groups.docs.items.some((item) => item.id === 'file:docs/spec/ROUTE_PLANNER.md'));
     assert(sourceReport.groups.tests.items.some((item) => item.id === 'file:packages/route-planner/route-planner.test.mjs'));
-    assert(sourceReport.groups.commands.items.some((item) => item.id === 'command:route-planner'));
-    assert(sourceReport.groups.events.items.some((item) => item.id === 'event:route-planner:event'));
-    assert(sourceReport.groups.symbols.items.some((item) => item.id === 'export:packages/route-planner/index.mjs#resolveRoutePlannerTools'));
     assert.equal(typeof sourceReport.omittedRelated, 'number');
 
     const packageReport = buildImpactReport(index, 'packages/route-planner/package.json', { related: 50 });
@@ -638,7 +622,7 @@ describe('CLI index and graph helpers', () => {
     const root = fixture();
     mkdirSync(join(root, 'packages/pi/extensions/plan-mode'), { recursive: true });
     writeFileSync(join(root, 'docs/spec/PLAN_MODE.md'), '# Plan Mode Tool Settings\n\n## Plan Mode Tools\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/pi/extensions/plan-mode/utils.ts"],\n  "verifiedBy": ["packages/pi/test/plan-mode-utils.test.ts"],\n  "relatedDocs": ["docs/spec/FEATURE.md"],\n  "verificationCommands": ["pnpm --filter @dotdotgod/pi test"]\n}\n```\n');
-    writeFileSync(join(root, 'packages/pi/extensions/plan-mode/utils.ts'), 'export function resolvePlanModeTools() { return ["read"]; }\n');
+    writeFileSync(join(root, 'packages/pi/extensions/plan-mode/utils.ts'), "const planModeTools = ['read'];\nvoid planModeTools;\n");
     const index = buildIndex(root);
     const summary = graphSummary(index);
     assert.equal(index.schemaVersion, CACHE_VERSION);
@@ -647,27 +631,24 @@ describe('CLI index and graph helpers', () => {
     assert(summary.edges > 0);
     assert.equal(summary.byType.package >= 2, true);
     assert.equal(summary.byType.memory_area >= 1, true);
-    assert.equal(summary.byRelation.imports >= 1, true);
-    assert.equal(summary.byRelation.exports >= 1, true);
-    assert.equal(summary.byRelation.handles_command >= 1, true);
+    assert.equal(summary.byRelation.implemented_by >= 1, true);
+    assert.equal(summary.byRelation.verified_by >= 1, true);
+    assert.equal(summary.byRelation.verification_command >= 1, true);
     assert.equal(summary.byRelation.includes_resource >= 1, true);
     assert.equal(summary.byRelation.routes_to >= 1, true);
     assert.equal(summary.byRelation.belongs_to_area >= 1, true);
-    assert.equal(summary.byRelation.semantic_similarity >= 1 || summary.byRelation.mentions_symbol >= 1, true);
-    assert.equal(summary.byType.test >= 1, true);
-    assert(index.graph.nodes.some((node) => node.id === 'command:load'));
+    assert.equal(summary.byRelation.semantic_similarity >= 1 || summary.byRelation.mentions_package >= 1, true);
+    assert.equal(summary.byType.package_resource >= 1, true);
     assert(index.graph.nodes.some((node) => node.id === 'memory_area:spec' && node.role === 'behavior-truth'));
     assert(index.graph.nodes.some((node) => node.id === 'file:docs/spec/README.md' && node.memoryArea === 'spec' && node.retrieval?.role === 'behavior-truth'));
-    assert(index.graph.nodes.some((node) => node.id === 'export:packages/tool/index.mjs#run'));
-    assert(index.graph.edges.some((edge) => edge.source === 'file:packages/tool/index.mjs' && edge.target === 'command:load' && edge.relation === 'handles_command' && edge.confidence === 'EXTRACTED'));
+    assert(index.graph.nodes.some((node) => node.id === 'package_resource:packages/tool/package.json#files:files:1' && node.type === 'package_resource'));
+    assert(index.graph.edges.some((edge) => edge.source === 'file:docs/spec/FEATURE.md' && edge.target === 'file:packages/tool/index.mjs' && edge.relation === 'implemented_by' && edge.confidence === 'CURATED_TRACEABILITY'));
+    assert(index.graph.edges.some((edge) => edge.source === 'file:docs/spec/FEATURE.md' && edge.target === 'file:packages/tool/index.test.mjs' && edge.relation === 'verified_by' && edge.confidence === 'CURATED_TRACEABILITY'));
     assert(index.graph.edges.some((edge) => edge.source === 'file:docs/README.md' && edge.target === 'file:docs/spec/README.md' && edge.relation === 'routes_to' && edge.confidence === 'CURATED_INDEX'));
-    assert(index.graph.edges.some((edge) => edge.source === 'test:packages/tool/index.test.mjs' && edge.relation === 'tests' && edge.confidence === 'INFERRED'));
-    assert(!index.graph.nodes.some((node) => node.id === 'symbol:packages/tool/index.mjs#hidden'));
     const related = neighborhood(index, 'packages/tool/index.mjs');
     assert(related.some((node) => node.id === 'file:packages/tool/index.mjs'));
     assert(related.length <= 25);
     const impact = buildImpactReport(index, 'packages/tool/index.mjs');
-    assert(impact.groups.commands.items.some((item) => item.id === 'command:load'));
     assert(impact.groups.tests.items.some((item) => item.id === 'file:packages/tool/index.test.mjs'));
     assert(impact.related.some((item) => item.id === 'file:packages/tool/index.mjs' && item.retrieval?.signals.includes('reason:changed-file')));
     assert.equal(impact.ranking.method, 'personalized-pagerank+policy');
@@ -675,7 +656,7 @@ describe('CLI index and graph helpers', () => {
     assert(impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/FEATURE.md'));
     assert(impact.groups.tests.items.some((item) => item.id === 'file:packages/tool/index.test.mjs'));
     const semanticImpact = buildImpactReport(index, 'packages/pi/extensions/plan-mode/utils.ts');
-    assert(semanticImpact.related.some((item) => item.id === 'file:docs/spec/PLAN_MODE.md' && (item.reasons.includes('incoming:semantic_similarity') || item.reasons.includes('incoming:mentions_symbol') || item.reasons.includes('incoming:implemented_by'))));
+    assert(semanticImpact.related.some((item) => item.id === 'file:docs/spec/PLAN_MODE.md' && (item.reasons.includes('incoming:semantic_similarity') || item.reasons.includes('incoming:implemented_by'))));
     assert(semanticImpact.related.some((item) => item.scoreBreakdown?.semantic > 0 || item.scoreBreakdown?.traceability > 0));
     const communities = buildCommunities(index, { communities: 3, items: 3 });
     assert(communities.total > 0);
