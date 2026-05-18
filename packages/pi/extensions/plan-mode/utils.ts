@@ -204,7 +204,7 @@ export function getDotdotgodCliArgs(command: string): string[] | undefined {
 	if (program !== "node" || !script || script.startsWith("-")) return undefined;
 
 	const normalizedScript = script.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
-	return normalizedScript === "packages/cli/bin/dotdotgod.mjs" ? rest : undefined;
+	return normalizedScript === "packages/cli/bin/dotdotgod.mjs" || normalizedScript.endsWith("/packages/cli/bin/dotdotgod.mjs") ? rest : undefined;
 }
 
 export function isDotdotgodCliCommand(command: string): boolean {
@@ -216,6 +216,7 @@ export function isAutoAllowedDotdotgodPlanModeCommand(command: string): boolean 
 	if (!args || args.length === 0) return false;
 	const commandName = args[0];
 	const subcommand = args[1];
+	if (["--help", "-h", "--version", "-v", "help", "version"].includes(commandName ?? "")) return true;
 	if (["status", "load-snapshot", "resolve", "expand", "index"].includes(commandName ?? "")) return true;
 	if (commandName === "config") return subcommand !== "init";
 	if (commandName === "graph") return subcommand === "impact" || subcommand === "communities";

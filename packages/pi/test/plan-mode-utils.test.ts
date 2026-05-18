@@ -76,6 +76,7 @@ describe("plan-mode command safety", () => {
 			"dotdotgod validate .",
 			"node packages/cli/bin/dotdotgod.mjs validate .",
 			"node ./packages/cli/bin/dotdotgod.mjs validate .",
+			"node /Users/example/work/dotdotgod-kit/packages/cli/bin/dotdotgod.mjs validate .",
 		]) {
 			assert.equal(isDotdotgodCliCommand(command), true, command);
 			assert.equal(isSafeCommand(command), false, command);
@@ -96,6 +97,8 @@ describe("plan-mode command safety", () => {
 
 	it("automatically allows bounded dotdotgod context and status commands in Plan Mode", async () => {
 		for (const command of [
+			"dotdotgod --version",
+			"dotdotgod --help",
 			"dotdotgod status . --json",
 			"dotdotgod load-snapshot . --json",
 			"dotdotgod resolve . PLAN_MODE --json",
@@ -104,8 +107,10 @@ describe("plan-mode command safety", () => {
 			"dotdotgod graph communities . --json",
 			"dotdotgod config . --json",
 			"dotdotgod index .",
+			"node packages/cli/bin/dotdotgod.mjs --version",
 			"node packages/cli/bin/dotdotgod.mjs status . --json",
 			"node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/index.ts --compact --json",
+			"node /Users/example/work/dotdotgod-kit/packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/index.ts --compact --json",
 			"node ./packages/cli/bin/dotdotgod.mjs expand . 'Update [[PLAN_MODE]]' --json",
 			"node packages/cli/bin/dotdotgod.mjs config . --json",
 			"node packages/cli/bin/dotdotgod.mjs index .",
