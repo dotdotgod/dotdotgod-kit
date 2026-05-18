@@ -44,6 +44,12 @@ Create dotdotgod.config.json with the built-in default memory, traceability, val
     case 'load-snapshot':
       return `Usage:
   dotdotgod load-snapshot <root> [--json]`;
+    case 'resolve':
+      return `Usage:
+  dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]`;
+    case 'expand':
+      return `Usage:
+  dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--json]`;
     case 'graph':
       return `Usage:
   dotdotgod graph impact <root> --changed <path> [--compact] [--json]
@@ -68,6 +74,8 @@ Ranks nodes related to a changed file. <root> is the project root; --changed is 
   dotdotgod config init <root> [--force] [--json]
   dotdotgod status <root> [--json]
   dotdotgod load-snapshot <root> [--json]
+  dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]
+  dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--json]
   dotdotgod graph impact <root> --changed <path> [--compact] [--json]
   dotdotgod graph communities <root> [--json]`;
   }
@@ -2074,6 +2082,193 @@ export function runLoadSnapshot(argv) {
   else console.log(`dotdotgod load snapshot\n- cache: ${status.status}${metadata.cacheRefreshed ? ' (refreshed)' : ''}\n- indexed files: ${status.indexedFiles}\n- current files: ${status.currentFiles}\n- archive bodies included: ${status.archiveBodiesIncluded ? 'yes' : 'no'}\n- graph: ${summary.nodes} nodes, ${summary.edges} edges\n- memory areas: ${memoryAreas.areas.length}/${memoryAreas.total} shown\n- communities: ${communities.communities.length}/${communities.total} shown, ${communities.omitted} omitted`);
 }
 
+const DEFAULT_REFERENCE_LIMIT = 5;
+
+export function extractBracketReferences(prompt = '') {
+  const refs = [];
+  const seen = new Set();
+  for (const match of String(prompt).matchAll(/\[\[([^\]]+)\]\]/g)) {
+    const raw = match[1].trim();
+    if (!raw) continue;
+    const target = raw.split('|')[0].trim();
+    if (!target || seen.has(target)) continue;
+    seen.add(target);
+    refs.push({ raw: match[0], target, label: raw.includes('|') ? raw.split('|').slice(1).join('|').trim() : undefined });
+  }
+  return refs;
+}
+
+export function normalizeReferenceAlias(value = '') {
+  return String(value)
+    .trim()
+    .replace(/^\[\[/, '')
+    .replace(/\]\]$/, '')
+    .split('|')[0]
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/\.md$/i, '')
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '')
+    .replace(/[^a-z0-9/#.]/g, '');
+}
+
+function referencePathForNode(node) {
+  if (node?.path) return node.path;
+  if (typeof node?.id === 'string' && node.id.startsWith('file:')) return node.id.slice(5);
+  if (typeof node?.id === 'string' && node.id.startsWith('heading:')) return node.id.slice(8).split('#')[0];
+  return '';
+}
+
+function isArchiveBodyPath(path = '') {
+  return path.startsWith('docs/archive/') && path !== 'docs/archive/README.md';
+}
+
+function aliasEntriesForPath(path = '') {
+  const entries = [];
+  const base = basename(path);
+  const ext = extname(base);
+  const stem = ext ? base.slice(0, -ext.length) : base;
+  const withoutMd = path.replace(/\.md$/i, '');
+  const parts = withoutMd.split('/').filter(Boolean);
+  for (let i = 0; i < parts.length; i += 1) entries.push({ alias: parts.slice(i).join('/'), kind: 'path-suffix' });
+  if (base === 'README.md') {
+    const dir = dirname(path).replace(/\\/g, '/');
+    entries.push({ alias: basename(dir), kind: 'path' });
+  }
+  for (const alias of [path, withoutMd, base, stem]) entries.push({ alias, kind: 'path' });
+  return entries.filter((entry) => entry.alias);
+}
+
+function referenceCandidateAliases(node) {
+  const path = referencePathForNode(node);
+  const entries = [];
+  if (node.type === 'file' && path) entries.push(...aliasEntriesForPath(path));
+  if (node.type === 'heading') {
+    const fileStem = path ? basename(path, extname(path)) : '';
+    const anchor = typeof node.id === 'string' && node.id.includes('#') ? node.id.split('#').pop() : '';
+    for (const alias of [node.title, anchor, fileStem && node.title ? `${fileStem}#${node.title}` : '', fileStem && anchor ? `${fileStem}#${anchor}` : '', path && node.title ? `${path}#${node.title}` : '', path && anchor ? `${path}#${anchor}` : '']) entries.push({ alias, kind: 'heading' });
+  }
+  return entries.filter((entry) => entry.alias);
+}
+
+function incomingRouteBonus(graph, nodeId) {
+  return graph.edges.some((edge) => edge.target === nodeId && edge.relation === 'routes_to') ? 6 : 0;
+}
+
+function exactReferenceScore(ref, alias, kind) {
+  const rawRef = String(ref).trim().replace(/^\[\[/, '').replace(/\]\]$/, '').split('|')[0].trim().replace(/\\/g, '/').replace(/^\.\//, '');
+  const rawAlias = String(alias).trim().replace(/\\/g, '/').replace(/^\.\//, '');
+  if (rawRef === rawAlias) return kind === 'heading' ? 92 : 110;
+  if (rawRef.toLowerCase() === rawAlias.toLowerCase()) return kind === 'heading' ? 88 : 105;
+  return 0;
+}
+
+export function resolveReferenceCandidates(index, ref, options = {}) {
+  const graph = index?.graph ?? { nodes: [], edges: [] };
+  const includeArchive = options.includeArchive === true;
+  const limit = Number.isFinite(options.maxResults) ? options.maxResults : DEFAULT_REFERENCE_LIMIT;
+  const query = String(ref ?? '').trim().replace(/^\[\[/, '').replace(/\]\]$/, '').split('|')[0].trim();
+  const normalized = normalizeReferenceAlias(query);
+  const byId = new Map();
+  for (const node of graph.nodes ?? []) {
+    if (!['file', 'heading'].includes(node.type)) continue;
+    const path = referencePathForNode(node);
+    if (!includeArchive && isArchiveBodyPath(path)) continue;
+    let best = null;
+    for (const entry of referenceCandidateAliases(node)) {
+      const aliasKey = normalizeReferenceAlias(entry.alias);
+      if (!aliasKey) continue;
+      let score = exactReferenceScore(query, entry.alias, entry.kind);
+      if (aliasKey === normalized) score = Math.max(score, entry.kind === 'heading' ? 86 : 96);
+      else if (aliasKey.endsWith(normalized) && normalized.length >= 4) score = Math.max(score, entry.kind === 'heading' ? 62 : 70);
+      if (score <= 0) continue;
+      if (!best || score > best.score) best = { score, alias: entry.alias, aliasKind: entry.kind };
+    }
+    if (!best) continue;
+    const retrievalPriority = Number(node.retrievalPriority ?? node.retrieval?.priority ?? 30);
+    const routeBonus = incomingRouteBonus(graph, node.id);
+    const memoryBonus = Math.min(12, Math.max(0, retrievalPriority / 10));
+    const headingBonus = node.type === 'heading' ? 2 : 0;
+    const score = Number((best.score + routeBonus + memoryBonus + headingBonus).toFixed(1));
+    const reasons = [best.aliasKind === 'heading' ? 'heading_alias' : 'path_alias'];
+    if (routeBonus) reasons.push('readme_routed');
+    if (memoryBonus) reasons.push('memory_priority');
+    const candidate = { id: node.id, type: node.type, path, title: node.title, score, matchedAlias: best.alias, reasons, retrieval: node.retrieval, memoryArea: node.memoryArea };
+    const previous = byId.get(node.id);
+    if (!previous || candidate.score > previous.score) byId.set(node.id, candidate);
+  }
+  const candidates = [...byId.values()].sort((a, b) => b.score - a.score || a.path.localeCompare(b.path) || a.id.localeCompare(b.id));
+  const shown = candidates.slice(0, limit);
+  return { input: ref, query, normalized, candidates: shown, top: shown[0] ?? null, ambiguous: shown.length > 1 && shown[0].score - shown[1].score < 5, omitted: Math.max(0, candidates.length - shown.length) };
+}
+
+function parseReferenceOptions(argv, command) {
+  const filtered = [];
+  const options = { maxResults: DEFAULT_REFERENCE_LIMIT, includeArchive: false, withImpact: false };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--max-results') {
+      const next = argv[i + 1];
+      if (!next || next.startsWith('-') || Number.isNaN(Number.parseInt(next, 10))) usage('Missing or invalid value for --max-results.', command);
+      options.maxResults = Math.max(1, Number.parseInt(next, 10));
+      i += 1;
+    } else if (arg === '--include-archive') options.includeArchive = true;
+    else if (arg === '--with-impact') options.withImpact = true;
+    else if (arg === '--json') filtered.push(arg);
+    else if (arg.startsWith('-')) usage(`Unknown option: ${arg}`, command);
+    else filtered.push(arg);
+  }
+  const operands = filtered.filter((arg) => !arg.startsWith('-'));
+  return { ...options, root: resolve(operands[0] ?? '.'), json: filtered.includes('--json'), rootArgv: operands.slice(1) };
+}
+
+function attachImpactToRef(index, refResult) {
+  const topPath = refResult.top?.path;
+  if (!topPath) return refResult;
+  const impact = buildCompactImpactReport(buildImpactReport(index, topPath));
+  return { ...refResult, impact: { changed: topPath, related: impact.related, groups: impact.groups, omittedRelated: impact.omittedRelated, quality: impact.quality } };
+}
+
+function formatReferenceOutput(payload) {
+  const refreshNote = payload.metadata.cacheRefreshed ? ', refreshed' : '';
+  const lines = [`${payload.command}: ${payload.refs.length} reference(s) (${payload.status.status}${refreshNote} index)`];
+  for (const ref of payload.refs) {
+    const marker = ref.ambiguous ? ' ambiguous' : '';
+    lines.push(`- ${ref.query || ref.input}:${marker} ${ref.candidates.length} candidate(s), ${ref.omitted} omitted`);
+    for (const candidate of ref.candidates) {
+      const title = candidate.title ? `#${candidate.title}` : '';
+      lines.push(`  - ${candidate.path}${title} (${candidate.score}; ${candidate.reasons.join(', ')})`);
+    }
+  }
+  return lines.join('\n');
+}
+
+export function runResolve(argv) {
+  const options = parseReferenceOptions(argv, 'resolve');
+  const ref = options.rootArgv?.join(' ');
+  if (!ref) usage('Missing required argument: <ref>.', 'resolve');
+  const { status, index, metadata } = readFreshIndex(options.root);
+  const refs = [resolveReferenceCandidates(index, ref, options)];
+  const payload = { ok: status.ok, command: 'resolve', root: options.root, status, metadata, refs, omitted: refs.reduce((sum, item) => sum + item.omitted, 0) };
+  if (options.json) console.log(JSON.stringify(payload, null, 2));
+  else console.log(formatReferenceOutput(payload));
+}
+
+export function runExpand(argv) {
+  const options = parseReferenceOptions(argv, 'expand');
+  const prompt = options.rootArgv?.join(' ');
+  if (!prompt) usage('Missing required argument: <prompt>.', 'expand');
+  const refsInPrompt = extractBracketReferences(prompt);
+  if (refsInPrompt.length === 0) usage('No [[refs]] found in prompt.', 'expand');
+  const { status, index, metadata } = readFreshIndex(options.root);
+  let refs = refsInPrompt.map((item) => resolveReferenceCandidates(index, item.target, options));
+  if (options.withImpact) refs = refs.map((item) => attachImpactToRef(index, item));
+  const payload = { ok: status.ok, command: 'expand', root: options.root, prompt, status, metadata, refs, omitted: refs.reduce((sum, item) => sum + item.omitted, 0) };
+  if (options.json) console.log(JSON.stringify(payload, null, 2));
+  else console.log(formatReferenceOutput(payload));
+}
+
 export function parseGraphOptions(argv) {
   const filtered = [];
   let changed;
@@ -2132,6 +2327,8 @@ export function runCli(argv = process.argv.slice(2)) {
   else if (command === 'config') runConfig(args);
   else if (command === 'status') runStatus(args);
   else if (command === 'load-snapshot') runLoadSnapshot(args);
+  else if (command === 'resolve') runResolve(args);
+  else if (command === 'expand') runExpand(args);
   else if (command === 'graph') runGraph(args);
   else usage(`Unknown command: ${command}`);
 }

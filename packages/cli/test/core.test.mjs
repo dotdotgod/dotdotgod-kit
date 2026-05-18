@@ -20,6 +20,7 @@ import {
   detectCommandGuidance,
   detectPackageManager,
   extractAnchors,
+  extractBracketReferences,
   extractDotdotgodTraceabilityBlocks,
   extractLinks,
   graphSummary,
@@ -30,7 +31,9 @@ import {
   memoryAreaForPath,
   memoryRoleForPath,
   neighborhood,
+  normalizeReferenceAlias,
   readMemoryConfig,
+  resolveReferenceCandidates,
   requiresTraceability,
   retrievalPriorityForPath,
   shouldIndexPath,
@@ -137,6 +140,50 @@ describe('CLI docs helpers', () => {
     assert.equal(headingToAnchor('Hello `World`!'), 'hello-world');
     assert.deepEqual([...extractAnchors(md)], ['hello-world', 'hello-world-1']);
     assert.deepEqual(extractLinks(md), [{ href: 'docs/README.md#hello-world', line: 2 }]);
+  });
+
+  it('extracts prompt references and normalizes aliases', () => {
+    assert.deepEqual(extractBracketReferences('Update [[PLAN_MODE]] and [[HOOKS|hook docs]]'), [
+      { raw: '[[PLAN_MODE]]', target: 'PLAN_MODE', label: undefined },
+      { raw: '[[HOOKS|hook docs]]', target: 'HOOKS', label: 'hook docs' },
+    ]);
+    assert.equal(normalizeReferenceAlias('Plan Mode.md'), normalizeReferenceAlias('PLAN_MODE'));
+    assert.equal(normalizeReferenceAlias('docs/spec/PLAN_MODE.md'), 'docs/spec/planmode');
+  });
+
+  it('resolves references from indexed graph nodes with archive exclusion', () => {
+    const root = fixture();
+    writeFixtureFile(root, 'docs/spec/PLAN_MODE.md', '# Plan Mode\n\n## Tool Settings\n');
+    writeFixtureFile(root, 'docs/archive/plan/plan-mode-old/README.md', '# Plan Mode Archive\n');
+    const index = buildIndex(root);
+    index.graph.nodes.push({ id: 'file:docs/archive/plan/plan-mode-old/README.md', type: 'file', path: 'docs/archive/plan/plan-mode-old/README.md', retrievalPriority: 20 });
+
+    const planMode = resolveReferenceCandidates(index, 'PLAN_MODE');
+    assert.equal(planMode.top.path, 'docs/spec/PLAN_MODE.md');
+    assert(planMode.top.score > 90);
+    assert(planMode.top.reasons.includes('memory_priority'));
+
+    const heading = resolveReferenceCandidates(index, 'PLAN_MODE#Tool Settings');
+    assert.equal(heading.top.type, 'heading');
+    assert.equal(heading.top.path, 'docs/spec/PLAN_MODE.md');
+
+    const withoutArchive = resolveReferenceCandidates(index, 'plan mode old');
+    assert.equal(withoutArchive.candidates.some((item) => item.path.startsWith('docs/archive/plan/')), false);
+
+    const withArchive = resolveReferenceCandidates(index, 'plan mode old', { includeArchive: true });
+    assert.equal(withArchive.candidates.some((item) => item.path.startsWith('docs/archive/plan/')), true);
+  });
+
+  it('marks close reference matches as ambiguous and bounds results', () => {
+    const root = fixture();
+    writeFixtureFile(root, 'docs/spec/HOOKS.md', '# Hooks\n');
+    writeFixtureFile(root, 'docs/test/HOOKS.md', '# Hooks\n');
+    const index = buildIndex(root);
+    const result = resolveReferenceCandidates(index, 'HOOKS', { maxResults: 1 });
+    assert.equal(result.candidates.length, 1);
+    assert(result.omitted >= 1);
+    const ambiguous = resolveReferenceCandidates(index, 'HOOKS', { maxResults: 5 });
+    assert.equal(ambiguous.ambiguous, true);
   });
 
   it('extracts and validates dotdotgod traceability blocks', () => {
@@ -344,6 +391,21 @@ describe('CLI docs helpers', () => {
     assert.doesNotMatch([...fencedBlocks(codexHooks, 'json'), ...fencedBlocks(codexHooks, 'toml')].join('\n'), /dotdotgod status \. --json/);
     assert.match(codexHooks, /Codex stop hooks need Codex-compatible hook output/);
     assert.match(codexHooks, /cache-aware/);
+    assert.match(codexHooks, /UserPromptSubmit/);
+    assert.match(codexHooks, /dotdotgod graph impact \. --changed <path> --compact/);
+    assert.match(codexHooks, /complete target file list/);
+    assert.match(codexHooks, /every target file/);
+    assert.match(claudeHooks, /UserPromptSubmit` does not support matchers/);
+    assert.match(claudeHooks, /submitted `prompt` field/);
+    assert.match(claudeHooks, /dotdotgod graph impact \. --changed <path> --compact/);
+    assert.match(claudeHooks, /every target file/);
+    assert.match(claudeHooks, /PostToolBatch/);
+    assert.match(claudeHooks, /StopFailure/);
+    assert.match(claudeHooks, /SessionEnd/);
+    assert.match(claudeHooks, /Plan:[\s\S]*Implement:[\s\S]*Verify:[\s\S]*Review:[\s\S]*Archive:/);
+    assert.match(claudeHooks, /\"args\": \[\"\$\{CLAUDE_PROJECT_DIR\}/);
+    assert.doesNotMatch(claudeHooks, /\"PrePlanMode\"/);
+    assert.doesNotMatch(claudeHooks, /\"PostPlanMode\"/);
     assert.match(claudeHooks, /explicitly in plan-only mode/);
     assert.match(codexHooks, /explicitly in plan-only mode/);
   });

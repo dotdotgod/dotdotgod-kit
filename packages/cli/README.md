@@ -28,6 +28,8 @@ dotdotgod config init .
 dotdotgod status .
 dotdotgod index .
 dotdotgod load-snapshot .
+dotdotgod resolve . PLAN_MODE
+dotdotgod expand . "Update [[PLAN_MODE]] and [[HOOKS]]"
 dotdotgod graph impact . --changed <path>
 dotdotgod graph impact . --changed <path> --compact
 dotdotgod graph communities .
@@ -39,9 +41,9 @@ The cache uses `.dotdotgod/manifest.json` plus compact graph shards under `.dotd
 
 Memory-aware graph metadata is deterministic and path-based: files under `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive/README.md` get `memoryArea`, `memoryRole`, `retrievalPriority`, and `retrieval.signals` metadata. The graph also adds `memory_area:*` nodes, `belongs_to_area` edges, and `routes_to` edges from README indexes so curated docs maps become routing hints.
 
-`--help`, `-h`, and `help` print usage to stdout; `--version`, `-v`, and `version` print the package version. Command-specific help is available with `dotdotgod <command> --help`, including `dotdotgod init --help` and nested commands such as `dotdotgod graph impact --help` and `dotdotgod config init --help`.
+`--help`, `-h`, and `help` print usage to stdout; `--version`, `-v`, and `version` print the package version. Command-specific help is available with `dotdotgod <command> --help`, including `dotdotgod init --help`, `dotdotgod resolve --help`, `dotdotgod expand --help`, and nested commands such as `dotdotgod graph impact --help` and `dotdotgod config init --help`.
 
-`load-snapshot` returns bounded `memoryAreas` summaries alongside cache, graph, community, and archive-policy metadata. `graph impact` returns a bounded impact report grouped into files, docs, tests, package resources, memory areas, and deterministic routing hints, with related nodes annotated by retrieval priority and reason-derived signals. Use `graph impact --compact` for a smaller agent-facing grouped summary; use raw `--json` for diagnostics. `graph impact` requires `--changed <path>` so impact ranking has a seed file. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
+`load-snapshot` returns bounded `memoryAreas` summaries alongside cache, graph, community, and archive-policy metadata. `resolve` resolves a single project-memory reference from the existing graph index, so names such as `PLAN_MODE` or `docs/spec/PLAN_MODE.md` can map to ranked docs, heading, and file candidates without a new full-repository grep pass. `expand` scans prompt text for `[[refs]]`, resolves each target, and can include compact impact context with `--with-impact`. Both commands lazily refresh missing or stale cache data like other graph-backed read commands and exclude archive bodies by default unless `--include-archive` is passed. `graph impact` returns a bounded impact report grouped into files, docs, tests, package resources, memory areas, and deterministic routing hints, with related nodes annotated by retrieval priority and reason-derived signals. Use `graph impact --compact` for a smaller agent-facing grouped summary; use raw `--json` for diagnostics. `graph impact` requires `--changed <path>` so impact ranking has a seed file. `graph communities` projects durable graph nodes into weighted edges and runs Leiden community detection through `leiden-ts` with a deterministic fallback to domain grouping for tiny or invalid graphs.
 
 ## Indexing Scope
 

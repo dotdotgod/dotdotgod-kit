@@ -68,7 +68,7 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 
 The index records fingerprints, cache/schema metadata, and a deterministic routing graph. Discovery is gitignore-aware through `git ls-files --cached --others --exclude-standard`, with a conservative directory-walk fallback. Supported files include common docs, package metadata, config, web, and infrastructure formats.
 
-Current extraction covers Markdown headings/links, `json dotdotgod` traceability blocks, README routing links, package metadata/resources, and dotdotgod memory-area membership. Other supported text files become metadata-only file nodes until a docs/package routing rule needs them.
+Current extraction covers Markdown headings/links, `json dotdotgod` traceability blocks, README routing links, package metadata/resources, and dotdotgod memory-area membership. Reference expansion reuses those indexed graph nodes and edges to resolve prompt-time refs such as `[[PLAN_MODE]]` without a new full-repository grep pass. Other supported text files become metadata-only file nodes until a docs/package routing rule needs them.
 
 Graph file nodes include deterministic memory-area metadata for dotdotgod structures. Optional memory-area config can override or extend classification while zero-config behavior stays compatible. `dotdotgod config` exposes the resolved root-scoped policy, and `dotdotgod config init` materializes the built-in defaults without adding global or cascading config lookup. README links also get `routes_to` edges with `CURATED_INDEX` confidence, making README indexes routing hints without embeddings.
 
