@@ -18,7 +18,7 @@ The CLI looks for one optional JSON config file at the project root:
 1. `dotdotgod.config.json`
 2. `.dotdotgodrc.json`
 
-If neither file exists, the CLI uses its built-in defaults. The zero-config default must remain compatible with the existing docs scaffold. Use `dotdotgod config <root>` to inspect the resolved policy, or `dotdotgod config init <root>` to materialize the defaults as `dotdotgod.config.json` for a project.
+If neither file exists, the CLI uses its built-in defaults. The zero-config default must remain compatible with the existing docs scaffold. Use `dotdotgod config <root>` to inspect the resolved policy, or `dotdotgod config init <root>` to materialize the defaults as `dotdotgod.config.json` for a project. The same project-level config also carries related CLI policies such as fuzzy reference-expansion low-signal `add`/`remove` terms.
 
 ## Memory Area Fields
 
@@ -71,6 +71,7 @@ Archive bodies under `docs/archive/**` are stale local memory and remain exclude
 - non-integer or out-of-range `priority`
 - non-boolean `includeBodiesByDefault`
 - exact duplicate path patterns that are not excluded by the later area
+- malformed `referenceExpansion.fuzzy.lowSignal.add` or `remove` arrays
 
 Invalid memory config does not make the CLI crash. Runtime commands fall back to the default memory config while validation reports repairable errors.
 
@@ -78,7 +79,7 @@ Invalid memory config does not make the CLI crash. Runtime commands fall back to
 
 `dotdotgod load-snapshot <root> --json` includes:
 
-- `memoryConfig`: the resolved source, memory-area definitions, and traceability path policy.
+- `memoryConfig`: the resolved source, memory-area definitions, traceability path policy, and reference-expansion fuzzy low-signal policy.
 - `memoryPolicy`: bounded lists of shared, local, fresh, and stale area ids.
 - `memoryAreas`: bounded file summaries grouped by configured area.
 - existing archive bounds showing whether archive bodies were included.

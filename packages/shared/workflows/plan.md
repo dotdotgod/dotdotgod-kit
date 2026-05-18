@@ -24,6 +24,7 @@ Prefer live repository docs in this order:
    - If the session is long or noisy, suggest a user-initiated planning-focused compaction before writing or revising the plan; do not compact automatically because compaction is lossy.
 2. Gather evidence before planning.
    - When the request contains explicit project-memory refs such as `[[PLAN_MODE]]`, run `dotdotgod expand <root> "<request>" --json` before broad `grep` or `find` scans, then read the resolved candidates selectively.
+   - When the request uses high-signal natural refs such as `PLAN_MODE`, `docs/spec/PLAN_MODE.md`, or quoted doc names, run `dotdotgod expand <root> "<request>" --fuzzy --json`; skip fuzzy expansion for generic low-signal words alone and respect configured fuzzy low-signal add/remove terms.
    - Search docs by domain terms from the user request.
    - Read nearest README indexes and relevant focused docs.
    - For behavior changes, prefer specs with CLI-enforced fenced `json dotdotgod` traceability blocks in the final section; use their source, test, related-doc, and verification-command mappings before editing code.

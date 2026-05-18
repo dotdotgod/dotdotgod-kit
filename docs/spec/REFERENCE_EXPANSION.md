@@ -12,12 +12,31 @@ The CLI MUST provide explicit commands:
 
 ```bash
 dotdotgod resolve <root> <ref> [--json] [--max-results n] [--include-archive]
-dotdotgod expand <root> <prompt> [--json] [--max-results n] [--include-archive] [--with-impact]
+dotdotgod expand <root> <prompt> [--json] [--max-results n] [--include-archive] [--with-impact] [--fuzzy]
 ```
 
 `resolve` resolves one reference string. The input MAY include `[[...]]`, but the wrapper is not required.
 
 `expand` scans the prompt for `[[...]]` references and resolves each target independently. If a wiki-style alias is present, such as `[[PLAN_MODE|plan mode]]`, the target before `|` is resolved.
+
+`expand --fuzzy` MAY also extract conservative natural-language references from the prompt. Fuzzy extraction MUST be opt-in for the CLI and SHOULD only use high-signal inputs such as uppercase identifiers (`PLAN_MODE`), path-like mentions (`docs/spec/PLAN_MODE.md`), quoted or backticked phrases, or strong aliases already present in indexed graph nodes. Low-signal ordinary words such as `plan`, `test`, `docs`, or `version` MUST NOT produce confident matches by themselves.
+
+Fuzzy low-signal terms MUST be configurable through project config while preserving a built-in default list. The config shape is:
+
+```json
+{
+  "referenceExpansion": {
+    "fuzzy": {
+      "lowSignal": {
+        "add": ["issue"],
+        "remove": ["version"]
+      }
+    }
+  }
+}
+```
+
+The effective set MUST start with built-in defaults, remove normalized `remove` entries, then add normalized `add` entries. Matching is case-insensitive and de-duplicated. Invalid low-signal config MUST be reported by validation and runtime fuzzy expansion MUST fall back to defaults rather than crash.
 
 Both commands MUST expose help through `--help`, `-h`, and `help` without refreshing the graph cache.
 
@@ -78,6 +97,8 @@ Each resolved reference SHOULD include:
 
 - original input;
 - normalized query;
+- `source` (`explicit` or `fuzzy`) when produced by `expand`;
+- fuzzy confidence and reasons when applicable;
 - candidates;
 - top candidate when present;
 - `ambiguous` boolean;
@@ -91,9 +112,9 @@ Human output MUST stay compact and include candidate paths, scores, and ambiguit
 
 ## Adapter Workflow Adoption
 
-Agent load and planning workflows MAY prefer `dotdotgod expand` before broad `grep` or `find` scans when the user prompt contains explicit `[[...]]` project-memory references. This preference MUST remain scoped to reference resolution; `grep` and `find` remain valid fallback and raw source text-search tools.
+Agent load and planning workflows MAY prefer `dotdotgod expand` before broad `grep` or `find` scans when the user prompt contains explicit `[[...]]` project-memory references, and MAY use `expand --fuzzy` for high-signal natural-language references. This preference MUST remain scoped to reference resolution; `grep` and `find` remain valid fallback and raw source text-search tools.
 
-Pi Plan Mode MAY run `expand --with-impact` during context shaping for explicit `[[...]]` refs and include a bounded summary in the planning prompt. Claude Code and Codex hook examples MAY remind users or agents to run `expand`, but hooks MUST remain optional/advisory guardrails and MUST NOT block `grep` or `find`.
+Pi Plan Mode MAY run `expand --with-impact` during context shaping for explicit `[[...]]` refs and MAY run `expand --fuzzy --with-impact` for high-signal natural prompts. Claude Code and Codex hook examples MAY remind users or agents to run `expand`, but hooks MUST remain optional/advisory guardrails and MUST NOT block `grep` or `find`.
 
 ## Traceability
 
@@ -103,6 +124,6 @@ Pi Plan Mode MAY run `expand --with-impact` during context shaping for explicit 
   "implementedBy": ["packages/cli/src/core.mjs", "packages/pi/extensions/plan-mode/index.ts", "packages/pi/extensions/plan-mode/utils.ts"],
   "verifiedBy": ["packages/cli/test/core.test.mjs", "packages/cli/test/e2e.test.mjs", "packages/pi/test/plan-mode-utils.test.ts", "docs/test/REFERENCE_EXPANSION.md"],
   "relatedDocs": ["docs/spec/CLI_INTERFACE.md", "docs/spec/LOAD_PROJECT.md", "docs/arch/VALIDATION_ARCHITECTURE.md", "docs/concept/LAT_MD_COMPARISON.md"],
-  "verificationCommands": ["pnpm --filter @dotdotgod/cli test", "node packages/cli/bin/dotdotgod.mjs resolve . PLAN_MODE --json", "node packages/cli/bin/dotdotgod.mjs expand . \"Update [[PLAN_MODE]] and [[HOOKS]]\" --json"]
+  "verificationCommands": ["pnpm --filter @dotdotgod/cli test", "node packages/cli/bin/dotdotgod.mjs resolve . PLAN_MODE --json", "node packages/cli/bin/dotdotgod.mjs expand . \"Update [[PLAN_MODE]] and [[HOOKS]]\" --json", "node packages/cli/bin/dotdotgod.mjs expand . \"PLAN_MODE 수정하자\" --fuzzy --json", "node packages/cli/bin/dotdotgod.mjs config . --json"]
 }
 ```

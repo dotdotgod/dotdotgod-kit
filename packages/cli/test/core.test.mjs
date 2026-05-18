@@ -21,6 +21,7 @@ import {
   detectPackageManager,
   extractAnchors,
   extractBracketReferences,
+  extractFuzzyReferences,
   extractDotdotgodTraceabilityBlocks,
   extractLinks,
   graphSummary,
@@ -151,6 +152,43 @@ describe('CLI docs helpers', () => {
     assert.equal(normalizeReferenceAlias('docs/spec/PLAN_MODE.md'), 'docs/spec/planmode');
   });
 
+  it('extracts conservative fuzzy references from natural prompts', () => {
+    const root = fixture();
+    writeFixtureFile(root, 'docs/spec/PLAN_MODE.md', '# Plan Mode\n');
+    writeFixtureFile(root, 'docs/test/HOOKS.md', '# Hooks\n');
+    const index = buildIndex(root);
+
+    assert.deepEqual(extractFuzzyReferences('PLAN_MODE 수정하자', index).map((item) => item.target), ['PLAN_MODE']);
+    assert(extractFuzzyReferences('Update hooks docs', index).some((item) => item.target === 'HOOKS'));
+    assert.deepEqual(extractFuzzyReferences('hello world', index), []);
+    assert.deepEqual(extractFuzzyReferences('Update [[PLAN_MODE]] and PLAN_MODE', index, { existingTargets: ['PLAN_MODE'] }), []);
+  });
+
+  it('loads configurable fuzzy low-signal reference expansion policy', () => {
+    const root = fixture();
+    writeFixtureFile(root, 'docs/spec/VERSION.md', '# Version Policy\n');
+    writeFixtureFile(root, 'docs/spec/ISSUE.md', '# Issue Policy\n');
+    const defaultIndex = buildIndex(root);
+
+    assert(defaultMemoryConfig().referenceExpansion.fuzzy.lowSignal.terms.includes('version'));
+    assert.deepEqual(extractFuzzyReferences('Update version docs', defaultIndex), []);
+
+    writeFixtureJson(root, 'dotdotgod.config.json', {
+      referenceExpansion: { fuzzy: { lowSignal: { add: ['issue'], remove: ['version'] } } },
+    });
+    const config = readMemoryConfig(root);
+    assert.equal(config.source, 'dotdotgod.config.json');
+    assert(!config.referenceExpansion.fuzzy.lowSignal.terms.includes('version'));
+    assert(config.referenceExpansion.fuzzy.lowSignal.terms.includes('issue'));
+
+    const configuredIndex = buildIndex(root);
+    assert(extractFuzzyReferences('Update version docs', configuredIndex, { memoryConfig: config }).some((item) => item.target === 'VERSION'));
+    assert.deepEqual(extractFuzzyReferences('Update issue docs', configuredIndex, { memoryConfig: config }), []);
+
+    const invalid = validateMemoryConfigData({ referenceExpansion: { fuzzy: { lowSignal: { add: ['ok', ''] } } } });
+    assert(invalid.some((error) => error.code === 'REFERENCE_EXPANSION_CONFIG_INVALID_LOW_SIGNAL_TERMS'));
+  });
+
   it('resolves references from indexed graph nodes with archive exclusion', () => {
     const root = fixture();
     writeFixtureFile(root, 'docs/spec/PLAN_MODE.md', '# Plan Mode\n\n## Tool Settings\n');
@@ -224,7 +262,8 @@ describe('CLI docs helpers', () => {
     assert.equal(data.validation.markdown.maxChars, 10000);
     assert.deepEqual(data.validation.markdown.exclude, []);
     assert.equal(data.impactRanking.preset, 'balanced');
-    assert.equal(JSON.parse(defaultDotdotgodConfigText()).impactRanking.preset, 'balanced');
+    assert.deepEqual(data.referenceExpansion.fuzzy.lowSignal, { add: [], remove: [] });
+    assert(JSON.parse(defaultDotdotgodConfigText()).referenceExpansion.fuzzy.lowSignal);
 
     const root = fixture();
     writeFixtureFile(root, 'dotdotgod.config.json', defaultDotdotgodConfigText());

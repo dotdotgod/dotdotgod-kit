@@ -19,6 +19,7 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 - Plan mode does not render saved-plan file previews in the TUI; users review the durable markdown plan file when needed.
 - Execute/stay/refine choices are shown after every active plan markdown file under `docs/plan/` is created or updated.
 - When the latest planning request contains explicit `[[...]]` refs, Plan Mode adds bounded `dotdotgod expand` results to planning context before broad search.
+- When the request contains high-signal natural refs such as `PLAN_MODE`, path-like mentions, or quoted doc names, Plan Mode may add bounded `dotdotgod expand --fuzzy` results before broad search; fuzzy low-signal suppression follows the resolved dotdotgod CLI config.
 - Completed task directories should be moved to `docs/archive/plan/<task-slug>/` after execution and verification.
 - Plans are encouraged to include target files, risks, and verification steps.
 

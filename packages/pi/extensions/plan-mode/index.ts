@@ -21,6 +21,7 @@ import {
 	formatCompactImpactSummary,
 	formatReferenceExpansionSummary,
 	hasExplicitBracketReferences,
+	hasLikelyFuzzyReferences,
 	resolveMentionedPlanPath,
 	resolvePlanModeTools,
 	getCurrentPlanReadmePath,
@@ -383,8 +384,13 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		const impacts = impactPaths.map((path) => ({ path, result: runDotdotgodCli(ctx.cwd, ["graph", "impact", ctx.cwd, "--changed", path, "--compact", "--json"]) }));
 		const contextParts = [formatPlanCliContextSummary(validate, snapshot, impacts)];
 		let referenceExpansionSummary = "";
-		if (hasExplicitBracketReferences(lastPlanningRequest)) {
-			const expansion = runDotdotgodCli(ctx.cwd, ["expand", ctx.cwd, lastPlanningRequest ?? "", "--json", "--with-impact"]);
+		const hasExplicitReferences = hasExplicitBracketReferences(lastPlanningRequest);
+		const hasFuzzyReferences = hasLikelyFuzzyReferences((lastPlanningRequest ?? "").replace(/\[\[[^\]\n]+\]\]/g, " "));
+		const shouldExpandReferences = hasExplicitReferences || hasFuzzyReferences;
+		if (shouldExpandReferences) {
+			const expansionArgs = ["expand", ctx.cwd, lastPlanningRequest ?? "", "--json", "--with-impact"];
+			if (hasFuzzyReferences) expansionArgs.push("--fuzzy");
+			const expansion = runDotdotgodCli(ctx.cwd, expansionArgs);
 			if (expansion.ok) {
 				referenceExpansionSummary = formatReferenceExpansionSummary(expansion.data);
 				if (referenceExpansionSummary) contextParts.push(referenceExpansionSummary);

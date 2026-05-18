@@ -16,6 +16,7 @@ import {
 	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
 	hasExplicitBracketReferences,
+	hasLikelyFuzzyReferences,
 	parsePlanModeExtraTools,
 	resolveMentionedPlanPath,
 	isAutoAllowedDotdotgodPlanModeCommand,
@@ -237,6 +238,10 @@ describe("plan-mode CLI context helpers", () => {
 	it("detects explicit bracket refs and formats reference expansion summaries", () => {
 		assert.equal(hasExplicitBracketReferences("Update [[PLAN_MODE]]"), true);
 		assert.equal(hasExplicitBracketReferences("Update PLAN_MODE"), false);
+		assert.equal(hasLikelyFuzzyReferences("Update PLAN_MODE"), true);
+		assert.equal(hasLikelyFuzzyReferences("Update docs/spec/PLAN_MODE.md"), true);
+		assert.equal(hasLikelyFuzzyReferences("Update `hooks docs`"), true);
+		assert.equal(hasLikelyFuzzyReferences("hello world"), false);
 
 		const summary = formatReferenceExpansionSummary({
 			refs: [

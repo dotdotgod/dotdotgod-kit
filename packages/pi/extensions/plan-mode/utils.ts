@@ -379,6 +379,15 @@ export function hasExplicitBracketReferences(text: string | undefined): boolean 
 	return /\[\[[^\]\n]+\]\]/.test(text ?? "");
 }
 
+export function hasLikelyFuzzyReferences(text: string | undefined): boolean {
+	const value = text ?? "";
+	if (hasExplicitBracketReferences(value)) return true;
+	if (/(?:^|\s)(?:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+(?:#[A-Za-z0-9 _-]+)?|[A-Z0-9]{3,})(?=$|\s|[.,:;!?])/.test(value)) return true;
+	if (/(?:^|\s)(?:\.?\/?(?:docs|packages|src|test|spec|arch|plan|archive)\/)?[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+(?:\.md)?(?:#[A-Za-z0-9 _-]+)?(?=$|\s|[.,:;!?])/.test(value)) return true;
+	if (/[`"'][^`"'\n]{4,80}[`"']/.test(value)) return true;
+	return false;
+}
+
 function formatCandidatePath(candidate: Record<string, unknown>): string | undefined {
 	const path = typeof candidate.path === "string" ? candidate.path : undefined;
 	if (!path) return undefined;
@@ -397,9 +406,11 @@ export function formatReferenceExpansionSummary(data: unknown, candidateLimit = 
 		const ref = refValue && typeof refValue === "object" ? (refValue as Record<string, unknown>) : undefined;
 		if (!ref) continue;
 		const query = String(ref.query ?? ref.input ?? "unknown");
+		const source = typeof ref.source === "string" ? ` ${ref.source}` : "";
+		const confidence = typeof ref.confidence === "string" ? ` confidence=${ref.confidence}` : "";
 		const ambiguous = ref.ambiguous === true ? " ambiguous" : "";
 		const omitted = typeof ref.omitted === "number" && ref.omitted > 0 ? `; omitted=${ref.omitted}` : "";
-		lines.push(`- ${query}:${ambiguous}${omitted}`);
+		lines.push(`- ${query}:${source}${confidence}${ambiguous}${omitted}`);
 
 		const candidates = Array.isArray(ref.candidates) ? ref.candidates : [];
 		for (const candidateValue of candidates.slice(0, candidateLimit)) {
