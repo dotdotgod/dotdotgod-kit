@@ -4,15 +4,28 @@
 
 > **Change a file, know what else must be checked.**
 
-Pi adapter for dotdotgod's context curation workflow. It gives Pi the most complete dotdotgod loop: initialize a project-memory scaffold, load bounded context, plan before source edits, execute explicit steps, verify, and archive completed work.
-
-Impact/context in practice:
+```bash
+$ dotdotgod graph impact . --changed packages/cli/src/core.mjs --compact
+```
 
 ```text
-Initialize docs scaffold → /dd:load bounded memory → /plan durable intent
-        ↓                         ↓                         ↓
- specs/arch/tests/archive map   graph/cache summaries       execute + verify + archive
+docs:
+- docs/spec/REFERENCE_EXPANSION.md (91; incoming:implemented_by, semantic_similarity)
+- docs/test/REFERENCE_EXPANSION.md (65.3; verified_by, semantic_similarity)
+- docs/spec/LOAD_PROJECT.md (35.8; related_doc, semantic_similarity)
+
+tests:
+- packages/cli/test/core.test.mjs (78.6; semantic_similarity, incoming:semantic_similarity, verified_by)
+- packages/cli/test/e2e.test.mjs (51.4; verified_by)
+
+files:
+- packages/cli/src/core.mjs (100; changed-file)
+- packages/pi/extensions/plan-mode/index.ts (45; implemented_by, semantic_similarity)
 ```
+
+`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
+
+Pi adapter for dotdotgod's context curation workflow. It gives Pi the most complete dotdotgod loop: initialize a project-memory scaffold, load bounded context, plan before source edits, execute explicit steps, verify, and archive completed work.
 
 Use this package when you want Pi to make repository work start from stable specs, tests, architecture, active plans, archive maps, and graph/cache metadata instead of raw chat history.
 
