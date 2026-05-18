@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "dotdotgod",
+  "description": "dotdotgod project memory kit plugins",
+  "owner": {
+    "name": "dotdotgod"
+  },
+  "plugins": [
+    {
+      "name": "dotdotgod",
+      "description": "Dotdotgod project memory workflows for Claude Code: initialize shared docs, load project memory, and plan implementation work doc-first.",
+      "author": {
+        "name": "dotdotgod"
+      },
+      "source": "./packages/claude-code"
+    }
+  ]
+}
