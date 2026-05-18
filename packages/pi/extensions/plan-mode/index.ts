@@ -18,11 +18,12 @@ import {
 	buildPlanModeContextPrompt,
 	detectPlanExecutionIntent,
 	extractTodoItems,
+	formatCompactImpactSummary,
 	resolveMentionedPlanPath,
 	resolvePlanModeTools,
 	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
-	selectPlanImpactPath,
+	selectPlanImpactPaths,
 	shouldAllowPlanModeBashCommand,
 	shouldShapePlanningContextOnAgentStart,
 	markCompletedSteps,
@@ -156,7 +157,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 	return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
 }
 
-function formatPlanCliContextSummary(validate: PlanCliCommandResult, snapshot: PlanCliCommandResult, impact: PlanCliCommandResult | undefined, impactPath: string | undefined): string {
+function formatPlanCliContextSummary(validate: PlanCliCommandResult, snapshot: PlanCliCommandResult, impacts: Array<{ path: string; result: PlanCliCommandResult }>): string {
 	const lines = ["dotdotgod CLI planning context:"];
 	if (!validate.ok) return "";
 	const validateData = asRecord(validate.data);
@@ -171,16 +172,8 @@ function formatPlanCliContextSummary(validate: PlanCliCommandResult, snapshot: P
 		lines.push(`- Index: status=${String(cache?.status ?? "unknown")}; schema=${String(cache?.schemaVersion ?? metadata?.schemaVersion ?? "unknown")}; indexedFiles=${String(cache?.indexedFiles ?? "unknown")}; graph=${String(graph?.nodes ?? "unknown")} nodes/${String(graph?.edges ?? "unknown")} edges; refreshed=${String(metadata?.cacheRefreshed ?? false)}; reason=${String(metadata?.refreshReason ?? "unknown")}`);
 	}
 
-	const impactData = asRecord(impact?.data);
-	const impactGroups = asRecord(asRecord(impactData?.impact)?.groups);
-	if (impact?.ok && impactPath && impactGroups) {
-		const groupSummary = (name: string): string => {
-			const items = asRecord(impactGroups[name])?.items;
-			return Array.isArray(items) ? String(items.length) : "0";
-		};
-		lines.push(`- Impact: command=dotdotgod graph impact; changed=${impactPath}; docs=${groupSummary("docs")}; tests=${groupSummary("tests")}; files=${groupSummary("files")}; commands=${groupSummary("commands")}; events=${groupSummary("events")}`);
-	} else if (impactPath) {
-		lines.push(`- Impact: skipped or unavailable for ${impactPath}.`);
+	for (const impact of impacts) {
+		lines.push(impact.result.ok ? formatCompactImpactSummary(impact.path, impact.result.data) : `- Impact: skipped or unavailable for ${impact.path}.`);
 	}
 	return lines.join("\n");
 }
@@ -374,10 +367,18 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 
 		const snapshot = runDotdotgodCli(ctx.cwd, ["load-snapshot", ctx.cwd, "--json"]);
-		const impactPath = selectPlanImpactPath(ctx.cwd, lastPlanningRequest, currentPlanPath, touchedPlanArchivePaths, planPathExists);
-		const impact = impactPath ? runDotdotgodCli(ctx.cwd, ["graph", "impact", ctx.cwd, "--changed", impactPath, "--json"]) : undefined;
-		planningCliContextSummary = formatPlanCliContextSummary(validate, snapshot, impact, impactPath);
-		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:cli-context", { hasSummary: Boolean(planningCliContextSummary), impactPath });
+		let currentPlanContent: string | undefined;
+		if (currentPlanPath) {
+			try {
+				currentPlanContent = readFileSync(resolve(ctx.cwd, currentPlanPath), "utf8");
+			} catch {
+				currentPlanContent = undefined;
+			}
+		}
+		const impactPaths = selectPlanImpactPaths(ctx.cwd, lastPlanningRequest, currentPlanPath, currentPlanContent, touchedPlanArchivePaths, planPathExists);
+		const impacts = impactPaths.map((path) => ({ path, result: runDotdotgodCli(ctx.cwd, ["graph", "impact", ctx.cwd, "--changed", path, "--compact", "--json"]) }));
+		planningCliContextSummary = formatPlanCliContextSummary(validate, snapshot, impacts);
+		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:cli-context", { hasSummary: Boolean(planningCliContextSummary), impactPaths });
 		persistState();
 	}
 

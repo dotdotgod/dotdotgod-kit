@@ -20,6 +20,7 @@ Verify configurable `graph impact` ranking, score breakdown output, deterministi
 | PPR | Stronger weighted paths get higher PPR contribution; disabled PPR reports `policy-score`; relation-weight overrides affect PPR contribution predictably. |
 | Compatibility | Grouped impact buckets and `omittedRelated` remain present; removed aliases such as `graph query` fail as unknown graph commands. |
 | Compact output | `graph impact --compact --json` returns compact grouped items, no raw ranking weights, and a smaller payload than raw JSON. |
+| Planning integration | Plan Mode formats compact impact output for bounded likely target files with group counts, top related paths, scores, and reasons. |
 | Selection noise control | First-page results cap low-actionability metadata nodes and prefer curated/test/proximity candidates over routing-only matches. |
 | Quality tooling | `scripts/evaluate-graph-impact.mjs` reports P@5, P@10, must Recall@10, MRR, nDCG@10, runtime context, and lexical/snapshot baselines. |
 

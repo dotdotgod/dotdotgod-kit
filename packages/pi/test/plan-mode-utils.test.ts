@@ -8,6 +8,7 @@ import {
 	buildPlanModeContextPrompt,
 	extractDoneSteps,
 	extractTodoItems,
+	formatCompactImpactSummary,
 	formatPlanCompactionFocus,
 	extractPathMentions,
 	extractPlanSlugMentions,
@@ -21,6 +22,7 @@ import {
 	markCompletedSteps,
 	resolvePlanModeTools,
 	selectPlanImpactPath,
+	selectPlanImpactPaths,
 	shouldAllowPlanModeBashCommand,
 	shouldShapePlanningContextOnAgentStart,
 	type TodoItem,
@@ -185,11 +187,50 @@ describe("plan-mode CLI context helpers", () => {
 		);
 	});
 
-	it("selects an impact path from request, current plan, then touched paths", () => {
-		const exists = (_cwd: string, path: string): boolean => path === "docs/plan/task/README.md" || path === "packages/pi/index.ts";
+	it("selects bounded impact paths from request and plan content", () => {
+		const existing = new Set(["packages/pi/index.ts", "packages/pi/utils.ts", "docs/spec/PLAN_MODE.md", "docs/plan/task/README.md"]);
+		const exists = (_cwd: string, path: string): boolean => existing.has(path);
+		assert.deepEqual(
+			selectPlanImpactPaths(
+				".",
+				"Change packages/pi/index.ts and docs/plan/task/README.md",
+				"docs/plan/task/README.md",
+				"Target files: packages/pi/utils.ts, docs/spec/PLAN_MODE.md, packages/pi/index.ts",
+				[],
+				exists,
+				3,
+			),
+			["packages/pi/index.ts", "packages/pi/utils.ts", "docs/spec/PLAN_MODE.md"],
+		);
+	});
+
+	it("keeps the single impact path helper compatible", () => {
+		const exists = (_cwd: string, path: string): boolean => path === "packages/pi/index.ts";
 		assert.equal(selectPlanImpactPath(".", "Change packages/pi/index.ts", "docs/plan/task/README.md", [], exists), "packages/pi/index.ts");
-		assert.equal(selectPlanImpactPath(".", "No file here", "docs/plan/task/README.md", [], exists), "docs/plan/task/README.md");
-		assert.equal(selectPlanImpactPath(".", "No file here", undefined, ["docs/plan/missing/README.md"], exists), undefined);
+		assert.equal(selectPlanImpactPath(".", "No source file here", "docs/plan/task/README.md", [], exists), undefined);
+	});
+
+	it("formats compact impact summaries with top related items", () => {
+		const summary = formatCompactImpactSummary("packages/pi/index.ts", {
+			impact: {
+				groups: {
+					docs: { items: [{ path: "docs/spec/PLAN_MODE.md" }] },
+					tests: { items: [{ path: "packages/pi/test/plan-mode-utils.test.ts" }] },
+					files: { items: [{ path: "packages/pi/index.ts" }, { path: "packages/pi/utils.ts" }] },
+					commands: { items: [] },
+					events: { items: [] },
+				},
+				related: [
+					{ path: "packages/pi/index.ts", impactScore: 100, reasons: ["changed-file"] },
+					{ path: "docs/spec/PLAN_MODE.md", impactScore: 93.2, reasons: ["incoming:implemented_by", "semantic_similarity"] },
+					{ path: "packages/pi/test/plan-mode-utils.test.ts", impactScore: 75, reasons: ["verified_by"] },
+				],
+			},
+		});
+		assert.match(summary, /changed=packages\/pi\/index\.ts/);
+		assert.match(summary, /docs=1; tests=1; files=2/);
+		assert.match(summary, /docs\/spec\/PLAN_MODE\.md score=93\.2 reasons=incoming:implemented_by\+semantic_similarity/);
+		assert.match(summary, /packages\/pi\/test\/plan-mode-utils\.test\.ts score=75 reasons=verified_by/);
 	});
 });
 

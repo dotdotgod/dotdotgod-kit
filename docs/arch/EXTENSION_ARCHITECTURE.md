@@ -41,9 +41,9 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 
 - Entry points: `/plan`, `/todos`, and `Ctrl+Alt+P`.
 - Tooling: planning/execution tool switching, optional `--plan-extra-tools`, plan/archive markdown write filters, read-only bash allowlist, and one-command approval for agent-requested dotdotgod CLI commands.
-- State: mode flags, todos, active plan README, touched plan/archive paths, latest planning request, first-request context shaping, queued planning-load delivery, compaction debounce, and CLI planning-context summary.
+- State: mode flags, todos, active plan README, touched plan/archive paths, latest planning request, first-request context shaping, queued planning-load delivery, compaction debounce, and CLI planning-context summary with advisory impact results for likely target files.
 - UX: concise execute/stay/refine review prompt after active plan updates, without saved-plan preview rendering.
-- Context shaping: one-time planning-focused compaction/load decisions after the first planning request, plus optional validation, bounded load-snapshot refresh, and `graph impact` summary when the CLI is available.
+- Context shaping: one-time planning-focused compaction/load decisions after the first planning request, plus optional validation, bounded load-snapshot refresh, and bounded multi-file `graph impact --compact --json` summaries when the CLI is available.
 - Prompts: first-turn full safety/workflow prompt, later compact reminder, resolved active tool list, and current-work-directed compaction instructions that demote stale history and repeated boilerplate.
 
 Plan mode injects runtime instructions because project docs can be edited by users. The prompt should stay generic and must not contain app-specific stack assumptions.
