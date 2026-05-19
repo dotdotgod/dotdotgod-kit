@@ -6,10 +6,11 @@
 
 ## Commands and Shortcut
 
-- `/plan`: toggle plan mode.
+- `/plan`: toggle plan mode when no request text is provided.
+- `/plan <request>`: enable Plan Mode if needed and send `<request>` as the first or next planning request without toggling Plan Mode off.
 - `/todos`: show current plan progress.
-- `/impact-check`: run `dotdotgod graph impact --yml` for pending source/config edits, or for current git changed/untracked files when no pending files are recorded.
-- `dotdotgod_graph_impact`: LLM-callable impact tool. Successful structured YML starts at `impact:`; multiple successes use `---`.
+- `/impact-check`: run `dotdotgod graph impact --yml` for the union of pending source/config edits and current git unstaged, staged, and untracked source/config files.
+- `dotdotgod_graph_impact`: LLM-callable impact tool. Successful structured YML starts at `impact:`; multiple successes use `---`. In Pi's TUI, results longer than 10 lines render as the first 10 lines plus an omitted-line hint and expand with the tool-output keybinding.
 - `Ctrl+Alt+P`: toggle plan mode.
 
 Pi has no built-in plan mode; this package provides the workflow as an extension.

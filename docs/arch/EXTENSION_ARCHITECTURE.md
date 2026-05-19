@@ -39,11 +39,11 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 
 `plan-mode` owns runtime planning behavior:
 
-- Entry points: `/plan`, `/todos`, and `Ctrl+Alt+P`.
+- Entry points: `/plan`, `/plan <request>`, `/todos`, and `Ctrl+Alt+P`.
 - Tooling: planning/execution tool switching, optional `--plan-extra-tools`, plan/archive markdown write filters, read-only bash allowlist, auto-allowed bounded dotdotgod context/status commands, `dotdotgod_graph_impact`, `/impact-check`, and one-command approval for other agent-requested dotdotgod CLI commands.
-- State: mode flags, todos, active plan README, touched plan/archive paths, latest planning request, first-request context shaping, queued planning-load delivery, compaction debounce, CLI planning-context summary with advisory impact results for likely target files, request-framing classification, and pending source/config impact-check records.
+- State: mode flags, todos, active plan README, touched plan/archive paths, latest planning request including inline `/plan <request>` delivery, first-request context shaping, queued planning-load delivery, compaction debounce, CLI planning-context summary with advisory impact results for likely target files, request-framing classification, and pending source/config impact-check records.
 - UX: concise execute/stay/refine review prompt after active plan updates, without saved-plan preview rendering.
-- Context shaping: one-time planning-focused compaction/load decisions after the first planning request, including baseline-doc coverage checks, single-area-only context detection, optional validation, bounded load-snapshot refresh, bounded multi-file `graph impact --json` advisory checks when the CLI is available, structured `graph impact --yml` runtime summaries, and short pending-impact reminders after source/config edits.
+- Context shaping: one-time planning-focused compaction/load decisions after the first planning request, including baseline-doc coverage checks, single-area-only context detection, optional validation, bounded load-snapshot refresh, bounded multi-file `graph impact --json` advisory checks when the CLI is available, structured `graph impact --yml` runtime summaries, and short pending-impact reminders after source/config edits. Runtime impact checks cover pending paths plus current git unstaged, staged, and untracked source/config paths, and successful checks clear stale pending records for the checked path.
 - Prompts: first-turn full safety/workflow prompt, later compact reminder, per-request framing, resolved active tool list, mandatory impact-plan refinement and validation guidance, and current-work-directed compaction instructions that demote stale history and repeated boilerplate.
 
 Plan mode injects runtime instructions because project docs can be edited by users. The prompt should stay generic and must not contain app-specific stack assumptions.

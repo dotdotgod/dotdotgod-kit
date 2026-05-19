@@ -12,6 +12,7 @@ import {
 	extractDoneSteps,
 	extractTodoItems,
 	formatCompactImpactSummary,
+	formatExpandableToolOutput,
 	formatMultiImpactSummary,
 	formatPlanCompactionFocus,
 	formatReferenceExpansionSummary,
@@ -25,6 +26,8 @@ import {
 	isBroadVerificationCommand,
 	isCommitLikeCommand,
 	normalizeImpactPath,
+	normalizePlanCommandRequest,
+	mergeImpactCheckPaths,
 	parsePlanModeExtraTools,
 	pendingImpactSummary,
 	resolveMentionedPlanPath,
@@ -48,6 +51,12 @@ import {
 } from "../extensions/plan-mode/utils.ts";
 
 describe("plan-mode command safety", () => {
+	it("normalizes inline /plan request arguments", () => {
+		assert.equal(normalizePlanCommandRequest("add inline request support"), "add inline request support");
+		assert.equal(normalizePlanCommandRequest("  add inline request support  "), "add inline request support");
+		assert.equal(normalizePlanCommandRequest("\n\t"), undefined);
+	});
+
 	it("allows read-only commands", () => {
 		for (const command of ["grep foo README.md", "find docs -name README.md", "git status --short", "npm view @dotdotgod/pi version", "sed -n '1,10p' README.md"]) {
 			assert.equal(isSafeCommand(command), true, command);
@@ -178,8 +187,30 @@ describe("plan-mode command safety", () => {
 		items = upsertPendingImpact(items, { ...first, fingerprint: "c", touchedAt: "t3" });
 		assert.deepEqual(items.map((item) => `${item.path}:${item.fingerprint}`), ["packages/pi/utils.ts:b", "packages/pi/index.ts:c"]);
 		assert.equal(pendingImpactSummary(items), "- packages/pi/utils.ts\n- packages/pi/index.ts");
-		assert.deepEqual(clearPendingImpactForPath(items, "packages/pi/index.ts", "old").map((item) => item.path), ["packages/pi/utils.ts", "packages/pi/index.ts"]);
-		assert.deepEqual(clearPendingImpactForPath(items, "packages/pi/index.ts", "c").map((item) => item.path), ["packages/pi/utils.ts"]);
+		assert.deepEqual(clearPendingImpactForPath(items, "packages/pi/index.ts").map((item) => item.path), ["packages/pi/utils.ts"]);
+	});
+
+	it("merges pending and git worktree impact paths", () => {
+		const pending: PendingImpactItem[] = [
+			{ path: "packages/pi/index.ts", fingerprint: "old", reason: "edit", touchedAt: "t1" },
+			{ path: "docs/plan/task/README.md", reason: "write", touchedAt: "t2" },
+		];
+		assert.deepEqual(
+			mergeImpactCheckPaths("/repo", pending, ["packages/pi/utils.ts", "packages/pi/index.ts", "coverage/out.json", "../outside.ts"]),
+			["packages/pi/index.ts", "packages/pi/utils.ts"],
+		);
+	});
+
+	it("formats expandable tool output", () => {
+		const tenLines = Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join("\n");
+		assert.equal(formatExpandableToolOutput(tenLines, false, "ctrl+o to expand"), tenLines);
+
+		const twelveLines = Array.from({ length: 12 }, (_, i) => `line ${i + 1}`).join("\n");
+		assert.equal(
+			formatExpandableToolOutput(twelveLines, false, "ctrl+o to expand"),
+			`${Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join("\n")}\n... (2 more lines, ctrl+o to expand)`,
+		);
+		assert.equal(formatExpandableToolOutput(twelveLines, true, "ctrl+o to expand"), twelveLines);
 	});
 
 	it("formats multi-file impact summaries", () => {

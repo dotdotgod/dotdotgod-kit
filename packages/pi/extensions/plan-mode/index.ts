@@ -7,7 +7,8 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Key } from "@earendil-works/pi-tui";
+import { keyHint } from "@earendil-works/pi-coding-agent";
+import { Key, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -21,12 +22,15 @@ import {
 	detectPlanExecutionIntent,
 	extractTodoItems,
 	formatCompactImpactSummary,
+	formatExpandableToolOutput,
 	formatMultiImpactSummary,
 	formatReferenceExpansionSummary,
 	getChangedPathFromDotdotgodImpactCommand,
 	hasExplicitBracketReferences,
 	hasLikelyFuzzyReferences,
 	normalizeImpactPath,
+	normalizePlanCommandRequest,
+	mergeImpactCheckPaths,
 	pendingImpactSummary,
 	resolveMentionedPlanPath,
 	resolvePlanModeTools,
@@ -219,6 +223,7 @@ function fingerprintPath(cwd: string, path: string): string | undefined {
 function collectGitChangedPaths(cwd: string): string[] {
 	const commands = [
 		["diff", "--name-only"],
+		["diff", "--cached", "--name-only"],
 		["ls-files", "--others", "--exclude-standard"],
 	];
 	const paths = new Set<string>();
@@ -284,13 +289,20 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			const paths = [...(params.changed ? [params.changed] : []), ...(params.paths ?? [])];
 			if (paths.length === 0) {
-				return { content: [{ type: "text", text: "Error: changed or paths is required" }], details: { ok: false, error: "changed or paths is required" } };
+				return { content: [{ type: "text", text: "Error: changed or paths is required" }], details: { ok: false, error: "changed or paths is required", summary: "Error: changed or paths is required" } };
 			}
 			const result = runImpactChecks(ctx, paths, "tool");
 			return {
 				content: [{ type: "text", text: result.summary }],
-				details: { ok: result.failed.length === 0, checked: result.checked, failed: result.failed, pending: pendingImpactItems },
+				details: { ok: result.failed.length === 0, checked: result.checked, failed: result.failed, pending: pendingImpactItems, summary: result.summary },
 			};
+		},
+		renderResult(result, { expanded, isPartial }, theme) {
+			if (isPartial) return new Text(theme.fg("warning", "Running dotdotgod graph impact..."), 0, 0);
+			const details = result.details && typeof result.details === "object" ? (result.details as { summary?: unknown; error?: unknown }) : undefined;
+			const summary = typeof details?.summary === "string" ? details.summary : typeof details?.error === "string" ? `Error: ${details.error}` : "dotdotgod graph impact completed.";
+			const text = formatExpandableToolOutput(summary, expanded, keyHint("app.tools.expand", expanded ? "to collapse" : "to expand"));
+			return new Text(text, 0, 0);
 		},
 	});
 
@@ -338,11 +350,13 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		persistState();
 	}
 
-	function clearPendingImpact(ctx: ExtensionContext, path: string, source: ImpactCheckRecord["source"], data?: unknown, summary?: string): void {
+	function clearPendingImpact(ctx: ExtensionContext, path: string, source: ImpactCheckRecord["source"], data?: unknown, summary?: string, checkedFingerprint?: string): void {
 		const normalized = normalizeImpactPath(ctx.cwd, path);
 		if (!normalized) return;
 		const fingerprint = fingerprintPath(ctx.cwd, normalized);
-		pendingImpactItems = clearPendingImpactForPath(pendingImpactItems, normalized, fingerprint);
+		if (!checkedFingerprint || !fingerprint || checkedFingerprint === fingerprint) {
+			pendingImpactItems = clearPendingImpactForPath(pendingImpactItems, normalized);
+		}
 		impactCheckRecords = [...impactCheckRecords, { path: normalized, ...(fingerprint ? { fingerprint } : {}), ranAt: new Date().toISOString(), source, ...(summary ? { summary } : {}) }].slice(-30);
 		void data;
 		updateImpactStatus(ctx);
@@ -354,7 +368,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		const results: Array<{ path: string; data?: unknown; error?: string; summary?: string }> = [];
 		const checked: string[] = [];
 		const failed: string[] = [];
+		const checkedFingerprints = new Map<string, string | undefined>();
 		for (const path of normalizedPaths) {
+			checkedFingerprints.set(path, fingerprintPath(ctx.cwd, path));
 			const result = runDotdotgodCli(ctx.cwd, ["graph", "impact", ctx.cwd, "--changed", path, "--yml"]);
 			if (result.ok) {
 				results.push({ path, data: result.data, ...(result.stdout ? { summary: result.stdout } : {}) });
@@ -366,7 +382,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 		const summary = formatMultiImpactSummary(results);
 		for (const path of checked) {
-			clearPendingImpact(ctx, path, source, results.find((result) => result.path === path)?.data, summary);
+			clearPendingImpact(ctx, path, source, results.find((result) => result.path === path)?.data, summary, checkedFingerprints.get(path));
 		}
 		return { summary, checked, failed };
 	}
@@ -613,30 +629,53 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		requestPlanningLoadIfNeeded(ctx);
 	}
 
-	function togglePlanMode(ctx: ExtensionContext): void {
-		planModeEnabled = !planModeEnabled;
-		executionMode = false;
-		todoItems = [];
-		activePlanTouched = false;
-		pendingPlanChoicePath = undefined;
-		if (planModeEnabled) currentPlanPath = undefined;
-		planModeFullPromptInjected = false;
-		planningCliContextSummary = undefined;
-		planningCliContextChecked = false;
-
-		if (planModeEnabled) {
+	function setPlanModeEnabled(ctx: ExtensionContext, enabled: boolean): void {
+		if (enabled) {
+			planModeEnabled = true;
+			executionMode = false;
+			todoItems = [];
+			activePlanTouched = false;
+			pendingPlanChoicePath = undefined;
+			currentPlanPath = undefined;
+			planModeFullPromptInjected = false;
+			planningCliContextSummary = undefined;
+			planningCliContextChecked = false;
 			planningContextShapePending = true;
 			activePlanModeTools = getPlanModeTools();
 			pi.setActiveTools(activePlanModeTools);
 			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:enabled", { entryCount: getSessionEntryCount(ctx), tools: activePlanModeTools });
 			ctx.ui.notify(`Plan mode enabled. Tools: ${activePlanModeTools.join(", ")}`);
 		} else {
+			planModeEnabled = false;
+			executionMode = false;
+			todoItems = [];
+			activePlanTouched = false;
+			pendingPlanChoicePath = undefined;
 			planningContextShapePending = false;
 			activePlanModeTools = [];
 			pi.setActiveTools(NORMAL_MODE_TOOLS);
 			ctx.ui.notify("Plan mode disabled. Full access restored.");
 		}
 		updateStatus(ctx);
+		persistState();
+	}
+
+	function togglePlanMode(ctx: ExtensionContext): void {
+		setPlanModeEnabled(ctx, !planModeEnabled);
+	}
+
+	function handleInlinePlanRequest(ctx: ExtensionContext, request: string): void {
+		if (!planModeEnabled || executionMode) {
+			setPlanModeEnabled(ctx, true);
+		}
+
+		if (ctx.isIdle()) {
+			pi.sendUserMessage(request);
+		} else {
+			pi.sendUserMessage(request, { deliverAs: "followUp" });
+			ctx.ui.notify("Plan request queued for the next turn.", "info");
+		}
+		persistState();
 	}
 
 	function getPlanModeTools(): string[] {
@@ -670,9 +709,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	}
 
 	pi.registerCommand("impact-check", {
-		description: "Run dotdotgod graph impact for pending or git-changed files",
+		description: "Run dotdotgod graph impact for pending and git-changed files",
 		handler: async (_args, ctx) => {
-			const paths = pendingImpactItems.length > 0 ? pendingImpactItems.map((item) => item.path) : collectGitChangedPaths(ctx.cwd);
+			const paths = mergeImpactCheckPaths(ctx.cwd, pendingImpactItems, collectGitChangedPaths(ctx.cwd));
 			if (paths.length === 0) {
 				ctx.ui.notify("No source/config files need dotdotgod impact checks.", "info");
 				return;
@@ -683,8 +722,15 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	});
 
 	pi.registerCommand("plan", {
-		description: "Toggle plan mode (safe exploration plus docs/plan updates)",
-		handler: async (_args, ctx) => togglePlanMode(ctx),
+		description: "Toggle plan mode, or enable it and send a planning request with /plan <request>",
+		handler: async (args, ctx) => {
+			const request = normalizePlanCommandRequest(args);
+			if (!request) {
+				togglePlanMode(ctx);
+				return;
+			}
+			handleInlinePlanRequest(ctx, request);
+		},
 	});
 
 	pi.registerCommand("todos", {
