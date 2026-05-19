@@ -41,7 +41,7 @@ sh "${CLAUDE_PLUGIN_ROOT}/skills/project-initializer/scripts/init_project.sh" <p
 
 The fallback still creates the baseline docs indexes and local-memory `.gitignore` entries, so project loading can work from README indexes until the CLI is added later.
 
-Use `--dry-run` before touching an unfamiliar repository. Use `--dotdot-setting` when the user wants dotdot code conventions generated under `docs/arch/CODE_CONVENTIONS.md` and referenced from `AGENTS.md`. Use `--force` only when explicitly requested; it creates timestamped backups before replacing files.
+Use `--dry-run` before touching an unfamiliar repository. Use `--dotdot-setting` when the user wants general dotdot documentation structure and code conventions generated under `docs/arch/DOCS_STRUCTURE.md` and `docs/arch/CODE_CONVENTIONS.md`, then referenced from `AGENTS.md`. Use `--force` only when explicitly requested; it creates timestamped backups before replacing files.
 
 ## Workflow
 
@@ -54,7 +54,7 @@ Use `--dry-run` before touching an unfamiliar repository. Use `--dotdot-setting`
    - Default behavior creates missing files only.
    - Existing files are skipped.
    - `.gitignore` is created or appended with missing `docs/plan`, `docs/archive`, and `.dotdotgod` entries.
-   - `--dotdot-setting` additionally creates `docs/arch/CODE_CONVENTIONS.md`, adds it to the architecture README index, and adds an `AGENTS.md` reference.
+   - `--dotdot-setting` additionally creates `docs/arch/DOCS_STRUCTURE.md` and `docs/arch/CODE_CONVENTIONS.md`, adds them to the architecture README index, and adds an `AGENTS.md` reference.
    - `--force` backs up replaced files as `<name>.bak.<timestamp>`.
 3. Review generated files.
    - Fill project-specific sections in `AGENTS.md` when context is available.

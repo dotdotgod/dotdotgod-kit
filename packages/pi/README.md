@@ -59,7 +59,7 @@ A good first-run flow is:
 
 - **Project initializer skill:** create `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs indexes, active-plan space, archive map, and local memory/cache ignores.
 - **Task-directed loading:** `/dd:load` starts from `dotdotgod load-snapshot` when available, then reads only relevant docs from the fixed memory surface.
-- **Safe planning:** `/plan` keeps source/config changes blocked while request framing turns implementation-looking asks into durable plans under `docs/plan/` first.
+- **Safe planning:** `/plan` keeps source/config changes blocked while request framing turns implementation-looking asks into durable plans under `docs/plan/` first; `/plan <request>` enables planning and sends the first request in one step.
 - **Impact-aware context shaping:** Plan Mode can queue curated load when baseline docs are missing or context has narrowed to one docs area, and can use `dotdotgod expand --with-impact` for explicit `[[...]]` refs and `expand --fuzzy --with-impact` for high-signal natural references from the maintained graph.
 - **Impact enforcement:** after source/config edits, Pi can remind the agent to run `dotdotgod_graph_impact` or `/impact-check`, return structured YML impact summaries, and block commit/push/publish commands until pending impact checks pass.
 - **Execution continuity:** completed plan steps are reported with explicit `[DONE:n]` markers so progress survives long sessions and compaction.
@@ -93,6 +93,7 @@ The graph uses more than traceability blocks: Markdown links, README routes, hea
 
 ```text
 /plan           Toggle safe planning mode.
+/plan <request> Enable plan mode and send a planning request.
 /todos          Show tracked plan progress during execution.
 /impact-check   Run graph impact checks for pending or git-changed files.
 /load           Load project memory for the current repository.
@@ -102,7 +103,7 @@ The graph uses more than traceability blocks: Markdown links, README routes, hea
 ## Included
 
 - `project-initializer` skill: the starting point for `AGENTS.md`, thin agent entrypoints, docs folders, README indexes, and local memory/cache ignores.
-- `plan-mode` extension: read-first planning mode with restricted tools, request framing, optional `--plan-extra-tools`, docs/plan writes, execution tracking, tiered hidden prompts, mandatory impact/validation guidance, `/todos`, `dotdotgod_graph_impact`, and `/impact-check`.
+- `plan-mode` extension: read-first planning mode with restricted tools, `/plan <request>` inline request delivery, request framing, optional `--plan-extra-tools`, docs/plan writes, execution tracking, tiered hidden prompts, mandatory impact/validation guidance, `/todos`, `dotdotgod_graph_impact`, and `/impact-check`.
 - `load-project` extension: read-only project context loading through `/load` and `/dd:load`.
 
 ## Local Development

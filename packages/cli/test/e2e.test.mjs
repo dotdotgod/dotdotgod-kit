@@ -266,7 +266,9 @@ describe('dotdotgod CLI e2e', () => {
 
     const dotdotRoot = mkdtempSync(join(tmpdir(), 'dotdotgod-init-dotdot-'));
     json(run(['init', dotdotRoot, '--dotdot-setting', '--json']));
+    assert.equal(existsSync(join(dotdotRoot, 'docs/arch/DOCS_STRUCTURE.md')), true);
     assert.equal(existsSync(join(dotdotRoot, 'docs/arch/CODE_CONVENTIONS.md')), true);
+    assert.match(readFileSync(join(dotdotRoot, 'AGENTS.md'), 'utf8'), /DOCS_STRUCTURE\.md/);
     assert.match(readFileSync(join(dotdotRoot, 'AGENTS.md'), 'utf8'), /CODE_CONVENTIONS\.md/);
   });
 
