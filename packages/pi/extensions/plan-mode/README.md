@@ -5,6 +5,7 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 ## Changes
 
 - Plan progress uses the `/todos` command.
+- `/plan <request>` enables Plan Mode if needed and sends the request as the first or next planning turn; `/plan` without args still toggles.
 - Only the `Plan:` heading is parsed for step extraction.
 - Plan mode can use `pi-web-access` tools when installed:
   - `web_search`
@@ -23,18 +24,19 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 - When the request contains high-signal natural refs such as `PLAN_MODE`, path-like mentions, or quoted doc names, Plan Mode may add bounded `dotdotgod expand --fuzzy` results before broad search; fuzzy low-signal suppression follows the resolved dotdotgod CLI config.
 - Completed task directories should be moved to `docs/archive/plan/<task-slug>/` after execution and verification.
 - Plans are encouraged to include target files, risks, verification steps, and an executable graph-impact refinement step before source changes.
-- During execution and normal mode, successful source/config `edit` and `write` tool results create pending dotdotgod impact checks. Pi reminds the agent to run impact, exposes `/impact-check`, and blocks commit/push/publish bash commands until pending files are checked.
+- During execution and normal mode, successful source/config `edit` and `write` tool results create pending dotdotgod impact checks. Pi reminds the agent to run impact, exposes `/impact-check`, includes current git unstaged/staged/untracked source/config files, and blocks commit/push/publish bash commands until pending files are checked.
 
 ## Commands
 
 - `/plan` - Toggle plan mode
+- `/plan <request>` - Enable Plan Mode if needed and send `<request>` as a planning request without toggling off an active Plan Mode session
 - `/todos` - Show current plan progress
-- `/impact-check` - Run `dotdotgod graph impact --yml` for pending source/config files, or for current git changes when no pending files are recorded
+- `/impact-check` - Run `dotdotgod graph impact --yml` for pending source/config files plus current git unstaged, staged, and untracked source/config files
 - `Ctrl+Alt+P` - Toggle plan mode
 
 ## Usage
 
-1. Enable plan mode with `/plan`.
+1. Enable plan mode with `/plan`, or run `/plan <request>` to enable Plan Mode and send the first planning request in one command.
 2. Ask the agent to analyze the task and create a plan.
 3. The agent should create or update a focused kebab-case task directory under `docs/plan/<task-slug>/`.
 4. The task overview, index, scope, and status belong in `docs/plan/<task-slug>/README.md`.
@@ -59,7 +61,7 @@ Allowed:
 - Directory names under `docs/` must be kebab-case; markdown file names must be UPPER_SNAKE_CASE.md
 - Read-only bash commands: `rg`, `git status`, `git diff`, `yarn info`, `npm view`, etc.
 - Bounded dotdotgod context/status commands: `dotdotgod --version`, `dotdotgod --help`, `dotdotgod status ...`, `dotdotgod load-snapshot ...`, `dotdotgod resolve ...`, `dotdotgod expand ...`, `dotdotgod graph impact ...`, `dotdotgod graph communities ...`, `dotdotgod config ...`, and `dotdotgod index ...`. The equivalent local source form `node /path/to/packages/cli/bin/dotdotgod.mjs ...` is also recognized for development installs.
-- `dotdotgod_graph_impact` is available as an LLM-callable tool for changed-file impact checks and returns structured YML summaries by default.
+- `dotdotgod_graph_impact` is available as an LLM-callable tool for changed-file impact checks and returns structured YML summaries by default. In the Pi TUI, outputs longer than 10 lines collapse to the first 10 lines with a remaining-line count and expand via the tool-output keybinding.
 - Plan/archive housekeeping bash commands when every affected path stays under `docs/plan/` or `docs/archive/`: `mkdir -p docs/archive/plan`, `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`, `rm -r docs/plan/<task-slug>`
 - Web/document research: `web_search`, `code_search`, `fetch_content`, `get_search_content`
 

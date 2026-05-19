@@ -5,6 +5,11 @@
 
 import { isAbsolute, relative, resolve } from "node:path";
 
+export function normalizePlanCommandRequest(args: string): string | undefined {
+	const request = args.trim();
+	return request.length > 0 ? request : undefined;
+}
+
 // Destructive commands blocked in plan mode
 const DESTRUCTIVE_PATTERNS = [
 	/\brm\b/i,
@@ -623,8 +628,13 @@ export function upsertPendingImpact(items: readonly PendingImpactItem[], item: P
 	return next.slice(-maxItems);
 }
 
-export function clearPendingImpactForPath(items: readonly PendingImpactItem[], path: string, fingerprint?: string): PendingImpactItem[] {
-	return items.filter((item) => item.path !== path || (fingerprint !== undefined && item.fingerprint !== undefined && item.fingerprint !== fingerprint));
+export function clearPendingImpactForPath(items: readonly PendingImpactItem[], path: string): PendingImpactItem[] {
+	return items.filter((item) => item.path !== path);
+}
+
+export function mergeImpactCheckPaths(cwd: string, pendingItems: readonly PendingImpactItem[], gitChangedPaths: readonly string[]): string[] {
+	const paths = [...pendingItems.map((item) => item.path), ...gitChangedPaths];
+	return [...new Set(paths.map((path) => normalizeImpactPath(cwd, path)).filter((path): path is string => Boolean(path)).filter(shouldTrackImpactPath))];
 }
 
 export function pendingImpactSummary(items: readonly PendingImpactItem[], limit = 8): string {
@@ -650,6 +660,14 @@ export function isCommitLikeCommand(command: string): boolean {
 
 export function isBroadVerificationCommand(command: string): boolean {
 	return /^\s*(pnpm\s+run\s+verify|npm\s+test|pnpm\s+test|yarn\s+test|pytest\b|\.\/run-tests\.sh\b)/i.test(command);
+}
+
+export function formatExpandableToolOutput(text: string, expanded: boolean, expandHint: string, maxLines = 10): string {
+	if (expanded) return text;
+	const lines = text.split(/\r?\n/);
+	if (lines.length <= maxLines) return text;
+	const omitted = lines.length - maxLines;
+	return [...lines.slice(0, maxLines), `... (${omitted} more lines, ${expandHint})`].join("\n");
 }
 
 export function formatMultiImpactSummary(results: Array<{ path: string; data?: unknown; error?: string; summary?: string }>, topLimit = 5): string {
