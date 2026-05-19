@@ -4,7 +4,7 @@
 
 The dotdotgod CLI supports project-level configuration for markdown validation size budgets. Projects can keep the default 200-line and 10,000-character limits, raise or lower them, or exempt explicit paths from size checks when an index or generated reference is intentionally large.
 
-This config controls only the size-budget checks. Exempted files still run naming, traceability, link, anchor, README, plan/archive shape, gitignore, and optional stale-index checks.
+This config controls only the size-budget checks. Exempted files remain subject to naming, traceability, link, anchor, README, plan/archive shape, gitignore, and optional stale-index checks.
 
 ## Config File
 
@@ -40,7 +40,7 @@ All path fields are arrays. Scalar path settings are invalid and validation shou
 - If `validation` is absent, the CLI uses `maxLines: 200`, `maxChars: 10000`, and no size-check excludes.
 - If `validation.markdown` is absent, markdown validation uses those same defaults.
 - `dotdotgod validate --max-lines <n>` and `--max-chars <n>` override configured numeric budgets for that invocation.
-- `validation.markdown.exclude` still applies when CLI numeric overrides are used.
+- `validation.markdown.exclude` applies when CLI numeric overrides are used.
 - Invalid config is reported by `dotdotgod validate` and `dotdotgod config`. Runtime commands fall back to the default policy so read-only snapshot and graph commands remain usable.
 
 ## Example: Exempt an Archive Index
@@ -57,7 +57,7 @@ All path fields are arrays. Scalar path settings are invalid and validation shou
 }
 ```
 
-This keeps the default markdown budgets for normal docs while allowing the archive history map to grow beyond the default size. The archive README still receives all non-size validation checks.
+This keeps the default markdown budgets for normal docs while allowing the archive history map to grow beyond the default size. The archive README receives all non-size validation checks.
 
 ## Traceability
 

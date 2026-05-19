@@ -2,7 +2,7 @@
 
 ## Planning Context Shaping
 
-After Plan Mode is enabled, the first user planning request triggers one context-shaping pass:
+After Plan Mode is enabled, the first user planning request triggers one context-shaping pass. The request may be sent as a separate message after `/plan`, or inline as `/plan <request>`; inline requests enable Plan Mode before delivery and then use the same context shaping and request-framing path.
 
 1. Queue a curated project-memory load if baseline project docs are missing, recent memory load is absent, or context has narrowed to one documentation area while the request needs cross-area planning.
 2. Request planning-focused compaction if context is too large or noisy.
@@ -12,7 +12,7 @@ The curated load uses the `/dd:load` default surface: baseline files, docs index
 
 ## Planning-Focused Compaction
 
-Plan Mode requests compaction only when context is likely to hurt plan quality. It checks once after the first planning request. Later turns record metrics but do not rerun load/compaction decisions.
+Plan Mode requests compaction only when context is likely to hurt plan quality. It checks once after the first planning request. Subsequent turns record metrics but do not rerun load/compaction decisions.
 
 The extension passes planning-specific `customInstructions` to `ctx.compact()`. Compaction should preserve the latest request, decisions, active plan status, targets, relevant spec/test/arch context, validation/index/impact summaries, implementation decisions, verification outcomes, risks, next steps, and completed `[DONE:n]` markers.
 
@@ -28,7 +28,7 @@ The extension skips compaction during execution and continues if compaction fail
 
 ## Plan Review Choice
 
-Plan Mode uses tiered hidden runtime instructions. The first active planning turn receives the full safety/workflow prompt; later turns receive a compact reminder. Planning turns frame advisory requests lightly, convert implementation-looking requests into durable plans first, use curated load flow for memory-load requests, and use the execution path for explicit execution requests.
+Plan Mode uses tiered hidden runtime instructions. The first active planning turn receives the full safety/workflow prompt; subsequent turns receive a compact reminder. Planning turns frame advisory requests lightly, convert implementation-looking requests into durable plans first, use curated load flow for memory-load requests, and use the execution path for explicit execution requests. If `/plan <request>` is invoked while Plan Mode is already active, the request is sent as another planning request and Plan Mode remains enabled.
 
 When the agent creates or updates an active plan markdown file under `docs/plan/`, plan mode asks whether to execute, stay in plan mode, or refine the plan. If the user explicitly asks to execute a named active plan, Plan Mode resolves it and enters execution even if the file was not modified in the current turn.
 
@@ -47,7 +47,7 @@ When execution starts:
 - After modification or coding work, execution guidance requires `dotdotgod validate` before final completion.
 - `/todos` displays completion progress.
 
-When all tracked steps are complete, plan execution state is cleared without an additional preview/message. Plan completion does not auto-index by default; future cache-refresh hooks should be opt-in after all steps have `[DONE:n]` markers.
+When all tracked steps are complete, plan execution state is cleared without an additional preview/message. Plan completion does not auto-index by default; cache-refresh hooks are opt-in and run only after all steps have `[DONE:n]` markers.
 
 ## Traceability
 

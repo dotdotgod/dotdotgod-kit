@@ -61,6 +61,20 @@ docs/arch/conventions/COMPONENT_STRUCTURE.md
 docs/arch/conventions/DATA_LOADING.md
 ```
 
+## Spec Writing Contract
+
+Behavior specs describe the current product contract: supported commands, API shapes, user-visible behavior, defaults, constraints, and validation outcomes.
+
+Specs should not describe how behavior changed over time. Rewrite historical-change wording into direct current-state rules. Examples:
+
+- Use "unsupported graph subcommands return an unknown-command error" instead of "removed graph subcommands return an unknown-command error".
+- Use "this path is outside traceability enforcement" instead of "this path no longer fails traceability".
+- Use "the default tool list applies when the setting is absent" instead of "the default tools remain unchanged".
+
+Historical context, migration rationale, future extension ideas, and completed-plan notes belong in `docs/arch/`, `docs/test/`, `docs/archive/`, or active `docs/plan/` files rather than behavior specs. If compatibility behavior is still user-visible, keep it in the spec but phrase it as a current supported or unsupported rule.
+
+Config/action terms such as `remove`, `exclude`, `fallback`, and `replacement semantics` are allowed when they name current behavior precisely.
+
 ## Traceability Blocks
 
 Behavior specs may include fenced `json dotdotgod` traceability blocks as the final section to connect specs to source, tests, related docs, and verification commands.

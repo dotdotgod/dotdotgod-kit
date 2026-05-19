@@ -73,7 +73,7 @@ Curated traceability remains higher confidence than deterministic routing hints.
 
 Default routing hints are deterministic and lexical. They use explicit project artifacts such as file paths, markdown headings, README indexes, memory-area policy, package names, binaries, and package resources.
 
-Embedding-based similarity is not part of the default ranking path. If added later, it should be opt-in and used for audit or repair suggestions, not as a substitute for consistent terminology, glossary aliases, or traceability blocks.
+Embedding-based similarity is not part of the default ranking path. Any embedding-based ranking extension must be opt-in and used for audit or repair suggestions, not as a substitute for consistent terminology, glossary aliases, or traceability blocks.
 
 ## Output Shape
 
@@ -131,7 +131,7 @@ Compact text and YML output omit full ranking weights, long retrieval signal lis
 
 ## Candidate Selection
 
-Ranking still computes explainable `impactScore` values for every candidate. Before returning the bounded first page, the CLI prefers curated/test/proximity candidates over low-confidence routing-only matches and caps low-actionability metadata nodes such as dependencies when actionable files or docs are available.
+Ranking computes explainable `impactScore` values for every candidate. Before returning the bounded first page, the CLI prefers curated/test/proximity candidates over low-confidence routing-only matches and caps low-actionability metadata nodes such as dependencies when actionable files or docs are available.
 
 Routing reasons remain visible in `reasons` and `scoreBreakdown`; they are demoted only for top-result selection.
 
