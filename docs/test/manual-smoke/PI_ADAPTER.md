@@ -5,7 +5,7 @@
 Install locally:
 
 ```bash
-pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
+pi install /path/to/dotdotgod/packages/pi
 ```
 
 Load aliases:

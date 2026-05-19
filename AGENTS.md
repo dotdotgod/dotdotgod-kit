@@ -26,7 +26,7 @@ Document project-specific commands here as they become available:
 
 ```bash
 # Test/install the Pi adapter locally
-pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
+pi install /path/to/dotdotgod/packages/pi
 
 # Run the project initializer dry-run against the current project
 node packages/cli/bin/dotdotgod.mjs init . --dry-run --project-name dotdotgod

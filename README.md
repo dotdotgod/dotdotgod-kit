@@ -179,7 +179,7 @@ pnpm run pack:dry-run
 Local Pi adapter install:
 
 ```bash
-pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
+pi install /path/to/dotdotgod/packages/pi
 ```
 
 ## Documentation

@@ -5,7 +5,7 @@
 Run locally:
 
 ```bash
-claude --plugin-dir /Users/dotdot/Workspace/dotdotgod/packages/claude-code
+claude --plugin-dir /path/to/dotdotgod/packages/claude-code
 ```
 
 Confirm these commands are discoverable or invokable:
@@ -20,7 +20,7 @@ For `/dd:load`, generated guidance should prefer `dotdotgod load-snapshot <root>
 
 ## Codex Adapter
 
-Install or add `/Users/dotdot/Workspace/dotdotgod/packages/codex` with the current local plugin workflow.
+Install or add `/path/to/dotdotgod/packages/codex` with the current local plugin workflow.
 
 Confirm `project-load`, `doc-first-planning`, and `project-initializer` skills are discoverable. Trigger phrases `dd:load`, `dd:plan`, and `dd:init` should activate the expected workflows. For `dd:load`, use the same snapshot/archive/fallback expectations as Claude Code.
 
