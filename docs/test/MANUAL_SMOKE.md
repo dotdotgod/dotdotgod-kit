@@ -37,6 +37,13 @@ Check that the loader prompt includes a compact `Load snapshot:` section with ca
 16. In `/plan`, create a plan, choose execute, and confirm the follow-up names the active plan path.
 17. With extracted todos, confirm execution context includes `Active plan: docs/plan/<task-slug>/README.md`; after resume or planning compaction, `Current work focus:` preserves that path.
 18. In `/plan`, ask `Execute the plan in docs/plan/<task-slug>/README.md` for an existing active plan and confirm execution starts even if the plan file was not edited in that turn.
+19. In `/plan`, ask an advisory question and confirm the hidden framing keeps the response planning-only without forcing a plan file; then ask an implementation-looking request and confirm it is converted into a durable plan first.
+20. In `/plan`, start from a session without baseline docs or with only one docs area preserved, then confirm curated project-memory load is queued before planning continues.
+21. Confirm implementation plans include an executable step to run `dotdotgod graph impact` for intended changed files and update the plan with related docs/tests/files before source changes.
+22. In execution or normal mode, make a source/config edit, confirm the impact status/widget appears, and confirm the next hidden context reminds the agent to run `/impact-check` or `dotdotgod_graph_impact`.
+23. Confirm `/impact-check` runs `dotdotgod graph impact --yml` for pending files, returns structured grouped output, and clears the status/widget after success.
+24. With pending impact checks, confirm `git commit`, `git push`, and package publish bash commands are blocked, while a successful manual `dotdotgod graph impact ... --changed <path>` command clears the matching pending file.
+25. After modification or coding work, confirm execution guidance requires `dotdotgod validate` before final completion.
 
 ## Claude Code Adapter
 

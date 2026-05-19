@@ -31,5 +31,6 @@ node packages/cli/bin/dotdotgod.mjs expand --help
 node packages/cli/bin/dotdotgod.mjs graph impact --help
 node packages/cli/bin/dotdotgod.mjs graph impact . --json
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json
-node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --compact --json
+node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml
+node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --compact
 ```

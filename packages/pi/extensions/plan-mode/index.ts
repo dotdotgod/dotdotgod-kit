@@ -8,29 +8,43 @@ import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
+import { Type } from "typebox";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { recordContextMetric } from "../context-metrics/utils.js";
 import { buildLoadPrompt, collectSnapshot } from "../load-project/utils.js";
 import {
 	buildPlanCompactionInstructions,
 	buildPlanModeContextPrompt,
+	buildPlanModeRequestFraming,
 	detectPlanExecutionIntent,
 	extractTodoItems,
 	formatCompactImpactSummary,
+	formatMultiImpactSummary,
 	formatReferenceExpansionSummary,
+	getChangedPathFromDotdotgodImpactCommand,
 	hasExplicitBracketReferences,
 	hasLikelyFuzzyReferences,
+	normalizeImpactPath,
+	pendingImpactSummary,
 	resolveMentionedPlanPath,
 	resolvePlanModeTools,
 	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
 	selectPlanImpactPaths,
 	shouldAllowPlanModeBashCommand,
+	shouldTrackImpactPath,
+	upsertPendingImpact,
+	clearPendingImpactForPath,
+	isBroadVerificationCommand,
+	isCommitLikeCommand,
+	shouldLoadProjectMemoryForPlanning,
 	shouldPromptForPlanChoice,
 	shouldShapePlanningContextOnAgentStart,
 	markCompletedSteps,
+	type ImpactCheckRecord,
+	type PendingImpactItem,
 	type PlanCompactionFocus,
 	type TodoItem,
 } from "./utils.js";
@@ -41,6 +55,7 @@ const ARCHIVE_DIRECTORY = "docs/archive";
 const NORMAL_MODE_TOOLS = [
 	"read",
 	"bash",
+	"dotdotgod_graph_impact",
 	"edit",
 	"write",
 	"grep",
@@ -188,6 +203,41 @@ function getToolPath(input: unknown): string | undefined {
 	return typeof path === "string" ? path : undefined;
 }
 
+function getTextContent(content: Array<{ type: string; text?: string }>): string {
+	return content.filter((item) => item.type === "text" && typeof item.text === "string").map((item) => item.text).join("\n");
+}
+
+function fingerprintPath(cwd: string, path: string): string | undefined {
+	try {
+		const stat = statSync(resolve(cwd, path));
+		return `${stat.size}:${Math.round(stat.mtimeMs)}`;
+	} catch {
+		return undefined;
+	}
+}
+
+function collectGitChangedPaths(cwd: string): string[] {
+	const commands = [
+		["diff", "--name-only"],
+		["ls-files", "--others", "--exclude-standard"],
+	];
+	const paths = new Set<string>();
+	for (const args of commands) {
+		const result = spawnSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5_000 });
+		if (result.status !== 0) continue;
+		for (const line of (result.stdout ?? "").split(/\r?\n/)) {
+			const normalized = normalizeImpactPath(cwd, line);
+			if (normalized && shouldTrackImpactPath(normalized)) paths.add(normalized);
+		}
+	}
+	return [...paths];
+}
+
+const DotdotgodGraphImpactParams = Type.Object({
+	changed: Type.Optional(Type.String({ description: "Changed file path to check with dotdotgod graph impact" })),
+	paths: Type.Optional(Type.Array(Type.String(), { description: "Changed file paths to check with dotdotgod graph impact" })),
+});
+
 export default function planModeExtension(pi: ExtensionAPI): void {
 	let planModeEnabled = false;
 	let executionMode = false;
@@ -210,6 +260,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let currentPlanPath: string | undefined;
 	let touchedPlanArchivePaths: string[] = [];
 	let activePlanModeTools: string[] = [];
+	let pendingImpactItems: PendingImpactItem[] = [];
+	let impactCheckRecords: ImpactCheckRecord[] = [];
 
 	pi.registerFlag("plan", {
 		description: "Start in plan mode (safe exploration plus docs/plan updates)",
@@ -220,6 +272,26 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		description: "Comma-separated extra tool names to allow in Plan Mode when those tools are installed",
 		type: "string",
 		default: "",
+	});
+
+	pi.registerTool({
+		name: "dotdotgod_graph_impact",
+		label: "dotdotgod graph impact",
+		description: "Run bounded dotdotgod graph impact checks for changed files and clear pending Pi impact reminders after success.",
+		promptSnippet: "Run dotdotgod graph impact for changed files before broad tests, commits, pushes, or publishing.",
+		promptGuidelines: ["Use dotdotgod_graph_impact after source/config edits and before broad tests, commits, pushes, or publishing when changed files may affect related docs/tests/files."],
+		parameters: DotdotgodGraphImpactParams,
+		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+			const paths = [...(params.changed ? [params.changed] : []), ...(params.paths ?? [])];
+			if (paths.length === 0) {
+				return { content: [{ type: "text", text: "Error: changed or paths is required" }], details: { ok: false, error: "changed or paths is required" } };
+			}
+			const result = runImpactChecks(ctx, paths, "tool");
+			return {
+				content: [{ type: "text", text: result.summary }],
+				details: { ok: result.failed.length === 0, checked: result.checked, failed: result.failed, pending: pendingImpactItems },
+			};
+		},
 	});
 
 	function updateStatus(ctx: ExtensionContext): void {
@@ -235,6 +307,73 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
 	function getSessionEntryCount(ctx: ExtensionContext): number {
 		return ctx.sessionManager.getEntries().length;
+	}
+
+	function updateImpactStatus(ctx: ExtensionContext): void {
+		if (pendingImpactItems.length === 0) {
+			ctx.ui.setStatus("impact-check", undefined);
+			ctx.ui.setWidget("impact-check", undefined);
+			return;
+		}
+		ctx.ui.setStatus("impact-check", ctx.ui.theme.fg("warning", `🔎 ${pendingImpactItems.length}`));
+		ctx.ui.setWidget("impact-check", [
+			"dotdotgod impact check pending:",
+			...pendingImpactItems.slice(0, 5).map((item) => `- ${item.path}`),
+			...(pendingImpactItems.length > 5 ? [`- ... ${pendingImpactItems.length - 5} more`] : []),
+			"Run /impact-check or dotdotgod_graph_impact before committing.",
+		]);
+	}
+
+	function trackPendingImpact(ctx: ExtensionContext, path: string, reason: PendingImpactItem["reason"]): void {
+		const normalized = normalizeImpactPath(ctx.cwd, path);
+		if (!normalized || !shouldTrackImpactPath(normalized)) return;
+		const fingerprint = fingerprintPath(ctx.cwd, normalized);
+		pendingImpactItems = upsertPendingImpact(pendingImpactItems, {
+			path: normalized,
+			...(fingerprint ? { fingerprint } : {}),
+			reason,
+			touchedAt: new Date().toISOString(),
+		});
+		updateImpactStatus(ctx);
+		persistState();
+	}
+
+	function clearPendingImpact(ctx: ExtensionContext, path: string, source: ImpactCheckRecord["source"], data?: unknown, summary?: string): void {
+		const normalized = normalizeImpactPath(ctx.cwd, path);
+		if (!normalized) return;
+		const fingerprint = fingerprintPath(ctx.cwd, normalized);
+		pendingImpactItems = clearPendingImpactForPath(pendingImpactItems, normalized, fingerprint);
+		impactCheckRecords = [...impactCheckRecords, { path: normalized, ...(fingerprint ? { fingerprint } : {}), ranAt: new Date().toISOString(), source, ...(summary ? { summary } : {}) }].slice(-30);
+		void data;
+		updateImpactStatus(ctx);
+		persistState();
+	}
+
+	function runImpactChecks(ctx: ExtensionContext, paths: string[], source: ImpactCheckRecord["source"]): { summary: string; checked: string[]; failed: string[] } {
+		const normalizedPaths = [...new Set(paths.map((path) => normalizeImpactPath(ctx.cwd, path)).filter((path): path is string => Boolean(path)).filter(shouldTrackImpactPath))];
+		const results: Array<{ path: string; data?: unknown; error?: string; summary?: string }> = [];
+		const checked: string[] = [];
+		const failed: string[] = [];
+		for (const path of normalizedPaths) {
+			const result = runDotdotgodCli(ctx.cwd, ["graph", "impact", ctx.cwd, "--changed", path, "--yml"]);
+			if (result.ok) {
+				results.push({ path, data: result.data, ...(result.stdout ? { summary: result.stdout } : {}) });
+				checked.push(path);
+			} else {
+				results.push({ path, error: result.error ?? "unknown error" });
+				failed.push(path);
+			}
+		}
+		const summary = formatMultiImpactSummary(results);
+		for (const path of checked) {
+			clearPendingImpact(ctx, path, source, results.find((result) => result.path === path)?.data, summary);
+		}
+		return { summary, checked, failed };
+	}
+
+	function buildPendingImpactReminder(): string | undefined {
+		if (pendingImpactItems.length === 0) return undefined;
+		return `[DOTDOTGOD IMPACT CHECK PENDING]\nYou changed these files but have not run dotdotgod graph impact:\n${pendingImpactSummary(pendingImpactItems)}\nBefore broad tests, more edits, commit, push, or publish, run dotdotgod_graph_impact or /impact-check and review related docs/tests/files.`;
 	}
 
 	function buildCurrentWorkFocus(): PlanCompactionFocus {
@@ -308,6 +447,21 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		return false;
 	}
 
+	function getProjectMemoryContextText(ctx: ExtensionContext): string {
+		return ctx.sessionManager
+			.getEntries()
+			.slice(-60)
+			.map((entry) => {
+				const candidate = entry as { type?: string; customType?: string; message?: AgentMessage; data?: unknown };
+				if (candidate.type === "message" && candidate.message) return getMessageText(candidate.message);
+				if (candidate.type === "custom") return `${candidate.customType ?? "custom"}\n${JSON.stringify(candidate.data ?? {})}`;
+				return "";
+			})
+			.filter(Boolean)
+			.join("\n")
+			.slice(-20_000);
+	}
+
 	function requestPlanningLoadIfNeeded(ctx: ExtensionContext): void {
 		if (!planModeEnabled || executionMode || planningLoadInFlight || planCompactionInFlight || pendingPlanningLoadPrompt) return;
 
@@ -358,7 +512,13 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		if (!planModeEnabled || executionMode || planningLoadInFlight || pendingPlanningLoadPrompt) return false;
 		const entryCount = getSessionEntryCount(ctx);
 		if (lastPlanningLoadEntryCount !== undefined && entryCount - lastPlanningLoadEntryCount < 10) return false;
-		return !hasRecentProjectMemoryLoad(ctx, entryCount);
+		const hasRecentLoad = hasRecentProjectMemoryLoad(ctx, entryCount);
+		const decision = shouldLoadProjectMemoryForPlanning({
+			latestRequest: lastPlanningRequest,
+			contextText: getProjectMemoryContextText(ctx),
+			hasRecentProjectMemoryLoad: hasRecentLoad,
+		});
+		return decision.loadNeeded;
 	}
 
 	function refreshPlanCliContextIfAvailable(ctx: ExtensionContext): void {
@@ -381,7 +541,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			}
 		}
 		const impactPaths = selectPlanImpactPaths(ctx.cwd, lastPlanningRequest, currentPlanPath, currentPlanContent, touchedPlanArchivePaths, planPathExists);
-		const impacts = impactPaths.map((path) => ({ path, result: runDotdotgodCli(ctx.cwd, ["graph", "impact", ctx.cwd, "--changed", path, "--compact", "--json"]) }));
+		const impacts = impactPaths.map((path) => ({ path, result: runDotdotgodCli(ctx.cwd, ["graph", "impact", ctx.cwd, "--changed", path, "--json"]) }));
 		const contextParts = [formatPlanCliContextSummary(validate, snapshot, impacts)];
 		let referenceExpansionSummary = "";
 		const hasExplicitReferences = hasExplicitBracketReferences(lastPlanningRequest);
@@ -504,8 +664,23 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			lastPlanningRequest,
 			currentPlanPath,
 			touchedPlanArchivePaths,
+			pendingImpactItems,
+			impactCheckRecords,
 		});
 	}
+
+	pi.registerCommand("impact-check", {
+		description: "Run dotdotgod graph impact for pending or git-changed files",
+		handler: async (_args, ctx) => {
+			const paths = pendingImpactItems.length > 0 ? pendingImpactItems.map((item) => item.path) : collectGitChangedPaths(ctx.cwd);
+			if (paths.length === 0) {
+				ctx.ui.notify("No source/config files need dotdotgod impact checks.", "info");
+				return;
+			}
+			const result = runImpactChecks(ctx, paths, "command");
+			ctx.ui.notify(result.summary, result.failed.length > 0 ? "warning" : "info");
+		},
+	});
 
 	pi.registerCommand("plan", {
 		description: "Toggle plan mode (safe exploration plus docs/plan updates)",
@@ -530,6 +705,25 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	});
 
 	pi.on("tool_call", async (event, ctx) => {
+		if (event.toolName === "bash") {
+			const command = event.input.command as string;
+			if (pendingImpactItems.length > 0 && isCommitLikeCommand(command)) {
+				return {
+					block: true,
+					reason: `Blocked: impact not checked for changed files.\nRun /impact-check or dotdotgod_graph_impact first.\nPending:\n${pendingImpactSummary(pendingImpactItems)}`,
+				};
+			}
+			if (pendingImpactItems.length > 0 && isBroadVerificationCommand(command) && ctx.hasUI) {
+				const approved = await ctx.ui.confirm(
+					"Run broad verification before impact check?",
+					`Pending dotdotgod graph impact checks:\n${pendingImpactSummary(pendingImpactItems)}\n\nContinue with this verification command anyway?`,
+				);
+				if (!approved) {
+					return { block: true, reason: "Blocked: run /impact-check or dotdotgod_graph_impact before broad verification." };
+				}
+			}
+		}
+
 		if (!planModeEnabled) return;
 
 		if (event.toolName === "bash") {
@@ -564,6 +758,23 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 				currentPlanPath = getCurrentPlanReadmePath(path) ?? currentPlanPath;
 				pendingPlanChoicePath = currentPlanPath;
 			}
+		}
+	});
+
+	pi.on("tool_result", async (event, ctx) => {
+		if (event.isError) return;
+		if (event.toolName === "edit" || event.toolName === "write") {
+			const path = getToolPath(event.input);
+			if (path) trackPendingImpact(ctx, path, event.toolName);
+			return;
+		}
+		if (event.toolName === "bash") {
+			const command = typeof event.input.command === "string" ? event.input.command : "";
+			const changed = getChangedPathFromDotdotgodImpactCommand(command);
+			if (!changed) return;
+			const output = getTextContent(event.content);
+			if (output.includes('"ok": false')) return;
+			clearPendingImpact(ctx, changed, "bash", undefined, formatCompactImpactSummary(changed, undefined));
 		}
 	});
 
@@ -614,10 +825,13 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			persistState();
 		}
 
+		const impactReminder = buildPendingImpactReminder();
+
 		if (planModeEnabled) {
 			if (activePlanModeTools.length === 0) activePlanModeTools = getPlanModeTools();
 			const baseContent = buildPlanModeContextPrompt(planModeFullPromptInjected, activePlanModeTools);
-			const content = planningCliContextSummary ? `${baseContent}\n\n${planningCliContextSummary}` : baseContent;
+			const requestFraming = buildPlanModeRequestFraming(lastPlanningRequest);
+			const content = [baseContent, requestFraming, planningCliContextSummary, impactReminder].filter(Boolean).join("\n\n");
 			planModeFullPromptInjected = true;
 			persistState();
 			return {
@@ -646,9 +860,20 @@ Execute each step in order.
 After completing any step, include its [DONE:n] tag in the same assistant response.
 Final responses after implementation or verification MUST include [DONE:n] for every step completed in that turn.
 Example: after completing step 1, include [DONE:1]. If steps 1 and 2 are both complete, include [DONE:1] [DONE:2].
+After modification or coding work, run dotdotgod validate for the project before final completion. Prefer the local source CLI form when available: node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index.
 When implementation and verification are complete, move the completed task directory from docs/plan/<task-slug>/ to docs/archive/plan/<task-slug>/ as the final housekeeping step and include the archive step's [DONE:n] tag.
 
-If an out-of-scope change is required, stop and ask the user for confirmation.`,
+If an out-of-scope change is required, stop and ask the user for confirmation.${impactReminder ? `\n\n${impactReminder}` : ""}`,
+					display: false,
+				},
+			};
+		}
+
+		if (impactReminder) {
+			return {
+				message: {
+					customType: "impact-check-context",
+					content: impactReminder,
 					display: false,
 				},
 			};
@@ -773,6 +998,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 						lastPlanningRequest?: string;
 						currentPlanPath?: string;
 						touchedPlanArchivePaths?: string[];
+						pendingImpactItems?: PendingImpactItem[];
+						impactCheckRecords?: ImpactCheckRecord[];
 					};
 			  }
 			| undefined;
@@ -796,6 +1023,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			lastPlanningRequest = planModeEntry.data.lastPlanningRequest ?? lastPlanningRequest;
 			currentPlanPath = planModeEntry.data.currentPlanPath ?? currentPlanPath;
 			touchedPlanArchivePaths = planModeEntry.data.touchedPlanArchivePaths ?? touchedPlanArchivePaths;
+			pendingImpactItems = planModeEntry.data.pendingImpactItems ?? pendingImpactItems;
+			impactCheckRecords = planModeEntry.data.impactCheckRecords ?? impactCheckRecords;
 		}
 
 		const isResume = planModeEntry !== undefined;
@@ -826,5 +1055,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.`,
 			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:session-start-enabled", { entryCount: getSessionEntryCount(ctx), tools: activePlanModeTools });
 		}
 		updateStatus(ctx);
+		updateImpactStatus(ctx);
 	});
 }

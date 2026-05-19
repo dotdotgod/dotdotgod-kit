@@ -62,6 +62,10 @@ function cliJson(args) {
   try { return JSON.parse(execSync(`${process.execPath} packages/cli/bin/dotdotgod.mjs ${args}`, { cwd: root, encoding: 'utf8', stdio: ['ignore','pipe','ignore'] })); }
   catch { return null; }
 }
+function cliText(args) {
+  try { return execSync(`${process.execPath} packages/cli/bin/dotdotgod.mjs ${args}`, { cwd: root, encoding: 'utf8', stdio: ['ignore','pipe','ignore'] }).trim(); }
+  catch { return ''; }
+}
 const docsIndexes = walkMarkdown('docs').filter((f) => f.endsWith('/README.md') || f === 'docs/README.md').filter((f) => includeArchive || !f.startsWith('docs/archive/plan/') && !f.startsWith('docs/archive/report/'));
 const defaultDocs = memoryDirectories.flatMap((d) => walkMarkdown(d));
 const archiveAll = walkMarkdown('docs/archive');
@@ -74,8 +78,8 @@ const loadSnapshotSample = cliJson('load-snapshot . --json');
 const loadSnapshotText = loadSnapshotSample ? JSON.stringify(loadSnapshotSample) : '';
 const graphImpactSample = impactChangedPath && existsSync(join(root, impactChangedPath)) ? cliJson(`graph impact . --changed ${JSON.stringify(impactChangedPath)} --json`) : null;
 const graphImpactText = graphImpactSample ? JSON.stringify(graphImpactSample) : '';
-const graphImpactCompactSample = impactChangedPath && existsSync(join(root, impactChangedPath)) ? cliJson(`graph impact . --changed ${JSON.stringify(impactChangedPath)} --compact --json`) : null;
-const graphImpactCompactText = graphImpactCompactSample ? JSON.stringify(graphImpactCompactSample) : '';
+const graphImpactCompactSample = impactChangedPath && existsSync(join(root, impactChangedPath)) ? cliText(`graph impact . --changed ${JSON.stringify(impactChangedPath)} --yml`) : '';
+const graphImpactCompactText = graphImpactCompactSample;
 const graphImpactRanking = graphImpactSample?.impact?.ranking?.method ?? 'unknown';
 const graphImpactScoredItems = graphImpactSample?.related?.filter((item) => typeof item.impactScore === 'number').length ?? 0;
 const graphImpactSemanticItems = graphImpactSample?.related?.filter((item) => (item.reasons ?? []).some((reason) => reason.includes('semantic') || reason.includes('mentions_'))).length ?? 0;
@@ -83,7 +87,7 @@ const groups = [
   { name: 'Load prompt', files: 1, characters: loadPrompt.length, words: loadPrompt.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(loadPrompt.length / 4), notes: 'Generated from current /dd:load prompt shape' },
   { name: 'Load snapshot sample', files: loadSnapshotSample ? loadSnapshotSample.cache?.indexedFiles ?? 0 : 0, characters: loadSnapshotText.length, words: loadSnapshotText.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(loadSnapshotText.length / 4), notes: loadSnapshotSample ? `CLI snapshot JSON; refreshed=${loadSnapshotSample.metadata?.cacheRefreshed ?? false}; omitted communities=${loadSnapshotSample.quality?.omittedCommunities ?? 0}; omitted items=${loadSnapshotSample.quality?.omittedCommunityItems ?? 0}` : 'CLI snapshot unavailable' },
   { name: 'Graph impact sample', files: graphImpactSample?.related?.length ?? 0, characters: graphImpactText.length, words: graphImpactText.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(graphImpactText.length / 4), notes: graphImpactSample ? `dotdotgod graph impact --changed ${impactChangedPath}; ranking=${graphImpactRanking}; scored=${graphImpactScoredItems}; semantic=${graphImpactSemanticItems}; related=${graphImpactSample.related?.length ?? 0}; omitted=${graphImpactSample.impact?.omittedRelated ?? 0}; refreshed=${graphImpactSample.metadata?.cacheRefreshed ?? false}` : `Graph impact unavailable for ${impactChangedPath}` },
-  { name: 'Graph impact compact sample', files: graphImpactCompactSample?.related?.length ?? 0, characters: graphImpactCompactText.length, words: graphImpactCompactText.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(graphImpactCompactText.length / 4), notes: graphImpactCompactSample ? `dotdotgod graph impact --compact --changed ${impactChangedPath}; related=${graphImpactCompactSample.related?.length ?? 0}; omitted=${graphImpactCompactSample.impact?.omittedRelated ?? 0}; semanticOnlyTop10=${graphImpactCompactSample.impact?.quality?.semanticOnlyTop10 ?? 0}; refreshed=${graphImpactCompactSample.metadata?.cacheRefreshed ?? false}` : `Compact graph impact unavailable for ${impactChangedPath}` },
+  { name: 'Graph impact YML sample', files: graphImpactCompactSample ? 1 : 0, characters: graphImpactCompactText.length, words: graphImpactCompactText.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(graphImpactCompactText.length / 4), notes: graphImpactCompactSample ? `dotdotgod graph impact --yml --changed ${impactChangedPath}` : `YML graph impact unavailable for ${impactChangedPath}` },
   { name: 'Plan Mode full prompt', files: 1, characters: planModeFullPrompt.length, words: planModeFullPrompt.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(planModeFullPrompt.length / 4), notes: 'First active planning turn after /plan' },
   { name: 'Plan Mode compact reminder', files: 1, characters: planModeCompactPrompt.length, words: planModeCompactPrompt.trim().split(/\s+/).filter(Boolean).length, approxTokens: Math.ceil(planModeCompactPrompt.length / 4), notes: 'Later planning turns after the full prompt was injected' },
   measureFiles('Baseline memory', markerFiles, 'AGENTS/CLAUDE/CODEX/root/docs indexes'),

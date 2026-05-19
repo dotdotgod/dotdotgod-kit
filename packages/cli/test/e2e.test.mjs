@@ -149,15 +149,25 @@ describe('dotdotgod CLI e2e', () => {
     assert.match(removedQuery.stderr, /dotdotgod graph impact <root> --changed <path>/);
     assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
 
-    const missingChangedJson = run(['graph', 'impact', root, '--compact', '--json']);
+    const missingChangedJson = run(['graph', 'impact', root, '--json']);
     assert.equal(missingChangedJson.status, 2);
     assert.equal(missingChangedJson.stderr, '');
     const payload = JSON.parse(missingChangedJson.stdout);
     assert.equal(payload.ok, false);
     assert.equal(payload.command, 'graph impact');
-    assert.equal(payload.compact, true);
     assert.equal(payload.error.code, 'MISSING_CHANGED');
     assert.match(payload.usage, /dotdotgod graph impact <root> --changed <path>/);
+
+    const missingChangedYml = run(['graph', 'impact', root, '--yml']);
+    assert.equal(missingChangedYml.status, 2);
+    assert.equal(missingChangedYml.stderr, '');
+    assert.match(missingChangedYml.stdout, /ok: false/);
+    assert.match(missingChangedYml.stdout, /code: "MISSING_CHANGED"/);
+
+    const outputConflict = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--compact', '--json']);
+    assert.equal(outputConflict.status, 2);
+    assert.equal(outputConflict.stderr, '');
+    assert.equal(JSON.parse(outputConflict.stdout).error.code, 'OUTPUT_MODE_CONFLICT');
 
     const missingChangedValueJson = run(['graph', 'impact', root, '--changed', '--json']);
     assert.equal(missingChangedValueJson.status, 2);
@@ -449,15 +459,19 @@ describe('dotdotgod CLI e2e', () => {
     assert(!impact.related.some((item) => item.id.startsWith('file:docs/archive/plan/')));
     assert.equal(typeof impact.impact.omittedRelated, 'number');
 
-    const compactImpactResult = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--compact', '--json']);
-    const compactImpact = json(compactImpactResult);
-    assert.equal(compactImpact.compact, true);
-    assert.equal(compactImpact.impact.compact, true);
-    assert.equal(compactImpact.impact.ranking.method, 'personalized-pagerank+policy');
-    assert.equal(compactImpact.impact.ranking.weights, undefined);
-    assert.equal(compactImpact.related.length <= 10, true);
-    assert(compactImpact.impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/APP.md'));
-    assert(Buffer.byteLength(compactImpactResult.stdout) < Buffer.byteLength(rawImpactResult.stdout));
+    const ymlImpactResult = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--yml']);
+    assert.equal(ymlImpactResult.status, 0, ymlImpactResult.stderr || ymlImpactResult.stdout);
+    assert.match(ymlImpactResult.stdout, /^impact:\n/);
+    assert.match(ymlImpactResult.stdout, /output: "yml"/);
+    assert.match(ymlImpactResult.stdout, /changed: "packages\/app\/index\.mjs"/);
+    assert.match(ymlImpactResult.stdout, /docs:\n      omitted:/);
+    assert.match(ymlImpactResult.stdout, /path: "docs\/spec\/APP\.md"/);
+    assert.match(ymlImpactResult.stdout, /recommended_actions:/);
+    assert(Buffer.byteLength(ymlImpactResult.stdout) < Buffer.byteLength(rawImpactResult.stdout));
+
+    const yamlAlias = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--yaml']);
+    assert.equal(yamlAlias.status, 0, yamlAlias.stderr || yamlAlias.stdout);
+    assert.match(yamlAlias.stdout, /output: "yml"/);
 
     const compactText = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--compact']);
     assert.equal(compactText.status, 0, compactText.stderr || compactText.stdout);

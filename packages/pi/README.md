@@ -23,7 +23,7 @@ files:
 - packages/pi/extensions/plan-mode/index.ts (45; implemented_by, semantic_similarity)
 ```
 
-`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
+`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps a short text summary, `--yml`/`--yaml` returns a compact structured agent-facing summary, and `--json` returns machine-readable detail. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
 
 Pi adapter for dotdotgod's context curation workflow. It gives Pi the most complete dotdotgod loop: initialize the fixed load-context surface, use explicit maintained graph links for impact-aware planning, execute verified steps, and archive completed work as future project memory.
 
@@ -59,8 +59,9 @@ A good first-run flow is:
 
 - **Project initializer skill:** create `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs indexes, active-plan space, archive map, and local memory/cache ignores.
 - **Task-directed loading:** `/dd:load` starts from `dotdotgod load-snapshot` when available, then reads only relevant docs from the fixed memory surface.
-- **Safe planning:** `/plan` keeps source/config changes blocked while the agent writes or updates durable task intent under `docs/plan/`.
-- **Impact-aware context shaping:** Plan Mode can use `dotdotgod expand --with-impact` for explicit `[[...]]` refs and `expand --fuzzy --with-impact` for high-signal natural references from the maintained graph.
+- **Safe planning:** `/plan` keeps source/config changes blocked while request framing turns implementation-looking asks into durable plans under `docs/plan/` first.
+- **Impact-aware context shaping:** Plan Mode can queue curated load when baseline docs are missing or context has narrowed to one docs area, and can use `dotdotgod expand --with-impact` for explicit `[[...]]` refs and `expand --fuzzy --with-impact` for high-signal natural references from the maintained graph.
+- **Impact enforcement:** after source/config edits, Pi can remind the agent to run `dotdotgod_graph_impact` or `/impact-check`, return structured YML impact summaries, and block commit/push/publish commands until pending impact checks pass.
 - **Execution continuity:** completed plan steps are reported with explicit `[DONE:n]` markers so progress survives long sessions and compaction.
 - **Reusable history:** completed work moves to `docs/archive/plan/`, while `docs/archive/README.md` remains the lightweight history map.
 - **Cross-agent conventions:** the same `AGENTS.md`, docs, plan, and archive structure works with dotdotgod's CLI, Claude Code, and Codex packages.
@@ -91,16 +92,17 @@ The graph uses more than traceability blocks: Markdown links, README routes, hea
 ## Commands
 
 ```text
-/plan      Toggle safe planning mode.
-/todos     Show tracked plan progress during execution.
-/load      Load project memory for the current repository.
-/dd:load   Stable namespaced alias for project memory loading.
+/plan           Toggle safe planning mode.
+/todos          Show tracked plan progress during execution.
+/impact-check   Run graph impact checks for pending or git-changed files.
+/load           Load project memory for the current repository.
+/dd:load        Stable namespaced alias for project memory loading.
 ```
 
 ## Included
 
 - `project-initializer` skill: the starting point for `AGENTS.md`, thin agent entrypoints, docs folders, README indexes, and local memory/cache ignores.
-- `plan-mode` extension: read-first planning mode with restricted tools, optional `--plan-extra-tools`, docs/plan writes, execution tracking, tiered hidden prompts, and `/todos`.
+- `plan-mode` extension: read-first planning mode with restricted tools, request framing, optional `--plan-extra-tools`, docs/plan writes, execution tracking, tiered hidden prompts, mandatory impact/validation guidance, `/todos`, `dotdotgod_graph_impact`, and `/impact-check`.
 - `load-project` extension: read-only project context loading through `/load` and `/dd:load`.
 
 ## Local Development
