@@ -78,7 +78,7 @@ Use hooks only when you want opt-in reminders, validation, or local safety rails
 Use the package as a local Claude Code plugin directory while developing:
 
 ```bash
-claude --plugin-dir /Users/dotdot/Workspace/dotdotgod/packages/claude-code
+claude --plugin-dir /path/to/dotdotgod/packages/claude-code
 ```
 
 Run package checks:

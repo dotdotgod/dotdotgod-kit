@@ -109,7 +109,7 @@ The graph uses more than traceability blocks: Markdown links, README routes, hea
 ## Local Development
 
 ```bash
-pi install /Users/dotdot/Workspace/dotdotgod/packages/pi
+pi install /path/to/dotdotgod/packages/pi
 pnpm --filter @dotdotgod/pi run verify
 pnpm --filter @dotdotgod/pi run pack:dry-run
 ```
