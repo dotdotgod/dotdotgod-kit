@@ -30,6 +30,6 @@ Project-level config is optional and lives in `dotdotgod.config.json` or `.dotdo
 - `IMPACT_RANKING_CONFIG.md`: optional config for `graph impact` ranking presets, score breakdowns, compact text/YML output, PPR, and deterministic semantic links.
 - `CONFIG_COMMAND.md`: CLI behavior for inspecting and initializing project-level dotdotgod config files.
 - `CLI_INTERFACE.md`: baseline CLI help, version, subcommand help, and missing `graph impact --changed` behavior.
-- `REFERENCE_EXPANSION.md`: CLI reference resolution and prompt-time expansion from the existing graph/index.
+- `REFERENCE_EXPANSION.md`: CLI reference resolution and prompt-time expansion from the dotdotgod graph/index.
 - `CROSS_AGENT_SUPPORT.md`: cross-agent support contract for Pi, Claude Code, Codex, and shared docs workflows.
 - `WORKSPACE_VERIFICATION.md`: root verification, cache, pre-push, and package verify contract behavior.

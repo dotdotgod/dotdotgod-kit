@@ -19,7 +19,7 @@ The command does not modify source, docs, or config files.
 
 It first tries to run `dotdotgod load-snapshot <cwd> --json` and include a bounded snapshot summary in the loader prompt. The CLI read can lazily refresh `.dotdotgod/` cache metadata when the cache is missing or stale. If the CLI is unavailable or returns invalid JSON, the command falls back to a lightweight snapshot of expected memory files and docs directories, then sends a read-only loader prompt to the agent.
 
-When the CLI snapshot is available, the prompt keeps the documentation directory summary compact and asks the agent to use memory areas, memory policy, communities, cache metadata, command guidance, and README indexes before reading individual docs. The lightweight fallback still lists discovered markdown files so repositories without a valid snapshot remain usable.
+When the CLI snapshot is available, the prompt keeps the documentation directory summary compact and asks the agent to use memory areas, memory policy, communities, cache metadata, command guidance, and README indexes before reading individual docs. The lightweight fallback lists discovered markdown files so repositories without a valid snapshot remain usable.
 
 The agent is instructed to use read-only tools such as:
 
@@ -91,16 +91,6 @@ Installing `@dotdotgod/pi` does not provide the `dotdotgod` binary.
 ## Hook Integration
 
 Claude Code and Codex adapters may document optional start hooks that remind agents to use `dotdotgod load-snapshot <root> --json` or `/dd:load`/`dd:load` when project memory is needed. Those hooks do not replace the explicit load workflow. `load-snapshot` remains a bounded agent-facing map and may lazily refresh `.dotdotgod/` cache metadata when the cache is missing or stale, so hook examples should label automatic snapshot calls as cache-aware opt-ins.
-
-## Future Extension Points
-
-The command is intentionally a runtime extension entrypoint. It can later grow into:
-
-- bounded graph impact reports grouped by related files, docs, tests, commands, events, package resources, and symbols
-- vector search
-- graph search
-- `dd_search` or related LLM-callable tools
-- `/dd:index`, `/dd:search`, or `/dd:status` commands
 
 ## Traceability
 

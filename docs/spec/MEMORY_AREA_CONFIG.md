@@ -18,7 +18,7 @@ The CLI looks for one optional JSON config file at the project root:
 1. `dotdotgod.config.json`
 2. `.dotdotgodrc.json`
 
-If neither file exists, the CLI uses its built-in defaults. The zero-config default must remain compatible with the existing docs scaffold. Use `dotdotgod config <root>` to inspect the resolved policy, or `dotdotgod config init <root>` to materialize the defaults as `dotdotgod.config.json` for a project. The same project-level config also carries related CLI policies such as fuzzy reference-expansion low-signal `add`/`remove` terms.
+If neither file exists, the CLI uses its built-in defaults. The zero-config default must support the default docs scaffold. Use `dotdotgod config <root>` to inspect the resolved policy, or `dotdotgod config init <root>` to materialize the defaults as `dotdotgod.config.json` for a project. The project-level config also carries related CLI policies such as fuzzy reference-expansion low-signal `add`/`remove` terms.
 
 ## Memory Area Fields
 
@@ -27,7 +27,7 @@ A config may define `memory.areas` as an ordered array. Each area supports:
 - `id`: kebab-case memory-area id.
 - `label`: human-readable label.
 - `paths`: non-empty array of exact paths or `/**` subtree patterns.
-- `excludePaths`: optional array of exact paths or `/**` subtree patterns removed from this area.
+- `excludePaths`: optional array of exact paths or `/**` subtree patterns excluded from this area.
 - `scope`: `shared` or `local`.
 - `freshness`: `fresh` or `stale`.
 - `role`: retrieval role surfaced in graph and snapshot metadata.
@@ -55,7 +55,7 @@ Without config, the CLI behaves as if these areas were configured:
 
 `docs/archive/README.md` is the archive map. It is stale local memory, but it remains included by default because it tells agents what historical memory exists.
 
-Archive bodies under `docs/archive/**` are stale local memory and remain excluded from default indexing/loading unless a future explicit policy includes them. Agents should use the archive map first and read archive bodies only through targeted lookup when the current task needs history.
+Archive bodies under `docs/archive/**` are stale local memory and are excluded from default indexing/loading unless explicit project policy includes them. Agents should use the archive map first and read archive bodies only through targeted lookup when the current task needs history.
 
 ## Validation Behavior
 
@@ -70,7 +70,7 @@ Archive bodies under `docs/archive/**` are stale local memory and remain exclude
 - unknown `scope` or `freshness`
 - non-integer or out-of-range `priority`
 - non-boolean `includeBodiesByDefault`
-- exact duplicate path patterns that are not excluded by the later area
+- exact duplicate path patterns that are not excluded by the subsequent area
 - malformed `referenceExpansion.fuzzy.lowSignal.add` or `remove` arrays
 
 Invalid memory config does not make the CLI crash. Runtime commands fall back to the default memory config while validation reports repairable errors.
@@ -82,7 +82,7 @@ Invalid memory config does not make the CLI crash. Runtime commands fall back to
 - `memoryConfig`: the resolved source, memory-area definitions, traceability path policy, and reference-expansion fuzzy low-signal policy.
 - `memoryPolicy`: bounded lists of shared, local, fresh, and stale area ids.
 - `memoryAreas`: bounded file summaries grouped by configured area.
-- existing archive bounds showing whether archive bodies were included.
+- archive bounds showing whether archive bodies were included.
 
 The load snapshot must not embed the full graph or stale archive bodies by default.
 

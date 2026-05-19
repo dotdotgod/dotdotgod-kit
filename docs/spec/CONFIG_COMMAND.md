@@ -2,9 +2,9 @@
 
 ## Purpose
 
-The `dotdotgod config` command makes the existing project-level config behavior discoverable from the CLI.
+The `dotdotgod config` command makes project-level config policy discoverable from the CLI.
 
-It does not introduce global config, user config, or monorepo cascading config. The CLI still resolves one optional config file from the project root:
+It does not introduce global config, user config, or monorepo cascading config. The CLI resolves one optional config file from the project root:
 
 1. `dotdotgod.config.json`
 2. `.dotdotgodrc.json`
@@ -72,7 +72,7 @@ The generated file must validate with `dotdotgod validate`. The generated refere
 Overwrite behavior:
 
 - If `dotdotgod.config.json` already exists, init refuses to overwrite it unless `--force` is passed.
-- If `.dotdotgodrc.json` exists, init refuses with a clear error so users can migrate or remove the legacy file intentionally.
+- If `.dotdotgodrc.json` exists, init refuses with a clear error so users can intentionally choose which config file to keep.
 - `--force` may overwrite only `dotdotgod.config.json`.
 
 JSON output for successful init includes:

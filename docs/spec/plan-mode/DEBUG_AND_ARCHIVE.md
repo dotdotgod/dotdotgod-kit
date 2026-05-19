@@ -22,7 +22,7 @@ docs/archive/plan/<task-slug>/
 
 ## Traceability
 
-This domain is the split replacement for `docs/spec/PLAN_MODE.md`. Keep traceability blocks on non-README spec files and keep the compatibility route file so older links remain valid.
+This domain owns the detailed Plan Mode behavior contract. Keep traceability blocks on non-README spec files and keep the compatibility route file so stable Plan Mode links remain valid.
 
 ```json dotdotgod
 {

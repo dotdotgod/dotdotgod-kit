@@ -14,9 +14,9 @@ pi --plan --plan-extra-tools ctx_search,ctx_execute_file
 
 Behavior:
 
-- Default Plan Mode tools remain unchanged when the setting is absent.
+- The default Plan Mode tool list applies when the setting is absent.
 - Extra tool names are appended after the default Plan Mode tools.
-- Duplicate names are removed while preserving order.
+- Duplicate names are deduplicated while preserving order.
 - Invalid tool-name tokens are ignored.
 - Tool names that are not installed in the current Pi session are ignored.
 - The resolved active tool list is used both for `pi.setActiveTools()` and for the hidden full Plan Mode prompt.

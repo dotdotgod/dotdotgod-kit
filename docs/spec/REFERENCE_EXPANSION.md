@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Reference expansion resolves short user-written project-memory references from the existing dotdotgod graph index.
+Reference expansion resolves short user-written project-memory references from the dotdotgod graph index.
 
 The feature avoids repeated full-repository `find` or `grep` scans. It reuses `.dotdotgod/manifest.json` and graph shards to turn references such as `[[PLAN_MODE]]` into bounded, ranked project-memory candidates.
 
@@ -42,7 +42,7 @@ Both commands MUST expose help through `--help`, `-h`, and `help` without refres
 
 ## Index Reuse
 
-The commands MUST use the existing dotdotgod index through the same lazy-refresh path used by `load-snapshot` and `graph` commands.
+The commands MUST use the shared dotdotgod index through the lazy-refresh path used by `load-snapshot` and `graph` commands.
 
 When the index is missing, stale, or schema-mismatched, the command MAY refresh `.dotdotgod/` before returning output. JSON output MUST include refresh metadata so callers can see whether the cache changed.
 
@@ -75,7 +75,7 @@ Ranking SHOULD prefer:
 5. higher-priority dotdotgod memory areas;
 6. current docs/spec, docs/arch, docs/test, and docs/plan files ahead of archive bodies.
 
-If multiple candidates have close scores, output MUST mark the reference as ambiguous instead of silently implying a single authoritative choice. JSON output MUST include candidate scores and reasons.
+If multiple candidates have close scores, output MUST mark the reference as ambiguous rather than imply a single authoritative choice. JSON output MUST include candidate scores and reasons.
 
 ## Archive Policy
 

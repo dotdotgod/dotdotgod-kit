@@ -1,8 +1,8 @@
 # Plan Mode
 
-Plan Mode is now documented as a focused domain under [`plan-mode/`](plan-mode/README.md).
+Plan Mode behavior is documented as a focused domain under [`plan-mode/`](plan-mode/README.md).
 
-Use this file as the compatibility route for existing links. The split keeps the same behavior contract while making the default docs surface easier to load selectively.
+This file provides a stable route for links to the Plan Mode behavior contract while keeping the default docs surface easy to load selectively.
 
 ## Domain Files
 
@@ -13,7 +13,7 @@ Use this file as the compatibility route for existing links. The split keeps the
 
 ## Compatibility Summary
 
-`plan-mode` is a Pi extension that provides safe planning before source changes. It allows read-only project inspection, local plan/archive markdown updates, conservative local-memory housekeeping, bounded dotdotgod context/status commands, and later execution with todo tracking once the user chooses to proceed.
+`plan-mode` is a Pi extension that provides safe planning before source changes. It allows read-only project inspection, local plan/archive markdown updates, conservative local-memory housekeeping, bounded dotdotgod context/status commands, `/plan <request>` one-command planning entry, and user-approved execution with todo tracking.
 
 ## Traceability
 
