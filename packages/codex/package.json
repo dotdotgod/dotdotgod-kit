@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/codex",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "description": "Codex adapter for dotdotgod project memory workflows.",
   "type": "module",
   "license": "Elastic-2.0",
