@@ -52,7 +52,7 @@ Impact ranking policy lives in the same optional root config files as memory and
 - Presets can be partially overridden by numeric weights, relation weights, boost maps, PPR settings, and routing settings.
 - Runtime graph commands fall back to defaults when config is invalid; `dotdotgod validate` reports the config errors.
 - `graph impact` preserves its raw `related` and grouped output while adding ranking metadata.
-- `--compact` is opt-in and returns an agent-facing grouped summary without changing the default raw JSON shape.
+- `--compact` is opt-in short text output; `--yml`/`--yaml` is opt-in structured compact output for agents.
 
 ## Ranking Signals
 
@@ -111,31 +111,23 @@ The top-level `related` array mirrors `impact.related` for compatibility.
 
 `graph impact --yml` returns compact structured agent-facing groups, while `--json` keeps the full machine-readable payload:
 
-```json
-{
-  "compact": true,
-  "impact": {
-    "compact": true,
-    "ranking": {
-      "method": "personalized-pagerank+policy",
-      "preset": "balanced",
-      "configSource": "default"
-    },
-    "related": [
-      {
-        "id": "file:docs/spec/LOAD_PROJECT.md",
-        "type": "file",
-        "path": "docs/spec/LOAD_PROJECT.md",
-        "impactScore": 65.4,
-        "reasons": ["incoming:implemented_by"],
-        "scoreBreakdown": { "ppr": 22.4, "traceability": 30 }
-      }
-    ]
-  }
-}
+```yaml
+impact:
+  ok: true
+  output: "yml"
+  groups:
+    docs:
+      items:
+        - path: "docs/spec/LOAD_PROJECT.md"
+          score: 65.4
+          reasons: ["implemented_by", "semantic_similarity"]
+  recommended_actions:
+    - "review_related_docs"
+    - "run_related_tests"
+    - "run_dotdotgod_validate"
 ```
 
-Compact output omits full ranking weights, long retrieval signal lists, and unbounded raw node metadata. Use raw JSON for diagnostics.
+Compact text and YML output omit full ranking weights, long retrieval signal lists, and unbounded raw node metadata. Use raw JSON for diagnostics.
 
 ## Candidate Selection
 

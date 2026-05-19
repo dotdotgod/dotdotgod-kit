@@ -11,7 +11,7 @@ Project-level config is optional and lives in `dotdotgod.config.json` or `.dotdo
 - `MEMORY_AREA_CONFIG.md`: `memory.areas`, including shared/local scope, fresh/stale freshness, priorities, and archive-body inclusion.
 - `TRACEABILITY_CONFIG.md`: `traceability.required` and `traceability.exclude` paths for validation enforcement.
 - `VALIDATION_CONFIG.md`: `validation.markdown` line/character budgets and size-check excludes.
-- `IMPACT_RANKING_CONFIG.md`: `impactRanking` presets, weights, PPR, routing hints, and compact output.
+- `IMPACT_RANKING_CONFIG.md`: `impactRanking` presets, weights, PPR, routing hints, compact text output, and structured YML output.
 - `REFERENCE_EXPANSION.md`: `referenceExpansion.fuzzy.lowSignal.add/remove` for fuzzy prompt matching.
 - `CONFIG_COMMAND.md`: config discovery, JSON output, initialization, invalid-config fallback, and user-facing repair behavior.
 
@@ -26,7 +26,7 @@ Project-level config is optional and lives in `dotdotgod.config.json` or `.dotdo
 - `MEMORY_AREA_CONFIG.md`: optional config for shared/local and fresh/stale memory-area policy.
 - `TRACEABILITY_CONFIG.md`: optional config for traceability enforcement paths.
 - `VALIDATION_CONFIG.md`: optional config for markdown validation size budgets and explicit size-check exclusions.
-- `IMPACT_RANKING_CONFIG.md`: optional config for `graph impact` ranking presets, score breakdowns, compact output, PPR, and deterministic semantic links.
+- `IMPACT_RANKING_CONFIG.md`: optional config for `graph impact` ranking presets, score breakdowns, compact text/YML output, PPR, and deterministic semantic links.
 - `CONFIG_COMMAND.md`: CLI behavior for inspecting and initializing project-level dotdotgod config files.
 - `CLI_INTERFACE.md`: baseline CLI help, version, subcommand help, and missing `graph impact --changed` behavior.
 - `REFERENCE_EXPANSION.md`: CLI reference resolution and prompt-time expansion from the existing graph/index.

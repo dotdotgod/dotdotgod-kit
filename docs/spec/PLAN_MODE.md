@@ -11,7 +11,7 @@ It lets the agent inspect the project, maintain markdown plan files, and then sw
 - `/plan`: toggle plan mode.
 - `/todos`: show current plan progress.
 - `/impact-check`: run `dotdotgod graph impact --yml` for pending source/config edits, or for current git changed/untracked files when no pending files are recorded.
-- `dotdotgod_graph_impact`: LLM-callable Pi tool that returns structured YML impact summaries and clears matching pending reminders.
+- `dotdotgod_graph_impact`: LLM-callable impact tool. Successful structured YML starts at `impact:`; multiple successes use `---`.
 - `Ctrl+Alt+P`: toggle plan mode.
 
 Pi has no built-in plan mode; this package provides the workflow as an extension.
@@ -29,7 +29,7 @@ While plan mode is active:
 - Conservative plan/archive housekeeping bash commands are allowed only when every affected path stays under `docs/plan/` or `docs/archive/`, such as archive directory creation, moving a plan into `docs/archive/plan/`, or removing a task file/directory.
 - Product/source/config changes outside those directories are blocked.
 - Bounded dotdotgod context/status commands are auto-allowed when invoked directly as `dotdotgod ...` or through the local source CLI path `node packages/cli/bin/dotdotgod.mjs ...`: `status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and `index`.
-- Agent-requested dotdotgod CLI bash commands that are not otherwise allowlisted, including `init`, `config init`, unknown commands, shell chaining, redirects, pipes, command substitution, and package-runner wrappers, require explicit one-command user approval or remain blocked before they run in Plan Mode.
+- Other dotdotgod CLI bash commands, including `init`, `config init`, unknown commands, shell chaining, redirects, pipes, command substitution, and package-runner wrappers, require explicit one-command user approval or remain blocked.
 
 ## Plan File Shape
 
