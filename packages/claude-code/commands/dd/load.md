@@ -12,7 +12,7 @@ User focus, if provided: `$ARGUMENTS`
 
 ## Goal
 
-Load the current repository's dotdotgod project memory in a read-only pass. Build a compact context map from shared agent instructions, README indexes, specs, architecture notes, test docs, active plans, and relevant archive notes.
+Load the current repository's dotdotgod project memory in a read-only pass. Explicit manual loads should build the fuller curated project map. Prompt-injected refreshes and already-loaded sessions should request compact mode and build a delta-oriented context map from shared agent instructions, README indexes, specs, architecture notes, test docs, active plans, and relevant archive notes.
 
 Do not modify files during the load pass unless the user explicitly asks for edits after the summary.
 
@@ -26,7 +26,7 @@ Do not modify files during the load pass unless the user explicitly asks for edi
    - If the prompt has high-signal natural refs such as `PLAN_MODE`, `docs/spec/PLAN_MODE.md`, or quoted doc names, use `dotdotgod expand <root> "<prompt>" --fuzzy --json` before broad scans; avoid fuzzy expansion for low-signal generic words alone and respect configured fuzzy low-signal add/remove terms.
    - If `dotdotgod` is installed or available in the repository, run `dotdotgod load-snapshot <root> --json`.
    - If the local environment allows package execution but no `dotdotgod` binary is available, optionally run `npx @dotdotgod/cli load-snapshot <root> --json`.
-   - Treat the snapshot as the first-pass project-memory map for cache status, graph size, memory areas, related communities, and archive inclusion policy.
+   - Treat the snapshot as the first-pass project-memory map for cache status, graph size, top memory areas, top related communities, and archive inclusion policy. Avoid expanding command/event-heavy details unless the user asks for a full or diagnostic load.
    - During load/planning, treat `dotdotgod status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and `index` as bounded context/status helpers. Avoid mutating scaffold/config commands such as `init` or `config init` unless the user explicitly asks for initialization or config creation.
    - Use `dotdotgod graph impact <root> --changed <path> --yml` as a task-focused structured impact map when the user identifies a likely source/config/doc file.
    - Use `grep` or `find` after `expand`, impact, and targeted reads when the task needs fallback discovery or raw source text search.
@@ -50,7 +50,7 @@ Do not modify files during the load pass unless the user explicitly asks for edi
 
 ## Output Shape
 
-Respond concisely with:
+For explicit manual full loads, respond concisely with:
 
 - Project summary
 - Key working rules
@@ -59,3 +59,10 @@ Respond concisely with:
 - Active plans
 - Relevant archive notes
 - Open TODO/TBD items or questions to clarify
+
+For compact loads, respond with compact routing information:
+
+- Project-memory status: available, stale, missing, or newly refreshed memory
+- Relevant docs map: only the docs areas or README indexes likely needed for the current request
+- Active plan hints: active plan paths only when relevant
+- Next recommended reads: a short, bounded list, or a note that no further reads are needed

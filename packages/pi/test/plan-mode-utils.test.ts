@@ -507,7 +507,10 @@ describe("plan-mode compaction helpers", () => {
 		const compactPrompt = buildPlanModeContextPrompt(true);
 
 		assert.match(fullPrompt, /You are in Plan Mode/);
-		assert.match(fullPrompt, /Explore relevant files thoroughly/);
+		assert.match(fullPrompt, /Explore files in bounded passes/);
+		assert.match(fullPrompt, /top related specs\/tests\/source files first/);
+		assert.match(fullPrompt, /Do not paste large raw impact payloads into durable plans/);
+		assert.doesNotMatch(fullPrompt, /Explore relevant files thoroughly/);
 		assert.match(compactPrompt, /Compact reminder/);
 		assert.match(compactPrompt, /Do not mutate source\/code\/config files/);
 		assert.ok(compactPrompt.length < fullPrompt.length / 2);

@@ -750,14 +750,14 @@ Project context:
 - Check docs/arch when code conventions, module boundaries, infrastructure/runtime dependencies, or integration constraints may affect the plan.
 
 Workflow:
-- Explore relevant files thoroughly before planning; ask clarifying questions when requirements are ambiguous, using questionnaire if available.
+- Explore files in bounded passes before planning: start from already-loaded memory, README indexes, and impact/load-snapshot results; inspect the top related specs/tests/source files first, then expand only with a concrete reason. Ask clarifying questions when requirements are ambiguous, using questionnaire if available.
 - If planning compaction has just occurred, rely on the preserved planning summary plus current project docs before writing or refining the plan.
 - Use web_search, code_search, and fetch_content when library or web evidence is needed.
 - Manage active work under docs/plan/<task-slug>/README.md, with optional UPPER_SNAKE_CASE support files in the same task directory.
 - When one docs domain grows into multiple files, group it under docs/<area>/<domain>/README.md plus supporting UPPER_SNAKE_CASE files.
 - Include scope, status, target files, impact-informed related files, risks, verification, and a final archive step to docs/archive/plan/<task-slug>/.
 - For implementation tasks, the executable Plan: section must include a concrete step to run dotdotgod graph impact for intended changed files, review related specs/tests/docs/commands/files, and update the plan with newly discovered targets, risks, or verification before source changes.
-- When dotdotgod CLI impact summaries are available, use the related specs, tests, docs, commands, scores, and reasons to strengthen target files, verification, and risks before asking for execution.
+- When dotdotgod CLI impact summaries are available, use the related specs, tests, docs, commands, scores, and reasons to strengthen target files, verification, and risks before asking for execution. Do not paste large raw impact payloads into durable plans unless explicitly requested.
 - Do not change product/source files in plan mode. Only maintain docs/plan or docs/archive markdown files and produce an executable plan.
 
 Always write implementation task READMEs with scope, target files, impact-informed related files/checks, implementation steps, verification, risks when useful, an executable graph-impact refinement step before source changes, post-coding dotdotgod validate, and archive housekeeping.

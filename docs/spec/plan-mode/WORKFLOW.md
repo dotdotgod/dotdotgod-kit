@@ -8,7 +8,7 @@ After Plan Mode is enabled, the first user planning request triggers one context
 2. Request planning-focused compaction if context is too large or noisy.
 3. If both are needed, compact first, then flush the queued load from `agent_end`.
 
-The curated load uses the `/dd:load` default surface: baseline files, docs indexes, specs, architecture, tests, and active plans. It excludes full repository scans and archive bodies unless targeted. When the CLI is available, Plan Mode validates, refreshes a bounded load snapshot, and runs advisory `graph impact --json` checks for likely target files.
+The curated load uses the `/dd:load compact` surface: baseline files, docs indexes, specs, architecture, tests, and active plans. Explicit manual `/dd:load` remains full by default, but Plan Mode's automatic prompt-injected refreshes request compact mode to avoid repeated stable background summaries. Compact curated loads exclude full repository scans and archive bodies unless targeted. When the CLI is available, Plan Mode validates, refreshes a bounded load snapshot, and runs advisory `graph impact --json` checks for likely target files.
 
 ## Planning-Focused Compaction
 
@@ -28,11 +28,11 @@ The extension skips compaction during execution and continues if compaction fail
 
 ## Plan Review Choice
 
-Plan Mode uses tiered hidden runtime instructions. The first active planning turn receives the full safety/workflow prompt; subsequent turns receive a compact reminder. Planning turns frame advisory requests lightly, convert implementation-looking requests into durable plans first, use curated load flow for memory-load requests, and use the execution path for explicit execution requests. If `/plan <request>` is invoked while Plan Mode is already active, the request is sent as another planning request and Plan Mode remains enabled.
+Plan Mode uses tiered hidden runtime instructions. The first active planning turn receives the full safety/workflow prompt; subsequent turns receive a compact reminder. The full prompt tells agents to explore files in bounded passes: start from loaded memory, README indexes, and impact/load-snapshot results; inspect top related specs/tests/source files first; and expand only with a concrete reason. Planning turns frame advisory requests lightly, convert implementation-looking requests into durable plans first, use curated load flow for memory-load requests, and use the execution path for explicit execution requests. If `/plan <request>` is invoked while Plan Mode is already active, the request is sent as another planning request and Plan Mode remains enabled.
 
 When the agent creates or updates an active plan markdown file under `docs/plan/`, plan mode asks whether to execute, stay in plan mode, or refine the plan. If the user explicitly asks to execute a named active plan, Plan Mode resolves it and enters execution even if the file was not modified in the current turn.
 
-Plan files remain the durable review artifact. Plan Mode stores the current active plan README path so execution prompts, resume, and compaction summaries can refer to it after context changes.
+Plan files remain the durable review artifact. Plan Mode stores the current active plan README path so execution prompts, resume, and compaction summaries can refer to it after context changes. Plans should summarize impact findings rather than embedding large raw impact payloads unless the user explicitly asks for the raw output.
 
 ## Todo Extraction and Execution
 

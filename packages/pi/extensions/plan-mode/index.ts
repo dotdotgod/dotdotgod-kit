@@ -492,7 +492,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 
 		lastPlanningLoadEntryCount = entryCount;
-		pendingPlanningLoadPrompt = buildLoadPrompt(ctx.cwd, "", collectSnapshot(ctx.cwd));
+		pendingPlanningLoadPrompt = buildLoadPrompt(ctx.cwd, "compact", collectSnapshot(ctx.cwd));
 		pendingPlanningLoadReason = "plan-mode-context-shaping";
 		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:load-queued", { entryCount, reason: pendingPlanningLoadReason });
 		pi.appendEntry("project-memory-load", { reason: pendingPlanningLoadReason, entryCount, queued: true });
