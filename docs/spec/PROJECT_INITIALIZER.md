@@ -42,13 +42,13 @@ It also ensures `.gitignore` contains:
 
 - Adapter initializer workflows MUST NOT require users to install `dotdotgod` before creating the baseline scaffold.
 - If `dotdotgod init` is unavailable because the CLI command is missing or not executable, adapters MUST use the bundled fallback script so initialization can continue.
-- The fallback scaffold MUST preserve the same baseline docs indexes and local-memory `.gitignore` entries so agents can navigate `AGENTS.md` and README indexes before the CLI is installed.
-- CLI-only validation, graph cache, and load-snapshot features may be added later without changing the initialized docs shape.
+- The fallback scaffold MUST create baseline docs indexes and local-memory `.gitignore` entries so agents can navigate `AGENTS.md` and README indexes before the CLI is installed.
+- CLI-only validation, graph cache, and load-snapshot features are outside the baseline scaffold and MUST NOT change the initialized docs shape.
 
 ## Overwrite Policy
 
-- Existing files are skipped by default.
-- `--force` replaces existing generated files only after moving the old file to `<name>.bak.<timestamp>`.
+- Files already present are skipped by default.
+- `--force` replaces generated files only after moving the current file to `<name>.bak.<timestamp>`.
 - `--dry-run` reports intended create/update/replace actions without writing files.
 - `--json` is supported by `dotdotgod init` for structured action reporting.
 
@@ -73,11 +73,11 @@ Generated docs follow these conventions:
 
 ## Dotdot Setting
 
-`--dotdot-setting` adds the optional dotdot code convention scaffold. See [`DOTDOT_SETTING.md`](./DOTDOT_SETTING.md).
+`--dotdot-setting` adds the optional dotdot documentation-structure and code-convention scaffold. See [`DOTDOT_SETTING.md`](./DOTDOT_SETTING.md).
 
 ## Non-Goals
 
-- The initializer does not merge into existing files unless `--force` is explicitly used.
+- The initializer does not merge into files already present unless `--force` is explicitly used.
 - The initializer does not infer project stack beyond the project name.
 - The initializer does not require the CLI in adapter contexts; missing CLI access must fall back to the bundled script.
 - The initializer does not require or create a project config file by default; use `dotdotgod config init` when a project wants editable policy.

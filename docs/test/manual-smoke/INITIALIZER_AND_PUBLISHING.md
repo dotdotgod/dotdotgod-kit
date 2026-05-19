@@ -9,7 +9,7 @@ sh packages/claude-code/skills/project-initializer/scripts/init_project.sh --dry
 sh packages/codex/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name <fixture-root>
 ```
 
-Confirm each initializer path reports `docs/plan`, `docs/archive`, and `.dotdotgod` `.gitignore` entries. Also confirm adapter guidance does not stop when `dotdotgod` is absent; it should use the bundled shell fallback and still create README indexes needed for manual project-memory loading.
+Confirm each initializer path reports `docs/plan`, `docs/archive`, and `.dotdotgod` `.gitignore` entries. With `--dotdot-setting`, confirm `docs/arch/DOCS_STRUCTURE.md`, `docs/arch/CODE_CONVENTIONS.md`, and their `AGENTS.md` references are generated. Also confirm adapter guidance does not stop when `dotdotgod` is absent; it should use the bundled shell fallback and still create README indexes needed for manual project-memory loading.
 
 ## Published Pi Adapter Install
 
