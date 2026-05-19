@@ -4,7 +4,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 
 ## Index
 
-- `README.md`: test documentation scope, verification commands, and manual smoke checks.
+- `README.md`: test documentation scope, verification command cheat sheet, and local table of contents.
 - `MEMORY_AREA_CONFIG.md`: memory-area config validation and snapshot smoke checks.
 - `TRACEABILITY_CONFIG.md`: configurable traceability enforcement validation smoke checks.
 - `VALIDATION_CONFIG.md`: markdown validation budget and size-check exclusion coverage.
@@ -16,47 +16,25 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `HOOKS.md`: optional Claude Code and Codex hook documentation and package-resource smoke checks.
 - `CLI_INTERFACE.md`: baseline CLI help/version and invalid invocation checks.
 - `REFERENCE_EXPANSION.md`: reference resolution and prompt-time expansion regression and smoke checks.
-- `MANUAL_SMOKE.md`: adapter, Plan Mode, initializer, and publishing smoke checks.
+- `MANUAL_SMOKE.md`: compatibility route for manual smoke tests.
+- `manual-smoke/README.md`: adapter, Plan Mode, initializer, publishing, and README landing smoke checks.
 
-## Verification Commands
-
-Regenerate adapter resources from shared sources:
+## Verification Command Cheat Sheet
 
 ```bash
 pnpm run generate
-```
-
-Check generated adapter resources for drift:
-
-```bash
 pnpm run verify:generated
-```
-
-Run TypeScript type checks where workspace packages provide them:
-
-```bash
 pnpm run verify:types
-```
-
-Run unit tests where workspace packages provide them:
-
-```bash
 pnpm run verify:unit
-```
-
-Check that package-level quality scripts are included in each package's `verify` script:
-
-```bash
 pnpm run verify:contract
-```
-
-Run CLI unit and e2e tests directly:
-
-```bash
 pnpm --filter @dotdotgod/cli test
+pnpm run verify
+pnpm run pack:dry-run
+node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
+node packages/cli/bin/dotdotgod.mjs validate . --check-index
 ```
 
-Run CLI graph/cache smoke directly:
+CLI graph/cache smoke commands:
 
 ```bash
 node packages/cli/bin/dotdotgod.mjs --help
@@ -71,60 +49,29 @@ node packages/cli/bin/dotdotgod.mjs load-snapshot . --json
 node packages/cli/bin/dotdotgod.mjs status . --json
 ```
 
-Confirm JSON includes schema/refresh metadata, graph counts, bounded summaries, retrieval hints, and archive policy. For graph impact, confirm traceability relations surface related specs/tests/docs.
-
-Run the optimized full workspace gate:
-
-```bash
-pnpm run verify
-```
-
-`pnpm run verify` checks generated-resource drift, enforces the package `verify` contract, then delegates package-specific syntax/typecheck/test/resource checks to each package's `verify` script. Use `verify:types` and `verify:unit` for targeted direct checks, not as extra steps before the full gate.
-
-Run package dry-runs with the standalone safe wrapper:
-
-```bash
-pnpm run pack:dry-run
-```
-
-Run only package tarball dry-runs after generated resources have already been checked:
-
-```bash
-pnpm run pack:dry-run:packages
-```
-
-Run docs validation directly:
-
-```bash
-node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
-node packages/cli/bin/dotdotgod.mjs validate . --check-index
-```
+Confirm JSON includes schema/refresh metadata, graph counts, bounded summaries, retrieval hints, archive policy, and traceability-related specs/tests/docs for graph impact.
 
 ## Workspace Coverage
 
 - `@dotdotgod/shared`: private source resources for generated adapter commands, skills, and initializer files.
 - `@dotdotgod/pi`: generated initializer skill, extension syntax smoke checks, TypeScript typecheck, unit tests for pure plan/load helpers, and Pi package tarball dry-run.
-- `@dotdotgod/cli`: CLI syntax check, unit/e2e tests, validation against this repository, sharded cache/index status smoke checks, stale-index reindex coverage, and Leiden/fallback community output coverage.
+- `@dotdotgod/cli`: CLI syntax check, unit/e2e tests, repository validation, sharded cache/index status smoke checks, stale-index reindex coverage, and Leiden/fallback community output coverage.
 - `@dotdotgod/claude-code`: generated plugin commands/skills, plugin manifest/resource checks, and tarball dry-run.
 - `@dotdotgod/codex`: generated plugin skills, plugin manifest/skill checks, and tarball dry-run.
 
 ## Manual Smoke Tests
 
-See `MANUAL_SMOKE.md` for adapter, Plan Mode, initializer, publishing, and README landing smoke checks.
+See `manual-smoke/README.md` for adapter, Plan Mode, initializer, publishing, and README landing smoke checks. The legacy `MANUAL_SMOKE.md` file routes to that domain.
 
-Memory area config smoke: see `MEMORY_AREA_CONFIG.md`.
+Focused smoke docs:
 
-Traceability config smoke: see `TRACEABILITY_CONFIG.md`.
-
-Validation config smoke: see `VALIDATION_CONFIG.md`.
-
-Hook guidance smoke: see `HOOKS.md`.
-
-Context measurement smoke: see `CONTEXT_MEASUREMENT.md`.
+- `MEMORY_AREA_CONFIG.md`
+- `TRACEABILITY_CONFIG.md`
+- `VALIDATION_CONFIG.md`
+- `HOOKS.md`
+- `CONTEXT_MEASUREMENT.md`
 
 ## Husky Pre-Push Hook
-
-Husky lives at the workspace root and is installed by the root `prepare` script.
 
 Pre-push hook:
 
@@ -133,11 +80,3 @@ pnpm run verify && pnpm run verify:cache && pnpm run pack:dry-run:packages
 ```
 
 `verify:cache` runs docs validation, `dotdotgod index`, and `dotdotgod status`, so pre-push refreshes the ignored `.dotdotgod/` cache automatically before checking freshness.
-
-Run it manually with:
-
-```bash
-.husky/pre-push
-```
-
-`pnpm run verify` includes generated-resource drift checks, so the pre-push hook uses `pack:dry-run:packages` to avoid repeating that check through the standalone `pack:dry-run` wrapper. Direct edits to generated adapter files fail until `pnpm run generate` is run or the shared source is updated. Husky is not required for package consumers and remains a development-only workflow.
