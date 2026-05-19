@@ -25,9 +25,9 @@ files:
 
 `graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
 
-Pi adapter for dotdotgod's context curation workflow. It gives Pi the most complete dotdotgod loop: initialize a project-memory scaffold, load bounded context, plan before source edits, execute explicit steps, verify, and archive completed work.
+Pi adapter for dotdotgod's context curation workflow. It gives Pi the most complete dotdotgod loop: initialize the fixed load-context surface, use explicit maintained graph links for impact-aware planning, execute verified steps, and archive completed work as future project memory.
 
-Use this package when you want Pi to make repository work start from stable specs, tests, architecture, active plans, archive maps, and graph/cache metadata instead of raw chat history.
+Use this package when you want Pi to make repository work start from stable specs, tests, architecture, active plans, archive maps, and graph/cache metadata instead of raw chat history. During the loop, agents help keep README routes, traceability, plans, and archives current so `graph impact` quality stays useful over time.
 
 ## Start Here: Run the Project Initializer Skill
 
@@ -58,9 +58,9 @@ A good first-run flow is:
 ## What You Get
 
 - **Project initializer skill:** create `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs indexes, active-plan space, archive map, and local memory/cache ignores.
-- **Task-directed loading:** `/dd:load` starts from `dotdotgod load-snapshot` when available, then reads only relevant docs.
+- **Task-directed loading:** `/dd:load` starts from `dotdotgod load-snapshot` when available, then reads only relevant docs from the fixed memory surface.
 - **Safe planning:** `/plan` keeps source/config changes blocked while the agent writes or updates durable task intent under `docs/plan/`.
-- **Impact-aware context shaping:** Plan Mode can use `dotdotgod expand --with-impact` for explicit `[[...]]` refs and `expand --fuzzy --with-impact` for high-signal natural references.
+- **Impact-aware context shaping:** Plan Mode can use `dotdotgod expand --with-impact` for explicit `[[...]]` refs and `expand --fuzzy --with-impact` for high-signal natural references from the maintained graph.
 - **Execution continuity:** completed plan steps are reported with explicit `[DONE:n]` markers so progress survives long sessions and compaction.
 - **Reusable history:** completed work moves to `docs/archive/plan/`, while `docs/archive/README.md` remains the lightweight history map.
 - **Cross-agent conventions:** the same `AGENTS.md`, docs, plan, and archive structure works with dotdotgod's CLI, Claude Code, and Codex packages.
@@ -84,7 +84,7 @@ By default, `docs/spec/**` has two roles: it is stable shared/fresh project memo
 
 ## Graph and Bounded Loading
 
-The Pi adapter relies on the CLI graph when available but does not ask agents to read a giant graph report. `load-snapshot` returns bounded cache status, graph size, memory areas, communities, and archive policy. `graph impact` and reference expansion can surface related specs, tests, source, and config for a change before broad scanning.
+The Pi adapter relies on the CLI graph when available but does not ask agents to read a giant graph report. `load-snapshot` returns bounded cache status, graph size, memory areas, communities, and archive policy. `graph impact` and reference expansion use explicit maintained links to surface related specs, tests, source, and config for a change before broad scanning.
 
 The graph uses more than traceability blocks: Markdown links, README routes, headings, package metadata, memory-area membership, commands, tests, and deterministic routing hints all contribute. Archive bodies are excluded by default; `docs/archive/README.md` is the map.
 

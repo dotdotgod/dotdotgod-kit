@@ -4,9 +4,11 @@
 
 dotdotgod is built around context curation: giving AI coding agents the project memory that matters, in a shape they can reliably use.
 
-The primary goal is to reduce context noise and preserve decision quality. Token reduction can happen as a side effect. Agents work better when product intent, design rationale, constraints, current intent, and verification history are easy to find in durable project memory.
+The core mechanism is an explicit, maintainable project knowledge graph. Specs, tests, architecture notes, README routes, traceability blocks, plans, archives, commands, package metadata, and memory areas become deliberate links that agents can inspect and help keep current.
 
-This makes dotdotgod useful for builders who want coding agents to help with implementation while keeping the source of truth for what should be built, why it should be built that way, and how it will be verified in durable project memory.
+That maintained graph powers high-quality `dotdotgod graph impact` results. The fixed docs structure provides the high-signal baseline load context: agents know where to find rules, product truth, rationale, verification knowledge, current intent, and historical outcomes before they read raw source or chat history.
+
+The primary goal is to preserve decision quality by increasing useful-context density. Token reduction can happen as a side effect.
 
 ## Problem
 
@@ -102,7 +104,7 @@ Effect: project context is portable across tools.
 
 The dotdotgod CLI can build a deterministic graph over curated project scopes. Traceability blocks are one high-confidence source, but they are not the whole graph. The index also records Markdown links, README routing edges, headings and anchors, package/source/test/config metadata, memory-area membership, commands, events, and deterministic lexical/package routing hints where configured.
 
-The graph is an acceleration layer for load snapshots, reference expansion, impact queries, and community summaries. It is not a repo-wide memory dump, a vector database, or the source of truth; it points agents back to bounded files they can inspect.
+The graph is an acceleration layer for load snapshots, reference expansion, impact queries, and community summaries. It is not a repo-wide memory dump, a vector database, or the source of truth; it points agents back to bounded files they can inspect. Its quality depends on maintained project links: README indexes, traceability blocks, docs structure, and focused source/test boundaries should stay current as agents complete work.
 
 Graph precision depends on useful project boundaries. If one source file owns many unrelated behaviors, impact results will correctly reveal that hotspot but still collapse many edges onto the same file. Split large mixed-responsibility files and docs by behavior so graph output can point agents to narrower modules, tests, and specs.
 

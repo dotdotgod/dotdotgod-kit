@@ -22,12 +22,12 @@ Future tasks reuse archived memory
 
 1. **Initialize the memory surface.** `dotdotgod init` or an adapter initializer creates `AGENTS.md`, thin agent entrypoints, docs indexes, and the `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive` areas. Those files are the source of truth; the graph cache is derived from them.
 2. **Load curated project memory when needed.** `/dd:load`, `dd:load`, or `dotdotgod load-snapshot` gives the agent bounded metadata: cache freshness, memory areas, graph size, communities, and archive policy. The agent then reads only relevant rules, indexes, specs, architecture docs, tests, or active plans.
-3. **Resolve references and inspect impact.** `dotdotgod expand` resolves explicit `[[...]]` references, `expand --fuzzy` can resolve high-signal natural prompts, and `graph impact --changed <path>` surfaces related specs, tests, architecture, and source before broad scanning.
+3. **Resolve references and inspect impact.** `dotdotgod expand` resolves explicit `[[...]]` references, `expand --fuzzy` can resolve high-signal natural prompts, and `graph impact --changed <path>` uses maintained project links to surface related specs, tests, architecture, and source before broad scanning.
 4. **Plan in a durable file.** Current task intent is written to `docs/plan/<task-slug>/README.md` with scope, target files, risks, verification, and executable steps.
 5. **Keep planning separate from mutation.** In Pi, Plan Mode allows exploration and plan-file edits while blocking source/config changes until execution mode.
 6. **Compact planning context when needed.** If planning context grows large after the user has requested planning work, Plan Mode requests compaction with planning-specific instructions. If both load and compaction are needed, compaction happens first and curated project memory follows.
 7. **Execute explicit steps and verify.** Execution starts from the written plan, completed steps are marked with `[DONE:n]`, and verification follows project docs.
-8. **Archive the outcome.** Completed plans move to `docs/archive/plan/<task-slug>/`, leaving `docs/archive/README.md` as the history map for future targeted lookup.
+8. **Archive the outcome.** Completed plans move to `docs/archive/plan/<task-slug>/`, leaving `docs/archive/README.md` as the history map for future targeted lookup and keeping future graph/load context useful.
 
 This workflow does not require every agent to remember every previous conversation. It gives agents stable places to find current intent, project rules, constraints, verification history, and completed decisions. Plan Mode shapes context in two directions after the user sends a planning request: load missing curated memory or compact noisy planning history before the agent writes or refines the plan.
 
@@ -52,7 +52,7 @@ This helps because long planning sessions often contain both useful decisions an
 
 ## How Structure and Naming Rules Act on Agents
 
-The docs structure is part of the agent interface.
+The docs structure is part of the agent interface and the maintained graph surface.
 
 Predictable paths reduce search overhead. When an agent needs product behavior, it checks `docs/spec`. When it needs constraints or conventions, it checks `docs/arch`. When it needs verification, it checks `docs/test`. When it needs current task intent, it checks `docs/plan`.
 
