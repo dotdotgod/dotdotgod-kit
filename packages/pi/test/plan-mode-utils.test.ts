@@ -187,7 +187,12 @@ describe("plan-mode command safety", () => {
 		assert.match(summary, /dotdotgod graph impact summary/);
 		assert.match(summary, /failed for packages\/pi\/index.ts/);
 		const structured = formatMultiImpactSummary([{ path: "packages/pi/index.ts", summary: "impact:\n  output: \"yml\"" }]);
-		assert.match(structured, /impact:\n  output: "yml"/);
+		assert.equal(structured, "impact:\n  output: \"yml\"");
+		const multiStructured = formatMultiImpactSummary([
+			{ path: "packages/pi/index.ts", summary: "impact:\n  changed: \"packages/pi/index.ts\"" },
+			{ path: "packages/pi/utils.ts", summary: "impact:\n  changed: \"packages/pi/utils.ts\"" },
+		]);
+		assert.match(multiStructured, /\n---\n/);
 	});
 
 	it("asks for one-command approval before allowing other dotdotgod CLI in Plan Mode", async () => {

@@ -653,6 +653,9 @@ export function isBroadVerificationCommand(command: string): boolean {
 }
 
 export function formatMultiImpactSummary(results: Array<{ path: string; data?: unknown; error?: string; summary?: string }>, topLimit = 5): string {
+	const structuredSummaries = results.map((result) => result.summary?.trim()).filter((summary): summary is string => Boolean(summary));
+	if (structuredSummaries.length === results.length && results.every((result) => !result.error)) return structuredSummaries.join("\n---\n");
+
 	const lines = ["dotdotgod graph impact summary:"];
 	for (const result of results) {
 		if (result.error) lines.push(`- Impact: failed for ${result.path}: ${result.error}`);
