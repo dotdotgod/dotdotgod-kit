@@ -4,12 +4,13 @@
 
 `load-project` is a Pi extension that starts a read-only project memory loading turn.
 
-It helps the agent inspect the dotdotgod scaffold and summarize the current project context. This is a full curated project memory load: it covers the default memory surface needed for project work, but it does not read every repository file or every archive body.
+It helps the agent inspect the dotdotgod scaffold and summarize the current project context. Explicit manual `/load` defaults to a fuller curated project memory load, while automatic prompt-injected refreshes should request compact mode. Both modes avoid reading every repository file or every archive body.
 
 ## Commands
 
-- `/load`: load project memory for the current working directory.
+- `/load`: load project memory for the current working directory in full mode.
 - `/dd:load`: stable namespaced alias for the same behavior.
+- `/load compact` or `/dd:load compact`: request the compact/delta-oriented summary for prompt-injected refreshes or already-loaded sessions.
 
 `/dd:load` exists because other extensions may also register `/load`. Pi resolves duplicate extension commands with suffixes, so the namespaced command provides a clearer dotdotgod entrypoint.
 
@@ -19,7 +20,7 @@ The command does not modify source, docs, or config files.
 
 It first tries to run `dotdotgod load-snapshot <cwd> --json` and include a bounded snapshot summary in the loader prompt. The CLI read can lazily refresh `.dotdotgod/` cache metadata when the cache is missing or stale. If the CLI is unavailable or returns invalid JSON, the command falls back to a lightweight snapshot of expected memory files and docs directories, then sends a read-only loader prompt to the agent.
 
-When the CLI snapshot is available, the prompt keeps the documentation directory summary compact and asks the agent to use memory areas, memory policy, communities, cache metadata, command guidance, and README indexes before reading individual docs. The lightweight fallback lists discovered markdown files so repositories without a valid snapshot remain usable.
+When the CLI snapshot is available, the prompt keeps the documentation directory summary compact and asks the agent to use memory areas, communities, cache metadata, archive policy, and README indexes before reading individual docs. Command guidance, command/event lists, and per-community path-heavy details are reserved for explicit full or verbose loads. The bounded fallback lists only a small number of discovered markdown files per docs area so repositories without a valid snapshot remain usable without flooding the prompt.
 
 The agent is instructed to use read-only tools such as:
 
@@ -47,7 +48,7 @@ The loader checks for these baseline files:
 
 The loader prompt asks the agent to:
 
-- use the `load-snapshot` summary first when present, including cache status, lazy refresh metadata, graph size, bounded memory-area summaries, bounded community summaries, and archive inclusion policy
+- use the `load-snapshot` summary first when present, including cache status, lazy refresh metadata, graph size, compact memory-area labels, compact community labels, and archive inclusion policy
 - start with `AGENTS.md`, `README.md`, and `docs/README.md` when they are not already clear from the loaded context
 - summarize product, architecture, code conventions, infrastructure/runtime dependencies, and verification context
 - inspect docs/spec, docs/arch, and docs/test selectively unless a task needs a full refresh
@@ -66,19 +67,18 @@ The event includes prompt character/word/approx-token counts, context usage when
 
 ## Response Shape
 
-The agent should summarize:
+In compact mode, the agent should summarize:
 
-- project summary
-- key working rules
-- available commands and verification methods
-- documentation map
-- active plans
-- relevant archive notes
-- open TODO/TBD items or questions to clarify
+- compact project-memory status: what is available, stale, missing, or newly refreshed
+- relevant docs map: only docs areas or README indexes likely needed for the current request
+- active plan hints: active plan paths only when relevant
+- next recommended reads: a short, bounded list, or a note that no further reads are needed
+
+In full mode, the agent may include the fuller project summary, key working rules, commands and verification methods, documentation map, active plans, relevant archive notes, and open TODO/TBD items. Full mode is the default for explicit manual `/load`; compact mode should be used by automated prompts and follow-up refreshes unless the user asks for full.
 
 ## Current Snapshot Integration
 
-`/load` and `/dd:load` use the unified CLI load snapshot as the preferred bounded project-memory map. The prompt includes compact cache, refresh, graph, memory-area, memory-policy, community, and command-guidance metadata but does not embed the full graph or archive bodies. `docs/archive/README.md` remains included as the archive map; other archive bodies remain excluded by default.
+`/load` and `/dd:load` use the unified CLI load snapshot as the preferred bounded project-memory map. Compact prompts include compact cache, refresh, graph, memory-area, memory-policy, and community metadata but do not embed command/event-heavy details, the full graph, or archive bodies. Default full/verbose loads may include command guidance and more detailed area/community entries. `docs/archive/README.md` remains included as the archive map; other archive bodies remain excluded by default.
 
 The snapshot includes `commandGuidance` so agents see environment-aware commands:
 

@@ -15,6 +15,8 @@ The main finding is that impact increased the unique file-discovery set from 239
 
 This report intentionally avoids publishing personal usage totals or monetary estimates. It focuses on non-financial effectiveness signals that are useful for evaluating `dotdotgod_graph_impact`: the number of files discovered before and after impact, the type of files added, and the relationship reasons that explained those additions.
 
+Impact output accounted for approximately 0.04% of observed usage in the analysis window. Because this share was very small, this report treats impact output size as a low-priority optimization target compared with load and prompt compaction.
+
 ## File Discovery Lift
 
 The analysis compared files known before the first impact call in each impact-using session with files surfaced by impact results.
