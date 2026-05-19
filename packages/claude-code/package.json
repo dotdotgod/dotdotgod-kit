@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/claude-code",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "Claude Code adapter for dotdotgod project memory workflows.",
   "type": "module",
   "license": "Elastic-2.0",
@@ -32,13 +32,13 @@
     "README.md",
     "LICENSE"
   ],
-  "homepage": "https://github.com/dotdotgod/dotdotgod/tree/main/packages/claude-code#readme",
+  "homepage": "https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/claude-code#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dotdotgod/dotdotgod.git",
+    "url": "git+https://github.com/dotdotgod/dotdotgod-kit.git",
     "directory": "packages/claude-code"
   },
   "bugs": {
-    "url": "https://github.com/dotdotgod/dotdotgod/issues"
+    "url": "https://github.com/dotdotgod/dotdotgod-kit/issues"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/cli",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "CLI for dotdotgod validation, project memory snapshots, and graph indexing.",
   "type": "module",
   "license": "Elastic-2.0",
@@ -36,13 +36,13 @@
   "dependencies": {
     "leiden-ts": "^0.1.0"
   },
-  "homepage": "https://github.com/dotdotgod/dotdotgod/tree/main/packages/cli#readme",
+  "homepage": "https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/cli#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dotdotgod/dotdotgod.git",
+    "url": "git+https://github.com/dotdotgod/dotdotgod-kit.git",
     "directory": "packages/cli"
   },
   "bugs": {
-    "url": "https://github.com/dotdotgod/dotdotgod/issues"
+    "url": "https://github.com/dotdotgod/dotdotgod-kit/issues"
   }
 }

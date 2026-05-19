@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/codex",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "Codex adapter for dotdotgod project memory workflows.",
   "type": "module",
   "license": "Elastic-2.0",
@@ -31,13 +31,13 @@
     "README.md",
     "LICENSE"
   ],
-  "homepage": "https://github.com/dotdotgod/dotdotgod/tree/main/packages/codex#readme",
+  "homepage": "https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/codex#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dotdotgod/dotdotgod.git",
+    "url": "git+https://github.com/dotdotgod/dotdotgod-kit.git",
     "directory": "packages/codex"
   },
   "bugs": {
-    "url": "https://github.com/dotdotgod/dotdotgod/issues"
+    "url": "https://github.com/dotdotgod/dotdotgod-kit/issues"
   }
 }

@@ -1,6 +1,6 @@
 # @dotdotgod/cli
 
-[![npm version](https://img.shields.io/npm/v/@dotdotgod/cli.svg)](https://www.npmjs.com/package/@dotdotgod/cli) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod-181717?logo=github)](https://github.com/dotdotgod/dotdotgod/tree/main/packages/cli) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](../../LICENSE)
+[![npm version](https://img.shields.io/npm/v/@dotdotgod/cli.svg)](https://www.npmjs.com/package/@dotdotgod/cli) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod-kit-181717?logo=github)](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/cli) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](../../LICENSE)
 
 > **Change a file, know what else must be checked.**
 
@@ -87,7 +87,7 @@ The default docs scaffold gives files explicit project-memory meaning:
 
 Those roles are configurable but separate. Use `memory.areas` to customize memory classification and retrieval priority. Use `traceability.required` / `traceability.exclude` to customize which markdown paths must end with `json dotdotgod` traceability blocks. Use `validation.markdown`, `impactRanking`, and `referenceExpansion` to tune size budgets, impact scoring, and fuzzy prompt matching.
 
-See the [root README](../../README.md), [GitHub repository](https://github.com/dotdotgod/dotdotgod), [`docs/concept/CONTEXT_CURATION.md`](../../docs/concept/CONTEXT_CURATION.md), [`docs/concept/CONTEXT_MECHANICS.md`](../../docs/concept/CONTEXT_MECHANICS.md), [`docs/spec/MEMORY_AREA_CONFIG.md`](../../docs/spec/MEMORY_AREA_CONFIG.md), and [`docs/spec/TRACEABILITY_CONFIG.md`](../../docs/spec/TRACEABILITY_CONFIG.md) for the deeper model.
+See the [root README](../../README.md), [GitHub repository](https://github.com/dotdotgod/dotdotgod-kit), [`docs/concept/CONTEXT_CURATION.md`](../../docs/concept/CONTEXT_CURATION.md), [`docs/concept/CONTEXT_MECHANICS.md`](../../docs/concept/CONTEXT_MECHANICS.md), [`docs/spec/MEMORY_AREA_CONFIG.md`](../../docs/spec/MEMORY_AREA_CONFIG.md), and [`docs/spec/TRACEABILITY_CONFIG.md`](../../docs/spec/TRACEABILITY_CONFIG.md) for the deeper model.
 
 ## Indexing Scope
 
