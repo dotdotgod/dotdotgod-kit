@@ -4,20 +4,29 @@ import {
 	PLAN_COMPACTION_PERCENT_THRESHOLD,
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
 	buildPlanCompactionInstructions,
+	buildPlanModeRequestFraming,
+	classifyPlanModeRequest,
+	collectProjectMemoryContextCoverage,
 	detectPlanExecutionIntent,
 	buildPlanModeContextPrompt,
 	extractDoneSteps,
 	extractTodoItems,
 	formatCompactImpactSummary,
+	formatMultiImpactSummary,
 	formatPlanCompactionFocus,
 	formatReferenceExpansionSummary,
 	extractPathMentions,
 	extractPlanSlugMentions,
 	getCurrentPlanReadmePath,
+	getChangedPathFromDotdotgodImpactCommand,
 	getPlanCompactionReason,
 	hasExplicitBracketReferences,
 	hasLikelyFuzzyReferences,
+	isBroadVerificationCommand,
+	isCommitLikeCommand,
+	normalizeImpactPath,
 	parsePlanModeExtraTools,
+	pendingImpactSummary,
 	resolveMentionedPlanPath,
 	isAutoAllowedDotdotgodPlanModeCommand,
 	isDotdotgodCliCommand,
@@ -28,8 +37,13 @@ import {
 	selectPlanImpactPath,
 	selectPlanImpactPaths,
 	shouldAllowPlanModeBashCommand,
+	shouldLoadProjectMemoryForPlanning,
 	shouldPromptForPlanChoice,
+	shouldTrackImpactPath,
 	shouldShapePlanningContextOnAgentStart,
+	upsertPendingImpact,
+	clearPendingImpactForPath,
+	type PendingImpactItem,
 	type TodoItem,
 } from "../extensions/plan-mode/utils.ts";
 
@@ -103,14 +117,16 @@ describe("plan-mode command safety", () => {
 			"dotdotgod load-snapshot . --json",
 			"dotdotgod resolve . PLAN_MODE --json",
 			"dotdotgod expand . 'Update [[PLAN_MODE]]' --json",
-			"dotdotgod graph impact . --changed packages/pi/index.ts --compact --json",
+			"dotdotgod graph impact . --changed packages/pi/index.ts --json",
+			"dotdotgod graph impact . --changed packages/pi/index.ts --compact",
+			"dotdotgod graph impact . --changed packages/pi/index.ts --yml",
 			"dotdotgod graph communities . --json",
 			"dotdotgod config . --json",
 			"dotdotgod index .",
 			"node packages/cli/bin/dotdotgod.mjs --version",
 			"node packages/cli/bin/dotdotgod.mjs status . --json",
-			"node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/index.ts --compact --json",
-			"node /Users/example/work/dotdotgod-kit/packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/index.ts --compact --json",
+			"node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/index.ts --yaml",
+			"node /Users/example/work/dotdotgod-kit/packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/index.ts --yml",
 			"node ./packages/cli/bin/dotdotgod.mjs expand . 'Update [[PLAN_MODE]]' --json",
 			"node packages/cli/bin/dotdotgod.mjs config . --json",
 			"node packages/cli/bin/dotdotgod.mjs index .",
@@ -132,6 +148,46 @@ describe("plan-mode command safety", () => {
 			assert.equal(isDotdotgodCliCommand(command), true, command);
 			assert.equal(isAutoAllowedDotdotgodPlanModeCommand(command), false, command);
 		}
+	});
+
+	it("detects impact-check commands and commit gates", () => {
+		assert.equal(getChangedPathFromDotdotgodImpactCommand("dotdotgod graph impact . --changed packages/pi/extensions/plan-mode/index.ts --yml"), "packages/pi/extensions/plan-mode/index.ts");
+		assert.equal(getChangedPathFromDotdotgodImpactCommand("node /tmp/repo/packages/cli/bin/dotdotgod.mjs graph impact . --changed=packages/pi/extensions/plan-mode/utils.ts --json"), "packages/pi/extensions/plan-mode/utils.ts");
+		assert.equal(getChangedPathFromDotdotgodImpactCommand("dotdotgod graph communities . --json"), undefined);
+		assert.equal(isCommitLikeCommand("git commit -m test"), true);
+		assert.equal(isCommitLikeCommand("git push"), true);
+		assert.equal(isCommitLikeCommand("pnpm publish"), true);
+		assert.equal(isCommitLikeCommand("git status --short"), false);
+		assert.equal(isBroadVerificationCommand("pnpm run verify"), true);
+		assert.equal(isBroadVerificationCommand("pytest tests"), true);
+		assert.equal(isBroadVerificationCommand("node packages/cli/bin/dotdotgod.mjs validate ."), false);
+	});
+
+	it("tracks and clears pending impact paths", () => {
+		assert.equal(normalizeImpactPath("/repo", "./packages/pi/index.ts"), "packages/pi/index.ts");
+		assert.equal(normalizeImpactPath("/repo", "/repo/packages/pi/index.ts"), "packages/pi/index.ts");
+		assert.equal(normalizeImpactPath("/repo", "../outside.ts"), undefined);
+		assert.equal(shouldTrackImpactPath("packages/pi/index.ts"), true);
+		assert.equal(shouldTrackImpactPath("docs/plan/task/README.md"), false);
+		assert.equal(shouldTrackImpactPath(".dotdotgod/manifest.json"), false);
+
+		const first: PendingImpactItem = { path: "packages/pi/index.ts", fingerprint: "a", reason: "edit", touchedAt: "t1" };
+		const second: PendingImpactItem = { path: "packages/pi/utils.ts", fingerprint: "b", reason: "write", touchedAt: "t2" };
+		let items = upsertPendingImpact([], first);
+		items = upsertPendingImpact(items, second);
+		items = upsertPendingImpact(items, { ...first, fingerprint: "c", touchedAt: "t3" });
+		assert.deepEqual(items.map((item) => `${item.path}:${item.fingerprint}`), ["packages/pi/utils.ts:b", "packages/pi/index.ts:c"]);
+		assert.equal(pendingImpactSummary(items), "- packages/pi/utils.ts\n- packages/pi/index.ts");
+		assert.deepEqual(clearPendingImpactForPath(items, "packages/pi/index.ts", "old").map((item) => item.path), ["packages/pi/utils.ts", "packages/pi/index.ts"]);
+		assert.deepEqual(clearPendingImpactForPath(items, "packages/pi/index.ts", "c").map((item) => item.path), ["packages/pi/utils.ts"]);
+	});
+
+	it("formats multi-file impact summaries", () => {
+		const summary = formatMultiImpactSummary([{ path: "packages/pi/index.ts", error: "missing cli" }]);
+		assert.match(summary, /dotdotgod graph impact summary/);
+		assert.match(summary, /failed for packages\/pi\/index.ts/);
+		const structured = formatMultiImpactSummary([{ path: "packages/pi/index.ts", summary: "impact:\n  output: \"yml\"" }]);
+		assert.match(structured, /impact:\n  output: "yml"/);
 	});
 
 	it("asks for one-command approval before allowing other dotdotgod CLI in Plan Mode", async () => {
@@ -162,6 +218,76 @@ describe("plan-mode command safety", () => {
 		const unsafe = await shouldAllowPlanModeBashCommand("rm package.json");
 		assert.equal(unsafe.allow, false);
 		assert.match(unsafe.reason ?? "", /not allowlisted/);
+	});
+});
+
+describe("plan-mode request framing", () => {
+	it("classifies advisory, implementation, execution, and memory-load requests", () => {
+		assert.equal(classifyPlanModeRequest("현재 만들어져있는 plan모드를 조사해봐"), "advisory");
+		assert.equal(classifyPlanModeRequest("Claude Code하고 Codex에도 적용해줘"), "implementation_request");
+		assert.equal(classifyPlanModeRequest("Execute the plan in docs/plan/foo/README.md"), "explicit_execution");
+		assert.equal(classifyPlanModeRequest("Load the dotdotgod project memory."), "memory_load");
+	});
+
+	it("builds concise hidden framing for the latest request", () => {
+		assert.match(buildPlanModeRequestFraming("fix prompt behavior"), /convert it into a durable implementation plan first/);
+		assert.match(buildPlanModeRequestFraming("이 방식이 좋을까?"), /advisory or planning work/);
+		assert.match(buildPlanModeRequestFraming("Load the dotdotgod project memory."), /project-memory load request/);
+	});
+});
+
+describe("plan-mode project-memory load conditions", () => {
+	const fullContext = [
+		"AGENTS.md",
+		"README.md",
+		"docs/README.md",
+		"docs/spec/README.md",
+		"docs/arch/README.md",
+		"docs/test/README.md",
+		"docs/plan/README.md",
+		"docs/plan/example-task/README.md",
+		"docs/spec/PLAN_MODE.md",
+		"docs/arch/EXTENSION_ARCHITECTURE.md",
+		"docs/test/MANUAL_SMOKE.md",
+	].join("\n");
+
+	it("detects baseline markers and documentation areas", () => {
+		const coverage = collectProjectMemoryContextCoverage(fullContext);
+		assert.deepEqual(coverage.areas, ["spec", "arch", "test", "plan"]);
+		assert.equal(coverage.markers.includes("AGENTS.md"), true);
+	});
+
+	it("requests load when baseline docs are missing", () => {
+		const decision = shouldLoadProjectMemoryForPlanning({ latestRequest: "implement Plan Mode framing", contextText: "docs/spec/PLAN_MODE.md" });
+		assert.equal(decision.loadNeeded, true);
+		assert.equal(decision.reason, "missing-baseline");
+		assert.equal(decision.missingMarkers?.includes("AGENTS.md"), true);
+	});
+
+	it("does not request load after a recent load or user opt-out", () => {
+		assert.deepEqual(shouldLoadProjectMemoryForPlanning({ latestRequest: "implement framing", hasRecentProjectMemoryLoad: true }), { loadNeeded: false, reason: "recent-load" });
+		assert.deepEqual(shouldLoadProjectMemoryForPlanning({ latestRequest: "do not load more context", contextText: "" }), { loadNeeded: false, reason: "user-opt-out" });
+	});
+
+	it("requests load when only one docs area remains for cross-area work", () => {
+		const contextText = [
+			"AGENTS.md",
+			"README.md",
+			"docs/README.md",
+			"docs/spec/README.md",
+			"docs/arch/README.md",
+			"docs/test/README.md",
+			"docs/plan/README.md",
+			"docs/spec/PLAN_MODE.md",
+		].join("\n");
+		const decision = shouldLoadProjectMemoryForPlanning({ latestRequest: "implement runtime validation behavior", contextText });
+		assert.equal(decision.loadNeeded, true);
+		assert.equal(decision.reason, "single-area-only");
+	});
+
+	it("keeps simple advisory work local when project memory coverage is sufficient", () => {
+		const decision = shouldLoadProjectMemoryForPlanning({ latestRequest: "이 방식이 좋을까?", contextText: fullContext });
+		assert.equal(decision.loadNeeded, false);
 	});
 });
 
@@ -322,6 +448,8 @@ describe("plan-mode tool settings", () => {
 		const prompt = buildPlanModeContextPrompt(false, ["read", "bash", "ctx_search"]);
 		assert.match(prompt, /Allowed tools: read, bash, ctx_search/);
 		assert.match(prompt, /using questionnaire if available/);
+		assert.match(prompt, /run dotdotgod graph impact for intended changed files/);
+		assert.match(prompt, /post-coding dotdotgod validate/);
 		assert.match(prompt, /You may create or update only the allowed docs\/plan or docs\/archive markdown files/);
 		assert.doesNotMatch(prompt, /Do NOT attempt to make changes/);
 	});

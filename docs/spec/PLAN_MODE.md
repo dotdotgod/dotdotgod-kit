@@ -10,6 +10,8 @@ It lets the agent inspect the project, maintain markdown plan files, and then sw
 
 - `/plan`: toggle plan mode.
 - `/todos`: show current plan progress.
+- `/impact-check`: run `dotdotgod graph impact --yml` for pending source/config edits, or for current git changed/untracked files when no pending files are recorded.
+- `dotdotgod_graph_impact`: LLM-callable Pi tool that returns structured YML impact summaries and clears matching pending reminders.
 - `Ctrl+Alt+P`: toggle plan mode.
 
 Pi has no built-in plan mode; this package provides the workflow as an extension.
@@ -24,10 +26,7 @@ While plan mode is active:
 - `edit` and `write` are allowed only for markdown files under:
   - `docs/plan/`
   - `docs/archive/`
-- Conservative plan/archive housekeeping bash commands are allowed only when every affected path stays under `docs/plan/` or `docs/archive/`:
-  - `mkdir -p docs/archive/plan`
-  - `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`
-  - `rm -r docs/plan/<task-slug>` or `rm docs/archive/plan/<task-slug>/README.md`
+- Conservative plan/archive housekeeping bash commands are allowed only when every affected path stays under `docs/plan/` or `docs/archive/`, such as archive directory creation, moving a plan into `docs/archive/plan/`, or removing a task file/directory.
 - Product/source/config changes outside those directories are blocked.
 - Bounded dotdotgod context/status commands are auto-allowed when invoked directly as `dotdotgod ...` or through the local source CLI path `node packages/cli/bin/dotdotgod.mjs ...`: `status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and `index`.
 - Agent-requested dotdotgod CLI bash commands that are not otherwise allowlisted, including `init`, `config init`, unknown commands, shell chaining, redirects, pipes, command substitution, and package-runner wrappers, require explicit one-command user approval or remain blocked before they run in Plan Mode.
@@ -58,41 +57,23 @@ The plan should include:
 
 After Plan Mode is enabled, the first user planning request triggers one context-shaping pass:
 
-- Queue a curated project-memory load if memory is missing or stale.
+- Queue a curated project-memory load if baseline project docs are missing, recent memory load is absent, or context has narrowed to one documentation area while the request needs cross-area planning.
 - Request planning-focused compaction if context is too large or noisy.
 - If both are needed, compact first, then flush the queued load from `agent_end`.
 
-The curated load uses the `/dd:load` default surface: baseline memory files, docs indexes, specs, architecture, tests, and active plans. It excludes full repository scans and archive bodies unless targeted.
+The curated load uses the `/dd:load` default surface: baseline files, docs indexes, specs, architecture, tests, and active plans. It is needed when context lacks baseline markers (`AGENTS.md`, root/docs README indexes, and spec/arch/test/plan indexes), when only one docs area remains for implementation/runtime/test work, or when compaction dropped project-memory routing markers. It excludes full repository scans and archive bodies unless targeted.
 
-When the dotdotgod CLI is available, Plan Mode validates, refreshes a bounded load snapshot, and runs advisory `dotdotgod graph impact --compact --json` checks for a small bounded set of likely target files inferred from the latest planning request and active plan content. Impact results include group counts plus top related specs, tests, docs, commands, nearby files, `impactScore`, and reason snippets when the CLI supports impact ranking. The agent uses this summary to strengthen target files, risks, and verification steps before execution. User- or agent-requested bounded context/status commands use the same allowlist described above. If the CLI is unavailable or impact lookup fails, this enhancement is skipped and planning continues from README indexes and traceability docs.
+When the dotdotgod CLI is available, Plan Mode validates, refreshes a bounded load snapshot, and runs advisory `graph impact --json` checks for likely target files. The agent uses grouped related specs, tests, docs, commands, files, scores, and reasons to strengthen targets, risks, and verification. Runtime impact tools return `graph impact --yml` summaries so agents read structured groups without parsing prose. If the CLI is unavailable, planning continues from README indexes and traceability docs.
+
+During execution and normal mode, successful source/config `edit` and `write` tool results create pending impact checks. Pi injects a hidden reminder, shows an impact status/widget, and requires `/impact-check`, `dotdotgod_graph_impact`, or successful manual `dotdotgod graph impact ... --changed <path>` before commit-like actions. Pending checks ignore plan/archive markdown, cache, vendor, build, and coverage paths. Broad verification may ask for confirmation; commit/push/publish commands are blocked until pending paths are checked.
 
 ## Planning-Focused Compaction
 
 Plan Mode requests compaction only when context is likely to hurt plan quality. It checks once after the first planning request. Later turns record metrics but do not rerun load/compaction decisions.
 
-The extension passes planning-specific `customInstructions` to `ctx.compact()`. Instructions start with the reason, then a `Current work focus:` section from local state:
+The extension passes planning-specific `customInstructions` to `ctx.compact()`. Instructions include the reason and `Current work focus:`: latest request, active plan path, queued load state, touched memory files, todo progress, pending impact checks, and project constraints.
 
-- latest user planning request
-- current active plan README path when known
-- pending queued project-memory load state
-- touched docs/plan and docs/archive files
-- todo count and completed state when present
-- pending load-after-compaction state
-- persistent user/project constraints such as pnpm usage, archive policy, and Plan Mode source mutation restrictions
-
-Compaction should keep:
-
-- latest user request
-- user decisions and constraints
-- active plan task slug, README path, and status
-- current target files
-- touched docs/plan and docs/archive files
-- relevant docs/spec, docs/test, and docs/arch context
-- dotdotgod CLI validation, index, and graph impact summary when available
-- implementation decisions
-- verification commands, results, and command outcomes
-- unresolved risks, questions, and next steps
-- completed `[DONE:n]` markers when present
+Compaction should keep latest request, decisions, active plan status, targets, relevant spec/test/arch context, dotdotgod validation/index/impact summaries, implementation decisions, verification outcomes, risks, next steps, and completed `[DONE:n]` markers.
 
 Compaction demotes old completed plans unless relevant, repeated project-load summaries, unrelated publish history, recoverable Plan Mode boilerplate, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail.
 
@@ -102,7 +83,7 @@ Plan Mode compaction uses moderately proactive token criteria:
 - context tokens within 32,000 tokens of the context window when window size is available
 - 100,000 context tokens as a fallback when only token count is available
 
-The extension skips compaction during execution mode and continues if compaction fails. Users can start a fresh context-shaping pass by toggling Plan Mode off and on.
+The extension skips compaction during execution and continues if compaction fails. Toggle Plan Mode off/on for a fresh context-shaping pass.
 
 ## Debug Measurement
 
@@ -112,17 +93,15 @@ Events include context usage when available, git state, compaction reason, curre
 
 ## Plan Review Choice
 
-Plan Mode uses tiered hidden runtime instructions. The first active planning turn after Plan Mode is enabled receives the full safety and workflow prompt. Later planning turns receive a compact reminder that preserves non-negotiable restrictions while avoiding repeated boilerplate in the context.
+Plan Mode uses tiered hidden runtime instructions. The first active planning turn receives the full safety/workflow prompt; later turns receive a compact reminder. Each planning turn also receives request framing: advisory questions stay lightweight, implementation-looking requests become durable plans first, memory-load requests use the curated load flow, and explicit execution requests use the existing execution path.
 
 When the agent finishes planning after creating or updating an active plan markdown file under `docs/plan/`, plan mode asks whether to execute, stay in plan mode, or refine the plan.
 
 If the user explicitly asks to execute a named active plan, such as `execute docs/plan/<task-slug>/README.md` or `<task-slug> 진행해줘`, Plan Mode resolves that plan and enters execution even if the plan file was not modified in the current turn.
 
 - Plan files under `docs/plan/` remain the durable review artifact.
-- Plan Mode stores the current active plan README path in session state when active plan markdown is created or updated, so execution prompts, resume, and compaction summaries can refer to the exact plan after context changes.
-- Plan mode no longer renders a saved-plan file preview in the TUI.
-- The action prompt uses a short selector title and does not embed plan markdown.
-- Plan mode does not show the action prompt for ordinary explanatory replies that did not touch an active plan file.
+- Plan Mode stores the current active plan README path so execution prompts, resume, and compaction summaries can refer to it after context changes.
+- Plan mode does not render saved-plan previews in the TUI and does not show the action prompt for ordinary explanatory replies that did not touch an active plan file.
 - Todo extraction and execution tracking remain available when a concrete `Plan:` section is present.
 
 ## Todo Extraction and Execution
@@ -136,9 +115,10 @@ When the user chooses to execute the plan or explicitly asks to execute a resolv
 - Remaining steps are loaded from the selected plan README when needed and injected into execution context with the active plan path when known.
 - The agent marks completed steps by including `[DONE:n]` in the same response that reports completion.
 - Final implementation or verification responses must include `[DONE:n]` for every step completed in that turn.
+- After modification or coding work, execution guidance requires `dotdotgod validate` for the project before final completion.
 - `/todos` displays completion progress.
 
-When all tracked steps are complete, plan execution state is cleared without emitting an additional `[plan-complete]` preview/message. Plan completion does not automatically run project indexing by default; future cache-refresh hooks should be opt-in and should run only after all tracked steps have corresponding `[DONE:n]` markers.
+When all tracked steps are complete, plan execution state is cleared without an additional preview/message. Plan completion does not auto-index by default; future cache-refresh hooks should be opt-in after all steps have `[DONE:n]` markers.
 
 ## Archive Policy
 
@@ -175,7 +155,8 @@ docs/archive/plan/<task-slug>/
   ],
   "verificationCommands": [
     "pnpm --filter @dotdotgod/pi test",
-    "pnpm --filter @dotdotgod/pi run typecheck"
+    "pnpm --filter @dotdotgod/pi run typecheck",
+    "node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --yml"
   ]
 }
 ```

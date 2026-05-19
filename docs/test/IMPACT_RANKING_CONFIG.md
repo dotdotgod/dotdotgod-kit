@@ -19,8 +19,8 @@ Verify configurable `graph impact` ranking, score breakdown output, deterministi
 | Score breakdown | Seed, traceability, verification, proximity, routing, memory priority/freshness, archive penalty, and `0..100` score cap are asserted separately. |
 | PPR | Stronger weighted paths get higher PPR contribution; disabled PPR reports `policy-score`; relation-weight overrides affect PPR contribution predictably. |
 | Compatibility | Grouped impact buckets and `omittedRelated` remain present; removed aliases such as `graph query` fail as unknown graph commands. |
-| Compact output | `graph impact --compact --json` returns compact grouped items, no raw ranking weights, and a smaller payload than raw JSON. |
-| Planning integration | Plan Mode formats compact impact output for bounded likely target files with group counts, top related paths, scores, and reasons. |
+| Structured output | `graph impact --yml` returns compact grouped items with scores, reasons, omitted counts, and recommended actions, while `--json` keeps the full payload. |
+| Planning integration | Plan Mode formats bounded likely target files with group counts, top related paths, scores, and reasons, and runtime impact tools return YML summaries. |
 | Selection noise control | First-page results cap low-actionability metadata nodes and prefer curated/test/proximity candidates over routing-only matches. |
 | Quality tooling | `scripts/evaluate-graph-impact.mjs` reports P@5, P@10, must Recall@10, MRR, nDCG@10, runtime context, and lexical/snapshot baselines. |
 
@@ -48,7 +48,7 @@ Verify configurable `graph impact` ranking, score breakdown output, deterministi
 ```bash
 pnpm --filter @dotdotgod/cli test
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json
-node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --compact --json
+node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml
 node scripts/measure-context.mjs --markdown --impact-changed packages/cli/src/core.mjs
 node scripts/evaluate-graph-impact.mjs . --json
 node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory

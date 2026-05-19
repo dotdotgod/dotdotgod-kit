@@ -109,7 +109,7 @@ Embedding-based similarity is not part of the default ranking path. If added lat
 
 The top-level `related` array mirrors `impact.related` for compatibility.
 
-`graph impact --compact --json` keeps cache/status metadata but compacts the impact body for agents:
+`graph impact --yml` returns compact structured agent-facing groups, while `--json` keeps the full machine-readable payload:
 
 ```json
 {
@@ -166,7 +166,7 @@ Routing reasons remain visible in `reasons` and `scoreBreakdown`; they are demot
   "verificationCommands": [
     "pnpm --filter @dotdotgod/cli test",
     "node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json",
-    "node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --compact --json",
+    "node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml",
     "node scripts/evaluate-graph-impact.mjs . --json",
     "node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"
   ]

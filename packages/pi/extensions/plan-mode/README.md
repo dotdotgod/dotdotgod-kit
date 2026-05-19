@@ -12,7 +12,8 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
   - `fetch_content`
   - `get_search_content`
 - The planning prompt stays generic across project types.
-- If the session is long or noisy, Plan Mode automatically requests planning-focused compaction with `customInstructions` that preserve decisions, active plan status, relevant docs, verification results, risks, next steps, and `[DONE:n]` markers.
+- Each Plan Mode turn adds concise latest-request framing: advisory requests stay lightweight, implementation-looking requests become durable plans first, memory-load requests use the curated load flow, and explicit execution requests use the execution path.
+- If baseline project docs are absent, only one docs area remains for cross-area work, or the session is long or noisy, Plan Mode automatically queues curated load or requests planning-focused compaction with `customInstructions` that preserve decisions, active plan status, relevant docs, verification results, risks, next steps, and `[DONE:n]` markers.
 - Active plan tasks are managed as kebab-case directories under `docs/plan/<task-slug>/` for projects initialized with `project-initializer`.
 - Under `docs/`, all directories use kebab-case and all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
 - Each task directory keeps its overview and index in `README.md`; supporting plan files such as `RESEARCH_NOTES.md` or `VERIFICATION.md` live alongside it.
@@ -21,12 +22,14 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 - When the latest planning request contains explicit `[[...]]` refs, Plan Mode adds bounded `dotdotgod expand` results to planning context before broad search.
 - When the request contains high-signal natural refs such as `PLAN_MODE`, path-like mentions, or quoted doc names, Plan Mode may add bounded `dotdotgod expand --fuzzy` results before broad search; fuzzy low-signal suppression follows the resolved dotdotgod CLI config.
 - Completed task directories should be moved to `docs/archive/plan/<task-slug>/` after execution and verification.
-- Plans are encouraged to include target files, risks, and verification steps.
+- Plans are encouraged to include target files, risks, verification steps, and an executable graph-impact refinement step before source changes.
+- During execution and normal mode, successful source/config `edit` and `write` tool results create pending dotdotgod impact checks. Pi reminds the agent to run impact, exposes `/impact-check`, and blocks commit/push/publish bash commands until pending files are checked.
 
 ## Commands
 
 - `/plan` - Toggle plan mode
 - `/todos` - Show current plan progress
+- `/impact-check` - Run `dotdotgod graph impact --yml` for pending source/config files, or for current git changes when no pending files are recorded
 - `Ctrl+Alt+P` - Toggle plan mode
 
 ## Usage
@@ -41,8 +44,11 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 8. The agent should write concrete executable steps in the final `Plan:` section. Generic section labels such as `Target files and rationale`, `Implementation steps`, and `Verification method` are ignored for todo extraction.
 9. Choose `Execute the plan` in the UI to switch into implementation mode.
 10. During execution, the agent must mark every completed step in the same response with `[DONE:n]` tags.
-11. After implementation and verification, the agent moves the completed task directory to `docs/archive/plan/<task-slug>/` and includes that step's `[DONE:n]` tag.
-12. Use `/todos` to inspect progress.
+11. Before source changes for implementation tasks, run the plan's `dotdotgod graph impact` refinement step and update target files, risks, or verification if needed.
+12. After source/config edits, run `/impact-check` or the `dotdotgod_graph_impact` tool and review related docs/tests/files before broad verification or commit.
+13. After modification or coding work, run `dotdotgod validate` for the project before final completion.
+14. After implementation and verification, the agent moves the completed task directory to `docs/archive/plan/<task-slug>/` and includes that step's `[DONE:n]` tag.
+15. Use `/todos` to inspect progress.
 
 ## Plan Mode Restrictions
 
@@ -53,6 +59,7 @@ Allowed:
 - Directory names under `docs/` must be kebab-case; markdown file names must be UPPER_SNAKE_CASE.md
 - Read-only bash commands: `rg`, `git status`, `git diff`, `yarn info`, `npm view`, etc.
 - Bounded dotdotgod context/status commands: `dotdotgod --version`, `dotdotgod --help`, `dotdotgod status ...`, `dotdotgod load-snapshot ...`, `dotdotgod resolve ...`, `dotdotgod expand ...`, `dotdotgod graph impact ...`, `dotdotgod graph communities ...`, `dotdotgod config ...`, and `dotdotgod index ...`. The equivalent local source form `node /path/to/packages/cli/bin/dotdotgod.mjs ...` is also recognized for development installs.
+- `dotdotgod_graph_impact` is available as an LLM-callable tool for changed-file impact checks and returns structured YML summaries by default.
 - Plan/archive housekeeping bash commands when every affected path stays under `docs/plan/` or `docs/archive/`: `mkdir -p docs/archive/plan`, `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`, `rm -r docs/plan/<task-slug>`
 - Web/document research: `web_search`, `code_search`, `fetch_content`, `get_search_content`
 

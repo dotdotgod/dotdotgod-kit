@@ -23,7 +23,7 @@ files:
 - packages/pi/extensions/plan-mode/index.ts (45; implemented_by, semantic_similarity)
 ```
 
-`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
+`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps a short text summary, `--yml`/`--yaml` returns a compact structured agent-facing summary, and `--json` returns machine-readable detail. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
 
 Command-line tools for dotdotgod project memory. The CLI turns explicit, maintained project links into a local graph/cache: README routes, Markdown links, traceability blocks, memory areas, package metadata, commands, tests, and deterministic routing hints. That maintained graph powers `graph impact`, while the initialized docs surface keeps agent load context high signal.
 
@@ -55,6 +55,7 @@ dotdotgod expand . "Update [[PLAN_MODE]] and [[HOOKS]]"
 dotdotgod expand . "PLAN_MODE 수정하자" --fuzzy
 dotdotgod graph impact . --changed <path>
 dotdotgod graph impact . --changed <path> --compact
+dotdotgod graph impact . --changed <path> --yml
 dotdotgod graph communities .
 ```
 
@@ -64,7 +65,7 @@ dotdotgod graph communities .
 
 The cache uses `.dotdotgod/manifest.json` plus graph shards under `.dotdotgod/graph/`. `status` is read-only. `load-snapshot`, `resolve`, `expand`, and `graph` commands lazily refresh missing or stale cache data before returning agent-facing output.
 
-`graph impact` requires `--changed <path>` so ranking has a seed file. Raw JSON is useful for diagnostics; `--compact` returns a smaller grouped summary for agents. Related nodes include scores, reasons, and retrieval metadata, and output stays bounded with omitted counts.
+`graph impact` requires `--changed <path>` so ranking has a seed file. Raw JSON is useful for diagnostics; `--compact` returns a smaller text summary; `--yml`/`--yaml` returns structured compact groups for agents. Related nodes include scores, reasons, and retrieval metadata, and output stays bounded with omitted counts.
 
 `graph communities` runs Leiden community detection through `leiden-ts` with a deterministic fallback for tiny or invalid graphs.
 

@@ -52,13 +52,13 @@ Create dotdotgod.config.json with the built-in default memory, traceability, val
   dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]`;
     case 'graph':
       return `Usage:
-  dotdotgod graph impact <root> --changed <path> [--compact] [--json]
+  dotdotgod graph impact <root> --changed <path> [--compact|--json|--yml|--yaml]
   dotdotgod graph communities <root> [--json]`;
     case 'graph impact':
       return `Usage:
-  dotdotgod graph impact <root> --changed <path> [--compact] [--json]
+  dotdotgod graph impact <root> --changed <path> [--compact|--json|--yml|--yaml]
 
-Ranks nodes related to a changed file. <root> is the project root; --changed is a project-relative file path. Use --compact for an agent-facing grouped summary.`;
+Ranks nodes related to a changed file. <root> is the project root; --changed is a project-relative file path. Use --compact for a short text summary or --yml/--yaml for structured agent-facing output.`;
     case 'graph communities':
       return `Usage:
   dotdotgod graph communities <root> [--json]`;
@@ -76,7 +76,7 @@ Ranks nodes related to a changed file. <root> is the project root; --changed is 
   dotdotgod load-snapshot <root> [--json]
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]
   dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]
-  dotdotgod graph impact <root> --changed <path> [--compact] [--json]
+  dotdotgod graph impact <root> --changed <path> [--compact|--json|--yml|--yaml]
   dotdotgod graph communities <root> [--json]`;
   }
 }
@@ -1807,6 +1807,77 @@ function formatCompactImpactOutput(payload, impact) {
   return lines.join('\n');
 }
 
+function ymlScalar(value) {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return JSON.stringify(String(value));
+}
+
+function ymlList(values = []) {
+  return `[${values.map(ymlScalar).join(', ')}]`;
+}
+
+function formatYmlImpactItem(item) {
+  const label = item.path ?? item.command ?? item.name ?? item.target ?? item.id;
+  const lines = [`        - path: ${ymlScalar(label)}`];
+  lines.push(`          id: ${ymlScalar(item.id)}`);
+  lines.push(`          type: ${ymlScalar(item.type)}`);
+  lines.push(`          score: ${ymlScalar(item.impactScore)}`);
+  lines.push(`          reasons: ${ymlList((item.reasons ?? []).slice(0, 6))}`);
+  if (item.retrieval?.area) lines.push(`          area: ${ymlScalar(item.retrieval.area)}`);
+  if (item.retrieval?.role) lines.push(`          role: ${ymlScalar(item.retrieval.role)}`);
+  return lines;
+}
+
+function formatYmlImpactGroup(name, group) {
+  const items = group?.items ?? [];
+  const lines = [`    ${name}:`, `      omitted: ${group?.omitted ?? 0}`, '      items:'];
+  if (items.length === 0) lines.push('        []');
+  else for (const item of items) lines.push(...formatYmlImpactItem(item));
+  return lines;
+}
+
+function formatYmlImpactOutput(payload, impact) {
+  const lines = [
+    'impact:',
+    `  ok: ${payload.ok ? 'true' : 'false'}`,
+    `  changed: ${ymlScalar(payload.changed)}`,
+    `  root: ${ymlScalar(payload.root)}`,
+    '  output: "yml"',
+    '  status:',
+    `    index: ${ymlScalar(payload.status.status)}`,
+    `    cache_refreshed: ${payload.metadata.cacheRefreshed ? 'true' : 'false'}`,
+    `  related_count: ${impact.related.length}`,
+    `  omitted_related: ${impact.omittedRelated ?? 0}`,
+    '  ranking:',
+    `    method: ${ymlScalar(impact.ranking?.method)}`,
+    `    preset: ${ymlScalar(impact.ranking?.preset)}`,
+    `    config_source: ${ymlScalar(impact.ranking?.configSource)}`,
+    '  groups:',
+  ];
+  for (const name of ['docs', 'tests', 'files', 'commands', 'events', 'packageResources', 'symbols']) lines.push(...formatYmlImpactGroup(name, impact.groups[name]));
+  lines.push('  recommended_actions:');
+  lines.push('    - "review_related_docs"');
+  lines.push('    - "run_related_tests"');
+  lines.push('    - "run_dotdotgod_validate"');
+  return lines.join('\n');
+}
+
+function formatYmlGraphImpactError(options, message, code = 'GRAPH_IMPACT_ERROR') {
+  return [
+    'impact:',
+    '  ok: false',
+    '  command: "graph impact"',
+    '  output: "yml"',
+    `  compact: ${options.compact ? 'true' : 'false'}`,
+    `  root: ${ymlScalar(options.root)}`,
+    '  error:',
+    `    code: ${ymlScalar(code)}`,
+    `    message: ${ymlScalar(message)}`,
+    `  usage: ${ymlScalar(commandUsage('graph impact'))}`,
+  ].join('\n');
+}
+
 const DURABLE_COMMUNITY_NODE_TYPES = new Set(['file', 'memory_area', 'package_resource', 'package', 'script', 'binary']);
 
 function communityKeyForNode(node) {
@@ -2397,6 +2468,7 @@ export function parseGraphOptions(argv) {
   const filtered = [];
   let changed;
   let compact = false;
+  let yml = false;
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--changed') {
       const next = argv[i + 1];
@@ -2405,11 +2477,13 @@ export function parseGraphOptions(argv) {
         i += 1;
       }
     } else if (argv[i] === '--compact') compact = true;
+    else if (argv[i] === '--yml' || argv[i] === '--yaml') yml = true;
     else filtered.push(argv[i]);
   }
   const options = parseCommon(filtered);
   options.changed = changed;
   options.compact = compact;
+  options.yml = yml;
   return options;
 }
 
@@ -2418,22 +2492,34 @@ export function runGraph(argv) {
   const isImpact = sub === 'impact';
   if (!['impact', 'communities'].includes(sub)) usage(sub ? `Unknown graph command: ${sub}` : 'Missing graph command.', 'graph');
   const options = parseGraphOptions(argv.slice(1));
+  if (isImpact && [options.json, options.compact, options.yml].filter(Boolean).length > 1) {
+    const message = 'Choose only one graph impact output mode: --compact, --json, or --yml/--yaml.';
+    if (options.json) console.log(JSON.stringify({ ok: false, command: 'graph impact', compact: options.compact || undefined, yml: options.yml || undefined, root: options.root, error: { code: 'OUTPUT_MODE_CONFLICT', message }, usage: commandUsage('graph impact') }, null, 2));
+    else if (options.yml) console.log(formatYmlGraphImpactError(options, message, 'OUTPUT_MODE_CONFLICT'));
+    else usage(message, 'graph impact');
+    process.exit(2);
+  }
   if (isImpact && !options.changed) {
     const message = 'Missing required option: --changed <path>. Run `dotdotgod graph impact <root> --changed <path>`.';
     if (options.json) {
       console.log(JSON.stringify({ ok: false, command: 'graph impact', compact: options.compact || undefined, root: options.root, error: { code: 'MISSING_CHANGED', message }, usage: commandUsage('graph impact') }, null, 2));
       process.exit(2);
     }
+    if (options.yml) {
+      console.log(formatYmlGraphImpactError(options, message, 'MISSING_CHANGED'));
+      process.exit(2);
+    }
     usage(message, 'graph impact');
   }
   const { status, index, metadata } = readFreshIndex(options.root);
   const rawImpact = isImpact ? buildImpactReport(index, options.changed) : undefined;
-  const impact = isImpact && options.compact ? buildCompactImpactReport(rawImpact) : rawImpact;
+  const impact = isImpact && (options.compact || options.yml) ? buildCompactImpactReport(rawImpact) : rawImpact;
   const payload = isImpact
     ? { ok: status.ok, command: 'graph impact', compact: options.compact || undefined, root: options.root, status, metadata, changed: options.changed, related: impact.related, impact }
     : { ok: status.ok, command: 'graph communities', root: options.root, status, metadata, graph: graphSummary(index), communities: buildCommunities(index) };
   const refreshNote = metadata.cacheRefreshed ? ', refreshed' : '';
   if (options.json) console.log(JSON.stringify(payload, null, 2));
+  else if (isImpact && options.yml) console.log(formatYmlImpactOutput(payload, impact));
   else if (isImpact && options.compact) console.log(formatCompactImpactOutput(payload, impact));
   else if (isImpact) console.log(`graph impact: ${payload.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${status.status}${refreshNote} index)`);
   else console.log(`graph communities: ${payload.communities.communities.length}/${payload.communities.total} shown, ${payload.communities.omitted} omitted (${status.status}${refreshNote} index)`);
