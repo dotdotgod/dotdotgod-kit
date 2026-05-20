@@ -10,11 +10,14 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { keyHint } from "@earendil-works/pi-coding-agent";
 import { Key, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
-import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { recordContextMetric } from "../context-metrics/utils.js";
 import { buildLoadPrompt, collectSnapshot } from "../load-project/utils.js";
+import { NORMAL_MODE_TOOLS } from "./runtime/constants.js";
+import { collectGitChangedPaths, fingerprintPath, formatPlanCliContextSummary, runDotdotgodCli, type PlanCliCommandResult } from "./runtime/dotdotgod-cli.js";
+import { getMessageText, getTextContent, isAssistantMessage, truncateText } from "./runtime/messages.js";
+import { ARCHIVE_DIRECTORY, getToolPath, isActivePlanMarkdownPath, isManagedPlanMarkdownPath, normalizeToolPath, PLAN_DIRECTORY, planPathExists } from "./runtime/paths.js";
 import {
 	buildPlanCompactionInstructions,
 	buildPlanModeContextPrompt,
@@ -52,191 +55,6 @@ import {
 	type PlanCompactionFocus,
 	type TodoItem,
 } from "./utils.js";
-
-const PLAN_DIRECTORY = "docs/plan";
-const ARCHIVE_DIRECTORY = "docs/archive";
-
-const NORMAL_MODE_TOOLS = [
-	"read",
-	"bash",
-	"dotdotgod_graph_impact",
-	"edit",
-	"write",
-	"grep",
-	"find",
-	"ls",
-	"web_search",
-	"code_search",
-	"fetch_content",
-	"get_search_content",
-	"subagent",
-	"ctx_batch_execute",
-	"ctx_execute",
-	"ctx_execute_file",
-	"ctx_search",
-	"ctx_index",
-	"ctx_fetch_and_index",
-];
-
-function isAssistantMessage(m: AgentMessage): m is AssistantMessage {
-	return m.role === "assistant" && Array.isArray(m.content);
-}
-
-function getMessageText(message: AgentMessage): string {
-	if (!("content" in message)) return "";
-	const content = message.content;
-	if (typeof content === "string") return content;
-	if (!Array.isArray(content)) return "";
-	return content
-		.filter((block): block is TextContent => block.type === "text")
-		.map((block) => block.text)
-		.join("\n");
-}
-
-function truncateText(text: string, limit = 500): string {
-	const normalized = text.replace(/\s+/g, " ").trim();
-	return normalized.length > limit ? `${normalized.slice(0, limit - 1)}…` : normalized;
-}
-
-function normalizeToolPath(path: string): string {
-	return path.replace(/^@/, "");
-}
-
-function isKebabCaseDirectory(name: string): boolean {
-	return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name);
-}
-
-function isUpperSnakeMarkdownFile(name: string): boolean {
-	return /^[A-Z0-9]+(?:_[A-Z0-9]+)*\.md$/.test(name);
-}
-
-function isMarkdownPathInside(cwd: string, path: string, directory: string): boolean {
-	const targetPath = resolve(cwd, normalizeToolPath(path));
-	const basePath = resolve(cwd, directory);
-	const relativePath = relative(basePath, targetPath);
-	const isInsideDirectory = relativePath !== "" && !relativePath.startsWith("..") && !isAbsolute(relativePath);
-	if (!isInsideDirectory) return false;
-
-	const segments = relativePath.split(/[\\/]+/);
-	const fileName = segments[segments.length - 1];
-	if (!fileName || !isUpperSnakeMarkdownFile(fileName)) return false;
-
-	return segments.slice(0, -1).every(isKebabCaseDirectory);
-}
-
-function isManagedPlanMarkdownPath(cwd: string, path: string): boolean {
-	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY) || isMarkdownPathInside(cwd, path, ARCHIVE_DIRECTORY);
-}
-
-function isActivePlanMarkdownPath(cwd: string, path: string): boolean {
-	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY);
-}
-
-function planPathExists(cwd: string, path: string): boolean {
-	return existsSync(resolve(cwd, path));
-}
-
-interface PlanCliCommandResult {
-	ok: boolean;
-	label?: string;
-	data?: unknown;
-	stdout?: string;
-	error?: string;
-}
-
-function runDotdotgodCli(cwd: string, args: string[]): PlanCliCommandResult {
-	const localCli = join(cwd, "packages/cli/bin/dotdotgod.mjs");
-	const candidates = existsSync(localCli)
-		? [
-			{ command: process.execPath, args: [localCli, ...args], label: "local workspace CLI" },
-			{ command: "dotdotgod", args, label: "dotdotgod" },
-		]
-		: [{ command: "dotdotgod", args, label: "dotdotgod" }];
-
-	const errors: string[] = [];
-	for (const candidate of candidates) {
-		const result = spawnSync(candidate.command, candidate.args, {
-			cwd,
-			encoding: "utf8",
-			stdio: ["ignore", "pipe", "pipe"],
-			timeout: 10_000,
-			maxBuffer: 1024 * 1024,
-		});
-		const stdout = result.stdout?.trim() ?? "";
-		if (stdout) {
-			try {
-				return { ok: true, label: candidate.label, data: JSON.parse(stdout), stdout };
-			} catch {
-				if (result.status === 0) return { ok: true, label: candidate.label, stdout };
-			}
-		}
-		errors.push(`${candidate.label}: ${result.error?.message ?? result.stderr?.trim() ?? `exit ${String(result.status)}`}`);
-	}
-
-	return { ok: false, error: errors.join("; ") };
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-	return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
-}
-
-function formatPlanCliContextSummary(validate: PlanCliCommandResult, snapshot: PlanCliCommandResult, impacts: Array<{ path: string; result: PlanCliCommandResult }>): string {
-	const lines = ["dotdotgod CLI planning context:"];
-	if (!validate.ok) return "";
-	const validateData = asRecord(validate.data);
-	const errors = Array.isArray(validateData?.errors) ? validateData.errors.length : 0;
-	lines.push(`- Validate: source=${validate.label ?? "dotdotgod"}; ok=${String(validateData?.ok ?? true)}; errors=${errors}`);
-
-	const snapshotData = asRecord(snapshot.data);
-	const cache = asRecord(snapshotData?.cache);
-	const metadata = asRecord(snapshotData?.metadata);
-	const graph = asRecord(snapshotData?.graph) ?? asRecord(cache?.graph);
-	if (snapshot.ok && snapshotData) {
-		lines.push(`- Index: status=${String(cache?.status ?? "unknown")}; schema=${String(cache?.schemaVersion ?? metadata?.schemaVersion ?? "unknown")}; indexedFiles=${String(cache?.indexedFiles ?? "unknown")}; graph=${String(graph?.nodes ?? "unknown")} nodes/${String(graph?.edges ?? "unknown")} edges; refreshed=${String(metadata?.cacheRefreshed ?? false)}; reason=${String(metadata?.refreshReason ?? "unknown")}`);
-	}
-
-	for (const impact of impacts) {
-		lines.push(impact.result.ok ? formatCompactImpactSummary(impact.path, impact.result.data) : `- Impact: skipped or unavailable for ${impact.path}.`);
-	}
-	return lines.join("\n");
-}
-
-function getToolPath(input: unknown): string | undefined {
-	if (!input || typeof input !== "object") return undefined;
-	const path = (input as { path?: unknown }).path;
-	return typeof path === "string" ? path : undefined;
-}
-
-function getTextContent(content: Array<{ type: string; text?: string }>): string {
-	return content.filter((item) => item.type === "text" && typeof item.text === "string").map((item) => item.text).join("\n");
-}
-
-function fingerprintPath(cwd: string, path: string): string | undefined {
-	try {
-		const stat = statSync(resolve(cwd, path));
-		return `${stat.size}:${Math.round(stat.mtimeMs)}`;
-	} catch {
-		return undefined;
-	}
-}
-
-function collectGitChangedPaths(cwd: string): string[] {
-	const commands = [
-		["diff", "--name-only"],
-		["diff", "--cached", "--name-only"],
-		["ls-files", "--others", "--exclude-standard"],
-	];
-	const paths = new Set<string>();
-	for (const args of commands) {
-		const result = spawnSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5_000 });
-		if (result.status !== 0) continue;
-		for (const line of (result.stdout ?? "").split(/\r?\n/)) {
-			const normalized = normalizeImpactPath(cwd, line);
-			if (normalized && shouldTrackImpactPath(normalized)) paths.add(normalized);
-		}
-	}
-	return [...paths];
-}
 
 const DotdotgodGraphImpactParams = Type.Object({
 	changed: Type.Optional(Type.String({ description: "Changed file path to check with dotdotgod graph impact" })),
