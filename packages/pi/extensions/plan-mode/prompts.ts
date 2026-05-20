@@ -69,13 +69,14 @@ Workflow:
 - If planning compaction has just occurred, rely on the preserved planning summary plus current project docs before writing or refining the plan.
 - Use web_search, code_search, and fetch_content when library or web evidence is needed.
 - Manage active work under docs/plan/<task-slug>/README.md, with optional UPPER_SNAKE_CASE support files in the same task directory.
+- For long-running tasks, use concise README sections or optional support files such as PROGRESS.md, DECISIONS.md, or VERIFY.md only when they improve resume quality; keep small tasks in one README.
 - When one docs domain grows into multiple files, group it under docs/<area>/<domain>/README.md plus supporting UPPER_SNAKE_CASE files.
-- Include scope, status, target files, impact-informed related files, risks, verification, and a final archive step to docs/archive/plan/<task-slug>/.
+- Include scope, status, target files, impact-informed related files, risks, verification, current resume state when useful, and a final archive step to docs/archive/plan/<task-slug>/.
 - For implementation tasks, the executable Plan: section must include a concrete step to run dotdotgod graph impact for intended changed files, review related specs/tests/docs/commands/files, and update the plan with newly discovered targets, risks, or verification before source changes.
 - When dotdotgod CLI impact summaries are available, use the related specs, tests, docs, commands, scores, and reasons to strengthen target files, verification, and risks before asking for execution. Do not paste large raw impact payloads into durable plans unless explicitly requested.
 - Do not change product/source files in plan mode. Only maintain docs/plan or docs/archive markdown files and produce an executable plan.
 
-Always write implementation task READMEs with scope, target files, impact-informed related files/checks, implementation steps, verification, risks when useful, an executable graph-impact refinement step before source changes, post-coding dotdotgod validate, and archive housekeeping.
+Always write implementation task READMEs with scope, target files, impact-informed related files/checks, implementation steps, verification, risks when useful, resume notes for long-running work when useful, an executable graph-impact refinement step before source changes, post-coding dotdotgod validate, and archive housekeeping.
 
 In the final response, use a Plan: section only for concrete executable steps. Avoid generic template labels such as "Target files and rationale", "Implementation steps", or "Verification method" as numbered plan items.
 

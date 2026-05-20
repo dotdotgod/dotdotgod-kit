@@ -42,6 +42,7 @@ All path fields are arrays. Scalar path settings are invalid and validation shou
 - `dotdotgod validate --max-lines <n>` and `--max-chars <n>` override configured numeric budgets for that invocation.
 - `validation.markdown.exclude` applies when CLI numeric overrides are used.
 - Invalid config is reported by `dotdotgod validate` and `dotdotgod config`. Runtime commands fall back to the default policy so read-only snapshot and graph commands remain usable.
+- Markdown size budgets encourage focused specs and test docs, but size validation does not classify micro-specs or enforce semantic coverage.
 
 ## Example: Exempt an Archive Index
 

@@ -75,6 +75,20 @@ Historical context, migration rationale, future extension ideas, and completed-p
 
 Config/action terms such as `remove`, `exclude`, `fallback`, and `replacement semantics` are allowed when they name current behavior precisely.
 
+## Focused Behavior Contracts
+
+Use focused behavior contracts when one feature has distinct user-visible rules, validation outcomes, edge cases, or verification paths that agents must reason about independently.
+
+A focused contract should:
+
+- describe one cohesive current-state behavior or a small set of tightly related rules
+- name supported inputs, outputs, defaults, constraints, and failure outcomes
+- avoid implementation history and migration narrative
+- link to implementation, tests, related docs, and verification commands through the final traceability block
+- split into a domain directory when multiple focused contracts share one product area
+
+Focused contracts are a documentation practice. They do not create validator semantics beyond the traceability, naming, size, README, link, and shape checks implemented by the CLI.
+
 ## Traceability Blocks
 
 Behavior specs may include fenced `json dotdotgod` traceability blocks as the final section to connect specs to source, tests, related docs, and verification commands.

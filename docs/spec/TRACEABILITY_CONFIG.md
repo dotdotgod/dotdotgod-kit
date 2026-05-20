@@ -39,6 +39,17 @@ All path fields are arrays. Scalar string path settings are invalid and validati
 - Traceability block parsing and graph extraction work in any markdown file that contains a valid block; the config only controls which files fail validation when the block is missing or invalid.
 - Invalid config is reported by `dotdotgod validate`. Runtime commands fall back to the default policy so read-only snapshot and graph commands remain usable.
 
+## Focused Contract Traceability
+
+For focused behavior contracts and micro-specs, use the traceability block to make the contract actionable for agents:
+
+- `implementedBy`: source, config, script, prompt, adapter, or generated-resource files that implement the described behavior.
+- `verifiedBy`: automated test files, manual verification docs, or test strategy docs that check the behavior.
+- `relatedDocs`: architecture, test, config, or neighboring spec docs needed to interpret the behavior.
+- `verificationCommands`: project-local commands an agent can run to verify the behavior or its closest available coverage.
+
+The CLI validates traceability block shape, placement, path safety, existing path targets, and command string presence. It does not validate semantic completeness, prove that tests fully cover every behavior, or require one test per focused contract.
+
 ## Example: Move Enforcement Outside Specs
 
 ```json
@@ -80,6 +91,7 @@ This policy requires traceability for API specs and one exact security spec, ski
   ],
   "relatedDocs": [
     "docs/arch/VALIDATION_ARCHITECTURE.md",
+    "docs/arch/DOCS_STRUCTURE.md",
     "docs/arch/MEMORY_AREA_CONFIG.md",
     "docs/spec/MEMORY_AREA_CONFIG.md",
     "docs/spec/CONFIG_COMMAND.md"

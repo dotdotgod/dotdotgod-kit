@@ -34,6 +34,18 @@ When the agent creates or updates an active plan markdown file under `docs/plan/
 
 Plan files remain the durable review artifact. Plan Mode stores the current active plan README path so execution prompts, resume, and compaction summaries can refer to it after context changes. Plans should summarize impact findings rather than embedding large raw impact payloads unless the user explicitly asks for the raw output.
 
+## Progress, Resume, and Checklists
+
+Plan Mode treats the task README as the required durable resume surface. For small tasks, the README should carry enough status, decisions, verification notes, and remaining steps for another agent to continue after compaction or a new session.
+
+Long-running tasks may add optional support files in the same task directory:
+
+- `PROGRESS.md` for chronological checkpoints, completed work, blockers, and current handoff state.
+- `DECISIONS.md` for local decisions, rejected alternatives, constraints, and follow-up questions that should survive compaction.
+- `VERIFY.md` for task-specific command results, manual checks, fixtures, or release-readiness checklists.
+
+Support files should be short, indexed from the task README, and used only when they make the task easier to resume. They do not replace the executable `Plan:` section or `/todos` tracking.
+
 ## Todo Extraction and Execution
 
 Plan mode extracts numbered executable steps from a `Plan:` section. Generic template labels are ignored so they do not become execution todos.
@@ -43,6 +55,7 @@ When execution starts:
 - Full tool access is restored.
 - The execute follow-up names the active plan path when known.
 - Remaining steps are loaded from the selected README when needed.
+- If optional `PROGRESS.md`, `DECISIONS.md`, or `VERIFY.md` files exist, the agent uses them as resume context before continuing work.
 - The agent marks completed steps by including `[DONE:n]` in the same response that reports completion.
 - After modification or coding work, execution guidance requires `dotdotgod validate` before final completion.
 - `/todos` displays completion progress.
@@ -56,11 +69,14 @@ When all tracked steps are complete, plan execution state is cleared without an 
   "kind": "spec",
   "implementedBy": [
     "packages/pi/extensions/plan-mode/index.ts",
-    "packages/pi/extensions/plan-mode/utils.ts"
+    "packages/pi/extensions/plan-mode/prompts.ts",
+    "packages/pi/extensions/plan-mode/utils.ts",
+    "packages/shared/workflows/plan.md"
   ],
   "verifiedBy": [
     "packages/pi/test/plan-mode-utils.test.ts",
-    "docs/test/README.md"
+    "docs/test/README.md",
+    "docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"
   ],
   "relatedDocs": [
     "docs/spec/plan-mode/README.md",
