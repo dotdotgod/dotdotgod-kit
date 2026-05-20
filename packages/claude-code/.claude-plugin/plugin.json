@@ -1,6 +1,6 @@
 {
   "name": "dotdotgod",
-  "description": "Dotdotgod project memory workflows for Claude Code: initialize shared docs, load project memory, and plan implementation work doc-first.",
+  "description": "Dotdotgod project memory workflows for Claude Code: initialize shared docs, load project memory, plan doc-first, and review graph impact.",
   "author": {
     "name": "dotdotgod"
   }

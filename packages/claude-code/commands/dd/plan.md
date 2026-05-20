@@ -41,6 +41,7 @@ Prefer live repository docs in this order:
    - Read nearest README indexes and relevant focused docs.
    - For behavior changes, prefer specs with CLI-enforced fenced `json dotdotgod` traceability blocks in the final section; use their source, test, related-doc, and verification-command mappings before editing code.
    - When the dotdotgod CLI is available and likely target files are known, run `dotdotgod graph impact <root> --changed <path> --yml` for a small bounded set of those files. Use the related specs, tests, docs, commands, scores, and reasons to strengthen target files, risks, and verification steps. If impact lookup fails or the CLI is unavailable, continue with README-index and traceability fallback evidence.
+   - For Claude Code and Codex, add an explicit post-edit impact-review step to the plan when the task will change source/config files, because those adapters do not have Pi's automatic pending-impact reminder or `/impact-check` enforcement.
    - During planning, treat these dotdotgod commands as bounded context/status helpers: `status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and `index`. Do not run mutating scaffold/config commands such as `init` or `config init` unless the user explicitly asks for initialization or config creation.
    - Use `grep` or `find` after reference expansion, impact, and targeted reads when the task needs fallback discovery or raw source text search.
    - Read code only after docs identify likely module boundaries, impact output points to relevant files, or docs are missing/stale.
@@ -61,11 +62,13 @@ Prefer live repository docs in this order:
    - verification method
    - current resume state when useful
    - final housekeeping step to move completed work to `docs/archive/plan/<task-slug>/`
+   - for Claude Code/Codex plans, a concrete `dd:impact` or `impact-review` step before broad verification or final handoff when source/config/docs files changed
 7. Update `docs/plan/README.md` if the repository keeps active plan entries there.
 8. Use repository-local package manager evidence for verification commands. In this repository, prefer `pnpm run verify`, `pnpm run pack:dry-run`, and `.husky/pre-push` when applicable.
 9. After creating or updating behavior specs, run project validation when possible. For dotdotgod projects, `dotdotgod validate` enforces machine-readable `json dotdotgod` traceability blocks as the final section in specs. Use `dotdotgod validate --check-index` when you need to confirm markdown fingerprints match the graph index. If validation fails, use the schema, property guidance, and example shown in the validation error to repair the spec.
 10. Stop after presenting the plan unless the user explicitly asks for execution.
-11. After implementation and verification, archive completed or superseded plan directories under `docs/archive/plan/<task-slug>/`; remove stale local plan artifacts only when the project policy allows plan/archive housekeeping.
+11. During implementation in Claude Code or Codex, use `/dd:impact`, `dd:impact`, or the `impact-review` skill after edits and before broad verification, commits, pushes, publishing, or final handoff.
+12. After implementation and verification, archive completed or superseded plan directories under `docs/archive/plan/<task-slug>/`; remove stale local plan artifacts only when the project policy allows plan/archive housekeeping.
 
 ## Quality Rules
 

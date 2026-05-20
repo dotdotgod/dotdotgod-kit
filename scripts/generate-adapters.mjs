@@ -44,6 +44,7 @@ function copyDirectory(sourceRelativeDir, targetRelativeDir) {
 const loadBody = read("packages/shared/workflows/load.md");
 const planBody = read("packages/shared/workflows/plan.md");
 const initBody = read("packages/shared/workflows/init.md");
+const impactBody = read("packages/shared/workflows/impact.md");
 
 const initCommands = {
   pi: "sh scripts/init_project.sh <project-root>",
@@ -67,6 +68,7 @@ const yaml = {
   load: `interface:\n  display_name: "Project Load"\n  short_description: "Load dotdotgod project memory."\n  default_prompt: "Load this project's dotdotgod memory and summarize rules, docs, commands, active plans, and open questions."\n`,
   plan: `interface:\n  display_name: "Doc-First Planning"\n  short_description: "Plan work from dotdotgod docs first."\n  default_prompt: "Plan this change from AGENTS.md, docs/spec, docs/test, docs/arch, and docs/plan before implementation."\n`,
   init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize agent docs and local docs folders."\n  default_prompt: "Initialize this project with dotdotgod init when available, otherwise use the bundled fallback; include AGENTS.md, CLAUDE.md, CODEX.md, docs folders, and local memory gitignore entries."\n`,
+  impact: `interface:\n  display_name: "Impact Review"\n  short_description: "Review changed files with dotdotgod graph impact."\n  default_prompt: "Review current changed source, config, and docs files with dotdotgod graph impact before broad verification or handoff."\n`,
 };
 
 write(
@@ -109,6 +111,15 @@ write(
   ),
 );
 write(
+  "packages/claude-code/commands/dd/impact.md",
+  command(
+    `description: Review changed files with dotdotgod graph impact before broad verification or handoff\nargument-hint: [changed path or focus]\nallowed-tools: [Read, Glob, Grep, Bash]`,
+    "/dd:impact - Impact Review",
+    "Review current changes with dotdotgod impact data.\n\nOptional focus: `$ARGUMENTS`",
+    impactBody,
+  ),
+);
+write(
   "packages/claude-code/skills/project-load/SKILL.md",
   skill(
     `name: project-load\ndescription: Use this skill when the user asks Claude Code to load, refresh, inspect, summarize, or resume a repository's dotdotgod project memory; when starting unfamiliar work; or when a dd:load style project context pass is requested.\nversion: 1.0.0`,
@@ -132,9 +143,18 @@ write(
     renderInitBody("claude"),
   ),
 );
+write(
+  "packages/claude-code/skills/impact-review/SKILL.md",
+  skill(
+    `name: impact-review\ndescription: Use this skill when Claude Code should review changed files with dotdotgod graph impact, decide related specs/tests/docs, prepare focused verification, or run a dd:impact style pre-handoff check.\nversion: 1.0.0`,
+    "Impact Review",
+    impactBody,
+  ),
+);
 write("packages/claude-code/skills/project-load/agents/openai.yaml", yaml.load);
 write("packages/claude-code/skills/doc-first-planning/agents/openai.yaml", yaml.plan);
 write("packages/claude-code/skills/project-initializer/agents/openai.yaml", yaml.init);
+write("packages/claude-code/skills/impact-review/agents/openai.yaml", yaml.impact);
 copyDirectory("packages/shared/initializer/scripts", "packages/claude-code/skills/project-initializer/scripts");
 copyDirectory("packages/shared/initializer/references", "packages/claude-code/skills/project-initializer/references");
 
@@ -162,9 +182,18 @@ write(
     renderInitBody("codex"),
   ),
 );
+write(
+  "packages/codex/skills/impact-review/SKILL.md",
+  skill(
+    `name: impact-review\ndescription: Review changed files with dotdotgod graph impact before broad verification, commits, pushes, publishing, or final handoff. Use when Codex is asked for dd:impact, impact review, affected docs/tests, or verification planning after edits.`,
+    "Impact Review",
+    impactBody,
+  ),
+);
 write("packages/codex/skills/project-load/agents/openai.yaml", yaml.load);
 write("packages/codex/skills/doc-first-planning/agents/openai.yaml", yaml.plan);
 write("packages/codex/skills/project-initializer/agents/openai.yaml", yaml.init);
+write("packages/codex/skills/impact-review/agents/openai.yaml", yaml.impact);
 copyDirectory("packages/shared/initializer/scripts", "packages/codex/skills/project-initializer/scripts");
 copyDirectory("packages/shared/initializer/references", "packages/codex/skills/project-initializer/references");
 

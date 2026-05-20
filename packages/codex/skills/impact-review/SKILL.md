@@ -1,0 +1,39 @@
+---
+name: impact-review
+description: Review changed files with dotdotgod graph impact before broad verification, commits, pushes, publishing, or final handoff. Use when Codex is asked for dd:impact, impact review, affected docs/tests, or verification planning after edits.
+---
+
+# Impact Review
+
+## Goal
+
+Review source/config/documentation changes with dotdotgod impact data before broad verification, commits, pushes, publishing, or final handoff.
+
+This workflow is the Claude Code and Codex counterpart to Pi's `/impact-check` reminder. It is advisory unless the active agent runtime or a project-local trusted hook adds stricter enforcement.
+
+## Workflow
+
+1. Establish the changed-file set.
+   - Check git status and preserve unrelated user edits.
+   - Include unstaged, staged, and untracked source/config/docs files that are relevant to the current task.
+   - Exclude dependencies, generated caches, build artifacts, secrets, and unrelated local-memory files unless the user explicitly asks about them.
+2. Prefer bounded graph impact.
+   - For each relevant changed source/config file, run `dotdotgod graph impact <root> --changed <path> --compact` or `--yml`.
+   - If the local repository uses the source checkout CLI, use `node packages/cli/bin/dotdotgod.mjs graph impact <root> --changed <path> --compact` or `--yml`.
+   - If the CLI is unavailable, continue with README indexes, traceability blocks, package metadata, and targeted grep/find fallback.
+3. Inspect impact output selectively.
+   - Review related specs, tests, architecture docs, and source files with the highest scores and clearest reasons.
+   - When behavior specs appear through `implemented_by`, `verified_by`, or `related_doc`, read those docs before broad verification.
+   - Do not paste large raw impact JSON into the response unless the user asks for diagnostics.
+4. Repair or update related docs/tests when the impact output shows stale, missing, or contradictory project memory.
+5. Choose verification from evidence.
+   - Prefer focused package tests, docs validation, generated-resource checks, and package dry-runs that match the changed files.
+   - For docs changes in dotdotgod projects, run `dotdotgod validate . --include-local-memory` and use `--check-index` when index freshness matters.
+6. Summarize the result.
+   - List changed files reviewed.
+   - List the most relevant impacted docs/tests/files and any follow-up action.
+   - List verification commands run or explain why verification was skipped.
+
+## Hook Boundary
+
+Optional hooks may remind agents to run this workflow after edits or before stop time, but default package resources must not auto-run full workspace verification, rebuild indexes, initialize scaffolds, move plans to archives, or block every write without a tested plan-only state signal.
