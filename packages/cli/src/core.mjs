@@ -7,7 +7,7 @@ import { commandUsage, hasHelpToken, helpCommandFromArgs, isHelpToken, isVersion
 import { rel } from './common/paths.mjs';
 import { extractAnchors, extractLinks, headingToAnchor, isKebabCase, isUpperSnakeMarkdown, removeCodeBlocks } from './docs/markdown.mjs';
 import { extractDotdotgodTraceabilityBlocks, isLocalRelativeTraceabilityPath, traceabilityExample, validateTraceabilityBlock, validateTraceabilityPlacement } from './docs/traceability.mjs';
-import { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_TRACEABILITY_POLICY, DEFAULT_VALIDATION_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, cloneReferenceExpansionPolicy, cloneTraceabilityPolicy, cloneValidationPolicy, defaultDotdotgodConfigData, defaultDotdotgodConfigText, defaultMemoryConfig, isMarkdownSizeExcluded, memoryAreaForPath, memoryRoleForPath, normalizeLowSignalTerm, readMemoryConfig, requiresTraceability, resolveMemoryArea, retrievalPriorityForPath, validateMemoryConfigData } from './memory/config.mjs';
+import { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_VALIDATION_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, cloneReferenceExpansionPolicy, cloneValidationPolicy, defaultDotdotgodConfigData, defaultDotdotgodConfigText, defaultMemoryConfig, isMarkdownSizeExcluded, memoryAreaForPath, memoryConfigSummary, memoryRoleForPath, normalizeLowSignalTerm, readMemoryConfig, requiresTraceability, resolveMemoryArea, retrievalPriorityForPath, validateMemoryConfigData } from './memory/config.mjs';
 import { buildCommunities, relationWeight } from './graph/communities.mjs';
 import { addEdge, addNode, compactGraph, expandGraph, graphStats, jsonSize, shardFile, writeJson } from './graph/store.mjs';
 import { cacheFile, collectIndexFiles, fingerprint, shouldIndexPath } from './index/files.mjs';
@@ -17,7 +17,7 @@ export { commandUsage, hasHelpToken, helpCommandFromArgs, isHelpToken, isVersion
 export { rel } from './common/paths.mjs';
 export { extractAnchors, extractLinks, headingToAnchor, isKebabCase, isUpperSnakeMarkdown, removeCodeBlocks } from './docs/markdown.mjs';
 export { extractDotdotgodTraceabilityBlocks, isLocalRelativeTraceabilityPath, traceabilityExample, validateTraceabilityBlock, validateTraceabilityPlacement } from './docs/traceability.mjs';
-export { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_TRACEABILITY_POLICY, DEFAULT_VALIDATION_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, cloneReferenceExpansionPolicy, cloneTraceabilityPolicy, cloneValidationPolicy, defaultDotdotgodConfigData, defaultDotdotgodConfigText, defaultMemoryConfig, isMarkdownSizeExcluded, memoryAreaForPath, memoryRoleForPath, normalizeLowSignalTerm, readMemoryConfig, requiresTraceability, resolveMemoryArea, retrievalPriorityForPath, validateMemoryConfigData } from './memory/config.mjs';
+export { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_VALIDATION_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, cloneReferenceExpansionPolicy, cloneValidationPolicy, defaultDotdotgodConfigData, defaultDotdotgodConfigText, defaultMemoryConfig, isMarkdownSizeExcluded, memoryAreaForPath, memoryConfigSummary, memoryRoleForPath, normalizeLowSignalTerm, readMemoryConfig, requiresTraceability, resolveMemoryArea, retrievalPriorityForPath, validateMemoryConfigData } from './memory/config.mjs';
 export { buildCommunities, relationWeight } from './graph/communities.mjs';
 export { addEdge, addNode, compactGraph, expandGraph, graphStats, jsonSize, shardFile, writeJson } from './graph/store.mjs';
 export { cacheFile, collectIndexFiles, fingerprint, shouldIndexPath } from './index/files.mjs';
@@ -164,27 +164,6 @@ export function runValidate(argv) {
     console.log(`\n❌ ${errors.length} docs validation error(s)`);
   }
   process.exit(errors.length === 0 ? 0 : 1);
-}
-
-function memoryConfigSummary(config) {
-  return {
-    source: config.source ?? 'default',
-    areas: (config.areas ?? []).map((area) => ({
-      id: area.id,
-      label: area.label,
-      paths: area.paths,
-      excludePaths: area.excludePaths ?? [],
-      scope: area.scope,
-      freshness: area.freshness,
-      role: area.role,
-      priority: area.priority,
-      includeBodiesByDefault: area.includeBodiesByDefault !== false,
-    })),
-    traceability: cloneTraceabilityPolicy(config.traceability ?? DEFAULT_TRACEABILITY_POLICY),
-    validation: cloneValidationPolicy(config.validation ?? DEFAULT_VALIDATION_POLICY),
-    impactRanking: cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY),
-    referenceExpansion: cloneReferenceExpansionPolicy(config.referenceExpansion),
-  };
 }
 
 export function isReadmeIndexPath(path = '') {

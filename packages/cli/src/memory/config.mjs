@@ -412,3 +412,24 @@ export function defaultDotdotgodConfigText() {
   return `${JSON.stringify(defaultDotdotgodConfigData(), null, 2)}\n`;
 }
 
+export function memoryConfigSummary(config) {
+  return {
+    source: config.source ?? 'default',
+    areas: (config.areas ?? []).map((area) => ({
+      id: area.id,
+      label: area.label,
+      paths: area.paths,
+      excludePaths: area.excludePaths ?? [],
+      scope: area.scope,
+      freshness: area.freshness,
+      role: area.role,
+      priority: area.priority,
+      includeBodiesByDefault: area.includeBodiesByDefault !== false,
+    })),
+    traceability: cloneTraceabilityPolicy(config.traceability ?? DEFAULT_TRACEABILITY_POLICY),
+    validation: cloneValidationPolicy(config.validation ?? DEFAULT_VALIDATION_POLICY),
+    impactRanking: cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY),
+    referenceExpansion: cloneReferenceExpansionPolicy(config.referenceExpansion),
+  };
+}
+
