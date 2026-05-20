@@ -30,6 +30,8 @@ Active work should use this shape:
 docs/plan/<task-slug>/README.md
 ```
 
-Supporting files may live in the same task directory as UPPER_SNAKE_CASE markdown files, for example `RESEARCH_NOTES.md` or `VERIFICATION.md`.
+Supporting files may live in the same task directory as UPPER_SNAKE_CASE markdown files, for example `RESEARCH_NOTES.md`, `PROGRESS.md`, `DECISIONS.md`, or `VERIFY.md`.
 
 Plans should include scope/status, target files and rationale, implementation steps, risks and edge cases when useful, verification method, and a final archive-housekeeping step.
+
+Long-running tasks may keep progress, decision, and verification details as concise sections in the task README or in optional support files. Small tasks should stay in a single README unless separate files improve resume quality.

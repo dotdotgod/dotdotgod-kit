@@ -43,3 +43,5 @@ To exempt only the archive map from markdown size checks, add:
 ```
 
 The exemption should not be used for general docs that can be split into focused files.
+
+For focused behavior contracts, use validation as a structural check only. Review traceability links and verification commands separately to judge whether the behavior is meaningfully covered.

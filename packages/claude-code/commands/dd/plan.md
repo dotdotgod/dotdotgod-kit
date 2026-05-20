@@ -50,20 +50,22 @@ Prefer live repository docs in this order:
    docs/plan/<task-slug>/README.md
    ```
 
-4. Use supporting files in the same task directory only when useful, with UPPER_SNAKE_CASE markdown names such as `RESEARCH_NOTES.md` or `VERIFICATION.md`.
-5. Include:
+4. Use supporting files in the same task directory only when useful, with UPPER_SNAKE_CASE markdown names such as `RESEARCH_NOTES.md`, `PROGRESS.md`, `DECISIONS.md`, or `VERIFY.md`.
+5. Keep small tasks in one README. For long-running tasks, use concise README sections or optional support files for chronological progress, durable decisions, resume state, and task-specific verification checklists.
+6. Include:
    - scope and current status
    - target files and rationale
    - impact-derived related files/checks when available
    - implementation steps
    - risks and edge cases when useful
    - verification method
+   - current resume state when useful
    - final housekeeping step to move completed work to `docs/archive/plan/<task-slug>/`
-6. Update `docs/plan/README.md` if the repository keeps active plan entries there.
-7. Use repository-local package manager evidence for verification commands. In this repository, prefer `pnpm run verify`, `pnpm run pack:dry-run`, and `.husky/pre-push` when applicable.
-8. After creating or updating behavior specs, run project validation when possible. For dotdotgod projects, `dotdotgod validate` enforces machine-readable `json dotdotgod` traceability blocks as the final section in specs. Use `dotdotgod validate --check-index` when you need to confirm markdown fingerprints match the graph index. If validation fails, use the schema, property guidance, and example shown in the validation error to repair the spec.
-9. Stop after presenting the plan unless the user explicitly asks for execution.
-10. After implementation and verification, archive completed or superseded plan directories under `docs/archive/plan/<task-slug>/`; remove stale local plan artifacts only when the project policy allows plan/archive housekeeping.
+7. Update `docs/plan/README.md` if the repository keeps active plan entries there.
+8. Use repository-local package manager evidence for verification commands. In this repository, prefer `pnpm run verify`, `pnpm run pack:dry-run`, and `.husky/pre-push` when applicable.
+9. After creating or updating behavior specs, run project validation when possible. For dotdotgod projects, `dotdotgod validate` enforces machine-readable `json dotdotgod` traceability blocks as the final section in specs. Use `dotdotgod validate --check-index` when you need to confirm markdown fingerprints match the graph index. If validation fails, use the schema, property guidance, and example shown in the validation error to repair the spec.
+10. Stop after presenting the plan unless the user explicitly asks for execution.
+11. After implementation and verification, archive completed or superseded plan directories under `docs/archive/plan/<task-slug>/`; remove stale local plan artifacts only when the project policy allows plan/archive housekeeping.
 
 ## Quality Rules
 
