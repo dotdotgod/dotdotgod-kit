@@ -1,6 +1,6 @@
 # Optional Claude Code Hooks
 
-Claude Code hooks can complement dotdotgod commands and skills, but they are not required. `/dd:load`, `/dd:plan`, `/dd:init`, and the bundled skills work without hook configuration.
+Claude Code hooks can complement dotdotgod commands and skills, but they are not required. `/dd:load`, `/dd:plan`, `/dd:init`, `/dd:impact`, and the bundled skills work without hook configuration.
 
 Use hooks only when you want opt-in reminders, lightweight validation, or local safety rails around the same doc-first workflow. Hooks run local commands with your user permissions, so copy and adapt examples deliberately.
 
@@ -23,15 +23,18 @@ Claude Code currently does not document dedicated plan-mode transition hooks suc
 
 Hook handlers may be `command`, `http`, `mcp_tool`, `prompt`, or `agent`, with event-specific support limits. `SessionStart` and `Setup` support only `command` and `mcp_tool`. For project or plugin scripts, prefer command exec form with `args` so `${CLAUDE_PROJECT_DIR}`, `${CLAUDE_PLUGIN_ROOT}`, and `${CLAUDE_PLUGIN_DATA}` paths are passed without shell quoting. Hooks should not write directly to `/dev/tty`; use JSON `systemMessage` for user-visible messages or Claude Code's `terminalSequence` field for terminal notifications.
 
+Claude Code plugins can package hook config at `hooks/hooks.json` or through the plugin manifest. Dotdotgod intentionally does not ship a default hook config today: `/dd:impact` and the `impact-review` skill provide the Pi-like changed-file review path without adding automatic local command execution. If a future release adds packaged hooks, they should be advisory, fast, and clearly documented as opt-in or safe defaults.
+
 ## SDLC Guardrail Framing
 
 Use hooks as optional guardrails around the software-development lifecycle, not as a replacement for human review or the durable plan file:
 
 1. Plan: `/dd:plan` or the planning skill creates or updates `docs/plan/<task-slug>/README.md` from docs evidence.
 2. Implement: Claude changes only the target files described by the accepted plan.
-3. Verify: run focused checks and, for docs changes, `dotdotgod validate . --include-local-memory --check-index`.
-4. Review: inspect changed files, risks, and impact-derived related checks.
-5. Archive: move completed plan artifacts only as an explicit housekeeping step, never from a default hook.
+3. Impact-review: run `/dd:impact` or the `impact-review` skill after edits to inspect related specs, tests, docs, and files.
+4. Verify: run focused checks and, for docs changes, `dotdotgod validate . --include-local-memory --check-index`.
+5. Review: inspect changed files, risks, and impact-derived related checks.
+6. Archive: move completed plan artifacts only as an explicit housekeeping step, never from a default hook.
 
 This SDLC framing maps common Claude Code guidance about a project brain to dotdotgod's cross-agent contract: keep `AGENTS.md` canonical and keep `CLAUDE.md` thin rather than duplicating long-lived instructions.
 
@@ -39,6 +42,7 @@ This SDLC framing maps common Claude Code guidance about a project brain to dotd
 
 - Use `/dd:load` or the `project-load` skill when you intentionally want a curated project-memory load.
 - Use `/dd:plan` or the `doc-first-planning` skill before implementation, refactors, migrations, or multi-step work.
+- Use `/dd:impact` or the `impact-review` skill after source/config/docs edits and before broad verification, commits, pushes, publishing, or final handoff.
 - During planning, prefer bounded dotdotgod context/status helpers: `status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and intentional `index` refreshes. Do not run mutating scaffold/config commands such as `init` or `config init` from hooks unless the user explicitly requested that setup.
 - Use hooks for small reminders at session start, prompt submission, tool boundaries, or stop time.
 
@@ -120,7 +124,7 @@ A `UserPromptSubmit` hook can add a reminder for implementation-like prompts. Ke
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -c \"import json,re,sys; p=json.load(sys.stdin).get('prompt',''); msg='dotdotgod: advisory reminder only. If the prompt contains [[...]] refs, run dotdotgod expand . \\\"<prompt>\\\" --json before broad grep/find. For planning work, identify the complete target file list, run dotdotgod graph impact . --changed <path> --compact for every target file, and use impact output to strengthen related docs, risks, and verification steps. If docs change, run dotdotgod validate . --include-local-memory --check-index.'; print(msg) if re.search(r'plan|planning|플랜|계획|\\[\\[', p, re.I) else None\"",
+            "command": "python3 -c \"import json,re,sys; p=json.load(sys.stdin).get('prompt',''); msg='dotdotgod: advisory reminder only. If the prompt contains [[...]] refs, run dotdotgod expand . \\\"<prompt>\\\" --json before broad grep/find. For planning work, identify the complete target file list, run dotdotgod graph impact . --changed <path> --compact for every target file, and use impact output to strengthen related docs, risks, and verification steps. After edits, use /dd:impact before broad verification or handoff. If docs change, run dotdotgod validate . --include-local-memory --check-index.'; print(msg) if re.search(r'plan|planning|플랜|계획|\\[\\[', p, re.I) else None\"",
             "timeout": 10
           }
         ]

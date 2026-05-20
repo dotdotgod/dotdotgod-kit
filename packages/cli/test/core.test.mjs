@@ -430,12 +430,16 @@ describe('CLI docs helpers', () => {
     assert.doesNotMatch([...fencedBlocks(codexHooks, 'json'), ...fencedBlocks(codexHooks, 'toml')].join('\n'), /dotdotgod status \. --json/);
     assert.match(codexHooks, /Codex stop hooks need Codex-compatible hook output/);
     assert.match(codexHooks, /cache-aware/);
+    assert.match(codexHooks, /plugin_hooks/);
+    assert.match(codexHooks, /dd:impact/);
     assert.match(codexHooks, /UserPromptSubmit/);
     assert.match(codexHooks, /dotdotgod graph impact \. --changed <path> --compact/);
     assert.match(codexHooks, /complete target file list/);
     assert.match(codexHooks, /every target file/);
     assert.match(claudeHooks, /UserPromptSubmit` does not support matchers/);
     assert.match(claudeHooks, /submitted `prompt` field/);
+    assert.match(claudeHooks, /does not ship a default hook config/);
+    assert.match(claudeHooks, /\/dd:impact/);
     assert.match(claudeHooks, /dotdotgod graph impact \. --changed <path> --compact/);
     assert.match(claudeHooks, /every target file/);
     assert.match(claudeHooks, /PostToolBatch/);

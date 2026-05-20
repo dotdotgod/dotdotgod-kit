@@ -15,7 +15,7 @@ Current first-class support.
 - Package entrypoint: npm package with `package.json#pi` manifest.
 - Initialization: `project-initializer` skill.
 - Runtime workflow: `plan-mode` and `load-project` extensions.
-- Commands: `/plan`, `/todos`, `/load`, `/dd:load`.
+- Commands: `/plan`, `/todos`, `/load`, `/dd:load`, and `/impact-check`.
 
 ### Claude Code
 
@@ -25,6 +25,7 @@ Current adapter support.
 - Initialization: `project-initializer` skill and `/dd:init` command.
 - Project loading: `project-load` skill and `/dd:load` command.
 - Planning workflow: `doc-first-planning` skill and `/dd:plan` command.
+- Impact review workflow: `impact-review` skill and `/dd:impact` command for post-edit graph-impact checks before broad verification or handoff.
 - Optional lifecycle hook guidance for advisory project-memory reminders, SDLC guardrails, validation, failure logging, and narrowly scoped plan-safety patterns using documented Claude Code hook events.
 - `CLAUDE.md` remains a thin project entrypoint that imports or points to `AGENTS.md`.
 
@@ -33,9 +34,9 @@ Current adapter support.
 Current adapter support.
 
 - Package entrypoint: Codex plugin manifest under `.codex-plugin/plugin.json`.
-- Skills: `project-initializer`, `project-load`, and `doc-first-planning`.
+- Skills: `project-initializer`, `project-load`, `doc-first-planning`, and `impact-review`.
 - Codex reads `AGENTS.md` as a primary project instruction source.
-- `dd:init`, `dd:load`, and `dd:plan` are command-like trigger phrases unless the active Codex runtime provides direct command registration.
+- `dd:init`, `dd:load`, `dd:plan`, and `dd:impact` are command-like trigger phrases unless the active Codex runtime provides direct command registration.
 - Optional lifecycle hook guidance for trusted Codex configuration layers.
 - `CODEX.md` remains a thin project entrypoint that points to `AGENTS.md`.
 
@@ -75,6 +76,7 @@ Required workflows:
 - initialize or normalize project memory scaffold
 - load project memory in a read-only context
 - plan safely before source/config changes
+- review changed files with graph-impact evidence before broad verification, commits, pushes, publishing, or final handoff
 - preserve completed plans and temporary reports in the archive structure
 
 Optional workflows:
@@ -82,9 +84,10 @@ Optional workflows:
 - slash commands matching `dd:*` names
 - keyboard shortcuts
 - tool filtering or permission hooks
-- lifecycle hooks for advisory load/plan reminders, SDLC guardrails, validation, failure logging, and narrowly scoped plan-safety checks
+- lifecycle hooks for advisory load/plan/impact reminders, SDLC guardrails, validation, failure logging, and narrowly scoped plan-safety checks
+- packaged default hooks only when they are advisory, safe by default, and supported by the target runtime; otherwise keep examples documented but opt-in
 - project memory indexing/search
-- CLI-backed load snapshots where shell or package execution is available
+- CLI-backed load snapshots and graph-impact checks where shell or package execution is available
 
 ## Packaging Contract
 
@@ -108,10 +111,14 @@ New package, command, and tool names should use dotdotgod and `dd` prefixes.
     "packages/shared/workflows/init.md",
     "packages/shared/workflows/load.md",
     "packages/shared/workflows/plan.md",
+    "packages/shared/workflows/impact.md",
     "packages/shared/initializer/references/agent-docs.md",
     "packages/claude-code/commands/dd/load.md",
+    "packages/claude-code/commands/dd/impact.md",
     "packages/claude-code/skills/project-load/SKILL.md",
+    "packages/claude-code/skills/impact-review/SKILL.md",
     "packages/codex/skills/project-load/SKILL.md",
+    "packages/codex/skills/impact-review/SKILL.md",
     "packages/claude-code/hooks/README.md",
     "packages/codex/hooks/README.md",
     "packages/claude-code/.claude-plugin/plugin.json",

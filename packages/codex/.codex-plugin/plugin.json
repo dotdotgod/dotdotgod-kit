@@ -17,14 +17,15 @@
   "interface": {
     "displayName": "Dotdotgod Project Memory",
     "shortDescription": "Initialize, load, and plan from shared project memory.",
-    "longDescription": "Reusable Codex skills for shared AGENTS.md instructions, docs/spec docs/test docs/arch docs/plan docs/archive workflows, and doc-first implementation planning.",
+    "longDescription": "Reusable Codex skills for shared AGENTS.md instructions, docs/spec docs/test docs/arch docs/plan docs/archive workflows, doc-first implementation planning, and graph-impact review.",
     "developerName": "dotdotgod",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],
     "defaultPrompt": [
       "Load this project's dotdotgod memory.",
       "Plan this change using docs/spec, docs/test, and docs/arch first.",
-      "Initialize this project with dotdotgod shared agent docs."
+      "Initialize this project with dotdotgod shared agent docs.",
+      "Review changed files with dotdotgod graph impact before handoff."
     ]
   }
 }

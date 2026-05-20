@@ -25,7 +25,7 @@ files:
 
 `graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
 
-Codex adapter for dotdotgod's context curation workflow. It packages reusable skills that help Codex initialize the fixed load-context surface, load bounded project memory, and plan from explicit maintained graph links before implementation.
+Codex adapter for dotdotgod's context curation workflow. It packages reusable skills that help Codex initialize the fixed load-context surface, load bounded project memory, plan from explicit maintained graph links before implementation, and review changed files with graph-impact evidence before handoff.
 
 ## What Gets Better?
 
@@ -34,8 +34,9 @@ Codex adapter for dotdotgod's context curation workflow. It packages reusable sk
 - Codex can use docs structure as retrieval intent: specs for behavior, architecture for rationale, tests for verification, plans for current work, and archive indexes for past decisions.
 - Planning guidance encourages agents to keep README routes, traceability blocks, plans, and archives current so `graph impact` remains useful.
 - Planning work captures current intent in `docs/plan/<task-slug>/README.md` before implementation.
+- Impact review guidance uses `dotdotgod graph impact` to identify affected specs, tests, docs, and files before broad verification or handoff.
 - Completed plans and temporary reports use the same archive structure as Pi and Claude Code, turning outcomes into future context.
-- `dd:load`, `dd:plan`, and `dd:init` can be used as command-like trigger phrases where direct slash commands are unavailable.
+- `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` can be used as command-like trigger phrases where direct slash commands are unavailable.
 
 ## Shared Memory and Traceability Model
 
@@ -53,14 +54,15 @@ By default, `docs/spec/**` has two roles: it is stable shared/fresh project memo
   - `project-load`: load project memory read-only.
   - `doc-first-planning`: plan from docs before implementation.
   - `project-initializer`: initialize shared agent docs and docs folders, using `dotdotgod init` when available and the bundled fallback when not.
+  - `impact-review`: review changed files with graph-impact evidence before broad verification or handoff.
 
-Codex may not expose the same slash-command model as Pi or Claude Code. Treat `dd:load`, `dd:plan`, and `dd:init` as command-like trigger phrases for these skills unless the active Codex plugin runtime provides direct command registration.
+Codex may not expose the same slash-command model as Pi or Claude Code. Treat `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` as command-like trigger phrases for these skills unless the active Codex plugin runtime provides direct command registration.
 
 ## Optional Hooks
 
-Codex can run lifecycle hooks from trusted Codex configuration layers. dotdotgod does not require hooks: the bundled skills and `dd:load`, `dd:plan`, and `dd:init` trigger phrases work without them.
+Codex can run lifecycle hooks from trusted Codex configuration layers. dotdotgod does not require hooks: the bundled skills and `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` trigger phrases work without them.
 
-Use hooks only when you want opt-in reminders or validation around the same workflow. See [`hooks/README.md`](hooks/README.md) for advisory examples and stricter plan-safety patterns.
+Use hooks only when you want opt-in reminders or validation around the same workflow. Current Codex docs keep plugin-bundled hooks opt-in behind `plugin_hooks`, so this package defaults to skills and documented trusted hook examples instead of surprise runtime hooks. See [`hooks/README.md`](hooks/README.md) for advisory examples and stricter plan-safety patterns.
 
 ## Shared Contract
 

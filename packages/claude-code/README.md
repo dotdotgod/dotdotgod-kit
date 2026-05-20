@@ -25,7 +25,7 @@ files:
 
 `graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
 
-Claude Code adapter for dotdotgod's context curation workflow. It packages `/dd:init`, `/dd:load`, `/dd:plan`, and matching skills so Claude Code can start from the fixed load-context surface and use explicit maintained graph links instead of rediscovering specs, tests, plans, and archives from scratch.
+Claude Code adapter for dotdotgod's context curation workflow. It packages `/dd:init`, `/dd:load`, `/dd:plan`, `/dd:impact`, and matching skills so Claude Code can start from the fixed load-context surface and use explicit maintained graph links instead of rediscovering specs, tests, plans, and archives from scratch.
 
 ## What Gets Better?
 
@@ -34,6 +34,7 @@ Claude Code adapter for dotdotgod's context curation workflow. It packages `/dd:
 - Claude Code can use docs structure as retrieval intent: specs for behavior, architecture for rationale, tests for verification, plans for current work, and archive indexes for past decisions.
 - Planning guidance encourages agents to keep README routes, traceability blocks, plans, and archives current so `graph impact` remains useful.
 - `/dd:plan` writes or updates durable task intent in `docs/plan/<task-slug>/README.md` before implementation.
+- `/dd:impact` reviews changed files with `dotdotgod graph impact` before broad verification or handoff, giving Claude Code a Pi-like impact workflow without Pi runtime enforcement.
 - Product intent, design rationale, verification standards, and completed work stay in durable files rather than chat history.
 - Skills mirror the commands so natural-language requests can use the same workflows.
 
@@ -53,16 +54,18 @@ By default, `docs/spec/**` has two roles: it is stable shared/fresh project memo
   - `/dd:init`: initialize shared agent docs and docs folders, using `dotdotgod init` when available and the bundled fallback when not.
   - `/dd:load`: load project memory read-only.
   - `/dd:plan`: plan from docs before implementation.
+  - `/dd:impact`: review current changes with dotdotgod graph-impact evidence before broad verification or handoff.
 - Skills:
   - `project-load`
   - `doc-first-planning`
   - `project-initializer`
+  - `impact-review`
 
 ## Optional Hooks
 
-Claude Code can run local lifecycle hooks from Claude settings. dotdotgod does not require hooks: `/dd:init`, `/dd:load`, `/dd:plan`, and the bundled skills work without them.
+Claude Code can run local lifecycle hooks from Claude settings. dotdotgod does not require hooks: `/dd:init`, `/dd:load`, `/dd:plan`, `/dd:impact`, and the bundled skills work without them.
 
-Use hooks only when you want opt-in reminders, validation, or local safety rails around the same SDLC loop: plan, implement, verify, review, and archive. The hook surface changes over time, so examples stay advisory and avoid claiming unavailable plan-mode transition hooks. See [`hooks/README.md`](hooks/README.md) for current lifecycle notes, advisory examples, and stricter plan-safety patterns.
+Use hooks only when you want opt-in reminders, validation, or local safety rails around the same SDLC loop: plan, implement, impact-review, verify, review, and archive. Claude Code plugins can ship hooks, but dotdotgod keeps hook behavior documented and opt-in rather than enabling default package hooks that might surprise users. The hook surface changes over time, so examples stay advisory and avoid claiming unavailable plan-mode transition hooks. See [`hooks/README.md`](hooks/README.md) for current lifecycle notes, advisory examples, and stricter plan-safety patterns.
 
 ## Shared Contract
 
