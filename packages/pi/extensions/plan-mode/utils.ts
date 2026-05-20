@@ -3,9 +3,6 @@
  * Extracted for testability.
  */
 
-import { isAbsolute, relative, resolve } from "node:path";
-import { getDotdotgodCliArgs } from "./tools.ts";
-
 export type { TodoItem } from "./todos.ts";
 export { cleanStepText, extractDoneSteps, extractTodoItems, markCompletedSteps } from "./todos.ts";
 
@@ -22,599 +19,59 @@ export {
 	shouldAllowPlanModeBashCommand,
 } from './tools.ts';
 
-export function getCurrentPlanReadmePath(path: string): string | undefined {
-	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
-	const match = normalized.match(/^docs\/plan\/([a-z0-9]+(?:-[a-z0-9]+)*)\/(README\.md|[A-Z0-9]+(?:_[A-Z0-9]+)*\.md)$/);
-	if (!match?.[1]) return undefined;
-	return `docs/plan/${match[1]}/README.md`;
-}
-
-export function detectPlanExecutionIntent(text: string): boolean {
-	const normalized = text.replace(/\s+/g, " ").trim();
-	if (!normalized) return false;
-
-	const refinementOnly = /(refine|revise|edit|modify|adjust|improve|update)\b.*\b(plan|proposal)|\b(plan|proposal)\b.*\b(refine|revise|edit|modify|adjust|improve|update)\b|수정하자|수정해줘|다듬|보완|개선|계획하자|계획을 세우|계획 만들어|플랜.*(수정|다듬|보완|개선)/i;
-	const explicitEnglishExecution = /\b(execute|start|run|begin|implement)\b.*\b(plan|docs\/plan\/[a-z0-9-]+\/README\.md|[a-z0-9]+(?:-[a-z0-9]+)+)\b|\b(proceed with|carry out)\b.*\b(plan|docs\/plan\/[a-z0-9-]+\/README\.md|[a-z0-9]+(?:-[a-z0-9]+)+)\b/i;
-	const explicitKoreanExecution = /(진행|시작|실행)(해줘|해주세요|하자|합시다|해보자|해|해라|시켜줘)/i;
-	const executeNow = /^(execute|start|run|begin|implement|proceed)\b/i;
-
-	const hasExecution = explicitEnglishExecution.test(normalized) || explicitKoreanExecution.test(normalized) || executeNow.test(normalized);
-	if (!hasExecution) return false;
-	if (refinementOnly.test(normalized) && !explicitEnglishExecution.test(normalized) && !explicitKoreanExecution.test(normalized)) return false;
-	return true;
-}
-
-export type PlanModeRequestKind = "advisory" | "implementation_request" | "explicit_execution" | "memory_load";
-
-export function classifyPlanModeRequest(text: string | undefined): PlanModeRequestKind {
-	const normalized = (text ?? "").replace(/\s+/g, " ").trim();
-	if (!normalized) return "advisory";
-	if (/^Load the dotdotgod project memory\b/i.test(normalized) || /\b(dd:load|\/dd:load|\/load|load-snapshot)\b/i.test(normalized) || /프로젝트.*메모리.*(로드|불러|읽)/i.test(normalized)) {
-		return "memory_load";
-	}
-	if (detectPlanExecutionIntent(normalized)) return "explicit_execution";
-
-	const advisoryPattern = /(어떻게|좋을까|괜찮|조사|분석|검토|설명|알려|의견|계획해|계획을 세|plan|research|investigate|analy[sz]e|review|explain|should|how would|what if|proposal|approach)/i;
-	const implementationPattern = /(구현|수정|고쳐|추가|적용|만들|작성|코딩|리팩터|리팩토|반영|실행해|implement|fix|add|apply|change|update|create|write|code|refactor|modify|wire|integrate|enforce)/i;
-	const explicitPlanPattern = /(계획|플랜|plan|proposal|approach)/i;
-
-	if (implementationPattern.test(normalized) && !explicitPlanPattern.test(normalized)) return "implementation_request";
-	if (implementationPattern.test(normalized) && !advisoryPattern.test(normalized)) return "implementation_request";
-	return "advisory";
-}
-
-export function buildPlanModeRequestFraming(latestRequest: string | undefined): string {
-	const kind = classifyPlanModeRequest(latestRequest);
-	if (kind === "memory_load") {
-		return "Plan Mode request framing: the latest user request is a project-memory load request. Prefer the curated dotdotgod project-memory load flow and do not create an implementation plan unless the user asks for implementation after loading.";
-	}
-	if (kind === "explicit_execution") {
-		return "Plan Mode request framing: the latest user request appears to explicitly execute an active plan. Resolve the referenced docs/plan/<task-slug>/README.md through the existing Plan Mode execution path before making source/code/config changes.";
-	}
-	if (kind === "implementation_request") {
-		return "Plan Mode request framing: the latest user request sounds like implementation or coding work. Because Plan Mode is active, convert it into a durable implementation plan first. Create or update docs/plan/<task-slug>/README.md, include impact-informed target files/risks/verification, and do not modify source/code/config until execution mode.";
-	}
-	return "Plan Mode request framing: treat the latest user request as advisory or planning work. Answer without source/code/config changes. Create or update a docs/plan/<task-slug>/README.md file only when durable implementation steps are needed.";
-}
-
-export const REQUIRED_PROJECT_MEMORY_MARKERS = [
-	"AGENTS.md",
-	"README.md",
-	"docs/README.md",
-	"docs/spec/README.md",
-	"docs/arch/README.md",
-	"docs/test/README.md",
-	"docs/plan/README.md",
-] as const;
-
-export interface ProjectMemoryContextCoverage {
-	markers: string[];
-	areas: string[];
-	hasCompactionSummary: boolean;
-}
-
-export interface ProjectMemoryLoadDecisionInput {
-	latestRequest?: string | undefined;
-	contextText?: string | undefined;
-	hasRecentProjectMemoryLoad?: boolean | undefined;
-}
-
-export interface ProjectMemoryLoadDecision {
-	loadNeeded: boolean;
-	reason?: "user-opt-out" | "recent-load" | "missing-baseline" | "single-area-only" | "request-needs-cross-area" | "compaction-missing-markers";
-	missingMarkers?: string[];
-	areas?: string[];
-}
-
-export function collectProjectMemoryContextCoverage(contextText: string | undefined): ProjectMemoryContextCoverage {
-	const text = contextText ?? "";
-	const markers = REQUIRED_PROJECT_MEMORY_MARKERS.filter((marker) => text.includes(marker));
-	const areas = [
-		["spec", /docs\/spec\/(?!README\.md)/],
-		["arch", /docs\/arch\/(?!README\.md)/],
-		["test", /docs\/test\/(?!README\.md)/],
-		["plan", /docs\/plan\/(?!README\.md)/],
-		["archive", /docs\/archive\/README\.md/],
-	]
-		.filter(([, pattern]) => (pattern as RegExp).test(text))
-		.map(([area]) => area as string);
-	return {
-		markers,
-		areas,
-		hasCompactionSummary: /compaction|compacted|Current work focus|preserved planning summary/i.test(text),
-	};
-}
-
-export function shouldLoadProjectMemoryForPlanning(input: ProjectMemoryLoadDecisionInput): ProjectMemoryLoadDecision {
-	const request = input.latestRequest ?? "";
-	if (/\b(do not|don't|skip|without)\b.*\b(load|context|memory)\b|로드하지|불러오지/i.test(request)) {
-		return { loadNeeded: false, reason: "user-opt-out" };
-	}
-	if (input.hasRecentProjectMemoryLoad) return { loadNeeded: false, reason: "recent-load" };
-
-	const coverage = collectProjectMemoryContextCoverage(input.contextText);
-	const missingMarkers = REQUIRED_PROJECT_MEMORY_MARKERS.filter((marker) => !coverage.markers.includes(marker));
-	const requestNeedsCrossArea = /(구현|수정|코딩|검증|아키텍처|테스트|어댑터|런타임|implement|fix|code|validate|verification|architecture|test|adapter|runtime|cross-agent)/i.test(request);
-
-	if (missingMarkers.length > 0) {
-		return { loadNeeded: true, reason: "missing-baseline", missingMarkers, areas: coverage.areas };
-	}
-	if (requestNeedsCrossArea && coverage.areas.length <= 1) {
-		return { loadNeeded: true, reason: "single-area-only", areas: coverage.areas };
-	}
-	if (requestNeedsCrossArea && (!coverage.areas.includes("spec") || !coverage.areas.includes("arch") || !coverage.areas.includes("test"))) {
-		return { loadNeeded: true, reason: "request-needs-cross-area", areas: coverage.areas };
-	}
-	if (coverage.hasCompactionSummary && coverage.areas.length < 3) {
-		return { loadNeeded: true, reason: "compaction-missing-markers", areas: coverage.areas };
-	}
-	return { loadNeeded: false, areas: coverage.areas };
-}
-
-export function extractPlanSlugMentions(text: string): string[] {
-	const slugs: string[] = [];
-	const seen = new Set<string>();
-	const add = (slug: string | undefined) => {
-		if (!slug || seen.has(slug)) return;
-		seen.add(slug);
-		slugs.push(slug);
-	};
-
-	for (const match of text.matchAll(/docs\/plan\/([a-z0-9]+(?:-[a-z0-9]+)*)\/(?:README\.md|[A-Z0-9]+(?:_[A-Z0-9]+)*\.md)/g)) {
-		add(match[1]);
-	}
-	for (const match of text.matchAll(/(?:^|[\s`"'(:])([a-z0-9]+(?:-[a-z0-9]+)+)(?=$|[\s`"'),.;:])/g)) {
-		add(match[1]);
-	}
-	return slugs;
-}
-
-export function resolveMentionedPlanPath(
-	cwd: string,
-	text: string | undefined,
-	currentPlanPath: string | undefined,
-	touchedPaths: readonly string[],
-	pathExists: (cwd: string, path: string) => boolean,
-): string | undefined {
-	const candidates = [
-		...extractPathMentions(text ?? "").map((path) => getCurrentPlanReadmePath(path)).filter((path): path is string => Boolean(path)),
-		...extractPlanSlugMentions(text ?? "").map((slug) => `docs/plan/${slug}/README.md`),
-		...(currentPlanPath ? [currentPlanPath] : []),
-		...touchedPaths.map((path) => getCurrentPlanReadmePath(path)).filter((path): path is string => Boolean(path)),
-	];
-	const seen = new Set<string>();
-	return candidates.find((path) => {
-		if (seen.has(path)) return false;
-		seen.add(path);
-		return pathExists(cwd, path);
-	});
-}
-
-export function extractPathMentions(text: string): string[] {
-	const paths: string[] = [];
-	const seen = new Set<string>();
-	const re = /(?:^|[\s`"'(:])(@?\.?[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+)(?=$|[\s`"'),.;:])/g;
-	let match;
-	while ((match = re.exec(text)) !== null) {
-		const raw = match[1];
-		if (!raw) continue;
-		const normalized = raw.replace(/^@/, "").replace(/^\.\//, "").replace(/\/+/g, "/");
-		if (normalized.includes("..") || normalized.endsWith("/")) continue;
-		if (!/[.][A-Za-z0-9]+$/.test(normalized)) continue;
-		if (!seen.has(normalized)) {
-			seen.add(normalized);
-			paths.push(normalized);
-		}
-	}
-	return paths;
-}
-
-function isLikelyImpactTarget(path: string): boolean {
-	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
-	if (!normalized || normalized.startsWith(".") || normalized.includes("..")) return false;
-	if (normalized.startsWith("docs/plan/") || normalized.startsWith("docs/archive/")) return false;
-	if (normalized.startsWith(".dotdotgod/") || normalized.startsWith("node_modules/") || normalized.startsWith("dist/") || normalized.startsWith("build/") || normalized.startsWith("coverage/")) return false;
-	return /[.][A-Za-z0-9]+$/.test(normalized);
-}
-
-export function selectPlanImpactPaths(
-	cwd: string,
-	latestRequest: string | undefined,
-	currentPlanPath: string | undefined,
-	currentPlanContent: string | undefined,
-	touchedPaths: readonly string[],
-	pathExists: (cwd: string, path: string) => boolean,
-	limit = 3,
-): string[] {
-	const candidates = [
-		...extractPathMentions(latestRequest ?? ""),
-		...extractPathMentions(currentPlanContent ?? ""),
-		...(currentPlanPath ? [currentPlanPath] : []),
-		...touchedPaths,
-	];
-	const selected: string[] = [];
-	const seen = new Set<string>();
-	for (const path of candidates) {
-		const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
-		if (seen.has(normalized) || !isLikelyImpactTarget(normalized) || !pathExists(cwd, normalized)) continue;
-		seen.add(normalized);
-		selected.push(normalized);
-		if (selected.length >= limit) break;
-	}
-	return selected;
-}
-
-export function hasExplicitBracketReferences(text: string | undefined): boolean {
-	return /\[\[[^\]\n]+\]\]/.test(text ?? "");
-}
-
-export function hasLikelyFuzzyReferences(text: string | undefined): boolean {
-	const value = text ?? "";
-	if (hasExplicitBracketReferences(value)) return true;
-	if (/(?:^|\s)(?:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+(?:#[A-Za-z0-9 _-]+)?|[A-Z0-9]{3,})(?=$|\s|[.,:;!?])/.test(value)) return true;
-	if (/(?:^|\s)(?:\.?\/?(?:docs|packages|src|test|spec|arch|plan|archive)\/)?[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+(?:\.md)?(?:#[A-Za-z0-9 _-]+)?(?=$|\s|[.,:;!?])/.test(value)) return true;
-	if (/[`"'][^`"'\n]{4,80}[`"']/.test(value)) return true;
-	return false;
-}
-
-function formatCandidatePath(candidate: Record<string, unknown>): string | undefined {
-	const path = typeof candidate.path === "string" ? candidate.path : undefined;
-	if (!path) return undefined;
-	const title = typeof candidate.title === "string" && candidate.title ? `#${candidate.title}` : "";
-	const score = typeof candidate.score === "number" ? ` score=${candidate.score}` : "";
-	return `${path}${title}${score}`;
-}
-
-export function formatReferenceExpansionSummary(data: unknown, candidateLimit = 3, impactLimit = 3): string {
-	const payload = data && typeof data === "object" ? (data as Record<string, unknown>) : undefined;
-	const refs = Array.isArray(payload?.refs) ? payload.refs : [];
-	if (refs.length === 0) return "";
-
-	const lines = ["Reference expansion:"];
-	for (const refValue of refs) {
-		const ref = refValue && typeof refValue === "object" ? (refValue as Record<string, unknown>) : undefined;
-		if (!ref) continue;
-		const query = String(ref.query ?? ref.input ?? "unknown");
-		const source = typeof ref.source === "string" ? ` ${ref.source}` : "";
-		const confidence = typeof ref.confidence === "string" ? ` confidence=${ref.confidence}` : "";
-		const ambiguous = ref.ambiguous === true ? " ambiguous" : "";
-		const omitted = typeof ref.omitted === "number" && ref.omitted > 0 ? `; omitted=${ref.omitted}` : "";
-		lines.push(`- ${query}:${source}${confidence}${ambiguous}${omitted}`);
-
-		const candidates = Array.isArray(ref.candidates) ? ref.candidates : [];
-		for (const candidateValue of candidates.slice(0, candidateLimit)) {
-			const candidate = candidateValue && typeof candidateValue === "object" ? (candidateValue as Record<string, unknown>) : undefined;
-			if (!candidate) continue;
-			const formatted = formatCandidatePath(candidate);
-			if (formatted) lines.push(`  - ${formatted}`);
-		}
-
-		const impact = ref.impact && typeof ref.impact === "object" ? (ref.impact as Record<string, unknown>) : undefined;
-		const related = Array.isArray(impact?.related) ? impact.related : [];
-		const impactPaths = related
-			.slice(0, impactLimit)
-			.map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>) : undefined))
-			.map((item) => (typeof item?.path === "string" ? item.path : undefined))
-			.filter((path): path is string => Boolean(path));
-		if (impactPaths.length > 0) lines.push(`  impact=${impactPaths.join(", ")}`);
-	}
-	return lines.length > 1 ? lines.join("\n") : "";
-}
-
-export function selectPlanImpactPath(
-	cwd: string,
-	latestRequest: string | undefined,
-	currentPlanPath: string | undefined,
-	touchedPaths: readonly string[],
-	pathExists: (cwd: string, path: string) => boolean,
-): string | undefined {
-	return selectPlanImpactPaths(cwd, latestRequest, currentPlanPath, undefined, touchedPaths, pathExists, 1)[0];
-}
-
-function impactRecord(value: unknown): Record<string, unknown> | undefined {
-	return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
-}
-
-function impactPathOf(item: Record<string, unknown>): string {
-	return String(item.path ?? item.id ?? item.name ?? item.command ?? "unknown");
-}
-
-export function formatCompactImpactSummary(changedPath: string, payload: unknown, topLimit = 5): string {
-	const data = impactRecord(payload);
-	const impact = impactRecord(data?.impact);
-	const groups = impactRecord(impact?.groups);
-	if (!data || !impact || !groups) return `- Impact: skipped or unavailable for ${changedPath}.`;
-
-	const groupCount = (name: string): number => {
-		const items = impactRecord(groups[name])?.items;
-		return Array.isArray(items) ? items.length : 0;
-	};
-	const related = Array.isArray(impact.related) ? impact.related : [];
-	const topItems = related
-		.filter((item): item is Record<string, unknown> => Boolean(impactRecord(item)) && impactPathOf(item as Record<string, unknown>) !== changedPath && impactPathOf(item as Record<string, unknown>) !== `file:${changedPath}`)
-		.slice(0, topLimit)
-		.map((item) => {
-			const score = typeof item.impactScore === "number" ? ` score=${Math.round(item.impactScore * 10) / 10}` : "";
-			const reasons = Array.isArray(item.reasons) ? item.reasons.slice(0, 3).map(String).join("+") : "";
-			return `${impactPathOf(item)}${score}${reasons ? ` reasons=${reasons}` : ""}`;
-		});
-	const top = topItems.length > 0 ? `; top=${topItems.join(" | ")}` : "";
-	return `- Impact: changed=${changedPath}; docs=${groupCount("docs")}; tests=${groupCount("tests")}; files=${groupCount("files")}; commands=${groupCount("commands")}; events=${groupCount("events")}${top}`;
-}
-
-export interface PendingImpactItem {
-	path: string;
-	fingerprint?: string;
-	reason: "edit" | "write" | "git-diff";
-	touchedAt: string;
-}
-
-export interface ImpactCheckRecord {
-	path: string;
-	fingerprint?: string;
-	ranAt: string;
-	source: "tool" | "command" | "bash";
-	summary?: string;
-}
-
-export function normalizeImpactPath(cwd: string, path: string): string | undefined {
-	const raw = path.replace(/^@/, "").replace(/\\/g, "/").trim();
-	if (!raw || raw.includes("\0") || /[;&|<>`$\n\r]/.test(raw)) return undefined;
-	const absolute = isAbsolute(raw) ? resolve(raw) : resolve(cwd, raw.replace(/^\.\//, ""));
-	const relativePath = relative(resolve(cwd), absolute).replace(/\\/g, "/");
-	if (!relativePath || relativePath.startsWith("..") || isAbsolute(relativePath)) return undefined;
-	return relativePath.replace(/\/+/g, "/");
-}
-
-export function shouldTrackImpactPath(path: string): boolean {
-	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
-	if (!normalized || normalized.startsWith("docs/plan/") || normalized.startsWith("docs/archive/")) return false;
-	if (normalized.startsWith(".dotdotgod/") || normalized.startsWith("node_modules/") || normalized.startsWith("dist/") || normalized.startsWith("build/") || normalized.startsWith("coverage/")) return false;
-	return /[.][A-Za-z0-9]+$/.test(normalized);
-}
-
-export function upsertPendingImpact(items: readonly PendingImpactItem[], item: PendingImpactItem, maxItems = 20): PendingImpactItem[] {
-	const next = items.filter((existing) => existing.path !== item.path);
-	next.push(item);
-	return next.slice(-maxItems);
-}
-
-export function clearPendingImpactForPath(items: readonly PendingImpactItem[], path: string): PendingImpactItem[] {
-	return items.filter((item) => item.path !== path);
-}
-
-export function mergeImpactCheckPaths(cwd: string, pendingItems: readonly PendingImpactItem[], gitChangedPaths: readonly string[]): string[] {
-	const paths = [...pendingItems.map((item) => item.path), ...gitChangedPaths];
-	return [...new Set(paths.map((path) => normalizeImpactPath(cwd, path)).filter((path): path is string => Boolean(path)).filter(shouldTrackImpactPath))];
-}
-
-export function pendingImpactSummary(items: readonly PendingImpactItem[], limit = 8): string {
-	const shown = items.slice(0, limit).map((item) => `- ${item.path}`);
-	const omitted = items.length > limit ? [`- ... ${items.length - limit} more`] : [];
-	return [...shown, ...omitted].join("\n");
-}
-
-export function getChangedPathFromDotdotgodImpactCommand(command: string): string | undefined {
-	const args = getDotdotgodCliArgs(command);
-	if (!args || args[0] !== "graph" || args[1] !== "impact") return undefined;
-	for (let i = 2; i < args.length; i += 1) {
-		const arg = args[i];
-		if (arg === "--changed") return args[i + 1];
-		if (arg?.startsWith("--changed=")) return arg.slice("--changed=".length);
-	}
-	return undefined;
-}
-
-export function isCommitLikeCommand(command: string): boolean {
-	return /^\s*git\s+(commit|push)\b/i.test(command) || /^\s*(npm|pnpm|yarn)\s+publish\b/i.test(command);
-}
-
-export function isBroadVerificationCommand(command: string): boolean {
-	return /^\s*(pnpm\s+run\s+verify|npm\s+test|pnpm\s+test|yarn\s+test|pytest\b|\.\/run-tests\.sh\b)/i.test(command);
-}
-
-export function formatExpandableToolOutput(text: string, expanded: boolean, expandHint: string, maxLines = 10): string {
-	if (expanded) return text;
-	const lines = text.split(/\r?\n/);
-	if (lines.length <= maxLines) return text;
-	const omitted = lines.length - maxLines;
-	return [...lines.slice(0, maxLines), `... (${omitted} more lines, ${expandHint})`].join("\n");
-}
-
-export function formatMultiImpactSummary(results: Array<{ path: string; data?: unknown; error?: string; summary?: string }>, topLimit = 5): string {
-	const structuredSummaries = results.map((result) => result.summary?.trim()).filter((summary): summary is string => Boolean(summary));
-	if (structuredSummaries.length === results.length && results.every((result) => !result.error)) return structuredSummaries.join("\n---\n");
-
-	const lines = ["dotdotgod graph impact summary:"];
-	for (const result of results) {
-		if (result.error) lines.push(`- Impact: failed for ${result.path}: ${result.error}`);
-		else if (result.summary?.trim()) lines.push(result.summary.trim());
-		else lines.push(formatCompactImpactSummary(result.path, result.data, topLimit));
-	}
-	return lines.join("\n");
-}
-
-export const DEFAULT_PLAN_MODE_TOOLS = [
-	"read",
-	"bash",
-	"dotdotgod_graph_impact",
-	"edit",
-	"write",
-	"grep",
-	"find",
-	"ls",
-	"questionnaire",
-	"web_search",
-	"code_search",
-	"fetch_content",
-	"get_search_content",
-];
-
-export const PLAN_COMPACTION_PERCENT_THRESHOLD = 60;
-export const PLAN_COMPACTION_TOKEN_FALLBACK = 100_000;
-export const PLAN_COMPACTION_CONTEXT_RESERVE = 32_000;
-
-export const PLAN_MODE_COMPACTION_INSTRUCTIONS =
-	"Preserve only planning-critical context for dotdotgod Plan Mode. Prioritize the latest user request, active plan task slug/path/status, current target files, concrete user decisions and constraints, implementation decisions, verification commands/results, unresolved risks/questions, next steps, and completed [DONE:n] markers if present. Demote or omit old completed plans unless directly relevant, repeated project-load summaries, package publish history unless task-related, generic Plan Mode boilerplate recoverable from runtime prompts, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail. Summarize in a compact structure that lets the next assistant continue the current plan or execution without asking the user to repeat context.";
-
-export function parsePlanModeExtraTools(value: unknown): string[] {
-	if (typeof value !== "string") return [];
-	const seen = new Set<string>();
-	return value
-		.split(",")
-		.map((tool) => tool.trim())
-		.filter((tool) => /^[A-Za-z0-9_:-]+$/.test(tool))
-		.filter((tool) => {
-			if (seen.has(tool)) return false;
-			seen.add(tool);
-			return true;
-		});
-}
-
-export function resolvePlanModeTools(extraTools: unknown, availableTools?: readonly string[]): string[] {
-	const available = availableTools ? new Set(availableTools) : undefined;
-	const seen = new Set<string>();
-	const requested = [...DEFAULT_PLAN_MODE_TOOLS, ...parsePlanModeExtraTools(extraTools)];
-	return requested.filter((tool) => {
-		if (seen.has(tool)) return false;
-		if (available && !available.has(tool)) return false;
-		seen.add(tool);
-		return true;
-	});
-}
-
-export function buildPlanModeFullContextPrompt(allowedTools = DEFAULT_PLAN_MODE_TOOLS): string {
-	return `[PLAN MODE ACTIVE]
-You are in Plan Mode. This is a read-only exploration and design phase before code changes.
-
-Restrictions:
-- Allowed tools: ${allowedTools.join(", ")}
-- edit/write are allowed only for markdown plan/archive files under docs/plan/ or docs/archive/.
-- Under docs/, directories must use kebab-case and markdown file names must use UPPER_SNAKE_CASE.md, including README.md.
-- Forbidden: source/code/config file mutation outside docs/plan/ and docs/archive/.
-- Bash is restricted to read-only allowlisted commands.
-
-Project context:
-- Use already-loaded project memory and load-snapshot summaries first when available.
-- Read AGENTS.md and docs/README.md when they are missing, stale, or needed for the current task.
-- Treat project docs as the source of truth for stack, commands, conventions, and architecture.
-- Check docs/arch when code conventions, module boundaries, infrastructure/runtime dependencies, or integration constraints may affect the plan.
-
-Workflow:
-- Explore files in bounded passes before planning: start from already-loaded memory, README indexes, and impact/load-snapshot results; inspect the top related specs/tests/source files first, then expand only with a concrete reason. Ask clarifying questions when requirements are ambiguous, using questionnaire if available.
-- If planning compaction has just occurred, rely on the preserved planning summary plus current project docs before writing or refining the plan.
-- Use web_search, code_search, and fetch_content when library or web evidence is needed.
-- Manage active work under docs/plan/<task-slug>/README.md, with optional UPPER_SNAKE_CASE support files in the same task directory.
-- When one docs domain grows into multiple files, group it under docs/<area>/<domain>/README.md plus supporting UPPER_SNAKE_CASE files.
-- Include scope, status, target files, impact-informed related files, risks, verification, and a final archive step to docs/archive/plan/<task-slug>/.
-- For implementation tasks, the executable Plan: section must include a concrete step to run dotdotgod graph impact for intended changed files, review related specs/tests/docs/commands/files, and update the plan with newly discovered targets, risks, or verification before source changes.
-- When dotdotgod CLI impact summaries are available, use the related specs, tests, docs, commands, scores, and reasons to strengthen target files, verification, and risks before asking for execution. Do not paste large raw impact payloads into durable plans unless explicitly requested.
-- Do not change product/source files in plan mode. Only maintain docs/plan or docs/archive markdown files and produce an executable plan.
-
-Always write implementation task READMEs with scope, target files, impact-informed related files/checks, implementation steps, verification, risks when useful, an executable graph-impact refinement step before source changes, post-coding dotdotgod validate, and archive housekeeping.
-
-In the final response, use a Plan: section only for concrete executable steps. Avoid generic template labels such as "Target files and rationale", "Implementation steps", or "Verification method" as numbered plan items.
-
-Do not change source/code/config files in Plan Mode. You may create or update only the allowed docs/plan or docs/archive markdown files needed to produce the durable plan.`;
-}
-
-export const PLAN_MODE_COMPACT_CONTEXT_PROMPT = `[PLAN MODE ACTIVE]
-Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for UPPER_SNAKE_CASE markdown under docs/plan/ or docs/archive/; bash remains read-only allowlisted. Use AGENTS.md and docs indexes as source of truth when needed. Maintain the active task under docs/plan/<task-slug>/README.md and use a Plan: section only for concrete executable steps when ready.`;
-
-export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS): string {
-	return compact ? PLAN_MODE_COMPACT_CONTEXT_PROMPT : buildPlanModeFullContextPrompt(allowedTools);
-}
-
-export interface PlanCompactionFocus {
-	task?: string;
-	activePlanPaths?: string[];
-	touchedMemoryPaths?: string[];
-	todoSummary?: string;
-	pendingLoadAfterCompaction?: boolean;
-	constraints?: string[];
-}
-
-export interface PlanContextUsage {
-	tokens?: number | null;
-	contextWindow?: number | null;
-	percent?: number | null;
-}
-
-export interface PlanningContextShapeTriggerState {
-	planModeEnabled: boolean;
-	executionMode: boolean;
-	planningContextShapePending: boolean;
-}
-
-export function shouldShapePlanningContextOnAgentStart(state: PlanningContextShapeTriggerState): boolean {
-	return state.planModeEnabled && !state.executionMode && state.planningContextShapePending;
-}
-
-export interface PlanChoiceTriggerState {
-	planModeEnabled: boolean;
-	executionMode: boolean;
-	hasUI: boolean;
-	pendingPlanChoicePath?: string | undefined;
-	activePlanTouched?: boolean | undefined;
-}
-
-export function shouldPromptForPlanChoice(state: PlanChoiceTriggerState): boolean {
-	return state.planModeEnabled && !state.executionMode && state.hasUI && Boolean(state.pendingPlanChoicePath || state.activePlanTouched);
-}
-
-function formatFocusList(label: string, values: string[] | undefined): string | undefined {
-	const cleaned = [...new Set(values?.map((value) => value.trim()).filter(Boolean) ?? [])];
-	if (cleaned.length === 0) return undefined;
-	return `- ${label}: ${cleaned.slice(0, 8).join(", ")}${cleaned.length > 8 ? `, +${cleaned.length - 8} more` : ""}`;
-}
-
-export function formatPlanCompactionFocus(focus?: PlanCompactionFocus): string | undefined {
-	if (!focus) return undefined;
-	const lines = [
-		focus.task?.trim() ? `- Task: ${focus.task.trim()}` : undefined,
-		formatFocusList("Active plan", focus.activePlanPaths),
-		formatFocusList("Touched plan/archive memory", focus.touchedMemoryPaths),
-		focus.todoSummary?.trim() ? `- Todo state: ${focus.todoSummary.trim()}` : undefined,
-		focus.pendingLoadAfterCompaction ? "- Pending: load curated project memory after compaction" : undefined,
-		formatFocusList("Preserve constraints", focus.constraints),
-	].filter((line): line is string => Boolean(line));
-	if (lines.length === 0) return undefined;
-	return `Current work focus:\n${lines.join("\n")}`;
-}
-
-export function buildPlanCompactionInstructions(reason?: string, focus?: PlanCompactionFocus): string {
-	const sections = [];
-	const normalizedReason = reason?.trim();
-	if (normalizedReason) sections.push(`Reason: ${normalizedReason}`);
-	const formattedFocus = formatPlanCompactionFocus(focus);
-	if (formattedFocus) sections.push(formattedFocus);
-	sections.push(PLAN_MODE_COMPACTION_INSTRUCTIONS);
-	return sections.join("\n\n");
-}
-
-export function getPlanCompactionReason(usage: PlanContextUsage | null | undefined): string | undefined {
-	if (!usage) return undefined;
-
-	const percent = usage.percent ?? null;
-	if (typeof percent === "number") {
-		const normalizedPercent = percent <= 1 ? percent * 100 : percent;
-		if (normalizedPercent >= PLAN_COMPACTION_PERCENT_THRESHOLD) {
-			return `Plan Mode context exceeded ${PLAN_COMPACTION_PERCENT_THRESHOLD}% of the context window.`;
-		}
-	}
-
-	const tokens = usage.tokens ?? null;
-	if (typeof tokens !== "number") return undefined;
-
-	const contextWindow = usage.contextWindow ?? null;
-	if (typeof contextWindow === "number" && tokens >= contextWindow - PLAN_COMPACTION_CONTEXT_RESERVE) {
-		return `Plan Mode context is within ${PLAN_COMPACTION_CONTEXT_RESERVE.toLocaleString()} tokens of the context window.`;
-	}
-
-	if (tokens >= PLAN_COMPACTION_TOKEN_FALLBACK) {
-		return `Plan Mode context exceeded ${PLAN_COMPACTION_TOKEN_FALLBACK.toLocaleString()} tokens.`;
-	}
-
-	return undefined;
-}
-
+export type { ImpactCheckRecord, PendingImpactItem } from "./impact.ts";
+export {
+	formatReferenceExpansionSummary,
+	formatCompactImpactSummary,
+	normalizeImpactPath,
+	shouldTrackImpactPath,
+	upsertPendingImpact,
+	clearPendingImpactForPath,
+	mergeImpactCheckPaths,
+	pendingImpactSummary,
+	getChangedPathFromDotdotgodImpactCommand,
+	isCommitLikeCommand,
+	isBroadVerificationCommand,
+	formatExpandableToolOutput,
+	formatMultiImpactSummary,
+} from "./impact.ts";
+
+export type { PlanChoiceTriggerState, PlanCompactionFocus, PlanContextUsage, PlanningContextShapeTriggerState } from "./prompts.ts";
+export {
+	DEFAULT_PLAN_MODE_TOOLS,
+	PLAN_COMPACTION_PERCENT_THRESHOLD,
+	PLAN_COMPACTION_TOKEN_FALLBACK,
+	PLAN_COMPACTION_CONTEXT_RESERVE,
+	PLAN_MODE_COMPACTION_INSTRUCTIONS,
+	parsePlanModeExtraTools,
+	resolvePlanModeTools,
+	buildPlanModeFullContextPrompt,
+	PLAN_MODE_COMPACT_CONTEXT_PROMPT,
+	buildPlanModeContextPrompt,
+	shouldShapePlanningContextOnAgentStart,
+	shouldPromptForPlanChoice,
+	formatPlanCompactionFocus,
+	buildPlanCompactionInstructions,
+	getPlanCompactionReason,
+} from "./prompts.ts";
+
+export type { PlanModeRequestKind, ProjectMemoryContextCoverage, ProjectMemoryLoadDecision, ProjectMemoryLoadDecisionInput } from "./context.ts";
+export {
+	REQUIRED_PROJECT_MEMORY_MARKERS,
+	detectPlanExecutionIntent,
+	classifyPlanModeRequest,
+	buildPlanModeRequestFraming,
+	collectProjectMemoryContextCoverage,
+	shouldLoadProjectMemoryForPlanning,
+} from "./context.ts";
+
+export {
+	getCurrentPlanReadmePath,
+	extractPlanSlugMentions,
+	resolveMentionedPlanPath,
+	extractPathMentions,
+	selectPlanImpactPaths,
+	selectPlanImpactPath,
+	hasExplicitBracketReferences,
+	hasLikelyFuzzyReferences,
+} from "./plans.ts";
