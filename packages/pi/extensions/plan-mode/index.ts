@@ -51,6 +51,7 @@ import {
 	shouldLoadProjectMemoryForPlanning,
 	shouldPromptForPlanChoice,
 	shouldShapePlanningContextOnAgentStart,
+	selectLatestPlanningRequest,
 	markCompletedSteps,
 	type ImpactCheckRecord,
 	type PendingImpactItem,
@@ -84,6 +85,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let planningCliContextSummary: string | undefined;
 	let planningCliContextChecked = false;
 	let lastPlanningRequest: string | undefined;
+	let pendingInlinePlanningRequest: string | undefined;
 	let currentPlanPath: string | undefined;
 	let touchedPlanArchivePaths: string[] = [];
 	let activePlanModeTools: string[] = [];
@@ -521,6 +523,10 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	}
 
 	function handleInlinePlanRequest(ctx: ExtensionContext, request: string): void {
+		const normalizedRequest = truncateText(request);
+		lastPlanningRequest = normalizedRequest;
+		pendingInlinePlanningRequest = normalizedRequest;
+
 		if (!planModeEnabled || executionMode) {
 			setPlanModeEnabled(ctx, true);
 		}
@@ -559,6 +565,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			planningCliContextSummary,
 			planningCliContextChecked,
 			lastPlanningRequest,
+			pendingInlinePlanningRequest,
 			currentPlanPath,
 			touchedPlanArchivePaths,
 			pendingImpactItems,
@@ -711,14 +718,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			return candidate.type === "message" && candidate.message?.role === "user";
 		}) as { message?: AgentMessage } | undefined;
 		const latestText = latestUserEntry?.message ? truncateText(getMessageText(latestUserEntry.message)) : "";
-		if (
-			latestText &&
-			!latestText.includes("[PLAN MODE ACTIVE]") &&
-			!latestText.startsWith("Load the dotdotgod project memory.") &&
-			!latestText.startsWith("Continue the latest Plan Mode request after planning-focused compaction.") &&
-			!latestText.startsWith("Continue the following Plan Mode request after planning-focused compaction.")
-		) {
-			lastPlanningRequest = latestText;
+		const selection = selectLatestPlanningRequest({ currentRequest: lastPlanningRequest, latestUserText: latestText, pendingInlineRequest: pendingInlinePlanningRequest });
+		if (selection.changed) {
+			lastPlanningRequest = selection.request;
+			pendingInlinePlanningRequest = selection.pendingInlineRequest;
+			persistState();
 		}
 	}
 
@@ -906,6 +910,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
 						planningCliContextSummary?: string;
 						planningCliContextChecked?: boolean;
 						lastPlanningRequest?: string;
+						pendingInlinePlanningRequest?: string;
 						currentPlanPath?: string;
 						touchedPlanArchivePaths?: string[];
 						pendingImpactItems?: PendingImpactItem[];
@@ -933,6 +938,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
 			planningCliContextSummary = planModeEntry.data.planningCliContextSummary ?? planningCliContextSummary;
 			planningCliContextChecked = planModeEntry.data.planningCliContextChecked ?? planningCliContextChecked;
 			lastPlanningRequest = planModeEntry.data.lastPlanningRequest ?? lastPlanningRequest;
+			pendingInlinePlanningRequest = planModeEntry.data.pendingInlinePlanningRequest ?? pendingInlinePlanningRequest;
 			currentPlanPath = planModeEntry.data.currentPlanPath ?? currentPlanPath;
 			touchedPlanArchivePaths = planModeEntry.data.touchedPlanArchivePaths ?? touchedPlanArchivePaths;
 			pendingImpactItems = planModeEntry.data.pendingImpactItems ?? pendingImpactItems;

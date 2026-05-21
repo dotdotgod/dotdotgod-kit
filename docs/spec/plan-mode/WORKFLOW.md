@@ -2,7 +2,7 @@
 
 ## Planning Context Shaping
 
-After Plan Mode is enabled, the first user planning request triggers one context-shaping pass. The request may be sent as a separate message after `/plan`, or inline as `/plan <request>`; inline requests enable Plan Mode before delivery and then use the same context shaping and request-framing path.
+After Plan Mode is enabled, the first user planning request triggers one context-shaping pass. The request may be sent as a separate message after `/plan`, or inline as `/plan <request>`; inline requests are recorded as the latest planning request before delivery, enable Plan Mode, and then use the same context shaping and request-framing path.
 
 1. Queue a curated project-memory load if baseline project docs are missing, recent memory load is absent, or context has narrowed to one documentation area while the request needs cross-area planning.
 2. Request planning-focused compaction if context is too large or noisy.
@@ -32,7 +32,7 @@ Moderately proactive thresholds are:
 - context tokens within 32,000 tokens of the context window when window size is available
 - 100,000 context tokens as a fallback when only token count is available
 
-After successful automatic compaction, the extension queues a concise resume follow-up for the latest planning request. When a curated project-memory load was deferred until after compaction, the load follow-up is delivered first and the resume follow-up is delivered after that load turn finishes. The resume prompt is persisted and cleared after one delivery so compaction does not make the user repeat the request or create duplicate planning turns.
+After successful automatic compaction, the extension queues a concise resume follow-up for the latest planning request. Inline `/plan <request>` arguments are authoritative for this resume prompt even if their synthetic user message has not reached the session transcript yet. When a curated project-memory load was deferred until after compaction, the load follow-up is delivered first and the resume follow-up is delivered after that load turn finishes. The resume prompt is persisted and cleared after one delivery so compaction does not make the user repeat the request or create duplicate planning turns.
 
 The extension skips compaction during execution and continues if compaction fails. Toggle Plan Mode off/on for a fresh context-shaping pass.
 

@@ -46,6 +46,8 @@ import {
 	shouldPromptForPlanChoice,
 	shouldTrackImpactPath,
 	shouldShapePlanningContextOnAgentStart,
+	isPlanModeRuntimeRequest,
+	selectLatestPlanningRequest,
 	upsertPendingImpact,
 	clearPendingImpactForPath,
 	type PendingImpactItem,
@@ -566,6 +568,36 @@ describe("plan-mode compaction helpers", () => {
 		assert.match(prompt, /Continue the following Plan Mode request after planning-focused compaction/);
 		assert.match(prompt, /노션 API 연동 방법 조사해줘/);
 		assert.match(buildPlanCompactionResumePrompt(), /Continue the latest Plan Mode request after planning-focused compaction/);
+	});
+
+	it("keeps inline /plan requests authoritative until their synthetic user message arrives", () => {
+		const waiting = selectLatestPlanningRequest({
+			currentRequest: "플랜",
+			pendingInlineRequest: "플랜",
+			latestUserText: "이전 대화 메시지",
+		});
+		assert.deepEqual(waiting, { request: "플랜", pendingInlineRequest: "플랜", changed: false });
+
+		const delivered = selectLatestPlanningRequest({
+			currentRequest: "플랜",
+			pendingInlineRequest: "플랜",
+			latestUserText: "플랜",
+		});
+		assert.deepEqual(delivered, { request: "플랜", pendingInlineRequest: undefined, changed: true });
+		assert.match(buildPlanCompactionResumePrompt(waiting.request), /Latest request:\n플랜/);
+	});
+
+	it("ignores Plan Mode runtime follow-up messages when selecting the latest request", () => {
+		assert.equal(isPlanModeRuntimeRequest("[PLAN MODE ACTIVE]\nStay in planning"), true);
+		assert.equal(isPlanModeRuntimeRequest("Load the dotdotgod project memory."), true);
+		assert.equal(isPlanModeRuntimeRequest("Continue the following Plan Mode request after planning-focused compaction."), true);
+		assert.deepEqual(
+			selectLatestPlanningRequest({
+				currentRequest: "현재 요청",
+				latestUserText: "Continue the latest Plan Mode request after planning-focused compaction.",
+			}),
+			{ request: "현재 요청", pendingInlineRequest: undefined, changed: false },
+		);
 	});
 
 	it("detects token-based planning compaction reasons", () => {
