@@ -15,6 +15,56 @@ export function detectPlanExecutionIntent(text: string): boolean {
 
 export type PlanModeRequestKind = "advisory" | "implementation_request" | "explicit_execution" | "memory_load";
 
+export interface LatestPlanningRequestSelectionInput {
+	currentRequest?: string | undefined;
+	latestUserText?: string | undefined;
+	pendingInlineRequest?: string | undefined;
+}
+
+export interface LatestPlanningRequestSelection {
+	request?: string | undefined;
+	pendingInlineRequest?: string | undefined;
+	changed: boolean;
+}
+
+export function isPlanModeRuntimeRequest(text: string | undefined): boolean {
+	const normalized = (text ?? "").trim();
+	return (
+		!normalized ||
+		normalized.includes("[PLAN MODE ACTIVE]") ||
+		normalized.startsWith("Load the dotdotgod project memory.") ||
+		normalized.startsWith("Continue the latest Plan Mode request after planning-focused compaction.") ||
+		normalized.startsWith("Continue the following Plan Mode request after planning-focused compaction.")
+	);
+}
+
+export function selectLatestPlanningRequest(input: LatestPlanningRequestSelectionInput): LatestPlanningRequestSelection {
+	const currentRequest = input.currentRequest;
+	const latestUserText = input.latestUserText?.trim();
+	const pendingInlineRequest = input.pendingInlineRequest?.trim();
+
+	if (pendingInlineRequest) {
+		if (latestUserText === pendingInlineRequest && !isPlanModeRuntimeRequest(latestUserText)) {
+			return {
+				request: latestUserText,
+				pendingInlineRequest: undefined,
+				changed: currentRequest !== latestUserText || input.pendingInlineRequest !== undefined,
+			};
+		}
+		return { request: currentRequest, pendingInlineRequest, changed: false };
+	}
+
+	if (!isPlanModeRuntimeRequest(latestUserText)) {
+		return {
+			request: latestUserText,
+			pendingInlineRequest: undefined,
+			changed: currentRequest !== latestUserText,
+		};
+	}
+
+	return { request: currentRequest, pendingInlineRequest: undefined, changed: false };
+}
+
 export function classifyPlanModeRequest(text: string | undefined): PlanModeRequestKind {
 	const normalized = (text ?? "").replace(/\s+/g, " ").trim();
 	if (!normalized) return "advisory";

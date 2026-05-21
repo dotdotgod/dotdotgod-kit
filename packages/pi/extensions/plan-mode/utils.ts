@@ -56,13 +56,15 @@ export {
 	getPlanCompactionReason,
 } from "./prompts.ts";
 
-export type { PlanModeRequestKind, ProjectMemoryContextCoverage, ProjectMemoryLoadDecision, ProjectMemoryLoadDecisionInput } from "./context.ts";
+export type { LatestPlanningRequestSelection, LatestPlanningRequestSelectionInput, PlanModeRequestKind, ProjectMemoryContextCoverage, ProjectMemoryLoadDecision, ProjectMemoryLoadDecisionInput } from "./context.ts";
 export {
 	REQUIRED_PROJECT_MEMORY_MARKERS,
 	detectPlanExecutionIntent,
 	classifyPlanModeRequest,
 	buildPlanModeRequestFraming,
 	collectProjectMemoryContextCoverage,
+	isPlanModeRuntimeRequest,
+	selectLatestPlanningRequest,
 	shouldLoadProjectMemoryForPlanning,
 } from "./context.ts";
 
