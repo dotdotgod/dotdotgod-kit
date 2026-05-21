@@ -39,6 +39,63 @@ All path fields are arrays. Scalar string path settings are invalid and validati
 - Traceability block parsing and graph extraction work in any markdown file that contains a valid block; the config only controls which files fail validation when the block is missing or invalid.
 - Invalid config is reported by `dotdotgod validate`. Runtime commands fall back to the default policy so read-only snapshot and graph commands remain usable.
 
+## Generated Markdown Link Section
+
+Think of the fenced `json dotdotgod` block as the source of truth. The generated Markdown links are only a reading aid for humans. `dotdotgod validate` checks that both match, `traceability links --check` runs that same drift check in focused mode, and `traceability links --write` repairs the generated view and compact JSON.
+
+The CLI can normalize canonical blocks under the docs markdown surface to compact single-line JSON and generate human-clickable Markdown views from them with:
+
+```bash
+dotdotgod traceability links <root> [--check|--write] [--json]
+```
+
+The command scans markdown files under `docs/`. This sync scope is intentionally separate from traceability enforcement paths: enforcement config decides which files fail validation when traceability is missing or invalid, while the sync command repairs generated traceability output for docs that already contain canonical blocks.
+
+The generated view is bounded by HTML comment sentinels. Link labels use the full repository-relative traceability path instead of only the basename so repeated names such as `README.md` and `SKILL.md` remain distinguishable:
+
+```markdown
+<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
+<!-- generated: do not edit manually -->
+
+### Traceability Links
+
+- Implemented by:
+  - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
+- Verified by:
+  - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
+  - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
+  - [docs/test/TRACEABILITY_CONFIG.md](../test/TRACEABILITY_CONFIG.md)
+- Related docs:
+  - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
+  - [docs/arch/DOCS_STRUCTURE.md](../arch/DOCS_STRUCTURE.md)
+  - [docs/arch/MEMORY_AREA_CONFIG.md](../arch/MEMORY_AREA_CONFIG.md)
+  - [docs/spec/MEMORY_AREA_CONFIG.md](MEMORY_AREA_CONFIG.md)
+  - [docs/spec/CONFIG_COMMAND.md](CONFIG_COMMAND.md)
+- Verification commands:
+  - `pnpm --filter @dotdotgod/cli test`
+  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory`
+
+<!-- dotdotgod:traceability-links:end -->
+```
+
+Rules:
+
+- The sentinel pair identifies the generated region; heading text is not authoritative.
+- A markdown file may contain at most one start marker and one matching end marker.
+- If markers exist exactly once, `--write` replaces only the bounded region.
+- If markers are absent, `--write` inserts the region inside the final `## Traceability` section before the canonical JSON block.
+- `--write` also rewrites the canonical `json dotdotgod` block as compact JSON with no indentation or blank space; validation still accepts compact and pretty JSON.
+- Duplicate, reversed, or incomplete markers are validation errors and write mode refuses to repair them automatically.
+- The generated region and canonical `json dotdotgod` block are excluded from markdown line and character budget checks so traceability metadata and clickability do not force otherwise focused documents over size limits.
+- The generated region is derived output; user edits inside it are overwritten on the next sync.
+
+Command behavior:
+
+- `traceability links --check` is the default focused mode. It exits non-zero when a generated section is missing, stale, or the canonical JSON block is not compact-normalized.
+- `traceability links --write` updates files in place and reports changed files or marker errors in JSON output when `--json` is passed.
+- `--json` output includes at least `ok`, `command`, `root`, `mode`, `changed`, `files`, and `errors` so scripts can distinguish clean checks, changed files, and marker failures.
+- `dotdotgod validate` uses the same drift comparison and reports stale generated links or non-compact traceability JSON as `TRACEABILITY_LINKS_STALE` as part of the full docs/project-memory gate.
+
 ## Focused Contract Traceability
 
 For focused behavior contracts and micro-specs, use the traceability block to make the contract actionable for agents:
@@ -79,26 +136,5 @@ This policy requires traceability for API specs and one exact security spec, ski
 ## Traceability
 
 ```json dotdotgod
-{
-  "kind": "spec",
-  "implementedBy": [
-    "packages/cli/src/core.mjs"
-  ],
-  "verifiedBy": [
-    "packages/cli/test/core.test.mjs",
-    "packages/cli/test/e2e.test.mjs",
-    "docs/test/TRACEABILITY_CONFIG.md"
-  ],
-  "relatedDocs": [
-    "docs/arch/VALIDATION_ARCHITECTURE.md",
-    "docs/arch/DOCS_STRUCTURE.md",
-    "docs/arch/MEMORY_AREA_CONFIG.md",
-    "docs/spec/MEMORY_AREA_CONFIG.md",
-    "docs/spec/CONFIG_COMMAND.md"
-  ],
-  "verificationCommands": [
-    "pnpm --filter @dotdotgod/cli test",
-    "node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"
-  ]
-}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/TRACEABILITY_CONFIG.md"],"relatedDocs":["docs/arch/VALIDATION_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md","docs/arch/MEMORY_AREA_CONFIG.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/CONFIG_COMMAND.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
 ```

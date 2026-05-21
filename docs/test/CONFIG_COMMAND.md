@@ -11,16 +11,18 @@ These checks cover `dotdotgod config` and `dotdotgod config init` behavior for p
 - is valid according to the shared config validator
 - includes default memory areas, traceability policy, markdown validation policy, impact ranking policy, and fuzzy reference expansion low-signal add/remove policy
 - can be written as `dotdotgod.config.json` and read back by the CLI config loader
+- accepts valid optional memory-area `description` and `clarify` metadata while rejecting invalid metadata with repairable errors
 
 `packages/cli/test/e2e.test.mjs` verifies:
 
 - `dotdotgod config <root> --json` reports default config without creating `.dotdotgod/`
 - `dotdotgod config init <root> --json` creates `dotdotgod.config.json`
-- generated config contains the default archive-body exclusion, markdown validation budgets, balanced impact ranking preset, and fuzzy low-signal add/remove settings
+- generated config contains the default archive-body exclusion, markdown validation budgets, balanced impact ranking preset, and fuzzy low-signal add/remove settings without noisy default `description` or `clarify` fields
 - show output reports `dotdotgod.config.json` after initialization
 - init refuses to overwrite an existing config without `--force`
 - init with `--force` overwrites `dotdotgod.config.json`
 - init refuses when `.dotdotgodrc.json` exists, even with `--force`
+- `dotdotgod config <root> --json` preserves configured memory-area `description` and `clarify` metadata
 - invalid config show output reports validation errors and does not refresh the graph cache
 - command-specific help works for `config` and `config init`
 

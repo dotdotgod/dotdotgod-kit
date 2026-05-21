@@ -25,7 +25,7 @@ files:
 
 `graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
 
-Claude Code adapter for dotdotgod's context curation workflow. It packages `/dd:init`, `/dd:load`, `/dd:plan`, `/dd:impact`, and matching skills so Claude Code can start from the fixed load-context surface and use explicit maintained graph links instead of rediscovering specs, tests, plans, and archives from scratch.
+Claude Code adapter for dotdotgod's context curation workflow. It packages `/dd:init`, `/dd:load`, `/dd:plan`, `/dd:impact`, matching skills for those command workflows, and the `document-clarify` skill so Claude Code can start from the fixed load-context surface and use explicit maintained graph links instead of rediscovering specs, tests, plans, and archives from scratch.
 
 ## What Gets Better?
 
@@ -35,14 +35,15 @@ Claude Code adapter for dotdotgod's context curation workflow. It packages `/dd:
 - Planning guidance encourages agents to keep README routes, traceability blocks, plans, and archives current so `graph impact` remains useful.
 - `/dd:plan` writes or updates durable task intent in `docs/plan/<task-slug>/README.md` before implementation.
 - `/dd:impact` reviews changed files with `dotdotgod graph impact` before broad verification or handoff, giving Claude Code a Pi-like impact workflow without Pi runtime enforcement.
+- `document-clarify` improves project docs using memory-area roles and optional config guidance while preserving behavior contracts.
 - Product intent, design rationale, verification standards, and completed work stay in durable files rather than chat history.
-- Skills mirror the commands so natural-language requests can use the same workflows.
+- Skills mirror the command workflows for init/load/plan/impact, and `document-clarify` adds a skill-only docs clarity workflow.
 
 ## Shared Memory and Traceability Model
 
 By default, `docs/spec/**` has two roles: it is stable shared/fresh project memory, and it is the traceability-enforced behavior-spec path. These concepts are independent:
 
-- `memory.areas` customizes memory classification, freshness, local/shared scope, priorities, and archive-body inclusion.
+- `memory.areas` customizes memory classification, freshness, local/shared scope, priorities, archive-body inclusion, and optional document-area `description`/`clarify` guidance.
 - `traceability.required` / `traceability.exclude` customizes which markdown paths must end with `json dotdotgod` blocks.
 
 `docs/archive/README.md` is the history map. Archive bodies remain targeted historical memory and should not be read broadly by default.
@@ -60,6 +61,7 @@ By default, `docs/spec/**` has two roles: it is stable shared/fresh project memo
   - `doc-first-planning`
   - `project-initializer`
   - `impact-review`
+  - `document-clarify`
 
 ## Optional Hooks
 

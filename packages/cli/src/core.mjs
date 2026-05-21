@@ -6,7 +6,7 @@ import { runInit } from './init.mjs';
 import { commandUsage, hasHelpToken, helpCommandFromArgs, isHelpToken, isVersionToken, parseCommon, printVersion, usage } from './cli/usage.mjs';
 import { rel } from './common/paths.mjs';
 import { extractAnchors, extractLinks, headingToAnchor, isKebabCase, isUpperSnakeMarkdown, removeCodeBlocks } from './docs/markdown.mjs';
-import { extractDotdotgodTraceabilityBlocks, isLocalRelativeTraceabilityPath, traceabilityExample, validateTraceabilityBlock, validateTraceabilityPlacement } from './docs/traceability.mjs';
+import { extractDotdotgodTraceabilityBlocks, findTraceabilityLinksRegion, isLocalRelativeTraceabilityPath, renderCompactTraceabilityBlock, stripTraceabilityLinksRegion, syncTraceabilityLinksInContent, traceabilityExample, validateTraceabilityBlock, validateTraceabilityLinksRegion, validateTraceabilityPlacement } from './docs/traceability.mjs';
 import { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_VALIDATION_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, cloneReferenceExpansionPolicy, cloneValidationPolicy, defaultDotdotgodConfigData, defaultDotdotgodConfigText, defaultMemoryConfig, isMarkdownSizeExcluded, memoryAreaForPath, memoryConfigSummary, memoryRoleForPath, normalizeLowSignalTerm, readMemoryConfig, requiresTraceability, resolveMemoryArea, retrievalPriorityForPath, validateMemoryConfigData } from './memory/config.mjs';
 import { buildCommunities, relationWeight } from './graph/communities.mjs';
 import { addEdge, addNode, compactGraph, expandGraph, graphStats, jsonSize, shardFile, writeJson } from './graph/store.mjs';
@@ -16,13 +16,13 @@ import { buildMemoryAreas, detectCommandGuidance, detectPackageManager } from '.
 export { commandUsage, hasHelpToken, helpCommandFromArgs, isHelpToken, isVersionToken, parseCommon, printVersion, usage } from './cli/usage.mjs';
 export { rel } from './common/paths.mjs';
 export { extractAnchors, extractLinks, headingToAnchor, isKebabCase, isUpperSnakeMarkdown, removeCodeBlocks } from './docs/markdown.mjs';
-export { extractDotdotgodTraceabilityBlocks, isLocalRelativeTraceabilityPath, traceabilityExample, validateTraceabilityBlock, validateTraceabilityPlacement } from './docs/traceability.mjs';
+export { extractDotdotgodTraceabilityBlocks, findTraceabilityLinksRegion, isLocalRelativeTraceabilityPath, renderCompactTraceabilityBlock, stripTraceabilityLinksRegion, syncTraceabilityLinksInContent, traceabilityExample, validateTraceabilityBlock, validateTraceabilityLinksRegion, validateTraceabilityPlacement } from './docs/traceability.mjs';
 export { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_VALIDATION_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, cloneReferenceExpansionPolicy, cloneValidationPolicy, defaultDotdotgodConfigData, defaultDotdotgodConfigText, defaultMemoryConfig, isMarkdownSizeExcluded, memoryAreaForPath, memoryConfigSummary, memoryRoleForPath, normalizeLowSignalTerm, readMemoryConfig, requiresTraceability, resolveMemoryArea, retrievalPriorityForPath, validateMemoryConfigData } from './memory/config.mjs';
 export { buildCommunities, relationWeight } from './graph/communities.mjs';
 export { addEdge, addNode, compactGraph, expandGraph, graphStats, jsonSize, shardFile, writeJson } from './graph/store.mjs';
 export { cacheFile, collectIndexFiles, fingerprint, shouldIndexPath } from './index/files.mjs';
 export { buildMemoryAreas, detectCommandGuidance, detectPackageManager } from './load-snapshot/summary.mjs';
-export const CACHE_VERSION = 10;
+export const CACHE_VERSION = 11;
 const CACHE_DIR = '.dotdotgod';
 const MANIFEST_FILE = 'manifest.json';
 export function runValidate(argv) {
@@ -81,18 +81,25 @@ export function runValidate(argv) {
     if (docsRel && !docsRel.startsWith('..') && !isUpperSnakeMarkdown(name)) addError(file, 'FILE_NAMING', `Markdown file must be UPPER_SNAKE_CASE.md or README.md: ${name}`, null, 'rename the markdown file to UPPER_SNAKE_CASE.md or README.md and update any links that reference it.');
     const content = readFileSync(file, 'utf8');
     fileCache.set(file, content);
-    const lines = content.split('\n').length;
+    const budgetContent = stripTraceabilityLinksRegion(content);
+    const lines = budgetContent.split('\n').length;
+    const chars = budgetContent.length;
     const path = rel(root, file);
     const skipSizeChecks = isMarkdownSizeExcluded(path, memoryConfig);
-    if (!skipSizeChecks && lines > maxLines) addError(file, 'FILE_TOO_LONG', `Markdown file has ${lines} lines; max is ${maxLines}`, null, 'split the document into focused markdown files and update the nearest README.md index, or add a narrow validation.markdown.exclude entry if this file is intentionally oversized.');
-    if (!skipSizeChecks && content.length > maxChars) addError(file, 'FILE_TOO_LARGE', `Markdown file has ${content.length} characters; max is ${maxChars}`, null, 'split the document into focused markdown files and update the nearest README.md index, or add a narrow validation.markdown.exclude entry if this file is intentionally oversized.');
+    if (!skipSizeChecks && lines > maxLines) addError(file, 'FILE_TOO_LONG', `Markdown file has ${lines} lines excluding generated traceability links and traceability JSON blocks; max is ${maxLines}`, null, 'split the document into focused markdown files and update the nearest README.md index, or add a narrow validation.markdown.exclude entry if this file is intentionally oversized.');
+    if (!skipSizeChecks && chars > maxChars) addError(file, 'FILE_TOO_LARGE', `Markdown file has ${chars} characters excluding generated traceability links and traceability JSON blocks; max is ${maxChars}`, null, 'split the document into focused markdown files and update the nearest README.md index, or add a narrow validation.markdown.exclude entry if this file is intentionally oversized.');
     if (requiresTraceability(rel(root, file), memoryConfig)) {
       const blocks = extractDotdotgodTraceabilityBlocks(content);
       if (blocks.length === 0) addError(file, 'TRACEABILITY_MISSING', `Behavior specs must include a fenced \`json dotdotgod\` traceability block as the final section.\nFix: add a final \`## Traceability\` section with the expected \`json dotdotgod\` block and point it at the relevant source, tests, related docs, and verification commands.\n\n${traceabilityExample()}`);
       else for (const error of validateTraceabilityPlacement(content, root, file)) errors.push(error);
+      for (const error of validateTraceabilityLinksRegion(content, root, file)) errors.push(error);
       for (const block of blocks) {
         if (block.error) addError(file, 'TRACEABILITY_INVALID_JSON', `Invalid \`json dotdotgod\` block: ${block.error}\nFix: repair the fenced \`json dotdotgod\` block so it is valid JSON and still matches the expected schema.\n\n${traceabilityExample()}`, block.line);
-        else for (const error of validateTraceabilityBlock(block.data, root, file, block.line)) errors.push(error);
+        else {
+          for (const error of validateTraceabilityBlock(block.data, root, file, block.line)) errors.push(error);
+          const synced = syncTraceabilityLinksInContent(content, block.data, root, file);
+          if (synced.ok && synced.changed) addError(file, 'TRACEABILITY_LINKS_STALE', 'Generated traceability links or compact traceability JSON are missing or stale.', block.line, 'run `dotdotgod traceability links <root> --write` to synchronize the generated Markdown links and compact JSON block.');
+        }
       }
     }
   }
@@ -1368,6 +1375,75 @@ export function runExpand(argv) {
   else console.log(formatReferenceOutput(payload));
 }
 
+function collectDocsMarkdownFiles(root) {
+  const docs = join(root, 'docs');
+  const files = [];
+  const walk = (dir) => {
+    if (!existsSync(dir)) return;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (entry.isFile() && entry.name.endsWith('.md')) files.push(path);
+    }
+  };
+  walk(docs);
+  return files;
+}
+
+export function parseTraceabilityOptions(argv) {
+  const sub = argv[0];
+  const action = argv[1];
+  if (sub !== 'links') usage(sub ? `Unknown traceability command: ${sub}` : 'Missing traceability command.', 'traceability');
+  const options = { root: '.', check: false, write: false, json: false };
+  for (let i = 1; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--check') options.check = true;
+    else if (arg === '--write') options.write = true;
+    else if (arg === '--json') options.json = true;
+    else if (!arg.startsWith('-')) options.root = arg;
+    else usage(`Unknown option: ${arg}`, 'traceability links');
+  }
+  if (action === '--check' || action === '--write' || action === '--json') {
+    // no-op: action slot is an option, not a positional subcommand.
+  }
+  if (options.check && options.write) usage('Choose only one traceability links mode: --check or --write.', 'traceability links');
+  options.check = options.check || !options.write;
+  options.root = resolve(options.root);
+  return options;
+}
+
+export function runTraceability(argv) {
+  const options = parseTraceabilityOptions(argv);
+  const files = collectDocsMarkdownFiles(options.root);
+  const results = [];
+  const errors = [];
+  for (const file of files) {
+    const content = readFileSync(file, 'utf8');
+    for (const error of validateTraceabilityLinksRegion(content, options.root, file)) errors.push(error);
+    const blocks = extractDotdotgodTraceabilityBlocks(content).filter((block) => !block.error);
+    if (blocks.length === 0) continue;
+    const result = syncTraceabilityLinksInContent(content, blocks.at(-1).data, options.root, file);
+    if (!result.ok) {
+      for (const error of result.errors ?? []) errors.push(error);
+      continue;
+    }
+    if (options.write && result.changed) writeFileSync(file, result.content);
+    if (result.changed) results.push({ file: rel(options.root, file), changed: true });
+  }
+  const ok = errors.length === 0 && (!options.check || results.length === 0);
+  const payload = { ok, command: 'traceability links', root: options.root, mode: options.write ? 'write' : 'check', changed: results.length, files: results, errors };
+  if (options.json) console.log(JSON.stringify(payload, null, 2));
+  else if (errors.length > 0) {
+    for (const error of errors) console.log(`${error.line ? `${error.file}:${error.line}` : error.file} [${error.code}] ${error.message}`);
+    console.log(`\n❌ ${errors.length} traceability link error(s)`);
+  } else if (options.check && results.length > 0) {
+    for (const result of results) console.log(`${result.file} [TRACEABILITY_LINKS_STALE] generated traceability links are missing or stale.`);
+    console.log(`\n❌ ${results.length} traceability link file(s) need sync`);
+  } else if (options.write) console.log(`traceability links: synced ${results.length} file(s)`);
+  else console.log('traceability links: all generated sections are up to date');
+  process.exit(ok ? 0 : 1);
+}
+
 export function parseGraphOptions(argv) {
   const filtered = [];
   let changed;
@@ -1443,6 +1519,7 @@ export function runCli(argv = process.argv.slice(2)) {
   else if (command === 'load-snapshot') runLoadSnapshot(args);
   else if (command === 'resolve') runResolve(args);
   else if (command === 'expand') runExpand(args);
+  else if (command === 'traceability') runTraceability(args);
   else if (command === 'graph') runGraph(args);
   else usage(`Unknown command: ${command}`);
 }

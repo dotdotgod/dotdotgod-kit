@@ -35,6 +35,12 @@ The initializer skill describes a safe setup workflow and delegates deterministi
 
 The script owns scaffold generation, overwrite policy, dry-run reporting, and optional dotdot setting generation.
 
+### `document-clarify` Skill
+
+The document clarity skill guides agents through documentation copy improvements for README indexes, specs, tests, architecture docs, plans, archives, and custom memory areas.
+
+It uses resolved memory-area `description` and `clarify` metadata when configured, falls back to dotdotgod's default document roles when absent, and preserves behavior contracts plus generated traceability sections.
+
 ### `plan-mode` Extension
 
 `plan-mode` owns runtime planning behavior:

@@ -23,11 +23,25 @@ files:
 
 `graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant.
 
-Dotdotgod is a project-memory system for AI coding agents. Its core idea is to make the repository's knowledge graph explicit and maintainable: specs, tests, architecture notes, README routes, traceability blocks, plans, archives, commands, and package metadata become deliberate links that agents help keep current.
+Dotdotgod is a project-memory system for AI coding agents. It helps a repository answer three practical questions:
 
-That maintained graph powers high-quality `dotdotgod graph impact` results. The fixed docs structure gives every agent a high-signal baseline load context, so work starts from durable project truth instead of raw chat history or broad repository scans.
+- What project context should an agent load first?
+- Which docs, tests, commands, and source files should be checked after a change?
+- Which validation or repair command should run before handoff?
 
 Repository: <https://github.com/dotdotgod/dotdotgod-kit>
+
+## When to Use dotdotgod
+
+Use dotdotgod when a project needs durable context for coding agents, not another chat transcript. It is designed for repositories where specs, architecture notes, tests, plans, archives, and package metadata should guide future work.
+
+| Need | Start with |
+| --- | --- |
+| Add the project-memory scaffold to a repo | `dotdotgod init .` |
+| Check docs, project-memory structure, traceability, links, and optional index freshness | `dotdotgod validate .` |
+| Repair generated traceability links and compact traceability JSON | `dotdotgod traceability links . --write` |
+| See what else to review after changing a file | `dotdotgod graph impact . --changed <path>` |
+| Run this repository's full quality gate before release-style handoff | `pnpm run verify` |
 
 For the detailed workflow diagram, docs management rules, graph sources, and memory categories, see [Context mechanics](docs/concept/CONTEXT_MECHANICS.md) and [Context curation](docs/concept/CONTEXT_CURATION.md). For an evidence-backed comparison, see [`docs/concept/GRAPHIFY_COMPARISON.md`](docs/concept/GRAPHIFY_COMPARISON.md).
 
@@ -137,7 +151,7 @@ Read the detailed concept docs: [Context curation](docs/concept/CONTEXT_CURATION
 | [`@dotdotgod/claude-code`](packages/claude-code/README.md) | Claude Code `dd:*` commands and project memory skills. |
 | [`@dotdotgod/codex`](packages/codex/README.md) | Codex project memory skills and `dd:*` trigger phrases. |
 
-Current public package version: `0.1.22`.
+For current published versions, see each package page or the npm registry.
 
 ## Quick Start
 
@@ -161,13 +175,13 @@ npx @dotdotgod/cli init .
 
 If the CLI is not available, the initializer uses its bundled shell fallback and the README indexes still give agents a working project-memory map. That scaffold gives later `/dd:load` and `/plan` turns a stable structure.
 
-CLI validation:
+Check the initialized docs and project memory:
 
 ```bash
 npx @dotdotgod/cli validate .
 ```
 
-Local workspace checks:
+For this repository, run the broader workspace gate before release-style handoff:
 
 ```bash
 pnpm install

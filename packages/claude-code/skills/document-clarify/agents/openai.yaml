@@ -1,0 +1,4 @@
+interface:
+  display_name: "Document Clarify"
+  short_description: "Clarify dotdotgod project documentation."
+  default_prompt: "Clarify the target docs using dotdotgod memory-area metadata, default document roles, and docs-as-code clarity rules while preserving behavior contracts."

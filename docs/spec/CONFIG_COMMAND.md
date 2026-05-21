@@ -47,7 +47,7 @@ If the project config is invalid, `ok` is `false`, errors use the same validatio
 
 The config command surfaces the same policy families that validation, snapshots, reference expansion, and graph impact use:
 
-- `memory.areas`: ordered path classifiers for shared/local and fresh/stale project memory.
+- `memory.areas`: ordered path classifiers for shared/local and fresh/stale project memory, including optional `description` and `clarify` metadata when a project defines document-area guidance.
 - `traceability.required` and `traceability.exclude`: path rules that decide which markdown files must end with a valid `json dotdotgod` block.
 - `validation.markdown`: line/character budgets and narrow size-check exclusions.
 - `impactRanking`: presets, weights, PPR, relation boosts, routing hints, and compact impact behavior.
@@ -67,7 +67,7 @@ The init command creates `dotdotgod.config.json` with the current built-in defau
 - `impactRanking`
 - `referenceExpansion.fuzzy.lowSignal.add/remove`
 
-The generated file must validate with `dotdotgod validate`. The generated reference-expansion section uses empty `add` and `remove` arrays; the resolved defaults remain visible in `dotdotgod config <root> --json` output.
+The generated file must validate with `dotdotgod validate`. The generated memory areas omit optional `description` and `clarify` metadata so the template stays concise; projects can add those fields when custom document areas need role or clarity guidance. The generated reference-expansion section uses empty `add` and `remove` arrays; the resolved defaults remain visible in `dotdotgod config <root> --json` output.
 
 Overwrite behavior:
 
@@ -95,29 +95,34 @@ JSON output for init errors includes `ok: false`, `command: "config init"`, `roo
 
 ## Traceability
 
+
+
+<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
+<!-- generated: do not edit manually -->
+
+### Traceability Links
+
+- Implemented by:
+  - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
+  - [packages/cli/src/memory/config.mjs](../../packages/cli/src/memory/config.mjs)
+- Verified by:
+  - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
+  - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
+  - [docs/test/CONFIG_COMMAND.md](../test/CONFIG_COMMAND.md)
+- Related docs:
+  - [docs/spec/MEMORY_AREA_CONFIG.md](MEMORY_AREA_CONFIG.md)
+  - [docs/spec/TRACEABILITY_CONFIG.md](TRACEABILITY_CONFIG.md)
+  - [docs/spec/VALIDATION_CONFIG.md](VALIDATION_CONFIG.md)
+  - [docs/spec/IMPACT_RANKING_CONFIG.md](IMPACT_RANKING_CONFIG.md)
+  - [docs/spec/CLI_INTERFACE.md](CLI_INTERFACE.md)
+  - [docs/arch/MEMORY_AREA_CONFIG.md](../arch/MEMORY_AREA_CONFIG.md)
+- Verification commands:
+  - `pnpm --filter @dotdotgod/cli test`
+  - `node packages/cli/bin/dotdotgod.mjs config . --json`
+  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory`
+
+<!-- dotdotgod:traceability-links:end -->
+
 ```json dotdotgod
-{
-  "kind": "spec",
-  "implementedBy": [
-    "packages/cli/src/core.mjs"
-  ],
-  "verifiedBy": [
-    "packages/cli/test/core.test.mjs",
-    "packages/cli/test/e2e.test.mjs",
-    "docs/test/CONFIG_COMMAND.md"
-  ],
-  "relatedDocs": [
-    "docs/spec/MEMORY_AREA_CONFIG.md",
-    "docs/spec/TRACEABILITY_CONFIG.md",
-    "docs/spec/VALIDATION_CONFIG.md",
-    "docs/spec/IMPACT_RANKING_CONFIG.md",
-    "docs/spec/CLI_INTERFACE.md",
-    "docs/arch/MEMORY_AREA_CONFIG.md"
-  ],
-  "verificationCommands": [
-    "pnpm --filter @dotdotgod/cli test",
-    "node packages/cli/bin/dotdotgod.mjs config . --json",
-    "node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"
-  ]
-}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/memory/config.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_COMMAND.md"],"relatedDocs":["docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/spec/CLI_INTERFACE.md","docs/arch/MEMORY_AREA_CONFIG.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs config . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
 ```

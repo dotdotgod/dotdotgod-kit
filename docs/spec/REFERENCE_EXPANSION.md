@@ -118,12 +118,36 @@ Pi Plan Mode MAY run `expand --with-impact` during context shaping for explicit 
 
 ## Traceability
 
+
+
+<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
+<!-- generated: do not edit manually -->
+
+### Traceability Links
+
+- Implemented by:
+  - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
+  - [packages/pi/extensions/plan-mode/index.ts](../../packages/pi/extensions/plan-mode/index.ts)
+  - [packages/pi/extensions/plan-mode/utils.ts](../../packages/pi/extensions/plan-mode/utils.ts)
+- Verified by:
+  - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
+  - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
+  - [packages/pi/test/plan-mode-utils.test.ts](../../packages/pi/test/plan-mode-utils.test.ts)
+  - [docs/test/REFERENCE_EXPANSION.md](../test/REFERENCE_EXPANSION.md)
+- Related docs:
+  - [docs/spec/CLI_INTERFACE.md](CLI_INTERFACE.md)
+  - [docs/spec/LOAD_PROJECT.md](LOAD_PROJECT.md)
+  - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
+  - [docs/concept/CONTEXT_CURATION.md](../concept/CONTEXT_CURATION.md)
+- Verification commands:
+  - `pnpm --filter @dotdotgod/cli test`
+  - `node packages/cli/bin/dotdotgod.mjs resolve . PLAN_MODE --json`
+  - `node packages/cli/bin/dotdotgod.mjs expand . "Update [[PLAN_MODE]] and [[HOOKS]]" --json`
+  - `node packages/cli/bin/dotdotgod.mjs expand . "PLAN_MODE 수정하자" --fuzzy --json`
+  - `node packages/cli/bin/dotdotgod.mjs config . --json`
+
+<!-- dotdotgod:traceability-links:end -->
+
 ```json dotdotgod
-{
-  "kind": "spec",
-  "implementedBy": ["packages/cli/src/core.mjs", "packages/pi/extensions/plan-mode/index.ts", "packages/pi/extensions/plan-mode/utils.ts"],
-  "verifiedBy": ["packages/cli/test/core.test.mjs", "packages/cli/test/e2e.test.mjs", "packages/pi/test/plan-mode-utils.test.ts", "docs/test/REFERENCE_EXPANSION.md"],
-  "relatedDocs": ["docs/spec/CLI_INTERFACE.md", "docs/spec/LOAD_PROJECT.md", "docs/arch/VALIDATION_ARCHITECTURE.md", "docs/concept/CONTEXT_CURATION.md"],
-  "verificationCommands": ["pnpm --filter @dotdotgod/cli test", "node packages/cli/bin/dotdotgod.mjs resolve . PLAN_MODE --json", "node packages/cli/bin/dotdotgod.mjs expand . \"Update [[PLAN_MODE]] and [[HOOKS]]\" --json", "node packages/cli/bin/dotdotgod.mjs expand . \"PLAN_MODE 수정하자\" --fuzzy --json", "node packages/cli/bin/dotdotgod.mjs config . --json"]
-}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/pi/test/plan-mode-utils.test.ts","docs/test/REFERENCE_EXPANSION.md"],"relatedDocs":["docs/spec/CLI_INTERFACE.md","docs/spec/LOAD_PROJECT.md","docs/arch/VALIDATION_ARCHITECTURE.md","docs/concept/CONTEXT_CURATION.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs resolve . PLAN_MODE --json","node packages/cli/bin/dotdotgod.mjs expand . \"Update [[PLAN_MODE]] and [[HOOKS]]\" --json","node packages/cli/bin/dotdotgod.mjs expand . \"PLAN_MODE 수정하자\" --fuzzy --json","node packages/cli/bin/dotdotgod.mjs config . --json"]}
 ```

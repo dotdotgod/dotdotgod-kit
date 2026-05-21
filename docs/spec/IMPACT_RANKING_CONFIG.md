@@ -137,30 +137,34 @@ Routing reasons remain visible in `reasons` and `scoreBreakdown`; they are demot
 
 ## Traceability
 
+
+
+<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
+<!-- generated: do not edit manually -->
+
+### Traceability Links
+
+- Implemented by:
+  - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
+- Verified by:
+  - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
+  - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
+  - [docs/test/IMPACT_RANKING_CONFIG.md](../test/IMPACT_RANKING_CONFIG.md)
+- Related docs:
+  - [docs/arch/IMPACT_RANKING_CONFIG.md](../arch/IMPACT_RANKING_CONFIG.md)
+  - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
+  - [docs/spec/MEMORY_AREA_CONFIG.md](MEMORY_AREA_CONFIG.md)
+  - [docs/spec/TRACEABILITY_CONFIG.md](TRACEABILITY_CONFIG.md)
+  - [docs/spec/CONFIG_COMMAND.md](CONFIG_COMMAND.md)
+- Verification commands:
+  - `pnpm --filter @dotdotgod/cli test`
+  - `node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json`
+  - `node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml`
+  - `node scripts/evaluate-graph-impact.mjs . --json`
+  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory`
+
+<!-- dotdotgod:traceability-links:end -->
+
 ```json dotdotgod
-{
-  "kind": "spec",
-  "implementedBy": [
-    "packages/cli/src/core.mjs"
-  ],
-  "verifiedBy": [
-    "packages/cli/test/core.test.mjs",
-    "packages/cli/test/e2e.test.mjs",
-    "docs/test/IMPACT_RANKING_CONFIG.md"
-  ],
-  "relatedDocs": [
-    "docs/arch/IMPACT_RANKING_CONFIG.md",
-    "docs/arch/VALIDATION_ARCHITECTURE.md",
-    "docs/spec/MEMORY_AREA_CONFIG.md",
-    "docs/spec/TRACEABILITY_CONFIG.md",
-    "docs/spec/CONFIG_COMMAND.md"
-  ],
-  "verificationCommands": [
-    "pnpm --filter @dotdotgod/cli test",
-    "node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json",
-    "node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml",
-    "node scripts/evaluate-graph-impact.mjs . --json",
-    "node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"
-  ]
-}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/arch/IMPACT_RANKING_CONFIG.md","docs/arch/VALIDATION_ARCHITECTURE.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/CONFIG_COMMAND.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml","node scripts/evaluate-graph-impact.mjs . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
 ```

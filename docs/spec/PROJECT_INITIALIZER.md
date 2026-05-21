@@ -85,33 +85,37 @@ Generated docs follow these conventions:
 
 ## Traceability
 
+
+
+<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
+<!-- generated: do not edit manually -->
+
+### Traceability Links
+
+- Implemented by:
+  - [packages/cli/src/init.mjs](../../packages/cli/src/init.mjs)
+  - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
+  - [packages/shared/initializer/scripts/init_project.sh](../../packages/shared/initializer/scripts/init_project.sh)
+  - [packages/pi/skills/project-initializer/scripts/init_project.sh](../../packages/pi/skills/project-initializer/scripts/init_project.sh)
+  - [packages/claude-code/skills/project-initializer/scripts/init_project.sh](../../packages/claude-code/skills/project-initializer/scripts/init_project.sh)
+  - [packages/codex/skills/project-initializer/scripts/init_project.sh](../../packages/codex/skills/project-initializer/scripts/init_project.sh)
+  - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
+- Verified by:
+  - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
+  - [docs/test/README.md](../test/README.md)
+  - [docs/test/MANUAL_SMOKE.md](../test/MANUAL_SMOKE.md)
+- Related docs:
+  - [docs/spec/CLI_INTERFACE.md](CLI_INTERFACE.md)
+  - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../arch/CROSS_AGENT_ARCHITECTURE.md)
+  - [docs/arch/DOCS_STRUCTURE.md](../arch/DOCS_STRUCTURE.md)
+- Verification commands:
+  - `node packages/cli/bin/dotdotgod.mjs init . --dry-run --project-name fixture-name`
+  - `sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name .`
+  - `pnpm --filter @dotdotgod/cli test`
+  - `pnpm run verify:generated`
+
+<!-- dotdotgod:traceability-links:end -->
+
 ```json dotdotgod
-{
-  "kind": "spec",
-  "implementedBy": [
-    "packages/cli/src/init.mjs",
-    "packages/cli/src/core.mjs",
-    "packages/shared/initializer/scripts/init_project.sh",
-    "packages/pi/skills/project-initializer/scripts/init_project.sh",
-    "packages/claude-code/skills/project-initializer/scripts/init_project.sh",
-    "packages/codex/skills/project-initializer/scripts/init_project.sh",
-    "scripts/generate-adapters.mjs"
-  ],
-  "verifiedBy": [
-    "packages/cli/test/e2e.test.mjs",
-    "docs/test/README.md",
-    "docs/test/MANUAL_SMOKE.md"
-  ],
-  "relatedDocs": [
-    "docs/spec/CLI_INTERFACE.md",
-    "docs/arch/CROSS_AGENT_ARCHITECTURE.md",
-    "docs/arch/DOCS_STRUCTURE.md"
-  ],
-  "verificationCommands": [
-    "node packages/cli/bin/dotdotgod.mjs init . --dry-run --project-name fixture-name",
-    "sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name .",
-    "pnpm --filter @dotdotgod/cli test",
-    "pnpm run verify:generated"
-  ]
-}
+{"kind":"spec","implementedBy":["packages/cli/src/init.mjs","packages/cli/src/core.mjs","packages/shared/initializer/scripts/init_project.sh","packages/pi/skills/project-initializer/scripts/init_project.sh","packages/claude-code/skills/project-initializer/scripts/init_project.sh","packages/codex/skills/project-initializer/scripts/init_project.sh","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/e2e.test.mjs","docs/test/README.md","docs/test/MANUAL_SMOKE.md"],"relatedDocs":["docs/spec/CLI_INTERFACE.md","docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"],"verificationCommands":["node packages/cli/bin/dotdotgod.mjs init . --dry-run --project-name fixture-name","sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name .","pnpm --filter @dotdotgod/cli test","pnpm run verify:generated"]}
 ```

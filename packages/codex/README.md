@@ -35,6 +35,7 @@ Codex adapter for dotdotgod's context curation workflow. It packages reusable sk
 - Planning guidance encourages agents to keep README routes, traceability blocks, plans, and archives current so `graph impact` remains useful.
 - Planning work captures current intent in `docs/plan/<task-slug>/README.md` before implementation.
 - Impact review guidance uses `dotdotgod graph impact` to identify affected specs, tests, docs, and files before broad verification or handoff.
+- Document clarity guidance improves project docs using memory-area roles and optional config guidance while preserving behavior contracts.
 - Completed plans and temporary reports use the same archive structure as Pi and Claude Code, turning outcomes into future context.
 - `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` can be used as command-like trigger phrases where direct slash commands are unavailable.
 
@@ -42,7 +43,7 @@ Codex adapter for dotdotgod's context curation workflow. It packages reusable sk
 
 By default, `docs/spec/**` has two roles: it is stable shared/fresh project memory, and it is the traceability-enforced behavior-spec path. These concepts are independent:
 
-- `memory.areas` customizes memory classification, freshness, local/shared scope, priorities, and archive-body inclusion.
+- `memory.areas` customizes memory classification, freshness, local/shared scope, priorities, archive-body inclusion, and optional document-area `description`/`clarify` guidance.
 - `traceability.required` / `traceability.exclude` customizes which markdown paths must end with `json dotdotgod` blocks.
 
 `docs/archive/README.md` is the history map. Archive bodies remain targeted historical memory and should not be read broadly by default.
@@ -55,6 +56,7 @@ By default, `docs/spec/**` has two roles: it is stable shared/fresh project memo
   - `doc-first-planning`: plan from docs before implementation.
   - `project-initializer`: initialize shared agent docs and docs folders, using `dotdotgod init` when available and the bundled fallback when not.
   - `impact-review`: review changed files with graph-impact evidence before broad verification or handoff.
+  - `document-clarify`: clarify project docs using memory-area metadata and default document roles.
 
 Codex may not expose the same slash-command model as Pi or Claude Code. Treat `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` as command-like trigger phrases for these skills unless the active Codex plugin runtime provides direct command registration.
 

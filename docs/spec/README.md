@@ -4,6 +4,8 @@ Use this area for behavior specs, API contracts, and product requirements.
 
 For projects using the dotdotgod CLI, `docs/spec/**` has two default roles. It is stable shared/fresh project memory through the memory-area policy, and behavior specs under it are validated for fenced `json dotdotgod` traceability blocks as the final section. The default enforced path is `docs/spec/**` except README files, and projects can customize memory classification with `memory.areas` or override traceability enforcement paths with optional traceability config. The CLI owns the schema and prints property-level repair guidance when validation fails.
 
+For traceability, treat the `json dotdotgod` block as the source of truth. Generated Markdown links are a reading aid. `dotdotgod validate` reports generated-link or compact-JSON drift, and `dotdotgod traceability links <root> --write` repairs generated sections and compact JSON.
+
 ## Config Overview
 
 Project-level config is optional and lives in `dotdotgod.config.json` or `.dotdotgodrc.json`. Use `dotdotgod config <root>` to inspect the resolved policy and `dotdotgod config init <root>` to create an editable default file. Focused config specs:
@@ -25,7 +27,7 @@ Project-level config is optional and lives in `dotdotgod.config.json` or `.dotdo
 - `PLAN_MODE_TOOL_SETTINGS.md`: optional Plan Mode extra tool allowlist settings and prompt requirements.
 - `LOAD_PROJECT.md`: `/load` and `/dd:load` read-only project memory loading behavior.
 - `MEMORY_AREA_CONFIG.md`: optional config for shared/local and fresh/stale memory-area policy.
-- `TRACEABILITY_CONFIG.md`: optional config for traceability enforcement paths.
+- `TRACEABILITY_CONFIG.md`: optional config for traceability enforcement paths, generated-link drift checks, and repair flow.
 - `VALIDATION_CONFIG.md`: optional config for markdown validation size budgets and explicit size-check exclusions.
 - `IMPACT_RANKING_CONFIG.md`: optional config for `graph impact` ranking presets, score breakdowns, compact text/YML output, PPR, and deterministic semantic links.
 - `CONFIG_COMMAND.md`: CLI behavior for inspecting and initializing project-level dotdotgod config files.

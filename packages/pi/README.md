@@ -58,6 +58,7 @@ A good first-run flow is:
 ## What You Get
 
 - **Project initializer skill:** create `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs indexes, active-plan space, archive map, and local memory/cache ignores.
+- **Document clarity skill:** improve README/spec/test/arch/plan/archive wording using memory-area roles and optional config guidance without changing behavior contracts.
 - **Task-directed loading:** `/dd:load` starts from `dotdotgod load-snapshot` when available, then reads only relevant docs from the fixed memory surface.
 - **Safe planning:** `/plan` keeps source/config changes blocked while request framing turns implementation-looking asks into durable plans under `docs/plan/` first; `/plan <request>` enables planning and sends the first request in one step.
 - **Impact-aware context shaping:** Plan Mode can queue curated load when baseline docs are missing or context has narrowed to one docs area, and can use `dotdotgod expand --with-impact` for explicit `[[...]]` refs and `expand --fuzzy --with-impact` for high-signal natural references from the maintained graph.
@@ -103,6 +104,7 @@ The graph uses more than traceability blocks: Markdown links, README routes, hea
 ## Included
 
 - `project-initializer` skill: the starting point for `AGENTS.md`, thin agent entrypoints, docs folders, README indexes, and local memory/cache ignores.
+- `document-clarify` skill: config-aware documentation clarity workflow for README indexes, specs, tests, architecture docs, plans, archives, and custom docs areas.
 - `plan-mode` extension: read-first planning mode with restricted tools, `/plan <request>` inline request delivery, request framing, optional `--plan-extra-tools`, docs/plan writes, execution tracking, tiered hidden prompts, mandatory impact/validation guidance, `/todos`, `dotdotgod_graph_impact`, and `/impact-check`.
 - `load-project` extension: read-only project context loading through `/load` and `/dd:load`.
 

@@ -62,12 +62,32 @@ const DEFAULT_MEMORY_AREAS = [
   { id: 'archive-body', label: 'Archive Body', paths: ['docs/archive/**'], excludePaths: ['docs/archive/README.md'], scope: 'local', freshness: 'stale', role: 'historical-memory-body', priority: 20, includeBodiesByDefault: false },
 ];
 
-function cloneArea(area) {
+function cloneClarifyGuidance(clarify) {
+  if (!clarify || typeof clarify !== 'object' || Array.isArray(clarify)) return undefined;
   return {
+    ...(Array.isArray(clarify.audience) ? { audience: [...clarify.audience] } : {}),
+    ...(typeof clarify.documentType === 'string' ? { documentType: clarify.documentType } : {}),
+    ...(typeof clarify.clarityGoal === 'string' ? { clarityGoal: clarify.clarityGoal } : {}),
+    ...(Array.isArray(clarify.editRules) ? { editRules: [...clarify.editRules] } : {}),
+  };
+}
+
+function withOptionalAreaMetadata(target, area) {
+  const description = typeof area.description === 'string' ? area.description.trim() : '';
+  const clarify = cloneClarifyGuidance(area.clarify);
+  return {
+    ...target,
+    ...(description ? { description } : {}),
+    ...(clarify && Object.keys(clarify).length > 0 ? { clarify } : {}),
+  };
+}
+
+function cloneArea(area) {
+  return withOptionalAreaMetadata({
     ...area,
     paths: [...(area.paths ?? [])],
     excludePaths: [...(area.excludePaths ?? [])],
-  };
+  }, area);
 }
 
 export function cloneTraceabilityPolicy(policy = DEFAULT_TRACEABILITY_POLICY) {
@@ -216,7 +236,7 @@ export function requiresTraceability(path = '', config = defaultMemoryConfig()) 
 }
 
 function normalizeMemoryArea(raw) {
-  return {
+  return withOptionalAreaMetadata({
     id: raw.id,
     label: raw.label ?? raw.id,
     paths: Array.isArray(raw.paths) ? raw.paths.map(normalizePathPattern) : [],
@@ -226,7 +246,7 @@ function normalizeMemoryArea(raw) {
     role: raw.role ?? raw.id,
     priority: typeof raw.priority === 'number' ? raw.priority : 30,
     includeBodiesByDefault: raw.includeBodiesByDefault !== false,
-  };
+  }, raw);
 }
 
 function isFiniteNumberInRange(value, min, max) {
@@ -352,6 +372,18 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
     if (!MEMORY_FRESHNESS.has(area.freshness)) add('MEMORY_CONFIG_INVALID_FRESHNESS', `${prefix}.freshness`, 'Expected "fresh" or "stale".');
     if (area.priority !== undefined && (!Number.isInteger(area.priority) || area.priority < 0 || area.priority > 100)) add('MEMORY_CONFIG_INVALID_PRIORITY', `${prefix}.priority`, 'Expected an integer from 0 to 100.');
     if (area.includeBodiesByDefault !== undefined && typeof area.includeBodiesByDefault !== 'boolean') add('MEMORY_CONFIG_INVALID_INCLUDE_POLICY', `${prefix}.includeBodiesByDefault`, 'Expected a boolean.');
+    if (area.description !== undefined && (typeof area.description !== 'string' || !area.description.trim())) add('MEMORY_CONFIG_INVALID_DESCRIPTION', `${prefix}.description`, 'Expected a non-empty string.');
+    if (area.clarify !== undefined) {
+      const clarify = area.clarify;
+      if (!clarify || typeof clarify !== 'object' || Array.isArray(clarify)) {
+        add('MEMORY_CONFIG_INVALID_CLARIFY', `${prefix}.clarify`, 'Expected an object.');
+      } else {
+        if (clarify.audience !== undefined && (!Array.isArray(clarify.audience) || clarify.audience.some((value) => typeof value !== 'string' || !value.trim()))) add('MEMORY_CONFIG_INVALID_CLARIFY_AUDIENCE', `${prefix}.clarify.audience`, 'Expected an array of non-empty strings.');
+        if (clarify.documentType !== undefined && (typeof clarify.documentType !== 'string' || !clarify.documentType.trim())) add('MEMORY_CONFIG_INVALID_CLARIFY_DOCUMENT_TYPE', `${prefix}.clarify.documentType`, 'Expected a non-empty string.');
+        if (clarify.clarityGoal !== undefined && (typeof clarify.clarityGoal !== 'string' || !clarify.clarityGoal.trim())) add('MEMORY_CONFIG_INVALID_CLARITY_GOAL', `${prefix}.clarify.clarityGoal`, 'Expected a non-empty string.');
+        if (clarify.editRules !== undefined && (!Array.isArray(clarify.editRules) || clarify.editRules.some((value) => typeof value !== 'string' || !value.trim()))) add('MEMORY_CONFIG_INVALID_CLARIFY_EDIT_RULES', `${prefix}.clarify.editRules`, 'Expected an array of non-empty strings.');
+      }
+    }
     for (const pattern of area.paths ?? []) {
       if (exactIncluded.has(pattern) && !(area.excludePaths ?? []).includes(pattern)) add('MEMORY_CONFIG_OVERLAP', `${prefix}.paths`, `Path pattern also appears in ${exactIncluded.get(pattern)}: ${pattern}`);
       else exactIncluded.set(pattern, `${prefix}.paths`);
@@ -382,7 +414,7 @@ export function readMemoryConfig(root = '.') {
 }
 
 function serializableMemoryArea(area) {
-  return {
+  return withOptionalAreaMetadata({
     id: area.id,
     label: area.label,
     paths: [...(area.paths ?? [])],
@@ -392,7 +424,7 @@ function serializableMemoryArea(area) {
     role: area.role,
     priority: area.priority,
     includeBodiesByDefault: area.includeBodiesByDefault !== false,
-  };
+  }, area);
 }
 
 export function defaultDotdotgodConfigData() {
@@ -415,17 +447,17 @@ export function defaultDotdotgodConfigText() {
 export function memoryConfigSummary(config) {
   return {
     source: config.source ?? 'default',
-    areas: (config.areas ?? []).map((area) => ({
+    areas: (config.areas ?? []).map((area) => withOptionalAreaMetadata({
       id: area.id,
       label: area.label,
-      paths: area.paths,
-      excludePaths: area.excludePaths ?? [],
+      paths: [...(area.paths ?? [])],
+      excludePaths: [...(area.excludePaths ?? [])],
       scope: area.scope,
       freshness: area.freshness,
       role: area.role,
       priority: area.priority,
       includeBodiesByDefault: area.includeBodiesByDefault !== false,
-    })),
+    }, area)),
     traceability: cloneTraceabilityPolicy(config.traceability ?? DEFAULT_TRACEABILITY_POLICY),
     validation: cloneValidationPolicy(config.validation ?? DEFAULT_VALIDATION_POLICY),
     impactRanking: cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY),

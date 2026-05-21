@@ -30,28 +30,32 @@ Completed or superseded plans belong under `docs/archive/plan/<task-slug>/`. Tem
 
 This domain owns the detailed Plan Mode behavior contract. Keep traceability blocks on non-README spec files and keep the compatibility route file so stable Plan Mode links remain valid.
 
+
+
+<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
+<!-- generated: do not edit manually -->
+
+### Traceability Links
+
+- Implemented by:
+  - [packages/pi/extensions/plan-mode/index.ts](../../../packages/pi/extensions/plan-mode/index.ts)
+  - [packages/pi/extensions/plan-mode/utils.ts](../../../packages/pi/extensions/plan-mode/utils.ts)
+- Verified by:
+  - [packages/pi/test/plan-mode-utils.test.ts](../../../packages/pi/test/plan-mode-utils.test.ts)
+  - [docs/test/README.md](../../test/README.md)
+- Related docs:
+  - [docs/spec/plan-mode/README.md](README.md)
+  - [docs/spec/PLAN_MODE_TOOL_SETTINGS.md](../PLAN_MODE_TOOL_SETTINGS.md)
+  - [docs/arch/EXTENSION_ARCHITECTURE.md](../../arch/EXTENSION_ARCHITECTURE.md)
+  - [docs/arch/CODE_CONVENTIONS.md](../../arch/CODE_CONVENTIONS.md)
+  - [docs/spec/IMPACT_RANKING_CONFIG.md](../IMPACT_RANKING_CONFIG.md)
+- Verification commands:
+  - `pnpm --filter @dotdotgod/pi test`
+  - `pnpm --filter @dotdotgod/pi run typecheck`
+  - `node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --yml`
+
+<!-- dotdotgod:traceability-links:end -->
+
 ```json dotdotgod
-{
-  "kind": "spec",
-  "implementedBy": [
-    "packages/pi/extensions/plan-mode/index.ts",
-    "packages/pi/extensions/plan-mode/utils.ts"
-  ],
-  "verifiedBy": [
-    "packages/pi/test/plan-mode-utils.test.ts",
-    "docs/test/README.md"
-  ],
-  "relatedDocs": [
-    "docs/spec/plan-mode/README.md",
-    "docs/spec/PLAN_MODE_TOOL_SETTINGS.md",
-    "docs/arch/EXTENSION_ARCHITECTURE.md",
-    "docs/arch/CODE_CONVENTIONS.md",
-    "docs/spec/IMPACT_RANKING_CONFIG.md"
-  ],
-  "verificationCommands": [
-    "pnpm --filter @dotdotgod/pi test",
-    "pnpm --filter @dotdotgod/pi run typecheck",
-    "node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --yml"
-  ]
-}
+{"kind":"spec","implementedBy":["packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts"],"verifiedBy":["packages/pi/test/plan-mode-utils.test.ts","docs/test/README.md"],"relatedDocs":["docs/spec/plan-mode/README.md","docs/spec/PLAN_MODE_TOOL_SETTINGS.md","docs/arch/EXTENSION_ARCHITECTURE.md","docs/arch/CODE_CONVENTIONS.md","docs/spec/IMPACT_RANKING_CONFIG.md"],"verificationCommands":["pnpm --filter @dotdotgod/pi test","pnpm --filter @dotdotgod/pi run typecheck","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --yml"]}
 ```

@@ -31,10 +31,12 @@ A config may define `memory.areas` as an ordered array. Each area supports:
 - `scope`: `shared` or `local`.
 - `freshness`: `fresh` or `stale`.
 - `role`: retrieval role surfaced in graph and snapshot metadata.
+- `description`: optional non-empty string explaining the area's document purpose for agents and readers.
+- `clarify`: optional documentation-clarity guidance used by `document-clarify` skills. Supported optional fields are `audience`, `documentType`, `clarityGoal`, and `editRules`.
 - `priority`: integer from 0 to 100 used for bounded retrieval ordering.
 - `includeBodiesByDefault`: boolean controlling whether matching files are included in the default index and load snapshot.
 
-All path fields are arrays; scalar string path settings are invalid. The first matching configured area classifies a path after its `excludePaths` are applied.
+All path fields are arrays; scalar string path settings are invalid. The first matching configured area classifies a path after its `excludePaths` are applied. `description` and `clarify` are optional project metadata; they do not change path matching, traceability enforcement, or index inclusion.
 
 ## Default Memory Policy
 
@@ -50,6 +52,8 @@ Without config, the CLI behaves as if these areas were configured:
 - `docs/plan/**`: local fresh active-plan memory.
 - `docs/archive/README.md`: local stale archive map included by default.
 - `docs/archive/**`: local stale archive body excluded by default.
+
+The built-in default areas intentionally omit `description` and `clarify` metadata so `dotdotgod config init` stays concise. The `document-clarify` workflow carries the default dotdotgod document-role fallback for zero-config projects.
 
 ## Archive Map and Archive Body
 
@@ -70,6 +74,8 @@ Archive bodies under `docs/archive/**` are stale local memory and are excluded f
 - unknown `scope` or `freshness`
 - non-integer or out-of-range `priority`
 - non-boolean `includeBodiesByDefault`
+- invalid `description` values when present; they must be non-empty strings
+- invalid `clarify` values when present; `clarify` must be an object, `documentType` and `clarityGoal` must be non-empty strings, and `audience` and `editRules` must be arrays of non-empty strings
 - exact duplicate path patterns that are not excluded by the subsequent area
 - malformed `referenceExpansion.fuzzy.lowSignal.add` or `remove` arrays
 
@@ -79,35 +85,42 @@ Invalid memory config does not make the CLI crash. Runtime commands fall back to
 
 `dotdotgod load-snapshot <root> --json` includes:
 
-- `memoryConfig`: the resolved source, memory-area definitions, traceability path policy, and reference-expansion fuzzy low-signal policy.
+- `memoryConfig`: the resolved source, memory-area definitions, optional area `description`/`clarify` metadata, traceability path policy, and reference-expansion fuzzy low-signal policy.
 - `memoryPolicy`: bounded lists of shared, local, fresh, and stale area ids.
-- `memoryAreas`: bounded file summaries grouped by configured area.
+- `memoryAreas`: bounded file summaries grouped by configured area, including area clarity metadata when configured.
 - archive bounds showing whether archive bodies were included.
 
 The load snapshot must not embed the full graph or stale archive bodies by default.
 
 ## Traceability
 
+
+
+<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
+<!-- generated: do not edit manually -->
+
+### Traceability Links
+
+- Implemented by:
+  - [packages/cli/src/memory/config.mjs](../../packages/cli/src/memory/config.mjs)
+  - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
+  - [packages/cli/src/load-snapshot/summary.mjs](../../packages/cli/src/load-snapshot/summary.mjs)
+- Verified by:
+  - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
+  - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
+  - [docs/test/README.md](../test/README.md)
+  - [docs/test/MEMORY_AREA_CONFIG.md](../test/MEMORY_AREA_CONFIG.md)
+- Related docs:
+  - [docs/spec/CONFIG_COMMAND.md](CONFIG_COMMAND.md)
+  - [docs/arch/MEMORY_AREA_CONFIG.md](../arch/MEMORY_AREA_CONFIG.md)
+  - [docs/arch/DOCS_STRUCTURE.md](../arch/DOCS_STRUCTURE.md)
+  - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
+- Verification commands:
+  - `pnpm --filter @dotdotgod/cli test`
+  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory`
+
+<!-- dotdotgod:traceability-links:end -->
+
 ```json dotdotgod
-{
-  "kind": "spec",
-  "implementedBy": [
-    "packages/cli/src/core.mjs"
-  ],
-  "verifiedBy": [
-    "packages/cli/test/core.test.mjs",
-    "packages/cli/test/e2e.test.mjs",
-    "docs/test/README.md"
-  ],
-  "relatedDocs": [
-    "docs/spec/CONFIG_COMMAND.md",
-    "docs/arch/MEMORY_AREA_CONFIG.md",
-    "docs/arch/DOCS_STRUCTURE.md",
-    "docs/arch/VALIDATION_ARCHITECTURE.md"
-  ],
-  "verificationCommands": [
-    "pnpm --filter @dotdotgod/cli test",
-    "node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"
-  ]
-}
+{"kind":"spec","implementedBy":["packages/cli/src/memory/config.mjs","packages/cli/src/core.mjs","packages/cli/src/load-snapshot/summary.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/README.md","docs/test/MEMORY_AREA_CONFIG.md"],"relatedDocs":["docs/spec/CONFIG_COMMAND.md","docs/arch/MEMORY_AREA_CONFIG.md","docs/arch/DOCS_STRUCTURE.md","docs/arch/VALIDATION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
 ```
