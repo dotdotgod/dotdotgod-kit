@@ -6,6 +6,8 @@ With `--dd-context-debug`, Plan Mode records local JSONL events for entry, first
 
 Events include context usage when available, git state, compaction reason, current-work focus, queued/flushed load state, CLI context availability, entry counts, and todo counts. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
 
+Debug measurement is opt-in investigation output. It should be enabled for context-size reviews, lazy-refresh investigations, snapshot-boundedness checks, or graph-quality follow-up work, not as a normal requirement for every Plan Mode session. When a measurement review is complete, keep the outcome under `docs/archive/report/context-metrics/` or create a focused follow-up plan only if fixes are needed.
+
 ## Archive Policy
 
 After implementation and verification, completed task directories should move from:
@@ -19,6 +21,10 @@ to:
 ```text
 docs/archive/plan/<task-slug>/
 ```
+
+Use `docs/archive/README.md` as the first routing map before reading archive bodies. Archive bodies are not part of routine context loading; read them only when the current task needs related completed decisions, reports, payloads, or investigation notes.
+
+Completed or superseded plans belong under `docs/archive/plan/<task-slug>/`. Temporary investigations, measurements, and reports belong under `docs/archive/report/<report-slug>/`.
 
 ## Traceability
 

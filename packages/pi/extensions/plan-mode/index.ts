@@ -20,6 +20,7 @@ import { getMessageText, getTextContent, isAssistantMessage, truncateText } from
 import { ARCHIVE_DIRECTORY, getToolPath, isActivePlanMarkdownPath, isManagedPlanMarkdownPath, normalizeToolPath, PLAN_DIRECTORY, planPathExists } from "./runtime/paths.js";
 import {
 	buildPlanCompactionInstructions,
+	buildPlanExecutionHandoff,
 	buildPlanModeContextPrompt,
 	buildPlanModeRequestFraming,
 	detectPlanExecutionIntent,
@@ -809,17 +810,12 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
 			pi.setActiveTools(NORMAL_MODE_TOOLS);
 			updateStatus(ctx);
 
-			const firstTodo = todoItems[0];
-			const execMessage = firstTodo
-				? `Execute the plan${inferredPlanPath ? ` in ${inferredPlanPath}` : ""}. Start with: ${firstTodo.text}`
-				: inferredPlanPath
-					? `Execute the plan in ${inferredPlanPath}.`
-					: "Execute the plan you just created.";
-			pi.sendMessage(
-				{ customType: "plan-mode-execute", content: execMessage, display: true },
-				{ triggerTurn: true },
-			);
+			const handoff = buildPlanExecutionHandoff(todoItems, inferredPlanPath);
+			pi.appendEntry("plan-mode-execute", handoff.marker);
 			persistState();
+			setTimeout(() => {
+				pi.sendUserMessage(handoff.message);
+			}, 0);
 		} else if (choice === "Refine the plan") {
 			const refinement = await ctx.ui.editor("Refine the plan:", "");
 			if (refinement?.trim()) {

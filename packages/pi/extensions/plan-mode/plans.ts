@@ -1,3 +1,31 @@
+import type { TodoItem } from "./todos.ts";
+
+export interface PlanExecutionHandoff {
+	message: string;
+	marker: {
+		content: string;
+		planPath: string | undefined;
+		todoCount: number;
+	};
+	trigger: "user-message";
+	persistBeforeTrigger: true;
+}
+
+export function buildPlanExecutionHandoff(todoItems: readonly TodoItem[], planPath: string | undefined): PlanExecutionHandoff {
+	const firstTodo = todoItems[0];
+	const message = firstTodo
+		? `Execute the plan${planPath ? ` in ${planPath}` : ""}. Start with: ${firstTodo.text}`
+		: planPath
+			? `Execute the plan in ${planPath}.`
+			: "Execute the plan you just created.";
+	return {
+		message,
+		marker: { content: message, planPath, todoCount: todoItems.length },
+		trigger: "user-message",
+		persistBeforeTrigger: true,
+	};
+}
+
 export function getCurrentPlanReadmePath(path: string): string | undefined {
 	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
 	const match = normalized.match(/^docs\/plan\/([a-z0-9]+(?:-[a-z0-9]+)*)\/(README\.md|[A-Z0-9]+(?:_[A-Z0-9]+)*\.md)$/);
