@@ -6,7 +6,7 @@ After Plan Mode is enabled, the first user planning request triggers one context
 
 1. Queue a curated project-memory load if baseline project docs are missing, recent memory load is absent, or context has narrowed to one documentation area while the request needs cross-area planning.
 2. Request planning-focused compaction if context is too large or noisy.
-3. If both are needed, compact first, then flush the queued load from `agent_end`.
+3. If both are needed, compact first, flush the queued load, then resume the latest planning request as a real follow-up.
 
 The curated load uses the `/dd:load compact` surface: baseline files, docs indexes, specs, architecture, tests, and active plans. Explicit manual `/dd:load` remains full by default, but Plan Mode's automatic prompt-injected refreshes request compact mode to avoid repeated stable background summaries. Compact curated loads exclude full repository scans and archive bodies unless targeted. When the CLI is available, Plan Mode validates, refreshes a bounded load snapshot, and runs advisory `graph impact --json` checks for likely target files.
 
@@ -31,6 +31,8 @@ Moderately proactive thresholds are:
 - context usage at or above 60% when percentage is available
 - context tokens within 32,000 tokens of the context window when window size is available
 - 100,000 context tokens as a fallback when only token count is available
+
+After successful automatic compaction, the extension queues a concise resume follow-up for the latest planning request. When a curated project-memory load was deferred until after compaction, the load follow-up is delivered first and the resume follow-up is delivered after that load turn finishes. The resume prompt is persisted and cleared after one delivery so compaction does not make the user repeat the request or create duplicate planning turns.
 
 The extension skips compaction during execution and continues if compaction fails. Toggle Plan Mode off/on for a fresh context-shaping pass.
 
