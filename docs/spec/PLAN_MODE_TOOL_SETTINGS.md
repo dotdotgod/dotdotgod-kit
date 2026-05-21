@@ -21,7 +21,7 @@ Behavior:
 - Tool names that are not installed in the current Pi session are ignored.
 - The resolved active tool list is used both for `pi.setActiveTools()` and for the hidden full Plan Mode prompt.
 
-This lets users opt into external read-oriented tools, such as context-mode tools, without making external plugins part of the default Plan Mode surface.
+This lets users opt into external read-oriented tools, such as context-mode tools, without making external plugins part of the default Plan Mode surface. Extra tools remain subject to Plan Mode path, command, and mutation guards; the setting MUST NOT grant source/config mutation authority beyond the existing Plan Mode policy.
 
 ## Prompt Requirements
 

@@ -2,20 +2,27 @@
 
 ## Summary
 
-This report summarizes the current-session analysis of `dotdotgod_graph_impact` effectiveness using recent Pi session logs.
+This report is a historical snapshot of `dotdotgod_graph_impact` usage in local Pi session logs.
 
-- Log source: local Pi session logs
-- Analysis window: 2026-05-14 through 2026-05-20
-- Impact tool calls analyzed: 85
-- Sessions containing impact calls: 12
+- Status: historical evidence report, not a behavior contract.
+- Log source: local Pi session logs.
+- Analysis window: 2026-05-14 through 2026-05-20.
+- Impact tool calls analyzed: 85.
+- Sessions containing impact calls: 12.
 
-The main finding is that impact increased the unique file-discovery set from 239 files to 373 files. The additional 134 files were mostly source and test files, which means impact primarily helped expand implementation and verification coverage rather than only adding more documentation.
+The main observation is that impact-surfaced paths expanded the measured unique file-discovery set from 239 files to 373 files. The additional 134 files were mostly source and test files, which is consistent with broader implementation and verification coverage in the analyzed sessions rather than only adding more documentation.
+
+## Method and Source Boundaries
+
+The analysis used local session-log data available in the author's Pi environment during the analysis window. It counted explicit tool-call file paths before the first impact call in each impact-using session, then compared them with paths surfaced by parsed impact results.
+
+The report intentionally avoids publishing personal usage totals, monetary estimates, or raw log payloads. Counts are observational and depend on the completeness of the local logs, parser coverage, and the timezone/context of the original sessions.
 
 ## Usage Context
 
 This report intentionally avoids publishing personal usage totals or monetary estimates. It focuses on non-financial effectiveness signals that are useful for evaluating `dotdotgod_graph_impact`: the number of files discovered before and after impact, the type of files added, and the relationship reasons that explained those additions.
 
-Impact output accounted for approximately 0.04% of observed usage in the analysis window. Because this share was very small, this report treats impact output size as a low-priority optimization target compared with load and prompt compaction.
+Impact output accounted for approximately 0.04% of observed usage in the analysis window. Within this measured window, impact output size appeared lower priority than load and prompt compaction. Treat that as a report-local interpretation, not a durable roadmap decision.
 
 ## File Discovery Lift
 
@@ -35,9 +42,11 @@ Definitions:
 | Files newly added by impact (`m`) | 134 |
 | Files known after impact (`n+m`) | 373 |
 
-Impact therefore increased the unique known file set by 134 files, a 56% lift over the pre-impact set.
+Impact-surfaced paths expanded the measured unique known file set by 134 files, a 56% lift over the pre-impact set.
 
 ### Per-Session Counts
+
+Session-level sums can count the same repository path more than once when it appeared in multiple sessions. Use the unique counts above for repository-wide file-discovery totals.
 
 | Metric | Count |
 | --- | ---: |
@@ -79,7 +88,7 @@ After impact, the final known file set became more balanced:
 - Documentation: 55.0%
 - Other: 3.5%
 
-This suggests impact was useful for discovering implementation and verification files that were not already obvious from manual exploration.
+This is consistent with impact surfacing implementation and verification files that were not already obvious from the measured pre-impact exploration path.
 
 ## Impact Scope Signals
 
@@ -109,7 +118,7 @@ The most common impact reasons were:
 | `related_doc` | 83 |
 | `incoming:implemented_by` | 52 |
 
-These reasons indicate that impact was not just matching names. It surfaced semantic neighbors, implementation-to-spec links, and verification relationships.
+In these logs, reason labels included semantic neighbors, implementation-to-spec links, and verification relationships. Treat this as report-local evidence about observed output; durable relationship semantics belong in `docs/spec/` or `docs/arch/`.
 
 ## Caveats
 
@@ -120,10 +129,10 @@ These reasons indicate that impact was not just matching names. It surfaced sema
 
 ## Conclusion
 
-Impact had a measurable discovery effect in the analyzed sessions:
+Impact had a measurable discovery association in the analyzed sessions:
 
 - Unique known files increased from 239 to 373.
 - Impact added 134 unique files, a 56% lift.
 - The added set was mostly source and test files, not just more documentation.
 
-The strongest evidence for value is reduced blind spots: impact expanded the file set toward code and tests that were less likely to be found through the initial documentation-oriented exploration path.
+The strongest evidence for value is consistent with reduced blind spots: impact expanded the measured file set toward code and tests that were less likely to appear in the initial documentation-oriented exploration path.

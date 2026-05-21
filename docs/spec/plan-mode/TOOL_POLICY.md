@@ -24,7 +24,7 @@ Bounded dotdotgod context/status commands are auto-allowed when invoked directly
 - read-only `config`
 - `index`
 
-Other CLI commands, including `init`, `config init`, unknown commands, shell chaining, redirects, pipes, command substitution, and package-runner wrappers, require explicit one-command user approval or remain blocked.
+`index`, `load-snapshot`, `resolve`, `expand`, `graph impact`, and `graph communities` are project-content safe but may create or refresh ignored `.dotdotgod/` cache metadata. They must not modify source, docs, or config files. Other CLI commands, including `init`, `config init`, unknown commands, shell chaining, redirects, pipes, command substitution, and package-runner wrappers, require explicit one-command user approval or remain blocked.
 
 ## Pending Impact Checks
 

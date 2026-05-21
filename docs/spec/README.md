@@ -2,6 +2,8 @@
 
 Use this area for behavior specs, API contracts, and product requirements.
 
+Start here when you need the behavior contract for a command, adapter workflow, config field, or validation rule. Use `docs/test/` for how behavior is verified and `docs/arch/` for why it is implemented that way.
+
 For projects using the dotdotgod CLI, `docs/spec/**` has two default roles. It is stable shared/fresh project memory through the memory-area policy, and behavior specs under it are validated for fenced `json dotdotgod` traceability blocks as the final section. The default enforced path is `docs/spec/**` except README files, and projects can customize memory classification with `memory.areas` or override traceability enforcement paths with optional traceability config. The CLI owns the schema and prints property-level repair guidance when validation fails.
 
 For traceability, treat the `json dotdotgod` block as the source of truth. Generated Markdown links are a reading aid. `dotdotgod validate` reports generated-link or compact-JSON drift, and `dotdotgod traceability links <root> --write` repairs generated sections and compact JSON.

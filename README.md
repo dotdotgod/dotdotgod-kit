@@ -155,6 +155,8 @@ For current published versions, see each package page or the npm registry.
 
 ## Quick Start
 
+### Use dotdotgod in another project
+
 Install the Pi adapter:
 
 ```bash
@@ -181,22 +183,35 @@ Check the initialized docs and project memory:
 npx @dotdotgod/cli validate .
 ```
 
-For this repository, run the broader workspace gate before release-style handoff:
+### Develop this repository
+
+Use source-checkout commands in this repository:
 
 ```bash
 pnpm install
+node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index
 pnpm run verify
-pnpm run pack:dry-run
-.husky/pre-push
 ```
 
-Local Pi adapter install:
+Run `pnpm run pack:dry-run` or `.husky/pre-push` only when you need a release-style package dry-run or hook simulation. To test the Pi adapter from a checkout:
 
 ```bash
 pi install /path/to/dotdotgod/packages/pi
 ```
 
 ## Documentation
+
+Start with the repository documentation map at [`docs/README.md`](docs/README.md), then use the local area indexes for behavior, verification, architecture, reports, and concepts.
+
+Area indexes:
+
+- [Concepts](docs/concept/README.md)
+- [Specs](docs/spec/README.md)
+- [Tests](docs/test/README.md)
+- [Architecture](docs/arch/README.md)
+- [Reports](docs/report/README.md)
+
+Common deep links:
 
 - [Context curation concept](docs/concept/CONTEXT_CURATION.md)
 - [Project initializer spec](docs/spec/PROJECT_INITIALIZER.md)

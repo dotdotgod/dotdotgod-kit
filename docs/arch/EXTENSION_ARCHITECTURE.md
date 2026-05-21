@@ -29,6 +29,12 @@ Distribution metadata:
 
 ## Resource Responsibilities
 
+### Generated vs Hand-Authored Resources
+
+Common workflow text for generated adapter skills comes from `packages/shared/workflows/` and `scripts/generate-adapters.mjs`; edit those sources, then run `pnpm run generate` and `pnpm run verify:generated`. Examples include generated `project-initializer`, `document-clarify`, load, plan, and impact skill bodies across adapters.
+
+Pi runtime code under `packages/pi/extensions/**` is hand-authored and owns command registration, state, tool policy, and TUI/runtime behavior. Checked-in generated resources are package artifacts for local installs and npm tarballs; do not edit them directly except when intentionally repairing generator output. See [`CROSS_AGENT_ARCHITECTURE.md`](CROSS_AGENT_ARCHITECTURE.md) for cross-adapter ownership.
+
 ### `project-initializer` Skill
 
 The initializer skill describes a safe setup workflow and delegates deterministic file creation to a bundled POSIX shell script.
@@ -46,11 +52,12 @@ It uses resolved memory-area `description` and `clarify` metadata when configure
 `plan-mode` owns runtime planning behavior:
 
 - Entry points: `/plan`, `/plan <request>`, `/todos`, and `Ctrl+Alt+P`.
-- Tooling: planning/execution tool switching, optional `--plan-extra-tools`, plan/archive markdown write filters, read-only bash allowlist, auto-allowed bounded dotdotgod context/status commands, `dotdotgod_graph_impact`, `/impact-check`, and one-command approval for other agent-requested dotdotgod CLI commands.
-- State: mode flags, todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/plan <request>` delivery, first-request context shaping, queued planning-load delivery, queued post-compaction request resume, compaction debounce, CLI planning-context summary with advisory impact results for likely target files, request-framing classification, and pending source/config impact-check records.
+- Tool/write policy: planning/execution tool switching, optional `--plan-extra-tools`, plan/archive markdown write filters, read-only bash allowlist, auto-allowed bounded dotdotgod context/status commands, `dotdotgod_graph_impact`, `/impact-check`, and one-command approval for other agent-requested dotdotgod CLI commands.
+- Runtime state: mode flags, todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/plan <request>` delivery, request-framing classification, and pending source/config impact-check records.
+- Context shaping: first-request context checks, queued planning-load delivery, queued post-compaction request resume, compaction debounce, CLI planning-context summary, baseline-doc coverage checks, single-area-only context detection, optional validation, bounded load-snapshot refresh, and bounded multi-file advisory graph impact checks when the CLI is available.
+- Impact-check integration: structured `graph impact --yml` runtime summaries, short pending-impact reminders after source/config edits, pending-path plus git source/config union checks, and stale pending-record cleanup after successful checks.
 - UX: concise execute/stay/refine review prompt after active plan updates, without saved-plan preview rendering; execute persists execution state before sending the actual user follow-up that starts the execution turn.
-- Context shaping: one-time planning-focused compaction/load decisions after the first planning request, including baseline-doc coverage checks, single-area-only context detection, post-compaction continuation of the latest planning request, optional validation, bounded load-snapshot refresh, bounded multi-file `graph impact --json` advisory checks when the CLI is available, structured `graph impact --yml` runtime summaries, and short pending-impact reminders after source/config edits. Runtime impact checks cover pending paths plus current git unstaged, staged, and untracked source/config paths, and successful checks clear stale pending records for the checked path.
-- Prompts: first-turn full safety/workflow prompt, later compact reminder, per-request framing, resolved active tool list, mandatory impact-plan refinement and validation guidance, and current-work-directed compaction instructions that demote stale history and repeated boilerplate.
+- Prompt ownership: first-turn full safety/workflow prompt, later compact reminder, per-request framing, resolved active tool list, mandatory impact-plan refinement and validation guidance, and current-work-directed compaction instructions that demote stale history and repeated boilerplate.
 
 Plan mode injects runtime instructions because project docs can be edited by users. The prompt should stay generic and must not contain app-specific stack assumptions.
 
@@ -96,6 +103,11 @@ Prompt content should:
 ## State and Persistence
 
 `plan-mode` persists custom session entries for mode state, todos, review-prompt eligibility, prompt tier, active plan path, touched plan/archive paths, latest planning request, pending inline planning request delivery, queued load state, queued post-compaction resume state, compaction measurements, one-time CLI context-check state, pending impact-check files, and recent completed impact-check records.
+
+## Related Behavior and Verification
+
+- Behavior specs: [`docs/spec/PLAN_MODE.md`](../spec/PLAN_MODE.md), [`docs/spec/plan-mode/README.md`](../spec/plan-mode/README.md), [`docs/spec/LOAD_PROJECT.md`](../spec/LOAD_PROJECT.md), and [`docs/spec/CROSS_AGENT_SUPPORT.md`](../spec/CROSS_AGENT_SUPPORT.md).
+- Verification docs: [`docs/test/README.md`](../test/README.md), [`docs/test/manual-smoke/PI_ADAPTER.md`](../test/manual-smoke/PI_ADAPTER.md), and [`docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md`](../test/manual-smoke/CROSS_AGENT_ADAPTERS.md).
 
 ## Future Search Architecture
 

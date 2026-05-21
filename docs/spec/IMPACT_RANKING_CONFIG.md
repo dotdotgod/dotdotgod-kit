@@ -120,7 +120,7 @@ impact:
       items:
         - path: "docs/spec/LOAD_PROJECT.md"
           score: 65.4
-          reasons: ["implemented_by", "semantic_similarity"]
+          reasons: ["implemented_by", "routes_to"]
   recommended_actions:
     - "review_related_docs"
     - "run_related_tests"

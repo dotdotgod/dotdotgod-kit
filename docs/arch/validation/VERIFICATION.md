@@ -2,11 +2,14 @@
 
 ## Dependency Policy
 
-Validation remains dependency-free and uses Node built-ins.
+Validation remains mostly Node built-in based, with narrowly scoped dependencies only when extra correctness outweighs package complexity.
 
-Future dependencies are allowed only when extra correctness outweighs package complexity:
+Current dependency:
 
-- `leiden-ts`: pure TypeScript Leiden community detection for bounded graph community summaries.
+- `leiden-ts`: pure TypeScript Leiden community detection for bounded graph community summaries, with deterministic fallback behavior when community detection is unavailable or not useful.
+
+Future dependencies are allowed only when they meet the same narrowness bar:
+
 - `github-slugger`: if heading anchor compatibility must match GitHub more exactly.
 - `remark-parse`: if markdown link parsing requires parser-level accuracy.
 - `markdownlint-cli`: as a companion tool, not a core dependency.
@@ -36,6 +39,12 @@ pnpm --filter @dotdotgod/pi run verify
 ```
 
 Unit tests should prefer extracted pure helpers over full Pi extension entrypoints because entrypoints depend on Pi runtime peer packages and session/UI wiring.
+
+## Related Behavior and Verification
+
+- Workspace verification behavior: [`docs/spec/WORKSPACE_VERIFICATION.md`](../../spec/WORKSPACE_VERIFICATION.md).
+- Validation behavior and config: [`docs/spec/VALIDATION_CONFIG.md`](../../spec/VALIDATION_CONFIG.md) and [`docs/test/VALIDATION_CONFIG.md`](../../test/VALIDATION_CONFIG.md).
+- CLI interface verification: [`docs/test/CLI_INTERFACE.md`](../../test/CLI_INTERFACE.md).
 
 ## Workspace Verification
 

@@ -27,7 +27,7 @@ This directory keeps project knowledge close to the code.
 | `test/` | Test strategy, coverage notes, regression cases, command checks, and manual verification records. | `test/README.md` |
 | `arch/` | Architecture decisions, code conventions, module boundaries, data flow, runtime dependencies, and integration boundaries. | `arch/README.md` |
 | `plan/` | Local active implementation plans. Create one kebab-case directory per task and keep the task overview in that directory's `README.md`. | `plan/README.md` |
-| `report/` | Local analysis reports and measurement summaries. | `report/README.md` |
+| `report/` | Shared analysis reports and measurement summaries that are useful for current project review but are not behavior contracts. | `report/README.md` |
 | `archive/` | Local completed plans, temporary reports, historical notes, payload captures, and investigation notes. Read the map first, then open archived bodies only when targeted. | `archive/README.md` |
 
-`docs/plan/` and `docs/archive/` are ignored by git by default.
+`docs/plan/` and `docs/archive/` are ignored by git by default. Put temporary or private reports under `docs/archive/report/`; keep `docs/report/` for tracked reports that should be shared with the repository.
