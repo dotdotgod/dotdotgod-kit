@@ -32,6 +32,14 @@ During execution and normal mode, successful source/config `edit` and `write` to
 
 `/impact-check` checks the union of tool-tracked pending paths and current git unstaged, staged, and untracked source/config paths. A successful impact check clears the matching pending path for the checked current file, including stale pending records whose stored fingerprint no longer matches the file. Long `dotdotgod_graph_impact` tool results stay complete for the agent and render compactly in Pi's TUI until expanded. Pending checks ignore plan/archive markdown, cache, vendor, build, and coverage paths. Broad verification may ask for confirmation; commit/push/publish commands are blocked until pending paths are checked.
 
+## Verification by Change Type
+
+Use impact checks for source/config changes and for broad tests, commits, pushes, or publishing that follow source/config edits. The check should guide related docs, tests, commands, package resources, and follow-up reads before final verification.
+
+For docs-only changes, prefer documentation verification first: update the nearest README index when files are added, moved, split, or archived, then run `dotdotgod validate` when the CLI is available. Run targeted tests only when the docs define behavior that code must satisfy or when traceability points to a regression check.
+
+For `docs/plan/` and `docs/archive/` housekeeping, impact checks are not required. Keep these changes bounded to plan/archive paths and preserve the archive routing map.
+
 ## Traceability
 
 ```json dotdotgod

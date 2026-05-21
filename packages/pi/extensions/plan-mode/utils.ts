@@ -66,6 +66,7 @@ export {
 } from "./context.ts";
 
 export {
+	buildPlanExecutionHandoff,
 	getCurrentPlanReadmePath,
 	extractPlanSlugMentions,
 	resolveMentionedPlanPath,

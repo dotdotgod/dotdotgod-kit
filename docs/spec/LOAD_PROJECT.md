@@ -14,6 +14,20 @@ It helps the agent inspect the dotdotgod scaffold and summarize the current proj
 
 `/dd:load` exists because other extensions may also register `/load`. Pi resolves duplicate extension commands with suffixes, so the namespaced command provides a clearer dotdotgod entrypoint.
 
+## Mode Selection
+
+Use full mode for explicit manual project-memory loads, first-session orientation, or deliberate context resets where the user asks for the complete working map. Do not repeat full mode just because a follow-up task starts in an already-loaded session.
+
+Use compact mode for automatic refreshes, Plan Mode context shaping, resumed sessions that already have stable project background, and follow-up work where only deltas, relevant active plans, or next reads are needed.
+
+After either mode, agents should prefer targeted reads over broad scans:
+
+- `docs/spec/` for user-facing behavior and CLI/API contracts.
+- `docs/arch/` for implementation boundaries, architecture rationale, and code conventions.
+- `docs/test/` for verification strategy and regression coverage.
+- `docs/plan/` for active task intent, only after listing available entries.
+- `docs/archive/README.md` as a routing map only when completed work or reports are directly relevant.
+
 ## Read-Only Behavior
 
 The command does not modify source, docs, or config files.
@@ -50,7 +64,7 @@ The loader prompt asks the agent to:
 
 - use the `load-snapshot` summary first when present, including cache status, lazy refresh metadata, graph size, compact memory-area labels, compact community labels, and archive inclusion policy
 - start with `AGENTS.md`, `README.md`, and `docs/README.md` when they are not already clear from the loaded context
-- summarize product, architecture, code conventions, infrastructure/runtime dependencies, and verification context
+- summarize product, architecture, code conventions, infrastructure/runtime dependencies, and verification context at the detail level requested by the load mode
 - inspect docs/spec, docs/arch, and docs/test selectively unless a task needs a full refresh
 - follow `README.md` indexes, including domain directories such as `docs/<area>/<domain>/README.md`
 - follow expanded convention directories such as `docs/arch/conventions/README.md`

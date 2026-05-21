@@ -4,6 +4,7 @@ import {
 	PLAN_COMPACTION_PERCENT_THRESHOLD,
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
 	buildPlanCompactionInstructions,
+	buildPlanExecutionHandoff,
 	buildPlanModeRequestFraming,
 	classifyPlanModeRequest,
 	collectProjectMemoryContextCoverage,
@@ -266,7 +267,7 @@ describe("plan-mode request framing", () => {
 	});
 
 	it("builds concise hidden framing for the latest request", () => {
-		assert.match(buildPlanModeRequestFraming("fix prompt behavior"), /convert it into a durable implementation plan first/);
+		assert.match(buildPlanModeRequestFraming("fix prompt behavior"), /Create or update docs\/plan\/<task-slug>\/README\.md for durable work/);
 		assert.match(buildPlanModeRequestFraming("이 방식이 좋을까?"), /advisory or planning work/);
 		assert.match(buildPlanModeRequestFraming("Load the dotdotgod project memory."), /project-memory load request/);
 	});
@@ -339,6 +340,30 @@ describe("plan-mode current plan path helpers", () => {
 		assert.equal(getCurrentPlanReadmePath("docs/plan/LandingSite/README.md"), undefined);
 		assert.equal(getCurrentPlanReadmePath("docs/plan/landing-site/notes.md"), undefined);
 		assert.equal(getCurrentPlanReadmePath("packages/pi/README.md"), undefined);
+	});
+});
+
+describe("plan-mode execution handoff", () => {
+	it("builds a user-message handoff with a resume marker", () => {
+		const handoff = buildPlanExecutionHandoff([
+			{ step: 2, text: "Run targeted validation", completed: false },
+		], "docs/plan/example-task/README.md");
+
+		assert.equal(handoff.trigger, "user-message");
+		assert.equal(handoff.persistBeforeTrigger, true);
+		assert.equal(handoff.message, "Execute the plan in docs/plan/example-task/README.md. Start with: Run targeted validation");
+		assert.deepEqual(handoff.marker, {
+			content: handoff.message,
+			planPath: "docs/plan/example-task/README.md",
+			todoCount: 1,
+		});
+	});
+
+	it("builds an untracked execute message when no todos are available", () => {
+		const handoff = buildPlanExecutionHandoff([], "docs/plan/example-task/README.md");
+
+		assert.equal(handoff.message, "Execute the plan in docs/plan/example-task/README.md.");
+		assert.equal(handoff.marker.todoCount, 0);
 	});
 });
 

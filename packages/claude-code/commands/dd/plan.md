@@ -12,9 +12,9 @@ Task request: `$ARGUMENTS`
 
 ## Goal
 
-Create implementation plans from the repository's documented design sources before changing source/config files. Treat planning as a managed artifact under `docs/plan`.
+Create implementation plans from the repository's documented design sources before changing source/config files when the work needs durable coordination. Treat substantial planning as a managed artifact under `docs/plan`.
 
-Do not start implementation until the plan has a clear evidence trail and the user has asked to execute it. Treat the written plan file as the durable review artifact; do not rely on transient chat previews.
+Do not start substantial implementation until the plan has a clear evidence trail and the user has asked to execute it. Treat the written plan file as the durable review artifact for large, risky, multi-file, behavior-changing, architecture-changing, CLI/API-affecting, source/config-heavy, or resumable work. For obvious bounded work, a short in-chat checklist is enough unless the user asks for a saved plan.
 
 ## Source Order
 
@@ -45,15 +45,16 @@ Prefer live repository docs in this order:
    - During planning, treat these dotdotgod commands as bounded context/status helpers: `status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and `index`. Do not run mutating scaffold/config commands such as `init` or `config init` unless the user explicitly asks for initialization or config creation.
    - Use `grep` or `find` after reference expansion, impact, and targeted reads when the task needs fallback discovery or raw source text search.
    - Read code only after docs identify likely module boundaries, impact output points to relevant files, or docs are missing/stale.
-3. Create or update the active plan at:
+3. Create or update an active plan at this path when durable planning is needed:
 
    ```text
    docs/plan/<task-slug>/README.md
    ```
 
+   Skip the saved plan for obvious bounded work such as typos, single-file documentation clarifications, targeted test/validation runs, or one-file fixes with an unambiguous implementation path.
 4. Use supporting files in the same task directory only when useful, with UPPER_SNAKE_CASE markdown names such as `RESEARCH_NOTES.md`, `PROGRESS.md`, `DECISIONS.md`, or `VERIFY.md`.
-5. Keep small tasks in one README. For long-running tasks, use concise README sections or optional support files for chronological progress, durable decisions, resume state, and task-specific verification checklists.
-6. Include:
+5. For long-running durable tasks, use concise README sections or optional support files for chronological progress, durable decisions, resume state, and task-specific verification checklists.
+6. When a durable plan is created, include:
    - scope and current status
    - target files and rationale
    - impact-derived related files/checks when available

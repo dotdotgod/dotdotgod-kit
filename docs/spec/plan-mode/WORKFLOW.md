@@ -10,6 +10,14 @@ After Plan Mode is enabled, the first user planning request triggers one context
 
 The curated load uses the `/dd:load compact` surface: baseline files, docs indexes, specs, architecture, tests, and active plans. Explicit manual `/dd:load` remains full by default, but Plan Mode's automatic prompt-injected refreshes request compact mode to avoid repeated stable background summaries. Compact curated loads exclude full repository scans and archive bodies unless targeted. When the CLI is available, Plan Mode validates, refreshes a bounded load snapshot, and runs advisory `graph impact --json` checks for likely target files.
 
+## Plan Sizing
+
+Plan Mode should create a durable `docs/plan/<task-slug>/README.md` when the work is large, risky, multi-file, behavior-changing, architecture-changing, CLI/API-affecting, source/config-heavy, or likely to be paused and resumed by another agent.
+
+Small work does not need a durable plan file before execution when the requested change is obvious and bounded, such as a typo fix, a single-file documentation clarification, a targeted test or validation run, or a one-file bug fix with an unambiguous implementation path. For those tasks, an in-chat checklist is enough unless the user explicitly asks for a saved plan.
+
+If a small task grows into broader source/config or behavior work, the agent should stop, create or update a durable plan, and ask whether to execute, stay in plan mode, or refine.
+
 ## Planning-Focused Compaction
 
 Plan Mode requests compaction only when context is likely to hurt plan quality. It checks once after the first planning request. Subsequent turns record metrics but do not rerun load/compaction decisions.
@@ -36,7 +44,9 @@ Plan files remain the durable review artifact. Plan Mode stores the current acti
 
 ## Progress, Resume, and Checklists
 
-Plan Mode treats the task README as the required durable resume surface. For small tasks, the README should carry enough status, decisions, verification notes, and remaining steps for another agent to continue after compaction or a new session.
+When a durable plan exists, Plan Mode treats the task README as the required resume surface. For bounded small tasks that do not create a saved plan, the chat checklist should be short enough to complete without relying on cross-session resume.
+
+For durable plans, the README should carry enough status, decisions, verification notes, and remaining steps for another agent to continue after compaction or a new session.
 
 Long-running tasks may add optional support files in the same task directory:
 
@@ -53,6 +63,7 @@ Plan mode extracts numbered executable steps from a `Plan:` section. Generic tem
 When execution starts:
 
 - Full tool access is restored.
+- The execute handoff is sent as an actual user follow-up after execution state is persisted, rather than relying on a custom display message to trigger the next turn.
 - The execute follow-up names the active plan path when known.
 - Remaining steps are loaded from the selected README when needed.
 - If optional `PROGRESS.md`, `DECISIONS.md`, or `VERIFY.md` files exist, the agent uses them as resume context before continuing work.

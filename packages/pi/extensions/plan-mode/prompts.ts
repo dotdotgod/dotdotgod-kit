@@ -68,15 +68,16 @@ Workflow:
 - Explore files in bounded passes before planning: start from already-loaded memory, README indexes, and impact/load-snapshot results; inspect the top related specs/tests/source files first, then expand only with a concrete reason. Ask clarifying questions when requirements are ambiguous, using questionnaire if available.
 - If planning compaction has just occurred, rely on the preserved planning summary plus current project docs before writing or refining the plan.
 - Use web_search, code_search, and fetch_content when library or web evidence is needed.
-- Manage active work under docs/plan/<task-slug>/README.md, with optional UPPER_SNAKE_CASE support files in the same task directory.
-- For long-running tasks, use concise README sections or optional support files such as PROGRESS.md, DECISIONS.md, or VERIFY.md only when they improve resume quality; keep small tasks in one README.
+- Create or update docs/plan/<task-slug>/README.md only when durable implementation steps are needed: large, risky, multi-file, behavior-changing, architecture-changing, CLI/API-affecting, source/config-heavy, or resumable work.
+- For obvious bounded work such as typos, single-file documentation clarifications, targeted test/validation runs, or one-file fixes with an unambiguous path, use a short in-chat checklist unless the user asks for a saved plan.
+- For long-running durable plans, manage active work under docs/plan/<task-slug>/README.md, with optional UPPER_SNAKE_CASE support files such as PROGRESS.md, DECISIONS.md, or VERIFY.md only when they improve resume quality.
 - When one docs domain grows into multiple files, group it under docs/<area>/<domain>/README.md plus supporting UPPER_SNAKE_CASE files.
 - Include scope, status, target files, impact-informed related files, risks, verification, current resume state when useful, and a final archive step to docs/archive/plan/<task-slug>/.
 - For implementation tasks, the executable Plan: section must include a concrete step to run dotdotgod graph impact for intended changed files, review related specs/tests/docs/commands/files, and update the plan with newly discovered targets, risks, or verification before source changes.
 - When dotdotgod CLI impact summaries are available, use the related specs, tests, docs, commands, scores, and reasons to strengthen target files, verification, and risks before asking for execution. Do not paste large raw impact payloads into durable plans unless explicitly requested.
 - Do not change product/source files in plan mode. Only maintain docs/plan or docs/archive markdown files and produce an executable plan.
 
-Always write implementation task READMEs with scope, target files, impact-informed related files/checks, implementation steps, verification, risks when useful, resume notes for long-running work when useful, an executable graph-impact refinement step before source changes, post-coding dotdotgod validate, and archive housekeeping.
+When durable implementation task READMEs are needed, write them with scope, target files, impact-informed related files/checks, implementation steps, verification, risks when useful, resume notes for long-running work when useful, an executable graph-impact refinement step before source changes, post-coding dotdotgod validate, and archive housekeeping.
 
 In the final response, use a Plan: section only for concrete executable steps. Avoid generic template labels such as "Target files and rationale", "Implementation steps", or "Verification method" as numbered plan items.
 
@@ -84,7 +85,7 @@ Do not change source/code/config files in Plan Mode. You may create or update on
 }
 
 export const PLAN_MODE_COMPACT_CONTEXT_PROMPT = `[PLAN MODE ACTIVE]
-Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for UPPER_SNAKE_CASE markdown under docs/plan/ or docs/archive/; bash remains read-only allowlisted. Use AGENTS.md and docs indexes as source of truth when needed. Maintain the active task under docs/plan/<task-slug>/README.md and use a Plan: section only for concrete executable steps when ready.`;
+Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for UPPER_SNAKE_CASE markdown under docs/plan/ or docs/archive/; bash remains read-only allowlisted. Use AGENTS.md and docs indexes as source of truth when needed. Create or maintain docs/plan/<task-slug>/README.md only when durable implementation steps are needed; otherwise use a short in-chat checklist. Use a Plan: section only for concrete executable steps when ready.`;
 
 export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS): string {
 	return compact ? PLAN_MODE_COMPACT_CONTEXT_PROMPT : buildPlanModeFullContextPrompt(allowedTools);

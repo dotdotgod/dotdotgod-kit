@@ -41,7 +41,7 @@ export function buildPlanModeRequestFraming(latestRequest: string | undefined): 
 		return "Plan Mode request framing: the latest user request appears to explicitly execute an active plan. Resolve the referenced docs/plan/<task-slug>/README.md through the existing Plan Mode execution path before making source/code/config changes.";
 	}
 	if (kind === "implementation_request") {
-		return "Plan Mode request framing: the latest user request sounds like implementation or coding work. Because Plan Mode is active, convert it into a durable implementation plan first. Create or update docs/plan/<task-slug>/README.md, include impact-informed target files/risks/verification, and do not modify source/code/config until execution mode.";
+		return "Plan Mode request framing: the latest user request sounds like implementation or coding work. Because Plan Mode is active, do not modify source/code/config until execution mode. Create or update docs/plan/<task-slug>/README.md for durable work, but use a short in-chat checklist for obvious bounded changes unless the user asks for a saved plan.";
 	}
 	return "Plan Mode request framing: treat the latest user request as advisory or planning work. Answer without source/code/config changes. Create or update a docs/plan/<task-slug>/README.md file only when durable implementation steps are needed.";
 }
