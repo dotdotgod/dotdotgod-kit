@@ -20,6 +20,7 @@ import { getMessageText, getTextContent, isAssistantMessage, truncateText } from
 import { ARCHIVE_DIRECTORY, getToolPath, isActivePlanMarkdownPath, isManagedPlanMarkdownPath, normalizeToolPath, PLAN_DIRECTORY, planPathExists } from "./runtime/paths.js";
 import {
 	buildPlanCompactionInstructions,
+	buildPlanCompactionResumePrompt,
 	buildPlanExecutionHandoff,
 	buildPlanModeContextPrompt,
 	buildPlanModeRequestFraming,
@@ -76,6 +77,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let pendingPlanningLoadAfterCompaction = false;
 	let pendingPlanningLoadPrompt: string | undefined;
 	let pendingPlanningLoadReason: string | undefined;
+	let pendingPlanningResumePrompt: string | undefined;
+	let pendingPlanningResumeReason: string | undefined;
 	let planningContextShapePending = false;
 	let planModeFullPromptInjected = false;
 	let planningCliContextSummary: string | undefined;
@@ -244,6 +247,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		const focus = buildCurrentWorkFocus();
 		planCompactionInFlight = true;
 		lastPlanCompactionReason = reason;
+		pendingPlanningResumePrompt = buildPlanCompactionResumePrompt(lastPlanningRequest);
+		pendingPlanningResumeReason = "plan-mode-compaction-resume";
 		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:compaction-request", { reason, entryCount, focus });
 		ctx.ui.notify("Planning context is large; compacting before continuing.", "info");
 		ctx.compact({
@@ -254,10 +259,15 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 				recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:compaction-complete", { reason, entryCount: lastPlanCompactionEntryCount });
 				ctx.ui.notify("Planning compaction completed.", "info");
 				refreshPlanCliContextIfAvailable(ctx);
+				let resumeAfterLoad = false;
 				if (pendingPlanningLoadAfterCompaction) {
 					pendingPlanningLoadAfterCompaction = false;
 					recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:load-after-compaction", { reason });
 					requestPlanningLoadIfNeeded(ctx);
+					resumeAfterLoad = flushPendingPlanningLoad(ctx);
+				}
+				if (!resumeAfterLoad) {
+					flushPendingPlanningResume(ctx);
 				}
 				persistState();
 			},
@@ -343,6 +353,29 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 	}
 
+	function flushPendingPlanningResume(ctx: ExtensionContext): boolean {
+		if (!pendingPlanningResumePrompt || planningLoadInFlight || planCompactionInFlight || executionMode || !planModeEnabled) return false;
+		const prompt = pendingPlanningResumePrompt;
+		const reason = pendingPlanningResumeReason ?? "plan-mode-compaction-resume";
+		pendingPlanningResumePrompt = undefined;
+		pendingPlanningResumeReason = undefined;
+		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:resume-after-compaction", { reason, entryCount: getSessionEntryCount(ctx) });
+		persistState();
+		setTimeout(() => {
+			try {
+				pi.sendUserMessage(prompt, { deliverAs: "followUp" });
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:resume-after-compaction-error", { reason, error: message });
+				pendingPlanningResumePrompt = prompt;
+				pendingPlanningResumeReason = reason;
+				if (ctx.hasUI) ctx.ui.notify(`Planning request resume is still queued: ${message}`, "warning");
+				persistState();
+			}
+		}, 0);
+		return true;
+	}
+
 	function shouldLoadForPlanning(ctx: ExtensionContext): boolean {
 		if (!planModeEnabled || executionMode || planningLoadInFlight || pendingPlanningLoadPrompt) return false;
 		const entryCount = getSessionEntryCount(ctx);
@@ -423,6 +456,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		pendingPlanningLoadAfterCompaction = false;
 		pendingPlanningLoadPrompt = undefined;
 		pendingPlanningLoadReason = undefined;
+		pendingPlanningResumePrompt = undefined;
+		pendingPlanningResumeReason = undefined;
 		activePlanModeTools = [];
 		pi.setActiveTools(NORMAL_MODE_TOOLS);
 		updateStatus(ctx);
@@ -471,6 +506,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			activePlanTouched = false;
 			pendingPlanChoicePath = undefined;
 			planningContextShapePending = false;
+			pendingPlanningResumePrompt = undefined;
+			pendingPlanningResumeReason = undefined;
 			activePlanModeTools = [];
 			pi.setActiveTools(NORMAL_MODE_TOOLS);
 			ctx.ui.notify("Plan mode disabled. Full access restored.");
@@ -515,6 +552,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			pendingPlanningLoadAfterCompaction,
 			pendingPlanningLoadPrompt,
 			pendingPlanningLoadReason,
+			pendingPlanningResumePrompt,
+			pendingPlanningResumeReason,
 			planningContextShapePending,
 			planModeFullPromptInjected,
 			planningCliContextSummary,
@@ -672,7 +711,13 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			return candidate.type === "message" && candidate.message?.role === "user";
 		}) as { message?: AgentMessage } | undefined;
 		const latestText = latestUserEntry?.message ? truncateText(getMessageText(latestUserEntry.message)) : "";
-		if (latestText && !latestText.includes("[PLAN MODE ACTIVE]") && !latestText.startsWith("Load the dotdotgod project memory.")) {
+		if (
+			latestText &&
+			!latestText.includes("[PLAN MODE ACTIVE]") &&
+			!latestText.startsWith("Load the dotdotgod project memory.") &&
+			!latestText.startsWith("Continue the latest Plan Mode request after planning-focused compaction.") &&
+			!latestText.startsWith("Continue the following Plan Mode request after planning-focused compaction.")
+		) {
 			lastPlanningRequest = latestText;
 		}
 	}
@@ -776,6 +821,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
 		const shouldShowChoice = shouldPromptForPlanChoice({ planModeEnabled, executionMode, hasUI: ctx.hasUI, pendingPlanChoicePath, activePlanTouched });
 		if (!shouldShowChoice) {
 			if (!pendingPlanChoicePath && !activePlanTouched && flushPendingPlanningLoad(ctx)) return;
+			if (!pendingPlanChoicePath && !activePlanTouched && flushPendingPlanningResume(ctx)) return;
 			return;
 		}
 		activePlanTouched = false;
@@ -805,6 +851,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
 		if (choice?.startsWith("Execute the plan")) {
 			planModeEnabled = false;
 			planningContextShapePending = false;
+			pendingPlanningResumePrompt = undefined;
+			pendingPlanningResumeReason = undefined;
 			executionMode = todoItems.length > 0;
 			recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:execution-start", { todoCount: todoItems.length, planPath: inferredPlanPath });
 			pi.setActiveTools(NORMAL_MODE_TOOLS);
@@ -851,6 +899,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
 						pendingPlanningLoadAfterCompaction?: boolean;
 						pendingPlanningLoadPrompt?: string;
 						pendingPlanningLoadReason?: string;
+						pendingPlanningResumePrompt?: string;
+						pendingPlanningResumeReason?: string;
 						planningContextShapePending?: boolean;
 						planModeFullPromptInjected?: boolean;
 						planningCliContextSummary?: string;
@@ -876,6 +926,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
 			pendingPlanningLoadAfterCompaction = planModeEntry.data.pendingPlanningLoadAfterCompaction ?? pendingPlanningLoadAfterCompaction;
 			pendingPlanningLoadPrompt = planModeEntry.data.pendingPlanningLoadPrompt ?? pendingPlanningLoadPrompt;
 			pendingPlanningLoadReason = planModeEntry.data.pendingPlanningLoadReason ?? pendingPlanningLoadReason;
+			pendingPlanningResumePrompt = planModeEntry.data.pendingPlanningResumePrompt ?? pendingPlanningResumePrompt;
+			pendingPlanningResumeReason = planModeEntry.data.pendingPlanningResumeReason ?? pendingPlanningResumeReason;
 			planningContextShapePending = planModeEntry.data.planningContextShapePending ?? planningContextShapePending;
 			planModeFullPromptInjected = planModeEntry.data.planModeFullPromptInjected ?? planModeFullPromptInjected;
 			planningCliContextSummary = planModeEntry.data.planningCliContextSummary ?? planningCliContextSummary;

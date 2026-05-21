@@ -4,6 +4,7 @@ import {
 	PLAN_COMPACTION_PERCENT_THRESHOLD,
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
 	buildPlanCompactionInstructions,
+	buildPlanCompactionResumePrompt,
 	buildPlanExecutionHandoff,
 	buildPlanModeRequestFraming,
 	classifyPlanModeRequest,
@@ -558,6 +559,13 @@ describe("plan-mode compaction helpers", () => {
 		assert.match(instructions, /Reason: because/);
 		assert.match(instructions, /Current work focus/);
 		assert.match(instructions, /Do the current task/);
+	});
+
+	it("builds a post-compaction resume prompt for the latest request", () => {
+		const prompt = buildPlanCompactionResumePrompt("노션 API 연동 방법 조사해줘");
+		assert.match(prompt, /Continue the following Plan Mode request after planning-focused compaction/);
+		assert.match(prompt, /노션 API 연동 방법 조사해줘/);
+		assert.match(buildPlanCompactionResumePrompt(), /Continue the latest Plan Mode request after planning-focused compaction/);
 	});
 
 	it("detects token-based planning compaction reasons", () => {

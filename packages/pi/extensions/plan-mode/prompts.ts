@@ -158,6 +158,14 @@ export function buildPlanCompactionInstructions(reason?: string, focus?: PlanCom
 	return sections.join("\n\n");
 }
 
+export function buildPlanCompactionResumePrompt(request?: string): string {
+	const normalizedRequest = request?.trim();
+	if (!normalizedRequest) {
+		return "Continue the latest Plan Mode request after planning-focused compaction. Use the preserved summary and current project docs; do not ask the user to repeat the request unless a required detail is missing.";
+	}
+	return `Continue the following Plan Mode request after planning-focused compaction. Use the preserved summary and current project docs; do not ask the user to repeat the request unless a required detail is missing.\n\nLatest request:\n${normalizedRequest}`;
+}
+
 export function getPlanCompactionReason(usage: PlanContextUsage | null | undefined): string | undefined {
 	if (!usage) return undefined;
 
