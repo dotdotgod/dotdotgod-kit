@@ -33,6 +33,8 @@ function createFixture() {
   writeFileSync(join(root, 'packages/app/helper.mjs'), "const routingPolicyHelper = 'package metadata helper';\nvoid routingPolicyHelper;\n");
   writeFileSync(join(root, 'packages/app/neighbor.mjs'), "const routingPolicyNeighbor = 'package metadata neighbor';\nvoid routingPolicyNeighbor;\n");
   writeFileSync(join(root, 'packages/app/index.test.mjs'), "const routingPolicyTest = 'traceability-backed verification';\nvoid routingPolicyTest;\n");
+  const sync = spawnSync(process.execPath, [bin, 'traceability', 'links', root, '--write', '--json'], { encoding: 'utf8' });
+  assert.equal(sync.status, 0, sync.stderr || sync.stdout);
   return root;
 }
 
@@ -108,6 +110,9 @@ describe('dotdotgod CLI e2e', () => {
       [['load-snapshot', '--help'], /dotdotgod load-snapshot <root>/],
       [['resolve', '--help'], /dotdotgod resolve <root> <ref>/],
       [['expand', '--help'], /--fuzzy/],
+      [['traceability', '--help'], /dotdotgod traceability links <root>/],
+      [['traceability', 'links', '--help'], /generated Markdown traceability link sections/],
+      [['help', 'traceability', 'links'], /dotdotgod traceability links <root>/],
       [['graph', '--help'], /dotdotgod graph communities <root>/],
       [['graph', 'impact', '--help'], /dotdotgod graph impact <root> --changed <path>/],
       [['graph', 'communities', '--help'], /dotdotgod graph communities <root>/],
@@ -306,6 +311,7 @@ describe('dotdotgod CLI e2e', () => {
     assert.deepEqual(initialized.validation.markdown.exclude, []);
     assert.deepEqual(initialized.referenceExpansion.fuzzy.lowSignal, { add: [], remove: [] });
     assert(initialized.memory.areas.some((area) => area.id === 'archive-body' && area.includeBodiesByDefault === false));
+    assert(initialized.memory.areas.every((area) => area.description === undefined && area.clarify === undefined));
 
     const showConfigured = json(run(['config', root, '--json']));
     assert.equal(showConfigured.source, 'dotdotgod.config.json');
@@ -342,6 +348,41 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(invalidReference.status, 1);
     assert(JSON.parse(invalidReference.stdout).errors.some((error) => error.code === 'REFERENCE_EXPANSION_CONFIG_INVALID_LOW_SIGNAL_TERMS'));
     assert.equal(existsSync(join(invalidRoot, '.dotdotgod/manifest.json')), false);
+
+    const metadataRoot = createFixture();
+    writeConfig(metadataRoot, {
+      memory: {
+        areas: [{
+          id: 'product',
+          label: 'Product Docs',
+          paths: ['docs/spec/**'],
+          scope: 'shared',
+          freshness: 'fresh',
+          role: 'product-intent',
+          description: 'Product intent and user-facing acceptance criteria.',
+          clarify: {
+            audience: ['first-time developers', 'contributors'],
+            documentType: 'explanation',
+            clarityGoal: 'Make product intent clear without implementation detail.',
+            editRules: ['Preserve user-facing intent.'],
+          },
+          priority: 75,
+          includeBodiesByDefault: true,
+        }],
+      },
+    });
+    const metadataConfig = json(run(['config', metadataRoot, '--json']));
+    const metadataArea = metadataConfig.config.areas.find((area) => area.id === 'product');
+    assert.equal(metadataArea.description, 'Product intent and user-facing acceptance criteria.');
+    assert.deepEqual(metadataArea.clarify.audience, ['first-time developers', 'contributors']);
+    assert.equal(metadataArea.clarify.documentType, 'explanation');
+    const metadataSnapshot = json(run(['load-snapshot', metadataRoot, '--json']));
+    const snapshotArea = metadataSnapshot.memoryConfig.areas.find((area) => area.id === 'product');
+    assert.equal(snapshotArea.description, metadataArea.description);
+    assert.deepEqual(snapshotArea.clarify, metadataArea.clarify);
+    const boundedArea = metadataSnapshot.memoryAreas.areas.find((area) => area.area === 'product');
+    assert.equal(boundedArea.description, metadataArea.description);
+    assert.deepEqual(boundedArea.clarify, metadataArea.clarify);
   });
 
   it('supports configured markdown size budgets and size-check exclusions', () => {
@@ -362,6 +403,34 @@ describe('dotdotgod CLI e2e', () => {
     const cliOverride = run(['validate', root, '--include-local-memory', '--max-chars', '10000', '--json']);
     assert.equal(cliOverride.status, 1);
     assert(JSON.parse(cliOverride.stdout).errors.some((error) => error.code === 'FILE_TOO_LARGE'));
+  });
+
+  it('checks and writes generated traceability links and JSON traceability blocks without counting them against markdown budgets', () => {
+    const root = createFixture();
+    writeFileSync(join(root, 'docs/spec/APP.md'), '# Routing Policy App\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["packages/app/index.test.mjs", "docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "verificationCommands": ["node --test packages/app/index.test.mjs"]\n}\n```\n');
+
+    const missing = run(['traceability', 'links', root, '--check', '--json']);
+    assert.equal(missing.status, 1);
+    assert.equal(JSON.parse(missing.stdout).changed, 1);
+
+    const written = json(run(['traceability', 'links', root, '--write', '--json']));
+    assert.equal(written.changed, 1);
+    const spec = readFileSync(join(root, 'docs/spec/APP.md'), 'utf8');
+    assert.match(spec, /dotdotgod:traceability-links:start/);
+    assert.match(spec, /\.\.\/\.\.\/packages\/app\/index\.mjs/);
+    assert.equal(json(run(['traceability', 'links', root, '--check', '--json'])).ok, true);
+
+    const bloated = spec.replace('"verificationCommands":["node --test packages/app/index.test.mjs"]', `"verificationCommands":[${JSON.stringify('node --test packages/app/index.test.mjs ' + 'x'.repeat(5000))}]`);
+    writeFileSync(join(root, 'docs/spec/APP.md'), bloated);
+    assert.equal(json(run(['traceability', 'links', root, '--write', '--json'])).ok, true);
+    writeConfig(root, { validation: { markdown: { maxLines: 30, maxChars: 2000 } } });
+    assert.equal(json(run(['validate', root, '--include-local-memory', '--json'])).ok, true);
+
+    const invalid = readFileSync(join(root, 'docs/spec/APP.md'), 'utf8').replace('<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->', '');
+    writeFileSync(join(root, 'docs/spec/APP.md'), invalid);
+    const invalidValidate = run(['validate', root, '--include-local-memory', '--json']);
+    assert.equal(invalidValidate.status, 1);
+    assert(JSON.parse(invalidValidate.stdout).errors.some((error) => error.code === 'TRACEABILITY_LINKS_MARKER_COUNT'));
   });
 
   it('validates, indexes, reports status, snapshots, and graph impact results', () => {
@@ -545,7 +614,7 @@ describe('dotdotgod CLI e2e', () => {
     writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({
       memory: {
         areas: [
-          { id: 'Bad Id', paths: [], scope: 'global', freshness: 'old', priority: 101, includeBodiesByDefault: 'yes' },
+          { id: 'Bad Id', paths: [], scope: 'global', freshness: 'old', priority: 101, includeBodiesByDefault: 'yes', description: '', clarify: { audience: [''], documentType: '', clarityGoal: 42, editRules: [7] } },
         ],
       },
     }, null, 2));
@@ -555,6 +624,11 @@ describe('dotdotgod CLI e2e', () => {
     const payload = JSON.parse(invalid.stdout);
     assert(payload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_ID'));
     assert(payload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_SCOPE'));
+    assert(payload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_DESCRIPTION'));
+    assert(payload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_CLARIFY_AUDIENCE'));
+    assert(payload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_CLARIFY_DOCUMENT_TYPE'));
+    assert(payload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_CLARITY_GOAL'));
+    assert(payload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_CLARIFY_EDIT_RULES'));
     const snapshot = json(run(['load-snapshot', root, '--json']));
     assert.equal(snapshot.memoryConfig.source, 'dotdotgod.config.json');
     assert(snapshot.memoryPolicy.sharedAreas.includes('spec'));
@@ -586,6 +660,7 @@ describe('dotdotgod CLI e2e', () => {
     const block = '\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "verificationCommands": ["node --test"]\n}\n```\n';
     writeFileSync(join(root, 'docs/product/FEATURE.md'), `# Product Feature\n${block}`);
     writeFileSync(join(root, 'docs/requirements/REQ.md'), `# Requirement\n${block}`);
+    assert.equal(json(run(['traceability', 'links', root, '--write', '--json'])).ok, true);
     const valid = run(['validate', root, '--include-local-memory', '--json']);
     assert.equal(valid.status, 0, valid.stdout + valid.stderr);
   });

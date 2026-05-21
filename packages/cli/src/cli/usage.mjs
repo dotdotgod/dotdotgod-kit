@@ -40,6 +40,14 @@ Create dotdotgod.config.json with the built-in default memory, traceability, val
     case 'expand':
       return `Usage:
   dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]`;
+    case 'traceability':
+      return `Usage:
+  dotdotgod traceability links <root> [--check|--write] [--json]`;
+    case 'traceability links':
+      return `Usage:
+  dotdotgod traceability links <root> [--check|--write] [--json]
+
+Checks or writes generated Markdown traceability link sections from canonical fenced json dotdotgod blocks.`;
     case 'graph':
       return `Usage:
   dotdotgod graph impact <root> --changed <path> [--compact|--json|--yml|--yaml]
@@ -66,6 +74,7 @@ Ranks nodes related to a changed file. <root> is the project root; --changed is 
   dotdotgod load-snapshot <root> [--json]
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]
   dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]
+  dotdotgod traceability links <root> [--check|--write] [--json]
   dotdotgod graph impact <root> --changed <path> [--compact|--json|--yml|--yaml]
   dotdotgod graph communities <root> [--json]`;
   }
@@ -111,6 +120,7 @@ export function printVersion() {
 export function helpCommandFromArgs(args) {
   const nonHelp = args.filter((arg) => !isHelpToken(arg));
   if (nonHelp[0] === 'graph' && nonHelp[1]) return `graph ${nonHelp[1]}`;
+  if (nonHelp[0] === 'traceability' && nonHelp[1]) return `traceability ${nonHelp[1]}`;
   if (nonHelp[0] === 'config' && nonHelp[1] === 'init') return 'config init';
   return nonHelp[0] ?? 'root';
 }

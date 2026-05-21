@@ -31,6 +31,7 @@ Command-line tools for dotdotgod project memory. The CLI turns explicit, maintai
 
 - Initialize `AGENTS.md`, thin agent entrypoints, docs indexes, active-plan space, archive map, and local cache ignores with `dotdotgod init`.
 - Replace ad-hoc docs checks with `dotdotgod validate`.
+- Keep generated Markdown traceability links synchronized with `dotdotgod traceability links`.
 - Build `.dotdotgod/` as a local ignored cache of file fingerprints and compact graph shards derived from maintained project links.
 - Use `load-snapshot` as a bounded first-pass map for high-quality agent loading.
 - Resolve explicit `[[...]]` references or high-signal fuzzy references before broad text search.
@@ -53,13 +54,26 @@ dotdotgod load-snapshot .
 dotdotgod resolve . PLAN_MODE
 dotdotgod expand . "Update [[PLAN_MODE]] and [[HOOKS]]"
 dotdotgod expand . "PLAN_MODE 수정하자" --fuzzy
+dotdotgod traceability links . --check
+dotdotgod traceability links . --write
 dotdotgod graph impact . --changed <path>
 dotdotgod graph impact . --changed <path> --compact
 dotdotgod graph impact . --changed <path> --yml
 dotdotgod graph communities .
 ```
 
-`--help`, `-h`, and `help` print usage to stdout. Command-specific help is available with `dotdotgod <command> --help`, including nested commands such as `dotdotgod graph impact --help` and `dotdotgod config init --help`.
+`--help`, `-h`, and `help` print usage to stdout. Command-specific help is available with `dotdotgod <command> --help`, including nested commands such as `dotdotgod graph impact --help`, `dotdotgod config init --help`, and `dotdotgod traceability links --help`.
+
+## Validation and Verification Boundaries
+
+| Command | Responsibility |
+| --- | --- |
+| `dotdotgod validate <root>` | Checks dotdotgod docs/project-memory structure, local links, traceability blocks, generated traceability-link drift, config validity, and optional index freshness. |
+| `dotdotgod traceability links <root> --check` | Runs only the generated traceability-link and compact JSON drift check. |
+| `dotdotgod traceability links <root> --write` | Repairs generated traceability-link sections and rewrites canonical `json dotdotgod` blocks as compact JSON. |
+| `pnpm run verify` | Runs the repository-level quality gate: generated-resource checks, package verify contracts, tests, typecheck, and docs validation where each package defines it. |
+
+Most users start with `validate`. Use `traceability links --write` only when generated traceability output needs repair, and use `verify` before release-style handoff.
 
 ## Graph, Cache, and Impact
 

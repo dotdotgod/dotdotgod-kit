@@ -42,6 +42,7 @@ All path fields are arrays. Scalar path settings are invalid and validation shou
 - `dotdotgod validate --max-lines <n>` and `--max-chars <n>` override configured numeric budgets for that invocation.
 - `validation.markdown.exclude` applies when CLI numeric overrides are used.
 - Invalid config is reported by `dotdotgod validate` and `dotdotgod config`. Runtime commands fall back to the default policy so read-only snapshot and graph commands remain usable.
+- Generated traceability-link regions and canonical `json dotdotgod` blocks are excluded before line and character budgets are measured.
 - Markdown size budgets encourage focused specs and test docs, but size validation does not classify micro-specs or enforce semantic coverage.
 
 ## Example: Exempt an Archive Index
@@ -62,27 +63,31 @@ This keeps the default markdown budgets for normal docs while allowing the archi
 
 ## Traceability
 
+
+
+<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
+<!-- generated: do not edit manually -->
+
+### Traceability Links
+
+- Implemented by:
+  - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
+- Verified by:
+  - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
+  - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
+  - [docs/test/VALIDATION_CONFIG.md](../test/VALIDATION_CONFIG.md)
+- Related docs:
+  - [docs/spec/CONFIG_COMMAND.md](CONFIG_COMMAND.md)
+  - [docs/spec/CLI_INTERFACE.md](CLI_INTERFACE.md)
+  - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
+  - [docs/arch/DOCS_STRUCTURE.md](../arch/DOCS_STRUCTURE.md)
+- Verification commands:
+  - `pnpm --filter @dotdotgod/cli test`
+  - `node packages/cli/bin/dotdotgod.mjs config . --json`
+  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory`
+
+<!-- dotdotgod:traceability-links:end -->
+
 ```json dotdotgod
-{
-  "kind": "spec",
-  "implementedBy": [
-    "packages/cli/src/core.mjs"
-  ],
-  "verifiedBy": [
-    "packages/cli/test/core.test.mjs",
-    "packages/cli/test/e2e.test.mjs",
-    "docs/test/VALIDATION_CONFIG.md"
-  ],
-  "relatedDocs": [
-    "docs/spec/CONFIG_COMMAND.md",
-    "docs/spec/CLI_INTERFACE.md",
-    "docs/arch/VALIDATION_ARCHITECTURE.md",
-    "docs/arch/DOCS_STRUCTURE.md"
-  ],
-  "verificationCommands": [
-    "pnpm --filter @dotdotgod/cli test",
-    "node packages/cli/bin/dotdotgod.mjs config . --json",
-    "node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"
-  ]
-}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/VALIDATION_CONFIG.md"],"relatedDocs":["docs/spec/CONFIG_COMMAND.md","docs/spec/CLI_INTERFACE.md","docs/arch/VALIDATION_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs config . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
 ```

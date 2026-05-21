@@ -108,33 +108,37 @@ Claude Code and Codex adapters may document optional start hooks that remind age
 
 ## Traceability
 
+
+
+<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
+<!-- generated: do not edit manually -->
+
+### Traceability Links
+
+- Implemented by:
+  - [packages/pi/extensions/load-project/index.ts](../../packages/pi/extensions/load-project/index.ts)
+  - [packages/pi/extensions/load-project/utils.ts](../../packages/pi/extensions/load-project/utils.ts)
+  - [packages/shared/workflows/load.md](../../packages/shared/workflows/load.md)
+  - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
+  - [packages/claude-code/hooks/README.md](../../packages/claude-code/hooks/README.md)
+  - [packages/codex/hooks/README.md](../../packages/codex/hooks/README.md)
+- Verified by:
+  - [packages/pi/test/load-project-utils.test.ts](../../packages/pi/test/load-project-utils.test.ts)
+  - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
+  - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
+  - [docs/test/README.md](../test/README.md)
+- Related docs:
+  - [docs/spec/CROSS_AGENT_SUPPORT.md](CROSS_AGENT_SUPPORT.md)
+  - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../arch/CROSS_AGENT_ARCHITECTURE.md)
+  - [docs/arch/EXTENSION_ARCHITECTURE.md](../arch/EXTENSION_ARCHITECTURE.md)
+  - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
+- Verification commands:
+  - `pnpm --filter @dotdotgod/pi test`
+  - `pnpm --filter @dotdotgod/cli test`
+  - `node packages/cli/bin/dotdotgod.mjs load-snapshot . --json`
+
+<!-- dotdotgod:traceability-links:end -->
+
 ```json dotdotgod
-{
-  "kind": "spec",
-  "implementedBy": [
-    "packages/pi/extensions/load-project/index.ts",
-    "packages/pi/extensions/load-project/utils.ts",
-    "packages/shared/workflows/load.md",
-    "packages/cli/src/core.mjs",
-    "packages/claude-code/hooks/README.md",
-    "packages/codex/hooks/README.md"
-  ],
-  "verifiedBy": [
-    "packages/pi/test/load-project-utils.test.ts",
-    "packages/cli/test/core.test.mjs",
-    "packages/cli/test/e2e.test.mjs",
-    "docs/test/README.md"
-  ],
-  "relatedDocs": [
-    "docs/spec/CROSS_AGENT_SUPPORT.md",
-    "docs/arch/CROSS_AGENT_ARCHITECTURE.md",
-    "docs/arch/EXTENSION_ARCHITECTURE.md",
-    "docs/arch/VALIDATION_ARCHITECTURE.md"
-  ],
-  "verificationCommands": [
-    "pnpm --filter @dotdotgod/pi test",
-    "pnpm --filter @dotdotgod/cli test",
-    "node packages/cli/bin/dotdotgod.mjs load-snapshot . --json"
-  ]
-}
+{"kind":"spec","implementedBy":["packages/pi/extensions/load-project/index.ts","packages/pi/extensions/load-project/utils.ts","packages/shared/workflows/load.md","packages/cli/src/core.mjs","packages/claude-code/hooks/README.md","packages/codex/hooks/README.md"],"verifiedBy":["packages/pi/test/load-project-utils.test.ts","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/README.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/EXTENSION_ARCHITECTURE.md","docs/arch/VALIDATION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/pi test","pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs load-snapshot . --json"]}
 ```

@@ -24,22 +24,28 @@ import {
   extractFuzzyReferences,
   extractDotdotgodTraceabilityBlocks,
   extractLinks,
+  findTraceabilityLinksRegion,
   graphSummary,
   headingToAnchor,
   isKebabCase,
   isReadmeIndexPath,
   isUpperSnakeMarkdown,
   memoryAreaForPath,
+  memoryConfigSummary,
   memoryRoleForPath,
   neighborhood,
   normalizeReferenceAlias,
   readMemoryConfig,
   resolveReferenceCandidates,
+  renderCompactTraceabilityBlock,
   requiresTraceability,
   retrievalPriorityForPath,
   shouldIndexPath,
+  stripTraceabilityLinksRegion,
+  syncTraceabilityLinksInContent,
   validateMemoryConfigData,
   validateTraceabilityBlock,
+  validateTraceabilityLinksRegion,
 } from '../src/core.mjs';
 
 function fixture() {
@@ -242,6 +248,35 @@ describe('CLI docs helpers', () => {
     assert(invalid.some((error) => error.code === 'TRACEABILITY_INVALID_COMMAND'));
   });
 
+  it('generates, validates, and strips traceability link regions', () => {
+    const root = fixture();
+    const file = join(root, 'docs/spec/FEATURE.md');
+    const content = readFileSync(file, 'utf8');
+    const block = extractDotdotgodTraceabilityBlocks(content)[0];
+    const synced = syncTraceabilityLinksInContent(content, block.data, root, file);
+    assert.equal(synced.ok, true);
+    assert.equal(synced.changed, true);
+    assert.match(synced.content, /dotdotgod:traceability-links:start version=1 source=json-dotdotgod/);
+    assert.match(synced.content, /```json dotdotgod\n\{"kind":"spec","implementedBy":/);
+    assert.match(synced.content, /\[packages\/tool\/index\.mjs\]\(\.\.\/\.\.\/packages\/tool\/index\.mjs\)/);
+    assert.match(synced.content, /\[docs\/test\/README\.md\]\(\.\.\/test\/README\.md\)/);
+    assert(findTraceabilityLinksRegion(synced.content).status === 'present');
+    assert.deepEqual(validateTraceabilityLinksRegion(synced.content, root, file), []);
+    assert.equal(extractDotdotgodTraceabilityBlocks(stripTraceabilityLinksRegion(synced.content)).length, 0);
+    assert.equal(renderCompactTraceabilityBlock(block.data).includes('\n  "kind"'), false);
+
+    const stale = synced.content.replace('index.mjs', 'stale.mjs');
+    const replaced = syncTraceabilityLinksInContent(stale, block.data, root, file);
+    assert.equal(replaced.ok, true);
+    assert.equal(replaced.changed, true);
+    assert.match(replaced.content, /\[packages\/tool\/index\.mjs\]/);
+    assert.doesNotMatch(replaced.content, /stale\.mjs/);
+
+    const invalid = `${content}\n<!-- dotdotgod:traceability-links:end -->\n`;
+    const errors = validateTraceabilityLinksRegion(invalid, root, file);
+    assert.equal(errors[0].code, 'TRACEABILITY_LINKS_MARKER_COUNT');
+  });
+
   it('classifies dotdotgod memory paths for deterministic retrieval hints', () => {
     assert.equal(memoryAreaForPath('AGENTS.md'), 'rules');
     assert.equal(memoryRoleForPath('docs/spec/README.md'), 'behavior-truth');
@@ -264,6 +299,7 @@ describe('CLI docs helpers', () => {
     assert.equal(data.impactRanking.preset, 'balanced');
     assert.deepEqual(data.referenceExpansion.fuzzy.lowSignal, { add: [], remove: [] });
     assert(JSON.parse(defaultDotdotgodConfigText()).referenceExpansion.fuzzy.lowSignal);
+    assert(data.memory.areas.every((area) => area.description === undefined && area.clarify === undefined));
 
     const root = fixture();
     writeFixtureFile(root, 'dotdotgod.config.json', defaultDotdotgodConfigText());
@@ -277,7 +313,23 @@ describe('CLI docs helpers', () => {
     writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({
       memory: {
         areas: [
-          { id: 'docs-shared', label: 'Shared Docs', paths: ['docs/spec/**'], scope: 'shared', freshness: 'fresh', role: 'behavior-truth', priority: 80, includeBodiesByDefault: true },
+          {
+            id: 'docs-shared',
+            label: 'Shared Docs',
+            paths: ['docs/spec/**'],
+            scope: 'shared',
+            freshness: 'fresh',
+            role: 'behavior-truth',
+            description: 'Behavior contracts for current product behavior.',
+            clarify: {
+              audience: ['first-time developers', 'AI coding agents'],
+              documentType: 'spec',
+              clarityGoal: 'Make behavior contracts precise without changing requirements.',
+              editRules: ['Preserve traceability blocks.'],
+            },
+            priority: 80,
+            includeBodiesByDefault: true,
+          },
           { id: 'local-history', label: 'Local History', paths: ['docs/archive/**'], scope: 'local', freshness: 'stale', role: 'historical-memory-body', priority: 10, includeBodiesByDefault: false },
         ],
       },
@@ -288,6 +340,74 @@ describe('CLI docs helpers', () => {
     assert.equal(memoryAreaForPath('docs/archive/OLD.md', config), 'local-history');
     assert.equal(shouldIndexPath('docs/archive/OLD.md', config), false);
     assert.equal(shouldIndexPath('docs/spec/FEATURE.md', config), true);
+    const area = config.areas.find((item) => item.id === 'docs-shared');
+    assert.equal(area.description, 'Behavior contracts for current product behavior.');
+    assert.deepEqual(area.clarify.audience, ['first-time developers', 'AI coding agents']);
+    assert.equal(area.clarify.documentType, 'spec');
+    assert.equal(area.clarify.clarityGoal, 'Make behavior contracts precise without changing requirements.');
+    assert.deepEqual(area.clarify.editRules, ['Preserve traceability blocks.']);
+    const summary = memoryConfigSummary(config).areas.find((item) => item.id === 'docs-shared');
+    assert.equal(summary.description, area.description);
+    assert.deepEqual(summary.clarify, area.clarify);
+    const index = buildIndex(root);
+    const memoryArea = buildMemoryAreas(index).areas.find((item) => item.area === 'docs-shared');
+    assert.equal(memoryArea.description, area.description);
+    assert.deepEqual(memoryArea.clarify, area.clarify);
+  });
+
+  it('validates optional memory-area document clarity metadata', () => {
+    const root = fixture();
+    const invalid = validateMemoryConfigData({
+      memory: {
+        areas: [
+          {
+            id: 'custom-docs',
+            label: 'Custom Docs',
+            paths: ['docs/custom/**'],
+            scope: 'shared',
+            freshness: 'fresh',
+            role: 'custom-docs',
+            description: '   ',
+            clarify: {
+              audience: ['contributors', ''],
+              documentType: '',
+              clarityGoal: 42,
+              editRules: ['keep role', 7],
+            },
+          },
+          {
+            id: 'bad-clarify',
+            label: 'Bad Clarify',
+            paths: ['docs/bad/**'],
+            scope: 'shared',
+            freshness: 'fresh',
+            role: 'bad-docs',
+            clarify: [],
+          },
+        ],
+      },
+    }, root);
+    const codes = new Set(invalid.map((error) => error.code));
+    assert(codes.has('MEMORY_CONFIG_INVALID_DESCRIPTION'));
+    assert(codes.has('MEMORY_CONFIG_INVALID_CLARIFY_AUDIENCE'));
+    assert(codes.has('MEMORY_CONFIG_INVALID_CLARIFY_DOCUMENT_TYPE'));
+    assert(codes.has('MEMORY_CONFIG_INVALID_CLARITY_GOAL'));
+    assert(codes.has('MEMORY_CONFIG_INVALID_CLARIFY_EDIT_RULES'));
+    assert(codes.has('MEMORY_CONFIG_INVALID_CLARIFY'));
+
+    assert.deepEqual(validateMemoryConfigData({
+      memory: {
+        areas: [{
+          id: 'empty-overrides',
+          label: 'Empty Overrides',
+          paths: ['docs/empty/**'],
+          scope: 'shared',
+          freshness: 'fresh',
+          role: 'empty-overrides',
+          clarify: { audience: [], editRules: [] },
+        }],
+      },
+    }, root), []);
   });
 
   it('detects command guidance for local source, project install, and missing CLI projects', () => {

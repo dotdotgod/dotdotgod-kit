@@ -70,7 +70,7 @@ Each file node receives retrieval metadata derived from the resolved memory area
 - `retrieval.freshness`
 - retrieval signals such as `scope:shared`, `scope:local`, `freshness:fresh`, and `freshness:stale`
 
-The graph also creates `memory_area:*` nodes with area label, role, scope, freshness, priority, and inclusion policy. `belongs_to_area` edges carry the same scope and freshness metadata.
+The graph also creates `memory_area:*` nodes with area label, role, scope, freshness, priority, and inclusion policy. `belongs_to_area` edges carry the same scope and freshness metadata. Optional document-clarity metadata is preserved in resolved config and load-snapshot area summaries rather than changing graph ranking semantics.
 
 Impact ranking uses this metadata as a bounded memory-policy score. Curated traceability remains higher-confidence than deterministic semantic edges, while memory priority only adjusts retrieval order without replacing explicit docs/code/test links.
 
@@ -78,9 +78,9 @@ Impact ranking uses this metadata as a bounded memory-policy score. Curated trac
 
 `load-snapshot` exposes config policy in bounded form:
 
-- `memoryConfig`: the resolved config source and area definitions
+- `memoryConfig`: the resolved config source and area definitions, including optional `description` and `clarify` metadata when configured
 - `memoryPolicy`: area ids grouped by shared/local and fresh/stale
-- `memoryAreas`: bounded files by configured area
+- `memoryAreas`: bounded files by configured area, including optional area clarity metadata when configured
 - `bounds.archiveBodiesIncluded`: whether stale archive bodies were indexed
 
 The snapshot remains a navigation layer. It does not embed the full graph or archive bodies by default.
@@ -88,6 +88,8 @@ The snapshot remains a navigation layer. It does not embed the full graph or arc
 ## Validation Policy
 
 Validation owns schema checks for the optional config. Projects may omit the config file. Memory scope and git tracking are related but separate: local-memory defaults still require `docs/plan`, `docs/archive`, and `.dotdotgod` to be ignored. Custom memory scopes do not automatically create gitignore rules.
+
+Optional `description` and `clarify` fields are metadata for humans and agent skills. They must be valid strings/arrays when present, but they do not affect path matching, inclusion policy, traceability enforcement, impact ranking weights, or default config initialization.
 
 The same config file can define `traceability.required` and `traceability.exclude` arrays. When absent, the default traceability policy requires `docs/spec/**` and excludes `**/README.md`. Custom required arrays replace the default list, which lets projects move behavior-traceability enforcement to other shared documentation areas while keeping the traceability block schema unchanged.
 

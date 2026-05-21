@@ -30,7 +30,8 @@
     "syntax": "node --check extensions/context-metrics/utils.ts && node --check extensions/load-project/index.ts && node --check extensions/load-project/utils.ts && node --check extensions/plan-mode/index.ts && node --check extensions/plan-mode/utils.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-strip-types test/*.test.ts",
-    "verify": "pnpm run syntax && pnpm run typecheck && pnpm run test",
+    "check:resources": "node -e \"const fs=require('fs'); const req=['skills/project-initializer/SKILL.md','skills/project-initializer/agents/openai.yaml','skills/project-initializer/scripts/init_project.sh','skills/document-clarify/SKILL.md','skills/document-clarify/agents/openai.yaml']; for (const f of req) { if (!fs.existsSync(f)) throw new Error('missing '+f); } console.log('pi resources ok')\"",
+    "verify": "pnpm run syntax && pnpm run typecheck && pnpm run test && pnpm run check:resources",
     "pack:dry-run": "pnpm pack --dry-run --json"
   },
   "peerDependencies": {

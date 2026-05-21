@@ -45,6 +45,7 @@ const loadBody = read("packages/shared/workflows/load.md");
 const planBody = read("packages/shared/workflows/plan.md");
 const initBody = read("packages/shared/workflows/init.md");
 const impactBody = read("packages/shared/workflows/impact.md");
+const docClarifyBody = read("packages/shared/workflows/doc-clarify.md");
 
 const initCommands = {
   pi: "sh scripts/init_project.sh <project-root>",
@@ -69,6 +70,7 @@ const yaml = {
   plan: `interface:\n  display_name: "Doc-First Planning"\n  short_description: "Plan work from dotdotgod docs first."\n  default_prompt: "Plan this change from AGENTS.md, docs/spec, docs/test, docs/arch, and docs/plan before implementation."\n`,
   init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize agent docs and local docs folders."\n  default_prompt: "Initialize this project with dotdotgod init when available, otherwise use the bundled fallback; include AGENTS.md, CLAUDE.md, CODEX.md, docs folders, and local memory gitignore entries."\n`,
   impact: `interface:\n  display_name: "Impact Review"\n  short_description: "Review changed files with dotdotgod graph impact."\n  default_prompt: "Review current changed source, config, and docs files with dotdotgod graph impact before broad verification or handoff."\n`,
+  docClarify: `interface:\n  display_name: "Document Clarify"\n  short_description: "Clarify dotdotgod project documentation."\n  default_prompt: "Clarify the target docs using dotdotgod memory-area metadata, default document roles, and docs-as-code clarity rules while preserving behavior contracts."\n`,
 };
 
 write(
@@ -82,6 +84,15 @@ write(
 write("packages/pi/skills/project-initializer/agents/openai.yaml", yaml.init);
 copyDirectory("packages/shared/initializer/scripts", "packages/pi/skills/project-initializer/scripts");
 copyDirectory("packages/shared/initializer/references", "packages/pi/skills/project-initializer/references");
+write(
+  "packages/pi/skills/document-clarify/SKILL.md",
+  skill(
+    `name: document-clarify\ndescription: Clarify project documentation using dotdotgod memory-area metadata, default document roles, and docs-as-code clarity rules. Use when asked to improve README indexes, specs, tests, architecture docs, plans, archives, or project-specific docs without changing behavior contracts.`,
+    "Document Clarify",
+    docClarifyBody,
+  ),
+);
+write("packages/pi/skills/document-clarify/agents/openai.yaml", yaml.docClarify);
 
 write(
   "packages/claude-code/commands/dd/load.md",
@@ -151,10 +162,19 @@ write(
     impactBody,
   ),
 );
+write(
+  "packages/claude-code/skills/document-clarify/SKILL.md",
+  skill(
+    `name: document-clarify\ndescription: Use this skill when Claude Code should clarify project documentation using dotdotgod memory-area metadata, default document roles, and docs-as-code clarity rules; when README indexes, docs/spec, docs/test, docs/arch, docs/plan, docs/archive, or project-specific docs need clearer wording without changing behavior contracts.\nversion: 1.0.0`,
+    "Document Clarify",
+    docClarifyBody,
+  ),
+);
 write("packages/claude-code/skills/project-load/agents/openai.yaml", yaml.load);
 write("packages/claude-code/skills/doc-first-planning/agents/openai.yaml", yaml.plan);
 write("packages/claude-code/skills/project-initializer/agents/openai.yaml", yaml.init);
 write("packages/claude-code/skills/impact-review/agents/openai.yaml", yaml.impact);
+write("packages/claude-code/skills/document-clarify/agents/openai.yaml", yaml.docClarify);
 copyDirectory("packages/shared/initializer/scripts", "packages/claude-code/skills/project-initializer/scripts");
 copyDirectory("packages/shared/initializer/references", "packages/claude-code/skills/project-initializer/references");
 
@@ -190,10 +210,19 @@ write(
     impactBody,
   ),
 );
+write(
+  "packages/codex/skills/document-clarify/SKILL.md",
+  skill(
+    `name: document-clarify\ndescription: Clarify project documentation using dotdotgod memory-area metadata and default document roles. Use when Codex is asked to improve README indexes, specs, tests, architecture docs, plans, archives, or project-specific docs while preserving behavior contracts.`,
+    "Document Clarify",
+    docClarifyBody,
+  ),
+);
 write("packages/codex/skills/project-load/agents/openai.yaml", yaml.load);
 write("packages/codex/skills/doc-first-planning/agents/openai.yaml", yaml.plan);
 write("packages/codex/skills/project-initializer/agents/openai.yaml", yaml.init);
 write("packages/codex/skills/impact-review/agents/openai.yaml", yaml.impact);
+write("packages/codex/skills/document-clarify/agents/openai.yaml", yaml.docClarify);
 copyDirectory("packages/shared/initializer/scripts", "packages/codex/skills/project-initializer/scripts");
 copyDirectory("packages/shared/initializer/references", "packages/codex/skills/project-initializer/references");
 

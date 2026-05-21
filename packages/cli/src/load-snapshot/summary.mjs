@@ -54,7 +54,20 @@ export function buildMemoryAreas(index, limits = {}) {
   const config = index?.memoryConfig?.areas ? index.memoryConfig : defaultMemoryConfig();
   const areas = new Map();
   for (const definition of config.areas ?? []) {
-    areas.set(definition.id, { area: definition.id, label: definition.label, role: definition.role, scope: definition.scope, freshness: definition.freshness, priority: definition.priority, includeBodiesByDefault: definition.includeBodiesByDefault !== false, files: [], count: 0, omitted: 0 });
+    areas.set(definition.id, {
+      area: definition.id,
+      label: definition.label,
+      role: definition.role,
+      ...(definition.description ? { description: definition.description } : {}),
+      ...(definition.clarify ? { clarify: definition.clarify } : {}),
+      scope: definition.scope,
+      freshness: definition.freshness,
+      priority: definition.priority,
+      includeBodiesByDefault: definition.includeBodiesByDefault !== false,
+      files: [],
+      count: 0,
+      omitted: 0,
+    });
   }
   for (const node of graph.nodes) {
     if (node.type !== 'file') continue;

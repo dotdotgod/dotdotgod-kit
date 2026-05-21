@@ -21,6 +21,17 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 
 ## Verification Command Cheat Sheet
 
+Use `validate` for docs/project-memory correctness. Use `verify` for the repository-level quality gate that also runs package checks, tests, typecheck, and generated-resource checks.
+
+Everyday docs and project-memory checks:
+
+```bash
+node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
+node packages/cli/bin/dotdotgod.mjs validate . --check-index
+```
+
+Release-style workspace checks:
+
 ```bash
 pnpm run generate
 pnpm run verify:generated
@@ -30,11 +41,9 @@ pnpm run verify:contract
 pnpm --filter @dotdotgod/cli test
 pnpm run verify
 pnpm run pack:dry-run
-node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
-node packages/cli/bin/dotdotgod.mjs validate . --check-index
 ```
 
-CLI graph/cache smoke commands:
+Focused graph/cache smoke commands:
 
 ```bash
 node packages/cli/bin/dotdotgod.mjs --help

@@ -34,22 +34,26 @@ Dotdotgod changes the control point. The durable source of truth is curated proj
 
 A spec can declare its implementation, verification, related docs, and commands:
 
+
+
+<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
+<!-- generated: do not edit manually -->
+
+### Traceability Links
+
+- Implemented by:
+  - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
+- Verified by:
+  - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
+- Related docs:
+  - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
+- Verification commands:
+  - `pnpm --filter @dotdotgod/cli test`
+
+<!-- dotdotgod:traceability-links:end -->
+
 ```json dotdotgod
-{
-  "kind": "spec",
-  "implementedBy": [
-    "packages/cli/src/core.mjs"
-  ],
-  "verifiedBy": [
-    "packages/cli/test/core.test.mjs"
-  ],
-  "relatedDocs": [
-    "docs/arch/VALIDATION_ARCHITECTURE.md"
-  ],
-  "verificationCommands": [
-    "pnpm --filter @dotdotgod/cli test"
-  ]
-}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs"],"relatedDocs":["docs/arch/VALIDATION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test"]}
 ```
 
 That turns impact analysis from semantic guessing into curated traversal:

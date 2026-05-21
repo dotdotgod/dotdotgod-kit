@@ -27,6 +27,7 @@ dotdotgod
 - `workflows/load.md`: common project memory loading guidance, including snapshot-first CLI guidance with manual README-index fallback.
 - `workflows/plan.md`: common doc-first planning guidance.
 - `workflows/impact.md`: common graph-impact review guidance for post-edit related-doc/test/source checks before broad verification or handoff.
+- `workflows/doc-clarify.md`: common documentation clarity workflow that uses memory-area metadata and dotdotgod default document roles while preserving behavior contracts.
 - `workflows/init.md`: common project initializer guidance that uses `dotdotgod init` when available and provides platform-specific fallback script command placeholders when the CLI is absent.
 - `initializer/scripts/init_project.sh`: deterministic fallback scaffold generator mirroring `dotdotgod init`.
 - `initializer/references/agent-docs.md`: shared agent-doc naming reference.
@@ -43,6 +44,7 @@ Current implementation:
 
 - `package.json#pi`
 - `skills/project-initializer/`
+- `skills/document-clarify/`
 - `extensions/plan-mode/`
 - `extensions/load-project/`
 
@@ -78,6 +80,7 @@ Current implementation:
 - `skills/doc-first-planning/`
 - `skills/project-initializer/`
 - `skills/impact-review/`
+- `skills/document-clarify/`
 
 Responsibilities:
 
@@ -86,6 +89,7 @@ Responsibilities:
 - project loading skill and `/dd:load` command
 - planning workflow guidance using Claude-native command and skill components
 - impact review workflow guidance using `/dd:impact` and `impact-review` for Pi-like changed-file graph checks without Pi runtime enforcement
+- documentation clarity workflow guidance using `document-clarify` for config-aware docs copy improvements without changing behavior contracts
 - generated load guidance that prefers `dotdotgod load-snapshot` when available and falls back to README-index reads
 - optional hook documentation for advisory reminders, opt-in validation, and narrowly scoped plan-safety patterns
 
@@ -100,11 +104,12 @@ Current implementation:
 - `skills/doc-first-planning/`
 - `skills/project-initializer/`
 - `skills/impact-review/`
+- `skills/document-clarify/`
 
 Responsibilities:
 
 - Codex plugin manifest and package resources
-- reusable skills for initialization, loading, planning, and impact-review workflows
+- reusable skills for initialization, loading, planning, impact-review, and documentation clarity workflows
 - generated load guidance that prefers `dotdotgod load-snapshot` when available and falls back to README-index reads
 - `AGENTS.md`-first instruction flow
 - command-like trigger phrases: `dd:init`, `dd:load`, `dd:plan`, and `dd:impact`
