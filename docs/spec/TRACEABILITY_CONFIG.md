@@ -105,7 +105,7 @@ For focused behavior contracts and micro-specs, use the traceability block to ma
 - `relatedDocs`: architecture, test, config, or neighboring spec docs needed to interpret the behavior.
 - `verificationCommands`: project-local commands an agent can run to verify the behavior or its closest available coverage.
 
-The CLI validates traceability block shape, placement, path safety, existing path targets, and command string presence. It does not validate semantic completeness, prove that tests fully cover every behavior, or require one test per focused contract.
+The CLI validates traceability block shape, placement, path safety, memory-area scope, existing path targets, and command string presence. Path fields must point to shared durable files; they must not reference local-memory areas such as `docs/plan/**`, `docs/archive/**`, or custom `memory.areas[]` entries with `scope: "local"`. It does not validate semantic completeness, prove that tests fully cover every behavior, or require one test per focused contract.
 
 ## Example: Move Enforcement Outside Specs
 

@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { basename, dirname, extname, relative, resolve } from 'node:path';
 import { rel } from '../common/paths.mjs';
+import { defaultMemoryConfig, resolveMemoryArea } from '../memory/config.mjs';
 
 function isSecretIndexPath(path) {
   return /(^|\/)(\.env|\.npmrc|\.pypirc|id_rsa|id_dsa|id_ed25519|credentials|secrets?)(\.|\/|$)/i.test(path);
@@ -167,7 +168,7 @@ export function syncTraceabilityLinksInContent(content, data, root, file) {
   return { ok: true, changed: next !== content, content: next };
 }
 
-export function validateTraceabilityBlock(data, root, file, line = null) {
+export function validateTraceabilityBlock(data, root, file, line = null, config = defaultMemoryConfig()) {
   const errors = [];
   const add = (code, field, message) => errors.push(traceabilityFieldError(rel(root, file), code, field, message, line));
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
@@ -183,6 +184,11 @@ export function validateTraceabilityBlock(data, root, file, line = null) {
     for (const value of data[field]) {
       if (!isLocalRelativeTraceabilityPath(value)) {
         add('TRACEABILITY_INVALID_PATH', field, `invalid local relative path: ${JSON.stringify(value)}.`);
+        continue;
+      }
+      const area = resolveMemoryArea(value, config);
+      if (area?.scope === 'local') {
+        add('TRACEABILITY_LOCAL_MEMORY_TARGET', field, `target points to local memory area "${area.id}": ${value}. Traceability must point to shared durable files, not active plans or archive memory.`);
         continue;
       }
       if (!existsSync(resolve(root, value))) add('TRACEABILITY_MISSING_TARGET', field, `target does not exist: ${value}.`);
