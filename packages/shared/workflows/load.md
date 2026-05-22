@@ -15,12 +15,12 @@ Do not modify files during the load pass unless the user explicitly asks for edi
    - If `dotdotgod` is installed or available in the repository, run `dotdotgod load-snapshot <root> --json`.
    - If the local environment allows package execution but no `dotdotgod` binary is available, optionally run `npx @dotdotgod/cli load-snapshot <root> --json`.
    - Treat the snapshot as the first-pass project-memory map for cache status, graph size, top memory areas, top related communities, and archive inclusion policy. Avoid expanding command/event-heavy details unless the user asks for a full or diagnostic load.
-   - During load/planning, treat `dotdotgod status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and `index` as bounded context/status helpers. Avoid mutating scaffold/config commands such as `init` or `config init` unless the user explicitly asks for initialization or config creation.
+   - During load/planning, treat `dotdotgod status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and `index` as bounded context/status helpers. `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, and `index` are project-content safe but may refresh ignored `.dotdotgod/` cache metadata. Avoid mutating scaffold/config commands such as `init` or `config init` unless the user explicitly asks for initialization or config creation.
    - Use `dotdotgod graph impact <root> --changed <path> --yml` as a task-focused structured impact map when the user identifies a likely source/config/doc file. In Claude Code, `/dd:impact` can run the same review; in Codex, `dd:impact` is the command-like trigger for the `impact-review` skill.
    - Use `grep` or `find` after `expand`, impact, and targeted reads when the task needs fallback discovery or raw source text search.
    - Fall back to raw `dotdotgod graph impact <root> --changed <path> --json` only when diagnostics need the full payload.
    - When graph impact surfaces traceability relations, inspect the related specs, tests, and docs before editing source.
-   - Related behavior docs: [load project](../../../docs/spec/LOAD_PROJECT.md), [cross-agent support](../../../docs/spec/CROSS_AGENT_SUPPORT.md), and [cross-agent architecture](../../../docs/arch/CROSS_AGENT_ARCHITECTURE.md).
+   - Related behavior docs: `docs/spec/LOAD_PROJECT.md`, `docs/spec/CROSS_AGENT_SUPPORT.md`, and `docs/arch/CROSS_AGENT_ARCHITECTURE.md`.
    - If the CLI is unavailable, network/package execution is undesirable, or the command fails, continue with the manual README-index fallback below.
 3. Inspect baseline memory files when present:
    - `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `README.md`

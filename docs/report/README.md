@@ -1,7 +1,9 @@
 # Reports
 
-Local analytical reports and measurement summaries that are useful for current project review.
+Tracked analytical reports and measurement summaries that are useful for current project review but are not behavior contracts.
+
+Use reports for evidence snapshots, measurements, and interpretations. Route durable behavior requirements to `docs/spec/`, verification strategy to `docs/test/`, and design rationale to `docs/arch/`. Put temporary or private investigation notes under ignored `docs/archive/report/` instead.
 
 ## Index
 
-- `IMPACT_EFFECT_ANALYSIS.md`: session-log analysis of `dotdotgod_graph_impact` usage, file-discovery lift, relationship coverage, and caveats for the recent Pi usage window.
+- `IMPACT_EFFECT_ANALYSIS.md`: historical snapshot of `dotdotgod_graph_impact` usage, file-discovery lift, relationship coverage, and caveats for the 2026-05-14 through 2026-05-20 Pi usage window.

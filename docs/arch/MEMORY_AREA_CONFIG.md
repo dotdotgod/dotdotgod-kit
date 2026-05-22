@@ -93,6 +93,12 @@ Optional `description` and `clarify` fields are metadata for humans and agent sk
 
 The same config file can define `traceability.required` and `traceability.exclude` arrays. When absent, the default traceability policy requires `docs/spec/**` and excludes `**/README.md`. Custom required arrays replace the default list, which lets projects move behavior-traceability enforcement to other shared documentation areas while keeping the traceability block schema unchanged.
 
+## Related Behavior and Verification
+
+- Behavior spec: [`docs/spec/MEMORY_AREA_CONFIG.md`](../spec/MEMORY_AREA_CONFIG.md).
+- Verification doc: [`docs/test/MEMORY_AREA_CONFIG.md`](../test/MEMORY_AREA_CONFIG.md).
+- Neighboring config specs: [`docs/spec/TRACEABILITY_CONFIG.md`](../spec/TRACEABILITY_CONFIG.md), [`docs/spec/VALIDATION_CONFIG.md`](../spec/VALIDATION_CONFIG.md), and [`docs/spec/CONFIG_COMMAND.md`](../spec/CONFIG_COMMAND.md).
+
 ## Future Extension Points
 
 Possible later additions:

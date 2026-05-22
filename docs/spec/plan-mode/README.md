@@ -4,13 +4,15 @@
 
 `plan-mode` is a Pi extension that provides a safe planning workflow before source changes. It lets the agent inspect the project, maintain markdown plan files, and switch into execution mode with tracked plan steps.
 
-## Commands and Shortcut
+## Commands and Shortcut Summary
+
+This README is a navigation summary. Detailed behavior contracts live in the traced non-README files listed in the domain map below.
 
 - `/plan`: toggle plan mode when no request text is provided.
 - `/plan <request>`: enable Plan Mode if needed and send `<request>` as the first or next planning request without toggling Plan Mode off.
 - `/todos`: show current plan progress.
-- `/impact-check`: run `dotdotgod graph impact --yml` for the union of pending source/config edits and current git unstaged, staged, and untracked source/config files.
-- `dotdotgod_graph_impact`: LLM-callable impact tool. Successful structured YML starts at `impact:`; multiple successes use `---`. In Pi's TUI, results longer than 10 lines render as the first 10 lines plus an omitted-line hint and expand with the tool-output keybinding.
+- `/impact-check`: run `dotdotgod graph impact --yml` for pending source/config edits and current git source/config changes.
+- `dotdotgod_graph_impact`: LLM-callable impact tool for changed-file impact review.
 - `Ctrl+Alt+P`: toggle plan mode.
 
 Pi has no built-in plan mode; this package provides the workflow as an extension.

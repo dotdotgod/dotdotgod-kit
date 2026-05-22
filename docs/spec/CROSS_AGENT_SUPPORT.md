@@ -78,7 +78,7 @@ Required workflows:
 - initialize or normalize project memory scaffold
 - load project memory in a read-only context
 - plan safely before source/config changes
-- review changed files with graph-impact evidence before broad verification, commits, pushes, publishing, or final handoff
+- review changed files with graph-impact evidence before broad verification, commits, pushes, publishing, or final handoff when the CLI or an equivalent project-local impact command is available; otherwise preserve the same review intent through targeted specs/tests/docs reads
 - clarify project documentation using configured memory-area roles and dotdotgod default document roles while preserving behavior contracts
 - preserve completed plans and temporary reports in the archive structure
 
@@ -91,6 +91,8 @@ Optional workflows:
 - packaged default hooks only when they are advisory, safe by default, and supported by the target runtime; otherwise keep examples documented but opt-in
 - project memory indexing/search
 - CLI-backed load snapshots and graph-impact checks where shell or package execution is available
+
+Parity is behavioral, not identical runtime mechanics: Pi can enforce pending-impact state, while Claude Code and Codex provide commands, skills, or trusted hook guidance that lead agents to the same review obligation when the runtime permits it.
 
 ## Packaging Contract
 
@@ -122,11 +124,17 @@ New package, command, and tool names should use dotdotgod and `dd` prefixes.
   - [packages/shared/workflows/doc-clarify.md](../../packages/shared/workflows/doc-clarify.md)
   - [packages/shared/initializer/references/agent-docs.md](../../packages/shared/initializer/references/agent-docs.md)
   - [packages/claude-code/commands/dd/load.md](../../packages/claude-code/commands/dd/load.md)
+  - [packages/claude-code/commands/dd/plan.md](../../packages/claude-code/commands/dd/plan.md)
+  - [packages/claude-code/commands/dd/init.md](../../packages/claude-code/commands/dd/init.md)
   - [packages/claude-code/commands/dd/impact.md](../../packages/claude-code/commands/dd/impact.md)
   - [packages/claude-code/skills/project-load/SKILL.md](../../packages/claude-code/skills/project-load/SKILL.md)
+  - [packages/claude-code/skills/doc-first-planning/SKILL.md](../../packages/claude-code/skills/doc-first-planning/SKILL.md)
+  - [packages/claude-code/skills/project-initializer/SKILL.md](../../packages/claude-code/skills/project-initializer/SKILL.md)
   - [packages/claude-code/skills/impact-review/SKILL.md](../../packages/claude-code/skills/impact-review/SKILL.md)
   - [packages/claude-code/skills/document-clarify/SKILL.md](../../packages/claude-code/skills/document-clarify/SKILL.md)
   - [packages/codex/skills/project-load/SKILL.md](../../packages/codex/skills/project-load/SKILL.md)
+  - [packages/codex/skills/doc-first-planning/SKILL.md](../../packages/codex/skills/doc-first-planning/SKILL.md)
+  - [packages/codex/skills/project-initializer/SKILL.md](../../packages/codex/skills/project-initializer/SKILL.md)
   - [packages/codex/skills/impact-review/SKILL.md](../../packages/codex/skills/impact-review/SKILL.md)
   - [packages/codex/skills/document-clarify/SKILL.md](../../packages/codex/skills/document-clarify/SKILL.md)
   - [packages/pi/skills/document-clarify/SKILL.md](../../packages/pi/skills/document-clarify/SKILL.md)
@@ -148,5 +156,5 @@ New package, command, and tool names should use dotdotgod and `dd` prefixes.
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md","packages/shared/initializer/references/agent-docs.md","packages/claude-code/commands/dd/load.md","packages/claude-code/commands/dd/impact.md","packages/claude-code/skills/project-load/SKILL.md","packages/claude-code/skills/impact-review/SKILL.md","packages/claude-code/skills/document-clarify/SKILL.md","packages/codex/skills/project-load/SKILL.md","packages/codex/skills/impact-review/SKILL.md","packages/codex/skills/document-clarify/SKILL.md","packages/pi/skills/document-clarify/SKILL.md","packages/claude-code/hooks/README.md","packages/codex/hooks/README.md","packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","docs/test/README.md"],"relatedDocs":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"],"verificationCommands":["pnpm run verify:generated","pnpm run verify"]}
+{"kind":"spec","implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md","packages/shared/initializer/references/agent-docs.md","packages/claude-code/commands/dd/load.md","packages/claude-code/commands/dd/plan.md","packages/claude-code/commands/dd/init.md","packages/claude-code/commands/dd/impact.md","packages/claude-code/skills/project-load/SKILL.md","packages/claude-code/skills/doc-first-planning/SKILL.md","packages/claude-code/skills/project-initializer/SKILL.md","packages/claude-code/skills/impact-review/SKILL.md","packages/claude-code/skills/document-clarify/SKILL.md","packages/codex/skills/project-load/SKILL.md","packages/codex/skills/doc-first-planning/SKILL.md","packages/codex/skills/project-initializer/SKILL.md","packages/codex/skills/impact-review/SKILL.md","packages/codex/skills/document-clarify/SKILL.md","packages/pi/skills/document-clarify/SKILL.md","packages/claude-code/hooks/README.md","packages/codex/hooks/README.md","packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","docs/test/README.md"],"relatedDocs":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"],"verificationCommands":["pnpm run verify:generated","pnpm run verify"]}
 ```

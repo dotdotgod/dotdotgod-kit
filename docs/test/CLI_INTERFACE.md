@@ -18,6 +18,8 @@ Verify baseline `dotdotgod` command discovery, version reporting, init/config co
 
 ## Smoke Commands
 
+Successful smoke commands:
+
 ```bash
 pnpm --filter @dotdotgod/cli test
 node packages/cli/bin/dotdotgod.mjs --help
@@ -29,8 +31,15 @@ node packages/cli/bin/dotdotgod.mjs config init --help
 node packages/cli/bin/dotdotgod.mjs resolve --help
 node packages/cli/bin/dotdotgod.mjs expand --help
 node packages/cli/bin/dotdotgod.mjs graph impact --help
-node packages/cli/bin/dotdotgod.mjs graph impact . --json
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --compact
 ```
+
+Expected-failure smoke command:
+
+```bash
+node packages/cli/bin/dotdotgod.mjs graph impact . --json
+```
+
+This command intentionally omits `--changed <path>` and should exit `2` with `error.code: "MISSING_CHANGED"` in JSON mode.

@@ -54,7 +54,7 @@ The command scans markdown files under `docs/`. This sync scope is intentionally
 The generated view is bounded by HTML comment sentinels. Link labels use the full repository-relative traceability path instead of only the basename so repeated names such as `README.md` and `SKILL.md` remain distinguishable:
 
 ```markdown
-<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
+<!-- example dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
 <!-- generated: do not edit manually -->
 
 ### Traceability Links
@@ -75,7 +75,7 @@ The generated view is bounded by HTML comment sentinels. Link labels use the ful
   - `pnpm --filter @dotdotgod/cli test`
   - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory`
 
-<!-- dotdotgod:traceability-links:end -->
+<!-- example dotdotgod:traceability-links:end -->
 ```
 
 Rules:
@@ -134,6 +134,31 @@ With this config, `docs/product/FEATURE.md` and `docs/requirements/REQ.md` requi
 This policy requires traceability for API specs and one exact security spec, skips README indexes, and leaves draft API notes outside enforcement. Traceability blocks can be parsed from any markdown file that contains them; these paths only decide which files fail validation when the block is missing.
 
 ## Traceability
+
+
+
+<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
+<!-- generated: do not edit manually -->
+
+### Traceability Links
+
+- Implemented by:
+  - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
+- Verified by:
+  - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
+  - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
+  - [docs/test/TRACEABILITY_CONFIG.md](../test/TRACEABILITY_CONFIG.md)
+- Related docs:
+  - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
+  - [docs/arch/DOCS_STRUCTURE.md](../arch/DOCS_STRUCTURE.md)
+  - [docs/arch/MEMORY_AREA_CONFIG.md](../arch/MEMORY_AREA_CONFIG.md)
+  - [docs/spec/MEMORY_AREA_CONFIG.md](MEMORY_AREA_CONFIG.md)
+  - [docs/spec/CONFIG_COMMAND.md](CONFIG_COMMAND.md)
+- Verification commands:
+  - `pnpm --filter @dotdotgod/cli test`
+  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory`
+
+<!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
 {"kind":"spec","implementedBy":["packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/TRACEABILITY_CONFIG.md"],"relatedDocs":["docs/arch/VALIDATION_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md","docs/arch/MEMORY_AREA_CONFIG.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/CONFIG_COMMAND.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}

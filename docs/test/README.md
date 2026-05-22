@@ -21,13 +21,20 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 
 ## Verification Command Cheat Sheet
 
-Use `validate` for docs/project-memory correctness. Use `verify` for the repository-level quality gate that also runs package checks, tests, typecheck, and generated-resource checks.
+Use source-checkout commands in this repository. Installed `dotdotgod` or `npx @dotdotgod/cli` commands are for consumer projects.
+
+| Need | Command family | Side effect boundary |
+| --- | --- | --- |
+| Docs/project-memory correctness | `node packages/cli/bin/dotdotgod.mjs validate . ...` | Checks docs, config, traceability, and optional index freshness. |
+| Generated traceability drift | `node packages/cli/bin/dotdotgod.mjs traceability links . --check --json` | Focused check; use `--write` only to repair generated links and compact JSON. |
+| Graph/cache smoke | `load-snapshot`, `graph impact`, `graph communities`, `status` | Snapshot/graph commands may lazily refresh ignored `.dotdotgod/`; `status` does not rebuild. |
+| Release-style workspace gate | `pnpm run verify` | Runs package checks, tests, typecheck, generated-resource checks, and docs validation. |
 
 Everyday docs and project-memory checks:
 
 ```bash
-node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
-node packages/cli/bin/dotdotgod.mjs validate . --check-index
+node packages/cli/bin/dotdotgod.mjs traceability links . --check --json
+node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index
 ```
 
 Release-style workspace checks:

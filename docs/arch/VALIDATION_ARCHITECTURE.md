@@ -2,7 +2,7 @@
 
 Validation architecture is now documented as a focused domain under [`validation/`](validation/README.md).
 
-Use this file as the compatibility route for existing links. The split keeps architecture rationale discoverable while making cache, rules, dependencies, and verification details loadable independently.
+Use this file as the compatibility route for existing links. Do not add new validation architecture content here; update `validation/README.md` or its domain files and keep this file as a stable link target. The split keeps architecture rationale discoverable while making cache, rules, dependencies, and verification details loadable independently.
 
 ## Domain Files
 

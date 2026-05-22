@@ -69,3 +69,9 @@ The feature is additive:
 ## Traceability Discipline
 
 Embedding similarity is intentionally absent from defaults. If embeddings are added later, they should be opt-in and should surface terminology inconsistencies for repair.
+
+## Related Behavior and Verification
+
+- Behavior spec: [`docs/spec/IMPACT_RANKING_CONFIG.md`](../spec/IMPACT_RANKING_CONFIG.md).
+- Verification doc: [`docs/test/IMPACT_RANKING_CONFIG.md`](../test/IMPACT_RANKING_CONFIG.md).
+- Related validation architecture: [`validation/README.md`](validation/README.md).

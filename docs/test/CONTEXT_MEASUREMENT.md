@@ -13,9 +13,11 @@ node scripts/measure-context.mjs --markdown --impact-changed packages/pi/extensi
 ## Related Files
 
 - Measurement script: [scripts/measure-context.mjs](../../scripts/measure-context.mjs)
-- Follow-up plan: [docs/plan/context-metrics-follow-up/README.md](../plan/context-metrics-follow-up/README.md)
-- Context metrics reports: [docs/archive/report/context-metrics/README.md](../archive/report/context-metrics/README.md)
 - Load-project behavior: [docs/spec/LOAD_PROJECT.md](../spec/LOAD_PROJECT.md)
+- Optional local follow-up plan: `docs/plan/context-metrics-follow-up/README.md`
+- Optional local context metrics reports: `docs/archive/report/context-metrics/README.md`
+
+The optional local paths are ignored by git by convention. They may exist in an active workspace but are not required committed references for this verification doc.
 
 ## Smoke Checks
 

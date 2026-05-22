@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`load-project` is a Pi extension that starts a read-only project memory loading turn.
+`load-project` is a Pi extension that starts a project-content read-only memory loading turn.
 
 It helps the agent inspect the dotdotgod scaffold and summarize the current project context. Explicit manual `/load` defaults to a fuller curated project memory load, while automatic prompt-injected refreshes should request compact mode. Both modes avoid reading every repository file or every archive body.
 
@@ -30,7 +30,7 @@ After either mode, agents should prefer targeted reads over broad scans:
 
 ## Read-Only Behavior
 
-The command does not modify source, docs, or config files.
+The command does not modify source, docs, or config files. This is a project-content read-only boundary, not a guarantee that ignored cache files never change.
 
 It first tries to run `dotdotgod load-snapshot <cwd> --json` and include a bounded snapshot summary in the loader prompt. The CLI read can lazily refresh `.dotdotgod/` cache metadata when the cache is missing or stale. If the CLI is unavailable or returns invalid JSON, the command falls back to a lightweight snapshot of expected memory files and docs directories, then sends a read-only loader prompt to the agent.
 

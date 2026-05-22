@@ -32,29 +32,7 @@ Dotdotgod changes the control point. The durable source of truth is curated proj
 | Bounded load snapshots. | Agents receive cache status, indexed counts, memory areas, communities, omitted counts, command guidance, and archive policy without flooding context. |
 | Archive-body exclusion by default. | Historical memory remains discoverable through `docs/archive/README.md` without contaminating current work unless targeted. |
 
-A spec can declare its implementation, verification, related docs, and commands:
-
-
-
-<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
-<!-- generated: do not edit manually -->
-
-### Traceability Links
-
-- Implemented by:
-  - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
-- Verified by:
-  - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
-- Related docs:
-  - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
-- Verification commands:
-  - `pnpm --filter @dotdotgod/cli test`
-
-<!-- dotdotgod:traceability-links:end -->
-
-```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs"],"relatedDocs":["docs/arch/VALIDATION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test"]}
-```
+A spec can declare its implementation, verification, related docs, and commands through canonical `json dotdotgod` metadata. See [`docs/spec/TRACEABILITY_CONFIG.md`](../spec/TRACEABILITY_CONFIG.md) for the authoritative syntax, generated-link rules, and validation behavior.
 
 That turns impact analysis from semantic guessing into curated traversal:
 
