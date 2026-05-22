@@ -96,7 +96,7 @@ export function runValidate(argv) {
       for (const block of blocks) {
         if (block.error) addError(file, 'TRACEABILITY_INVALID_JSON', `Invalid \`json dotdotgod\` block: ${block.error}\nFix: repair the fenced \`json dotdotgod\` block so it is valid JSON and still matches the expected schema.\n\n${traceabilityExample()}`, block.line);
         else {
-          for (const error of validateTraceabilityBlock(block.data, root, file, block.line)) errors.push(error);
+          for (const error of validateTraceabilityBlock(block.data, root, file, block.line, memoryConfig)) errors.push(error);
           const synced = syncTraceabilityLinksInContent(content, block.data, root, file);
           if (synced.ok && synced.changed) addError(file, 'TRACEABILITY_LINKS_STALE', 'Generated traceability links or compact traceability JSON are missing or stale.', block.line, 'run `dotdotgod traceability links <root> --write` to synchronize the generated Markdown links and compact JSON block.');
         }

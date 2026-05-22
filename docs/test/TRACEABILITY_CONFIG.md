@@ -20,6 +20,7 @@ node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
 - Confirm write mode replaces only the sentinel-bounded region when a generated section already exists.
 - Confirm duplicate, incomplete, or reversed traceability-link sentinels produce validation errors and are not auto-fixed.
 - Confirm generated traceability-link regions and canonical `json dotdotgod` blocks are excluded from markdown line and character budget checks.
+- Confirm traceability path fields reject default and custom local-memory targets, including `docs/plan/**`, `docs/archive/**`, and custom `memory.areas[]` entries with `scope: "local"`.
 
 ## Focused Contract Checks
 
@@ -27,7 +28,7 @@ When reviewing focused behavior contracts or micro-specs:
 
 - confirm the final traceability block points to the closest implementation files
 - confirm `verifiedBy` names automated tests or verification docs that actually exercise or inspect the behavior
-- confirm `relatedDocs` includes architecture, config, or test docs needed by future agents
+- confirm `relatedDocs` includes shared architecture, config, or test docs needed by future agents, not active plans or archive memory
 - confirm `verificationCommands` are runnable project-local commands
 - confirm generated Markdown traceability links are synchronized from the JSON block rather than edited as canonical data
 - do not treat validation success as proof of semantic test completeness

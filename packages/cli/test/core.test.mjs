@@ -246,6 +246,33 @@ describe('CLI docs helpers', () => {
     assert(invalid.some((error) => error.code === 'TRACEABILITY_INVALID_PATH'));
     assert(invalid.some((error) => error.code === 'TRACEABILITY_MISSING_TARGET'));
     assert(invalid.some((error) => error.code === 'TRACEABILITY_INVALID_COMMAND'));
+
+    writeFixtureFile(root, 'docs/archive/plan/old-task/README.md', '# Old Task\n');
+    const defaultLocalTargets = validateTraceabilityBlock({
+      kind: 'spec',
+      implementedBy: ['docs/plan/README.md'],
+      verifiedBy: ['docs/archive/plan/old-task/README.md'],
+      relatedDocs: ['docs/archive/README.md'],
+      verificationCommands: ['node --test'],
+    }, root, join(root, 'docs/spec/BAD.md'));
+    assert.equal(defaultLocalTargets.filter((error) => error.code === 'TRACEABILITY_LOCAL_MEMORY_TARGET').length, 3);
+    assert(defaultLocalTargets.some((error) => /active-plan/.test(error.message)));
+    assert(defaultLocalTargets.some((error) => /archive-body/.test(error.message)));
+    assert(defaultLocalTargets.some((error) => /archive-map/.test(error.message)));
+
+    writeFixtureFile(root, 'docs/local/NOTE.md', '# Local Note\n');
+    writeFixtureJson(root, 'dotdotgod.config.json', {
+      memory: {
+        areas: [
+          { id: 'shared-docs', label: 'Shared Docs', paths: ['docs/spec/**', 'docs/test/**'], scope: 'shared', freshness: 'fresh', role: 'shared-docs' },
+          { id: 'custom-local', label: 'Custom Local', paths: ['docs/local/**'], scope: 'local', freshness: 'fresh', role: 'custom-local' },
+        ],
+      },
+    });
+    const config = readMemoryConfig(root);
+    const customLocalTargets = validateTraceabilityBlock({ kind: 'spec', implementedBy: [], verifiedBy: [], relatedDocs: ['docs/local/NOTE.md'], verificationCommands: ['node --test'] }, root, join(root, 'docs/spec/BAD.md'), null, config);
+    assert.equal(customLocalTargets.filter((error) => error.code === 'TRACEABILITY_LOCAL_MEMORY_TARGET').length, 1);
+    assert(customLocalTargets.some((error) => /custom-local/.test(error.message)));
   });
 
   it('generates, validates, and strips traceability link regions', () => {

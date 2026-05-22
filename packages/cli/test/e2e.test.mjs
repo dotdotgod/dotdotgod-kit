@@ -665,6 +665,20 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(valid.status, 0, valid.stdout + valid.stderr);
   });
 
+  it('rejects local-memory paths in traceability blocks during validation', () => {
+    const root = createFixture();
+    const invalidSpec = '# App\n\n## Traceability\n\n```json dotdotgod\n{"kind":"spec","implementedBy":["packages/app/index.mjs"],"verifiedBy":["docs/plan/task/README.md"],"relatedDocs":["docs/archive/README.md"],"verificationCommands":["node --test packages/app/index.test.mjs"]}\n```\n';
+    writeFileSync(join(root, 'docs/spec/APP.md'), invalidSpec);
+
+    const invalid = run(['validate', root, '--include-local-memory', '--json']);
+    assert.notEqual(invalid.status, 0);
+    const payload = JSON.parse(invalid.stdout);
+    const localErrors = payload.errors.filter((error) => error.code === 'TRACEABILITY_LOCAL_MEMORY_TARGET');
+    assert.equal(localErrors.length, 2);
+    assert(localErrors.some((error) => /docs\/plan\/task\/README\.md/.test(error.message)));
+    assert(localErrors.some((error) => /docs\/archive\/README\.md/.test(error.message)));
+  });
+
   it('reports impact ranking config validation failures without crashing runtime commands', () => {
     const root = createFixture();
     writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({
