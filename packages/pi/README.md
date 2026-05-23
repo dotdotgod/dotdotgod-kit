@@ -110,7 +110,7 @@ The graph uses more than traceability blocks: Markdown links, README routes, hea
 - `document-clarify` skill: config-aware documentation clarity workflow for README indexes, specs, tests, architecture docs, plans, archives, and custom docs areas.
 - `plan-mode` extension: read-first planning mode with restricted tools, `/plan <request>` inline request delivery, request framing, optional `--plan-extra-tools`, docs/plan writes, execution tracking, tiered hidden prompts, mandatory impact/validation guidance, `/todos`, `dotdotgod_graph_impact`, and `/impact-check`.
 - `load-project` extension: read-only project context loading through `/load` and `/dd:load`.
-- `pi-subagents` extension resources: a dotdotgod wrapper loads the `subagent` tool and builtin agents from the installed dependency when no `subagent` tool is already registered; prompts and skill are exposed from the dependency.
+- `pi-subagents` extension resources: a dotdotgod wrapper resolves the installed dependency with Node package resolution, exposes its prompts and skill during resource discovery, waits until session startup, then loads the `subagent` tool and builtin agents only when no `subagent` tool is already registered.
 
 ## Local Development
 
