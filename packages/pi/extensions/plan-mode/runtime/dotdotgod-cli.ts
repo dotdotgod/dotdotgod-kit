@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { statSync } from "node:fs";
+import { resolve } from "node:path";
+import { buildDotdotgodCliCandidates } from "../../dotdotgod-cli.ts";
 import { formatCompactImpactSummary, normalizeImpactPath, shouldTrackImpactPath } from "../utils.ts";
 
 export interface PlanCliCommandResult {
@@ -12,13 +13,7 @@ export interface PlanCliCommandResult {
 }
 
 export function runDotdotgodCli(cwd: string, args: string[]): PlanCliCommandResult {
-	const localCli = join(cwd, "packages/cli/bin/dotdotgod.mjs");
-	const candidates = existsSync(localCli)
-		? [
-			{ command: process.execPath, args: [localCli, ...args], label: "local workspace CLI" },
-			{ command: "dotdotgod", args, label: "dotdotgod" },
-		]
-		: [{ command: "dotdotgod", args, label: "dotdotgod" }];
+	const candidates = buildDotdotgodCliCandidates(cwd, args);
 
 	const errors: string[] = [];
 	for (const candidate of candidates) {

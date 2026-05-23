@@ -7,13 +7,14 @@
 ```json
 {
   "pi": {
-    "skills": ["./skills"],
-    "extensions": ["./extensions"]
+    "skills": ["./skills", "./node_modules/pi-subagents/skills"],
+    "extensions": ["./extensions", "./node_modules/pi-subagents/src/extension/index.ts"],
+    "prompts": ["./node_modules/pi-subagents/prompts"]
   }
 }
 ```
 
-Pi core packages are peer dependencies and are not bundled into the tarball.
+Pi core packages are peer dependencies and are not bundled into the tarball. `@dotdotgod/cli` and `pi-subagents` are runtime dependencies so npm/Pi installs fetch them automatically; pnpm's isolated node linker prevents `bundledDependencies`, so the published tarball declares dependencies rather than embedding `node_modules` bodies.
 
 ## Package Distribution Metadata
 
@@ -24,8 +25,10 @@ Distribution metadata:
 - `publishConfig.access` is `public`.
 - `pack:dry-run` runs `pnpm pack --dry-run --json`.
 - Keywords cover Pi packages, agent memory, documentation, skills, extensions, Plan Mode, and project/context loading.
-- Tarballs contain `skills/`, `extensions/`, package metadata, and license files.
+- Tarballs contain dotdotgod-owned `skills/`, `extensions/`, package metadata, and license files; runtime dependency bodies are installed by the package manager from declared dependencies.
 - Pi peer dependencies remain unbundled and are resolved by the host Pi installation.
+- `@dotdotgod/cli` is a package dependency used by Pi extensions as a source-checkout, package-local, then global CLI fallback chain.
+- `pi-subagents` is a package dependency whose extension, skill, and prompts are exposed through the Pi manifest; standalone `pi-subagents` installs should be removed or disabled to avoid duplicate registration.
 
 ## Resource Responsibilities
 
@@ -56,7 +59,7 @@ It uses resolved memory-area `description` and `clarify` metadata when configure
 - Runtime state: mode flags, todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/plan <request>` delivery, request-framing classification, and pending source/config impact-check records.
 - Context shaping: first-request context checks, queued planning-load delivery, queued post-compaction request resume, compaction debounce, CLI planning-context summary, baseline-doc coverage checks, single-area-only context detection, optional validation, bounded load-snapshot refresh, and bounded multi-file advisory graph impact checks when the CLI is available.
 - Impact-check integration: structured `graph impact --yml` runtime summaries, short pending-impact reminders after source/config edits, pending-path plus git source/config union checks, and stale pending-record cleanup after successful checks.
-- UX: full-page custom saved-plan review UI after active plan updates, returning execute/stay/refine/cancel choices synchronously; resolvable explicit execution requests open the same review UI, while ambiguous proceed requests ask which active plan to execute before execution state is persisted.
+- UX: full-page custom saved-plan review UI after active plan updates, returning execute/stay/refine/cancel choices synchronously through shortcut keys or a cursor-selectable action bar; resolvable explicit execution requests open the same review UI, while ambiguous proceed requests ask which active plan to execute before execution state is persisted.
 - Prompt ownership: first-turn full safety/workflow prompt, later compact reminder, per-request framing, resolved active tool list, mandatory impact-plan refinement and validation guidance, and current-work-directed compaction instructions that demote stale history and repeated boilerplate.
 
 Plan mode injects runtime instructions because project docs can be edited by users. The prompt should stay generic and must not contain app-specific stack assumptions.
