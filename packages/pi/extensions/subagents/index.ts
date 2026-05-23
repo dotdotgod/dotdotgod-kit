@@ -4,11 +4,22 @@ import { pathToFileURL } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const require = createRequire(import.meta.url);
+
+type SubagentsOwner = "unknown" | "external" | "package-local";
+
 let attempted = false;
-let registered = false;
+let owner: SubagentsOwner = "unknown";
 
 function resolveSubagentsPackageRoot(): string {
 	return path.dirname(require.resolve("pi-subagents/package.json"));
+}
+
+export function getPackageLocalSubagentsResourcePaths(): { skillPaths: string[]; promptPaths: string[] } {
+	const packageRoot = resolveSubagentsPackageRoot();
+	return {
+		skillPaths: [path.join(packageRoot, "skills")],
+		promptPaths: [path.join(packageRoot, "prompts")],
+	};
 }
 
 function hasSubagentTool(pi: ExtensionAPI): boolean {
@@ -16,9 +27,9 @@ function hasSubagentTool(pi: ExtensionAPI): boolean {
 }
 
 async function registerPackageLocalSubagents(pi: ExtensionAPI): Promise<void> {
-	if (registered) return;
+	if (owner !== "unknown") return;
 	if (hasSubagentTool(pi)) {
-		registered = true;
+		owner = "external";
 		return;
 	}
 	const extensionUrl = pathToFileURL(path.join(resolveSubagentsPackageRoot(), "src", "extension", "index.ts")).href;
@@ -29,10 +40,10 @@ async function registerPackageLocalSubagents(pi: ExtensionAPI): Promise<void> {
 	}
 	try {
 		await registerSubagents(pi);
-		registered = true;
+		owner = "package-local";
 	} catch (error) {
 		if (hasSubagentTool(pi)) {
-			registered = true;
+			owner = "external";
 			return;
 		}
 		throw error;
@@ -41,16 +52,13 @@ async function registerPackageLocalSubagents(pi: ExtensionAPI): Promise<void> {
 
 export default function dotdotgodSubagents(pi: ExtensionAPI): void {
 	pi.on("session_start", async () => {
-		if (attempted || registered) return;
+		if (attempted || owner !== "unknown") return;
 		attempted = true;
 		await registerPackageLocalSubagents(pi);
 	});
 
 	pi.on("resources_discover", () => {
-		const packageRoot = resolveSubagentsPackageRoot();
-		return {
-			skillPaths: [path.join(packageRoot, "skills")],
-			promptPaths: [path.join(packageRoot, "prompts")],
-		};
+		if (owner !== "package-local") return {};
+		return getPackageLocalSubagentsResourcePaths();
 	});
 }

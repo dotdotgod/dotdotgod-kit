@@ -25,7 +25,7 @@ Confirm the loader prompt includes a compact `Load snapshot:` section with cache
 4. Confirm builtin agents include `scout`, `researcher`, `planner`, `worker`, `reviewer`, `context-builder`, `oracle`, and `delegate`.
 5. Run a simple read-only subagent task, such as listing available agents or asking `scout` to inspect one README.
 6. Confirm subagent prompts are discoverable if prompt templates are enabled in the active Pi runtime.
-7. If standalone `pi-subagents` is also installed, confirm `@dotdotgod/pi` does not raise a duplicate `subagent` tool error or `Extension runtime not initialized` startup error, and leaves the existing standalone tool registered.
+7. If standalone `pi-subagents` is also installed, confirm `@dotdotgod/pi` does not raise a duplicate `subagent` tool error, skill/prompt conflict warnings, or `Extension runtime not initialized` startup error, and leaves the existing standalone tool, skill, and prompts registered.
 
 ## Plan Mode
 

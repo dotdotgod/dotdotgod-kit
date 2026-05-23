@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import test from "node:test";
-import registerDotdotgodSubagents from "../extensions/subagents/index.ts";
+import registerDotdotgodSubagents, { getPackageLocalSubagentsResourcePaths } from "../extensions/subagents/index.ts";
 
 test("subagents wrapper defers runtime tool inspection until session start", async () => {
 	let getAllToolsCalls = 0;
@@ -27,7 +27,12 @@ test("subagents wrapper defers runtime tool inspection until session start", asy
 	await handlers.get("session_start")?.[0]?.();
 	assert.equal(getAllToolsCalls, 1);
 
-	const resources = handlers.get("resources_discover")?.[0]?.() as { skillPaths: string[]; promptPaths: string[] };
+	const resources = handlers.get("resources_discover")?.[0]?.() as { skillPaths?: string[]; promptPaths?: string[] };
+	assert.deepEqual(resources, {});
+});
+
+test("subagents wrapper resolves package-local resource paths when it owns subagents", () => {
+	const resources = getPackageLocalSubagentsResourcePaths();
 	assert.equal(resources.skillPaths.length, 1);
 	assert.equal(resources.promptPaths.length, 1);
 	const [skillPath] = resources.skillPaths;
