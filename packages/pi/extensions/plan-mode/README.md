@@ -18,8 +18,9 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 - Active plan tasks are managed as kebab-case directories under `docs/plan/<task-slug>/` for projects initialized with `project-initializer`.
 - Under `docs/`, all directories use kebab-case and all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
 - Each task directory keeps its overview and index in `README.md`; supporting plan files such as `RESEARCH_NOTES.md` or `VERIFICATION.md` live alongside it.
-- Plan mode does not render saved-plan file previews in the TUI; users review the durable markdown plan file when needed.
-- Execute/stay/refine choices are shown after every active plan markdown file under `docs/plan/` is created or updated.
+- Interactive Plan Mode opens a full-page custom saved-plan review UI before accepting execute/stay/refine/cancel actions, so review and action selection stay in one synchronous flow.
+- Execute/stay/refine/cancel choices are shown after every active plan markdown file under `docs/plan/` is created or updated, with execution unavailable until the review UI returns an execute choice.
+- Explicit in-Plan-Mode execution requests such as “run this plan” or “진행하자” open the same review UI immediately when a current or mentioned active plan can be resolved; ambiguous requests ask which active plan to execute.
 - When the latest planning request contains explicit `[[...]]` refs, Plan Mode adds bounded `dotdotgod expand` results to planning context before broad search.
 - When the request contains high-signal natural refs such as `PLAN_MODE`, path-like mentions, or quoted doc names, Plan Mode may add bounded `dotdotgod expand --fuzzy` results before broad search; fuzzy low-signal suppression follows the resolved dotdotgod CLI config.
 - Completed task directories should be moved to `docs/archive/plan/<task-slug>/` after execution and verification.
@@ -42,9 +43,9 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 4. The task overview, index, scope, and status belong in `docs/plan/<task-slug>/README.md`.
 5. Supporting research, checklists, or verification notes can be added as UPPER_SNAKE_CASE markdown files in the same directory.
 6. If the session is long or noisy, Plan Mode automatically compacts with planning-focused instructions before continuing.
-7. After the agent creates or updates a plan file, Pi asks whether to execute, stay in plan mode, or refine the plan.
+7. After the agent creates or updates a plan file, Pi opens a full-page saved-plan review UI and asks whether to execute, stay in plan mode, refine the plan, or cancel.
 8. The agent should write concrete executable steps in the final `Plan:` section. Generic section labels such as `Target files and rationale`, `Implementation steps`, and `Verification method` are ignored for todo extraction.
-9. Choose `Execute the plan` in the UI to switch into implementation mode.
+9. Choose execute in the review UI to switch into implementation mode; if you later ask to proceed with a resolvable active plan, the same review UI opens immediately.
 10. During execution, the agent must mark every completed step in the same response with `[DONE:n]` tags.
 11. Before source changes for implementation tasks, run the plan's `dotdotgod graph impact` refinement step and update target files, risks, or verification if needed.
 12. After source/config edits, run `/impact-check` or the `dotdotgod_graph_impact` tool and review related docs/tests/files before broad verification or commit.

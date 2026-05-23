@@ -1,5 +1,26 @@
 import type { TodoItem } from "./todos.ts";
 
+export type PlanReviewChoice = "execute" | "stay" | "refine" | "cancel";
+
+export interface PlanReviewMarkdown {
+	markdown: string;
+	source: "file" | "fallback";
+}
+
+export type PlanReviewFileReader = (path: string) => string;
+
+export interface PlanExecutionDecision {
+	choice: PlanReviewChoice | undefined;
+	handoff: PlanExecutionHandoff | undefined;
+	shouldExecute: boolean;
+}
+
+export interface PlanReviewDisplayMarkdownOptions {
+	planPath: string | undefined;
+	todoCount: number;
+	review: PlanReviewMarkdown;
+}
+
 export interface PlanExecutionHandoff {
 	message: string;
 	marker: {
@@ -9,6 +30,74 @@ export interface PlanExecutionHandoff {
 	};
 	trigger: "user-message";
 	persistBeforeTrigger: true;
+}
+
+export interface PlanExecutionTargetInput {
+	request?: string | undefined;
+	currentPlanPath?: string | undefined;
+	pendingPlanChoicePath?: string | undefined;
+	touchedPaths?: readonly string[] | undefined;
+	activePlanPaths?: readonly string[] | undefined;
+	pathExists: (path: string) => boolean;
+}
+
+export interface PlanExecutionTargetResolution {
+	planPath: string | undefined;
+	status: "resolved" | "ambiguous" | "missing";
+	candidates: string[];
+}
+
+export function buildPlanReviewTitle(planPath: string | undefined, todoCount: number): string {
+	const count = todoCount === 1 ? "1 step" : `${todoCount} steps`;
+	return planPath ? `Review plan before execution: ${planPath} (${count})` : `Review plan before execution (${count})`;
+}
+
+export function buildPlanReviewMarkdown(planPath: string | undefined, todos: readonly TodoItem[], readFile: PlanReviewFileReader): PlanReviewMarkdown {
+	if (planPath) {
+		try {
+			return { markdown: readFile(planPath), source: "file" };
+		} catch {
+			// Fall through to a bounded fallback so the user still sees what would execute.
+		}
+	}
+	const todoMarkdown = todos.length > 0 ? todos.map((todo) => `${todo.step}. ${todo.text}`).join("\n") : "No extracted Plan: steps were found.";
+	const pathLine = planPath ? `Plan file could not be read: ${planPath}` : "Plan file path is unknown.";
+	return { markdown: `# Plan Review Fallback\n\n${pathLine}\n\n## Extracted execution steps\n\n${todoMarkdown}`, source: "fallback" };
+}
+
+export function buildPlanReviewDisplayMarkdown(options: PlanReviewDisplayMarkdownOptions): string {
+	const title = buildPlanReviewTitle(options.planPath, options.todoCount);
+	const note = options.review.source === "fallback"
+		? "Plan file preview fallback: review the extracted steps carefully before executing."
+		: "Full saved plan preview. Choose an action only after reviewing the plan.";
+	return `# ${title}\n\n> ${note}\n\n${options.review.markdown}`;
+}
+
+export function mapPlanReviewFallbackChoice(choice: string | undefined): PlanReviewChoice {
+	if (choice?.startsWith("Execute the plan")) return "execute";
+	if (choice === "Refine the plan") return "refine";
+	if (choice === "Stay in plan mode") return "stay";
+	return "cancel";
+}
+
+export interface PlanReviewScrollState {
+	offset: number;
+	maxOffset: number;
+	canScrollUp: boolean;
+	canScrollDown: boolean;
+}
+
+export function getPlanReviewScrollState(offset: number, totalLines: number, visibleLines: number): PlanReviewScrollState {
+	const safeVisibleLines = Math.max(1, Math.floor(visibleLines));
+	const safeTotalLines = Math.max(0, Math.floor(totalLines));
+	const maxOffset = Math.max(0, safeTotalLines - safeVisibleLines);
+	const safeOffset = Math.min(Math.max(0, Math.floor(offset)), maxOffset);
+	return {
+		offset: safeOffset,
+		maxOffset,
+		canScrollUp: safeOffset > 0,
+		canScrollDown: safeOffset < maxOffset,
+	};
 }
 
 export function buildPlanExecutionHandoff(todoItems: readonly TodoItem[], planPath: string | undefined): PlanExecutionHandoff {
@@ -24,6 +113,11 @@ export function buildPlanExecutionHandoff(todoItems: readonly TodoItem[], planPa
 		trigger: "user-message",
 		persistBeforeTrigger: true,
 	};
+}
+
+export function buildPlanExecutionDecision(choice: PlanReviewChoice | undefined, todoItems: readonly TodoItem[], planPath: string | undefined): PlanExecutionDecision {
+	if (choice !== "execute") return { choice, handoff: undefined, shouldExecute: false };
+	return { choice, handoff: buildPlanExecutionHandoff(todoItems, planPath), shouldExecute: true };
 }
 
 export function getCurrentPlanReadmePath(path: string): string | undefined {
@@ -51,6 +145,27 @@ export function extractPlanSlugMentions(text: string): string[] {
 	return slugs;
 }
 
+export function resolvePlanExecutionTarget(input: PlanExecutionTargetInput): PlanExecutionTargetResolution {
+	const request = input.request ?? "";
+	const explicitCandidates = [
+		...extractPathMentions(request).map((path) => getCurrentPlanReadmePath(path)).filter((path): path is string => Boolean(path)),
+		...extractPlanSlugMentions(request).map((slug) => `docs/plan/${slug}/README.md`),
+	];
+	const contextCandidates = [
+		...(input.pendingPlanChoicePath ? [input.pendingPlanChoicePath] : []),
+		...(input.currentPlanPath ? [input.currentPlanPath] : []),
+		...(input.touchedPaths ?? []).map((path) => getCurrentPlanReadmePath(path)).filter((path): path is string => Boolean(path)),
+	];
+	const fallbackCandidates = input.activePlanPaths ?? [];
+	const candidateGroups = [explicitCandidates, contextCandidates, fallbackCandidates];
+	for (const group of candidateGroups) {
+		const existing = uniquePlanPaths(group).filter(input.pathExists);
+		if (existing.length === 1) return { planPath: existing[0], status: "resolved", candidates: existing };
+		if (existing.length > 1) return { planPath: undefined, status: "ambiguous", candidates: existing };
+	}
+	return { planPath: undefined, status: "missing", candidates: [] };
+}
+
 export function resolveMentionedPlanPath(
 	cwd: string,
 	text: string | undefined,
@@ -58,18 +173,23 @@ export function resolveMentionedPlanPath(
 	touchedPaths: readonly string[],
 	pathExists: (cwd: string, path: string) => boolean,
 ): string | undefined {
-	const candidates = [
-		...extractPathMentions(text ?? "").map((path) => getCurrentPlanReadmePath(path)).filter((path): path is string => Boolean(path)),
-		...extractPlanSlugMentions(text ?? "").map((slug) => `docs/plan/${slug}/README.md`),
-		...(currentPlanPath ? [currentPlanPath] : []),
-		...touchedPaths.map((path) => getCurrentPlanReadmePath(path)).filter((path): path is string => Boolean(path)),
-	];
+	return resolvePlanExecutionTarget({
+		request: text,
+		currentPlanPath,
+		touchedPaths,
+		pathExists: (path) => pathExists(cwd, path),
+	}).planPath;
+}
+
+function uniquePlanPaths(paths: readonly string[]): string[] {
 	const seen = new Set<string>();
-	return candidates.find((path) => {
-		if (seen.has(path)) return false;
+	const unique: string[] = [];
+	for (const path of paths) {
+		if (seen.has(path)) continue;
 		seen.add(path);
-		return pathExists(cwd, path);
-	});
+		unique.push(path);
+	}
+	return unique;
 }
 
 export function extractPathMentions(text: string): string[] {

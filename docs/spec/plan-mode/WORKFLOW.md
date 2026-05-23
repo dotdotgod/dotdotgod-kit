@@ -40,9 +40,9 @@ The extension skips compaction during execution and continues if compaction fail
 
 Plan Mode uses tiered hidden runtime instructions. The first active planning turn receives the full safety/workflow prompt; subsequent turns receive a compact reminder. The full prompt tells agents to explore files in bounded passes: start from loaded memory, README indexes, and impact/load-snapshot results; inspect top related specs/tests/source files first; and expand only with a concrete reason. Planning turns frame advisory requests lightly, convert implementation-looking requests into durable plans first, use curated load flow for memory-load requests, and use the execution path for explicit execution requests. If `/plan <request>` is invoked while Plan Mode is already active, the request is sent as another planning request and Plan Mode remains enabled.
 
-When the agent creates or updates an active plan markdown file under `docs/plan/`, plan mode asks whether to execute, stay in plan mode, or refine the plan. If the user explicitly asks to execute a named active plan, Plan Mode resolves it and enters execution even if the file was not modified in the current turn.
+When the agent creates or updates an active plan markdown file under `docs/plan/`, interactive Plan Mode opens a full-page custom saved-plan review UI before accepting the execute/stay/refine/cancel choice. The review UI should use the available terminal surface rather than a small fixed preview box, support keyboard scrolling, and keep the choice synchronous with the review flow. Execution starts only after the user chooses execute from that review UI. If the saved plan cannot be read, Plan Mode shows a fallback preview of extracted execution steps in the same review flow. If the user explicitly asks to execute an active plan, Plan Mode resolves the target plan and opens the same review UI even if the file was not modified in the current turn. If the execution request is ambiguous and no current or mentioned active plan can be resolved, Plan Mode asks the user which active plan to execute instead of silently continuing generic planning.
 
-Plan files remain the durable review artifact. Plan Mode stores the current active plan README path so execution prompts, resume, and compaction summaries can refer to it after context changes. Plans should summarize impact findings rather than embedding large raw impact payloads unless the user explicitly asks for the raw output.
+Plan files remain the durable review artifact and the session-rendered preview is a convenience copy of that artifact, not a replacement for the file. Plan Mode stores the current active plan README path so execution prompts, resume, and compaction summaries can refer to it after context changes. Plans should summarize impact findings rather than embedding large raw impact payloads unless the user explicitly asks for the raw output.
 
 ## Progress, Resume, and Checklists
 
@@ -65,7 +65,7 @@ Plan mode extracts numbered executable steps from a `Plan:` section. Generic tem
 When execution starts:
 
 - Full tool access is restored.
-- The execute handoff is sent as an actual user follow-up after execution state is persisted, rather than relying on a custom display message to trigger the next turn.
+- Execution state is persisted only after the plan-review UI returns an execute choice; preview rendering never triggers execution by itself.
 - The execute follow-up names the active plan path when known.
 - Remaining steps are loaded from the selected README when needed.
 - If optional `PROGRESS.md`, `DECISIONS.md`, or `VERIFY.md` files exist, the agent uses them as resume context before continuing work.

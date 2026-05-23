@@ -68,11 +68,19 @@ export {
 	shouldLoadProjectMemoryForPlanning,
 } from "./context.ts";
 
+export type { PlanExecutionDecision, PlanExecutionTargetInput, PlanExecutionTargetResolution, PlanReviewChoice, PlanReviewDisplayMarkdownOptions, PlanReviewFileReader, PlanReviewMarkdown, PlanReviewScrollState } from "./plans.ts";
 export {
+	buildPlanExecutionDecision,
 	buildPlanExecutionHandoff,
+	buildPlanReviewDisplayMarkdown,
+	buildPlanReviewMarkdown,
+	buildPlanReviewTitle,
+	mapPlanReviewFallbackChoice,
+	getPlanReviewScrollState,
 	getCurrentPlanReadmePath,
 	extractPlanSlugMentions,
 	resolveMentionedPlanPath,
+	resolvePlanExecutionTarget,
 	extractPathMentions,
 	selectPlanImpactPaths,
 	selectPlanImpactPath,

@@ -5,7 +5,11 @@ import {
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
 	buildPlanCompactionInstructions,
 	buildPlanCompactionResumePrompt,
+	buildPlanExecutionDecision,
 	buildPlanExecutionHandoff,
+	buildPlanReviewDisplayMarkdown,
+	buildPlanReviewMarkdown,
+	buildPlanReviewTitle,
 	buildPlanModeRequestFraming,
 	classifyPlanModeRequest,
 	collectProjectMemoryContextCoverage,
@@ -23,16 +27,19 @@ import {
 	getCurrentPlanReadmePath,
 	getChangedPathFromDotdotgodImpactCommand,
 	getPlanCompactionReason,
+	getPlanReviewScrollState,
 	hasExplicitBracketReferences,
 	hasLikelyFuzzyReferences,
 	isBroadVerificationCommand,
 	isCommitLikeCommand,
 	normalizeImpactPath,
 	normalizePlanCommandRequest,
+	mapPlanReviewFallbackChoice,
 	mergeImpactCheckPaths,
 	parsePlanModeExtraTools,
 	pendingImpactSummary,
 	resolveMentionedPlanPath,
+	resolvePlanExecutionTarget,
 	isAutoAllowedDotdotgodPlanModeCommand,
 	isDotdotgodCliCommand,
 	isSafeCommand,
@@ -346,6 +353,75 @@ describe("plan-mode current plan path helpers", () => {
 	});
 });
 
+describe("plan-mode review helpers", () => {
+	it("builds review titles that include the durable plan path and step count", () => {
+		assert.equal(buildPlanReviewTitle("docs/plan/example-task/README.md", 1), "Review plan before execution: docs/plan/example-task/README.md (1 step)");
+		assert.equal(buildPlanReviewTitle("docs/plan/example-task/README.md", 2), "Review plan before execution: docs/plan/example-task/README.md (2 steps)");
+		assert.equal(buildPlanReviewTitle(undefined, 0), "Review plan before execution (0 steps)");
+	});
+
+	it("reads saved plan markdown for the review preview", () => {
+		const review = buildPlanReviewMarkdown("docs/plan/example-task/README.md", [], (path) => {
+			assert.equal(path, "docs/plan/example-task/README.md");
+			return "# Example Task\n\nPlan body";
+		});
+
+		assert.deepEqual(review, { markdown: "# Example Task\n\nPlan body", source: "file" });
+	});
+
+	it("falls back to extracted steps when the saved plan cannot be read", () => {
+		const review = buildPlanReviewMarkdown("docs/plan/example-task/README.md", [
+			{ step: 1, text: "Write regression tests", completed: false },
+			{ step: 2, text: "Refactor review helpers", completed: false },
+		], () => {
+			throw new Error("missing file");
+		});
+
+		assert.equal(review.source, "fallback");
+		assert.match(review.markdown, /Plan file could not be read: docs\/plan\/example-task\/README\.md/);
+		assert.match(review.markdown, /1\. Write regression tests/);
+		assert.match(review.markdown, /2\. Refactor review helpers/);
+	});
+
+	it("falls back with an unknown path message when no plan path is available", () => {
+		const review = buildPlanReviewMarkdown(undefined, [], () => {
+			throw new Error("should not read without a path");
+		});
+
+		assert.equal(review.source, "fallback");
+		assert.match(review.markdown, /Plan file path is unknown/);
+		assert.match(review.markdown, /No extracted Plan: steps were found/);
+	});
+
+	it("builds session-rendered review markdown around the preview body", () => {
+		const markdown = buildPlanReviewDisplayMarkdown({
+			planPath: "docs/plan/example-task/README.md",
+			todoCount: 2,
+			review: { markdown: "## Plan\n\nBody", source: "file" },
+		});
+
+		assert.match(markdown, /^# Review plan before execution: docs\/plan\/example-task\/README\.md \(2 steps\)/);
+		assert.match(markdown, /Full saved plan preview/);
+		assert.match(markdown, /## Plan\n\nBody/);
+	});
+
+	it("maps fallback selector labels to review choices", () => {
+		assert.equal(mapPlanReviewFallbackChoice("Execute the plan (track progress)"), "execute");
+		assert.equal(mapPlanReviewFallbackChoice("Execute the plan"), "execute");
+		assert.equal(mapPlanReviewFallbackChoice("Stay in plan mode"), "stay");
+		assert.equal(mapPlanReviewFallbackChoice("Refine the plan"), "refine");
+		assert.equal(mapPlanReviewFallbackChoice(undefined), "cancel");
+		assert.equal(mapPlanReviewFallbackChoice("Unexpected"), "cancel");
+	});
+
+	it("clamps review scroll offsets to the rendered body range", () => {
+		assert.deepEqual(getPlanReviewScrollState(-10, 100, 24), { offset: 0, maxOffset: 76, canScrollUp: false, canScrollDown: true });
+		assert.deepEqual(getPlanReviewScrollState(20, 100, 24), { offset: 20, maxOffset: 76, canScrollUp: true, canScrollDown: true });
+		assert.deepEqual(getPlanReviewScrollState(999, 100, 24), { offset: 76, maxOffset: 76, canScrollUp: true, canScrollDown: false });
+		assert.deepEqual(getPlanReviewScrollState(5, 10, 24), { offset: 0, maxOffset: 0, canScrollUp: false, canScrollDown: false });
+	});
+});
+
 describe("plan-mode execution handoff", () => {
 	it("builds a user-message handoff with a resume marker", () => {
 		const handoff = buildPlanExecutionHandoff([
@@ -367,6 +443,19 @@ describe("plan-mode execution handoff", () => {
 
 		assert.equal(handoff.message, "Execute the plan in docs/plan/example-task/README.md.");
 		assert.equal(handoff.marker.todoCount, 0);
+	});
+
+	it("only creates an execution handoff for an explicit execute review choice", () => {
+		const todos: TodoItem[] = [{ step: 1, text: "Run implementation", completed: false }];
+		const executed = buildPlanExecutionDecision("execute", todos, "docs/plan/example-task/README.md");
+		assert.equal(executed.shouldExecute, true);
+		assert.equal(executed.handoff?.message, "Execute the plan in docs/plan/example-task/README.md. Start with: Run implementation");
+
+		for (const choice of ["stay", "refine", "cancel", undefined] as const) {
+			const decision = buildPlanExecutionDecision(choice, todos, "docs/plan/example-task/README.md");
+			assert.equal(decision.shouldExecute, false, choice);
+			assert.equal(decision.handoff, undefined, choice);
+		}
 	});
 });
 
@@ -411,6 +500,47 @@ describe("plan-mode explicit execution helpers", () => {
 			"docs/plan/current-task/README.md",
 		);
 		assert.equal(resolveMentionedPlanPath(".", "missing-plan 실행해줘", undefined, [], exists), undefined);
+	});
+
+	it("resolves explicit execution targets before falling back to active-plan choices", () => {
+		const existing = new Set([
+			"docs/plan/current-task/README.md",
+			"docs/plan/mentioned-task/README.md",
+			"docs/plan/other-task/README.md",
+		]);
+		const pathExists = (path: string): boolean => existing.has(path);
+
+		assert.deepEqual(
+			resolvePlanExecutionTarget({
+				request: "mentioned-task 진행하자",
+				currentPlanPath: "docs/plan/current-task/README.md",
+				activePlanPaths: ["docs/plan/current-task/README.md", "docs/plan/other-task/README.md"],
+				pathExists,
+			}),
+			{ planPath: "docs/plan/mentioned-task/README.md", status: "resolved", candidates: ["docs/plan/mentioned-task/README.md"] },
+		);
+
+		assert.deepEqual(
+			resolvePlanExecutionTarget({
+				request: "진행하자",
+				currentPlanPath: "docs/plan/current-task/README.md",
+				activePlanPaths: ["docs/plan/current-task/README.md", "docs/plan/other-task/README.md"],
+				pathExists,
+			}),
+			{ planPath: "docs/plan/current-task/README.md", status: "resolved", candidates: ["docs/plan/current-task/README.md"] },
+		);
+	});
+
+	it("reports ambiguity when a proceed request does not identify one active plan", () => {
+		const resolution = resolvePlanExecutionTarget({
+			request: "진행하자",
+			activePlanPaths: ["docs/plan/one-task/README.md", "docs/plan/two-task/README.md"],
+			pathExists: () => true,
+		});
+
+		assert.equal(resolution.status, "ambiguous");
+		assert.equal(resolution.planPath, undefined);
+		assert.deepEqual(resolution.candidates, ["docs/plan/one-task/README.md", "docs/plan/two-task/README.md"]);
 	});
 });
 
