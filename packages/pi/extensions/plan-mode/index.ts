@@ -6,11 +6,11 @@
 
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { AssistantMessage, TextContent } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { keyHint } from "@earendil-works/pi-coding-agent";
-import { Key, Text } from "@earendil-works/pi-tui";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import { getMarkdownTheme, keyHint } from "@earendil-works/pi-coding-agent";
+import { Key, Markdown, Text, matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { recordContextMetric } from "../context-metrics/utils.js";
 import { buildLoadPrompt, collectSnapshot } from "../load-project/utils.js";
@@ -21,7 +21,9 @@ import { ARCHIVE_DIRECTORY, getToolPath, isActivePlanMarkdownPath, isManagedPlan
 import {
 	buildPlanCompactionInstructions,
 	buildPlanCompactionResumePrompt,
-	buildPlanExecutionHandoff,
+	buildPlanExecutionDecision,
+	buildPlanReviewDisplayMarkdown,
+	buildPlanReviewMarkdown,
 	buildPlanModeContextPrompt,
 	buildPlanModeRequestFraming,
 	detectPlanExecutionIntent,
@@ -41,6 +43,9 @@ import {
 	resolvePlanModeTools,
 	getCurrentPlanReadmePath,
 	getPlanCompactionReason,
+	getPlanReviewScrollState,
+	mapPlanReviewFallbackChoice,
+	resolvePlanExecutionTarget,
 	selectPlanImpactPaths,
 	shouldAllowPlanModeBashCommand,
 	shouldTrackImpactPath,
@@ -56,6 +61,7 @@ import {
 	type ImpactCheckRecord,
 	type PendingImpactItem,
 	type PlanCompactionFocus,
+	type PlanReviewChoice,
 	type TodoItem,
 } from "./utils.js";
 
@@ -64,7 +70,82 @@ const DotdotgodGraphImpactParams = Type.Object({
 	paths: Type.Optional(Type.Array(Type.String(), { description: "Changed file paths to check with dotdotgod graph impact" })),
 });
 
+const PLAN_REVIEW_VISIBLE_LINES = 48;
+
+class PlanReviewComponent {
+	private offset = 0;
+	private cachedWidth?: number;
+	private cachedMarkdownLines?: string[];
+
+	constructor(
+		private readonly markdown: string,
+		private readonly todoCount: number,
+		private readonly theme: Theme,
+		private readonly done: (choice: PlanReviewChoice | undefined) => void,
+	) {}
+
+	handleInput(data: string): void {
+		const wheel = this.getWheelDelta(data);
+		if (wheel !== 0) {
+			this.offset = Math.max(0, this.offset + wheel);
+			this.invalidate();
+			return;
+		}
+		if (matchesKey(data, Key.up)) this.offset = Math.max(0, this.offset - 1);
+		else if (matchesKey(data, Key.down)) this.offset += 1;
+		else if (matchesKey(data, Key.home)) this.offset = 0;
+		else if (matchesKey(data, Key.end)) this.offset = Number.MAX_SAFE_INTEGER;
+		else if (matchesKey(data, Key.pageUp)) this.offset = Math.max(0, this.offset - PLAN_REVIEW_VISIBLE_LINES);
+		else if (matchesKey(data, Key.pageDown)) this.offset += PLAN_REVIEW_VISIBLE_LINES;
+		else if (data === "e" || data === "E") this.done("execute");
+		else if (data === "s" || data === "S") this.done("stay");
+		else if (data === "r" || data === "R") this.done("refine");
+		else if (data === "c" || data === "C" || matchesKey(data, Key.escape) || matchesKey(data, Key.ctrl("c"))) this.done("cancel");
+		this.invalidate();
+	}
+
+	render(width: number): string[] {
+		const safeWidth = Math.max(20, width);
+		const bodyLines = this.getMarkdownLines(safeWidth);
+		const scroll = getPlanReviewScrollState(this.offset, bodyLines.length, PLAN_REVIEW_VISIBLE_LINES);
+		this.offset = scroll.offset;
+		const th = this.theme;
+		const title = ` Plan Mode Review (${this.todoCount === 1 ? "1 step" : `${this.todoCount} steps`}) `;
+		const controls = "↑/↓ PgUp/PgDn Home/End scroll · e execute · s stay · r refine · c/Esc cancel";
+		const status = `${scroll.offset + Math.min(bodyLines.length, 1)}-${Math.min(bodyLines.length, scroll.offset + PLAN_REVIEW_VISIBLE_LINES)} / ${bodyLines.length}`;
+		const lines = [
+			truncateToWidth(th.fg("borderAccent", "─".repeat(2)) + th.fg("accent", title) + th.fg("borderAccent", "─".repeat(safeWidth)), safeWidth),
+			truncateToWidth(th.fg("dim", controls), safeWidth),
+			truncateToWidth(th.fg("dim", `Scroll: ${status}${scroll.canScrollDown ? " · more below" : ""}`), safeWidth),
+			truncateToWidth(th.fg("borderMuted", "─".repeat(safeWidth)), safeWidth),
+			...bodyLines.slice(scroll.offset, scroll.offset + PLAN_REVIEW_VISIBLE_LINES),
+			truncateToWidth(th.fg("borderMuted", "─".repeat(safeWidth)), safeWidth),
+			truncateToWidth(th.fg("dim", controls), safeWidth),
+		];
+		return lines.map((line) => truncateToWidth(line, safeWidth));
+	}
+
+	invalidate(): void {
+		delete this.cachedWidth;
+		delete this.cachedMarkdownLines;
+	}
+
+	private getMarkdownLines(width: number): string[] {
+		if (this.cachedMarkdownLines && this.cachedWidth === width) return this.cachedMarkdownLines;
+		this.cachedWidth = width;
+		this.cachedMarkdownLines = new Markdown(this.markdown, 0, 0, getMarkdownTheme()).render(width).map((line) => truncateToWidth(line, width));
+		return this.cachedMarkdownLines;
+	}
+
+	private getWheelDelta(data: string): number {
+		if (/\x1b\[<64;\d+;\d+[mM]/.test(data) || /\x1b\[M[`]/.test(data)) return -3;
+		if (/\x1b\[<65;\d+;\d+[mM]/.test(data) || /\x1b\[M[a]/.test(data)) return 3;
+		return 0;
+	}
+}
+
 export default function planModeExtension(pi: ExtensionAPI): void {
+
 	let planModeEnabled = false;
 	let executionMode = false;
 	let todoItems: TodoItem[] = [];
@@ -441,13 +522,49 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 	}
 
-	function startExplicitPlanExecutionIfRequested(ctx: ExtensionContext): boolean {
-		const request = lastPlanningRequest ?? "";
-		if (!planModeEnabled || executionMode || !detectPlanExecutionIntent(request)) return false;
+	async function promptForPlanReviewChoice(ctx: ExtensionContext, planPath: string | undefined, todos: readonly TodoItem[]): Promise<PlanReviewChoice | undefined> {
+		const review = buildPlanReviewMarkdown(planPath, todos, (path) => readFileSync(resolve(ctx.cwd, path), "utf8"));
+		const markdown = buildPlanReviewDisplayMarkdown({ planPath, todoCount: todos.length, review });
+		try {
+			return await ctx.ui.custom<PlanReviewChoice | undefined>(
+				(_tui, theme, _keybindings, done) => new PlanReviewComponent(markdown, todos.length, theme, done),
+				{
+					overlay: true,
+					overlayOptions: { width: "100%", maxHeight: "100%", margin: 0, anchor: "center" },
+				},
+			);
+		} catch (error) {
+			ctx.ui.notify(`Plan review UI unavailable; using fallback selector. ${error instanceof Error ? error.message : String(error)}`, "warning");
+			const fallbackChoices = [
+				todos.length > 0 ? "Execute the plan (track progress)" : "Execute the plan",
+				"Stay in plan mode",
+				"Refine the plan",
+				"Cancel",
+			];
+			const choice = await ctx.ui.select("Plan mode - choose next action after reviewing the saved plan file", fallbackChoices);
+			return mapPlanReviewFallbackChoice(choice);
+		}
+	}
 
-		const planPath = resolveMentionedPlanPath(ctx.cwd, request, currentPlanPath, touchedPlanArchivePaths, planPathExists);
-		if (!planPath) return false;
+	function listActivePlanReadmePaths(ctx: ExtensionContext): string[] {
+		try {
+			return readdirSync(resolve(ctx.cwd, PLAN_DIRECTORY), { withFileTypes: true })
+				.filter((entry) => entry.isDirectory() && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.name))
+				.map((entry) => `${PLAN_DIRECTORY}/${entry.name}/README.md`)
+				.filter((path) => planPathExists(ctx.cwd, path));
+		} catch {
+			return [];
+		}
+	}
 
+	async function chooseExplicitPlanPath(ctx: ExtensionContext, candidates: readonly string[]): Promise<string | undefined> {
+		if (!ctx.hasUI || candidates.length === 0) return undefined;
+		const choices = [...candidates, "Cancel"];
+		const choice = await ctx.ui.select("Which active plan should be executed?", choices);
+		return choice && choice !== "Cancel" ? choice : undefined;
+	}
+
+	function enterExecutionMode(ctx: ExtensionContext, planPath: string, explicit: boolean): void {
 		currentPlanPath = planPath;
 		todoItems = readPlanTodos(ctx.cwd, planPath);
 		planModeEnabled = false;
@@ -463,8 +580,43 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		activePlanModeTools = [];
 		pi.setActiveTools(NORMAL_MODE_TOOLS);
 		updateStatus(ctx);
-		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:execution-start", { todoCount: todoItems.length, planPath, explicit: true });
+		recordContextMetric(ctx, (name) => pi.getFlag(name), "plan-mode:execution-start", { todoCount: todoItems.length, planPath, explicit });
 		persistState();
+	}
+
+	async function startExplicitPlanExecutionIfRequested(ctx: ExtensionContext): Promise<boolean> {
+		const request = lastPlanningRequest ?? "";
+		if (!planModeEnabled || executionMode || !detectPlanExecutionIntent(request)) return false;
+
+		const resolution = resolvePlanExecutionTarget({
+			request,
+			currentPlanPath,
+			pendingPlanChoicePath,
+			touchedPaths: touchedPlanArchivePaths,
+			activePlanPaths: listActivePlanReadmePaths(ctx),
+			pathExists: (path) => planPathExists(ctx.cwd, path),
+		});
+		let planPath = resolution.planPath;
+		if (!planPath && resolution.status === "ambiguous") {
+			planPath = await chooseExplicitPlanPath(ctx, resolution.candidates);
+		}
+		if (!planPath) {
+			if (ctx.hasUI) ctx.ui.notify("Plan Mode: choose or mention the active plan to execute.", "warning");
+			return false;
+		}
+
+		const todos = readPlanTodos(ctx.cwd, planPath);
+		const choice = ctx.hasUI ? await promptForPlanReviewChoice(ctx, planPath, todos) : "execute";
+		if (choice !== "execute") {
+			if (choice === "refine") {
+				const refinement = await ctx.ui.editor("Refine the plan:", "");
+				if (refinement?.trim()) pi.sendUserMessage(refinement.trim(), { deliverAs: "followUp" });
+			}
+			persistState();
+			return false;
+		}
+		todoItems = [...todos];
+		enterExecutionMode(ctx, planPath, true);
 		return true;
 	}
 
@@ -729,7 +881,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	pi.on("before_agent_start", async (_event, ctx) => {
 		if (planModeEnabled && !executionMode) {
 			updateLatestPlanningRequest(ctx);
-			startExplicitPlanExecutionIfRequested(ctx);
+			await startExplicitPlanExecutionIfRequested(ctx);
 		}
 
 		if (shouldShapePlanningContextOnAgentStart({ planModeEnabled, executionMode, planningContextShapePending })) {
@@ -844,15 +996,11 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
 			}
 		}
 
-		const actionChoices = [
-			todoItems.length > 0 ? "Execute the plan (track progress)" : "Execute the plan",
-			"Stay in plan mode",
-			"Refine the plan",
-		];
-		const choice = await ctx.ui.select("Plan mode - choose next action", actionChoices);
+		const choice = await promptForPlanReviewChoice(ctx, inferredPlanPath, todoItems);
 		pendingPlanChoicePath = undefined;
 
-		if (choice?.startsWith("Execute the plan")) {
+		const executionDecision = buildPlanExecutionDecision(choice, todoItems, inferredPlanPath);
+		if (executionDecision.shouldExecute && executionDecision.handoff) {
 			planModeEnabled = false;
 			planningContextShapePending = false;
 			pendingPlanningResumePrompt = undefined;
@@ -862,13 +1010,13 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
 			pi.setActiveTools(NORMAL_MODE_TOOLS);
 			updateStatus(ctx);
 
-			const handoff = buildPlanExecutionHandoff(todoItems, inferredPlanPath);
+			const handoff = executionDecision.handoff;
 			pi.appendEntry("plan-mode-execute", handoff.marker);
 			persistState();
 			setTimeout(() => {
 				pi.sendUserMessage(handoff.message);
 			}, 0);
-		} else if (choice === "Refine the plan") {
+		} else if (choice === "refine") {
 			const refinement = await ctx.ui.editor("Refine the plan:", "");
 			if (refinement?.trim()) {
 				pi.sendUserMessage(refinement.trim());

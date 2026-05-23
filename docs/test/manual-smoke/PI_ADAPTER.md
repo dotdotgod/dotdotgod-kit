@@ -24,7 +24,7 @@ Confirm the loader prompt includes a compact `Load snapshot:` section with cache
 3. From normal mode, run `/plan add inline request support` and confirm Plan Mode is enabled before the request is handled.
 4. While still in Plan Mode, run `/plan refine this plan` and confirm it sends a planning request without disabling Plan Mode.
 5. Run `/plan` without args and confirm it still toggles Plan Mode off.
-6. Confirm Pi asks `Execute the plan / Stay in plan mode / Refine the plan` without rendering the full plan markdown.
+6. Confirm Pi opens a full-page custom saved-plan review UI before execution can be selected; in iTerm, test keyboard scrolling, observe whether mouse-wheel scrolling is forwarded to the UI, then test execute, stay, refine, and cancel choices.
 7. Confirm explanatory replies that do not touch `docs/plan/` do not show the action prompt or extract todos.
 8. Confirm no persistent `[plan-todo-list]` widget appears; `/todos` shows progress on demand.
 9. Confirm constrained housekeeping is allowed only under local memory.
@@ -39,9 +39,10 @@ Confirm the loader prompt includes a compact `Load snapshot:` section with cache
 18. Confirm `--plan-extra-tools ctx_search,ctx_execute_file` adds only installed tools and renders the resolved tool list.
 19. In `/plan`, create a plan, choose execute, and confirm the follow-up names the active plan path.
 20. With extracted todos, confirm execution context includes the active plan path and compaction preserves it.
-21. Ask to execute an existing active plan path and confirm execution starts even if the plan was not edited in that turn.
-22. Confirm advisory questions remain lightweight and implementation-looking requests become durable plans first.
-23. Start without baseline docs or with only one docs area preserved, then confirm curated project-memory load is queued.
+21. Ask to execute an existing active plan path and confirm the full-page review UI opens even if the plan was not edited in that turn; choose execute and confirm execution starts.
+22. While multiple active plans exist and no current plan is selected, send an ambiguous proceed request such as `진행하자` and confirm Pi asks which active plan to execute before showing the review UI.
+23. Confirm advisory questions remain lightweight and implementation-looking requests become durable plans first.
+24. Start without baseline docs or with only one docs area preserved, then confirm curated project-memory load is queued.
 24. Confirm implementation plans include a step to run `dotdotgod graph impact` for intended changed files before source changes.
 
 ## Pending Impact Checks
