@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { buildDotdotgodCliCandidates } from "../dotdotgod-cli.ts";
+import { buildDotdotgodCliCandidates } from "../shared/dotdotgod-cli.ts";
 
 export interface LoadSnapshotRunResult {
 	ok: boolean;
