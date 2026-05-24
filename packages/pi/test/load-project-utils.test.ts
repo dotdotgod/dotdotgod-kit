@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { buildDotdotgodCliCandidates } from "../extensions/dotdotgod-cli.ts";
+import { buildDotdotgodCliCandidates } from "../extensions/shared/dotdotgod-cli.ts";
 import { buildLoadPrompt, collectSnapshot, estimateTextMetrics, formatLoadSnapshotSummary, hasOtherLoadCommand, listMarkdownFiles } from "../extensions/load-project/utils.ts";
 
 function fixture(): string {

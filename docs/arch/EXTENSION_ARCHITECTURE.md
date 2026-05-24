@@ -8,7 +8,7 @@
 {
   "pi": {
     "skills": ["./skills", "./node_modules/pi-subagents/skills"],
-    "extensions": ["./extensions", "./node_modules/pi-subagents/src/extension/index.ts"],
+    "extensions": ["./extensions"],
     "prompts": ["./node_modules/pi-subagents/prompts"]
   }
 }
@@ -28,7 +28,7 @@ Distribution metadata:
 - Tarballs contain dotdotgod-owned `skills/`, `extensions/`, package metadata, and license files; runtime dependency bodies are installed by the package manager from declared dependencies.
 - Pi peer dependencies remain unbundled and are resolved by the host Pi installation.
 - `@dotdotgod/cli` is a package dependency used by Pi extensions as a source-checkout, package-local, then global CLI fallback chain.
-- `pi-subagents` is a package dependency whose extension, skill, and prompts are exposed through the Pi manifest; standalone `pi-subagents` installs should be removed or disabled to avoid duplicate registration.
+- `pi-subagents` is a package dependency whose skill and prompts are exposed through the Pi manifest; a dotdotgod wrapper extension loads the subagent extension only when a `subagent` tool is not already registered, so local development can coexist with a standalone `pi-subagents` install.
 
 ## Resource Responsibilities
 
@@ -59,8 +59,8 @@ It uses resolved memory-area `description` and `clarify` metadata when configure
 - Runtime state: mode flags, todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/plan <request>` delivery, request-framing classification, and pending source/config impact-check records.
 - Context shaping: first-request context checks, queued planning-load delivery, queued post-compaction request resume, compaction debounce, CLI planning-context summary, baseline-doc coverage checks, single-area-only context detection, optional validation, bounded load-snapshot refresh, and bounded multi-file advisory graph impact checks when the CLI is available.
 - Impact-check integration: structured `graph impact --yml` runtime summaries, short pending-impact reminders after source/config edits, pending-path plus git source/config union checks, and stale pending-record cleanup after successful checks.
-- UX: full-page custom saved-plan review UI after active plan updates, returning execute/stay/refine/cancel choices synchronously through shortcut keys or a cursor-selectable action bar; resolvable explicit execution requests open the same review UI, while ambiguous proceed requests ask which active plan to execute before execution state is persisted.
-- Prompt ownership: first-turn full safety/workflow prompt, later compact reminder, per-request framing, resolved active tool list, mandatory impact-plan refinement and validation guidance, and current-work-directed compaction instructions that demote stale history and repeated boilerplate.
+- UX: queue-first custom Discussion Queue Console for unresolved user-discussion items in the durable plan README, followed only after queue clearance by the full-page custom saved-plan review UI that returns execute/stay/refine/cancel choices synchronously through shortcut keys or a cursor-selectable action bar; resolvable explicit execution requests open the same queue-first review flow, while ambiguous proceed requests ask which active plan to execute before execution state is persisted.
+- Prompt ownership: first-turn full safety/workflow prompt, later compact reminder, per-request framing, resolved active tool list, mandatory impact-plan refinement and validation guidance, discussion-queue follow-up prompts that ask the agent to update durable plan markdown, and current-work-directed compaction instructions that demote stale history and repeated boilerplate.
 
 Plan mode injects runtime instructions because project docs can be edited by users. The prompt should stay generic and must not contain app-specific stack assumptions.
 
@@ -105,7 +105,7 @@ Prompt content should:
 
 ## State and Persistence
 
-`plan-mode` persists custom session entries for mode state, todos, review-prompt eligibility, prompt tier, active plan path, touched plan/archive paths, latest planning request, pending inline planning request delivery, queued load state, queued post-compaction resume state, compaction measurements, one-time CLI context-check state, pending impact-check files, and recent completed impact-check records.
+`plan-mode` persists custom session entries for mode state, todos, review-prompt eligibility, prompt tier, active plan path, touched plan/archive paths, latest planning request, pending inline planning request delivery, queued load state, queued post-compaction resume state, compaction measurements, one-time CLI context-check state, pending impact-check files, and recent completed impact-check records. Discussion-queue state is intentionally read from the active plan README instead of a sidecar or opaque session object; the custom UI returns structured choices and the agent follow-up updates the plan markdown as the durable source.
 
 ## Related Behavior and Verification
 
