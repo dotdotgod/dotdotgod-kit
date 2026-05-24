@@ -392,7 +392,12 @@ describe('dotdotgod CLI e2e', () => {
 
     const defaultFailure = run(['validate', root, '--include-local-memory', '--json']);
     assert.equal(defaultFailure.status, 1);
-    assert(JSON.parse(defaultFailure.stdout).errors.some((error) => error.code === 'FILE_TOO_LARGE' && error.file === 'docs/archive/README.md'));
+    const defaultErrors = JSON.parse(defaultFailure.stdout).errors;
+    const sizeError = defaultErrors.find((error) => error.code === 'FILE_TOO_LARGE' && error.file === 'docs/archive/README.md');
+    assert(sizeError);
+    assert.match(sizeError.prompt, /Split docs\/archive\/README\.md into focused documents by documentation area and role/);
+    assert.match(sizeError.prompt, /Archive Map \(archive-map\)/);
+    assert.match(sizeError.prompt, /historical-memory-map/);
 
     writeConfig(root, { validation: { markdown: { exclude: ['docs/archive/README.md'] } } });
     assert.equal(json(run(['validate', root, '--include-local-memory', '--json'])).ok, true);
