@@ -13,3 +13,4 @@ Use this area for architecture decisions, code conventions, module boundaries, d
 - `validation/README.md`: CLI validation, graph/cache policy, dependency policy, and workspace verification strategy.
 - `MEMORY_AREA_CONFIG.md`: config discovery, path matching, graph metadata, and snapshot policy for shared/local and fresh/stale memory areas.
 - `IMPACT_RANKING_CONFIG.md`: graph impact ranking architecture, score components, PPR policy, and deterministic semantic edge generation.
+- `TRELLO_DOCS_SYNC.md`: Trello card to markdown sync architecture for offline dry-run, trusted GitHub Actions writes, `dotdotgod-view` custom field data, and Power-Up UI boundaries.
