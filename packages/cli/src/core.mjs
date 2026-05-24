@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { spawnSync } from 'node:child_process';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import { runInit } from './init.mjs';
+import { runTrelloSync } from './trello/sync.mjs';
 import { commandUsage, hasHelpToken, helpCommandFromArgs, isHelpToken, isVersionToken, parseCommon, printVersion, usage } from './cli/usage.mjs';
 import { rel } from './common/paths.mjs';
 import { extractAnchors, extractLinks, headingToAnchor, isKebabCase, isUpperSnakeMarkdown, removeCodeBlocks } from './docs/markdown.mjs';
@@ -22,6 +23,13 @@ export { buildCommunities, relationWeight } from './graph/communities.mjs';
 export { addEdge, addNode, compactGraph, expandGraph, graphStats, jsonSize, shardFile, writeJson } from './graph/store.mjs';
 export { cacheFile, collectIndexFiles, fingerprint, shouldIndexPath } from './index/files.mjs';
 export { buildMemoryAreas, detectCommandGuidance, detectPackageManager } from './load-snapshot/summary.mjs';
+export { planTrelloDryRun, runTrelloSync } from './trello/sync.mjs';
+export { parseTrelloMetadata, extractTrelloShortLink } from './trello/metadata.mjs';
+export { normalizeGitHubRemote, normalizeGitHubRepositoryKey, resolveGitHubFileUrl, resolveGitHubRepositoryIdentity } from './trello/github-url.mjs';
+export { buildLinkedDocsData, summarizeTraceability } from './trello/summary.mjs';
+export { formatTrelloDryRunReport, formatTrelloWriteReport } from './trello/report.mjs';
+export { createTrelloClient, resolveTrelloCredentials } from './trello/client.mjs';
+export { buildLinkedDocsCustomFieldData, customFieldTextValue, DEFAULT_DOTDOTGOD_CUSTOM_FIELD_NAME, dotdotgodCustomFieldName, mergeLinkedDocsCustomFieldValue, parseLinkedDocsCustomFieldPayload, serializeLinkedDocsCustomFieldPayload } from './trello/custom-fields.mjs';
 export const CACHE_VERSION = 11;
 const CACHE_DIR = '.dotdotgod';
 const MANIFEST_FILE = 'manifest.json';
@@ -1505,7 +1513,7 @@ export function runGraph(argv) {
   else console.log(`graph communities: ${payload.communities.communities.length}/${payload.communities.total} shown, ${payload.communities.omitted} omitted (${status.status}${refreshNote} index)`);
 }
 
-export function runCli(argv = process.argv.slice(2)) {
+export async function runCli(argv = process.argv.slice(2)) {
   const [command = 'help', ...args] = argv;
   if (isVersionToken(command)) printVersion();
   if (command === 'help') usage('', helpCommandFromArgs(args));
@@ -1521,5 +1529,14 @@ export function runCli(argv = process.argv.slice(2)) {
   else if (command === 'expand') runExpand(args);
   else if (command === 'traceability') runTraceability(args);
   else if (command === 'graph') runGraph(args);
+  else if (command === 'trello') {
+    const result = await Promise.resolve(runTrelloSync(args));
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) {
+      console.error(result.stderr);
+      console.error(commandUsage('trello'));
+    }
+    process.exit(result.exitCode);
+  }
   else usage(`Unknown command: ${command}`);
 }

@@ -40,6 +40,20 @@ Create dotdotgod.config.json with the built-in default memory, traceability, val
     case 'expand':
       return `Usage:
   dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]`;
+    case 'trello':
+      return `Usage:
+  dotdotgod trello sync <root> [--dry-run]`;
+    case 'trello sync':
+      return `Usage:
+  dotdotgod trello sync <root> [--dry-run]
+
+Options:
+  --dry-run  Preview planned Trello updates without calling Trello APIs.
+
+Write mode:
+  Omit --dry-run only in the trusted GitHub Actions default-branch push workflow.
+  Requires TRELLO_API_KEY and TRELLO_TOKEN in the trusted workflow environment.
+  Local/manual and pull request usage should run --dry-run.`;
     case 'traceability':
       return `Usage:
   dotdotgod traceability links <root> [--check|--write] [--json]`;
@@ -75,6 +89,7 @@ Ranks nodes related to a changed file. <root> is the project root; --changed is 
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]
   dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]
   dotdotgod traceability links <root> [--check|--write] [--json]
+  dotdotgod trello sync <root> [--dry-run]
   dotdotgod graph impact <root> --changed <path> [--compact|--json|--yml|--yaml]
   dotdotgod graph communities <root> [--json]`;
   }
@@ -120,6 +135,7 @@ export function printVersion() {
 export function helpCommandFromArgs(args) {
   const nonHelp = args.filter((arg) => !isHelpToken(arg));
   if (nonHelp[0] === 'graph' && nonHelp[1]) return `graph ${nonHelp[1]}`;
+  if (nonHelp[0] === 'trello' && nonHelp[1]) return `trello ${nonHelp[1]}`;
   if (nonHelp[0] === 'traceability' && nonHelp[1]) return `traceability ${nonHelp[1]}`;
   if (nonHelp[0] === 'config' && nonHelp[1] === 'init') return 'config init';
   return nonHelp[0] ?? 'root';
