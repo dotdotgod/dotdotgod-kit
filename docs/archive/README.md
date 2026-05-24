@@ -1,0 +1,161 @@
+# Archive
+
+Use this area for local completed plans, temporary reports, historical notes, payload captures, and investigation notes.
+
+## Naming
+
+- Archived plan task directories preserve their kebab-case task slug.
+- Archived report directories use a focused kebab-case report slug.
+- Markdown file names use UPPER_SNAKE_CASE, including `README.md`.
+
+## Structure
+
+- Completed plan task directories move from `docs/plan/<task-slug>/` to `docs/archive/plan/<task-slug>/`.
+- Temporary investigations, reports, payload captures, and historical notes live under `docs/archive/report/<report-slug>/`.
+- Preserve each archive directory's `README.md` overview/index and supporting UPPER_SNAKE_CASE markdown files.
+- Additional archive categories can be added later as focused kebab-case subdirectories when needed.
+
+## Index
+
+### Completed plans
+
+- `plan/pi-runtime-dependency-conflict/`: fixed `@dotdotgod/pi` subagent dependency loading with runtime-deferred duplicate detection, hoist-safe dependency resolution, package-local CLI/subagent install verification, and smoke/docs coverage.
+- `plan/pi-subagents-integration/`: added `@dotdotgod/cli` and `pi-subagents` as `@dotdotgod/pi` runtime dependencies, package-local CLI resolution, subagent resource manifest paths, and smoke/docs coverage.
+- `plan/plan-preview-fullscreen-ui/`: restored Plan Mode saved-plan review to a full-page custom UI with a cursor-selectable action bar, explicit execution gating, and documented iTerm2 wheel-smoke expectations.
+- `plan/plan-mode-research-report/`: produced a tracked `docs/report/agent-planning-research/` synthesis and lane reports for plan-mode research on hierarchy, external memory, multi-agent decomposition, planning visibility, and verification.
+- `plan/plan-mode-send-user-message-queue/`: fixed Plan Mode synthetic user-message delivery by routing inline planning, discussion, validation, refinement, compaction-resume/load, and execution-handoff prompts through explicit follow-up queue delivery.
+- `plan/plan-validation-blocker-refine-ux/`: improved Pi Plan Mode validation-blocker refinement by showing missing decision/content details, collecting user feedback, and sending structured repair prompts before execution can continue.
+- `plan/stage-by-stage-plan-validation-orchestration/`: added CLI stage-scoped plan validation, Pi one-stage-at-a-time validation orchestration, custom validation blocker UI, duplicate execution-review suppression, and tighter planning/execution request classification.
+- `plan/stage-by-stage-plan-authoring-orchestration/`: changed Pi Plan Mode to author and validate one canonical stage at a time, auto-advancing on clean stage validation and preserving final full-plan review before execution.
+- `plan/inline-plan-request-suppresses-execution-choice/`: prevented inline `/plan <request>` planning follow-up turns from opening the active-plan execution chooser while preserving later explicit execution review.
+- `plan/plan-mode-decision-ui/`: added Pi Plan Mode Discussion Queue Console behavior, queue parsing helpers, queue-first execution gating, docs, tests, and manual smoke coverage.
+- `plan/plan-mode-execution-intent-targeting/`: tightened Pi Plan Mode execution-intent detection so active-plan selection appears only for confirmed execution requests, non-plan commands do not fall back to all active plans, and custom review UIs truncate to terminal width.
+- `plan/plan-mode-stage-workstream-gate/`: added shared CLI-backed active-plan validation, canonical eight-stage plan artifact rules, role/area workstream blockers, Pi execution gating, cross-agent guidance, docs, and tests.
+- `plan/agent-docs-concepts/`: added cross-agent instruction matrix guidance, long-running plan resume conventions, and focused contract traceability guidance.
+- `plan/arch-scope-update/`: expanded `docs/arch` scope across docs and prompts.
+- `plan/archive-plan-subdir-and-readme-links/`: changed completed plan archives to live under `docs/archive/plan/` and simplified root README links.
+- `plan/archive-report-subdir/`: separated temporary reports and investigations under `docs/archive/report/`.
+- `plan/claude-code-lifecycle-update/`: refreshed Claude Code adapter hook/plugin guidance for current lifecycle semantics and SDLC guardrail framing.
+- `plan/claude-codex-pi-parity/`: added cross-agent impact-review resources and refreshed Claude Code/Codex parity guidance for commands, skills, hooks, tests, and packaging.
+- `plan/claude-codex-hooks/`: added optional Claude Code and Codex hook guidance for advisory project-memory reminders, validation, and plan-safety patterns.
+- `plan/cli-basic-interface/`: added predictable CLI help/version commands, subcommand help, and missing `graph impact --changed` usage errors.
+- `plan/command-guidance-resolution/`: added environment-aware `load-snapshot` command guidance for local source, project install, and missing CLI cases.
+- `plan/commit-cleanup/`: cleaned noisy local commits with interactive rebase before pushing.
+- `plan/commit-plan-preview-widget/`: superseded saved-plan preview widget follow-up after removing preview UI.
+- `plan/compact-impact-tool-output/`: collapsed long Pi `dotdotgod_graph_impact` tool output after 10 lines with an expand hint.
+- `plan/commit-split/`: historical commit-splitting plan for earlier repository restructuring.
+- `plan/configurable-doc-size-limits/`: added project-level markdown validation budgets and explicit size-check exclusions.
+- `plan/configurable-traceability-scope/`: added configurable traceability enforcement paths using array-based required/exclude policy.
+- `plan/context-curation-mechanics-metrics/`: aligned context mechanics and measurement concept docs around curated project-memory and graph impact signals.
+- `plan/context-curation-readme-concept/`: refreshed README and concept positioning for context curation and docs-first project memory.
+- `plan/context-metrics-and-cache-safety/`: added cache schema/timing metadata, bounded load-snapshot quality metrics, graph/guidance assertions, and snapshot sample context measurement.
+- `plan/context-metrics-debug-mode/`: added Pi context metrics debug mode for JSONL event capture and local measurement reports.
+- `plan/context-overhead-reduction/`: reduced Plan Mode and load prompt context overhead with tiered runtime prompts, tighter compaction instructions, compact snapshot-first load summaries, and measurement updates.
+- `plan/context-overhead-tightening/`: tightened load/Plan Mode context defaults, kept impact output unchanged due to low relative overhead, and aligned cross-agent load guidance.
+- `plan/conventions-doc-structure/`: added domain README and conventions directory promotion rules.
+- `plan/cross-agent-plan-mode-parity/`: aligned Claude Code and Codex planning guidance with current Pi plan-mode behavior.
+- `plan/cross-agent-plugins/`: designed cross-agent package support for Pi, Claude Code, and Codex.
+- `plan/cross-agent-load-snapshot-parity/`: aligned generated Claude Code and Codex load workflows with CLI snapshot-first guidance and manual README-index fallback.
+- `plan/cross-agent-workflow-adapters/`: added Claude Code and Codex adapter workflow resources.
+- `plan/dotdot-settings/`: added optional dotdot code convention setting.
+- `plan/dotdot-scope-rename/`: selected and applied the `@dotdotgod/*` creator-brand package scope.
+- `plan/dotdotgod-config-command/`: added CLI support for inspecting and initializing project-level dotdotgod config files.
+- `plan/dotdotgod-cli-graph-roadmap/`: implemented the unified CLI graph roadmap through tests, deterministic extraction, bounded impact reports, sharded cache, deterministic communities, load snapshots, and concept/archive cleanup.
+- `plan/dotdotgod-impact-plan-mode/`: expanded Plan Mode's auto-allowed dotdotgod CLI policy to explicit bounded context/status commands while keeping mutating commands behind approval.
+- `plan/dotdotgod-workflow-simplification/`: simplified everyday dotdotgod workflow guidance for compact loads, plan sizing, targeted archive reads, scoped impact checks, opt-in context metrics, and active-plan lifecycle.
+- `plan/doc-language-audit/`: audited live markdown for LLM-like contrast phrasing and rewrote unnecessary contrast patterns into direct requirements or positive claims.
+- `plan/docs-compaction-pass/`: compacted verbose docs by splitting manual smoke checks and shortening Plan Mode, validation, and extension architecture prose.
+- `plan/docs-clarity-improvements/`: clarified README/spec wording around validate, traceability generated-link checks, repair flow, and repository verify boundaries.
+- `plan/docs-copy-clarity-pass/`: improved first-time reader command guidance, docs routing maps, traceability mental model, and validate/verify wording across README/spec/test docs.
+- `plan/spec-gap-coverage/`: closed spec coverage gaps for traceability-link JSON output fields, docs-surface sync scope, and markdown budget exclusions.
+- `plan/document-clarify-skill/`: added config-driven memory-area clarity metadata and generated cross-agent `document-clarify` skills for Pi, Claude Code, and Codex.
+- `plan/docs-surface-split/`: split oversized default-surface docs into focused Plan Mode, validation, and manual-smoke domain directories while preserving compatibility routes.
+- `plan/inline-plan-command-request/`: added `/plan <request>` as a one-command Pi Plan Mode entry path while preserving no-argument toggle behavior.
+- `plan/dotdotgod-cli-memory-search/`: superseded by the consolidated CLI graph roadmap after creating the CLI, validation, cache, graph indexing, and query foundations.
+- `plan/current-change-commit-plan/`: historical current-change commit splitting plan.
+- `plan/full-plan-preview/`: changed saved plan preview to show the full plan markdown.
+- `plan/graph-ast-side-effect-analysis/`: historical AST/source-symbol direction; current graph impact direction is traceability/docs/package/memory-policy routing.
+- `plan/graph-effectiveness-evaluation/`: evaluated current `graph impact` usefulness, ranking quality, token cost, and baseline comparisons for representative repository seeds.
+- `plan/graph-impact-quality-follow-up/`: added compact graph impact output, graph-quality checks, traceability repairs, and semantic-noise reduction.
+- `plan/graph-impact-yml-output/`: added structured `graph impact --yml`/`--yaml` output and made Pi impact tooling return YML summaries by default.
+- `plan/generic-indexing-scope/`: changed CLI indexing from pnpm-monorepo-shaped discovery to gitignore-aware generic text/source/config file discovery while preserving dotdotgod archive policy.
+- `plan/graphify-comparison-brief/`: expanded the Graphify comparison with structural generated-graph risks, dotdotgod's production predictability argument, and appropriate Graphify use cases.
+- `plan/graphify-concept-review/`: consolidated Graphify lessons into the CLI graph roadmap and concept docs while keeping dotdotgod docs-first.
+- `plan/implementation-traceability/`: added CLI-enforced `json dotdotgod` spec traceability validation, graph extraction, shared workflow guidance, and code-size conventions.
+- `plan/impact-ranking-config/`: added configurable graph impact ranking with presets, score breakdowns, deterministic semantic edges, changed-file PPR, and measurement updates.
+- `plan/impact-ranking-test-hardening/`: designed and implemented focused unit/e2e coverage for impact-ranking config, semantic edges, scoring, PPR, presets, archive safety, and measurement output.
+- `plan/index-refresh-lifecycle/`: defined lazy cache refresh, optional task-completion hooks, and pre-push stale-cache checks without hidden indexing.
+- `plan/inline-plan-compaction-request/`: fixed `/plan <request>` so automatic compaction resumes the inline request instead of a stale previous user message.
+- `plan/lat-md-comparison/`: compared lat.md's markdown knowledge graph model with dotdotgod's structured project-memory workflow.
+- `plan/leiden-community-detection/`: implemented Leiden community detection with deterministic fallback for bounded graph community summaries.
+- `plan/load-command/`: added `/load` and `/dd:load` project memory loader command.
+- `plan/load-snapshot-integration/`: integrated `dotdotgod load-snapshot` into Pi `/dd:load`, reduced broad docs scanning, and added current-work-directed Plan Mode compaction.
+- `plan/memory-area-config/`: added configurable shared/local and fresh/stale memory-area policy for CLI graph/index/load snapshots.
+- `plan/modular-hotspot-guidance/`: documented that dotdotgod impact reveals large mixed-responsibility hotspots but does not replace focused module boundaries.
+- `plan/monorepo-agent-packages/`: converted the repository design to npm workspace packages for Pi, docs validator, Claude Code, and Codex.
+- `plan/npm-publish-0-1-0/`: published the first public `@dotdotgod/*` packages at version 0.1.0.
+- `plan/no-local-traceability/`: added validation that rejects default and custom local-memory paths in canonical traceability blocks.
+- `plan/npm-publish-0-1-1/`: archived obsolete npm publish plan for the older 0.1.1 package/version.
+- `plan/package-readme-impact-refresh/`: refreshed package README files with impact-first positioning, GitHub/npm links, graph/memory/config concepts, and package metadata tags.
+- `plan/pending-impact-git-worktree/`: fixed Pi pending impact checks for git worktree/staged files and stale pending records.
+- `plan/package-metadata-load-readme-docs/`: documented package distribution metadata and aligned the load-project extension README with spec/arch docs.
+- `plan/plan-mode-defer-context-shaping/`: deferred Plan Mode compaction/load until after the first user planning request.
+- `plan/plan-mode-load-queue/`: fixed Plan Mode project-memory load scheduling so automatic loads queue safely after active prompts.
+- `plan/plan-mode-request-framing/`: added latest-request framing, concrete load-needed conditions, mandatory impact-informed plan refinement, and post-coding validation guidance to Pi Plan Mode.
+- `plan/plan-mode-execute-trigger/`: fixed Plan Mode execute-choice handoff so selecting execute persists execution state and starts the execution turn with a real user follow-up.
+- `plan/plan-mode-auto-compaction/`: added automatic Plan Mode compaction behavior for long planning sessions.
+- `plan/plan-mode-compaction-resume/`: fixed Plan Mode automatic compaction so the latest planning request resumes after compaction, with deferred project-memory load ordered before continuation.
+- `plan/plan-impact-scope/`: enhanced planning with advisory `graph impact` checks for likely target files and impact-informed plan summaries.
+- `plan/plan-mode-specific-plan-execution/`: fixed Plan Mode so explicit requests to execute a named active plan start execution without requiring a current-turn plan edit.
+- `plan/plan-preview-root-cause/`: investigated and fixed plan preview visibility by putting the preview in the choice prompt.
+- `plan/plan-archive-file-ops/`: allowed constrained plan/archive housekeeping commands in Plan Mode.
+- `plan/plan-preview-widget-before-choice/`: changed plan preview to show in a separate preview UI before the action choice.
+- `plan/plan-prompt-trim/`: removed project-specific plan prompt content and trimmed wording.
+- `plan/pi-impact-enforcement/`: added Pi runtime impact-check tooling, pending-impact reminders, and commit/push/publish gating around `dotdotgod graph impact`.
+- `plan/pnpm-husky-quality-gate/`: switched local development workflow to pnpm and added a Husky pre-push quality gate.
+- `plan/preview-before-execute-choice/`: changed saved plan preview timing before the execute/stay/refine choice.
+- `plan/preview-in-choice-prompt/`: changed saved plan preview to be included in the execution-choice prompt.
+- `plan/product-decision-quality-positioning/`: updated public and concept docs with positioning around durable product intent, design rationale, verification standards, and agent collaboration quality.
+- `plan/project-memory-scope-rename/`: superseded `@project-memory/*` naming candidate review.
+- `plan/readme-index-rule/`: added README index update rules.
+- `plan/readme-knowledge-graph-positioning/`: realigned README and concept messaging around explicit maintained knowledge-graph links plus high-quality load context.
+- `plan/github-repo-rename-links/`: updated canonical GitHub repository URLs to `dotdotgod/dotdotgod-kit` while preserving product, npm, CLI, config, and plugin names as `dotdotgod`.
+- `plan/reference-expansion/`: added CLI reference resolution and prompt-time expansion from the existing graph/index.
+- `plan/reference-expansion-adoption/`: adopted `dotdotgod expand` in load/planning workflows and Pi Plan Mode context shaping.
+- `plan/fuzzy-reference-expansion/`: added opt-in fuzzy reference expansion for high-signal natural prompts and Pi Plan Mode context shaping.
+- `plan/fuzzy-stopword-config/`: made fuzzy reference expansion low-signal terms configurable with default add/remove policy.
+- `plan/readme-impact-docs-refresh/`: refreshed the README and concept/spec docs with impact-first positioning, workflow diagram, graph sources, memory categories, traceability config, and config overview.
+- `plan/remove-impact-yml-wrapper/`: removed the Pi impact tool wrapper heading for all-success structured YML summaries.
+- `plan/remove-lat-and-review-fuzzy/`: removed the live lat.md comparison document and clarified fuzzy reference expansion as optional recall rather than a rigor source.
+- `plan/root-readme-raw-impact-example/`: switched the root README first-screen impact example to the default non-compact `graph impact` command while keeping the displayed output abbreviated.
+- `plan/readme-landing-positioning/`: improved root and package README landing pages for GitHub and npm.
+- `plan/readme-landing-slogan/`: added the impact-review slogan to root/package READMEs and tightened package landing copy.
+- `plan/show-plan-after-write/`: added saved plan preview after plan file writes.
+- `plan/shared-adapter-resources/`: centralized shared adapter workflow sources and generated platform resources.
+- `plan/smaxh-docs-review/`: reviewed docs structures across smaxh app, biz, and api projects.
+- `plan/spec-arch-sync/`: synchronized implemented behavior into spec and arch docs.
+- `plan/spec-polish-after-yml-release/`: tightened spec wording for compact text vs structured YML graph impact output and wrapper-free Pi summaries.
+- `plan/source-modularization/`: split large CLI, Plan Mode, and load-project source hotspots into narrower domain modules so graph impact can route changes more precisely.
+- `plan/spec-current-state-cleanup/`: rewrote behavior specs to describe current contracts instead of historical changes.
+- `plan/structured-retrieval-priors/`: added deterministic memory-area metadata, README routing edges, retrieval hints, and bounded load-snapshot memory-area summaries.
+- `plan/test-and-docs-validation/`: historical docs/type validation research superseded by the TypeScript quality gate plan.
+- `plan/traceability-links-sync/`: added generated Markdown traceability link sections synchronized from canonical `json dotdotgod` blocks, with marker validation, CLI sync, and budget exclusions.
+- `plan/traceability-validation-hardening/`: hardened traceability validation, graph impact routing, Plan Mode CLI context, generated workflow guidance, and Plan Mode dotdotgod CLI approval.
+- `plan/trello-docs-sync/`: implemented Trello Docs Sync through dry-run planning, trusted GitHub Actions writes, `dotdotgod-view` custom field data, static Power-Up UI, and GitHub Pages deployment workflow.
+- `plan/unify-trello-workflows/`: combined Trello docs sync and Power-Up Pages deployment into one workflow while preserving dry-run, write-mode, secret, and PR deployment boundaries.
+- `plan/trello-docs-sync-phase-2/`: archived historical Trello Docs Sync Phase 2 local write-mode plan materials superseded by Phase 3 CI-only writes.
+- `plan/trello-phase-1-report/`: completed report plan for reconstructing the Trello Docs Sync Phase 1 planning and execution workflow.
+- `plan/typescript-unit-tests/`: added the first TypeScript typecheck and unit-test quality gate for Pi extension helpers.
+- `plan/verify-runtime-optimization/`: removed duplicated root verification work, added package verify contract checks, and optimized pre-push package dry-runs.
+
+### Reports
+
+- `report/context-metrics/`: local context measurement reports generated by measurement scripts and Pi context debug runs.
+- `report/trello-phase-4-subagent-outputs/`: archived Phase 4 multi-repository Trello description entry planning and review subagent outputs.
+- `report/graph-effectiveness-evaluation/`: measured current `graph impact` quality across 10 seeds with raw payloads, per-seed context measurements, and precision/recall baseline comparisons.
+- `report/graph-rag-related-research/`: research notes on GraphRAG, agent memory, and codebase graph retrieval papers related to dotdotgod's bounded project-memory graph approach.
+- `report/graphify-token-reduction-review/`: graphify token reduction review and lessons for future memory indexing.
+- `report/pi-token-usage-2026-05-17/`: ccusage-based Pi token usage report for recent active sessions.
+- `report/claude-code-usage-2026-05-17/`: ccusage-based Claude Code token usage report from local session logs.
+
+This directory is local-only and ignored by git by default.

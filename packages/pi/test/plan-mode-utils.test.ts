@@ -5,11 +5,20 @@ import {
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
 	buildPlanCompactionInstructions,
 	buildPlanCompactionResumePrompt,
+	buildDiscussionQueueFollowUp,
 	buildPlanExecutionDecision,
 	buildPlanExecutionHandoff,
 	buildPlanReviewDisplayMarkdown,
 	buildPlanReviewMarkdown,
+	buildPlanReviewRefinePrompt,
 	buildPlanReviewTitle,
+	buildPlanValidationBlockerDisplay,
+	buildPlanValidationCustomMarkdown,
+	buildPlanValidationRefinePrompt,
+	buildPlanStageAuthoringPrompt,
+	getNextPlanValidationStage,
+	getPlanStageFromPath,
+	PLAN_VALIDATION_STAGES,
 	buildPlanModeRequestFraming,
 	classifyPlanModeRequest,
 	collectProjectMemoryContextCoverage,
@@ -17,6 +26,7 @@ import {
 	buildPlanModeContextPrompt,
 	extractDoneSteps,
 	extractTodoItems,
+	extractDiscussionQueueItems,
 	formatCompactImpactSummary,
 	formatExpandableToolOutput,
 	formatMultiImpactSummary,
@@ -26,7 +36,9 @@ import {
 	extractPlanSlugMentions,
 	getCurrentPlanReadmePath,
 	getChangedPathFromDotdotgodImpactCommand,
+	getNextPlanReviewActionIndex,
 	getPlanCompactionReason,
+	getPlanReviewActionChoice,
 	getPlanReviewScrollState,
 	hasExplicitBracketReferences,
 	hasLikelyFuzzyReferences,
@@ -37,6 +49,7 @@ import {
 	mapPlanReviewFallbackChoice,
 	mergeImpactCheckPaths,
 	parsePlanModeExtraTools,
+	planModeFollowUpDeliveryOptions,
 	pendingImpactSummary,
 	resolveMentionedPlanPath,
 	resolvePlanExecutionTarget,
@@ -51,6 +64,8 @@ import {
 	shouldAllowPlanModeBashCommand,
 	shouldLoadProjectMemoryForPlanning,
 	shouldPromptForPlanChoice,
+	summarizeDiscussionQueue,
+	summarizePlanValidationBlockers,
 	shouldTrackImpactPath,
 	shouldShapePlanningContextOnAgentStart,
 	isPlanModeRuntimeRequest,
@@ -60,6 +75,12 @@ import {
 	type PendingImpactItem,
 	type TodoItem,
 } from "../extensions/plan-mode/utils.ts";
+
+describe("plan-mode user-message delivery", () => {
+	it("uses explicit follow-up delivery for synthetic user messages", () => {
+		assert.deepEqual(planModeFollowUpDeliveryOptions(), { deliverAs: "followUp" });
+	});
+});
 
 describe("plan-mode command safety", () => {
 	it("normalizes inline /plan request arguments", () => {
@@ -141,11 +162,13 @@ describe("plan-mode command safety", () => {
 			"dotdotgod graph impact . --changed packages/pi/index.ts --compact",
 			"dotdotgod graph impact . --changed packages/pi/index.ts --yml",
 			"dotdotgod graph communities . --json",
+			"dotdotgod plan validate docs/plan/example/README.md --json",
 			"dotdotgod config . --json",
 			"dotdotgod index .",
 			"node packages/cli/bin/dotdotgod.mjs --version",
 			"node packages/cli/bin/dotdotgod.mjs status . --json",
 			"node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/index.ts --yaml",
+			"node packages/cli/bin/dotdotgod.mjs plan validate docs/plan/example/README.md --json",
 			"node /opt/example/dotdotgod-kit/packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/index.ts --yml",
 			"node ./packages/cli/bin/dotdotgod.mjs expand . 'Update [[PLAN_MODE]]' --json",
 			"node packages/cli/bin/dotdotgod.mjs config . --json",
@@ -273,6 +296,7 @@ describe("plan-mode request framing", () => {
 		assert.equal(classifyPlanModeRequest("현재 만들어져있는 plan모드를 조사해봐"), "advisory");
 		assert.equal(classifyPlanModeRequest("Claude Code하고 Codex에도 적용해줘"), "implementation_request");
 		assert.equal(classifyPlanModeRequest("Execute the plan in docs/plan/foo/README.md"), "explicit_execution");
+		assert.equal(classifyPlanModeRequest("설계부터 진행하자"), "advisory");
 		assert.equal(classifyPlanModeRequest("Load the dotdotgod project memory."), "memory_load");
 	});
 
@@ -420,6 +444,175 @@ describe("plan-mode review helpers", () => {
 		assert.deepEqual(getPlanReviewScrollState(999, 100, 24), { offset: 76, maxOffset: 76, canScrollUp: true, canScrollDown: false });
 		assert.deepEqual(getPlanReviewScrollState(5, 10, 24), { offset: 0, maxOffset: 0, canScrollUp: false, canScrollDown: false });
 	});
+
+	it("maps cursor-selectable review actions and wraps selection", () => {
+		assert.equal(getPlanReviewActionChoice(0), "execute");
+		assert.equal(getPlanReviewActionChoice(1), "stay");
+		assert.equal(getPlanReviewActionChoice(2), "refine");
+		assert.equal(getPlanReviewActionChoice(3), "cancel");
+		assert.equal(getPlanReviewActionChoice(-10), "execute");
+		assert.equal(getPlanReviewActionChoice(99), "cancel");
+		assert.equal(getNextPlanReviewActionIndex(0, 1), 1);
+		assert.equal(getNextPlanReviewActionIndex(3, 1), 0);
+		assert.equal(getNextPlanReviewActionIndex(0, -1), 3);
+	});
+});
+
+describe("plan-mode discussion queue helpers", () => {
+	const queueMarkdown = `# Task
+
+## Discussion Queue
+
+- [ ] Q1 scope blocks-execute-review: Should Phase 1 include PLAN.json?
+  - Why: Affects validation model and implementation scope.
+  - Affects: M2-T2, V1
+  - Options:
+    - A: Markdown queue only for first slice. Recommended.
+    - B: Add PLAN.json now.
+  - Verification impact: B adds schema tests.
+  - Status: open
+- [x] Q2 preference: Which label should the UI use?
+  - Decision: Discussion Queue Console.
+  - Status: answered
+
+## Plan:
+1. Implement queue`;
+
+	it("extracts Discussion Queue items in FIFO order with fields and options", () => {
+		const items = extractDiscussionQueueItems(queueMarkdown);
+		assert.equal(items.length, 2);
+		assert.equal(items[0]?.id, "Q1");
+		assert.equal(items[0]?.type, "scope");
+		assert.deepEqual(items[0]?.flags, ["blocks-execute-review"]);
+		assert.equal(items[0]?.question, "Should Phase 1 include PLAN.json?");
+		assert.equal(items[0]?.why, "Affects validation model and implementation scope.");
+		assert.equal(items[0]?.affects, "M2-T2, V1");
+		assert.equal(items[0]?.verificationImpact, "B adds schema tests.");
+		assert.deepEqual(items[0]?.options.map((option) => `${option.label}:${option.recommended}`), ["A:true", "B:false"]);
+		assert.equal(items[1]?.id, "Q2");
+		assert.equal(items[1]?.status, "answered");
+	});
+
+	it("summarizes unresolved queue items and suppresses execution review", () => {
+		const summary = summarizeDiscussionQueue(queueMarkdown);
+		assert.equal(summary.items.length, 2);
+		assert.equal(summary.unresolved.length, 1);
+		assert.equal(summary.unresolved[0]?.id, "Q1");
+		assert.equal(summary.blocksExecutionReview, true);
+
+		const answered = queueMarkdown.replace("- [ ] Q1", "- [x] Q1").replace("Status: open", "Status: answered");
+		assert.deepEqual(summarizeDiscussionQueue(answered).unresolved, []);
+		assert.equal(summarizeDiscussionQueue(answered).blocksExecutionReview, false);
+	});
+
+	it("builds follow-up prompts that keep plan markdown as the durable source", () => {
+		const answer = buildDiscussionQueueFollowUp("docs/plan/example/README.md", {
+			action: "answer",
+			itemId: "Q1",
+			optionLabel: "A",
+			optionText: "Markdown only",
+		});
+		assert.match(answer ?? "", /Record the user's answer/);
+		assert.match(answer ?? "", /Q1/);
+		assert.match(answer ?? "", /docs\/plan\/example\/README\.md/);
+		assert.match(answer ?? "", /do not start execution yet/);
+		assert.equal(buildDiscussionQueueFollowUp("docs/plan/example/README.md", { action: "cancel" }), undefined);
+	});
+});
+
+describe("plan-mode stage authoring helpers", () => {
+	it("resolves stage order and stage paths", () => {
+		assert.equal(getNextPlanValidationStage(undefined), "01-intake");
+		assert.equal(getNextPlanValidationStage("01-intake"), "02-context-load");
+		assert.equal(getNextPlanValidationStage("08-verify-replan-close"), undefined);
+		assert.equal(getPlanStageFromPath("docs/plan/example/03-discovery/README.md"), "03-discovery");
+		assert.equal(getPlanStageFromPath("docs/plan/example/README.md"), undefined);
+	});
+
+	it("builds current-stage-only authoring prompts", () => {
+		const prompt = buildPlanStageAuthoringPrompt({
+			planPath: "docs/plan/example/README.md",
+			stage: "02-context-load",
+			previousStage: "01-intake",
+			request: "계획을 단계별로 작성해줘",
+		});
+		assert.match(prompt, /Current stage: 02-context-load/);
+		assert.match(prompt, /Previous stage passed: 01-intake/);
+		assert.match(prompt, /only docs\/plan\/<task-slug>\/02-context-load\/README\.md/);
+		assert.match(prompt, /Do not create later stage directories or files yet/);
+	});
+});
+
+describe("plan-mode validation gate helpers", () => {
+	it("summarizes validation blockers for UI/refine prompts", () => {
+		const summary = summarizePlanValidationBlockers({
+			ok: false,
+			planPath: "docs/plan/example/README.md",
+			blockers: [
+				{ code: "missing-section", message: "Missing required section: ## Atomic Tasks", path: "docs/plan/example/04-decomposition/README.md", section: "Atomic Tasks" },
+			],
+		});
+		assert.deepEqual(summary, ["Missing required section: ## Atomic Tasks (docs/plan/example/04-decomposition/README.md · ## Atomic Tasks)"]);
+	});
+
+	it("builds blocker display text that tells users what content blocks execution", () => {
+		const display = buildPlanValidationBlockerDisplay({
+			ok: false,
+			planPath: "docs/plan/example/README.md",
+			blockers: [
+				{ code: "missing-section", message: "Missing required section: ## Atomic Tasks", path: "docs/plan/example/04-decomposition/README.md", section: "Atomic Tasks", prompt: "Add concrete atomic tasks with acceptance criteria and verification." },
+				{ code: "unresolved-discussion", message: "Discussion Queue has unresolved execution blockers.", stage: "05-decision-queue" },
+			],
+		});
+		assert.match(display, /2 plan validation blockers/);
+		assert.match(display, /Atomic Tasks/);
+		assert.match(display, /Add concrete atomic tasks/);
+		assert.match(display, /Discussion Queue/);
+	});
+
+	it("builds custom validation markdown for custom UI blocker review", () => {
+		const markdown = buildPlanValidationCustomMarkdown("docs/plan/example/README.md", {
+			ok: false,
+			stage: PLAN_VALIDATION_STAGES[3],
+			blockers: [{ code: "missing-section", message: "Missing required section: ## Atomic Tasks", stage: "04-decomposition" }],
+		});
+		assert.match(markdown, /Plan Validation Blocked/);
+		assert.match(markdown, /04-decomposition/);
+		assert.match(markdown, /Missing required section/);
+	});
+
+	it("builds refine prompts when CLI plan validation blocks execution", () => {
+		const prompt = buildPlanValidationRefinePrompt({
+			planPath: "docs/plan/example/README.md",
+			userFeedback: "Use one implementation slice and mark the research workstream done.",
+			stage: "04-decomposition",
+			result: {
+				ok: false,
+				stage: "04-decomposition",
+				repairPrompt: "Refine the active plan artifact so validation passes.",
+				blockers: [{ code: "pending-workstream", message: "Required role/area workstream is pending.", stage: "04-decomposition", prompt: "Resolve or defer the pending workstream." }],
+			},
+		});
+		assert.match(prompt, /Refine docs\/plan\/example\/README\.md stage 04-decomposition before execution/);
+		assert.match(prompt, /stage 04-decomposition/);
+		assert.match(prompt, /Required role\/area workstream is pending/);
+		assert.match(prompt, /Resolve or defer the pending workstream/);
+		assert.match(prompt, /CLI repair prompt/);
+		assert.match(prompt, /Use one implementation slice/);
+		assert.match(prompt, /do not start execution yet/);
+	});
+
+	it("wraps saved-plan review refinement feedback with plan context", () => {
+		const prompt = buildPlanReviewRefinePrompt({
+			planPath: "docs/plan/example/README.md",
+			context: "Extracted execution steps: 1. Update tests",
+			userFeedback: "Split verification into its own step.",
+		});
+		assert.match(prompt, /Refine docs\/plan\/example\/README\.md before execution/);
+		assert.match(prompt, /Current plan context/);
+		assert.match(prompt, /Split verification into its own step/);
+		assert.match(prompt, /do not start execution yet/);
+	});
 });
 
 describe("plan-mode execution handoff", () => {
@@ -473,14 +666,21 @@ describe("plan-mode explicit execution helpers", () => {
 		}
 	});
 
-	it("does not treat refinement or planning language as execution intent", () => {
+	it("does not treat refinement, planning, or non-plan commands as execution intent", () => {
 		for (const request of [
 			"impact-ranking-config 계획을 수정하자",
 			"이 플랜 더 다듬자",
 			"plan-mode 실행 질문 버그를 계획하자",
+			"설계부터 진행하자",
+			"계획을 만들어보자",
+			"진행하자",
+			"테스트 실행해줘",
+			"run tests",
+			"implement the package version bump",
 			"refine the impact-ranking-config plan",
 		]) {
 			assert.equal(detectPlanExecutionIntent(request), false, request);
+			assert.notEqual(classifyPlanModeRequest(request), "explicit_execution", request);
 		}
 	});
 
@@ -515,6 +715,7 @@ describe("plan-mode explicit execution helpers", () => {
 				request: "mentioned-task 진행하자",
 				currentPlanPath: "docs/plan/current-task/README.md",
 				activePlanPaths: ["docs/plan/current-task/README.md", "docs/plan/other-task/README.md"],
+				allowActivePlanFallback: true,
 				pathExists,
 			}),
 			{ planPath: "docs/plan/mentioned-task/README.md", status: "resolved", candidates: ["docs/plan/mentioned-task/README.md"] },
@@ -525,22 +726,41 @@ describe("plan-mode explicit execution helpers", () => {
 				request: "진행하자",
 				currentPlanPath: "docs/plan/current-task/README.md",
 				activePlanPaths: ["docs/plan/current-task/README.md", "docs/plan/other-task/README.md"],
+				allowActivePlanFallback: true,
 				pathExists,
 			}),
 			{ planPath: "docs/plan/current-task/README.md", status: "resolved", candidates: ["docs/plan/current-task/README.md"] },
 		);
 	});
 
-	it("reports ambiguity when a proceed request does not identify one active plan", () => {
+	it("reports ambiguity only for explicit execution requests that do not identify one active plan", () => {
 		const resolution = resolvePlanExecutionTarget({
-			request: "진행하자",
+			request: "실행하자",
 			activePlanPaths: ["docs/plan/one-task/README.md", "docs/plan/two-task/README.md"],
+			allowActivePlanFallback: true,
 			pathExists: () => true,
 		});
 
+		assert.equal(detectPlanExecutionIntent("실행하자"), true);
 		assert.equal(resolution.status, "ambiguous");
 		assert.equal(resolution.planPath, undefined);
 		assert.deepEqual(resolution.candidates, ["docs/plan/one-task/README.md", "docs/plan/two-task/README.md"]);
+	});
+
+	it("does not classify planning or implementation requests as active-plan execution", () => {
+		const activePlanPaths = ["docs/plan/one-task/README.md", "docs/plan/two-task/README.md"];
+		for (const request of [
+			"Which active plan should be executed?는 계획을 실행해야 할때만 물어보게 변경하자",
+			"선택된 플랜이 없는 상태에서 계획을 하지 않으면 모두 실행되는지 조사해봐",
+			"테스트 실행해줘",
+			"run tests",
+		]) {
+			assert.equal(detectPlanExecutionIntent(request), false, request);
+			assert.notEqual(classifyPlanModeRequest(request), "explicit_execution", request);
+			const resolution = resolvePlanExecutionTarget({ request, activePlanPaths, pathExists: () => true });
+			assert.equal(resolution.status, "missing", request);
+			assert.deepEqual(resolution.candidates, [], request);
+		}
 	});
 });
 
@@ -760,6 +980,20 @@ describe("plan-mode plan choice trigger", () => {
 		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: false, hasUI: true }), false);
 		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: true, hasUI: true, pendingPlanChoicePath: "docs/plan/task/README.md" }), false);
 		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: false, hasUI: false, pendingPlanChoicePath: "docs/plan/task/README.md" }), false);
+	});
+
+	it("suppresses the chooser for inline planning follow-up turns", () => {
+		assert.equal(
+			shouldPromptForPlanChoice({
+				planModeEnabled: true,
+				executionMode: false,
+				hasUI: true,
+				pendingPlanChoicePath: "docs/plan/task/README.md",
+				activePlanTouched: true,
+				suppressPlanChoice: true,
+			}),
+			false,
+		);
 	});
 });
 

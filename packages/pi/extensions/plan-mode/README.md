@@ -5,7 +5,7 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 ## Changes
 
 - Plan progress uses the `/todos` command.
-- `/plan <request>` enables Plan Mode if needed and sends the request as the first or next planning turn; `/plan` without args still toggles.
+- `/plan <request>` enables Plan Mode if needed and queues the request as the first or next planning turn with explicit follow-up delivery; `/plan` without args still toggles.
 - Only the `Plan:` heading is parsed for step extraction.
 - Plan mode can use `pi-web-access` tools when installed:
   - `web_search`
@@ -18,9 +18,13 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 - Active plan tasks are managed as kebab-case directories under `docs/plan/<task-slug>/` for projects initialized with `project-initializer`.
 - Under `docs/`, all directories use kebab-case and all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
 - Each task directory keeps its overview and index in `README.md`; supporting plan files such as `RESEARCH_NOTES.md` or `VERIFICATION.md` live alongside it.
-- Interactive Plan Mode opens a full-page custom saved-plan review UI before accepting execute/stay/refine/cancel actions, so review and action selection stay in one synchronous flow.
-- Execute/stay/refine/cancel choices are shown after every active plan markdown file under `docs/plan/` is created or updated, with execution unavailable until the review UI returns an execute choice.
-- Explicit in-Plan-Mode execution requests such as “run this plan” or “진행하자” open the same review UI immediately when a current or mentioned active plan can be resolved; ambiguous requests ask which active plan to execute.
+- Interactive Plan Mode checks the active plan README for unresolved `Discussion Queue` items before execution review. If queued user-discussion items remain, Pi opens the Discussion Queue Console first and suppresses execute/stay/refine/cancel until the queue is resolved or the user returns to planning.
+- The Discussion Queue Console shows queued items in FIFO order and lets users choose an option, enter a custom answer, defer, request research, request plan revision, or cancel. The plan file remains the durable source; the UI returns structured choices and the agent updates the markdown.
+- After the discussion queue is clear, interactive Plan Mode runs `dotdotgod plan validate <active-plan> --json`; validation blockers suppress the saved-plan review UI and ask the user whether to refine/replan.
+- After the queue and CLI validation gate are clear, interactive Plan Mode opens a full-page custom saved-plan review UI before accepting execute/stay/refine/cancel actions, so review and action selection stay in one synchronous flow. The review UI includes a cursor-selectable action bar (`←`/`→`, `Tab`, `Enter`) in addition to `e`/`s`/`r`/`c` shortcuts, and truncates rendered lines to the active terminal width.
+- Queue-first, CLI-validated review then execute/stay/refine/cancel choices are shown after every active plan markdown file under `docs/plan/` is created or updated, with execution unavailable until the queue is clear, plan validation passes, and the review UI returns an execute choice.
+- Extension-generated planning, refinement, discussion-queue, validation-blocker, compaction-resume, and execution-handoff user messages are sent with explicit `deliverAs: "followUp"` delivery so hook-time messages queue safely while the agent is active.
+- Explicit in-Plan-Mode execution requests such as “run this plan” or “실행하자” open the same review UI immediately when a current or mentioned active plan can be resolved; ambiguous requests ask which active plan to execute. Planning, advisory, or non-plan commands such as “run tests” do not fall back to all active plans.
 - When the latest planning request contains explicit `[[...]]` refs, Plan Mode adds bounded `dotdotgod expand` results to planning context before broad search.
 - When the request contains high-signal natural refs such as `PLAN_MODE`, path-like mentions, or quoted doc names, Plan Mode may add bounded `dotdotgod expand --fuzzy` results before broad search; fuzzy low-signal suppression follows the resolved dotdotgod CLI config.
 - Completed task directories should be moved to `docs/archive/plan/<task-slug>/` after execution and verification.
@@ -43,15 +47,17 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 4. The task overview, index, scope, and status belong in `docs/plan/<task-slug>/README.md`.
 5. Supporting research, checklists, or verification notes can be added as UPPER_SNAKE_CASE markdown files in the same directory.
 6. If the session is long or noisy, Plan Mode automatically compacts with planning-focused instructions before continuing.
-7. After the agent creates or updates a plan file, Pi opens a full-page saved-plan review UI and asks whether to execute, stay in plan mode, refine the plan, or cancel.
-8. The agent should write concrete executable steps in the final `Plan:` section. Generic section labels such as `Target files and rationale`, `Implementation steps`, and `Verification method` are ignored for todo extraction.
-9. Choose execute in the review UI to switch into implementation mode; if you later ask to proceed with a resolvable active plan, the same review UI opens immediately.
-10. During execution, the agent must mark every completed step in the same response with `[DONE:n]` tags.
-11. Before source changes for implementation tasks, run the plan's `dotdotgod graph impact` refinement step and update target files, risks, or verification if needed.
-12. After source/config edits, run `/impact-check` or the `dotdotgod_graph_impact` tool and review related docs/tests/files before broad verification or commit.
-13. After modification or coding work, run `dotdotgod validate` for the project before final completion.
-14. After implementation and verification, the agent moves the completed task directory to `docs/archive/plan/<task-slug>/` and includes that step's `[DONE:n]` tag.
-15. Use `/todos` to inspect progress.
+7. If the plan contains unresolved `Discussion Queue` items, Pi opens the queue console before execution review; answer, defer, request research, request plan revision, or cancel back to planning.
+8. After the queue is clear, or when no queue exists, Pi runs `dotdotgod plan validate <active-plan> --json`; fix blockers before execution review.
+9. After plan validation passes, Pi opens a full-page saved-plan review UI and asks whether to execute, stay in plan mode, refine the plan, or cancel; choose with the action bar or shortcut keys. Follow-up prompts generated from those choices are queued explicitly and should not raise already-processing runtime errors.
+10. The agent should write concrete executable steps in the final `Plan:` section. Generic section labels such as `Target files and rationale`, `Implementation steps`, and `Verification method` are ignored for todo extraction.
+11. Choose execute in the review UI to switch into implementation mode; if you later ask to execute a resolvable active plan, the same queue-first and validation-gated review flow opens immediately. If no plan is selected or mentioned, ordinary planning/advisory requests remain in Plan Mode instead of opening the active-plan execution chooser.
+12. During execution, the agent must mark every completed step in the same response with `[DONE:n]` tags.
+13. Before source changes for implementation tasks, run the plan's `dotdotgod graph impact` refinement step and update target files, risks, or verification if needed.
+14. After source/config edits, run `/impact-check` or the `dotdotgod_graph_impact` tool and review related docs/tests/files before broad verification or commit.
+15. After modification or coding work, run `dotdotgod validate` for the project before final completion.
+16. After implementation and verification, the agent moves the completed task directory to `docs/archive/plan/<task-slug>/` and includes that step's `[DONE:n]` tag.
+17. Use `/todos` to inspect progress.
 
 ## Plan Mode Restrictions
 

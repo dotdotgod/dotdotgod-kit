@@ -3,12 +3,15 @@ export function detectPlanExecutionIntent(text: string): boolean {
 	if (!normalized) return false;
 
 	const refinementOnly = /(refine|revise|edit|modify|adjust|improve|update)\b.*\b(plan|proposal)|\b(plan|proposal)\b.*\b(refine|revise|edit|modify|adjust|improve|update)\b|수정하자|수정해줘|다듬|보완|개선|계획하자|계획을 세우|계획 만들어|플랜.*(수정|다듬|보완|개선)/i;
+	const planningOnly = /(계획|플랜|설계).*(세우|만들|작성|검토|조사|분석|보자|해보자)|설계.*(진행|시작)|계획하자|계획을 세우|계획 만들어|which active plan should be executed|실행해야\s*할\s*때만|물어보게\s*(변경|바꾸)|\b(plan|design)\b.*\b(first|draft|create|write|review|refine)\b/i;
 	const explicitEnglishExecution = /\b(execute|start|run|begin|implement)\b.*\b(plan|docs\/plan\/[a-z0-9-]+\/README\.md|[a-z0-9]+(?:-[a-z0-9]+)+)\b|\b(proceed with|carry out)\b.*\b(plan|docs\/plan\/[a-z0-9-]+\/README\.md|[a-z0-9]+(?:-[a-z0-9]+)+)\b/i;
-	const explicitKoreanExecution = /(진행|시작|실행)(해줘|해주세요|하자|합시다|해보자|해|해라|시켜줘)/i;
-	const executeNow = /^(execute|start|run|begin|implement|proceed)\b/i;
+	const explicitKoreanExecution = /((계획|플랜|docs\/plan\/[a-z0-9-]+\/README\.md|[a-z0-9]+(?:-[a-z0-9]+)+).*(진행|시작|실행)|(진행|시작|실행).*(계획|플랜|docs\/plan\/[a-z0-9-]+\/README\.md|[a-z0-9]+(?:-[a-z0-9]+)+))/i;
+	const bareEnglishExecution = /^(execute|start|run|begin|proceed)(\s+(it|this|now|the\s+plan))?[.!?]?$/i;
+	const bareKoreanExecution = /^(실행|시작)(하자|해줘|해주세요|합시다|해|해라|시켜줘)?[.!?。]*$/i;
 
-	const hasExecution = explicitEnglishExecution.test(normalized) || explicitKoreanExecution.test(normalized) || executeNow.test(normalized);
+	const hasExecution = explicitEnglishExecution.test(normalized) || explicitKoreanExecution.test(normalized) || bareEnglishExecution.test(normalized) || bareKoreanExecution.test(normalized);
 	if (!hasExecution) return false;
+	if (planningOnly.test(normalized) && !explicitEnglishExecution.test(normalized)) return false;
 	if (refinementOnly.test(normalized) && !explicitEnglishExecution.test(normalized) && !explicitKoreanExecution.test(normalized)) return false;
 	return true;
 }
