@@ -2,13 +2,13 @@
 
 ## Planning Context Shaping
 
-After Plan Mode is enabled, the first user planning request triggers one context-shaping pass. The request may be sent as a separate message after `/plan`, or inline as `/plan <request>`; inline requests are recorded as the latest planning request before delivery, enable Plan Mode, and then use the same context shaping and request-framing path.
+After Plan Mode is enabled, the first user planning request triggers one context-shaping pass. Inline `/plan <request>` arguments are recorded before delivery and use the same shaping path. Synthetic planning requests use explicit follow-up queue delivery.
 
 1. Queue a curated project-memory load if baseline project docs are missing, recent memory load is absent, or context has narrowed to one documentation area while the request needs cross-area planning.
 2. Request planning-focused compaction if context is too large or noisy.
 3. If both are needed, compact first, flush the queued load, then resume the latest planning request as a real follow-up.
 
-The curated load uses the `/dd:load compact` surface: baseline files, docs indexes, specs, architecture, tests, and active plans. Explicit manual `/dd:load` remains full by default, but Plan Mode's automatic prompt-injected refreshes request compact mode to avoid repeated stable background summaries. Compact curated loads exclude full repository scans and archive bodies unless targeted. When the CLI is available, Plan Mode validates, refreshes a bounded load snapshot, and runs advisory `graph impact --json` checks for likely target files.
+Curated loads use `/dd:load compact` over baseline files, docs indexes, specs, architecture, tests, and active plans. Manual `/dd:load` remains full by default. Compact loads exclude full repository scans and archive bodies unless targeted. When the CLI is available, Plan Mode validates, refreshes a bounded load snapshot, and runs advisory `graph impact --json` checks for likely target files.
 
 ## Plan Sizing
 
@@ -32,17 +32,25 @@ Moderately proactive thresholds are:
 - context tokens within 32,000 tokens of the context window when window size is available
 - 100,000 context tokens as a fallback when only token count is available
 
-After successful automatic compaction, the extension queues a concise resume follow-up for the latest planning request. Inline `/plan <request>` arguments are authoritative for this resume prompt even if their synthetic user message has not reached the session transcript yet. When a curated project-memory load was deferred until after compaction, the load follow-up is delivered first and the resume follow-up is delivered after that load turn finishes. The resume prompt is persisted and cleared after one delivery so compaction does not make the user repeat the request or create duplicate planning turns.
+After successful automatic compaction, the extension queues a concise resume follow-up for the latest planning request. Inline `/plan <request>` arguments are authoritative even before their synthetic user message reaches the transcript. If project-memory load was deferred until after compaction, the load follow-up is delivered first and resume follows after that load turn. Queued load and resume prompts use explicit follow-up delivery and are cleared after one delivery.
 
 The extension skips compaction during execution and continues if compaction fails. Toggle Plan Mode off/on for a fresh context-shaping pass.
 
 ## Plan Review Choice
 
-Plan Mode uses tiered hidden runtime instructions. The first active planning turn receives the full safety/workflow prompt; subsequent turns receive a compact reminder. The full prompt tells agents to explore files in bounded passes: start from loaded memory, README indexes, and impact/load-snapshot results; inspect top related specs/tests/source files first; and expand only with a concrete reason. Planning turns frame advisory requests lightly, convert implementation-looking requests into durable plans first, use curated load flow for memory-load requests, and use the execution path for explicit execution requests. If `/plan <request>` is invoked while Plan Mode is already active, the request is sent as another planning request and Plan Mode remains enabled.
+Plan Mode uses tiered hidden runtime instructions. The first active planning turn receives the full safety/workflow prompt; later turns receive a compact reminder. Planning turns convert implementation-looking requests into durable plans, use curated load flow for memory-load requests, and use the execution path for explicit execution requests. `/plan <request>` sends a planning follow-up and suppresses the active-plan execution chooser for that turn; later explicit execution still uses normal review.
 
-When the agent creates or updates an active plan markdown file under `docs/plan/`, interactive Plan Mode opens a full-page custom saved-plan review UI before accepting the execute/stay/refine/cancel choice. The review UI should use the available terminal surface rather than a small fixed preview box, support keyboard scrolling, and keep the choice synchronous with the review flow. Execution starts only after the user chooses execute from that review UI. If the saved plan cannot be read, Plan Mode shows a fallback preview of extracted execution steps in the same review flow. If the user explicitly asks to execute an active plan, Plan Mode resolves the target plan and opens the same review UI even if the file was not modified in the current turn. If the execution request is ambiguous and no current or mentioned active plan can be resolved, Plan Mode asks the user which active plan to execute instead of silently continuing generic planning.
+When the agent creates or updates an active plan markdown file under `docs/plan/`, interactive Plan Mode first checks the plan README for a `Discussion Queue` section. Queue items use checklist rows such as `- [ ] Q1 scope blocks-execute-review: <question>` plus short fields (`Why`, `Affects`, `Options`, `Verification impact`, and `Status`). Checked items and items marked answered, deferred, or accepted-risk are resolved; other items are unresolved and display in file order.
 
-Plan files remain the durable review artifact and the session-rendered preview is a convenience copy of that artifact, not a replacement for the file. Plan Mode stores the current active plan README path so execution prompts, resume, and compaction summaries can refer to it after context changes. Plans should summarize impact findings rather than embedding large raw impact payloads unless the user explicitly asks for the raw output.
+If unresolved discussion items exist, Plan Mode suppresses the execute/stay/refine/cancel saved-plan review UI and opens a custom Discussion Queue Console. The console shows one item at a time and supports option selection, custom answers, deferral, research requests, plan revision, or cancel. The UI returns a structured result; follow-up prompts ask the agent to update durable plan markdown rather than arbitrary prose directly.
+
+The same queue-first ordering applies to explicit execution requests. If the custom queue UI is unavailable, Plan Mode falls back to `ctx.ui.select()` plus `ctx.ui.editor()` for the first unresolved item and still does not enable execution while the queue remains unresolved. Discussion, validation, and refinement prompts are explicit follow-up deliveries.
+
+During stage authoring, Plan Mode tracks the current canonical stage. It asks the agent to create or refine only that stage, then runs `dotdotgod plan validate <active-plan> --stage <stage> --json`. If validation blocks, Pi shows blocker/refine UI and does not create later stages. If validation passes and no user refinement is needed, Pi automatically sends the next-stage authoring follow-up. After `08-verify-replan-close` passes, Pi runs full `dotdotgod plan validate <active-plan> --json` before saved-plan review. The shared CLI validates the eight-stage artifact, required sections, split-file names, workstreams, atomic-task acceptance/verification, assumptions, and unresolved discussions. Blockers suppress saved-plan review; Pi consumes the CLI result as the source of truth.
+
+After the discussion queue and CLI validation gates are clear, Plan Mode opens the full-page custom saved-plan review UI before accepting execute/stay/refine/cancel. The review UI supports keyboard scrolling, terminal-width truncation, and an action bar. Execution starts only after the user chooses execute. If the saved plan cannot be read, Plan Mode shows extracted execution steps. Explicit execution requests resolve the target plan and open the same queue-first flow; ambiguous requests ask which active plan to execute only after execution intent is confirmed. Planning/design/refinement requests and non-plan commands such as `run tests` do not open the active-plan execution chooser or fall back to all active plans. When explicit execution review consumes a pending plan, Plan Mode clears pending review state so the same execution UI does not reopen at agent end.
+
+Plan files remain the durable review artifact; the session-rendered preview is only a convenience copy. Plan Mode stores the active plan README path for execution prompts, resume, compaction summaries, and discussion-queue follow-ups. Plans should summarize impact findings rather than embedding large raw payloads unless requested.
 
 ## Progress, Resume, and Checklists
 
@@ -62,11 +70,14 @@ Support files should be short, indexed from the task README, and used only when 
 
 Plan mode extracts numbered executable steps from a `Plan:` section. Generic template labels are ignored so they do not become execution todos.
 
+When the user chooses refine from saved-plan review, Plan Mode wraps the user's feedback with the active plan path and current extracted execution-step context before sending the follow-up; it does not send raw feedback alone.
+
 When execution starts:
 
 - Full tool access is restored.
 - Execution state is persisted only after the plan-review UI returns an execute choice; preview rendering never triggers execution by itself.
 - The execute follow-up names the active plan path when known.
+- Extension-generated execute, refine, discussion, validation, load, and resume follow-ups use explicit follow-up delivery.
 - Remaining steps are loaded from the selected README when needed.
 - If optional `PROGRESS.md`, `DECISIONS.md`, or `VERIFY.md` files exist, the agent uses them as resume context before continuing work.
 - The agent marks completed steps by including `[DONE:n]` in the same response that reports completion.

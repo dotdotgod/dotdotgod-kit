@@ -32,28 +32,37 @@ Confirm the loader prompt includes a compact `Load snapshot:` section with cache
 1. Run `/plan`.
 2. Ask the agent to write or update `docs/plan/<task-slug>/README.md`.
 3. From normal mode, run `/plan add inline request support` and confirm Plan Mode is enabled before the request is handled.
-4. While still in Plan Mode, run `/plan refine this plan` and confirm it sends a planning request without disabling Plan Mode.
+4. While still in Plan Mode, run `/plan refine this plan` and confirm it sends a planning request without disabling Plan Mode and without opening `Which active plan should be executed?`, even when active plans already exist or the turn updates `docs/plan/` markdown.
 5. Run `/plan` without args and confirm it still toggles Plan Mode off.
-6. Confirm Pi opens a full-page custom saved-plan review UI before execution can be selected; test keyboard scrolling, action-bar navigation with `←`/`→`, `Tab`, and `Enter`, shortcut keys for execute/stay/refine/cancel, and in iTerm2 with wheel-to-terminal-scroll enabled observe whether the wheel scrolls review content, terminal scrollback, or neither.
-7. Confirm explanatory replies that do not touch `docs/plan/` do not show the action prompt or extract todos.
-8. Confirm no persistent `[plan-todo-list]` widget appears; `/todos` shows progress on demand.
-9. Confirm constrained housekeeping is allowed only under local memory.
-10. Confirm source/config mutation remains blocked.
-11. Confirm high-context compaction is checked after the first planning request, not immediately when `/plan` is enabled.
-12. Confirm planning compaction preserves current work, active/touched plan paths, todos, verification, pending load state, and `[DONE:n]` markers.
-13. With the CLI available, confirm first-turn context shaping adds validation, snapshot, and graph impact; without the CLI, Plan Mode continues.
-14. Confirm bounded dotdotgod context/status commands are allowed while `init`, `config init`, shell chaining, redirects, pipes, command substitution, and package-runner wrappers remain blocked or require approval.
-15. Confirm a queued project-memory load flushes after the active prompt without `Agent is already processing a prompt` errors.
-16. Confirm later planning turns do not automatically repeat load/compaction decisions.
-17. Confirm first-turn and later-turn hidden prompts use full and compact forms respectively while source/config mutation stays blocked.
-18. Confirm `--plan-extra-tools ctx_search,ctx_execute_file` adds only installed tools and renders the resolved tool list.
-19. In `/plan`, create a plan, choose execute, and confirm the follow-up names the active plan path.
-20. With extracted todos, confirm execution context includes the active plan path and compaction preserves it.
-21. Ask to execute an existing active plan path and confirm the full-page review UI opens even if the plan was not edited in that turn; choose execute and confirm execution starts.
-22. While multiple active plans exist and no current plan is selected, send an ambiguous proceed request such as `진행하자` and confirm Pi asks which active plan to execute before showing the review UI.
-23. Confirm advisory questions remain lightweight and implementation-looking requests become durable plans first.
-24. Start without baseline docs or with only one docs area preserved, then confirm curated project-memory load is queued.
-24. Confirm implementation plans include a step to run `dotdotgod graph impact` for intended changed files before source changes.
+6. Confirm Pi opens a full-page custom saved-plan review UI before execution can be selected when the plan has no unresolved `Discussion Queue` and `dotdotgod plan validate <active-plan> --json` passes; test keyboard scrolling, action-bar navigation with `←`/`→`, `Tab`, and `Enter`, shortcut keys for execute/stay/refine/cancel, and in iTerm2 with wheel-to-terminal-scroll enabled observe whether the wheel scrolls review content, terminal scrollback, or neither.
+7. Add a `## Discussion Queue` section with at least two unresolved items and confirm Pi opens the Discussion Queue Console before CLI plan validation and before the saved-plan review UI. Confirm items appear FIFO, `←`/`→` or `Tab` changes options, `Enter` returns an answer, `a` opens custom answer entry, `d` opens a defer-rationale entry, `r` sends a bounded research follow-up, `p` requests plan revision, and `q`/Esc cancels back to planning.
+8. Confirm unresolved queue items suppress execute/stay/refine/cancel until the plan queue is updated to resolved states, and then the normal saved-plan review UI appears unchanged.
+9. Temporarily force the custom queue UI to throw or run in an environment without custom UI support and confirm fallback `select`/`editor` prompts show the first unresolved item without enabling unsafe execution.
+10. Start a new durable plan and confirm Pi asks the agent to author only `01-intake/README.md`; after that stage passes, confirm Pi automatically sends the `02-context-load` authoring follow-up without asking for execution review.
+11. Create or refine a current stage with missing content and confirm Pi validates only that stage, shows a custom blocker UI, collects refinement feedback, sends a structured stage-specific follow-up, and does not create later stages or show saved-plan review.
+12. Complete stages through `08-verify-replan-close` and confirm Pi then runs final full CLI validation before saved-plan review; choose `Refine` and confirm the follow-up includes the active plan path, current execution-step context, and user feedback rather than raw feedback alone.
+13. While active plans exist, ask to design or create a plan from scratch with phrasing such as `설계부터 진행하자` or `계획을 만들어보자`; confirm Pi does not open `Which active plan should be executed?`. Then ask to execute a named existing plan and confirm the chooser/review path still works.
+14. Trigger explicit execution review and choose stay/refine/cancel; confirm the same plan execution UI does not appear a second time at agent end.
+15. In a narrow terminal, confirm the saved-plan review UI and queue console remain usable with truncated text, no rendered line wider than the terminal, and visible footer controls.
+16. Confirm explanatory replies that do not touch `docs/plan/` do not show the action prompt or extract todos.
+17. Confirm no persistent `[plan-todo-list]` widget appears; `/todos` shows progress on demand.
+18. Confirm constrained housekeeping is allowed only under local memory.
+19. Confirm source/config mutation remains blocked.
+20. Confirm high-context compaction is checked after the first planning request, not immediately when `/plan` is enabled.
+21. Confirm planning compaction preserves current work, active/touched plan paths, todos, verification, pending load state, and `[DONE:n]` markers.
+22. With the CLI available, confirm first-turn context shaping adds validation, snapshot, and graph impact; without the CLI, Plan Mode continues.
+23. Confirm bounded dotdotgod context/status commands are allowed while `init`, `config init`, shell chaining, redirects, pipes, command substitution, and package-runner wrappers remain blocked or require approval.
+24. Confirm a queued project-memory load flushes after the active prompt without `Agent is already processing a prompt` or `Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.` errors.
+25. Confirm later planning turns do not automatically repeat load/compaction decisions.
+26. Confirm first-turn and later-turn hidden prompts use full and compact forms respectively while source/config mutation stays blocked.
+27. Confirm `--plan-extra-tools ctx_search,ctx_execute_file` adds only installed tools and renders the resolved tool list.
+28. In `/plan`, create a plan, choose execute, and confirm the explicitly queued follow-up names the active plan path and does not raise an already-processing runtime error.
+29. With extracted todos, confirm execution context includes the active plan path and compaction preserves it.
+30. Ask to execute an existing active plan path and confirm the queue-first review flow opens even if the plan was not edited in that turn; choose execute after the queue is clear and confirm execution starts through an explicitly queued follow-up.
+31. While multiple active plans exist and no current plan is selected, send a planning/proceed phrase such as `진행하자`, an advisory selector-policy request, and a non-plan command such as `run tests`; confirm Pi does not ask which active plan to execute. Then send an explicit plan execution request such as `실행하자` or mention a specific existing plan and confirm Pi asks or resolves the target before review.
+32. Confirm advisory questions remain lightweight and implementation-looking requests become durable plans first.
+33. Start without baseline docs or with only one docs area preserved, then confirm curated project-memory load is queued.
+34. Confirm implementation plans include a step to run `dotdotgod graph impact` for intended changed files before source changes.
 
 ## Pending Impact Checks
 
