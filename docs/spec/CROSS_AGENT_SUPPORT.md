@@ -12,11 +12,11 @@ The shared contract is the documentation scaffold and workflow, not identical sl
 
 Current first-class support.
 
-- Package entrypoint: npm package with `package.json#pi` manifest.
+- Package entrypoint: npm package with `package.json#pi` manifest and runtime dependencies for `@dotdotgod/cli` plus `pi-subagents`.
 - Initialization: `project-initializer` skill.
 - Documentation clarity: `document-clarify` skill.
-- Runtime workflow: `plan-mode` and `load-project` extensions.
-- Commands: `/plan`, `/todos`, `/load`, `/dd:load`, and `/impact-check`.
+- Runtime workflow: `plan-mode`, `load-project`, and dependency-provided `pi-subagents` extensions.
+- Commands and tools: `/plan`, `/todos`, `/load`, `/dd:load`, `/impact-check`, and the `subagent` delegation tool when the dependency resources load.
 
 ### Claude Code
 
@@ -98,7 +98,7 @@ Parity is behavioral, not identical runtime mechanics: Pi can enforce pending-im
 
 Cross-agent support is distributed as npm workspace packages:
 
-- `@dotdotgod/pi`: Pi adapter with skills and extensions.
+- `@dotdotgod/pi`: Pi adapter with skills, extensions, package-local `@dotdotgod/cli` dependency, and dependency-provided subagent resources.
 - `@dotdotgod/cli`: validation, project memory snapshot, and graph indexing CLI.
 - `@dotdotgod/claude-code`: Claude Code adapter with plugin commands and skills.
 - `@dotdotgod/codex`: Codex adapter with project memory skills.

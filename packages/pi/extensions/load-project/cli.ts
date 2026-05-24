@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { buildDotdotgodCliCandidates } from "../dotdotgod-cli.ts";
 
 export interface LoadSnapshotRunResult {
 	ok: boolean;
@@ -16,13 +15,7 @@ function parseLoadSnapshotJson(stdout: string): unknown {
 }
 
 export function runDotdotgodLoadSnapshot(cwd: string, timeoutMs = 10_000): LoadSnapshotRunResult {
-	const localCli = join(cwd, "packages/cli/bin/dotdotgod.mjs");
-	const candidates = existsSync(localCli)
-		? [
-			{ command: process.execPath, args: [localCli, "load-snapshot", cwd, "--json"], label: "local workspace CLI" },
-			{ command: "dotdotgod", args: ["load-snapshot", cwd, "--json"], label: "dotdotgod" },
-		]
-		: [{ command: "dotdotgod", args: ["load-snapshot", cwd, "--json"], label: "dotdotgod" }];
+	const candidates = buildDotdotgodCliCandidates(cwd, ["load-snapshot", cwd, "--json"]);
 
 	const errors: string[] = [];
 	for (const candidate of candidates) {

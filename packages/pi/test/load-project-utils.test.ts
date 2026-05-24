@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
+import { buildDotdotgodCliCandidates } from "../extensions/dotdotgod-cli.ts";
 import { buildLoadPrompt, collectSnapshot, estimateTextMetrics, formatLoadSnapshotSummary, hasOtherLoadCommand, listMarkdownFiles } from "../extensions/load-project/utils.ts";
 
 function fixture(): string {
@@ -14,6 +15,30 @@ function write(root: string, path: string, content = "# Test\n"): void {
 	mkdirSync(join(fullPath, ".."), { recursive: true });
 	writeFileSync(fullPath, content);
 }
+
+describe("dotdotgod CLI resolution", () => {
+	it("prefers source checkout CLI, then bundled CLI, then global fallback", () => {
+		const root = fixture();
+		const packageRoot = fixture();
+		write(root, "packages/cli/bin/dotdotgod.mjs", "#!/usr/bin/env node\n");
+		write(packageRoot, "node_modules/@dotdotgod/cli/bin/dotdotgod.mjs", "#!/usr/bin/env node\n");
+
+		const candidates = buildDotdotgodCliCandidates(root, ["status", ".", "--json"], { packageRoot });
+		assert.equal(candidates[0]?.label, "local workspace CLI");
+		assert.equal(candidates[1]?.label, "bundled @dotdotgod/cli");
+		assert.equal(candidates[2]?.label, "dotdotgod");
+	});
+
+	it("uses bundled CLI before global fallback outside a source checkout", () => {
+		const root = fixture();
+		const packageRoot = fixture();
+		write(packageRoot, "node_modules/@dotdotgod/cli/bin/dotdotgod.mjs", "#!/usr/bin/env node\n");
+
+		const candidates = buildDotdotgodCliCandidates(root, ["load-snapshot", root, "--json"], { packageRoot });
+		assert.equal(candidates[0]?.label, "bundled @dotdotgod/cli");
+		assert.equal(candidates[1]?.label, "dotdotgod");
+	});
+});
 
 describe("load-project snapshot", () => {
 	it("collects present and missing memory files", () => {

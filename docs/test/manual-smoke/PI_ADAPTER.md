@@ -15,7 +15,17 @@ Load aliases:
 /dd:load
 ```
 
-Confirm the loader prompt includes a compact `Load snapshot:` section with cache status, refresh metadata, graph counts, bounded memory-area/community summaries, and `fullGraphIncluded=false`. `docs/archive/README.md` should remain visible as the archive map; other archive bodies should stay out of the prompt. Temporarily remove the CLI from `PATH` to verify the lightweight fallback.
+Confirm the loader prompt includes a compact `Load snapshot:` section with cache status, refresh metadata, graph counts, bounded memory-area/community summaries, and `fullGraphIncluded=false`. `docs/archive/README.md` should remain visible as the archive map; other archive bodies should stay out of the prompt. Temporarily remove the CLI from `PATH` to verify the package-local `@dotdotgod/cli` dependency is used before the lightweight fallback.
+
+## Packaged CLI And Subagents
+
+1. Install `@dotdotgod/pi` into a clean Pi package environment without separately installing `@dotdotgod/cli` or `pi-subagents`.
+2. Confirm `/dd:load` and Plan Mode context shaping can run `dotdotgod load-snapshot`, validation, and graph-impact commands through the package-local CLI dependency when no global CLI is on `PATH`.
+3. Confirm the `subagent` tool is available.
+4. Confirm builtin agents include `scout`, `researcher`, `planner`, `worker`, `reviewer`, `context-builder`, `oracle`, and `delegate`.
+5. Run a simple read-only subagent task, such as listing available agents or asking `scout` to inspect one README.
+6. Confirm subagent prompts are discoverable if prompt templates are enabled in the active Pi runtime.
+7. If standalone `pi-subagents` is also installed, confirm the duplicate registration behavior and remove or disable the standalone package for the supported path.
 
 ## Plan Mode
 
@@ -24,7 +34,7 @@ Confirm the loader prompt includes a compact `Load snapshot:` section with cache
 3. From normal mode, run `/plan add inline request support` and confirm Plan Mode is enabled before the request is handled.
 4. While still in Plan Mode, run `/plan refine this plan` and confirm it sends a planning request without disabling Plan Mode.
 5. Run `/plan` without args and confirm it still toggles Plan Mode off.
-6. Confirm Pi opens a full-page custom saved-plan review UI before execution can be selected; in iTerm, test keyboard scrolling, observe whether mouse-wheel scrolling is forwarded to the UI, then test execute, stay, refine, and cancel choices.
+6. Confirm Pi opens a full-page custom saved-plan review UI before execution can be selected; test keyboard scrolling, action-bar navigation with `←`/`→`, `Tab`, and `Enter`, shortcut keys for execute/stay/refine/cancel, and in iTerm2 with wheel-to-terminal-scroll enabled observe whether the wheel scrolls review content, terminal scrollback, or neither.
 7. Confirm explanatory replies that do not touch `docs/plan/` do not show the action prompt or extract todos.
 8. Confirm no persistent `[plan-todo-list]` widget appears; `/todos` shows progress on demand.
 9. Confirm constrained housekeeping is allowed only under local memory.
