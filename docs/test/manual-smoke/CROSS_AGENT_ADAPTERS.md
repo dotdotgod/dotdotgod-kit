@@ -2,7 +2,7 @@
 
 ## Pi Adapter Dependency Resources
 
-`@dotdotgod/pi` should install `@dotdotgod/cli` and `pi-subagents` as runtime dependencies. In a packaged-install smoke, confirm Pi can load `/dd:load`, `/impact-check`, and `subagent` without separate global installs of those packages. If `pi-subagents` is installed both standalone and through `@dotdotgod/pi`, confirm the dotdotgod wrapper skips duplicate `subagent` tool registration instead of failing startup.
+`@dotdotgod/pi` should install `@dotdotgod/cli` and `pi-subagents` as runtime dependencies. In a packaged-install smoke, confirm Pi can load `/dd:load`, `/impact-check`, and `subagent` without separate global installs of those packages. If `pi-subagents` is installed both standalone and through `@dotdotgod/pi`, confirm the dotdotgod wrapper waits until session startup and skips duplicate `subagent` tool registration instead of failing startup.
 
 ## Claude Code Adapter
 

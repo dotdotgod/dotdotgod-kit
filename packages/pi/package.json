@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/pi",
-  "version": "0.1.33",
+  "version": "0.1.34",
   "description": "Pi adapter for dotdotgod: project-initializer skill, shared docs scaffold, plan/archive workflow, and project loading extensions.",
   "type": "module",
   "license": "Elastic-2.0",
@@ -30,13 +30,13 @@
     "syntax": "node --check extensions/shared/dotdotgod-cli.ts && node --check extensions/subagents/index.ts && node --check extensions/context-metrics/utils.ts && node --check extensions/load-project/index.ts && node --check extensions/load-project/utils.ts && node --check extensions/plan-mode/index.ts && node --check extensions/plan-mode/utils.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-strip-types test/*.test.ts",
-    "check:resources": "node -e \"const fs=require('fs'); const req=['skills/project-initializer/SKILL.md','skills/project-initializer/agents/openai.yaml','skills/project-initializer/scripts/init_project.sh','skills/document-clarify/SKILL.md','skills/document-clarify/agents/openai.yaml','extensions/subagents/index.ts','node_modules/@dotdotgod/cli/bin/dotdotgod.mjs','node_modules/pi-subagents/src/extension/index.ts','node_modules/pi-subagents/skills/pi-subagents/SKILL.md','node_modules/pi-subagents/prompts/parallel-review.md']; for (const f of req) { if (!fs.existsSync(f)) throw new Error('missing '+f); } console.log('pi resources ok')\"",
+    "check:resources": "node -e \"const fs=require('fs'); const path=require('path'); const req=['skills/project-initializer/SKILL.md','skills/project-initializer/agents/openai.yaml','skills/project-initializer/scripts/init_project.sh','skills/document-clarify/SKILL.md','skills/document-clarify/agents/openai.yaml','extensions/subagents/index.ts']; for (const f of req) { if (!fs.existsSync(f)) throw new Error('missing '+f); } const cli=require.resolve('@dotdotgod/cli/bin/dotdotgod.mjs'); const subagentsRoot=path.dirname(require.resolve('pi-subagents/package.json')); for (const f of [cli,path.join(subagentsRoot,'src/extension/index.ts'),path.join(subagentsRoot,'skills/pi-subagents/SKILL.md'),path.join(subagentsRoot,'prompts/parallel-review.md')]) { if (!fs.existsSync(f)) throw new Error('missing '+f); } console.log('pi resources ok')\"",
     "verify": "pnpm run syntax && pnpm run typecheck && pnpm run test && pnpm run check:resources",
     "pack:dry-run": "pnpm pack --dry-run --json"
   },
   "dependencies": {
     "@dotdotgod/cli": "workspace:*",
-    "pi-subagents": "^0.25.0"
+    "pi-subagents": "0.25.0"
   },
   "peerDependencies": {
     "@earendil-works/pi-agent-core": "*",
@@ -50,15 +50,12 @@
   },
   "pi": {
     "skills": [
-      "./skills",
-      "./node_modules/pi-subagents/skills"
+      "./skills"
     ],
     "extensions": [
       "./extensions"
     ],
-    "prompts": [
-      "./node_modules/pi-subagents/prompts"
-    ]
+    "prompts": []
   },
   "files": [
     "skills",
