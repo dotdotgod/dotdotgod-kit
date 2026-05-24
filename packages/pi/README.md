@@ -58,7 +58,7 @@ A good first-run flow is:
 ## What You Get
 
 - **Bundled dotdotgod CLI dependency:** packaged installs include `@dotdotgod/cli` as a runtime dependency, and Pi extensions prefer a source-checkout CLI when present, then the package-local CLI, then a global `dotdotgod` fallback.
-- **Subagent delegation:** packaged installs include `pi-subagents` resources, exposing the `subagent` tool, builtin role agents, orchestration prompts, and the `pi-subagents` skill without a separate standalone install.
+- **Subagent delegation:** packaged installs include `pi-subagents` resources, exposing the `subagent` tool, builtin role agents, orchestration prompts, and the `pi-subagents` skill without a separate standalone install; if standalone `pi-subagents` is already installed, the wrapper suppresses duplicate dotdotgod-provided tool, skill, and prompt resources.
 - **Project initializer skill:** create `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs indexes, active-plan space, archive map, and local memory/cache ignores.
 - **Document clarity skill:** improve README/spec/test/arch/plan/archive wording using memory-area roles and optional config guidance without changing behavior contracts.
 - **Task-directed loading:** `/dd:load` starts from `dotdotgod load-snapshot` when available, then reads only relevant docs from the fixed memory surface.
@@ -110,7 +110,7 @@ The graph uses more than traceability blocks: Markdown links, README routes, hea
 - `document-clarify` skill: config-aware documentation clarity workflow for README indexes, specs, tests, architecture docs, plans, archives, and custom docs areas.
 - `plan-mode` extension: read-first planning mode with restricted tools, `/plan <request>` inline request delivery, request framing, optional `--plan-extra-tools`, docs/plan writes, execution tracking, tiered hidden prompts, mandatory impact/validation guidance, `/todos`, `dotdotgod_graph_impact`, and `/impact-check`.
 - `load-project` extension: read-only project context loading through `/load` and `/dd:load`.
-- `pi-subagents` extension resources: a dotdotgod wrapper resolves the installed dependency with Node package resolution, exposes its prompts and skill during resource discovery, waits until session startup, then loads the `subagent` tool and builtin agents only when no `subagent` tool is already registered.
+- `pi-subagents` extension resources: a dotdotgod wrapper resolves the installed dependency with Node package resolution, waits until session startup to decide whether standalone `pi-subagents` already owns the `subagent` tool, and exposes package-local prompts/skill plus the `subagent` tool only when dotdotgod owns the registration.
 
 ## Local Development
 

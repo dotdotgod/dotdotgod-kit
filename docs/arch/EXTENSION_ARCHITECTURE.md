@@ -28,7 +28,7 @@ Distribution metadata:
 - Tarballs contain dotdotgod-owned `skills/`, `extensions/`, package metadata, and license files; runtime dependency bodies are installed by the package manager from declared dependencies.
 - Pi peer dependencies remain unbundled and are resolved by the host Pi installation.
 - `@dotdotgod/cli` is a package dependency used by Pi extensions as a source-checkout, package-local, then global CLI fallback chain.
-- `pi-subagents` is a pinned package dependency whose skill and prompts are resolved by the dotdotgod wrapper through Node package resolution and returned during `resources_discover`; the wrapper defers duplicate tool detection until `session_start`, then loads the subagent extension only when a `subagent` tool is not already registered, so hoisted, package-local, and local development installs can coexist with a standalone `pi-subagents` install without calling runtime action methods during extension loading.
+- `pi-subagents` is a pinned package dependency whose skill and prompts are resolved by the dotdotgod wrapper through Node package resolution. The wrapper defers duplicate tool detection until `session_start`; when a standalone `subagent` tool already exists it suppresses package-local tool, skill, and prompt resources, and when dotdotgod owns registration it exposes the dependency resources during `resources_discover`. This lets hoisted, package-local, and local development installs coexist with standalone `pi-subagents` without duplicate resource warnings or runtime action calls during extension loading.
 
 ## Resource Responsibilities
 
