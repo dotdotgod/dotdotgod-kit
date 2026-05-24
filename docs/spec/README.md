@@ -33,6 +33,7 @@ Project-level config is optional and lives in `dotdotgod.config.json` or `.dotdo
 - `VALIDATION_CONFIG.md`: optional config for markdown validation size budgets and explicit size-check exclusions.
 - `IMPACT_RANKING_CONFIG.md`: optional config for `graph impact` ranking presets, score breakdowns, compact text/YML output, PPR, and deterministic semantic links.
 - `CONFIG_COMMAND.md`: CLI behavior for inspecting and initializing project-level dotdotgod config files.
+- `TRELLO_DOCS_SYNC.md`: Trello card to markdown sync contract with local/PR dry-run, trusted GitHub Actions writes, `dotdotgod-view` custom field data, and Power-Up UI display.
 - `CLI_INTERFACE.md`: baseline CLI help, version, subcommand help, and missing `graph impact --changed` behavior.
 - `REFERENCE_EXPANSION.md`: CLI reference resolution and prompt-time expansion from the dotdotgod graph/index.
 - `CROSS_AGENT_SUPPORT.md`: cross-agent support contract for Pi, Claude Code, Codex, and shared docs workflows.
