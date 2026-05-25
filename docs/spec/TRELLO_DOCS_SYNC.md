@@ -21,7 +21,7 @@ dotdotgod trello sync <root>
 4. Add `trelloUrl` to the file frontmatter.
 5. Run `dotdotgod trello sync <root> --dry-run` locally or in a pull request to review planned updates.
 6. Configure GitHub Actions secrets `TRELLO_API_KEY` and `TRELLO_TOKEN`.
-7. Merge the change so the default branch receives a push; the GitHub Actions workflow runs `dotdotgod trello sync <root>` to add or verify the GitHub attachment and create, append, or replace only that repository's `dotdotgod-view` custom field entry.
+7. Merge the change so the default branch receives a push; the single GitHub Actions workflow runs `dotdotgod trello sync <root>` to add or verify the GitHub attachment, create/replace that repository's `dotdotgod-view` entry, and deploy the static Power-Up Pages artifact under `/trello/index.html`.
 
 ## Markdown Metadata
 
@@ -84,7 +84,7 @@ Missing, malformed, or empty write-mode credentials are usage errors with exit c
 
 ## Trello Write Surface
 
-Trusted GitHub Actions write mode may use only Trello REST card lookup, attachment list/create, and custom field definition/value endpoints. The extracted short link is valid as `{idOrShortLink}`. The sync MUST NOT update card descriptions or call comment, GitHub write, webhook, OAuth, backend, or PR/status APIs.
+Trusted GitHub Actions write mode may use only Trello REST card lookup, attachment list/create, and custom field definition/value endpoints. The combined workflow also builds the static Power-Up Pages artifact from `packages/trello-power-up/**`, but Trello secrets MUST be scoped only to the default-branch push write step. The extracted short link is valid as `{idOrShortLink}`. The sync MUST NOT update card descriptions or call comment, GitHub write, webhook, OAuth, backend, or PR/status APIs.
 
 ## Attachment Semantics
 

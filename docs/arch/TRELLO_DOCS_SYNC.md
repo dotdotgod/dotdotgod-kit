@@ -22,7 +22,7 @@ Dry-run mode must not construct or call a Trello client. Write mode may call onl
 | `packages/cli/src/trello/github-url.mjs` | Build GitHub browser URLs and resolve `owner/name` repository entry keys from explicit inputs, GitHub Actions metadata, or dry-run fallback metadata. |
 | `packages/cli/src/trello/summary.mjs` | Produce deterministic linked-docs data and traceability state. |
 | `packages/cli/src/trello/report.mjs` | Render human-readable dry-run and write-mode output from structured report data. |
-| `.github/workflows/trello-docs-sync.yml` | Run dry-run for manual/PR events and write mode only for default-branch push. |
+| `.github/workflows/trello-docs-sync.yml` | Run dry-run for manual/PR events, write mode only for default-branch push, build the Power-Up Pages artifact, and deploy Pages outside PRs. |
 | `packages/trello-power-up/src/index.js` | Render read-only card-back UI from the `dotdotgod-view` custom field. |
 
 ## Data Flow
@@ -39,7 +39,8 @@ Dry-run mode must not construct or call a Trello client. Write mode may call onl
 10. Write mode resolves Actions/env credentials and detects duplicate Trello short links before API calls.
 11. For each valid non-duplicate file, the client resolves the card with custom field items, lists attachments, adds the GitHub URL attachment if no exact URL match exists, ensures the `dotdotgod-view` text custom field exists, and updates that field with a merged repository entry payload.
 12. The orchestrator records attachment result, custom field result, final status, warnings, and actionable errors.
-13. The report formatter prints deterministic human-readable output and the orchestrator returns the final exit code.
+13. In parallel with sync safety checks, the workflow builds `packages/trello-power-up/**` into `dist/trello` and deploys it to GitHub Pages only outside PRs on the default branch.
+14. The report formatter prints deterministic human-readable output and the orchestrator returns the final exit code.
 
 ## Config and Credential Model
 
@@ -59,7 +60,7 @@ Valid path patterns are exact repository-relative paths, subtree patterns ending
 
 Write credentials are resolved outside committed config from `TRELLO_API_KEY` and `TRELLO_TOKEN` only. In CI they come from Actions secrets. `.dotdotgod/trello-credentials.json` is not used. The resolver rejects missing, malformed, or empty values. Credential values and `GITHUB_TOKEN` must be redacted from errors, reports, and tests.
 
-The workflow uses `permissions: contents: read`. `actions/checkout` may use read-only `GITHUB_TOKEN` to read private repository contents, but the Trello sync CLI does not consume `GITHUB_TOKEN`.
+The workflow uses `permissions: contents: read` at workflow scope. The Pages deploy job alone receives `pages: write` and `id-token: write`. `actions/checkout` may use read-only `GITHUB_TOKEN` to read private repository contents, but the Trello sync CLI does not consume `GITHUB_TOKEN`.
 
 ## Trello Client Boundary
 
@@ -82,33 +83,7 @@ The helper creates a payload when the field is empty, appends a missing current 
 
 ## Structured Report Model
 
-The orchestrator should build structured data before text formatting:
-
-```js
-{
-  ok: false,
-  command: 'trello sync',
-  mode: 'write',
-  root,
-  scanPaths: ['docs/trello/**'],
-  totals: { matchedFiles: 2, written: 1, unchanged: 0, blocked: 0, conflict: 1, apiFailed: 0, warnings: 0, errors: 1 },
-  files: [
-    {
-      file: 'docs/trello/example.md',
-      trelloUrl: 'https://trello.com/c/AbCdEf12/',
-      shortLink: 'AbCdEf12',
-      githubUrl: 'https://github.com/org/repo/blob/main/docs/trello/example.md',
-      repositoryKey: 'org/repo',
-      attachment: { status: 'written' },
-      customField: { status: 'written', action: 'replace-entry', name: 'dotdotgod-view', preservedRepositoryEntries: 1 },
-      finalStatus: 'written',
-      traceability: { state: 'present', details: [] },
-      warnings: [],
-      errors: []
-    }
-  ]
-}
-```
+The orchestrator should build structured data before text formatting: command/mode/root, scan paths, totals, and per-file fields for docs path, Trello URL, short link, GitHub URL, repository key, attachment result, custom field result/action, final status, traceability, warnings, and errors.
 
 Dry-run may keep planned action fields. Trello docs sync does not expose the structure as public `--json`; tests may assert it internally.
 
@@ -135,7 +110,7 @@ Warnings do not fail on their own. Warning cases include no matching docs, unsup
 ## Verification Targets
 
 - `packages/cli/test/trello-sync.test.mjs` for focused dry-run, CI write gating, credential, and write-mode behavior.
-- `packages/cli/test/trello-workflow.test.mjs` for workflow trigger, permission, path, secret, and concurrency validation.
+- `packages/cli/test/trello-workflow.test.mjs` for combined workflow trigger, permission, path, secret, Pages deploy, and concurrency validation.
 - `packages/cli/test/core.test.mjs` for routing/help coverage that cannot live in focused Trello tests.
 - `packages/trello-power-up/test/index.test.mjs` for Power-Up payload parsing and rendering helpers.
 - `docs/test/TRELLO_DOCS_SYNC.md` for verification strategy.

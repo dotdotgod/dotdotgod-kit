@@ -13,7 +13,7 @@ packages/cli/test/trello-sync.test.mjs
 packages/cli/test/trello-workflow.test.mjs
 ```
 
-Use `packages/cli/test/e2e.test.mjs` for fixture-based workflow/config interaction when practical. Use `packages/cli/test/core.test.mjs` only for config validation, routing, or help behavior that cannot fit focused Trello tests.
+Use `packages/cli/test/e2e.test.mjs` for fixture-based workflow/config interaction. Use `packages/cli/test/core.test.mjs` only for config, routing, or help behavior outside focused tests.
 
 ## Fixture Matrix
 
@@ -109,7 +109,7 @@ Cover `dotdotgod-view` payload parsing, invalid-payload reporting, safe HTML ren
 
 Target: `packages/cli/test/trello-workflow.test.mjs`
 
-Assert workflow safe triggers, no `pull_request_target`, read-only permissions, `docs/trello/**` paths, non-canceling concurrency, Trello secrets only on default-branch push writes, and manual/PR `--dry-run` only.
+Assert combined workflow safe triggers, no `pull_request_target`, read-only workflow permissions, Trello and Power-Up paths, non-canceling concurrency, write-step-only Trello secrets, manual/PR dry-run, Pages build, no PR deploy, and job-scoped Pages permissions.
 
 ### Report and CLI Help
 
@@ -144,7 +144,7 @@ node packages/cli/bin/dotdotgod.mjs trello sync /path/to/fixture --dry-run
 
 Trusted CI write fixture is exercised through mocked automated tests and the GitHub Actions workflow. Local manual verification should use dry-run only.
 
-Expected write output identifies write mode, reports attachment/custom-field results, redacts credentials, creates no comments, and never updates Trello descriptions.
+Expected write output identifies write mode, reports attachment/custom-field results, redacts credentials, creates no comments, and never updates descriptions.
 
 ## Verification Commands
 
