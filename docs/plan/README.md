@@ -33,5 +33,7 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 - `landing-site/` — paused: plan for adding a static React landing and documentation site to the pnpm monorepo; waiting on framework, deployment, and design decisions.
 - `notion-docs-sync/` — active: plan for a Notion integration that links Notion task/issue pages with GitHub-hosted markdown under `docs/` and preserves traceability; Phase 1-3 use CLI dry-run, CLI write mode, and GitHub Actions without custom server resources.
 - `pi-subagents-resource-conflict/` — active: plan to suppress duplicate `pi-subagents` skill and prompt resources when standalone `pi-subagents` is already installed alongside `@dotdotgod/pi`.
+- `plan-mode-consolidated-follow-up/` — active: `/plan-generator` staged authoring, checkpoint/durable-plan validation, loop/retry handling, and Stage 09 handoff quality.
+- `plan-mode-refactor-verification/` — active: separate verification plan for the already-present Plan Mode controller/component cleanup and execution-review behavior.
 
 This directory is local-only and ignored by git by default.
