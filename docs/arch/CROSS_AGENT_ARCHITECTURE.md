@@ -25,7 +25,7 @@ dotdotgod
 `packages/shared` owns agent-neutral assets and contracts:
 
 - `workflows/load.md`: common project memory loading guidance, including snapshot-first CLI guidance with manual README-index fallback.
-- `workflows/plan.md`: common doc-first planning guidance.
+- `workflows/plan.md`: common doc-first planning guidance for durable active plans, execution approval, and verification. Plan Mode does not use `dotdotgod plan validate` as an execution gate; staged validation belongs to `/plan-generator` and manual/non-Plan-Mode workflows.
 - `workflows/impact.md`: common graph-impact review guidance for post-edit related-doc/test/source checks before broad verification or handoff.
 - `workflows/doc-clarify.md`: common documentation clarity workflow that uses memory-area metadata and dotdotgod default document roles while preserving behavior contracts.
 - `workflows/init.md`: common project initializer guidance that uses `dotdotgod init` when available and provides platform-specific fallback script command placeholders when the CLI is absent.
@@ -160,7 +160,7 @@ Use fixed versions initially. Independent versions are only worth the overhead w
 - Keep generated adapter files checked in for zero-build local installs.
 - Use `pnpm run verify:generated` to catch drift when generated files are edited directly.
 - Keep `AGENTS.md` and docs scaffold stable across adapters.
-- Keep platform-specific enforcement in adapter code, not in shared docs.
+- Keep platform-specific UX enforcement in adapter code, but keep cross-agent quality contracts such as plan validation in the shared CLI.
 
 ## Verification Strategy
 

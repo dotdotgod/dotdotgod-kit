@@ -83,14 +83,6 @@ export interface PendingImpactItem {
 	touchedAt: string;
 }
 
-export interface ImpactCheckRecord {
-	path: string;
-	fingerprint?: string;
-	ranAt: string;
-	source: "tool" | "command" | "bash";
-	summary?: string;
-}
-
 export function normalizeImpactPath(cwd: string, path: string): string | undefined {
 	const raw = path.replace(/^@/, "").replace(/\\/g, "/").trim();
 	if (!raw || raw.includes("\0") || /[;&|<>`$\n\r]/.test(raw)) return undefined;
@@ -167,4 +159,3 @@ export function formatMultiImpactSummary(results: Array<{ path: string; data?: u
 	}
 	return lines.join("\n");
 }
-
