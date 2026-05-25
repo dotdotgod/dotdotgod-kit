@@ -16,6 +16,7 @@ These checks cover configurable markdown validation size budgets and path-specif
 `packages/cli/test/e2e.test.mjs` verifies:
 
 - an oversized markdown file fails default validation with `FILE_TOO_LARGE`
+- markdown size errors include a repair prompt that names the matched memory area and role and asks the agent to split the document by area/role
 - `validation.markdown.exclude` skips only markdown size checks for a matching path
 - configured `maxChars` and `maxLines` change validation budgets
 - CLI `--max-chars` overrides a configured character budget for one invocation
