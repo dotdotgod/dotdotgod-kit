@@ -4,9 +4,13 @@ on:
   push:
     paths:
       - "docs/trello/**"
+      - "packages/trello-power-up/**"
+      - ".github/workflows/trello-docs-sync.yml"
   pull_request:
     paths:
       - "docs/trello/**"
+      - "packages/trello-power-up/**"
+      - ".github/workflows/trello-docs-sync.yml"
   workflow_dispatch:
 
 permissions:
@@ -47,3 +51,38 @@ jobs:
           TRELLO_API_KEY: ${{ secrets.TRELLO_API_KEY }}
           TRELLO_TOKEN: ${{ secrets.TRELLO_TOKEN }}
         run: node packages/cli/bin/dotdotgod.mjs trello sync .
+
+  build-power-up-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build static Pages artifact
+        run: |
+          mkdir -p dist/trello
+          cp -R packages/trello-power-up/index.html dist/trello/index.html
+          cp -R packages/trello-power-up/section.html dist/trello/section.html
+          cp -R packages/trello-power-up/preview.html dist/trello/preview.html
+          cp -R packages/trello-power-up/icon.svg dist/trello/icon.svg
+          cp -R packages/trello-power-up/src dist/trello/src
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy-power-up-pages:
+    if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    needs: build-power-up-pages
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}trello/index.html
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
