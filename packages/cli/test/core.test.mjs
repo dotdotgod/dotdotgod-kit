@@ -12,6 +12,7 @@ import {
   buildImpactReport,
   buildMemoryAreas,
   buildIndex,
+  buildPlanValidationRepairPrompt,
   buildCompactImpactReport,
   collectIndexFiles,
   defaultDotdotgodConfigData,
@@ -25,6 +26,7 @@ import {
   extractDotdotgodTraceabilityBlocks,
   extractLinks,
   findTraceabilityLinksRegion,
+  formatPlanValidationText,
   graphSummary,
   headingToAnchor,
   isKebabCase,
@@ -35,7 +37,9 @@ import {
   memoryRoleForPath,
   neighborhood,
   normalizeReferenceAlias,
+  PLAN_STAGE_DIRECTORIES,
   readMemoryConfig,
+  resolvePlanValidationStage,
   resolveReferenceCandidates,
   renderCompactTraceabilityBlock,
   requiresTraceability,
@@ -44,6 +48,7 @@ import {
   stripTraceabilityLinksRegion,
   syncTraceabilityLinksInContent,
   validateMemoryConfigData,
+  validatePlanArtifact,
   validateTraceabilityBlock,
   validateTraceabilityLinksRegion,
 } from '../src/core.mjs';
@@ -607,6 +612,203 @@ describe('CLI docs helpers', () => {
     assert(blocks.some((block) => /\[\[hooks\.PostToolUse\]\]/.test(block)));
     assert(blocks.some((block) => /\[\[hooks\.PostToolUse\.hooks\]\]/.test(block)));
     assert(blocks.some((block) => /type\s*=\s*"command"/.test(block)));
+  });
+});
+
+function writePlanStage(root, slug, stage, content, extraFiles = {}) {
+  const stageDir = join(root, 'docs/plan', slug, stage);
+  mkdirSync(stageDir, { recursive: true });
+  writeFileSync(join(stageDir, 'README.md'), content);
+  for (const [name, fileContent] of Object.entries(extraFiles)) {
+    writeFileSync(join(stageDir, name), fileContent);
+  }
+}
+
+function internalStageContent(stage) {
+  const content = {
+    '01-intake': '# Intake\n\n## Request Summary\nBuild it.\n\n## Goal\nShip safe behavior.\n\n## Scope\nCLI validation.\n\n## Non-goals\nNo sidecars.\n\n## Constraints\nUse Markdown.\n\n## Assumptions\nAll assumptions resolved.\n',
+    '02-context-load': '# Context Load\n\n## Memory Reads\nAGENTS.md.\n\n## Impact Candidates\nCLI and Pi files.\n\n## Related Files\ndocs/spec/plan-mode/WORKFLOW.md.\n',
+    '03-discovery': '# Discovery\n\n## Findings\nExisting CLI command pattern found.\n\n## Risks\nParser drift.\n\n## Open Questions\nNo open questions.\n',
+    '04-decomposition': '# Decomposition\n\n## Milestones\nM1 CLI.\n\n## Atomic Tasks\n- AT1: Add validator. Acceptance criteria: detects invalid plans. Verification: unit tests.\n\n## Role / Area Workstreams\n| ID | Role | Required | Status |\n| --- | --- | --- | --- |\n| W1 | Researcher | yes | done |\n',
+    '05-decision-queue': '# Decision Queue\n\n## Discussion Queue\nNo unresolved items.\n',
+    '06-approval': '# Approval\n\n## Approval State\nReady for review.\n',
+    '07-execution-slices': '# Execution Slices\n\n## Execution Slices\n- Slice 01: CLI validator. Acceptance criteria: command works. Verification: tests.\n',
+    '08-verify-replan-close': '# Verify Replan Close\n\n## Verification Evidence\nPending focused commands.\n\n## Replanning Triggers\nAsk user on validation failure.\n\n## Progress Log\nNot started.\n\n## Resume Point\nStart at CLI validation.\n',
+    '09-subagent-workstreams': '# Subagent Workstreams\n\n## Subagent Workstreams\nCLI, Pi, tests, and docs workstreams.\n\n## Split Plan Files\n- SUBAGENT_CLI_VALIDATION.md\n\n## Todo Contract\nEach split plan contains a numbered Plan: section.\n',
+  };
+  return content[stage];
+}
+
+function internalStageFileName(stage) {
+  const match = /^(\d{2})-(.+)$/.exec(stage);
+  return match ? `${match[1]}_${match[2].replace(/-/g, '_').toUpperCase()}.md` : `${stage.replace(/-/g, '_').toUpperCase()}.md`;
+}
+
+function writeInternalPlanStage(root, slug, stage, content = internalStageContent(stage)) {
+  const workspace = join(root, 'docs/plan', slug, '.dotdotgod-plan');
+  mkdirSync(workspace, { recursive: true });
+  writeFileSync(join(workspace, internalStageFileName(stage)), content);
+}
+
+function writeInternalPlanFixture(root, slug = 'internal-task', stages = ['01-intake', '02-context-load', '03-discovery', '04-decomposition', '05-decision-queue', '06-approval', '07-execution-slices', '08-verify-replan-close', '09-subagent-workstreams']) {
+  const planDir = join(root, 'docs/plan', slug);
+  mkdirSync(planDir, { recursive: true });
+  writeFileSync(join(planDir, 'README.md'), '# Internal Task\n\nValid durable plan root.\n');
+  for (const stage of stages) writeInternalPlanStage(root, slug, stage);
+  return join(planDir, 'README.md');
+}
+
+function writeValidPlanFixture(root, slug = 'my-task') {
+  const planDir = join(root, 'docs/plan', slug);
+  mkdirSync(planDir, { recursive: true });
+  const readme = [
+    '# My Task',
+    '',
+    'Valid README-first plan root.',
+    '',
+    internalStageContent('01-intake'),
+    internalStageContent('02-context-load'),
+    internalStageContent('03-discovery'),
+    internalStageContent('04-decomposition'),
+    internalStageContent('05-decision-queue'),
+    internalStageContent('06-approval'),
+    internalStageContent('07-execution-slices'),
+    internalStageContent('08-verify-replan-close'),
+    internalStageContent('09-subagent-workstreams'),
+  ].join('\n');
+  writeFileSync(join(planDir, 'README.md'), readme);
+  writePlanStage(root, slug, '01-intake', internalStageContent('01-intake'));
+  writePlanStage(root, slug, '02-context-load', internalStageContent('02-context-load'));
+  writePlanStage(root, slug, '03-discovery', internalStageContent('03-discovery'));
+  writePlanStage(root, slug, '04-decomposition', internalStageContent('04-decomposition'));
+  writePlanStage(root, slug, '05-decision-queue', internalStageContent('05-decision-queue'));
+  writePlanStage(root, slug, '06-approval', internalStageContent('06-approval'));
+  writePlanStage(root, slug, '07-execution-slices', internalStageContent('07-execution-slices'));
+  writePlanStage(root, slug, '08-verify-replan-close', internalStageContent('08-verify-replan-close'));
+  return join(root, 'docs/plan', slug, 'README.md');
+}
+
+describe('Plan artifact validation', () => {
+  it('accepts a README-first plan and ignores legacy canonical stage directories', () => {
+    const root = fixture();
+    const planPath = writeValidPlanFixture(root);
+    const result = validatePlanArtifact(planPath, { root });
+    assert.equal(result.ok, true);
+    assert.equal(result.summary.stages.valid, 9);
+    assert.equal(result.blockers.length, 0);
+  });
+
+  it('validates a single stage by canonical name or numeric prefix', () => {
+    const root = fixture();
+    const planPath = writeValidPlanFixture(root);
+    writeFileSync(join(root, 'docs/plan/my-task/01-intake/README.md'), '# Intake\n\n## Request Summary\nTBD\n\n## Goal\nShip safe behavior.\n\n## Scope\nCLI validation.\n\n## Non-goals\nNo sidecars.\n\n## Constraints\nUse Markdown.\n\n## Assumptions\nAll assumptions resolved.\n');
+    writeFileSync(join(root, 'docs/plan/my-task/04-decomposition/README.md'), '# Decomposition\n\n## Milestones\nM1 CLI.\n\n## Atomic Tasks\n- AT1: Add validator.\n\n## Role / Area Workstreams\n| ID | Role | Required | Status |\n| --- | --- | --- | --- |\n| W1 | Researcher | yes | pending |\n');
+
+    assert.equal(resolvePlanValidationStage('04'), '04-decomposition');
+    assert.equal(resolvePlanValidationStage('04-decomposition'), '04-decomposition');
+    assert.equal(resolvePlanValidationStage('99'), undefined);
+
+    const byName = validatePlanArtifact(planPath, { root, stage: '04-decomposition' });
+    assert.equal(byName.ok, true);
+    assert.equal(byName.stage, '04-decomposition');
+    assert.equal(byName.summary.stages.total, 1);
+    assert.equal(byName.summary.stages.selected, '04-decomposition');
+    assert.equal(byName.blockers.length, 0);
+
+    const byPrefix = validatePlanArtifact(planPath, { root, stage: '04' });
+    assert.equal(byPrefix.stage, '04-decomposition');
+    assert.deepEqual(byPrefix.blockers.map((blocker) => blocker.code), byName.blockers.map((blocker) => blocker.code));
+  });
+
+  it('validates the current stage without requiring later stages', () => {
+    const root = fixture();
+    const slug = 'incremental-task';
+    const planDir = join(root, 'docs/plan', slug);
+    mkdirSync(planDir, { recursive: true });
+    const planPath = join(planDir, 'README.md');
+    writeFileSync(planPath, '# Incremental Task\n\n' + internalStageContent('01-intake'));
+
+    const stageResult = validatePlanArtifact(planPath, { root, stage: '01-intake' });
+    assert.equal(stageResult.ok, true);
+    assert.equal(stageResult.summary.stages.total, 1);
+    assert.equal(stageResult.summary.stages.valid, 1);
+    assert.equal(stageResult.nextStage.stage, '02-context-load');
+    assert.match(stageResult.nextStage.path, /02_CONTEXT_LOAD\.md$/);
+
+    const fullResult = validatePlanArtifact(planPath, { root });
+    assert.equal(fullResult.ok, false);
+    assert(fullResult.blockers.some((blocker) => blocker.code === 'missing-section' && blocker.stage === '02-context-load'));
+  });
+
+  it('treats internal workspace checkpoints as state only and supports the ninth subagent stage', () => {
+    const root = fixture();
+    const planPath = writeInternalPlanFixture(root, 'internal-task', ['01-intake']);
+
+    const checkpointOnly = validatePlanArtifact(planPath, { root, stage: '01' });
+    assert.equal(checkpointOnly.ok, false);
+    assert.equal(checkpointOnly.stage, '01-intake');
+    assert(checkpointOnly.blockers.some((blocker) => blocker.code === 'missing-section' && blocker.path.endsWith('README.md')));
+
+    assert.equal(resolvePlanValidationStage('09'), '09-subagent-workstreams');
+    assert.equal(resolvePlanValidationStage('09-subagent-workstreams'), '09-subagent-workstreams');
+
+    const missingNinth = validatePlanArtifact(planPath, { root, stage: '09' });
+    assert.equal(missingNinth.ok, false);
+    assert(missingNinth.blockers.some((blocker) => blocker.code === 'missing-section' && blocker.stage === '09-subagent-workstreams'));
+
+    const fullPlanPath = writeInternalPlanFixture(root, 'complete-internal-task');
+    writeFileSync(fullPlanPath, '# Complete Internal Task\n\n' + ['01-intake', '02-context-load', '03-discovery', '04-decomposition', '05-decision-queue', '06-approval', '07-execution-slices', '08-verify-replan-close', '09-subagent-workstreams'].map((stage) => internalStageContent(stage)).join('\n'));
+    const fullResult = validatePlanArtifact(fullPlanPath, { root });
+    assert.equal(fullResult.ok, true);
+    assert.equal(fullResult.summary.stages.total, 9);
+    assert.equal(fullResult.summary.stages.valid, 9);
+  });
+
+  it('blocks missing stages, invalid markdown names, and missing sections', () => {
+    const root = fixture();
+    const planPath = writeValidPlanFixture(root);
+    writeFixtureFile(root, 'docs/plan/my-task/03-discovery/bad-name.md', '# Bad\n');
+    writeFileSync(planPath, readFileSync(planPath, 'utf8').replace('## Approval State\nReady for review.', '## Approval State\n'));
+    const result = validatePlanArtifact(planPath, { root });
+    assert.equal(result.ok, false);
+    assert(!result.blockers.some((blocker) => blocker.code === 'invalid-markdown-name'));
+    assert(result.blockers.some((blocker) => blocker.code === 'empty-section' && blocker.section === 'Approval State'));
+    assert(result.blockers.every((blocker) => typeof blocker.prompt === 'string' && blocker.prompt.includes(blocker.message)));
+    assert.match(result.repairPrompt, /Refine the active plan artifact/);
+    assert.match(result.repairPrompt, /Approval State/);
+  });
+
+  it('blocks placeholder content, pending workstreams, unresolved decisions, assumptions, and missing atomic verification', () => {
+    const root = fixture();
+    const planPath = writeValidPlanFixture(root);
+    let readme = readFileSync(planPath, 'utf8');
+    readme = readme.replace('## Request Summary\nBuild it.', '## Request Summary\nTBD');
+    readme = readme.replace('## Assumptions\nAll assumptions resolved.', '## Assumptions\n- [ ] Confirm target adapters.');
+    readme = readme.replace('- AT1: Add validator. Acceptance criteria: detects invalid plans. Verification: unit tests.', '- AT1: Add validator.');
+    readme = readme.replace('| W1 | Researcher | yes | done |', '| W1 | Researcher | yes | pending |');
+    readme = readme.replace('## Discussion Queue\nNo unresolved items.', '## Discussion Queue\n- [ ] Q1 blocks-execute-review: Which adapters?');
+    writeFileSync(planPath, readme);
+    const result = validatePlanArtifact(planPath, { root });
+    assert.equal(result.ok, false);
+    assert(result.blockers.some((blocker) => blocker.code === 'placeholder-section'));
+    assert(result.blockers.some((blocker) => blocker.code === 'unresolved-assumption'));
+    assert(result.blockers.some((blocker) => blocker.code === 'pending-workstream'));
+    assert(result.blockers.some((blocker) => blocker.code === 'unresolved-discussion'));
+    assert(result.blockers.some((blocker) => blocker.code === 'missing-atomic-acceptance'));
+    assert(result.blockers.some((blocker) => blocker.code === 'missing-atomic-verification'));
+    const text = formatPlanValidationText(result);
+    assert.match(text, /Agent prompt:/);
+    assert.equal(buildPlanValidationRepairPrompt(result), result.repairPrompt);
+  });
+
+  it('keeps README-first precedence while detecting normal nested plan markdown', () => {
+    const root = fixture();
+    const planPath = writeValidPlanFixture(root);
+    writeFileSync(join(root, 'docs/plan/my-task/04-decomposition/README.md'), '# Decomposition\n\nSee `ATOMIC_TASKS.md`.\n');
+    writeFileSync(join(root, 'docs/plan/my-task/04-decomposition/ATOMIC_TASKS.md'), '# Split Decomposition\n\n## Milestones\nM1 CLI.\n\n## Atomic Tasks\n- AT1: Add validator. Acceptance criteria: detects invalid plans. Verification: unit tests.\n\n## Role / Area Workstreams\n| ID | Role | Required | Status |\n| --- | --- | --- | --- |\n| W1 | Researcher | yes | done |\n');
+    const result = validatePlanArtifact(planPath, { root });
+    assert.equal(result.ok, true);
+    assert.equal(result.summary.splitFiles.detected, true);
   });
 });
 
