@@ -6,4 +6,5 @@ Use reports for evidence snapshots, measurements, and interpretations. Route dur
 
 ## Index
 
+- `agent-planning-research/`: research synthesis and lane reports for improving plan mode with hierarchical planning, persistent TODOs, multi-agent decomposition, planning visibility, and verification-driven execution.
 - `IMPACT_EFFECT_ANALYSIS.md`: historical snapshot of `dotdotgod_graph_impact` usage, file-discovery lift, relationship coverage, and caveats for the 2026-05-14 through 2026-05-20 Pi usage window.

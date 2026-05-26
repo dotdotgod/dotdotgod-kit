@@ -19,6 +19,10 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/cli-plan-validate-next-stage-prompt/`: completed CLI/Pi Plan Mode staged validation alignment with UPPER_SNAKE `.dotdotgod-plan/` stage files, next-stage prompts, clean-pass/resume behavior, stage 09 saved-plan review, docs, and focused verification.
+- `plan/plan-mode-bootstrap-resume-layer/`: superseded by `docs/plan/plan-mode-consolidated-follow-up/` after its remaining README-first bootstrap/resume intent was merged into the consolidated active Plan Mode plan.
+- `plan/plan-mode-simplification-refactor/`: superseded by `docs/plan/plan-mode-consolidated-follow-up/` after its remaining deletion-first refactor work was merged into the consolidated active Plan Mode plan.
+- `plan/single-durable-plan-stage-workspace/`: superseded by the completed staged-validation implementation after establishing the durable `README.md` plus internal `.dotdotgod-plan/` workspace direction for Plan Mode.
 - `plan/pi-runtime-dependency-conflict/`: fixed `@dotdotgod/pi` subagent dependency loading with runtime-deferred duplicate detection, hoist-safe dependency resolution, package-local CLI/subagent install verification, and smoke/docs coverage.
 - `plan/pi-subagents-integration/`: added `@dotdotgod/cli` and `pi-subagents` as `@dotdotgod/pi` runtime dependencies, package-local CLI resolution, subagent resource manifest paths, and smoke/docs coverage.
 - `plan/plan-preview-fullscreen-ui/`: restored Plan Mode saved-plan review to a full-page custom UI with a cursor-selectable action bar, explicit execution gating, and documented iTerm2 wheel-smoke expectations.
