@@ -63,6 +63,7 @@ A good first-run flow is:
 - **Document clarity skill:** improve README/spec/test/arch/plan/archive wording using memory-area roles and optional config guidance without changing behavior contracts.
 - **Task-directed loading:** `/dd:load` starts from `dotdotgod load-snapshot` when available, then reads only relevant docs from the fixed memory surface.
 - **Safe planning:** `/plan` keeps source/config changes blocked while request framing turns implementation-looking asks into durable plans under `docs/plan/` first; `/plan <request>` enables planning and sends the first request in one step.
+- **Staged plan generation:** `/plan-generator` creates or resumes `docs/plan/<task>/` authoring, derives semantic task slugs from request text when possible, writes `.dotdotgod-plan/NN_STAGE_NAME.md` checkpoint state, validates/reviews one stage at a time, and stops at Stage 09 readiness without executing source/config changes.
 - **Impact-aware context shaping:** Plan Mode can queue curated load when baseline docs are missing or context has narrowed to one docs area, and can use `dotdotgod expand --with-impact` for explicit `[[...]]` refs and `expand --fuzzy --with-impact` for high-signal natural references from the maintained graph.
 - **Impact enforcement:** after source/config edits, Pi can remind the agent to run `dotdotgod_graph_impact` or `/impact-check`, return structured YML impact summaries, and block commit/push/publish commands until pending impact checks pass.
 - **Execution continuity:** completed plan steps are reported with explicit `[DONE:n]` markers so progress survives long sessions and compaction.
@@ -97,6 +98,7 @@ The graph uses more than traceability blocks: Markdown links, README routes, hea
 ```text
 /plan           Toggle safe planning mode.
 /plan <request> Enable plan mode and send a planning request.
+/plan-generator Create or resume staged durable plan authoring.
 /todos          Show tracked plan progress during execution.
 /impact-check   Run graph impact checks for pending or git-changed files.
 /load           Load project memory for the current repository.
@@ -109,6 +111,7 @@ The graph uses more than traceability blocks: Markdown links, README routes, hea
 - `project-initializer` skill: the starting point for `AGENTS.md`, thin agent entrypoints, docs folders, README indexes, and local memory/cache ignores.
 - `document-clarify` skill: config-aware documentation clarity workflow for README indexes, specs, tests, architecture docs, plans, archives, and custom docs areas.
 - `plan-mode` extension: read-first planning mode with restricted tools, `/plan <request>` inline request delivery, request framing, optional `--plan-extra-tools`, docs/plan writes, execution tracking, tiered hidden prompts, mandatory impact/validation guidance, `/todos`, `dotdotgod_graph_impact`, and `/impact-check`.
+- `plan-generator` extension: staged durable plan authoring with request-derived task slugs, CLI validation, LLM review handoff prompts, checkpoint state under `.dotdotgod-plan/`, and explicit resume via `docs/plan/<task>` or its README; Plan Mode suppresses execution review for generator-authored plans until Stage 09 checkpoint state is completed.
 - `load-project` extension: read-only project context loading through `/load` and `/dd:load`.
 - `pi-subagents` extension resources: a dotdotgod wrapper resolves the installed dependency with Node package resolution, waits until session startup to decide whether standalone `pi-subagents` already owns the `subagent` tool, and exposes package-local prompts/skill plus the `subagent` tool only when dotdotgod owns the registration.
 
