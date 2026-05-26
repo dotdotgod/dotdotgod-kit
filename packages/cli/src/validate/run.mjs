@@ -45,7 +45,7 @@ export function runValidate(argv) {
       if (entry.isDirectory()) {
         const docsRel = rel(docs, path);
         if (docsRel && !docsRel.startsWith('..')) {
-          const isPlanInternalWorkspaceDir = /^plan\/[a-z0-9]+(?:-[a-z0-9]+)*\/\.dotdotgod-plan(?:\/|$)/.test(docsRel);
+          const isPlanInternalWorkspaceDir = /^(?:plan|archive\/plan)\/[a-z0-9]+(?:-[a-z0-9]+)*\/\.dotdotgod-plan(?:\/|$)/.test(docsRel);
           if (!isPlanInternalWorkspaceDir) for (const part of docsRel.split('/')) if (part && !isKebabCase(part)) addError(path, 'DIR_NAMING', `Directory must be kebab-case: ${part}`, null, 'rename this docs directory to kebab-case and update any links that reference it.');
         }
         walk(path);
@@ -70,7 +70,7 @@ export function runValidate(argv) {
     const name = basename(file);
     const docsRel = rel(docs, file);
     const rootRel = rel(root, file);
-    const isPlanInternalWorkspaceFile = /^docs\/plan\/[a-z0-9]+(?:-[a-z0-9]+)*\/\.dotdotgod-plan\/(?:[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*|[0-9]{2}_[A-Z0-9]+(?:_[A-Z0-9]+)*)\.md$/.test(rootRel);
+    const isPlanInternalWorkspaceFile = /^docs\/(?:plan|archive\/plan)\/[a-z0-9]+(?:-[a-z0-9]+)*\/\.dotdotgod-plan\/(?:[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*|[0-9]{2}_[A-Z0-9]+(?:_[A-Z0-9]+)*)\.md$/.test(rootRel);
     if (docsRel && !docsRel.startsWith('..') && !isPlanInternalWorkspaceFile && !isUpperSnakeMarkdown(name)) addError(file, 'FILE_NAMING', `Markdown file must be UPPER_SNAKE_CASE.md or README.md: ${name}`, null, 'rename the markdown file to UPPER_SNAKE_CASE.md or README.md and update any links that reference it.');
     const content = readFileSync(file, 'utf8');
     fileCache.set(file, content);
@@ -100,7 +100,7 @@ export function runValidate(argv) {
   for (const file of markdownFiles) byDir.set(dirname(file), [...(byDir.get(dirname(file)) ?? []), file]);
   for (const [dir, files] of byDir) {
     const dirRel = rel(root, dir);
-    if (/^docs\/plan\/[a-z0-9]+(?:-[a-z0-9]+)*\/\.dotdotgod-plan$/.test(dirRel)) continue;
+    if (/^docs\/(?:plan|archive\/plan)\/[a-z0-9]+(?:-[a-z0-9]+)*\/\.dotdotgod-plan$/.test(dirRel)) continue;
     if (files.length > 1 && !files.some((file) => basename(file) === 'README.md')) addError(dir, 'MISSING_README', 'Directory with multiple markdown files must include README.md', null, 'add a README.md in this directory that indexes the important markdown files and their purpose.');
   }
   if (options.linkCheck) {
