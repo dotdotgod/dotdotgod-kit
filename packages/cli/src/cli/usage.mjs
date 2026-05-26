@@ -34,6 +34,14 @@ Create dotdotgod.config.json with the built-in default memory, traceability, val
     case 'load-snapshot':
       return `Usage:
   dotdotgod load-snapshot <root> [--json]`;
+    case 'plan':
+      return `Usage:
+  dotdotgod plan validate docs/plan/<task-slug>/README.md [--stage stage] [--json]`;
+    case 'plan validate':
+      return `Usage:
+  dotdotgod plan validate docs/plan/<task-slug>/README.md [--stage stage] [--json]
+
+Validates an active plan artifact before execution. Supports old canonical eight-stage directories and new .dotdotgod-plan/NN_STAGE_NAME.md workspaces. Use --stage with a stage name or numeric prefix such as 04 or 09 to validate only that stage.`;
     case 'resolve':
       return `Usage:
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]`;
@@ -89,6 +97,7 @@ Ranks nodes related to a changed file. <root> is the project root; --changed is 
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]
   dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]
   dotdotgod traceability links <root> [--check|--write] [--json]
+  dotdotgod plan validate docs/plan/<task-slug>/README.md [--stage stage] [--json]
   dotdotgod trello sync <root> [--dry-run]
   dotdotgod graph impact <root> --changed <path> [--compact|--json|--yml|--yaml]
   dotdotgod graph communities <root> [--json]`;
@@ -137,6 +146,7 @@ export function helpCommandFromArgs(args) {
   if (nonHelp[0] === 'graph' && nonHelp[1]) return `graph ${nonHelp[1]}`;
   if (nonHelp[0] === 'trello' && nonHelp[1]) return `trello ${nonHelp[1]}`;
   if (nonHelp[0] === 'traceability' && nonHelp[1]) return `traceability ${nonHelp[1]}`;
+  if (nonHelp[0] === 'plan' && nonHelp[1]) return `plan ${nonHelp[1]}`;
   if (nonHelp[0] === 'config' && nonHelp[1] === 'init') return 'config init';
   return nonHelp[0] ?? 'root';
 }

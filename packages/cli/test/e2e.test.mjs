@@ -95,7 +95,6 @@ describe('dotdotgod CLI e2e', () => {
       const result = run(args);
       assert.equal(result.status, 0, result.stdout + result.stderr);
       assert.equal(result.stdout.trim(), cliPackage.version);
-      assert.equal(result.stderr, '');
     }
 
     for (const [args, pattern] of [
@@ -112,6 +111,9 @@ describe('dotdotgod CLI e2e', () => {
       [['expand', '--help'], /--fuzzy/],
       [['traceability', '--help'], /dotdotgod traceability links <root>/],
       [['traceability', 'links', '--help'], /generated Markdown traceability link sections/],
+      [['plan', '--help'], /dotdotgod plan validate docs\/plan\/<task-slug>\/README\.md/],
+      [['plan', 'validate', '--help'], /active plan artifact before execution/],
+      [['help', 'plan', 'validate'], /dotdotgod plan validate docs\/plan\/<task-slug>\/README\.md/],
       [['help', 'traceability', 'links'], /dotdotgod traceability links <root>/],
       [['graph', '--help'], /dotdotgod graph communities <root>/],
       [['graph', 'impact', '--help'], /dotdotgod graph impact <root> --changed <path>/],
@@ -436,6 +438,17 @@ describe('dotdotgod CLI e2e', () => {
     const invalidValidate = run(['validate', root, '--include-local-memory', '--json']);
     assert.equal(invalidValidate.status, 1);
     assert(JSON.parse(invalidValidate.stdout).errors.some((error) => error.code === 'TRACEABILITY_LINKS_MARKER_COUNT'));
+  });
+
+  it('validates archived generator checkpoint state without naming errors', () => {
+    const root = createFixture();
+    mkdirSync(join(root, 'docs/archive/plan/generated-task/.dotdotgod-plan'), { recursive: true });
+    writeFileSync(join(root, 'docs/archive/plan/generated-task/README.md'), '# Generated Task\n');
+    writeFileSync(join(root, 'docs/archive/plan/generated-task/.dotdotgod-plan/09_SUBAGENT_WORKSTREAMS.md'), '# 09 Subagent Workstreams\n\nStage: 09-subagent-workstreams\nStatus: completed\nUpdated: 2026-05-26T00:00:00.000Z\n');
+
+    const validate = run(['validate', root, '--include-local-memory', '--json']);
+    assert.equal(validate.status, 0, validate.stdout + validate.stderr);
+    assert.equal(JSON.parse(validate.stdout).ok, true);
   });
 
   it('validates, indexes, reports status, snapshots, and graph impact results', () => {

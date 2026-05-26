@@ -13,6 +13,9 @@ export const DEFAULT_TRACEABILITY_POLICY = {
 export const DEFAULT_VALIDATION_POLICY = {
   markdown: { maxLines: 200, maxChars: 10000, exclude: [] },
 };
+export const DEFAULT_INTEGRATIONS_POLICY = {
+  trello: { syncPaths: [] },
+};
 export const DEFAULT_IMPACT_RANKING_POLICY = {
   preset: 'balanced',
   weights: { ppr: 40, traceability: 30, memoryPolicy: 10, verification: 15, proximity: 10, semantic: 10, freshness: 5, archivePenalty: -25 },
@@ -151,15 +154,19 @@ function normalizeImpactRankingPolicy(raw) {
   return cloneImpactRankingPolicy({ ...preset, ...raw, preset: presetName, weights: { ...(preset.weights ?? {}), ...(raw?.weights ?? {}) }, ppr: { ...(preset.ppr ?? {}), ...(raw?.ppr ?? {}) }, semantic: { ...(preset.semantic ?? {}), ...(raw?.semantic ?? {}) } });
 }
 
-export function defaultMemoryConfig() {
-  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy() };
+export function cloneIntegrationsPolicy(policy = DEFAULT_INTEGRATIONS_POLICY) {
+  return { trello: { syncPaths: [...(policy.trello?.syncPaths ?? [])] } };
 }
 
-function normalizePathPattern(value = '') {
+export function defaultMemoryConfig() {
+  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), integrations: cloneIntegrationsPolicy() };
+}
+
+export function normalizePathPattern(value = '') {
   return value.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/+$|^\/+/, '');
 }
 
-function isValidPathPattern(value) {
+export function isValidPathPattern(value) {
   if (typeof value !== 'string' || !value.trim()) return false;
   const normalized = normalizePathPattern(value);
   if (!normalized || normalized.startsWith('../') || normalized.includes('/../') || normalized === '..') return false;
@@ -167,7 +174,7 @@ function isValidPathPattern(value) {
   return true;
 }
 
-function matchMemoryPattern(path, pattern) {
+export function matchPathPattern(path, pattern) {
   const normalized = normalizePathPattern(path);
   const normalizedPattern = normalizePathPattern(pattern);
   if (normalizedPattern.endsWith('/**')) {
@@ -182,9 +189,9 @@ function matchMemoryPattern(path, pattern) {
 }
 
 function areaMatchesPath(area, path) {
-  const excluded = (area.excludePaths ?? []).some((pattern) => matchMemoryPattern(path, pattern));
+  const excluded = (area.excludePaths ?? []).some((pattern) => matchPathPattern(path, pattern));
   if (excluded) return false;
-  return (area.paths ?? []).some((pattern) => matchMemoryPattern(path, pattern));
+  return (area.paths ?? []).some((pattern) => matchPathPattern(path, pattern));
 }
 
 export function resolveMemoryArea(path = '', config = defaultMemoryConfig()) {
@@ -223,16 +230,31 @@ function normalizeValidationPolicy(raw) {
   });
 }
 
+function normalizeIntegrationsPolicy(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return cloneIntegrationsPolicy();
+  const syncPaths = Array.isArray(raw.trello?.syncPaths) ? raw.trello.syncPaths.map(normalizePathPattern) : [];
+  return cloneIntegrationsPolicy({ trello: { syncPaths: [...new Set(syncPaths)] } });
+}
+
+function isSecretLikePathPattern(value = '') {
+  const normalized = normalizePathPattern(value);
+  return /(^|\/)(\.env|\.npmrc|\.pypirc|id_rsa|id_dsa|id_ed25519|credentials?|secrets?)(\.|\/|$)/i.test(normalized);
+}
+
+export function trelloSyncPaths(config = defaultMemoryConfig()) {
+  return [...new Set(['docs/trello/**', ...((config.integrations ?? DEFAULT_INTEGRATIONS_POLICY).trello?.syncPaths ?? [])])];
+}
+
 export function isMarkdownSizeExcluded(path = '', config = defaultMemoryConfig()) {
   const policy = config.validation ?? DEFAULT_VALIDATION_POLICY;
-  return (policy.markdown?.exclude ?? []).some((pattern) => matchMemoryPattern(path, pattern));
+  return (policy.markdown?.exclude ?? []).some((pattern) => matchPathPattern(path, pattern));
 }
 
 export function requiresTraceability(path = '', config = defaultMemoryConfig()) {
   const policy = config.traceability ?? DEFAULT_TRACEABILITY_POLICY;
-  const excluded = (policy.exclude ?? []).some((pattern) => matchMemoryPattern(path, pattern));
+  const excluded = (policy.exclude ?? []).some((pattern) => matchPathPattern(path, pattern));
   if (excluded) return false;
-  return (policy.required ?? []).some((pattern) => matchMemoryPattern(path, pattern));
+  return (policy.required ?? []).some((pattern) => matchPathPattern(path, pattern));
 }
 
 function normalizeMemoryArea(raw) {
@@ -292,6 +314,23 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
         if (markdown.maxChars !== undefined && (!Number.isInteger(markdown.maxChars) || markdown.maxChars < 1)) add('VALIDATION_CONFIG_INVALID_MAX_CHARS', 'validation.markdown.maxChars', 'Expected a positive integer.');
         if (markdown.exclude !== undefined && !Array.isArray(markdown.exclude)) add('VALIDATION_CONFIG_INVALID_EXCLUDE', 'validation.markdown.exclude', 'Expected an array of path strings.');
         else if (Array.isArray(markdown.exclude) && markdown.exclude.some((value) => !isValidPathPattern(value))) add('VALIDATION_CONFIG_INVALID_EXCLUDE', 'validation.markdown.exclude', 'Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+      }
+    }
+  }
+  const integrations = data.integrations;
+  if (integrations !== undefined) {
+    if (!integrations || typeof integrations !== 'object' || Array.isArray(integrations)) {
+      add('INTEGRATIONS_CONFIG_INVALID', 'integrations', 'Expected an object.');
+    } else if (integrations.trello !== undefined) {
+      const trello = integrations.trello;
+      if (!trello || typeof trello !== 'object' || Array.isArray(trello)) {
+        add('INTEGRATIONS_TRELLO_CONFIG_INVALID', 'integrations.trello', 'Expected an object.');
+      } else if (trello.syncPaths !== undefined) {
+        if (!Array.isArray(trello.syncPaths)) add('INTEGRATIONS_TRELLO_INVALID_SYNC_PATHS', 'integrations.trello.syncPaths', 'Expected an array of path strings.');
+        else {
+          if (trello.syncPaths.some((value) => !isValidPathPattern(value) || (typeof value === 'string' && value.trim().startsWith('/')))) add('INTEGRATIONS_TRELLO_INVALID_SYNC_PATHS', 'integrations.trello.syncPaths', 'Expected repository-relative path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+          if (trello.syncPaths.some((value) => typeof value === 'string' && isSecretLikePathPattern(value))) add('INTEGRATIONS_TRELLO_SECRET_SYNC_PATH', 'integrations.trello.syncPaths', 'Sync paths must not target secrets, credentials, environment files, or private keys.');
+        }
       }
     }
   }
@@ -405,7 +444,8 @@ export function readMemoryConfig(root = '.') {
       const validation = data.validation === undefined ? cloneValidationPolicy() : normalizeValidationPolicy(data.validation);
       const impactRanking = normalizeImpactRankingPolicy(data.impactRanking);
       const referenceExpansion = normalizeReferenceExpansionPolicy(data.referenceExpansion);
-      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, referenceExpansion, source: name, errors: [] };
+      const integrations = normalizeIntegrationsPolicy(data.integrations);
+      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, integrations, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, referenceExpansion, integrations, source: name, errors: [] };
     } catch (error) {
       return { ...defaultMemoryConfig(), source: name, errors: [{ file: name, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}\nFix: repair ${name} so it is valid JSON, or regenerate the default config with \`dotdotgod config init <root> --force\` if you want to reset it.` }] };
     }
@@ -437,6 +477,7 @@ export function defaultDotdotgodConfigData() {
     validation: cloneValidationPolicy(config.validation),
     impactRanking: cloneImpactRankingPolicy(config.impactRanking),
     referenceExpansion: { fuzzy: { lowSignal: { add: [], remove: [] } } },
+    integrations: cloneIntegrationsPolicy(config.integrations),
   };
 }
 
@@ -462,6 +503,7 @@ export function memoryConfigSummary(config) {
     validation: cloneValidationPolicy(config.validation ?? DEFAULT_VALIDATION_POLICY),
     impactRanking: cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY),
     referenceExpansion: cloneReferenceExpansionPolicy(config.referenceExpansion),
+    integrations: cloneIntegrationsPolicy(config.integrations),
   };
 }
 
