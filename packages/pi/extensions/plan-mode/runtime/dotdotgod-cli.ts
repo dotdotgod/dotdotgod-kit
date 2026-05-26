@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { statSync } from "node:fs";
 import { resolve } from "node:path";
 import { buildDotdotgodCliCandidates } from "../../shared/dotdotgod-cli.ts";
-import { formatCompactImpactSummary, normalizeImpactPath, shouldTrackImpactPath } from "../utils.ts";
+import { formatCompactImpactSummary, normalizeImpactPath, shouldTrackImpactPath } from "../impact.ts";
 
 export interface PlanCliCommandResult {
 	ok: boolean;

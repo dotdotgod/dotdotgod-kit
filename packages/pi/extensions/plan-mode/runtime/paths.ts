@@ -12,8 +12,8 @@ function isKebabCaseDirectory(name: string): boolean {
 	return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name);
 }
 
-function isUpperSnakeMarkdownFile(name: string): boolean {
-	return /^[A-Z0-9]+(?:_[A-Z0-9]+)*\.md$/.test(name);
+function isPlanMarkdownFile(name: string): boolean {
+	return name === "README.md" || /^[A-Z0-9]+(?:_[A-Z0-9]+)*\.md$/.test(name);
 }
 
 function isMarkdownPathInside(cwd: string, path: string, directory: string): boolean {
@@ -25,7 +25,7 @@ function isMarkdownPathInside(cwd: string, path: string, directory: string): boo
 
 	const segments = relativePath.split(/[\\/]+/);
 	const fileName = segments[segments.length - 1];
-	if (!fileName || !isUpperSnakeMarkdownFile(fileName)) return false;
+	if (!fileName || !isPlanMarkdownFile(fileName)) return false;
 
 	return segments.slice(0, -1).every(isKebabCaseDirectory);
 }

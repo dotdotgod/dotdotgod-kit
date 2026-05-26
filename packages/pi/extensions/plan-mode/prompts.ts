@@ -1,4 +1,4 @@
-export const DEFAULT_PLAN_MODE_TOOLS = [
+const DEFAULT_PLAN_MODE_TOOLS = [
 	"read",
 	"bash",
 	"dotdotgod_graph_impact",
@@ -15,8 +15,8 @@ export const DEFAULT_PLAN_MODE_TOOLS = [
 ];
 
 export const PLAN_COMPACTION_PERCENT_THRESHOLD = 60;
-export const PLAN_COMPACTION_TOKEN_FALLBACK = 100_000;
-export const PLAN_COMPACTION_CONTEXT_RESERVE = 32_000;
+const PLAN_COMPACTION_TOKEN_FALLBACK = 100_000;
+const PLAN_COMPACTION_CONTEXT_RESERVE = 32_000;
 
 export const PLAN_MODE_COMPACTION_INSTRUCTIONS =
 	"Preserve only planning-critical context for dotdotgod Plan Mode. Prioritize the latest user request, active plan task slug/path/status, current target files, concrete user decisions and constraints, implementation decisions, verification commands/results, unresolved risks/questions, next steps, and completed [DONE:n] markers if present. Demote or omit old completed plans unless directly relevant, repeated project-load summaries, package publish history unless task-related, generic Plan Mode boilerplate recoverable from runtime prompts, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail. Summarize in a compact structure that lets the next assistant continue the current plan or execution without asking the user to repeat context.";
@@ -47,7 +47,7 @@ export function resolvePlanModeTools(extraTools: unknown, availableTools?: reado
 	});
 }
 
-export function buildPlanModeFullContextPrompt(allowedTools = DEFAULT_PLAN_MODE_TOOLS): string {
+function buildPlanModeFullContextPrompt(allowedTools = DEFAULT_PLAN_MODE_TOOLS): string {
 	return `[PLAN MODE ACTIVE]
 You are in Plan Mode. This is a read-only exploration and design phase before code changes.
 
@@ -84,7 +84,7 @@ In the final response, use a Plan: section only for concrete executable steps. A
 Do not change source/code/config files in Plan Mode. You may create or update only the allowed docs/plan or docs/archive markdown files needed to produce the durable plan.`;
 }
 
-export const PLAN_MODE_COMPACT_CONTEXT_PROMPT = `[PLAN MODE ACTIVE]
+const PLAN_MODE_COMPACT_CONTEXT_PROMPT = `[PLAN MODE ACTIVE]
 Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for UPPER_SNAKE_CASE markdown under docs/plan/ or docs/archive/; bash remains read-only allowlisted. Use AGENTS.md and docs indexes as source of truth when needed. Create or maintain docs/plan/<task-slug>/README.md only when durable implementation steps are needed; otherwise use a short in-chat checklist. Use a Plan: section only for concrete executable steps when ready.`;
 
 export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS): string {
@@ -121,11 +121,11 @@ export interface PlanChoiceTriggerState {
 	executionMode: boolean;
 	hasUI: boolean;
 	pendingPlanChoicePath?: string | undefined;
-	activePlanTouched?: boolean | undefined;
+	suppressPlanChoice?: boolean | undefined;
 }
 
 export function shouldPromptForPlanChoice(state: PlanChoiceTriggerState): boolean {
-	return state.planModeEnabled && !state.executionMode && state.hasUI && Boolean(state.pendingPlanChoicePath || state.activePlanTouched);
+	return state.planModeEnabled && !state.executionMode && state.hasUI && !state.suppressPlanChoice && Boolean(state.pendingPlanChoicePath);
 }
 
 function formatFocusList(label: string, values: string[] | undefined): string | undefined {
@@ -191,4 +191,3 @@ export function getPlanCompactionReason(usage: PlanContextUsage | null | undefin
 
 	return undefined;
 }
-

@@ -4,7 +4,7 @@
  */
 
 export type { TodoItem } from "./todos.ts";
-export { cleanStepText, extractDoneSteps, extractTodoItems, markCompletedSteps } from "./todos.ts";
+export { extractTodoItems, markCompletedSteps } from "./todos.ts";
 
 export {
 	normalizePlanCommandRequest,
@@ -19,7 +19,9 @@ export {
 	shouldAllowPlanModeBashCommand,
 } from './tools.ts';
 
-export type { ImpactCheckRecord, PendingImpactItem } from "./impact.ts";
+export { getGeneratorPlanReviewEligibility } from "./controllers/plan-artifact.ts";
+
+export type { PendingImpactItem } from "./impact.ts";
 export {
 	formatReferenceExpansionSummary,
 	formatCompactImpactSummary,
@@ -38,15 +40,10 @@ export {
 
 export type { PlanChoiceTriggerState, PlanCompactionFocus, PlanContextUsage, PlanningContextShapeTriggerState } from "./prompts.ts";
 export {
-	DEFAULT_PLAN_MODE_TOOLS,
 	PLAN_COMPACTION_PERCENT_THRESHOLD,
-	PLAN_COMPACTION_TOKEN_FALLBACK,
-	PLAN_COMPACTION_CONTEXT_RESERVE,
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
 	parsePlanModeExtraTools,
 	resolvePlanModeTools,
-	buildPlanModeFullContextPrompt,
-	PLAN_MODE_COMPACT_CONTEXT_PROMPT,
 	buildPlanModeContextPrompt,
 	shouldShapePlanningContextOnAgentStart,
 	shouldPromptForPlanChoice,
@@ -68,22 +65,29 @@ export {
 	shouldLoadProjectMemoryForPlanning,
 } from "./context.ts";
 
-export type { PlanExecutionDecision, PlanExecutionTargetInput, PlanExecutionTargetResolution, PlanReviewChoice, PlanReviewDisplayMarkdownOptions, PlanReviewFileReader, PlanReviewMarkdown, PlanReviewScrollState } from "./plans.ts";
+export type { DiscussionQueueAction, DiscussionQueueItem, DiscussionQueueItemState, DiscussionQueueOption, DiscussionQueueResult, DiscussionQueueSummary, PlanExecutionDecision, PlanExecutionTargetInput, PlanExecutionTargetResolution, PlanModeUserMessageDeliveryOptions, PlanRefinementPromptOptions, PlanReviewAction, PlanReviewChoice, PlanReviewDisplayMarkdownOptions, PlanReviewFileReader, PlanReviewMarkdown, PlanReviewScrollState } from "./plans.ts";
 export {
+	PLAN_REVIEW_ACTIONS,
+	planModeFollowUpDeliveryOptions,
+	buildDiscussionQueueFollowUp,
 	buildPlanExecutionDecision,
 	buildPlanExecutionHandoff,
 	buildPlanReviewDisplayMarkdown,
 	buildPlanReviewMarkdown,
 	buildPlanReviewTitle,
+	buildPlanReviewRefinePrompt,
+	extractDiscussionQueueItems,
 	mapPlanReviewFallbackChoice,
+	getNextPlanReviewActionIndex,
+	getPlanReviewActionChoice,
 	getPlanReviewScrollState,
+	summarizeDiscussionQueue,
 	getCurrentPlanReadmePath,
 	extractPlanSlugMentions,
 	resolveMentionedPlanPath,
 	resolvePlanExecutionTarget,
 	extractPathMentions,
 	selectPlanImpactPaths,
-	selectPlanImpactPath,
 	hasExplicitBracketReferences,
 	hasLikelyFuzzyReferences,
 } from "./plans.ts";

@@ -4,7 +4,7 @@ export interface TodoItem {
 	completed: boolean;
 }
 
-export function cleanStepText(text: string): string {
+function cleanStepText(text: string): string {
 	let cleaned = text
 		.replace(/\*{1,2}([^*]+)\*{1,2}/g, "$1")
 		.replace(/`([^`]+)`/g, "$1")
@@ -68,7 +68,7 @@ export function extractTodoItems(message: string): TodoItem[] {
 	return items;
 }
 
-export function extractDoneSteps(message: string): number[] {
+function extractDoneSteps(message: string): number[] {
 	const steps: number[] = [];
 	for (const match of message.matchAll(/\[DONE:(\d+)\]/gi)) {
 		const step = Number(match[1]);

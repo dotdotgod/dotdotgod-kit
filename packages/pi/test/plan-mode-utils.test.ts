@@ -1,5 +1,14 @@
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "node:test";
+import { ContextShapingController } from "../extensions/plan-mode/controllers/context-shaping.ts";
+import { ExecutionProgressController } from "../extensions/plan-mode/controllers/execution-progress.ts";
+import { GateController } from "../extensions/plan-mode/controllers/gates.ts";
+import { ModeLifecycleController } from "../extensions/plan-mode/controllers/mode-lifecycle.ts";
+import { PlanArtifactController } from "../extensions/plan-mode/controllers/plan-artifact.ts";
+import { isActivePlanMarkdownPath, isManagedPlanMarkdownPath } from "../extensions/plan-mode/runtime/paths.ts";
 import {
 	PLAN_COMPACTION_PERCENT_THRESHOLD,
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
@@ -12,19 +21,11 @@ import {
 	buildPlanReviewMarkdown,
 	buildPlanReviewRefinePrompt,
 	buildPlanReviewTitle,
-	buildPlanValidationBlockerDisplay,
-	buildPlanValidationCustomMarkdown,
-	buildPlanValidationRefinePrompt,
-	buildPlanStageAuthoringPrompt,
-	getNextPlanValidationStage,
-	getPlanStageFromPath,
-	PLAN_VALIDATION_STAGES,
 	buildPlanModeRequestFraming,
 	classifyPlanModeRequest,
 	collectProjectMemoryContextCoverage,
 	detectPlanExecutionIntent,
 	buildPlanModeContextPrompt,
-	extractDoneSteps,
 	extractTodoItems,
 	extractDiscussionQueueItems,
 	formatCompactImpactSummary,
@@ -35,6 +36,7 @@ import {
 	extractPathMentions,
 	extractPlanSlugMentions,
 	getCurrentPlanReadmePath,
+	getGeneratorPlanReviewEligibility,
 	getChangedPathFromDotdotgodImpactCommand,
 	getNextPlanReviewActionIndex,
 	getPlanCompactionReason,
@@ -59,13 +61,11 @@ import {
 	isSafePlanArchiveCommand,
 	markCompletedSteps,
 	resolvePlanModeTools,
-	selectPlanImpactPath,
 	selectPlanImpactPaths,
 	shouldAllowPlanModeBashCommand,
 	shouldLoadProjectMemoryForPlanning,
 	shouldPromptForPlanChoice,
 	summarizeDiscussionQueue,
-	summarizePlanValidationBlockers,
 	shouldTrackImpactPath,
 	shouldShapePlanningContextOnAgentStart,
 	isPlanModeRuntimeRequest,
@@ -79,6 +79,123 @@ import {
 describe("plan-mode user-message delivery", () => {
 	it("uses explicit follow-up delivery for synthetic user messages", () => {
 		assert.deepEqual(planModeFollowUpDeliveryOptions(), { deliverAs: "followUp" });
+	});
+});
+
+describe("plan-mode domain controllers", () => {
+	it("stores lifecycle, context, gates, and execution progress as snapshots", () => {
+		const lifecycle = new ModeLifecycleController();
+		lifecycle.enablePlanning(["read", "grep"]);
+
+		const context = new ContextShapingController();
+		context.resetForPlanning();
+		context.setCliSummary("summary");
+
+		const gates = new GateController();
+		gates.pendingImpactItems = [{ path: "packages/pi/index.ts", reason: "edit", touchedAt: "2026-05-25T00:00:00.000Z" }];
+
+		const execution = new ExecutionProgressController();
+		execution.setTodos([{ step: 1, text: "Verify plan", completed: false }]);
+
+		const restoredLifecycle = new ModeLifecycleController();
+		restoredLifecycle.restore(lifecycle.snapshot());
+		const restoredContext = new ContextShapingController();
+		restoredContext.restore(context.snapshot());
+		const restoredGates = new GateController();
+		restoredGates.restore(gates.snapshot());
+		const restoredExecution = new ExecutionProgressController();
+		restoredExecution.restore(execution.snapshot());
+
+		assert.equal(restoredLifecycle.planningEnabled, true);
+		assert.deepEqual(restoredLifecycle.snapshot(), { mode: "planning", activeTools: ["read", "grep"] });
+		assert.equal(restoredContext.cliContextStatus, "loaded");
+		assert.equal(restoredContext.cliSummary, "summary");
+		assert.equal(restoredGates.pendingImpactItems.length, 1);
+		assert.equal(restoredExecution.todos[0]?.text, "Verify plan");
+	});
+
+	it("loads an existing plan path and populates todos from its README", () => {
+		const root = mkdtempSync(join(tmpdir(), "plan-mode-controller-"));
+		const planDir = join(root, "docs/plan/existing-task");
+		mkdirSync(planDir, { recursive: true });
+		writeFileSync(join(planDir, "README.md"), "Plan:\n1. Update docs\n2. Run tests\n");
+
+		const artifact = new PlanArtifactController();
+		const execution = new ExecutionProgressController();
+		const planPath = artifact.loadExistingPlanPath(root, "docs/plan/existing-task");
+
+		assert.equal(planPath, "docs/plan/existing-task/README.md");
+		assert.equal(artifact.currentPlanPath, planPath);
+		assert.equal(artifact.pendingReviewPath, planPath);
+		assert.equal(execution.loadTodosFromPlan(root, planPath ?? "").length, 2);
+		assert.deepEqual(
+			execution.todos.map((todo) => todo.text),
+			["Docs", "Tests"],
+		);
+	});
+
+	it("tracks impact, builds command gates, and clears after impact checks", () => {
+		const root = mkdtempSync(join(tmpdir(), "plan-mode-controller-"));
+		const sourcePath = "packages/pi/extensions/plan-mode/index.ts";
+		mkdirSync(join(root, "packages/pi/extensions/plan-mode"), { recursive: true });
+		writeFileSync(join(root, sourcePath), "export const value = 1;\n");
+
+		const gates = new GateController();
+		assert.equal(gates.trackPendingImpact(root, sourcePath, "edit"), true);
+		assert.equal(gates.pendingImpactItems.length, 1);
+		assert.match(gates.buildPendingImpactReminder() ?? "", /packages\/pi\/extensions\/plan-mode\/index\.ts/);
+		assert.match(gates.buildCommitBlockReason("git commit -m test") ?? "", /impact not checked/);
+		assert.match(gates.buildBroadVerificationPrompt("pnpm run verify") ?? "", /Pending dotdotgod graph impact checks/);
+
+		const result = gates.runImpactChecks(
+			root,
+			[sourcePath],
+			(path) => ({ ok: true, stdout: `- Impact: changed=${path}` }),
+		);
+
+		assert.deepEqual(result.checked, [sourcePath]);
+		assert.deepEqual(result.failed, []);
+		assert.equal(gates.pendingImpactItems.length, 0);
+	});
+
+	it("resolves execution targets from active and mentioned plans", () => {
+		const root = mkdtempSync(join(tmpdir(), "plan-mode-controller-"));
+		for (const slug of ["first-task", "second-task"]) {
+			const planDir = join(root, `docs/plan/${slug}`);
+			mkdirSync(planDir, { recursive: true });
+			writeFileSync(join(planDir, "README.md"), "Plan:\n1. Verify plan\n");
+		}
+
+		const artifact = new PlanArtifactController();
+		artifact.setActivePlan("docs/plan/first-task/README.md");
+
+		assert.equal(
+			artifact.resolveExecutionTarget(root, "execute second-task").planPath,
+			"docs/plan/second-task/README.md",
+		);
+		assert.equal(
+			artifact.resolveExecutionTarget(root, "execute the plan").planPath,
+			"docs/plan/first-task/README.md",
+		);
+	});
+
+	it("replays completed execution steps from session entries after the execution marker", () => {
+		const execution = new ExecutionProgressController();
+		execution.setTodos([
+			{ step: 1, text: "First task", completed: false },
+			{ step: 2, text: "Second task", completed: false },
+		]);
+
+		execution.replayCompletedFromSessionEntries([
+			{ type: "message", message: { role: "assistant", content: [{ type: "text", text: "[DONE:1]" }] } },
+			{ type: "custom", customType: "plan-mode-execute" },
+			{ type: "message", message: { role: "assistant", content: [{ type: "text", text: "[DONE:2]" }] } },
+		]);
+
+		assert.deepEqual(
+			execution.todos.map((todo) => todo.completed),
+			[false, true],
+		);
 	});
 });
 
@@ -162,13 +279,11 @@ describe("plan-mode command safety", () => {
 			"dotdotgod graph impact . --changed packages/pi/index.ts --compact",
 			"dotdotgod graph impact . --changed packages/pi/index.ts --yml",
 			"dotdotgod graph communities . --json",
-			"dotdotgod plan validate docs/plan/example/README.md --json",
 			"dotdotgod config . --json",
 			"dotdotgod index .",
 			"node packages/cli/bin/dotdotgod.mjs --version",
 			"node packages/cli/bin/dotdotgod.mjs status . --json",
 			"node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/index.ts --yaml",
-			"node packages/cli/bin/dotdotgod.mjs plan validate docs/plan/example/README.md --json",
 			"node /opt/example/dotdotgod-kit/packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/index.ts --yml",
 			"node ./packages/cli/bin/dotdotgod.mjs expand . 'Update [[PLAN_MODE]]' --json",
 			"node packages/cli/bin/dotdotgod.mjs config . --json",
@@ -181,6 +296,8 @@ describe("plan-mode command safety", () => {
 
 		for (const command of [
 			"dotdotgod validate .",
+			"dotdotgod plan validate docs/plan/example/README.md --json",
+			"node packages/cli/bin/dotdotgod.mjs plan validate docs/plan/example/README.md --json",
 			"dotdotgod init .",
 			"dotdotgod impact . --changed packages/pi/index.ts",
 			"dotdotgod graph query .",
@@ -367,6 +484,8 @@ describe("plan-mode current plan path helpers", () => {
 		assert.equal(getCurrentPlanReadmePath("docs/plan/landing-site/README.md"), "docs/plan/landing-site/README.md");
 		assert.equal(getCurrentPlanReadmePath("@docs/plan/landing-site/VERIFICATION.md"), "docs/plan/landing-site/README.md");
 		assert.equal(getCurrentPlanReadmePath("./docs/plan/landing-site/RESEARCH_NOTES.md"), "docs/plan/landing-site/README.md");
+		assert.equal(getCurrentPlanReadmePath("docs/plan/landing-site/.dotdotgod-plan/01-intake.md"), "docs/plan/landing-site/README.md");
+		assert.equal(getCurrentPlanReadmePath("docs/plan/landing-site/.dotdotgod-plan/01_INTAKE.md"), "docs/plan/landing-site/README.md");
 	});
 
 	it("ignores non-plan or incorrectly named markdown paths", () => {
@@ -374,6 +493,15 @@ describe("plan-mode current plan path helpers", () => {
 		assert.equal(getCurrentPlanReadmePath("docs/plan/LandingSite/README.md"), undefined);
 		assert.equal(getCurrentPlanReadmePath("docs/plan/landing-site/notes.md"), undefined);
 		assert.equal(getCurrentPlanReadmePath("packages/pi/README.md"), undefined);
+	});
+
+	it("keeps checkpoint path resolution read-only for Plan Mode writes", () => {
+		const root = mkdtempSync(join(tmpdir(), "plan-mode-paths-"));
+		assert.equal(getCurrentPlanReadmePath("docs/plan/landing-site/.dotdotgod-plan/01_INTAKE.md"), "docs/plan/landing-site/README.md");
+		assert.equal(isManagedPlanMarkdownPath(root, "docs/plan/landing-site/.dotdotgod-plan/01_INTAKE.md"), false);
+		assert.equal(isActivePlanMarkdownPath(root, "docs/plan/landing-site/.dotdotgod-plan/01_INTAKE.md"), false);
+		assert.equal(isManagedPlanMarkdownPath(root, "docs/plan/landing-site/README.md"), true);
+		assert.equal(isActivePlanMarkdownPath(root, "docs/plan/landing-site/README.md"), true);
 	});
 });
 
@@ -520,88 +648,7 @@ describe("plan-mode discussion queue helpers", () => {
 	});
 });
 
-describe("plan-mode stage authoring helpers", () => {
-	it("resolves stage order and stage paths", () => {
-		assert.equal(getNextPlanValidationStage(undefined), "01-intake");
-		assert.equal(getNextPlanValidationStage("01-intake"), "02-context-load");
-		assert.equal(getNextPlanValidationStage("08-verify-replan-close"), undefined);
-		assert.equal(getPlanStageFromPath("docs/plan/example/03-discovery/README.md"), "03-discovery");
-		assert.equal(getPlanStageFromPath("docs/plan/example/README.md"), undefined);
-	});
-
-	it("builds current-stage-only authoring prompts", () => {
-		const prompt = buildPlanStageAuthoringPrompt({
-			planPath: "docs/plan/example/README.md",
-			stage: "02-context-load",
-			previousStage: "01-intake",
-			request: "계획을 단계별로 작성해줘",
-		});
-		assert.match(prompt, /Current stage: 02-context-load/);
-		assert.match(prompt, /Previous stage passed: 01-intake/);
-		assert.match(prompt, /only docs\/plan\/<task-slug>\/02-context-load\/README\.md/);
-		assert.match(prompt, /Do not create later stage directories or files yet/);
-	});
-});
-
-describe("plan-mode validation gate helpers", () => {
-	it("summarizes validation blockers for UI/refine prompts", () => {
-		const summary = summarizePlanValidationBlockers({
-			ok: false,
-			planPath: "docs/plan/example/README.md",
-			blockers: [
-				{ code: "missing-section", message: "Missing required section: ## Atomic Tasks", path: "docs/plan/example/04-decomposition/README.md", section: "Atomic Tasks" },
-			],
-		});
-		assert.deepEqual(summary, ["Missing required section: ## Atomic Tasks (docs/plan/example/04-decomposition/README.md · ## Atomic Tasks)"]);
-	});
-
-	it("builds blocker display text that tells users what content blocks execution", () => {
-		const display = buildPlanValidationBlockerDisplay({
-			ok: false,
-			planPath: "docs/plan/example/README.md",
-			blockers: [
-				{ code: "missing-section", message: "Missing required section: ## Atomic Tasks", path: "docs/plan/example/04-decomposition/README.md", section: "Atomic Tasks", prompt: "Add concrete atomic tasks with acceptance criteria and verification." },
-				{ code: "unresolved-discussion", message: "Discussion Queue has unresolved execution blockers.", stage: "05-decision-queue" },
-			],
-		});
-		assert.match(display, /2 plan validation blockers/);
-		assert.match(display, /Atomic Tasks/);
-		assert.match(display, /Add concrete atomic tasks/);
-		assert.match(display, /Discussion Queue/);
-	});
-
-	it("builds custom validation markdown for custom UI blocker review", () => {
-		const markdown = buildPlanValidationCustomMarkdown("docs/plan/example/README.md", {
-			ok: false,
-			stage: PLAN_VALIDATION_STAGES[3],
-			blockers: [{ code: "missing-section", message: "Missing required section: ## Atomic Tasks", stage: "04-decomposition" }],
-		});
-		assert.match(markdown, /Plan Validation Blocked/);
-		assert.match(markdown, /04-decomposition/);
-		assert.match(markdown, /Missing required section/);
-	});
-
-	it("builds refine prompts when CLI plan validation blocks execution", () => {
-		const prompt = buildPlanValidationRefinePrompt({
-			planPath: "docs/plan/example/README.md",
-			userFeedback: "Use one implementation slice and mark the research workstream done.",
-			stage: "04-decomposition",
-			result: {
-				ok: false,
-				stage: "04-decomposition",
-				repairPrompt: "Refine the active plan artifact so validation passes.",
-				blockers: [{ code: "pending-workstream", message: "Required role/area workstream is pending.", stage: "04-decomposition", prompt: "Resolve or defer the pending workstream." }],
-			},
-		});
-		assert.match(prompt, /Refine docs\/plan\/example\/README\.md stage 04-decomposition before execution/);
-		assert.match(prompt, /stage 04-decomposition/);
-		assert.match(prompt, /Required role\/area workstream is pending/);
-		assert.match(prompt, /Resolve or defer the pending workstream/);
-		assert.match(prompt, /CLI repair prompt/);
-		assert.match(prompt, /Use one implementation slice/);
-		assert.match(prompt, /do not start execution yet/);
-	});
-
+describe("plan-mode review refinement helpers", () => {
 	it("wraps saved-plan review refinement feedback with plan context", () => {
 		const prompt = buildPlanReviewRefinePrompt({
 			planPath: "docs/plan/example/README.md",
@@ -789,10 +836,16 @@ describe("plan-mode CLI context helpers", () => {
 		);
 	});
 
-	it("keeps the single impact path helper compatible", () => {
+	it("can select a single impact path with a limit", () => {
 		const exists = (_cwd: string, path: string): boolean => path === "packages/pi/index.ts";
-		assert.equal(selectPlanImpactPath(".", "Change packages/pi/index.ts", "docs/plan/task/README.md", [], exists), "packages/pi/index.ts");
-		assert.equal(selectPlanImpactPath(".", "No source file here", "docs/plan/task/README.md", [], exists), undefined);
+		assert.deepEqual(
+			selectPlanImpactPaths(".", "Change packages/pi/index.ts", "docs/plan/task/README.md", undefined, [], exists, 1),
+			["packages/pi/index.ts"],
+		);
+		assert.deepEqual(
+			selectPlanImpactPaths(".", "No source file here", "docs/plan/task/README.md", undefined, [], exists, 1),
+			[],
+		);
 	});
 
 	it("detects explicit bracket refs and formats reference expansion summaries", () => {
@@ -976,7 +1029,6 @@ describe("plan-mode context shaping trigger", () => {
 describe("plan-mode plan choice trigger", () => {
 	it("asks after every active plan file create or update", () => {
 		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: false, hasUI: true, pendingPlanChoicePath: "docs/plan/task/README.md" }), true);
-		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: false, hasUI: true, activePlanTouched: true }), true);
 		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: false, hasUI: true }), false);
 		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: true, hasUI: true, pendingPlanChoicePath: "docs/plan/task/README.md" }), false);
 		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: false, hasUI: false, pendingPlanChoicePath: "docs/plan/task/README.md" }), false);
@@ -989,10 +1041,75 @@ describe("plan-mode plan choice trigger", () => {
 				executionMode: false,
 				hasUI: true,
 				pendingPlanChoicePath: "docs/plan/task/README.md",
-				activePlanTouched: true,
 				suppressPlanChoice: true,
 			}),
 			false,
+		);
+	});
+
+	it("detects generator checkpoint state before showing execution review", () => {
+		const root = mkdtempSync(join(tmpdir(), "plan-mode-generator-state-"));
+		const planDir = join(root, "docs/plan/generator-task");
+		mkdirSync(join(planDir, ".dotdotgod-plan"), { recursive: true });
+		writeFileSync(join(planDir, "README.md"), "# Generator Task\n\n## Plan:\n\n1. Do work\n");
+
+		assert.equal(
+			getGeneratorPlanReviewEligibility(root, "docs/plan/generator-task/README.md"),
+			"generator-incomplete",
+		);
+		assert.equal(
+			shouldPromptForPlanChoice({
+				planModeEnabled: true,
+				executionMode: false,
+				hasUI: true,
+				pendingPlanChoicePath: "docs/plan/generator-task/README.md",
+				suppressPlanChoice: getGeneratorPlanReviewEligibility(root, "docs/plan/generator-task/README.md") === "generator-incomplete",
+			}),
+			false,
+		);
+
+		writeFileSync(join(planDir, ".dotdotgod-plan", "09_SUBAGENT_WORKSTREAMS.md"), "# 09 Subagent Workstreams\n\nStage: 09-subagent-workstreams\nStatus: blocked\nUpdated: 2026-05-26T00:00:00.000Z\n");
+		assert.equal(
+			getGeneratorPlanReviewEligibility(root, "docs/plan/generator-task/README.md"),
+			"generator-incomplete",
+		);
+
+		writeFileSync(join(planDir, ".dotdotgod-plan", "09_SUBAGENT_WORKSTREAMS.md"), "# 09 Subagent Workstreams\n\nStage: 09-subagent-workstreams\nStatus: completed\nUpdated: 2026-05-26T00:00:00.000Z\n");
+		assert.equal(
+			getGeneratorPlanReviewEligibility(root, "docs/plan/generator-task/README.md"),
+			"generator-complete",
+		);
+		assert.equal(
+			shouldPromptForPlanChoice({
+				planModeEnabled: true,
+				executionMode: false,
+				hasUI: true,
+				pendingPlanChoicePath: "docs/plan/generator-task/README.md",
+				suppressPlanChoice: getGeneratorPlanReviewEligibility(root, "docs/plan/generator-task/README.md") === "generator-incomplete",
+			}),
+			true,
+		);
+	});
+
+	it("keeps normal plans without generator checkpoints eligible for review", () => {
+		const root = mkdtempSync(join(tmpdir(), "plan-mode-normal-state-"));
+		const planDir = join(root, "docs/plan/normal-task");
+		mkdirSync(planDir, { recursive: true });
+		writeFileSync(join(planDir, "README.md"), "# Normal Task\n\n## Plan:\n\n1. Do work\n");
+
+		assert.equal(
+			getGeneratorPlanReviewEligibility(root, "docs/plan/normal-task/README.md"),
+			"normal-plan",
+		);
+		assert.equal(
+			shouldPromptForPlanChoice({
+				planModeEnabled: true,
+				executionMode: false,
+				hasUI: true,
+				pendingPlanChoicePath: "docs/plan/normal-task/README.md",
+				suppressPlanChoice: getGeneratorPlanReviewEligibility(root, "docs/plan/normal-task/README.md") === "generator-incomplete",
+			}),
+			true,
 		);
 	});
 });
@@ -1017,16 +1134,12 @@ describe("plan-mode todo extraction", () => {
 });
 
 describe("plan-mode done markers", () => {
-	it("extracts done markers case-insensitively", () => {
-		assert.deepEqual(extractDoneSteps("[DONE:1] text [done:3]"), [1, 3]);
-	});
-
-	it("marks matching items complete", () => {
+	it("marks matching items complete case-insensitively", () => {
 		const items: TodoItem[] = [
 			{ step: 1, text: "One", completed: false },
 			{ step: 2, text: "Two", completed: false },
 		];
-		assert.equal(markCompletedSteps("[DONE:2] [DONE:9]", items), 2);
+		assert.equal(markCompletedSteps("[done:2] [DONE:9]", items), 2);
 		assert.deepEqual(
 			items.map((item) => item.completed),
 			[false, true],

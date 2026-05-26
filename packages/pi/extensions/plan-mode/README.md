@@ -5,7 +5,8 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 ## Changes
 
 - Plan progress uses the `/todos` command.
-- `/plan <request>` enables Plan Mode if needed and queues the request as the first or next planning turn with explicit follow-up delivery; `/plan` without args still toggles.
+- `/plan <request>` enables Plan Mode if needed and queues the request as the first or next planning turn with explicit follow-up delivery; `/plan <docs/plan/<task>/README.md>` loads an existing plan and its todos; `/plan` without args still toggles.
+- Plan Mode runtime state and orchestration are split into domain controllers for lifecycle, plan artifacts, context shaping, review gates, impact gates, execution flow, and execution progress.
 - Only the `Plan:` heading is parsed for step extraction.
 - Plan mode can use `pi-web-access` tools when installed:
   - `web_search`
@@ -17,13 +18,12 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 - If baseline project docs are absent, only one docs area remains for cross-area work, or the session is long or noisy, Plan Mode automatically queues curated load or requests planning-focused compaction with `customInstructions` that preserve decisions, active plan status, relevant docs, verification results, risks, next steps, and `[DONE:n]` markers.
 - Active plan tasks are managed as kebab-case directories under `docs/plan/<task-slug>/` for projects initialized with `project-initializer`.
 - Under `docs/`, all directories use kebab-case and all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
-- Each task directory keeps its overview and index in `README.md`; supporting plan files such as `RESEARCH_NOTES.md` or `VERIFICATION.md` live alongside it.
+- Each task directory keeps its overview, index, status, and durable plan in `README.md`; Plan Mode may create or edit durable plans itself but does not advance `/plan-generator` stages. `.dotdotgod-plan/NN_STAGE_NAME.md` files belong to `/plan-generator`, not Plan Mode writes.
 - Interactive Plan Mode checks the active plan README for unresolved `Discussion Queue` items before execution review. If queued user-discussion items remain, Pi opens the Discussion Queue Console first and suppresses execute/stay/refine/cancel until the queue is resolved or the user returns to planning.
 - The Discussion Queue Console shows queued items in FIFO order and lets users choose an option, enter a custom answer, defer, request research, request plan revision, or cancel. The plan file remains the durable source; the UI returns structured choices and the agent updates the markdown.
-- After the discussion queue is clear, interactive Plan Mode runs `dotdotgod plan validate <active-plan> --json`; validation blockers suppress the saved-plan review UI and ask the user whether to refine/replan.
-- After the queue and CLI validation gate are clear, interactive Plan Mode opens a full-page custom saved-plan review UI before accepting execute/stay/refine/cancel actions, so review and action selection stay in one synchronous flow. The review UI includes a cursor-selectable action bar (`←`/`→`, `Tab`, `Enter`) in addition to `e`/`s`/`r`/`c` shortcuts, and truncates rendered lines to the active terminal width.
-- Queue-first, CLI-validated review then execute/stay/refine/cancel choices are shown after every active plan markdown file under `docs/plan/` is created or updated, with execution unavailable until the queue is clear, plan validation passes, and the review UI returns an execute choice.
-- Extension-generated planning, refinement, discussion-queue, validation-blocker, compaction-resume, and execution-handoff user messages are sent with explicit `deliverAs: "followUp"` delivery so hook-time messages queue safely while the agent is active.
+- After the discussion queue is clear, interactive Plan Mode opens a full-page custom saved-plan review UI before accepting execute/stay/refine/cancel actions, so review and action selection stay in one synchronous flow. The review UI includes a cursor-selectable action bar (`←`/`→`, `Tab`, `Enter`) in addition to `e`/`s`/`r`/`c` shortcuts, and truncates rendered lines to the active terminal width.
+- Queue-first review then execute/stay/refine/cancel choices are shown after every active plan markdown file under `docs/plan/` is created or updated, with execution unavailable until the queue is clear and the review UI returns an execute choice. Plan Mode does not run `dotdotgod plan validate` or require `/plan-generator` stage criteria before execution.
+- Extension-generated planning, refinement, discussion-queue, compaction-resume, and execution-handoff user messages are sent with explicit `deliverAs: "followUp"` delivery so hook-time messages queue safely while the agent is active.
 - Explicit in-Plan-Mode execution requests such as “run this plan” or “실행하자” open the same review UI immediately when a current or mentioned active plan can be resolved; ambiguous requests ask which active plan to execute. Planning, advisory, or non-plan commands such as “run tests” do not fall back to all active plans.
 - When the latest planning request contains explicit `[[...]]` refs, Plan Mode adds bounded `dotdotgod expand` results to planning context before broad search.
 - When the request contains high-signal natural refs such as `PLAN_MODE`, path-like mentions, or quoted doc names, Plan Mode may add bounded `dotdotgod expand --fuzzy` results before broad search; fuzzy low-signal suppression follows the resolved dotdotgod CLI config.
@@ -35,29 +35,29 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 
 - `/plan` - Toggle plan mode
 - `/plan <request>` - Enable Plan Mode if needed and send `<request>` as a planning request without toggling off an active Plan Mode session
+- `/plan <path>` - Load an existing `docs/plan/<task>/README.md` or `docs/plan/<task>` as the active plan and populate `/todos`
 - `/todos` - Show current plan progress
 - `/impact-check` - Run `dotdotgod graph impact --yml` for pending source/config files plus current git unstaged, staged, and untracked source/config files
 - `Ctrl+Alt+P` - Toggle plan mode
 
 ## Usage
 
-1. Enable plan mode with `/plan`, or run `/plan <request>` to enable Plan Mode and send the first planning request in one command.
+1. Enable plan mode with `/plan`, run `/plan <request>` to enable Plan Mode and send the first planning request in one command, or run `/plan docs/plan/<task>/README.md` to load an existing plan.
 2. Ask the agent to analyze the task and create a plan.
 3. The agent should create or update a focused kebab-case task directory under `docs/plan/<task-slug>/`.
 4. The task overview, index, scope, and status belong in `docs/plan/<task-slug>/README.md`.
-5. Supporting research, checklists, or verification notes can be added as UPPER_SNAKE_CASE markdown files in the same directory.
+5. Supporting research, checklists, verification notes, or UPPER_SNAKE_CASE support files can be added, but the durable README remains the plan completion surface. `.dotdotgod-plan/NN_STAGE_NAME.md` checkpoints are owned by `/plan-generator`, not Plan Mode writes.
 6. If the session is long or noisy, Plan Mode automatically compacts with planning-focused instructions before continuing.
 7. If the plan contains unresolved `Discussion Queue` items, Pi opens the queue console before execution review; answer, defer, request research, request plan revision, or cancel back to planning.
-8. After the queue is clear, or when no queue exists, Pi runs `dotdotgod plan validate <active-plan> --json`; fix blockers before execution review.
-9. After plan validation passes, Pi opens a full-page saved-plan review UI and asks whether to execute, stay in plan mode, refine the plan, or cancel; choose with the action bar or shortcut keys. Follow-up prompts generated from those choices are queued explicitly and should not raise already-processing runtime errors.
-10. The agent should write concrete executable steps in the final `Plan:` section. Generic section labels such as `Target files and rationale`, `Implementation steps`, and `Verification method` are ignored for todo extraction.
-11. Choose execute in the review UI to switch into implementation mode; if you later ask to execute a resolvable active plan, the same queue-first and validation-gated review flow opens immediately. If no plan is selected or mentioned, ordinary planning/advisory requests remain in Plan Mode instead of opening the active-plan execution chooser.
-12. During execution, the agent must mark every completed step in the same response with `[DONE:n]` tags.
-13. Before source changes for implementation tasks, run the plan's `dotdotgod graph impact` refinement step and update target files, risks, or verification if needed.
-14. After source/config edits, run `/impact-check` or the `dotdotgod_graph_impact` tool and review related docs/tests/files before broad verification or commit.
-15. After modification or coding work, run `dotdotgod validate` for the project before final completion.
-16. After implementation and verification, the agent moves the completed task directory to `docs/archive/plan/<task-slug>/` and includes that step's `[DONE:n]` tag.
-17. Use `/todos` to inspect progress.
+8. After the queue is clear, or when no queue exists, Pi opens a full-page saved-plan review UI and asks whether to execute, stay in plan mode, refine the plan, or cancel; choose with the action bar or shortcut keys. Follow-up prompts generated from those choices are queued explicitly and should not raise already-processing runtime errors.
+9. The agent should write concrete executable steps in the final `Plan:` section. Generic section labels such as `Target files and rationale`, `Implementation steps`, and `Verification method` are ignored for todo extraction.
+10. Choose execute in the review UI to switch into implementation mode; if you later ask to execute a resolvable active plan, the same queue-first review flow opens immediately. If no plan is selected or mentioned, ordinary planning/advisory requests remain in Plan Mode instead of opening the active-plan execution chooser.
+11. During execution, the agent must mark every completed step in the same response with `[DONE:n]` tags.
+12. Before source changes for implementation tasks, run the plan's `dotdotgod graph impact` refinement step and update target files, risks, or verification if needed.
+13. After source/config edits, run `/impact-check` or the `dotdotgod_graph_impact` tool and review related docs/tests/files before broad verification or commit.
+14. After modification or coding work, run `dotdotgod validate` for the project before final completion.
+15. After implementation and verification, the agent moves the completed task directory to `docs/archive/plan/<task-slug>/` and includes that step's `[DONE:n]` tag.
+16. Use `/todos` to inspect progress.
 
 ## Plan Mode Restrictions
 
@@ -67,7 +67,7 @@ Allowed:
 - Plan/archive markdown updates under `docs/plan/` and `docs/archive/`: `edit`, `write`
 - Directory names under `docs/` must be kebab-case; markdown file names must be UPPER_SNAKE_CASE.md
 - Read-only bash commands: `rg`, `git status`, `git diff`, `yarn info`, `npm view`, etc.
-- Bounded dotdotgod context/status commands: `dotdotgod --version`, `dotdotgod --help`, `dotdotgod status ...`, `dotdotgod load-snapshot ...`, `dotdotgod resolve ...`, `dotdotgod expand ...`, `dotdotgod graph impact ...`, `dotdotgod graph communities ...`, `dotdotgod config ...`, and `dotdotgod index ...`. The equivalent local source form `node /path/to/packages/cli/bin/dotdotgod.mjs ...` is also recognized for development installs.
+- Bounded dotdotgod context/status commands: `dotdotgod --version`, `dotdotgod --help`, `dotdotgod status ...`, `dotdotgod load-snapshot ...`, `dotdotgod resolve ...`, `dotdotgod expand ...`, `dotdotgod graph impact ...`, `dotdotgod graph communities ...`, `dotdotgod config ...`, and `dotdotgod index ...`. Plan Mode does not auto-allow or run `dotdotgod plan validate`; the equivalent local source form `node /path/to/packages/cli/bin/dotdotgod.mjs ...` is recognized for the bounded commands above.
 - `dotdotgod_graph_impact` is available as an LLM-callable tool for changed-file impact checks and returns structured YML summaries by default. In the Pi TUI, outputs longer than 10 lines collapse to the first 10 lines with a remaining-line count and expand via the tool-output keybinding.
 - Plan/archive housekeeping bash commands when every affected path stays under `docs/plan/` or `docs/archive/`: `mkdir -p docs/archive/plan`, `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`, `rm -r docs/plan/<task-slug>`
 - Web/document research: `web_search`, `code_search`, `fetch_content`, `get_search_content`
