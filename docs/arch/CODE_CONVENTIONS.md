@@ -2,6 +2,8 @@
 
 Dotdot code conventions for keeping implementation simple and maintainable.
 
+For the broader development philosophy behind these conventions, see `DEVELOPMENT_PRINCIPLES.md`.
+
 ## Abstraction Boundaries
 
 - Do not introduce unnecessary abstractions.
