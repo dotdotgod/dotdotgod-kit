@@ -1,58 +1,27 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { commandUsage } from '../cli/usage.mjs';
 import { isKebabCase, isUpperSnakeMarkdown, removeCodeBlocks } from '../docs/markdown.mjs';
+import {
+  PLAN_BLOCKER_LABELS as BLOCKER_LABELS,
+  PLAN_CONSTRUCTION_CHECKLISTS,
+  PLAN_INTERNAL_STAGE_DIRECTORIES,
+  PLAN_INTERNAL_WORKSPACE,
+  PLAN_REQUIRED_HEADERS,
+  PLAN_STAGE_DIRECTORIES,
+  buildPlanValidationNextStagePrompt,
+} from './plan-stage-contract.mjs';
 
-export const PLAN_STAGE_DIRECTORIES = [
-  '01-intake',
-  '02-context-load',
-  '03-discovery',
-  '04-decomposition',
-  '05-decision-queue',
-  '06-approval',
-  '07-execution-slices',
-  '08-verify-replan-close',
-];
-
-export const PLAN_INTERNAL_WORKSPACE = '.dotdotgod-plan';
-export const PLAN_INTERNAL_STAGE_DIRECTORIES = [
-  ...PLAN_STAGE_DIRECTORIES,
-  '09-subagent-workstreams',
-];
-
-export const PLAN_REQUIRED_HEADERS = {
-  '01-intake': ['Request Summary', 'Goal', 'Scope', 'Non-goals', 'Constraints', 'Assumptions'],
-  '02-context-load': ['Memory Reads', 'Impact Candidates', 'Related Files'],
-  '03-discovery': ['Findings', 'Risks', 'Open Questions'],
-  '04-decomposition': ['Milestones', 'Atomic Tasks', 'Role / Area Workstreams'],
-  '05-decision-queue': ['Discussion Queue'],
-  '06-approval': ['Approval State'],
-  '07-execution-slices': ['Execution Slices'],
-  '08-verify-replan-close': ['Verification Evidence', 'Replanning Triggers', 'Progress Log', 'Resume Point'],
-  '09-subagent-workstreams': ['Subagent Workstreams', 'Split Plan Files', 'Todo Contract'],
+export {
+  PLAN_CONSTRUCTION_CHECKLISTS,
+  PLAN_INTERNAL_STAGE_DIRECTORIES,
+  PLAN_INTERNAL_WORKSPACE,
+  PLAN_REQUIRED_HEADERS,
+  PLAN_STAGE_DIRECTORIES,
 };
 
 const PLACEHOLDER_RE = /^(?:[-*\s_`]*(?:tbd|todo|n\/a|placeholder|none)[.!?\s_`]*)+$/i;
-const SLICE_FILE_RE = /^SLICE_\d{2}\.md$/;
-const BLOCKER_LABELS = new Map([
-  ['missing-plan', 'Plan file does not exist'],
-  ['invalid-plan-path', 'Plan file must be docs/plan/<task-slug>/README.md'],
-  ['invalid-task-slug', 'Plan task directory must be kebab-case'],
-  ['empty-plan', 'Plan README is empty'],
-  ['missing-stage', 'Missing required stage directory'],
-  ['missing-internal-stage', 'Missing internal stage file'],
-  ['missing-stage-readme', 'Missing stage README.md'],
-  ['invalid-markdown-name', 'Invalid Markdown file name'],
-  ['missing-section', 'Missing required section'],
-  ['empty-section', 'Required section has no content'],
-  ['placeholder-section', 'Required section only contains placeholder content'],
-  ['pending-workstream', 'Required workstream is pending'],
-  ['unresolved-discussion', 'Discussion Queue has unresolved items'],
-  ['unresolved-assumption', 'Assumptions contain unresolved items'],
-  ['missing-atomic-acceptance', 'Atomic Tasks must define acceptance criteria'],
-  ['missing-atomic-verification', 'Atomic Tasks must define verification'],
-]);
-
+const CHECKLIST_OPEN_RE = /\b(?:open|unresolved|pending|needs confirmation|needs user|unknown)\b/i;
 function normalizeHeading(value) {
   return String(value ?? '').trim().toLowerCase().replace(/`/g, '').replace(/[\s/_-]+/g, ' ');
 }
@@ -129,6 +98,73 @@ function internalStageFile(taskDir, stageName) {
   return join(internalWorkspaceDir(taskDir), internalStageFileName(stageName));
 }
 
+function resolvePlanReadme(root, planPath) {
+  const absolutePlanPath = isAbsolute(planPath) ? planPath : resolve(root, planPath);
+  const taskDir = dirname(absolutePlanPath);
+  const taskSlug = basename(taskDir);
+  const relPlanPath = projectRelative(root, absolutePlanPath);
+  const expectedPath = `docs/plan/${taskSlug}/README.md`;
+  return { absolutePlanPath, taskDir, taskSlug, relPlanPath, expectedPath };
+}
+
+function discoverActivePlanReadmes(root) {
+  const planRoot = join(root, 'docs/plan');
+  if (!existsSync(planRoot)) return [];
+  return readdirSync(planRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !entry.isSymbolicLink())
+    .map((entry) => join(planRoot, entry.name, 'README.md'))
+    .filter((file) => existsSync(file))
+    .sort((left, right) => left.localeCompare(right));
+}
+
+function resolveCheckpointPlanPath(root, planPath) {
+  if (planPath) return resolvePlanReadme(root, planPath);
+  const candidates = discoverActivePlanReadmes(root);
+  if (candidates.length !== 1) {
+    const suffix = candidates.length > 1
+      ? ` Found ${candidates.length} candidates; pass docs/plan/<task-slug>/README.md explicitly.`
+      : ' Pass docs/plan/<task-slug>/README.md explicitly.';
+    throw new Error(`Could not infer an active plan.${suffix}`);
+  }
+  return resolvePlanReadme(root, candidates[0]);
+}
+
+function buildStageCheckpointContent(stageName, now = new Date()) {
+  return `Stage: ${stageName}\nStatus: created\nUpdated: ${now.toISOString()}\n`;
+}
+
+export function createPlanStageCheckpoint(stageValue, options = {}) {
+  const root = resolve(options.root ?? process.cwd());
+  const stageName = resolvePlanValidationStage(stageValue);
+  if (!stageName) throw new Error(`Invalid plan stage: ${stageValue}`);
+
+  const plan = resolveCheckpointPlanPath(root, options.planPath);
+  if (plan.relPlanPath !== plan.expectedPath) {
+    throw new Error(`Plan file must be docs/plan/<task-slug>/README.md: ${plan.relPlanPath}`);
+  }
+  if (!isKebabCase(plan.taskSlug)) {
+    throw new Error(`Plan task directory must be kebab-case: ${plan.taskSlug}`);
+  }
+  if (!existsSync(plan.absolutePlanPath)) {
+    throw new Error(`Plan file does not exist: ${plan.relPlanPath}`);
+  }
+
+  const workspace = internalWorkspaceDir(plan.taskDir);
+  const checkpointPath = internalStageFile(plan.taskDir, stageName);
+  if (existsSync(checkpointPath)) {
+    throw new Error(`Plan stage checkpoint already exists: ${projectRelative(root, checkpointPath)}`);
+  }
+
+  mkdirSync(workspace, { recursive: true });
+  writeFileSync(checkpointPath, buildStageCheckpointContent(stageName, options.now));
+  return {
+    ok: true,
+    planPath: plan.relPlanPath,
+    stage: stageName,
+    path: projectRelative(root, checkpointPath),
+  };
+}
+
 function hasInternalWorkspace(taskDir) {
   const workspace = internalWorkspaceDir(taskDir);
   return existsSync(workspace) && statSync(workspace).isDirectory();
@@ -201,7 +237,7 @@ function findSection(files, header) {
 function validateMarkdownNames(root, stageName, stageDir, blockers) {
   for (const file of readMarkdownFiles(stageDir)) {
     const name = basename(file);
-    const valid = stageName === '07-execution-slices' && SLICE_FILE_RE.test(name) ? true : isUpperSnakeMarkdown(name);
+    const valid = isUpperSnakeMarkdown(name);
     if (!valid) {
       addBlocker(blockers, 'invalid-markdown-name', `Invalid Markdown file name: ${projectRelative(root, file)}`, { path: projectRelative(root, file) });
     }
@@ -237,6 +273,73 @@ function hasUnresolvedAssumption(content) {
   });
 }
 
+function constructionChecklistHeader(stageName) {
+  const match = /^(\d{2})-/.exec(stageName);
+  return `Stage ${match?.[1] ?? stageName} Construction Checklist`;
+}
+
+function normalizeChecklistCategory(value) {
+  return normalizeHeading(value).replace(/\s+/g, ' ');
+}
+
+function hasOpenChecklistEvidence(evidence) {
+  const normalized = evidence.toLowerCase();
+  if (/\bno\s+(?:open|unresolved|pending|unknown)\b/.test(normalized)) return false;
+  return CHECKLIST_OPEN_RE.test(normalized);
+}
+
+function parseChecklistRows(content) {
+  return content.split(/\r?\n/).map((line, index) => {
+    const match = /^\s*[-*+]\s*\[([^\]])\]\s*([^:]+):\s*(.*?)\s*$/.exec(line);
+    if (!match) return { line, lineNumber: index + 1, malformed: /^\s*[-*+]\s*/.test(line) && line.trim().length > 0 };
+    return {
+      line,
+      lineNumber: index + 1,
+      checked: match[1].trim().toLowerCase() === 'x',
+      category: match[2].trim(),
+      evidence: match[3].trim(),
+      malformed: false,
+    };
+  }).filter((row) => row.malformed || row.category);
+}
+
+function validateConstructionChecklist(root, files, stageName, blockers) {
+  const requiredCategories = PLAN_CONSTRUCTION_CHECKLISTS[stageName] ?? [];
+  if (requiredCategories.length === 0) return true;
+  const header = constructionChecklistHeader(stageName);
+  const found = findSection(files, header);
+  if (!found) {
+    addBlocker(blockers, 'missing-construction-checklist', `Missing construction checklist: ## ${header}`, { path: projectRelative(root, files[0]), stage: stageName, section: header });
+    return false;
+  }
+  let valid = true;
+  const relFound = projectRelative(root, found.file);
+  const rows = parseChecklistRows(found.content);
+  const byCategory = new Map(rows.filter((row) => row.category).map((row) => [normalizeChecklistCategory(row.category), row]));
+  for (const row of rows) {
+    if (row.malformed) {
+      valid = false;
+      addBlocker(blockers, 'malformed-checklist-item', `Malformed construction checklist item at line ${row.lineNumber}: expected "- [x] Category: evidence".`, { path: relFound, stage: stageName, section: header });
+      continue;
+    }
+    if (!row.checked || hasOpenChecklistEvidence(row.evidence)) {
+      valid = false;
+      addBlocker(blockers, 'open-checklist-item', `Construction checklist item is open: ${row.category}`, { path: relFound, stage: stageName, section: header });
+    }
+    if (!contentHasValue(row.evidence) || isPlaceholderContent(row.evidence)) {
+      valid = false;
+      addBlocker(blockers, 'placeholder-checklist-item', `Construction checklist item only contains placeholder content: ${row.category}`, { path: relFound, stage: stageName, section: header });
+    }
+  }
+  for (const category of requiredCategories) {
+    if (!byCategory.has(normalizeChecklistCategory(category))) {
+      valid = false;
+      addBlocker(blockers, 'missing-checklist-item', `Missing construction checklist item: ${category}`, { path: relFound, stage: stageName, section: header });
+    }
+  }
+  return valid;
+}
+
 export function buildPlanValidationRepairPrompt(result) {
   if (result.ok) return undefined;
   const lines = [
@@ -256,16 +359,6 @@ export function buildPlanValidationRepairPrompt(result) {
 function withPlanValidationRepairPrompt(result) {
   if (result.ok) return result;
   return { ...result, repairPrompt: buildPlanValidationRepairPrompt(result) };
-}
-
-function buildPlanValidationNextStagePrompt(planPath, stage, stagePath) {
-  return [
-    `Continue Plan Mode stage advancement for ${planPath}.`,
-    `Current stage: ${stage}.`,
-    `Make ${planPath} satisfy the current stage's durable README requirements first. Use ${stagePath} only as an optional checkpoint/workflow note for this stage; do not make numbered checkpoint creation the goal and do not create later checkpoint files yet.`,
-    stage === '09-subagent-workstreams' ? 'For this stage, ensure the durable README or split UPPER_SNAKE_CASE workstream plan files expose numbered `Plan:` sections so Pi can extract todos during execution.' : undefined,
-    `After completing this stage, stop and rerun \`dotdotgod plan validate ${planPath} --stage ${stage} --json\`.`,
-  ].filter(Boolean).join('\n\n');
 }
 
 function buildNextStageDetails(root, taskDir, relPlanPath, stageName) {
@@ -295,7 +388,8 @@ function buildPlanValidationSummary(selectedStage, stagesForFullValidation = PLA
 
 export function validatePlanArtifact(planPath, options = {}) {
   const root = resolve(options.root ?? process.cwd());
-  const absolutePlanPath = isAbsolute(planPath) ? planPath : resolve(root, planPath);
+  const plan = resolvePlanReadme(root, planPath);
+  const { absolutePlanPath, taskDir, taskSlug, relPlanPath } = plan;
   const selectedStage = resolvePlanValidationStage(options.stage);
   const blockers = [];
   const warnings = [];
@@ -305,10 +399,7 @@ export function validatePlanArtifact(planPath, options = {}) {
     return withPlanValidationRepairPrompt({ ok: false, planPath: projectRelative(root, absolutePlanPath), blockers, warnings, summary: buildPlanValidationSummary(selectedStage) });
   }
 
-  const taskDir = dirname(absolutePlanPath);
-  const taskSlug = basename(taskDir);
-  const expectedPrefix = `docs/plan/${taskSlug}/README.md`;
-  const relPlanPath = projectRelative(root, absolutePlanPath);
+  const expectedPrefix = plan.expectedPath;
   if (relPlanPath !== expectedPrefix) {
     addBlocker(blockers, 'invalid-plan-path', `Plan file must be docs/plan/<task-slug>/README.md: ${relPlanPath}`, { path: relPlanPath });
   }
@@ -374,6 +465,7 @@ export function validatePlanArtifact(planPath, options = {}) {
         addBlocker(blockers, 'unresolved-assumption', 'Assumptions contain unresolved items.', { path: relFound, stage: stageName, section: header });
       }
     }
+    if (!validateConstructionChecklist(root, files, stageName, blockers)) stageValid = false;
     if (stageValid) summary.stages.valid += 1;
   }
 
@@ -404,13 +496,8 @@ export function formatPlanValidationText(result) {
   return lines.join('\n');
 }
 
-export function runPlan(args) {
-  const [subcommand, planPath, ...rest] = args;
-  if (subcommand !== 'validate') {
-    console.error(`Unknown plan command: ${subcommand ?? ''}`.trim());
-    console.error(commandUsage('plan'));
-    process.exit(2);
-  }
+function runPlanValidate(args) {
+  const [planPath, ...rest] = args;
   if (!planPath || planPath.startsWith('-')) {
     console.error('Missing plan path.');
     console.error(commandUsage('plan validate'));
@@ -446,4 +533,56 @@ export function runPlan(args) {
   if (json) console.log(JSON.stringify(result, null, 2));
   else console.log(formatPlanValidationText(result));
   process.exit(result.ok ? 0 : 1);
+}
+
+function runPlanStage(args) {
+  const [subcommand, stage, ...rest] = args;
+  if (subcommand !== 'create') {
+    console.error(`Unknown plan stage command: ${subcommand ?? ''}`.trim());
+    console.error(commandUsage('plan stage'));
+    process.exit(2);
+  }
+  if (!stage || stage.startsWith('-')) {
+    console.error('Missing plan stage.');
+    console.error(commandUsage('plan stage create'));
+    process.exit(2);
+  }
+  let json = false;
+  let planPath;
+  for (const arg of rest) {
+    if (arg === '--json') {
+      json = true;
+      continue;
+    }
+    if (arg.startsWith('-')) {
+      console.error(`Unknown plan stage create option: ${arg}`);
+      console.error(commandUsage('plan stage create'));
+      process.exit(2);
+    }
+    if (planPath) {
+      console.error(`Unexpected plan stage create argument: ${arg}`);
+      console.error(commandUsage('plan stage create'));
+      process.exit(2);
+    }
+    planPath = arg;
+  }
+  try {
+    const result = createPlanStageCheckpoint(stage, { planPath });
+    if (json) console.log(JSON.stringify(result, null, 2));
+    else console.log(`Created plan stage checkpoint: ${result.path}`);
+    process.exit(0);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    console.error(commandUsage('plan stage create'));
+    process.exit(2);
+  }
+}
+
+export function runPlan(args) {
+  const [subcommand, ...rest] = args;
+  if (subcommand === 'validate') runPlanValidate(rest);
+  if (subcommand === 'stage') runPlanStage(rest);
+  console.error(`Unknown plan command: ${subcommand ?? ''}`.trim());
+  console.error(commandUsage('plan'));
+  process.exit(2);
 }
