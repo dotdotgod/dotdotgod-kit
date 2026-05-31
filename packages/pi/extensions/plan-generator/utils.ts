@@ -1,64 +1,97 @@
 import * as path from "node:path";
+import { complete, type Context, type UserMessage } from "@earendil-works/pi-ai";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-export function formatIso(now = new Date()): string {
-	return now.toISOString();
+export function createTextUserMessage(text: string): UserMessage {
+  return {
+    role: "user",
+    content: [{ type: "text", text }],
+    timestamp: Date.now(),
+  };
 }
 
-const REQUEST_SLUG_REPLACEMENTS: Array<[RegExp, string]> = [
-	[/플랜|계획/g, " plan "],
-	[/제너레이터|제네레이터/g, " generator "],
-	[/모드/g, " mode "],
-	[/실행/g, " execution "],
-	[/리뷰|검토/g, " review "],
-	[/파일/g, " file "],
-	[/이름|네임/g, " name "],
-	[/설명/g, " description "],
-	[/처음|첫/g, " initial "],
-	[/생성|만들/g, " create "],
-	[/작성/g, " author "],
-	[/상태/g, " state "],
-	[/단계|스테이지/g, " stage "],
-];
-
-export function normalizeRequestForSlug(input: string): string {
-	return REQUEST_SLUG_REPLACEMENTS.reduce(
-		(value, [pattern, replacement]) => value.replace(pattern, replacement),
-		input,
-	);
+export function formatIso(now = new Date()): string {
+  return now.toISOString();
 }
 
 export function toKebabCase(input: string): string {
-	return input
-		.normalize("NFKD")
-		.replace(/[\u0300-\u036f]/g, "")
-		.replace(/['’]/g, "")
-		.replace(/[^a-zA-Z0-9]+/g, "-")
-		.replace(/^-+|-+$/g, "")
-		.replace(/-{2,}/g, "-")
-		.toLowerCase();
+  return input
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['’]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-")
+    .toLowerCase();
 }
 
 export function toUpperSnake(input: string): string {
-	return toKebabCase(input).replace(/-/g, "_").toUpperCase();
+  return toKebabCase(input).replace(/-/g, "_").toUpperCase();
 }
 
 export function escapeMarkdown(value: string): string {
-	return value.replace(/\r\n/g, "\n").trim();
+  return value.replace(/\r\n/g, "\n").trim();
 }
 
 export function dedupeStrings(values: string[]): string[] {
-	return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
 export function normalizeRelativePath(cwd: string, input: string): string {
-	const absolute = path.isAbsolute(input) ? input : path.resolve(cwd, input);
-	return path.relative(cwd, absolute).split(path.sep).join("/");
+  const absolute = path.isAbsolute(input) ? input : path.resolve(cwd, input);
+  return path.relative(cwd, absolute).split(path.sep).join("/");
 }
 
 export function isValidPlanSlug(slug: string): boolean {
-	return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function extractFencedBlockContents(
+  text: string,
+  fenceInfo: string,
+): string[] {
+  const pattern = new RegExp(
+    `\\\`\\\`\\\`${escapeRegExp(fenceInfo)}\\s*\\n?([\\s\\S]*?)\\\`\\\`\\\``,
+    "g",
+  );
+  return [...text.matchAll(pattern)].map((match) => match[1] ?? "");
+}
+
+export function extractPlanGeneratorBlocks(text: string): string[] {
+  return extractFencedBlockContents(text, "json dotdotgod-plan-generator");
 }
 
 export function stableBlockerSetKey(blockers: string[]): string {
-	return dedupeStrings(blockers).sort().join("\n");
+  return dedupeStrings(blockers).sort().join("\n");
+}
+
+export async function authCreate(
+  ctx: ExtensionContext,
+  context: Context,
+): Promise<string | undefined> {
+  if (!ctx.model) return undefined;
+  const auth = await ctx.modelRegistry.getApiKeyAndHeaders(ctx.model);
+  if (!auth.ok || !auth.apiKey) return undefined;
+
+  const response = await complete(ctx.model, context, {
+    apiKey: auth.apiKey,
+    ...(auth.headers ? { headers: auth.headers } : {}),
+    ...(ctx.signal ? { signal: ctx.signal } : {}),
+  });
+  if (response.stopReason === "aborted") return undefined;
+
+  const result = response.content
+    .filter(
+      (content): content is { type: "text"; text: string } =>
+        content.type === "text",
+    )
+    .map((content) => content.text)
+    .join("\n")
+    .trim();
+
+  return result;
 }
