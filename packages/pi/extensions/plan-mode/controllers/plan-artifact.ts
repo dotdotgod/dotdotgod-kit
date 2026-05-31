@@ -16,7 +16,7 @@ export function getGeneratorPlanReviewEligibility(cwd: string, planPath: string 
 	const planDir = resolve(cwd, dirname(normalized));
 	const stateDir = resolve(planDir, ".dotdotgod-plan");
 	if (!existsSync(stateDir)) return "normal-plan";
-	const finalStagePath = resolve(stateDir, "09_SUBAGENT_WORKSTREAMS.md");
+	const finalStagePath = resolve(stateDir, "05_WORKSTREAM_HANDOFF.md");
 	if (!existsSync(finalStagePath)) return "generator-incomplete";
 	try {
 		const markdown = readFileSync(finalStagePath, "utf8");
@@ -24,6 +24,10 @@ export function getGeneratorPlanReviewEligibility(cwd: string, planPath: string 
 	} catch {
 		return "generator-incomplete";
 	}
+}
+
+export function shouldSuppressGeneratorPlanReview(cwd: string, planPath: string | undefined): boolean {
+	return getGeneratorPlanReviewEligibility(cwd, planPath) === "generator-incomplete";
 }
 
 export interface PlanArtifactSnapshot {

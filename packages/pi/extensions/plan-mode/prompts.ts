@@ -54,7 +54,8 @@ You are in Plan Mode. This is a read-only exploration and design phase before co
 Restrictions:
 - Allowed tools: ${allowedTools.join(", ")}
 - edit/write are allowed only for markdown plan/archive files under docs/plan/ or docs/archive/.
-- Under docs/, directories must use kebab-case and markdown file names must use UPPER_SNAKE_CASE.md, including README.md.
+- Exception: while /plan-generator is actively authoring a plan, edit/write may also update its checkpoint files under docs/plan/<task-slug>/.dotdotgod-plan/*.md.
+- Under docs/, directories must use kebab-case and markdown file names must use UPPER_SNAKE_CASE.md, including README.md; the only non-kebab-case directory exception is the active /plan-generator .dotdotgod-plan checkpoint directory.
 - Forbidden: source/code/config file mutation outside docs/plan/ and docs/archive/.
 - Bash is restricted to read-only allowlisted commands.
 
@@ -85,7 +86,7 @@ Do not change source/code/config files in Plan Mode. You may create or update on
 }
 
 const PLAN_MODE_COMPACT_CONTEXT_PROMPT = `[PLAN MODE ACTIVE]
-Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for UPPER_SNAKE_CASE markdown under docs/plan/ or docs/archive/; bash remains read-only allowlisted. Use AGENTS.md and docs indexes as source of truth when needed. Create or maintain docs/plan/<task-slug>/README.md only when durable implementation steps are needed; otherwise use a short in-chat checklist. Use a Plan: section only for concrete executable steps when ready.`;
+Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for UPPER_SNAKE_CASE markdown under docs/plan/ or docs/archive/; while /plan-generator is active, its docs/plan/<task-slug>/.dotdotgod-plan/*.md checkpoint files are also allowed. bash remains read-only allowlisted. Use AGENTS.md and docs indexes as source of truth when needed. Create or maintain docs/plan/<task-slug>/README.md only when durable implementation steps are needed; otherwise use a short in-chat checklist. Use a Plan: section only for concrete executable steps when ready.`;
 
 export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS): string {
 	return compact ? PLAN_MODE_COMPACT_CONTEXT_PROMPT : buildPlanModeFullContextPrompt(allowedTools);
