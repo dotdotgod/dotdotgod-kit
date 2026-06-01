@@ -33,7 +33,7 @@ export { extractBracketReferences, extractFuzzyReferences, normalizeReferenceAli
 export { resolveReferenceCandidates, runResolve, runExpand } from './reference/resolve.mjs';
 export { parseTraceabilityOptions, runTraceability } from './commands/traceability.mjs';
 export { parseGraphOptions, runGraph } from './commands/graph.mjs';
-export { buildPlanValidationRepairPrompt, formatPlanValidationText, PLAN_REQUIRED_HEADERS, PLAN_STAGE_DIRECTORIES, resolvePlanValidationStage, runPlan, validatePlanArtifact } from './commands/plan.mjs';
+export { buildPlanValidationRepairPrompt, createPlanStageCheckpoint, formatPlanValidationText, PLAN_REQUIRED_HEADERS, PLAN_STAGE_DIRECTORIES, resolvePlanValidationStage, runPlan, validatePlanArtifact } from './commands/plan.mjs';
 export { planTrelloDryRun, runTrelloSync } from './trello/sync.mjs';
 export { parseTrelloMetadata, extractTrelloShortLink } from './trello/metadata.mjs';
 export { normalizeGitHubRemote, normalizeGitHubRepositoryKey, resolveGitHubFileUrl, resolveGitHubRepositoryIdentity } from './trello/github-url.mjs';

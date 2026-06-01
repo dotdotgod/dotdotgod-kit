@@ -111,9 +111,12 @@ describe('dotdotgod CLI e2e', () => {
       [['expand', '--help'], /--fuzzy/],
       [['traceability', '--help'], /dotdotgod traceability links <root>/],
       [['traceability', 'links', '--help'], /generated Markdown traceability link sections/],
-      [['plan', '--help'], /dotdotgod plan validate docs\/plan\/<task-slug>\/README\.md/],
+      [['plan', '--help'], /dotdotgod plan stage create <stage>/],
       [['plan', 'validate', '--help'], /active plan artifact before execution/],
+      [['plan', 'stage', '--help'], /dotdotgod plan stage create <stage>/],
+      [['plan', 'stage', 'create', '--help'], /internal stage checkpoint/],
       [['help', 'plan', 'validate'], /dotdotgod plan validate docs\/plan\/<task-slug>\/README\.md/],
+      [['help', 'plan', 'stage', 'create'], /dotdotgod plan stage create <stage>/],
       [['help', 'traceability', 'links'], /dotdotgod traceability links <root>/],
       [['graph', '--help'], /dotdotgod graph communities <root>/],
       [['graph', 'impact', '--help'], /dotdotgod graph impact <root> --changed <path>/],
@@ -125,6 +128,21 @@ describe('dotdotgod CLI e2e', () => {
       assert.match(result.stdout, pattern);
       assert.equal(result.stderr, '');
     }
+  });
+
+  it('creates plan stage checkpoints from the CLI', () => {
+    const root = createFixture();
+
+    const created = run(['plan', 'stage', 'create', '02', '--json'], { cwd: root });
+    assert.equal(created.status, 0, created.stderr || created.stdout);
+    const payload = JSON.parse(created.stdout);
+    assert.equal(payload.stage, '02-context-load');
+    assert.equal(payload.path, 'docs/plan/task/.dotdotgod-plan/02_CONTEXT_LOAD.md');
+    assert.match(readFileSync(join(root, payload.path), 'utf8'), /Stage: 02-context-load/);
+
+    const duplicate = run(['plan', 'stage', 'create', '02'], { cwd: root });
+    assert.equal(duplicate.status, 2);
+    assert.match(duplicate.stderr, /already exists/);
   });
 
   it('keeps CLI usage errors on stderr and reports missing graph impact changed paths', () => {
@@ -444,7 +462,7 @@ describe('dotdotgod CLI e2e', () => {
     const root = createFixture();
     mkdirSync(join(root, 'docs/archive/plan/generated-task/.dotdotgod-plan'), { recursive: true });
     writeFileSync(join(root, 'docs/archive/plan/generated-task/README.md'), '# Generated Task\n');
-    writeFileSync(join(root, 'docs/archive/plan/generated-task/.dotdotgod-plan/09_SUBAGENT_WORKSTREAMS.md'), '# 09 Subagent Workstreams\n\nStage: 09-subagent-workstreams\nStatus: completed\nUpdated: 2026-05-26T00:00:00.000Z\n');
+    writeFileSync(join(root, 'docs/archive/plan/generated-task/.dotdotgod-plan/05_WORKSTREAM_HANDOFF.md'), '# 05 Workstream Handoff\n\nStage: 05-workstream-handoff\nStatus: completed\nUpdated: 2026-05-26T00:00:00.000Z\n');
 
     const validate = run(['validate', root, '--include-local-memory', '--json']);
     assert.equal(validate.status, 0, validate.stdout + validate.stderr);
