@@ -19,7 +19,18 @@ export {
 	shouldAllowPlanModeBashCommand,
 } from './tools.ts';
 
-export { getGeneratorPlanReviewEligibility } from "./controllers/plan-artifact.ts";
+export { getGeneratorPlanReviewEligibility, shouldSuppressGeneratorPlanReview } from "./controllers/plan-artifact.ts";
+
+export type { DotdotgodWorkflowState } from "../shared/workflow-coordination.ts";
+export {
+	DOTDOTGOD_WORKFLOW_CUSTOM_TYPE,
+	activatePlanGeneratorWorkflow,
+	clearDotdotgodWorkflowState,
+	getDotdotgodWorkflowState,
+	isPlanGeneratorWorkflowActive,
+	restoreDotdotgodWorkflowState,
+	restorePlanGeneratorWorkflowActive,
+} from "../shared/workflow-coordination.ts";
 
 export type { PendingImpactItem } from "./impact.ts";
 export {

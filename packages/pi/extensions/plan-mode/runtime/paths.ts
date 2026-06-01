@@ -16,12 +16,17 @@ function isPlanMarkdownFile(name: string): boolean {
 	return name === "README.md" || /^[A-Z0-9]+(?:_[A-Z0-9]+)*\.md$/.test(name);
 }
 
-function isMarkdownPathInside(cwd: string, path: string, directory: string): boolean {
+function relativePathInside(cwd: string, path: string, directory: string): string | undefined {
 	const targetPath = resolve(cwd, normalizeToolPath(path));
 	const basePath = resolve(cwd, directory);
 	const relativePath = relative(basePath, targetPath);
 	const isInsideDirectory = relativePath !== "" && !relativePath.startsWith("..") && !isAbsolute(relativePath);
-	if (!isInsideDirectory) return false;
+	return isInsideDirectory ? relativePath : undefined;
+}
+
+function isMarkdownPathInside(cwd: string, path: string, directory: string): boolean {
+	const relativePath = relativePathInside(cwd, path, directory);
+	if (!relativePath) return false;
 
 	const segments = relativePath.split(/[\\/]+/);
 	const fileName = segments[segments.length - 1];
@@ -30,8 +35,22 @@ function isMarkdownPathInside(cwd: string, path: string, directory: string): boo
 	return segments.slice(0, -1).every(isKebabCaseDirectory);
 }
 
-export function isManagedPlanMarkdownPath(cwd: string, path: string): boolean {
-	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY) || isMarkdownPathInside(cwd, path, ARCHIVE_DIRECTORY);
+export function isPlanGeneratorCheckpointMarkdownPath(cwd: string, path: string): boolean {
+	const relativePath = relativePathInside(cwd, path, PLAN_DIRECTORY);
+	if (!relativePath) return false;
+	const segments = relativePath.split(/[\\/]+/);
+	return (
+		segments.length === 3 &&
+		isKebabCaseDirectory(segments[0] ?? "") &&
+		segments[1] === ".dotdotgod-plan" &&
+		isPlanMarkdownFile(segments[2] ?? "")
+	);
+}
+
+export function isManagedPlanMarkdownPath(cwd: string, path: string, options: { allowPlanGeneratorCheckpoint?: boolean } = {}): boolean {
+	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY) ||
+		isMarkdownPathInside(cwd, path, ARCHIVE_DIRECTORY) ||
+		(options.allowPlanGeneratorCheckpoint === true && isPlanGeneratorCheckpointMarkdownPath(cwd, path));
 }
 
 export function isActivePlanMarkdownPath(cwd: string, path: string): boolean {

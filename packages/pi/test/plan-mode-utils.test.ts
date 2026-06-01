@@ -8,7 +8,7 @@ import { ExecutionProgressController } from "../extensions/plan-mode/controllers
 import { GateController } from "../extensions/plan-mode/controllers/gates.ts";
 import { ModeLifecycleController } from "../extensions/plan-mode/controllers/mode-lifecycle.ts";
 import { PlanArtifactController } from "../extensions/plan-mode/controllers/plan-artifact.ts";
-import { isActivePlanMarkdownPath, isManagedPlanMarkdownPath } from "../extensions/plan-mode/runtime/paths.ts";
+import { isActivePlanMarkdownPath, isManagedPlanMarkdownPath, isPlanGeneratorCheckpointMarkdownPath } from "../extensions/plan-mode/runtime/paths.ts";
 import {
 	PLAN_COMPACTION_PERCENT_THRESHOLD,
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
@@ -33,16 +33,21 @@ import {
 	formatMultiImpactSummary,
 	formatPlanCompactionFocus,
 	formatReferenceExpansionSummary,
+	activatePlanGeneratorWorkflow,
+	clearDotdotgodWorkflowState,
+	DOTDOTGOD_WORKFLOW_CUSTOM_TYPE,
 	extractPathMentions,
 	extractPlanSlugMentions,
 	getCurrentPlanReadmePath,
 	getGeneratorPlanReviewEligibility,
+	shouldSuppressGeneratorPlanReview,
 	getChangedPathFromDotdotgodImpactCommand,
 	getNextPlanReviewActionIndex,
 	getPlanCompactionReason,
 	getPlanReviewActionChoice,
 	getPlanReviewScrollState,
 	hasExplicitBracketReferences,
+	isPlanGeneratorWorkflowActive,
 	hasLikelyFuzzyReferences,
 	isBroadVerificationCommand,
 	isCommitLikeCommand,
@@ -55,6 +60,8 @@ import {
 	pendingImpactSummary,
 	resolveMentionedPlanPath,
 	resolvePlanExecutionTarget,
+	restoreDotdotgodWorkflowState,
+	restorePlanGeneratorWorkflowActive,
 	isAutoAllowedDotdotgodPlanModeCommand,
 	isDotdotgodCliCommand,
 	isSafeCommand,
@@ -295,9 +302,29 @@ describe("plan-mode command safety", () => {
 		}
 
 		for (const command of [
+			"dotdotgod plan validate docs/plan/example/README.md --stage 01-intake --json",
+			"dotdotgod plan validate docs/plan/example-task/README.md --stage 05-workstream-handoff --json",
+			"node packages/cli/bin/dotdotgod.mjs plan validate docs/plan/example-task/README.md --stage 04-plan --json",
+			"dotdotgod plan stage create 02 docs/plan/example/README.md --json",
+			"dotdotgod plan stage create 02-context-load docs/plan/example-task/README.md --json",
+			"node packages/cli/bin/dotdotgod.mjs plan stage create 05-workstream-handoff docs/plan/example-task/README.md --json",
+		]) {
+			assert.equal(isDotdotgodCliCommand(command), true, command);
+			assert.equal(isAutoAllowedDotdotgodPlanModeCommand(command), true, command);
+			assert.deepEqual(await shouldAllowPlanModeBashCommand(command), { allow: true }, command);
+		}
+
+		for (const command of [
 			"dotdotgod validate .",
 			"dotdotgod plan validate docs/plan/example/README.md --json",
 			"node packages/cli/bin/dotdotgod.mjs plan validate docs/plan/example/README.md --json",
+			"dotdotgod plan validate docs/plan/example/README.md --stage 01-intake",
+			"dotdotgod plan validate docs/plan/example/README.md --json --stage 01-intake",
+			"dotdotgod plan validate docs/plan/example/NOT_README.md --stage 01-intake --json",
+			"dotdotgod plan validate docs/plan/example/README.md --stage unknown --json",
+			"dotdotgod plan validate ../docs/plan/example/README.md --stage 01-intake --json",
+			"dotdotgod plan stage create 02-context-load docs/plan/example/README.md",
+			"dotdotgod plan stage create 02-context-load ../docs/plan/example/README.md --json",
 			"dotdotgod init .",
 			"dotdotgod impact . --changed packages/pi/index.ts",
 			"dotdotgod graph query .",
@@ -495,11 +522,15 @@ describe("plan-mode current plan path helpers", () => {
 		assert.equal(getCurrentPlanReadmePath("packages/pi/README.md"), undefined);
 	});
 
-	it("keeps checkpoint path resolution read-only for Plan Mode writes", () => {
+	it("keeps checkpoint path resolution scoped to active Plan Generator writes", () => {
 		const root = mkdtempSync(join(tmpdir(), "plan-mode-paths-"));
-		assert.equal(getCurrentPlanReadmePath("docs/plan/landing-site/.dotdotgod-plan/01_INTAKE.md"), "docs/plan/landing-site/README.md");
-		assert.equal(isManagedPlanMarkdownPath(root, "docs/plan/landing-site/.dotdotgod-plan/01_INTAKE.md"), false);
-		assert.equal(isActivePlanMarkdownPath(root, "docs/plan/landing-site/.dotdotgod-plan/01_INTAKE.md"), false);
+		const checkpoint = "docs/plan/landing-site/.dotdotgod-plan/01_INTAKE.md";
+		assert.equal(getCurrentPlanReadmePath(checkpoint), "docs/plan/landing-site/README.md");
+		assert.equal(isPlanGeneratorCheckpointMarkdownPath(root, checkpoint), true);
+		assert.equal(isManagedPlanMarkdownPath(root, checkpoint), false);
+		assert.equal(isManagedPlanMarkdownPath(root, checkpoint, { allowPlanGeneratorCheckpoint: true }), true);
+		assert.equal(isManagedPlanMarkdownPath(root, "docs/plan/landing-site/.hidden/01_INTAKE.md", { allowPlanGeneratorCheckpoint: true }), false);
+		assert.equal(isActivePlanMarkdownPath(root, checkpoint), false);
 		assert.equal(isManagedPlanMarkdownPath(root, "docs/plan/landing-site/README.md"), true);
 		assert.equal(isActivePlanMarkdownPath(root, "docs/plan/landing-site/README.md"), true);
 	});
@@ -725,6 +756,7 @@ describe("plan-mode explicit execution helpers", () => {
 			"run tests",
 			"implement the package version bump",
 			"refine the impact-ranking-config plan",
+			"Continue authoring the durable plan at docs/plan/task/README.md using /plan-generator stage 01-intake. Ask exactly one unresolved question if needed.",
 		]) {
 			assert.equal(detectPlanExecutionIntent(request), false, request);
 			assert.notEqual(classifyPlanModeRequest(request), "explicit_execution", request);
@@ -918,6 +950,8 @@ describe("plan-mode tool settings", () => {
 		assert.match(prompt, /run dotdotgod graph impact for intended changed files/);
 		assert.match(prompt, /post-coding dotdotgod validate/);
 		assert.match(prompt, /You may create or update only the allowed docs\/plan or docs\/archive markdown files/);
+		assert.match(prompt, /\.dotdotgod-plan\/\*\.md/);
+		assert.match(prompt, /active \/plan-generator/);
 		assert.doesNotMatch(prompt, /Do NOT attempt to make changes/);
 	});
 });
@@ -944,6 +978,7 @@ describe("plan-mode compaction helpers", () => {
 		assert.doesNotMatch(fullPrompt, /Explore relevant files thoroughly/);
 		assert.match(compactPrompt, /Compact reminder/);
 		assert.match(compactPrompt, /Do not mutate source\/code\/config files/);
+		assert.match(compactPrompt, /\.dotdotgod-plan\/\*\.md/);
 		assert.ok(compactPrompt.length < fullPrompt.length / 2);
 	});
 
@@ -994,10 +1029,19 @@ describe("plan-mode compaction helpers", () => {
 		assert.equal(isPlanModeRuntimeRequest("[PLAN MODE ACTIVE]\nStay in planning"), true);
 		assert.equal(isPlanModeRuntimeRequest("Load the dotdotgod project memory."), true);
 		assert.equal(isPlanModeRuntimeRequest("Continue the following Plan Mode request after planning-focused compaction."), true);
+		const generatorFollowUp = "Continue authoring the durable plan at docs/plan/generator-task/README.md using /plan-generator stage 01-intake. Ask exactly one unresolved question if needed.";
+		assert.equal(isPlanModeRuntimeRequest(generatorFollowUp), true);
 		assert.deepEqual(
 			selectLatestPlanningRequest({
 				currentRequest: "현재 요청",
 				latestUserText: "Continue the latest Plan Mode request after planning-focused compaction.",
+			}),
+			{ request: "현재 요청", pendingInlineRequest: undefined, changed: false },
+		);
+		assert.deepEqual(
+			selectLatestPlanningRequest({
+				currentRequest: "현재 요청",
+				latestUserText: generatorFollowUp,
 			}),
 			{ request: "현재 요청", pendingInlineRequest: undefined, changed: false },
 		);
@@ -1047,6 +1091,55 @@ describe("plan-mode plan choice trigger", () => {
 		);
 	});
 
+	it("coordinates active plan-generator workflow state across Plan Mode helpers", () => {
+		restoreDotdotgodWorkflowState([]);
+		const entries: Array<{ customType: string; data: unknown }> = [];
+		activatePlanGeneratorWorkflow(
+			{ appendEntry: (customType: string, data: unknown) => entries.push({ customType, data }) } as never,
+			{ planPath: "docs/plan/generator-task/README.md", stage: "01-intake" },
+		);
+		assert.equal(isPlanGeneratorWorkflowActive(), true);
+		assert.equal(entries[0]?.customType, DOTDOTGOD_WORKFLOW_CUSTOM_TYPE);
+		assert.equal(
+			shouldPromptForPlanChoice({
+				planModeEnabled: true,
+				executionMode: false,
+				hasUI: true,
+				pendingPlanChoicePath: "docs/plan/generator-task/README.md",
+				suppressPlanChoice: isPlanGeneratorWorkflowActive(),
+			}),
+			false,
+		);
+
+		clearDotdotgodWorkflowState(undefined, "stopped", "test complete");
+		assert.equal(isPlanGeneratorWorkflowActive(), false);
+	});
+
+	it("allows checkpoint writes after restoring stale workflow state from the session branch", () => {
+		restoreDotdotgodWorkflowState([]);
+		const root = mkdtempSync(join(tmpdir(), "plan-mode-checkpoint-restore-"));
+		const checkpoint = "docs/plan/api-migration-handoff-plan/.dotdotgod-plan/01_INTAKE.md";
+		const entries = [
+			{
+				type: "custom",
+				customType: DOTDOTGOD_WORKFLOW_CUSTOM_TYPE,
+				data: {
+					activeWorkflow: "plan-generator",
+					suppressPlanModeExecutionPrompt: true,
+					status: "active",
+					planPath: "docs/plan/api-migration-handoff-plan/README.md",
+					stage: "01-intake",
+					updatedAt: "2026-05-29T13:49:52.907Z",
+				},
+			},
+		];
+
+		assert.equal(isPlanGeneratorWorkflowActive(), false);
+		assert.equal(isManagedPlanMarkdownPath(root, checkpoint), false);
+		assert.equal(restorePlanGeneratorWorkflowActive(entries), true);
+		assert.equal(isManagedPlanMarkdownPath(root, checkpoint, { allowPlanGeneratorCheckpoint: isPlanGeneratorWorkflowActive() }), true);
+	});
+
 	it("detects generator checkpoint state before showing execution review", () => {
 		const root = mkdtempSync(join(tmpdir(), "plan-mode-generator-state-"));
 		const planDir = join(root, "docs/plan/generator-task");
@@ -1057,35 +1150,38 @@ describe("plan-mode plan choice trigger", () => {
 			getGeneratorPlanReviewEligibility(root, "docs/plan/generator-task/README.md"),
 			"generator-incomplete",
 		);
+		assert.equal(shouldSuppressGeneratorPlanReview(root, "docs/plan/generator-task/README.md"), true);
 		assert.equal(
 			shouldPromptForPlanChoice({
 				planModeEnabled: true,
 				executionMode: false,
 				hasUI: true,
 				pendingPlanChoicePath: "docs/plan/generator-task/README.md",
-				suppressPlanChoice: getGeneratorPlanReviewEligibility(root, "docs/plan/generator-task/README.md") === "generator-incomplete",
+				suppressPlanChoice: shouldSuppressGeneratorPlanReview(root, "docs/plan/generator-task/README.md"),
 			}),
 			false,
 		);
 
-		writeFileSync(join(planDir, ".dotdotgod-plan", "09_SUBAGENT_WORKSTREAMS.md"), "# 09 Subagent Workstreams\n\nStage: 09-subagent-workstreams\nStatus: blocked\nUpdated: 2026-05-26T00:00:00.000Z\n");
+		writeFileSync(join(planDir, ".dotdotgod-plan", "05_WORKSTREAM_HANDOFF.md"), "# 05 Workstream Handoff\n\nStage: 05-workstream-handoff\nStatus: blocked\nUpdated: 2026-05-26T00:00:00.000Z\n");
 		assert.equal(
 			getGeneratorPlanReviewEligibility(root, "docs/plan/generator-task/README.md"),
 			"generator-incomplete",
 		);
+		assert.equal(shouldSuppressGeneratorPlanReview(root, "docs/plan/generator-task/README.md"), true);
 
-		writeFileSync(join(planDir, ".dotdotgod-plan", "09_SUBAGENT_WORKSTREAMS.md"), "# 09 Subagent Workstreams\n\nStage: 09-subagent-workstreams\nStatus: completed\nUpdated: 2026-05-26T00:00:00.000Z\n");
+		writeFileSync(join(planDir, ".dotdotgod-plan", "05_WORKSTREAM_HANDOFF.md"), "# 05 Workstream Handoff\n\nStage: 05-workstream-handoff\nStatus: completed\nUpdated: 2026-05-26T00:00:00.000Z\n");
 		assert.equal(
 			getGeneratorPlanReviewEligibility(root, "docs/plan/generator-task/README.md"),
 			"generator-complete",
 		);
+		assert.equal(shouldSuppressGeneratorPlanReview(root, "docs/plan/generator-task/README.md"), false);
 		assert.equal(
 			shouldPromptForPlanChoice({
 				planModeEnabled: true,
 				executionMode: false,
 				hasUI: true,
 				pendingPlanChoicePath: "docs/plan/generator-task/README.md",
-				suppressPlanChoice: getGeneratorPlanReviewEligibility(root, "docs/plan/generator-task/README.md") === "generator-incomplete",
+				suppressPlanChoice: shouldSuppressGeneratorPlanReview(root, "docs/plan/generator-task/README.md"),
 			}),
 			true,
 		);
@@ -1101,13 +1197,14 @@ describe("plan-mode plan choice trigger", () => {
 			getGeneratorPlanReviewEligibility(root, "docs/plan/normal-task/README.md"),
 			"normal-plan",
 		);
+		assert.equal(shouldSuppressGeneratorPlanReview(root, "docs/plan/normal-task/README.md"), false);
 		assert.equal(
 			shouldPromptForPlanChoice({
 				planModeEnabled: true,
 				executionMode: false,
 				hasUI: true,
 				pendingPlanChoicePath: "docs/plan/normal-task/README.md",
-				suppressPlanChoice: getGeneratorPlanReviewEligibility(root, "docs/plan/normal-task/README.md") === "generator-incomplete",
+				suppressPlanChoice: shouldSuppressGeneratorPlanReview(root, "docs/plan/normal-task/README.md"),
 			}),
 			true,
 		);
