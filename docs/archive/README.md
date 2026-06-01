@@ -19,6 +19,25 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/plan-generator-workflow-guard-restore/`: hardened Plan Mode checkpoint write authorization by restoring active `/plan-generator` workflow state from the session branch before `.dotdotgod-plan/*.md` path checks.
+- `plan/plan-generator-checkpoint-context/`: included bounded `.dotdotgod-plan/NN_STAGE.md` checkpoint path and content in `/plan-generator` stage authoring, retry, and handoff follow-up messages.
+- `plan/plan-generator-checkpoint-write-scope/`: restored active `/plan-generator` workflow state from persisted generator session state so Plan Mode continues to allow `.dotdotgod-plan/*.md` checkpoint writes after compaction/session replay.
+- `plan/plan-generator-cli-checkpoints/`: made `/plan-generator` create Stage 01 and next-stage internal checkpoints through `dotdotgod plan stage create`, added startup progress status text, and allowed bounded checkpoint CLI commands in Plan Mode.
+- `plan/plan-generator-running-feedback/`: implemented immediate `/plan-generator` startup feedback before slug/path creation, Plan Mode status restoration, scoped checkpoint write policy, prompt alignment, and focused tests.
+- `plan/plan-generator-mode-separation/`: added a `/plan-generator`-owned `generate plan` status overlay and Plan Mode lifecycle suppression while the shared generator workflow is active.
+- `plan/plan-generator-9-stage-loop/`: completed the durable plan for expanding `/plan-generator` from partial Stage 01-03 behavior into a full 9-stage state-driven `agent_end` loop with breaker, tests, docs, and smoke coverage.
+- `plan/1-construction-checklist-code-complete-review-checklists-over/`: added Code Complete-inspired construction checklist validation and user-visible LLM review summaries for `/plan-generator` staged authoring.
+- `plan/plan-generator-drift-repair-decision-flow/`: implemented compact `continue` / `repair` / `stop` checkpoint drift decisions for `/plan-generator` resume.
+- `plan/new-plan/`: completed the Plan Mode versus `/plan-generator` split hardening/refactor plan and verification notes.
+- `plan/9/`: completed Plan Mode cleanup that removed generator-style staged authoring from Plan Mode while preserving review, permission, and execution gates.
+- `plan/plan-stage-1-9-stage-stage/`: completed the `/plan-generator` successful-stage continuation prompt fix and verification notes.
+- `plan/plan-mode-consolidated-follow-up/`: archived superseded consolidated `/plan-generator` follow-up after later focused plans implemented the remaining checklist, drift repair, and Plan Mode boundary work.
+- `plan/plan-mode-plan/`: archived superseded initial Plan Mode cleanup intake after the more specific follow-up plans replaced it.
+- `plan/plan-mode-plan-2/`: archived the later Plan Mode cleanup plan after its active validation-size cleanup and overlapping implementation work were resolved elsewhere.
+- `plan/plan-mode-refactor-verification/`: archived Plan Mode refactor verification after focused Plan Mode tests and typecheck were rerun in the later implementation pass.
+- `plan/plan-stage/`: archived placeholder stage-feedback plan after the concrete stage-continuation plan completed.
+- `plan/code-complete-development-principles/`: documented Code Complete-inspired development principles for construction, trade-off design, complexity management, defect prevention, diagnostics, integration, and practical quality.
+- `plan/plan-startexplicitplanexecutionifrequested-generator-authored-plan-stage-09-execution/`: fixed Plan Mode so explicit execution requests cannot review incomplete `/plan-generator` plans before Stage 09, and generator continuation follow-ups are treated as runtime planning prompts.
 - `plan/cli-plan-validate-next-stage-prompt/`: completed CLI/Pi Plan Mode staged validation alignment with UPPER_SNAKE `.dotdotgod-plan/` stage files, next-stage prompts, clean-pass/resume behavior, stage 09 saved-plan review, docs, and focused verification.
 - `plan/plan-mode-bootstrap-resume-layer/`: superseded by `docs/plan/plan-mode-consolidated-follow-up/` after its remaining README-first bootstrap/resume intent was merged into the consolidated active Plan Mode plan.
 - `plan/plan-mode-simplification-refactor/`: superseded by `docs/plan/plan-mode-consolidated-follow-up/` after its remaining deletion-first refactor work was merged into the consolidated active Plan Mode plan.
