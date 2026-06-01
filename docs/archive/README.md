@@ -19,6 +19,7 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/commit-split-current-work/`: executed the current mixed-worktree commit split, covering CLI checkpoints, generator workflow updates, Plan Mode coordination, prompt hardening, docs cleanup, and final verification.
 - `plan/plan-generator-workflow-guard-restore/`: hardened Plan Mode checkpoint write authorization by restoring active `/plan-generator` workflow state from the session branch before `.dotdotgod-plan/*.md` path checks.
 - `plan/plan-generator-checkpoint-context/`: included bounded `.dotdotgod-plan/NN_STAGE.md` checkpoint path and content in `/plan-generator` stage authoring, retry, and handoff follow-up messages.
 - `plan/plan-generator-checkpoint-write-scope/`: restored active `/plan-generator` workflow state from persisted generator session state so Plan Mode continues to allow `.dotdotgod-plan/*.md` checkpoint writes after compaction/session replay.

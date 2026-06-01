@@ -29,7 +29,6 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 - `2-stage2-3/` — active: plan and support design for extending `/plan-generator` from Stage 01 into Stage 02 context-load and Stage 03 discovery using store state plus data-only stage constants.
 - `codex-plugin-metadata/` — paused: plan to align Claude Code and Codex plugin metadata and verification with current platform docs and the impact-review workflow contract; ready for execution when prioritized.
 - `cli-core-module-split/` — active: plan to split `packages/cli/src/core.mjs` into responsibility-focused modules while preserving CLI behavior and public exports.
-- `commit-split-current-work/` — active: commit-splitting plan for the current mixed staged/unstaged worktree, including latest `/plan-generator` resume, path resume, and interrupt pause work.
 - `context-metrics-follow-up/` — paused: follow-up checklist for reviewing context size, lazy refresh behavior, snapshot boundedness, and graph usefulness after more representative usage.
 - `documentation-clarity-program/` — active: phased plan to clarify README, AGENTS.md, spec, test, architecture, and report documentation with role-specific subagent review and writing passes.
 - `landing-site/` — paused: plan for adding a static React landing and documentation site to the pnpm monorepo; waiting on framework, deployment, and design decisions.
