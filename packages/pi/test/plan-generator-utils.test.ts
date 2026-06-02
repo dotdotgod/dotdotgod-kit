@@ -36,6 +36,7 @@ import {
 } from "../extensions/plan-generator/stage-contract.ts";
 import { createPlanGeneratorStore } from "../extensions/plan-generator/store.ts";
 import {
+  activatePlanGeneratorWorkflow,
   getDotdotgodWorkflowState,
   isPlanGeneratorWorkflowActive,
   restoreDotdotgodWorkflowState,
@@ -316,10 +317,83 @@ Status: maybe
     assert.match(message, /implementation design, not a generic project plan/i);
     assert.match(message, /files, functions\/types\/classes\/commands/);
     assert.match(message, /a different agent should be able to implement the same work/);
+    assert.match(message, /Do not silently carry unresolved user decisions forward/);
+    assert.match(PLAN_GENERATOR_STAGE_ENVIRONMENTS["03-discovery"].authoringPrompt, /Separate agent-resolvable research questions from user decisions/);
     assert.match(stage.evaluationPrompt, /Atomic Tasks must be specific enough to assign immediately/);
     assert.match(stage.evaluationPrompt, /Edge Cases must cover failure paths/);
     assert.match(stage.evaluationPrompt, /Mark retry when Atomic Tasks or Edge Cases are too generic/);
+    assert.match(stage.evaluationPrompt, /unresolved choices about scope, behavior, risk acceptance, or implementation direction as blocked user input/);
     assert.match(stage.evaluationPrompt, /atomic tasks to name concrete code touchpoints/);
+  });
+
+  it("detects unresolved user decisions in durable plan validation evidence", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const taskDir = join(cwd, "docs", "plan", "decision-blocker");
+    mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
+    writeFileSync(
+      join(taskDir, "README.md"),
+      `# Decision Blocker
+
+Status: active
+
+## Implementation Design
+
+Use the existing extension flow.
+
+## Code Touchpoints
+
+packages/pi/extensions/plan-generator/index.ts
+
+## Data/State Flow
+
+Store remains active until the user answers.
+
+## Edge Cases
+
+- 미정: 사용자가 strict mode 여부를 결정해야 함.
+
+## Atomic Tasks
+
+- Update blocker detection in plan-generator runtime.
+
+## Test Design
+
+- Add runtime regression tests.
+
+## Validation Plan
+
+- pnpm --filter @dotdotgod/pi test -- plan-generator-utils.test.ts
+
+## Resume Point
+
+Resume after the user chooses strict mode.
+
+## Stage 04 Construction Checklist
+
+- [x] Implementation design: Existing flow with decision blocker.
+- [x] Code touchpoints: packages/pi/extensions/plan-generator/index.ts.
+- [x] Data/state flow: input-waiting state.
+- [x] Edge cases: user decision blocker.
+- [x] Atomic tasks: runtime detection.
+- [x] Test design: regression test.
+- [x] Validation plan: targeted pi test.
+- [x] Resume point: same stage after user input.
+`,
+    );
+    writeFileSync(
+      join(taskDir, ".dotdotgod-plan", "04_PLAN.md"),
+      "Stage: 04-plan\nStatus: completed\nUpdated: 2026-06-03\n",
+    );
+
+    const evidence = createStageValidationEvidence({
+      cwd,
+      currentPlan: "docs/plan/decision-blocker/README.md",
+      stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS["04-plan"],
+    });
+
+    assert.equal(evidence.ok, false);
+    assert.match(evidence.blockers.join("\n"), /Unresolved user decision/);
+    assert.match(evidence.blockers.join("\n"), /미정/);
   });
 
   it("extracts latest assistant text", () => {
@@ -629,6 +703,93 @@ describe("plan-generator command runtime", () => {
     assert.equal(store.getState().breaker, 4);
     assert.equal(runtime.sent.length, 1);
     assert.match(store.getState().waitingMessage ?? "", /판단해 주세요/);
+    assert.equal(isPlanGeneratorWorkflowActive(), true);
+  });
+
+  it("asks the user instead of advancing when durable plan carries an unresolved decision", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const runtime = fakeRuntime(cwd, { hasUI: true });
+    const store = createPlanGeneratorStore(runtime.pi as never);
+    const taskDir = join(cwd, "docs", "plan", "decision-blocker");
+    mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
+    writeFileSync(
+      join(taskDir, "README.md"),
+      `# Decision Blocker
+
+Status: active
+
+## Implementation Design
+
+Use the generator store path.
+
+## Code Touchpoints
+
+packages/pi/extensions/plan-generator/index.ts
+
+## Data/State Flow
+
+Stay input-waiting until the user answers.
+
+## Edge Cases
+
+- User decision needed: choose whether strict mode blocks Stage 03 or only Stage 04.
+
+## Atomic Tasks
+
+- Add deterministic unresolved-decision blocker handling.
+
+## Test Design
+
+- Runtime test for input-waiting.
+
+## Validation Plan
+
+- pnpm --filter @dotdotgod/pi test -- plan-generator-utils.test.ts
+
+## Resume Point
+
+Resume this stage after the user chooses.
+
+## Stage 04 Construction Checklist
+
+- [x] Implementation design: generator store path.
+- [x] Code touchpoints: packages/pi/extensions/plan-generator/index.ts.
+- [x] Data/state flow: input-waiting.
+- [x] Edge cases: unresolved user decision.
+- [x] Atomic tasks: blocker handling.
+- [x] Test design: runtime test.
+- [x] Validation plan: targeted test.
+- [x] Resume point: same stage.
+`,
+    );
+    writeFileSync(
+      join(taskDir, ".dotdotgod-plan", "04_PLAN.md"),
+      "Stage: 04-plan\nStatus: completed\nUpdated: 2026-06-03\n",
+    );
+    store.updateState({
+      currentPlan: "docs/plan/decision-blocker/README.md",
+      currentStage: "04-plan",
+      status: "active",
+      breaker: 0,
+      originalRequest: "Plan decision blocker handling.",
+    });
+    activatePlanGeneratorWorkflow(runtime.pi as never, {
+      planPath: "docs/plan/decision-blocker/README.md",
+      stage: "04-plan",
+    });
+
+    await handlePlanGeneratorAgentEnd(
+      runtime.pi as never,
+      runtime.ctx as never,
+      [{ role: "assistant", content: "Stage 04 updated with a pending user decision." }],
+      store,
+    );
+
+    assert.equal(store.getState().status, "input-waiting");
+    assert.equal(store.getState().breaker, 0);
+    assert.match(store.getState().waitingMessage ?? "", /Unresolved user decision/);
+    assert.equal(runtime.sent.length, 1);
+    assert.match(runtime.sent[0]?.message ?? "", /Ask the user a concrete question with clear options/);
     assert.equal(isPlanGeneratorWorkflowActive(), true);
   });
 

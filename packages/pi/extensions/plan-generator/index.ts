@@ -25,6 +25,7 @@ import {
   createStageValidationEvidence,
   ensureInitialReadme,
   formatStageValidationEvidence,
+  hasUnresolvedUserDecisionBlocker,
   readStageCheckpointContext,
   resolveCollisionFreeTaskPath,
   resolveExistingPlanGeneratorResumeTarget,
@@ -250,6 +251,34 @@ async function evaluateStage01(
     PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_01_ID],
     requestContext,
     assistantText,
+  );
+}
+
+async function waitForPlanGeneratorUserDecision(options: {
+  pi: ExtensionAPI;
+  ctx: ExtensionContext;
+  store: PlanGeneratorStore;
+  state: ReturnType<PlanGeneratorStore["getState"]>;
+  stage: PlanGeneratorStageEnvironment;
+  message: string;
+}): Promise<void> {
+  options.store.updateState({
+    status: "input-waiting",
+    message: options.message,
+    waitingMessage: options.message,
+  });
+  activatePlanGeneratorWorkflow(options.pi, {
+    planPath: options.state.currentPlan,
+    stage: options.state.currentStage,
+    reason: options.message,
+  });
+  setPlanGeneratorModeStatus(options.ctx);
+  if (options.ctx.hasUI) {
+    options.ctx.ui.notify(`${options.stage.title} is waiting for user input.`, "warning");
+  }
+  await options.pi.sendUserMessage(
+    `The current /plan-generator ${options.stage.title} cannot advance because the durable plan contains an unresolved user decision. Ask the user a concrete question with clear options, then wait for their answer before updating the same stage.\n\n${options.message}`,
+    { deliverAs: "followUp" },
   );
 }
 
@@ -699,6 +728,21 @@ async function handlePlanGeneratorAgentEnd(
         stage,
       });
   const evaluation = await evaluateStage(ctx, stage, requestContext, assistantText, validationEvidence);
+
+  if (hasUnresolvedUserDecisionBlocker(validationEvidence)) {
+    const blockers = validationEvidence?.blockers
+      .filter((blocker) => blocker.startsWith("Unresolved user decision in "))
+      .join("\n");
+    await waitForPlanGeneratorUserDecision({
+      pi,
+      ctx,
+      store,
+      state,
+      stage,
+      message: `Unresolved user decision detected. Please choose before /plan-generator continues.\n${blockers}`,
+    });
+    return;
+  }
 
   if (!evaluation || evaluation.status === "retry") {
     if (assistantRequestsUserInput(assistantText)) {

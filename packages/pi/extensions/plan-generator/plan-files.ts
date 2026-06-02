@@ -362,6 +362,46 @@ function checkedChecklistHas(content: string, category: string): boolean {
   });
 }
 
+function lineLooksResolved(line: string): boolean {
+  return (
+    /\[[xX]\]/.test(line) ||
+    /\b(answered|resolved|deferred|accepted-risk|accepted risk|not required|not needed|no user decision|no decision needed)\b/i.test(line) ||
+    /(해결|답변됨|보류|허용된 위험|필요 없음|필요없음|결정 필요 없음)/.test(line)
+  );
+}
+
+function lineLooksLikeUnresolvedUserDecision(line: string): boolean {
+  const normalized = line.trim();
+  if (!normalized || lineLooksResolved(normalized)) return false;
+  return (
+    /\b(tbd|pending|undecided|unresolved decision|decision needed|needs user decision|user decision needed|user decision required|requires user input|awaiting user|choose later|choose before implementation)\b/i.test(normalized) ||
+    /(미정|결정 필요|사용자 결정|사용자 입력 필요|유저 결정|유저 입력 필요|나중에 결정|확정 필요)/.test(normalized)
+  );
+}
+
+function findUnresolvedUserDecisionBlockers(options: {
+  cwd: string;
+  files: string[];
+}): string[] {
+  const blockers: string[] = [];
+  for (const file of options.files) {
+    const relativePath = path.relative(options.cwd, file);
+    const lines = readFileSync(file, "utf8").split(/\r?\n/);
+    lines.forEach((line, index) => {
+      if (!lineLooksLikeUnresolvedUserDecision(line)) return;
+      const excerpt = line.trim().replace(/\s+/g, " ").slice(0, 180);
+      blockers.push(`Unresolved user decision in ${relativePath}:${index + 1}: ${excerpt}`);
+    });
+  }
+  return blockers;
+}
+
+export function hasUnresolvedUserDecisionBlocker(
+  evidence: PlanGeneratorStageValidationEvidence | undefined,
+): boolean {
+  return Boolean(evidence?.blockers.some((blocker) => blocker.startsWith("Unresolved user decision in ")));
+}
+
 export function createStageValidationEvidence(options: {
   cwd: string;
   currentPlan: string;
@@ -373,6 +413,7 @@ export function createStageValidationEvidence(options: {
   const taskDir = path.dirname(planPath);
   const blockers: string[] = [];
   const files = discoverDurableMarkdownFiles(taskDir);
+  blockers.push(...findUnresolvedUserDecisionBlockers({ cwd: options.cwd, files }));
   const requiredSections = {
     total: options.stage.requiredSections.length,
     present: 0,
