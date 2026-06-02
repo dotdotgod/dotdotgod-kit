@@ -2,6 +2,78 @@
 
 > **Change a file, know what else must be checked.**
 
+Dotdotgod is a project-memory kit for AI coding agents. It gives a repository a maintained docs structure, a local project-memory graph, and commands that help agents load the right context, plan safely, and verify related work after changes.
+
+Use it when you want future AI coding sessions to start from durable project knowledge instead of rediscovering intent from chat history.
+
+Repository: <https://github.com/dotdotgod/dotdotgod-kit>
+
+## Pick the Package You Need
+
+| Package | Use it when | First step |
+| --- | --- | --- |
+| [`@dotdotgod/pi`](packages/pi/README.md) | You use Pi and want the full workflow: project initialization, project loading, Plan Mode, staged plan generation, impact checks, and archive handoff. | `pi install npm:@dotdotgod/pi` |
+| [`@dotdotgod/cli`](packages/cli/README.md) | You want command-line validation, graph indexing, load snapshots, reference expansion, Trello sync, or changed-file impact reports. | `npx @dotdotgod/cli validate .` |
+| [`@dotdotgod/claude-code`](packages/claude-code/README.md) | You use Claude Code and want `/dd:*` commands plus dotdotgod skills. | Install the Claude Code plugin package. |
+| [`@dotdotgod/codex`](packages/codex/README.md) | You use Codex and want dotdotgod skills plus `dd:*` trigger phrases. | Install the Codex package or plugin resources. |
+| [`@dotdotgod/trello-power-up`](packages/trello-power-up/README.md) | You maintain the Trello docs-sync Power-Up frontend for this repository. | Preview the static frontend locally. |
+
+## Quick Start
+
+### Initialize another project with Pi
+
+```bash
+pi install npm:@dotdotgod/pi
+```
+
+Then open Pi in the target repository and ask:
+
+```text
+Initialize this project with dotdotgod.
+```
+
+The initializer creates or normalizes the project-memory scaffold:
+
+```text
+AGENTS.md                    # canonical instructions for all coding agents
+CLAUDE.md                    # thin Claude Code entrypoint pointing to AGENTS.md
+CODEX.md                     # thin Codex entrypoint pointing to AGENTS.md
+docs/
+  README.md                  # docs map and naming/index rules
+  spec/README.md             # product behavior and requirements index
+  arch/README.md             # architecture and code-convention index
+  test/README.md             # verification strategy and smoke-test index
+  plan/README.md             # active local task plans, ignored by git
+  archive/README.md          # completed-work history map, ignored by git
+```
+
+Validate the initialized project:
+
+```bash
+npx @dotdotgod/cli validate .
+```
+
+### Use only the CLI
+
+```bash
+npx @dotdotgod/cli init .
+npx @dotdotgod/cli validate .
+npx @dotdotgod/cli graph impact . --changed <path> --compact
+```
+
+## What dotdotgod Helps Agents Answer
+
+Dotdotgod keeps a small set of high-signal project files and graph metadata so an agent can answer:
+
+1. **What should I load first?**
+   - Start from `AGENTS.md`, thin agent entrypoints, README indexes, specs, architecture notes, test docs, active plans, and the archive map.
+2. **What is related to this change?**
+   - Use `dotdotgod graph impact` to find likely specs, tests, docs, commands, and neighboring files to review.
+3. **What should I verify before handoff?**
+   - Use docs validation, traceability checks, package tests, package dry-runs, or repository verification commands based on the changed surface.
+
+## Changed-File Impact Example
+
 ```bash
 $ dotdotgod graph impact . --changed packages/cli/src/core.mjs --compact
 ```
@@ -21,169 +93,53 @@ files:
 - packages/pi/extensions/plan-mode/index.ts (45; implemented_by, semantic_similarity)
 ```
 
-`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant.
+`graph impact` ranks related docs, tests, architecture notes, config docs, source files, and commands. The output includes reasons so agents can inspect the right evidence instead of scanning broadly.
 
-Dotdotgod is a project-memory system for AI coding agents. It helps a repository answer three practical questions:
+## Core Concepts in Plain Language
 
-- What project context should an agent load first?
-- Which docs, tests, commands, and source files should be checked after a change?
-- Which validation or repair command should run before handoff?
+- **Project memory:** durable files and metadata that agents can reuse across sessions.
+- **Memory areas:** configured document roles such as behavior truth, architecture rationale, verification knowledge, active task intent, and archive history.
+- **Traceability:** links from behavior docs to source, tests, related docs, and verification commands.
+- **Load snapshot:** a bounded project map for the first context pass.
+- **Impact graph:** a local cache that ranks likely related files after a change.
 
-Repository: <https://github.com/dotdotgod/dotdotgod-kit>
-
-## When to Use dotdotgod
-
-Use dotdotgod when a project needs durable context for coding agents, not another chat transcript. It is designed for repositories where specs, architecture notes, tests, plans, archives, and package metadata should guide future work.
-
-| Need | Start with |
-| --- | --- |
-| Add the project-memory scaffold to a repo | `dotdotgod init .` |
-| Check docs, project-memory structure, traceability, links, and optional index freshness | `dotdotgod validate .` |
-| Repair generated traceability links and compact traceability JSON | `dotdotgod traceability links . --write` |
-| See what else to review after changing a file | `dotdotgod graph impact . --changed <path>` |
-| Run this repository's full quality gate before release-style handoff | `pnpm run verify` |
-
-For the detailed workflow diagram, docs management rules, graph sources, and memory categories, see [Context mechanics](docs/concept/CONTEXT_MECHANICS.md) and [Context curation](docs/concept/CONTEXT_CURATION.md). For an evidence-backed comparison, see [`docs/concept/GRAPHIFY_COMPARISON.md`](docs/concept/GRAPHIFY_COMPARISON.md).
-
-## Core Idea
-
-Dotdotgod keeps agent context quality high through two maintained surfaces:
-
-1. **Explicit knowledge-graph links for impact quality.** README indexes, Markdown links, behavior traceability blocks, memory-area metadata, package metadata, commands, tests, and deterministic routing hints are maintained as project artifacts. Agents use and update those links while planning, implementing, verifying, and archiving work.
-2. **Fixed load context for baseline quality.** `AGENTS.md`, thin agent entrypoints, docs indexes, specs, architecture notes, test docs, active plans, and the archive map give every supported agent a predictable first-pass memory surface.
-
-The graph is not a giant opaque report. It is a local cache derived from explicit project files, and it points agents back to bounded docs, tests, source, commands, and package resources they can inspect. The docs structure is not just scaffolding; it is the stable load interface that keeps product intent, design rationale, verification standards, current plans, and historical outcomes in durable places.
+The full graph stays local in `.dotdotgod/`. Agent-facing commands return compact summaries with omitted counts and reasons.
 
 ## How the Maintained Graph Stays Useful
 
-`dotdotgod graph impact` works because the repository keeps meaningful links fresh:
+`dotdotgod graph impact` works best when the repository keeps meaningful links fresh:
 
-- **Traceability blocks** connect behavior specs to source, tests, related docs, and verification commands.
-- **README indexes** act as routing tables for agents and graph extraction.
-- **Memory areas** mark files as rules, project overview, behavior truth, architecture rationale, verification knowledge, active task intent, or archive history.
-- **Plans and archives** turn current work and completed decisions into reusable project memory.
-- **Package/source/test metadata** adds deterministic edges without asking the agent to read every file.
+- README indexes route agents to the right docs.
+- Traceability blocks connect behavior specs to implementation, tests, related docs, and verification commands.
+- Memory-area metadata tells agents which files are stable project truth, local active plans, or historical archive material.
+- Package metadata, imports, exports, commands, and tests add deterministic graph edges.
+- Plans and archives preserve current intent and completed decisions.
 
-The quality target is simple: when a file changes, impact output should quickly show the docs, tests, commands, and neighboring files that deserve review. If impact results become noisy, the fix is to improve the maintained links or split mixed-responsibility files—not to dump more context into the agent.
+If impact results become noisy, improve the maintained links or split mixed-responsibility files instead of adding more context to the prompt.
 
-## What Initialization Creates
+## Why This Structure Helps
 
-The initializer gives a project a predictable memory surface that any supported agent can load:
+- **Repeatable loading:** every supported agent starts from the same rules and docs map.
+- **Less context noise:** agents read targeted docs instead of broad file lists or old chat history.
+- **Better impact precision:** explicit links explain why a file is related.
+- **Safer execution:** planning happens before source changes, and implementation follows explicit steps.
+- **Reusable history:** active plans and archived outcomes survive compaction and handoff.
+- **Bounded archive use:** `docs/archive/README.md` stays the history map; archive bodies are read only when targeted.
 
-```text
-AGENTS.md                    # canonical instructions for all coding agents
-CLAUDE.md                    # thin Claude Code entrypoint pointing to AGENTS.md
-CODEX.md                     # thin Codex entrypoint pointing to AGENTS.md
-docs/
-  README.md                  # docs map and naming/index rules
-  spec/README.md             # product behavior and requirements index
-  arch/README.md             # architecture and code-convention index
-  test/README.md             # verification strategy and smoke-test index
-  plan/README.md             # active local task plans, ignored by git
-  archive/README.md          # completed-work history map, ignored by git
-```
-
-This structure separates stable project truth from temporary chat state. Specs explain what should happen, architecture explains why it is built that way, tests explain how to verify it, plans capture current intent before implementation, and archive indexes make completed decisions discoverable later. The workflow treats documentation as part of product execution, not as after-the-fact notes.
-
-## Why Loading Works Better with This Structure
-
-When an agent runs `/dd:load`, `dd:load`, or `dotdotgod load-snapshot`, it does not need to rediscover the repository from scratch. It can follow the same durable map every time:
-
-1. Read the baseline instructions and docs indexes.
-2. Use the bounded CLI snapshot for cache status, graph size, memory areas, communities, and archive policy.
-3. Inspect only the relevant spec, architecture, test, or active plan files.
-4. Use `docs/archive/README.md` as the history map and read archived bodies only when a task needs a targeted past decision.
-
-The result is a project load that is repeatable, bounded, and task-directed. New sessions start with the same rules and context map, long-running work survives compaction, and agent handoffs do not depend on remembering what happened in a previous chat.
-
-## Why This Structure Is the Strength
-
-Dotdotgod's advantage is not that it creates folders once. The advantage is that the project keeps a small set of meaning-rich files and links maintained over time.
-
-- **Impact context stays reviewable:** explicit links let `graph impact` explain why a spec, test, doc, command, or source file is related.
-- **Load context stays repeatable:** every agent can start from the same rules, indexes, memory areas, active plans, and archive map.
-- **Retrieval starts with intent:** behavior questions route to specs, design questions route to architecture, verification questions route to tests, current-work questions route to plans, and past-decision questions route through the archive map.
-- **Active and historical memory stay separate:** `docs/plan` carries current work; `docs/archive/README.md` maps completed work without loading every old plan body.
-- **Graph/cache output stays bounded:** the full graph remains local in `.dotdotgod/`; agents receive compact snapshots, memory-area summaries, omitted counts, schema/cache metadata, impact groups, and archive policy.
-- **Memory policy can be explicit:** projects can keep the default shared/local and fresh/stale memory areas or define them in `dotdotgod.config.json`.
-
-## What Context Curation Improves
-
-- **Less context noise:** important constraints are not buried under chat history and repeated tool output.
-- **Better impact precision:** explicit maintained links make `graph impact` point to likely docs, tests, commands, source, and config with inspectable reasons.
-- **Better load precision:** the fixed docs structure gives agents a high-signal baseline map before targeted reads.
-- **Better continuity:** active plans and archived outcomes survive across sessions, compaction, and agent handoff.
-- **Fewer repeated explanations:** canonical instructions and docs become reusable project memory.
-- **Less speculative work:** agents start from specs, architecture, tests, and project rules before changing code.
-- **Safer execution:** planning happens before source changes, and execution follows explicit steps.
-- **Reusable history:** completed plans and reports remain available as future context.
+For the detailed model, read [Context curation](docs/concept/CONTEXT_CURATION.md), [Context mechanics](docs/concept/CONTEXT_MECHANICS.md), and [Measurement design](docs/concept/MEASUREMENT_DESIGN.md).
 
 ## Current Capabilities
 
-- **Project scaffold:** initialize `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, docs indexes, local `docs/plan`, and `docs/archive` conventions.
-- **Read-only project load:** `/dd:load` and adapter load workflows prefer a bounded `dotdotgod load-snapshot` map before reading individual docs.
-- **Safe planning loop:** Pi Plan Mode restricts source/config mutation until a durable plan exists, tracks explicit `[DONE:n]` execution markers, and archives completed work.
-- **Unified CLI:** `@dotdotgod/cli` owns validation, cache/index/status, load snapshots, configurable memory-area summaries, graph impact queries, and community summaries.
-- **Generic indexing:** indexing is gitignore-aware and supports common plain-text docs, source, scripts, config, web, and infrastructure files across repository shapes.
-- **Bounded graph output:** full graph data stays in `.dotdotgod/`; agent-facing commands return compact summaries, omitted counts, schema/cache metadata, and archive inclusion policy.
-- **Cross-agent adapters:** Pi, Claude Code, and Codex share the same docs-first workflow while respecting each agent's native extension model.
+- Initialize the shared docs-first project scaffold.
+- Validate docs structure, links, traceability blocks, config, and optional index freshness.
+- Build and inspect the local `.dotdotgod/` graph/cache.
+- Load bounded project-memory snapshots for agents.
+- Expand explicit `[[...]]` references and high-signal fuzzy references.
+- Review changed-file impact before broad tests, commits, pushes, or publishing.
+- Use Pi Plan Mode for safe planning, execution tracking, impact reminders, and archive handoff.
+- Package the same conventions for Pi, Claude Code, Codex, and CLI-only workflows.
 
-## How dotdotgod Differs from Graphify-Style Memory
-
-Graphify-style systems can be useful when a large corpus is indexed once and queried many times, especially when broad semantic or multimodal extraction is valuable. Dotdotgod focuses on a different strength: making the project itself declare the memory structure agents should retrieve from.
-
-- **Structure before extraction:** dotdotgod starts by creating `AGENTS.md` and docs indexes, so graph nodes already have project meaning such as spec, architecture, test, active plan, or archive map through deterministic memory-area metadata.
-- **Curated routing before raw retrieval:** README indexes and docs areas become `routes_to` and `belongs_to_area` graph edges that narrow the search path before the agent reads source files or old archive bodies.
-- **Layered memory, not one big report:** project map and bounded snapshot are the default layer; source files and archive bodies are targeted-read layers.
-- **Gitignore-aware scope:** the index follows project visibility rules and excludes dependency/generated/cache paths by default.
-- **Archive bodies excluded by default:** `docs/archive/README.md` remains the history map, while completed plan/report bodies are read only when targeted.
-- **Deterministic first pass:** current graph extraction uses local file metadata, Markdown links/headings, package metadata, imports, exports, commands, tests, and events.
-- **Token saving is not the product:** reduced context is a side effect; the goal is giving agents the right memory at the right time.
-
-Read the detailed concept docs: [Context curation](docs/concept/CONTEXT_CURATION.md), [Context mechanics](docs/concept/CONTEXT_MECHANICS.md), and [Measurement design](docs/concept/MEASUREMENT_DESIGN.md).
-
-## Install the Adapter You Need
-
-| Package | Use it for |
-| --- | --- |
-| [`@dotdotgod/pi`](packages/pi/README.md) | Pi project initializer skill, plan mode, and project loading extensions. |
-| [`@dotdotgod/cli`](packages/cli/README.md) | CLI for validation, project memory snapshots, and graph indexing. |
-| [`@dotdotgod/claude-code`](packages/claude-code/README.md) | Claude Code `dd:*` commands and project memory skills. |
-| [`@dotdotgod/codex`](packages/codex/README.md) | Codex project memory skills and `dd:*` trigger phrases. |
-
-For current published versions, see each package page or the npm registry.
-
-## Quick Start
-
-### Use dotdotgod in another project
-
-Install the Pi adapter:
-
-```bash
-pi install npm:@dotdotgod/pi
-```
-
-Then start Pi in the target repository and run the initializer skill by asking:
-
-```text
-Initialize this project with dotdotgod.
-```
-
-The bundled `project-initializer` skill creates or normalizes `AGENTS.md`, thin `CLAUDE.md`/`CODEX.md`, `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive`. When the CLI is already available, the same scaffold can be created with:
-
-```bash
-npx @dotdotgod/cli init .
-```
-
-If the CLI is not available, the initializer uses its bundled shell fallback and the README indexes still give agents a working project-memory map. That scaffold gives later `/dd:load` and `/plan` turns a stable structure.
-
-Check the initialized docs and project memory:
-
-```bash
-npx @dotdotgod/cli validate .
-```
-
-### Develop this repository
+## Develop This Repository
 
 Use source-checkout commands in this repository:
 
@@ -193,7 +149,13 @@ node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-in
 pnpm run verify
 ```
 
-Run `pnpm run pack:dry-run` or `.husky/pre-push` only when you need a release-style package dry-run or hook simulation. To test the Pi adapter from a checkout:
+Run package dry-runs before release-style handoff:
+
+```bash
+pnpm run pack:dry-run
+```
+
+Test the Pi adapter from a checkout:
 
 ```bash
 pi install /path/to/dotdotgod/packages/pi
@@ -201,7 +163,7 @@ pi install /path/to/dotdotgod/packages/pi
 
 ## Documentation
 
-Start with the repository documentation map at [`docs/README.md`](docs/README.md), then use the local area indexes for behavior, verification, architecture, reports, and concepts.
+Start with the repository documentation map at [`docs/README.md`](docs/README.md), then use the local area indexes.
 
 Area indexes:
 
