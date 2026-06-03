@@ -292,6 +292,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       planArtifact.suppressChoiceForInlineRequest = false;
       contextShaping.clearQueuedWork();
       pi.setActiveTools(NORMAL_MODE_TOOLS);
+      ctx.ui.setStatus("plan-mode", undefined);
       ctx.ui.notify("Plan mode disabled. Full access restored.");
     }
     updateStatus(ctx);
