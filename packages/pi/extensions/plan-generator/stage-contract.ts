@@ -44,10 +44,15 @@ Keep README.md as the overview/index, and link each support file with a one-line
 Use support files for implementation-part detail such as CLI changes, extension/runtime changes, tests, docs, migration, or rollout.
 Do not put final user-facing plan content only in .dotdotgod-plan/.`;
 
+export const PLAN_GENERATOR_USER_DECISION_INSTRUCTION = `Do not silently carry unresolved user decisions forward.
+If a missing choice requires the user to decide scope, behavior, product policy, risk acceptance, or implementation direction, stop the stage and ask the user a concrete question with options instead of writing only "TBD", "undecided", or "decision needed" in the durable plan.
+Open questions are allowed only when they are research gaps the agent can resolve by reading project context; unresolved user decisions block stage advancement.`;
+
 export const STAGE_04_IMPLEMENTATION_DESIGN_INSTRUCTION = `Stage 04 must be an implementation design, not a generic project plan.
 For each atomic task, include concrete code touchpoints: files, functions/types/classes/commands, expected control flow, state/data changes, edge cases, tests, and completion criteria.
 Atomic Tasks and Edge Cases must be handoff-ready: a different agent should be able to implement the same work without this chat history and without guessing omitted decisions.
-If exact code cannot be determined, record the specific discovery gap and the next read needed.`;
+If exact code cannot be determined, record the specific discovery gap and the next read needed.
+${PLAN_GENERATOR_USER_DECISION_INSTRUCTION}`;
 
 export const STAGE_04_HANDOFF_READY_EVALUATION_RULES = `Stage 04 pass/fail quality bar:
 - Atomic Tasks must be specific enough to assign immediately, with no missing implementation decisions or vague verbs such as "update logic" without named code touchpoints.
@@ -133,6 +138,8 @@ Include durable plan content for:
 - Stage 03 construction checklist evidence for Findings, Risks, Open questions, and Extension points.
 
 Stage 03 must record actual findings from inspected code/docs, not only a list of files to inspect.
+Separate agent-resolvable research questions from user decisions. If any open question requires the user to choose scope, behavior, risk acceptance, or implementation direction, ask the user and stop instead of advancing.
+${PLAN_GENERATOR_USER_DECISION_INSTRUCTION}
 
 The .dotdotgod-plan/03_DISCOVERY.md file is internal stage state context, not the final user-facing plan.
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
@@ -152,9 +159,10 @@ Return only JSON shaped as:
 }
 
 Rules:
-- pass: the durable plan artifact has enough Findings, Risks, Open Questions, and Stage 03 construction checklist evidence.
+- pass: the durable plan artifact has enough Findings, Risks, Open Questions, and Stage 03 construction checklist evidence, with no unresolved user decisions.
 - blocked: user input or project context is missing and the assistant cannot safely continue without it.
 - retry: the assistant can repair the Stage 03 response by trying again without asking the user.
+- Treat unresolved choices about scope, behavior, risk acceptance, or implementation direction as blocked user input, not as passable Open Questions.
 - Treat .dotdotgod-plan/03_DISCOVERY.md as stage state context, not the final durable plan artifact.
 - Do not include markdown fences or prose outside JSON.`;
 
@@ -221,9 +229,10 @@ Return only JSON shaped as:
 }
 
 Rules:
-- pass: the durable plan artifact has enough ${options.requiredSections.join(", ")} content${options.nextStage ? " to continue to the next stage" : " to complete the staged plan"}.
+- pass: the durable plan artifact has enough ${options.requiredSections.join(", ")} content${options.nextStage ? " to continue to the next stage" : " to complete the staged plan"}, with no unresolved user decisions.
 - blocked: user input or project context is missing and the assistant cannot safely continue without it.
 - retry: the assistant can repair this stage by trying again without asking the user.
+- Treat unresolved choices about scope, behavior, risk acceptance, or implementation direction as blocked user input; do not pass a stage that only records them as undecided/TBD.
 - Treat .dotdotgod-plan files as stage state context, not the final durable plan artifact.
 - Do not include markdown fences or prose outside JSON.`;
 }
