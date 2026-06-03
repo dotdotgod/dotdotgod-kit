@@ -2,82 +2,80 @@
 
 [![npm version](https://img.shields.io/npm/v/@dotdotgod/codex.svg)](https://www.npmjs.com/package/@dotdotgod/codex) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod--kit-181717?logo=github)](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/codex) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](../../LICENSE)
 
-> **Change a file, know what else must be checked.**
+Codex adapter for dotdotgod's docs-first project-memory workflow.
 
-```bash
-$ dotdotgod graph impact . --changed packages/cli/src/core.mjs --compact
+Use this package when you want Codex to initialize shared project docs, load bounded repository context, plan from durable docs before implementation, and review changed files with graph-impact evidence before handoff.
+
+## Start Here
+
+Codex environments may not expose the same slash-command model as Pi or Claude Code. When slash commands are unavailable, use dotdotgod trigger phrases in normal chat:
+
+```text
+dd:init
 ```
 
 ```text
-docs:
-- docs/spec/REFERENCE_EXPANSION.md (91; incoming:implemented_by, semantic_similarity)
-- docs/test/REFERENCE_EXPANSION.md (65.3; verified_by, semantic_similarity)
-- docs/spec/LOAD_PROJECT.md (35.8; related_doc, semantic_similarity)
-
-tests:
-- packages/cli/test/core.test.mjs (78.6; semantic_similarity, incoming:semantic_similarity, verified_by)
-- packages/cli/test/e2e.test.mjs (51.4; verified_by)
-
-files:
-- packages/cli/src/core.mjs (100; changed-file)
-- packages/pi/extensions/plan-mode/index.ts (45; implemented_by, semantic_similarity)
+dd:load
 ```
 
-`graph impact` ranks the specs, tests, architecture notes, config docs, and source files most likely to matter for a change. `--compact` keeps the result agent-facing: grouped by docs/tests/files and annotated with the reasons each item is likely relevant. It uses the project-memory graph built from Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, and deterministic routing hints.
+```text
+dd:plan Update the API migration plan.
+```
 
-Codex adapter for dotdotgod's context curation workflow. It packages reusable skills that help Codex initialize the fixed load-context surface, load bounded project memory, plan from explicit maintained graph links before implementation, and review changed files with graph-impact evidence before handoff.
+```text
+dd:impact
+```
 
-## What Gets Better?
+The bundled skills interpret those phrases as command-like workflow requests.
 
-- Codex can start from `AGENTS.md` and the dotdotgod docs map.
-- Load guidance prefers `dotdotgod load-snapshot <root> --json` when the CLI is available, then falls back to README-index reads.
-- Codex can use docs structure as retrieval intent: specs for behavior, architecture for rationale, tests for verification, plans for current work, and archive indexes for past decisions.
-- Planning guidance encourages agents to keep README routes, traceability blocks, plans, and archives current so `graph impact` remains useful.
-- Planning work captures current intent in `docs/plan/<task-slug>/README.md` before implementation.
-- Impact review guidance uses `dotdotgod graph impact` to identify affected specs, tests, docs, and files before broad verification or handoff.
-- Document clarity guidance improves project docs using memory-area roles and optional config guidance while preserving behavior contracts.
-- Completed plans and temporary reports use the same archive structure as Pi and Claude Code, turning outcomes into future context.
-- `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` can be used as command-like trigger phrases where direct slash commands are unavailable.
+## What It Adds to Codex
 
-## Shared Memory and Traceability Model
-
-By default, `docs/spec/**` has two roles: it is stable shared/fresh project memory, and it is the traceability-enforced behavior-spec path. These concepts are independent:
-
-- `memory.areas` customizes memory classification, freshness, local/shared scope, priorities, archive-body inclusion, and optional document-area `description`/`clarify` guidance.
-- `traceability.required` / `traceability.exclude` customizes which markdown paths must end with `json dotdotgod` blocks.
-
-`docs/archive/README.md` is the history map. Archive bodies remain targeted historical memory and should not be read broadly by default.
+| Skill or trigger | Use it for | Result |
+| --- | --- | --- |
+| `dd:init` / `project-initializer` | Start a repository with dotdotgod conventions. | Creates or normalizes `AGENTS.md`, thin agent entrypoints, docs indexes, active-plan space, and archive map. |
+| `dd:load` / `project-load` | Load project memory read-only. | Prefers `dotdotgod load-snapshot <root> --json`, then falls back to README-index reads. |
+| `dd:plan` / `doc-first-planning` | Plan before implementation. | Captures current intent in `docs/plan/<task-slug>/README.md`. |
+| `dd:impact` / `impact-review` | Review changed files before verification or handoff. | Uses `dotdotgod graph impact` to identify likely related docs, tests, commands, and source files. |
+| `document-clarify` | Improve docs wording without changing behavior contracts. | Clarifies README/spec/test/arch/plan/archive docs using memory-area roles. |
 
 ## Included
 
 - Codex plugin manifest: `.codex-plugin/plugin.json`
 - Skills:
-  - `project-load`: load project memory read-only.
-  - `doc-first-planning`: plan from docs before implementation.
-  - `project-initializer`: initialize shared agent docs and docs folders, using `dotdotgod init` when available and the bundled fallback when not.
-  - `impact-review`: review changed files with graph-impact evidence before broad verification or handoff.
-  - `document-clarify`: clarify project docs using memory-area metadata and default document roles.
+  - `project-load`
+  - `doc-first-planning`
+  - `project-initializer`
+  - `impact-review`
+  - `document-clarify`
 
-Codex may not expose the same slash-command model as Pi or Claude Code. Treat `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` as command-like trigger phrases for these skills unless the active Codex plugin runtime provides direct command registration.
-
-## Optional Hooks
-
-Codex can run lifecycle hooks from trusted Codex configuration layers. dotdotgod does not require hooks: the bundled skills and `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` trigger phrases work without them.
-
-Use hooks only when you want opt-in reminders or validation around the same workflow. Current Codex docs keep plugin-bundled hooks opt-in behind `plugin_hooks`, so this package defaults to skills and documented trusted hook examples instead of surprise runtime hooks. See [`hooks/README.md`](hooks/README.md) for advisory examples and stricter plan-safety patterns.
-
-## Shared Contract
+## Shared Project-Memory Contract
 
 - `AGENTS.md` remains canonical.
 - `CODEX.md` stays thin and points to `AGENTS.md`.
+- Specs describe behavior and requirements.
+- Architecture docs explain rationale, boundaries, and conventions.
+- Test docs explain verification strategy, regression coverage, fixtures, and commands.
 - Active plans use `docs/plan/<task-slug>/README.md`.
 - Completed plans move to `docs/archive/plan/<task-slug>/`.
 - Temporary reports move to `docs/archive/report/<report-slug>/`.
 - `docs/archive/README.md` is the archive map; archive bodies should be read only when targeted.
 
-## Local Development
+## Memory Areas and Traceability
 
-Run package checks:
+By default, `docs/spec/**` has two separate roles:
+
+- It is stable shared project memory for product behavior and requirements.
+- It is the traceability-enforced path for behavior specs.
+
+Projects can customize memory roles with `memory.areas`, and can customize traceability requirements with `traceability.required` and `traceability.exclude`.
+
+## Optional Hooks
+
+Codex can run lifecycle hooks from trusted Codex configuration layers. dotdotgod does not require hooks: the bundled skills and `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` trigger phrases work without them.
+
+Use hooks only when you want opt-in reminders or validation around the same workflow. Current Codex docs keep plugin-bundled hooks opt-in behind `plugin_hooks`, so this package defaults to skills and documented trusted hook examples instead of surprise runtime hooks. See [`hooks/README.md`](hooks/README.md) for advisory examples.
+
+## Local Development
 
 ```bash
 pnpm --filter @dotdotgod/codex run verify
@@ -86,8 +84,8 @@ pnpm --filter @dotdotgod/codex run pack:dry-run
 
 ## Learn More
 
-See the [root README](../../README.md), [GitHub repository](https://github.com/dotdotgod/dotdotgod-kit), [`docs/concept/CONTEXT_CURATION.md`](../../docs/concept/CONTEXT_CURATION.md), [`docs/concept/CONTEXT_MECHANICS.md`](../../docs/concept/CONTEXT_MECHANICS.md), [`docs/spec/MEMORY_AREA_CONFIG.md`](../../docs/spec/MEMORY_AREA_CONFIG.md), and [`docs/spec/TRACEABILITY_CONFIG.md`](../../docs/spec/TRACEABILITY_CONFIG.md).
+See the [root README](../../README.md), [GitHub repository](https://github.com/dotdotgod/dotdotgod-kit), [Context curation](../../docs/concept/CONTEXT_CURATION.md), [Context mechanics](../../docs/concept/CONTEXT_MECHANICS.md), [Memory area config](../../docs/spec/MEMORY_AREA_CONFIG.md), and [Traceability config](../../docs/spec/TRACEABILITY_CONFIG.md).
 
 ## Compared with Graphify-Style Memory
 
-This adapter packages reusable workflow skills. It guides Codex to prefer a bounded dotdotgod load snapshot when available, avoid broad archive scans, and follow README indexes before reading raw files. The strength is structured retrieval from explicit project-maintained links and the fixed docs surface, not a giant graph report.
+This adapter packages reusable workflow skills. It guides Codex to prefer a bounded dotdotgod load snapshot, avoid broad archive scans, and follow README indexes before reading raw files. The strength is structured retrieval from explicit project-maintained links, not a giant graph report.
