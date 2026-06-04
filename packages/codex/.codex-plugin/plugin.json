@@ -1,6 +1,6 @@
 {
   "name": "dotdotgod",
-  "version": "0.1.41",
+  "version": "0.1.42",
   "description": "Dotdotgod project memory workflows for Codex: initialize shared docs, load project memory, plan implementation work doc-first, review graph impact, and clarify documentation.",
   "author": {
     "name": "dotdotgod"
@@ -20,7 +20,10 @@
     "longDescription": "Reusable Codex skills for shared AGENTS.md instructions, docs/spec docs/test docs/arch docs/plan docs/archive workflows, doc-first implementation planning, graph-impact review, and config-aware documentation clarity.",
     "developerName": "dotdotgod",
     "category": "Productivity",
-    "capabilities": ["Interactive", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
     "defaultPrompt": [
       "Load this project's dotdotgod memory.",
       "Plan this change using docs/spec, docs/test, and docs/arch first.",

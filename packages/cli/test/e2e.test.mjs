@@ -19,7 +19,7 @@ function createFixture() {
   writeFileSync(join(root, 'README.md'), '# Fixture\n');
   writeFileSync(join(root, 'docs/README.md'), '# Docs\n[Spec](spec/README.md)\n');
   writeFileSync(join(root, 'docs/spec/README.md'), '# Spec\n');
-  writeFileSync(join(root, 'docs/spec/APP.md'), '# Routing Policy App\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["packages/app/index.test.mjs", "docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "verificationCommands": ["node --test packages/app/index.test.mjs"]\n}\n```\n');
+  writeFileSync(join(root, 'docs/spec/APP.md'), '# Routing Policy App\n\n## Routing Contract\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["packages/app/index.test.mjs", "docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "verificationCommands": ["node --test packages/app/index.test.mjs"],\n  "contracts": [{\n    "id": "APP-ROUTING-001",\n    "title": "Routing policy contract",\n    "sections": ["Routing Contract"],\n    "implementedBy": ["packages/app/index.mjs"],\n    "verifiedBy": ["packages/app/index.test.mjs"],\n    "relatedDocs": ["docs/arch/README.md"],\n    "verificationCommands": ["node --test packages/app/index.test.mjs"]\n  }]\n}\n```\n');
   writeFileSync(join(root, 'docs/test/README.md'), '# Tests\n');
   writeFileSync(join(root, 'docs/arch/README.md'), '# Architecture\n');
   writeFileSync(join(root, 'docs/arch/ROUTING_POLICY_NOTES.md'), '# Routing Policy Notes\n\nSemantic-only routing policy notes.\n');
@@ -432,7 +432,7 @@ describe('dotdotgod CLI e2e', () => {
 
   it('checks and writes generated traceability links and JSON traceability blocks without counting them against markdown budgets', () => {
     const root = createFixture();
-    writeFileSync(join(root, 'docs/spec/APP.md'), '# Routing Policy App\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["packages/app/index.test.mjs", "docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "verificationCommands": ["node --test packages/app/index.test.mjs"]\n}\n```\n');
+    writeFileSync(join(root, 'docs/spec/APP.md'), '# Routing Policy App\n\n## Routing Contract\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["packages/app/index.test.mjs", "docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "verificationCommands": ["node --test packages/app/index.test.mjs"],\n  "contracts": [{\n    "id": "APP-ROUTING-001",\n    "title": "Routing policy contract",\n    "sections": ["Routing Contract"],\n    "implementedBy": ["packages/app/index.mjs"],\n    "verifiedBy": ["packages/app/index.test.mjs"],\n    "relatedDocs": ["docs/arch/README.md"],\n    "verificationCommands": ["node --test packages/app/index.test.mjs"]\n  }]\n}\n```\n');
 
     const missing = run(['traceability', 'links', root, '--check', '--json']);
     assert.equal(missing.status, 1);
@@ -443,6 +443,7 @@ describe('dotdotgod CLI e2e', () => {
     const spec = readFileSync(join(root, 'docs/spec/APP.md'), 'utf8');
     assert.match(spec, /dotdotgod:traceability-links:start/);
     assert.match(spec, /\.\.\/\.\.\/packages\/app\/index\.mjs/);
+    assert.match(spec, /- Contracts:\n  - `APP-ROUTING-001` — Routing policy contract \(sections: 1, impl: 1, verify: 1, docs: 1, commands: 1\)/);
     assert.equal(json(run(['traceability', 'links', root, '--check', '--json'])).ok, true);
 
     const bloated = spec.replace('"verificationCommands":["node --test packages/app/index.test.mjs"]', `"verificationCommands":[${JSON.stringify('node --test packages/app/index.test.mjs ' + 'x'.repeat(5000))}]`);
@@ -456,6 +457,17 @@ describe('dotdotgod CLI e2e', () => {
     const invalidValidate = run(['validate', root, '--include-local-memory', '--json']);
     assert.equal(invalidValidate.status, 1);
     assert(JSON.parse(invalidValidate.stdout).errors.some((error) => error.code === 'TRACEABILITY_LINKS_MARKER_COUNT'));
+  });
+
+  it('rejects malformed JSON-only contract traceability metadata', () => {
+    const root = createFixture();
+    const specPath = join(root, 'docs/spec/APP.md');
+    const content = readFileSync(specPath, 'utf8').replace('"title":"Routing policy contract"', '"title":"Routing policy contract","unknown":true');
+    writeFileSync(specPath, content);
+    const result = run(['validate', root, '--include-local-memory', '--json']);
+    assert.equal(result.status, 1);
+    const payload = JSON.parse(result.stdout);
+    assert(payload.errors.some((error) => error.code === 'TRACEABILITY_INVALID_FIELD' && /contracts\[0\]\.unknown/.test(error.message)));
   });
 
   it('validates archived generator checkpoint state without naming errors', () => {
@@ -562,6 +574,11 @@ describe('dotdotgod CLI e2e', () => {
     assert(semanticOnly.scoreBreakdown.semantic > 0);
     assert(impact.impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/APP.md'));
     assert(impact.impact.groups.tests.items.some((item) => item.id === 'file:packages/app/index.test.mjs'));
+    const contract = itemById(impact, 'contract:docs/spec/APP.md#APP-ROUTING-001');
+    assert(contract);
+    assert.equal(contract.contractId, 'APP-ROUTING-001');
+    assert.equal(contract.title, 'Routing policy contract');
+    assert(impact.impact.groups.contracts.items.some((item) => item.id === contract.id));
     assert(impact.related.some((item) => item.id === 'file:packages/app/index.mjs' && item.retrieval?.signals.includes('reason:changed-file')));
     assert(!impact.related.some((item) => item.id.startsWith('file:docs/archive/plan/')));
     assert.equal(typeof impact.impact.omittedRelated, 'number');
@@ -572,6 +589,8 @@ describe('dotdotgod CLI e2e', () => {
     assert.match(ymlImpactResult.stdout, /output: "yml"/);
     assert.match(ymlImpactResult.stdout, /changed: "packages\/app\/index\.mjs"/);
     assert.match(ymlImpactResult.stdout, /docs:\n      omitted:/);
+    assert.match(ymlImpactResult.stdout, /contracts:\n      omitted:/);
+    assert.match(ymlImpactResult.stdout, /contract_id: "APP-ROUTING-001"/);
     assert.match(ymlImpactResult.stdout, /path: "docs\/spec\/APP\.md"/);
     assert.match(ymlImpactResult.stdout, /recommended_actions:/);
     assert(Buffer.byteLength(ymlImpactResult.stdout) < Buffer.byteLength(rawImpactResult.stdout));
@@ -584,6 +603,8 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(compactText.status, 0, compactText.stderr || compactText.stdout);
     assert.match(compactText.stdout, /graph impact compact:/);
     assert.match(compactText.stdout, /docs:/);
+    assert.match(compactText.stdout, /contracts:/);
+    assert.match(compactText.stdout, /docs\/spec\/APP\.md#APP-ROUTING-001/);
 
     const removedQuery = run(['graph', 'query', root, '--changed', 'packages/app/index.mjs', '--compact', '--json']);
     assert.equal(removedQuery.status, 2);

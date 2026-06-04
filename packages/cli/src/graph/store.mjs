@@ -14,7 +14,7 @@ function graphNodeShard(node) {
 }
 
 function graphEdgeShard(edge) {
-  if (edge.relation === 'links_to' || edge.relation === 'routes_to' || edge.relation === 'contains_heading' || edge.relation === 'implemented_by' || edge.relation === 'verified_by' || edge.relation === 'related_doc' || edge.relation === 'verification_command' || SEMANTIC_RELATIONS.has(edge.relation)) return 'docs-links';
+  if (edge.relation === 'links_to' || edge.relation === 'routes_to' || edge.relation === 'contains_heading' || edge.relation === 'implemented_by' || edge.relation === 'verified_by' || edge.relation === 'related_doc' || edge.relation === 'verification_command' || edge.relation === 'defines_contract' || SEMANTIC_RELATIONS.has(edge.relation)) return 'docs-links';
   if (edge.relation === 'declares_package' || edge.relation === 'declares_script' || edge.relation === 'declares_bin' || edge.relation === 'depends_on' || edge.relation === 'includes_resource') return 'packages';
   return 'other';
 }

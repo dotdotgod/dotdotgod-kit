@@ -107,6 +107,37 @@ For focused behavior contracts and micro-specs, use the traceability block to ma
 
 The CLI validates traceability block shape, placement, path safety, memory-area scope, existing path targets, and command string presence. Path fields must point to shared durable files; they must not reference local-memory areas such as `docs/plan/**`, `docs/archive/**`, or custom `memory.areas[]` entries with `scope: "local"`. It does not validate semantic completeness, prove that tests fully cover every behavior, or require one test per focused contract.
 
+Large specs may add optional JSON-only `contracts[]` entries inside the same canonical block:
+
+```json
+{
+  "kind": "spec",
+  "implementedBy": ["packages/cli/src/core.mjs"],
+  "verifiedBy": ["packages/cli/test/core.test.mjs"],
+  "relatedDocs": ["docs/arch/VALIDATION_ARCHITECTURE.md"],
+  "verificationCommands": ["pnpm --filter @dotdotgod/cli test"],
+  "contracts": [{
+    "id": "TRACEABILITY-CONTRACTS-001",
+    "title": "Contract entries refine traceability",
+    "sections": ["Focused Contract Traceability"],
+    "implementedBy": ["packages/cli/src/docs/traceability.mjs"],
+    "verifiedBy": ["packages/cli/test/core.test.mjs"],
+    "relatedDocs": ["docs/test/TRACEABILITY_CONFIG.md"],
+    "verificationCommands": ["node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]
+  }]
+}
+```
+
+Contract rules:
+
+- `contracts` is optional; `contracts: []` is valid and renders no contract details.
+- Each contract requires non-empty string `id` and `title`; IDs must be unique only within the current traceability block/file.
+- `sections` is an optional string array of same-file navigation hints. Heading existence is not a hard validation rule in the initial version.
+- Contract `implementedBy`, `verifiedBy`, `relatedDocs`, and `verificationCommands` are optional, but when present they use the same validation as the top-level fields.
+- Unknown contract fields are validation errors. Unknown top-level traceability fields are not newly rejected by this contract feature.
+- Markdown comment anchors, strict heading validation, symbol references, and line references are deferred non-goals.
+- Generated Markdown adds concise contract summaries with IDs, titles, and counts rather than verbose full target lists. Contract graph nodes use file-scoped IDs such as `contract:docs/spec/TRACEABILITY_CONFIG.md#TRACEABILITY-CONTRACTS-001`, and detailed JSON/YML impact output includes contract identity while compact output stays bounded.
+
 ## Example: Move Enforcement Outside Specs
 
 ```json

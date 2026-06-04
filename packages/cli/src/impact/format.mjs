@@ -6,7 +6,7 @@ function formatCompactImpactGroup(name, group) {
   return [
     `${name}:`,
     ...items.map((item) => {
-      const label = item.path ?? item.command ?? item.name ?? item.target ?? item.id;
+      const label = item.type === 'contract' && item.path && item.contractId ? `${item.path}#${item.contractId}${item.title ? ` — ${item.title}` : ''}` : item.path ?? item.command ?? item.name ?? item.target ?? item.id;
       const reasons = (item.reasons ?? []).slice(0, 3).join(', ');
       return `- ${label} (${item.impactScore}; ${reasons})`;
     }),
@@ -16,7 +16,7 @@ function formatCompactImpactGroup(name, group) {
 export function formatCompactImpactOutput(payload, impact) {
   const refreshNote = payload.metadata.cacheRefreshed ? ', refreshed' : '';
   const lines = [`graph impact compact: ${impact.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${payload.status.status}${refreshNote} index)`];
-  for (const name of ['docs', 'tests', 'files', 'commands', 'events', 'packageResources', 'symbols']) lines.push(...formatCompactImpactGroup(name, impact.groups[name]));
+  for (const name of ['docs', 'contracts', 'tests', 'files', 'commands', 'events', 'packageResources', 'symbols']) lines.push(...formatCompactImpactGroup(name, impact.groups[name]));
   return lines.join('\n');
 }
 
@@ -37,6 +37,9 @@ function formatYmlImpactItem(item) {
   lines.push(`          type: ${ymlScalar(item.type)}`);
   lines.push(`          score: ${ymlScalar(item.impactScore)}`);
   lines.push(`          reasons: ${ymlList((item.reasons ?? []).slice(0, 6))}`);
+  if (item.contractId) lines.push(`          contract_id: ${ymlScalar(item.contractId)}`);
+  if (item.title) lines.push(`          title: ${ymlScalar(item.title)}`);
+  if (Array.isArray(item.sections) && item.sections.length > 0) lines.push(`          sections: ${ymlList(item.sections)}`);
   if (item.retrieval?.area) lines.push(`          area: ${ymlScalar(item.retrieval.area)}`);
   if (item.retrieval?.role) lines.push(`          role: ${ymlScalar(item.retrieval.role)}`);
   return lines;
@@ -68,7 +71,7 @@ export function formatYmlImpactOutput(payload, impact) {
     `    config_source: ${ymlScalar(impact.ranking?.configSource)}`,
     '  groups:',
   ];
-  for (const name of ['docs', 'tests', 'files', 'commands', 'events', 'packageResources', 'symbols']) lines.push(...formatYmlImpactGroup(name, impact.groups[name]));
+  for (const name of ['docs', 'contracts', 'tests', 'files', 'commands', 'events', 'packageResources', 'symbols']) lines.push(...formatYmlImpactGroup(name, impact.groups[name]));
   lines.push('  recommended_actions:');
   lines.push('    - "review_related_docs"');
   lines.push('    - "run_related_tests"');

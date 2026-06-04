@@ -48,7 +48,7 @@ export function buildImpactReport(index, changedPath, limits = {}) {
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
   const seed = `file:${changedPath}`;
   const maxRelated = limits.related ?? 25;
-  const groups = { files: { items: [], omitted: 0 }, docs: { items: [], omitted: 0 }, tests: { items: [], omitted: 0 }, commands: { items: [], omitted: 0 }, events: { items: [], omitted: 0 }, packageResources: { items: [], omitted: 0 }, symbols: { items: [], omitted: 0 } };
+  const groups = { files: { items: [], omitted: 0 }, docs: { items: [], omitted: 0 }, contracts: { items: [], omitted: 0 }, tests: { items: [], omitted: 0 }, commands: { items: [], omitted: 0 }, events: { items: [], omitted: 0 }, packageResources: { items: [], omitted: 0 }, symbols: { items: [], omitted: 0 } };
   const relatedIds = new Set([seed]);
   const reasons = new Map([[seed, new Set(['changed-file'])]]);
   const addReason = (id, reason) => {
@@ -85,7 +85,8 @@ export function buildImpactReport(index, changedPath, limits = {}) {
       if (area) addImpactItem(groups.docs, { ...item, area }, limits.docs ?? 10);
       else if (isTestPath(item.path)) addImpactItem(groups.tests, item, limits.tests ?? 10);
       else addImpactItem(groups.files, item, limits.files ?? 10);
-    } else if (item.type === 'test') addImpactItem(groups.tests, item, limits.tests ?? 10);
+    } else if (item.type === 'contract') addImpactItem(groups.contracts, item, limits.contracts ?? 10);
+    else if (item.type === 'test') addImpactItem(groups.tests, item, limits.tests ?? 10);
     else if (item.type === 'command') addImpactItem(groups.commands, item, limits.commands ?? 10);
     else if (item.type === 'event') addImpactItem(groups.events, item, limits.events ?? 10);
     else if (item.type === 'package_resource') addImpactItem(groups.packageResources, item, limits.packageResources ?? 10);
@@ -101,7 +102,7 @@ function compactScoreBreakdown(scoreBreakdown = {}) {
 
 export function compactImpactItem(item) {
   const compact = { id: item.id, type: item.type, impactScore: item.impactScore, reasons: (item.reasons ?? []).slice(0, 6), scoreBreakdown: compactScoreBreakdown(item.scoreBreakdown) };
-  for (const key of ['path', 'area', 'name', 'command', 'target', 'kind', 'specifier', 'title']) if (item[key] !== undefined) compact[key] = item[key];
+  for (const key of ['path', 'area', 'name', 'command', 'target', 'kind', 'specifier', 'title', 'contractId', 'sections']) if (item[key] !== undefined) compact[key] = item[key];
   if (item.retrieval) compact.retrieval = { area: item.retrieval.area, role: item.retrieval.role, priority: item.retrieval.priority, freshness: item.retrieval.freshness };
   return compact;
 }
@@ -115,7 +116,7 @@ export function buildCompactImpactReport(impact, limits = {}) {
   const relatedLimit = limits.related ?? 10;
   const groupLimit = limits.groupItems ?? 5;
   const related = (impact.related ?? []).slice(0, relatedLimit).map(compactImpactItem);
-  const groupNames = ['files', 'docs', 'tests', 'commands', 'events', 'packageResources', 'symbols'];
+  const groupNames = ['files', 'docs', 'contracts', 'tests', 'commands', 'events', 'packageResources', 'symbols'];
   const groups = Object.fromEntries(groupNames.map((name) => [name, compactImpactGroup(impact.groups?.[name], groupLimit)]));
   const top10 = (impact.related ?? []).filter((item) => item.id !== `file:${impact.changed}`).slice(0, 10);
   return { changed: impact.changed, compact: true, ranking: { method: impact.ranking?.method, preset: impact.ranking?.preset, configSource: impact.ranking?.configSource }, related, groups, omittedRelated: (impact.omittedRelated ?? 0) + Math.max(0, (impact.related?.length ?? 0) - related.length), quality: { rawRelated: impact.related?.length ?? 0, compactRelated: related.length, semanticOnlyTop10: top10.filter((item) => isSemanticOnlyImpactItem(item)).length, curatedTop10: top10.filter((item) => hasCuratedImpactReason(item)).length, lowActionabilityTop10: top10.filter((item) => isLowActionabilityImpactItem(item)).length } };
