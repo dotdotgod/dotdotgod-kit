@@ -700,7 +700,7 @@ function internalStageContent(stage) {
     '02-context-load': '# Context Load\n\n## Memory Reads\nAGENTS.md.\n\n## Impact Candidates\nCLI and Pi files.\n\n## Related Files\ndocs/spec/plan-mode/WORKFLOW.md.\n',
     '03-discovery': '# Discovery\n\n## Findings\nExisting CLI command pattern found.\n\n## Risks\nParser drift.\n\n## Open Questions\nNo open questions.\n',
     '04-plan': '# Plan\n\n## Milestones\nM1 CLI.\n\n## Atomic Tasks\n- AT1: Add validator. Acceptance criteria: detects invalid plans. Verification: unit tests.\n\n## Validation Plan\nRun focused unit tests.\n\n## Resume Point\nStart at CLI validation.\n',
-    '05-workstream-handoff': '# Workstream Handoff\n\n## Workstream Handoff\nCLI, Pi, tests, and docs workstreams.\n\n## Todo Contract\nEach split plan contains a numbered Plan: section.\n',
+    '05-workstream-handoff': '# Workstream Handoff\n\n## Workstream Handoff\nSplit decision: no. Rationale: this fixture is small enough for one executor.\n\n## Workstream Map\nNo split map; one executor owns the listed todo contract.\n\n## Shared Context\nUse the fixture plan context and preserve Plan Mode boundaries.\n\n## Workstreams\nNo split workstreams; one executor completes the todo contract.\n\n## Integration Sequence\nNo split integration sequence is needed beyond running focused validation after the todo.\n\n## Todo Contract\nPlan: 1. Implement the fixture task. Verification: unit tests.\n',
   };
   return `${content[stage]}\n${internalStageChecklist(stage)}`;
 }
@@ -820,6 +820,74 @@ describe('Plan artifact validation', () => {
     assert.equal(fullResult.ok, true);
     assert.equal(fullResult.summary.stages.total, 5);
     assert.equal(fullResult.summary.stages.valid, 5);
+  });
+
+  it('accepts valid split and no-split Stage 05 workstream handoff contracts', () => {
+    const root = fixture();
+    const noSplitPath = writeValidPlanFixture(root, 'no-split-task');
+    const noSplitResult = validatePlanArtifact(noSplitPath, { root, stage: '05' });
+    assert.equal(noSplitResult.ok, true);
+
+    const splitDir = join(root, 'docs/plan/split-task');
+    mkdirSync(splitDir, { recursive: true });
+    const splitPath = join(splitDir, 'README.md');
+    writeFileSync(splitPath, '# Split Task\n\n## Workstream Handoff\nSplit decision: yes. Workstream 1 and Workstream 2 run in parallel.\n\n## Workstream Map\n- Workstream 1: CLI contract.\n- Workstream 2: Tests and fixtures.\n\n## Shared Context\nBoth workstreams read the Stage 04 plan and shared validation rules.\n\n## Workstreams\n- Workstream 1 purpose: update CLI validation. Required context/read: plan contract. Allowed edits: CLI command files. Forbidden edits/do not edit: unrelated docs. Tasks: implement rules. Validation: core test. Handoff output: changed files and risks. Dependencies: none.\n- Workstream 2 objective: update fixtures. Required context/read: current tests. Allowed edits: core tests. Forbidden edits/do not edit: unrelated docs. Tasks: add cases. Verify with core test. Output: test evidence. Dependencies: Workstream 1 interfaces.\n\n## Integration Sequence\nSequence: integrate Workstream 1 before Workstream 2, then verify validation and handoff evidence.\n\n## Todo Contract\nPlan: 1. Complete split workstreams.\n\n' + internalStageChecklist('05-workstream-handoff'));
+
+    const splitResult = validatePlanArtifact(splitPath, { root, stage: '05' });
+    assert.equal(splitResult.ok, true);
+  });
+
+  it('blocks incomplete Stage 05 workstream handoff sections and split semantics', () => {
+    const root = fixture();
+    const planPath = writeValidPlanFixture(root, 'broken-stage-five');
+    let readme = readFileSync(planPath, 'utf8');
+    readme = readme.replace('## Shared Context\nUse the fixture plan context and preserve Plan Mode boundaries.\n\n', '');
+    readme = readme.replace('Split decision: no. Rationale: this fixture is small enough for one executor.', 'This handoff does not record a decision.');
+    writeFileSync(planPath, readme);
+
+    const result = validatePlanArtifact(planPath, { root, stage: '05' });
+    assert.equal(result.ok, false);
+    assert(result.blockers.some((blocker) => blocker.code === 'missing-section' && blocker.section === 'Shared Context'));
+    assert(result.blockers.some((blocker) => blocker.code === 'missing-workstream-split-decision'));
+  });
+
+  it('blocks no-split Stage 05 handoffs without rationale', () => {
+    const root = fixture();
+    const planPath = writeValidPlanFixture(root, 'no-rationale-task');
+    const readme = readFileSync(planPath, 'utf8').replace('Split decision: no. Rationale: this fixture is small enough for one executor.', 'Split decision: no.');
+    writeFileSync(planPath, readme);
+
+    const result = validatePlanArtifact(planPath, { root, stage: '05' });
+    assert.equal(result.ok, false);
+    assert(result.blockers.some((blocker) => blocker.code === 'missing-workstream-no-split-rationale'));
+  });
+
+  it('blocks split Stage 05 support files without actionable workstream fields', () => {
+    const root = fixture();
+    const planDir = join(root, 'docs/plan/support-split-task');
+    mkdirSync(planDir, { recursive: true });
+    const planPath = join(planDir, 'README.md');
+    writeFileSync(planPath, '# Support Split Task\n\nSee `HANDOFF.md`.\n');
+    writeFixtureFile(root, 'docs/plan/support-split-task/HANDOFF.md', '# Handoff\n\n## Workstream Handoff\nSplit decision: yes. Workstream 1 and Workstream 2 are required.\n\n## Workstream Map\n- Workstream 1: CLI.\n- Workstream 2: Tests.\n\n## Shared Context\nShared context is captured here.\n\n## Workstreams\n- Workstream 1: CLI.\n- Workstream 2: Tests.\n\n## Integration Sequence\nSequence: integrate and verify.\n\n## Todo Contract\nPlan: 1. Execute split plan.\n\n' + internalStageChecklist('05-workstream-handoff'));
+
+    const result = validatePlanArtifact(planPath, { root, stage: '05' });
+    assert.equal(result.ok, false);
+    assert.equal(result.summary.splitFiles.detected, true);
+    assert(result.blockers.some((blocker) => blocker.code === 'incomplete-workstream-split' && blocker.section === 'Workstreams'));
+  });
+
+  it('accepts Stage 05 required sections from support files outside the internal workspace', () => {
+    const root = fixture();
+    const planDir = join(root, 'docs/plan/support-stage-five');
+    mkdirSync(join(planDir, '.dotdotgod-plan'), { recursive: true });
+    const planPath = join(planDir, 'README.md');
+    writeFileSync(planPath, '# Support Stage Five\n\nDurable support file owns Stage 05.\n');
+    writeFixtureFile(root, 'docs/plan/support-stage-five/.dotdotgod-plan/IGNORED.md', '## Workstream Handoff\nTBD\n');
+    writeFixtureFile(root, 'docs/plan/support-stage-five/WORKSTREAM_HANDOFF.md', internalStageContent('05-workstream-handoff'));
+
+    const result = validatePlanArtifact(planPath, { root, stage: '05' });
+    assert.equal(result.ok, true);
+    assert.equal(result.summary.splitFiles.detected, true);
   });
 
   it('blocks missing stages, invalid markdown names, and missing sections', () => {
