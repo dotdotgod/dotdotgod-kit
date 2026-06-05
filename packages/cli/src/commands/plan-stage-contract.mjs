@@ -17,7 +17,14 @@ export const PLAN_REQUIRED_HEADERS = {
   '02-context-load': ['Memory Reads', 'Impact Candidates', 'Related Files'],
   '03-discovery': ['Findings', 'Risks', 'Open Questions'],
   '04-plan': ['Milestones', 'Atomic Tasks', 'Validation Plan', 'Resume Point'],
-  '05-workstream-handoff': ['Workstream Handoff', 'Todo Contract'],
+  '05-workstream-handoff': [
+    'Workstream Handoff',
+    'Workstream Map',
+    'Shared Context',
+    'Workstreams',
+    'Integration Sequence',
+    'Todo Contract',
+  ],
 };
 
 export const PLAN_CONSTRUCTION_CHECKLISTS = {
@@ -50,6 +57,9 @@ export const PLAN_BLOCKER_LABELS = new Map([
   ['malformed-checklist-item', 'Malformed construction checklist item'],
   ['open-checklist-item', 'Construction checklist item is open'],
   ['placeholder-checklist-item', 'Construction checklist item only contains placeholder content'],
+  ['missing-workstream-split-decision', 'Workstream Handoff must include an explicit split decision'],
+  ['incomplete-workstream-split', 'Split workstream handoff must include actionable workstream contracts'],
+  ['missing-workstream-no-split-rationale', 'No-split workstream handoff must include rationale'],
 ]);
 
 export function buildPlanValidationNextStagePrompt(planPath, stage, stagePath) {
@@ -57,7 +67,7 @@ export function buildPlanValidationNextStagePrompt(planPath, stage, stagePath) {
     `Continue Plan Mode stage advancement for ${planPath}.`,
     `Current stage: ${stage}.`,
     `Make ${planPath} satisfy the current stage's durable README requirements first. Use ${stagePath} only as an optional checkpoint/workflow note for this stage; do not make numbered checkpoint creation the goal and do not create later checkpoint files yet.`,
-    stage === '05-workstream-handoff' ? 'For this stage, ensure the durable README or split UPPER_SNAKE_CASE workstream plan files expose numbered `Plan:` sections so Pi can extract todos during execution. For small plans, explicitly state that no split is needed.' : undefined,
+    stage === '05-workstream-handoff' ? 'For this stage, record `Split decision: yes` or `Split decision: no` in `## Workstream Handoff`. If splitting, make `## Workstream Map`, `## Workstreams`, and `## Integration Sequence` describe multiple actionable workstreams with required context, allowed/forbidden edits, tasks, validation, dependencies, and handoff output. If not splitting, record the no-split rationale and keep `## Todo Contract` actionable so Pi can extract execution todos.' : undefined,
     `After completing this stage, stop and rerun \`dotdotgod plan validate ${planPath} --stage ${stage} --json\`.`,
   ].filter(Boolean).join('\n\n');
 }

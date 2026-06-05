@@ -60,6 +60,77 @@ export const STAGE_04_HANDOFF_READY_EVALUATION_RULES = `Stage 04 pass/fail quali
 - Mark retry when Atomic Tasks or Edge Cases are too generic, omit likely failure paths, omit tests, or require the next implementer to infer hidden context.
 - Mark blocked only when the missing detail requires user input or unavailable project context; otherwise request retry with the missing concrete details.`;
 
+export const STAGE_05_REQUIRED_SECTIONS = [
+  "Workstream Handoff",
+  "Workstream Map",
+  "Shared Context",
+  "Workstreams",
+  "Integration Sequence",
+  "Todo Contract",
+] as const;
+
+export const STAGE_05_CONSTRUCTION_CHECKLIST = [
+  "Handoffs",
+  "Do-not rules",
+  "Focused verification",
+  "Chat-independent context",
+] as const;
+
+export const STAGE_05_AUTHORING_PROMPT = `You are authoring /plan-generator Stage 05: workstream handoff.
+
+Use the current stage state context as workflow context, then update the durable plan artifact under docs/plan/<task>/.
+
+Stage 05 produces a phase-based, subagent-ready Workstream Handoff Contract for implementation. Keep Plan Mode separate from /plan-generator: do not ask Plan Mode to validate stages or write .dotdotgod-plan files.
+
+Include durable plan content for:
+${STAGE_05_REQUIRED_SECTIONS.map((section) => `- ${section};`).join("\n")}
+- Stage 05 construction checklist evidence for ${STAGE_05_CONSTRUCTION_CHECKLIST.join(", ")}.
+
+Required authoring details:
+- Under Workstream Handoff, state the split decision with rationale.
+- If no split is needed, state a clear no-split exception and keep a concrete Todo Contract as the implementation handoff contract.
+- If split is needed, include a Workstream Map with each workstream, owner/role, exact primary handoff file, target files/functions, dependencies, and whether it can run in parallel.
+- Include an execution phase map with phase names, dependency gates, sequencing constraints, and parallelization notes.
+- Include Shared Context that every downstream agent needs to work without this chat history.
+- Create or specify one self-contained handoff packet file per downstream agent/workstream, using UPPER_SNAKE_CASE markdown files under the task directory and README index links for large split contracts.
+- Each split-workstream subagent must receive exactly one primary handoff file and be able to work from that file alone.
+- Each primary handoff file must include role, phase, dependency gates, summarized context, exact target files/functions, allowed edits, forbidden edits, tasks, validation, expected handoff output, dependencies, and integration notes.
+- Under Workstreams, include per-workstream contracts with purpose, context, allowed edits, forbidden edits, tasks, validation, handoff output, and dependencies.
+- Include the Integration Sequence for combining workstream outputs after phase gates pass.
+- Include an aggregated Todo Contract that lists implementation todos across workstreams and phases.
+- Include Stage 05 construction checklist evidence for Handoffs, Do-not rules, Focused verification, and Chat-independent context. The evidence should mention the split decision, phase map, workstream map, shared context, per-workstream contracts, integration sequence, Todo Contract, and prompt/checkpoint boundary where relevant.
+
+Prompt/checkpoint boundary:
+- README/support files hold final user-facing handoff instructions and subagent contract content.
+- The .dotdotgod-plan/05_WORKSTREAM_HANDOFF.md file holds only compact routing/status metadata and is internal stage state context, not the final user-facing plan.
+- Do not put final user-facing plan content only in .dotdotgod-plan/.
+
+${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
+Do not edit source code. Do not advance beyond Stage 05.`;
+
+export const STAGE_05_EVALUATION_PROMPT = `Evaluate whether the latest assistant response completed /plan-generator Stage 05: workstream handoff.
+
+Return only JSON shaped as:
+{
+  "status": "pass" | "blocked" | "retry",
+  "message": "short explanation",
+  "stageContext": "concise completed Stage 05 context when status is pass"
+}
+
+Rules:
+- pass: the durable plan artifact has enough Workstream Handoff, Workstream Map, Shared Context, Workstreams, Integration Sequence, Todo Contract, and Stage 05 construction checklist evidence to complete the staged plan, with no unresolved user decisions.
+- blocked: user input or project context is missing and the assistant cannot safely continue without it.
+- retry: the assistant can repair Stage 05 by trying again without asking the user.
+- Fail or retry when the durable plan lacks a split decision with rationale.
+- Fail or retry when split is needed but the Workstream Map, execution phase map, dependency gates, parallelization notes, per-workstream contracts, primary handoff file paths, Integration Sequence, or aggregated Todo Contract are missing.
+- Accept no-split plans only when they include a clear no-split exception and a concrete Todo Contract.
+- Fail or retry when implementation agents must infer chat history, project context, exact target files/functions, allowed edits, forbidden edits, tasks, validation, handoff output, dependencies, or integration notes.
+- Fail or retry when split-workstream subagents would need more than one primary handoff file or could not work from that file alone.
+- Fail or retry when final user-facing handoff instructions are written only to .dotdotgod-plan/05_WORKSTREAM_HANDOFF.md instead of README/support files.
+- Treat .dotdotgod-plan/05_WORKSTREAM_HANDOFF.md as compact routing/status metadata and internal stage state context, not the durable prompt output.
+- Treat unresolved choices about scope, behavior, risk acceptance, or implementation direction as blocked user input; do not pass a stage that only records them as undecided/TBD.
+- Do not include markdown fences or prose outside JSON.`;
+
 export const STAGE_01_AUTHORING_PROMPT = `You are authoring /plan-generator Stage 01: intake.
 
 Create the initial planning context for the user's durable plan request. Focus only on Stage 01.
@@ -375,31 +446,11 @@ ${STAGE_04_HANDOFF_READY_EVALUATION_RULES}
     id: "05-workstream-handoff",
     title: "Stage 05: workstream handoff",
     checkpointFileName: "05_WORKSTREAM_HANDOFF.md",
-    requiredSections: ["Workstream Handoff", "Todo Contract"],
-    constructionChecklist: [
-      "Handoffs",
-      "Do-not rules",
-      "Focused verification",
-      "Chat-independent context",
-    ],
-    authoringPrompt: `${buildGenericAuthoringPrompt({
-      title: "Stage 05: workstream handoff",
-      checkpointFileName: "05_WORKSTREAM_HANDOFF.md",
-      requiredSections: ["Workstream Handoff", "Todo Contract"],
-      constructionChecklist: [
-        "Handoffs",
-        "Do-not rules",
-        "Focused verification",
-        "Chat-independent context",
-      ],
-    })}
-
-For small plans that do not need split workstreams, explicitly state that no split is needed and keep the Todo Contract as the implementation handoff contract.`,
+    requiredSections: STAGE_05_REQUIRED_SECTIONS,
+    constructionChecklist: STAGE_05_CONSTRUCTION_CHECKLIST,
+    authoringPrompt: STAGE_05_AUTHORING_PROMPT,
     retryPrompt: buildGenericRetryPrompt("Stage 05: workstream handoff"),
-    evaluationPrompt: buildGenericEvaluationPrompt({
-      title: "Stage 05: workstream handoff",
-      requiredSections: ["Workstream Handoff", "Todo Contract"],
-    }),
+    evaluationPrompt: STAGE_05_EVALUATION_PROMPT,
     handoffPrompt: PLAN_FILE_HANDOFF_PROMPT,
   },
 };

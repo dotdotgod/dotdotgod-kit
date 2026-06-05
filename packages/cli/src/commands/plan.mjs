@@ -273,6 +273,82 @@ function hasUnresolvedAssumption(content) {
   });
 }
 
+function workstreamSplitDecision(content) {
+  const match = /\bsplit\s+decision\s*:\s*(yes|no)\b/i.exec(content);
+  return match?.[1].toLowerCase();
+}
+
+function hasNoSplitRationale(content) {
+  return /\b(?:rationale|reason|because)\b/i.test(content);
+}
+
+function hasMultipleWorkstreams(content) {
+  const normalized = removeCodeBlocks(content).toLowerCase();
+  const explicitIds = new Set([...normalized.matchAll(/\b(?:workstream|ws)\s*[-:#]?\s*([a-z0-9]+)\b/g)].map((match) => match[1]));
+  if (explicitIds.size >= 2) return true;
+  const workstreamMentions = normalized.match(/\bworkstreams?\b/g) ?? [];
+  return workstreamMentions.length >= 2 && /\b(?:multiple|parallel|split)\b/.test(normalized);
+}
+
+function hasActionableWorkstreamFields(content) {
+  const normalized = content.toLowerCase();
+  const fieldGroups = [
+    ['purpose', 'objective'],
+    ['required context', 'read'],
+    ['allowed edit'],
+    ['forbidden edit', 'do not edit', 'do-not edit'],
+    ['task'],
+    ['validation', 'verify'],
+    ['handoff output', 'output'],
+    ['dependenc'],
+  ];
+  return fieldGroups.every((group) => group.some((term) => normalized.includes(term)));
+}
+
+function hasActionableIntegrationFields(content) {
+  const normalized = content.toLowerCase();
+  return ['sequence', 'integrat'].every((term) => normalized.includes(term)) && ['validation', 'verify', 'handoff'].some((term) => normalized.includes(term));
+}
+
+function validateWorkstreamHandoffContract(root, files, stageName, blockers) {
+  if (stageName !== '05-workstream-handoff') return true;
+  let valid = true;
+  const handoff = findSection(files, 'Workstream Handoff');
+  const todo = findSection(files, 'Todo Contract');
+  const relHandoff = projectRelative(root, handoff?.file ?? files[0]);
+  const decision = workstreamSplitDecision(handoff?.content ?? '');
+  if (!decision) {
+    addBlocker(blockers, 'missing-workstream-split-decision', 'Workstream Handoff must include `Split decision: yes` or `Split decision: no`.', { path: relHandoff, stage: stageName, section: 'Workstream Handoff' });
+    return false;
+  }
+  if (decision === 'no') {
+    if (!hasNoSplitRationale(handoff.content)) {
+      valid = false;
+      addBlocker(blockers, 'missing-workstream-no-split-rationale', 'Workstream Handoff with `Split decision: no` must include a rationale.', { path: relHandoff, stage: stageName, section: 'Workstream Handoff' });
+    }
+    if (!todo || !contentHasValue(todo.content) || isPlaceholderContent(todo.content)) valid = false;
+    return valid;
+  }
+
+  const map = findSection(files, 'Workstream Map');
+  const workstreams = findSection(files, 'Workstreams');
+  const integration = findSection(files, 'Integration Sequence');
+  const splitContent = [map?.content, workstreams?.content, integration?.content].filter(Boolean).join('\n');
+  if (!hasMultipleWorkstreams(splitContent)) {
+    valid = false;
+    addBlocker(blockers, 'incomplete-workstream-split', 'Split Stage 05 handoff must indicate multiple workstreams in Workstream Map, Workstreams, or Integration Sequence.', { path: projectRelative(root, map?.file ?? workstreams?.file ?? integration?.file ?? handoff.file), stage: stageName, section: 'Workstream Map' });
+  }
+  if (!workstreams || !hasActionableWorkstreamFields(workstreams.content)) {
+    valid = false;
+    addBlocker(blockers, 'incomplete-workstream-split', 'Workstreams must mention purpose/objective, required context/read, allowed edits, forbidden edits/do-not-edit, tasks, validation, handoff output, and dependencies.', { path: projectRelative(root, workstreams?.file ?? handoff.file), stage: stageName, section: 'Workstreams' });
+  }
+  if (!integration || !hasActionableIntegrationFields(integration.content)) {
+    valid = false;
+    addBlocker(blockers, 'incomplete-workstream-split', 'Integration Sequence must describe actionable integration sequence and validation/handoff expectations.', { path: projectRelative(root, integration?.file ?? handoff.file), stage: stageName, section: 'Integration Sequence' });
+  }
+  return valid;
+}
+
 function constructionChecklistHeader(stageName) {
   const match = /^(\d{2})-/.exec(stageName);
   return `Stage ${match?.[1] ?? stageName} Construction Checklist`;
@@ -465,6 +541,7 @@ export function validatePlanArtifact(planPath, options = {}) {
         addBlocker(blockers, 'unresolved-assumption', 'Assumptions contain unresolved items.', { path: relFound, stage: stageName, section: header });
       }
     }
+    if (!validateWorkstreamHandoffContract(root, files, stageName, blockers)) stageValid = false;
     if (!validateConstructionChecklist(root, files, stageName, blockers)) stageValid = false;
     if (stageValid) summary.stages.valid += 1;
   }

@@ -33,6 +33,8 @@ import {
   PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION,
   PLAN_GENERATOR_STAGE_ENVIRONMENTS,
   STAGE_02_ID,
+  STAGE_05_CONSTRUCTION_CHECKLIST,
+  STAGE_05_REQUIRED_SECTIONS,
 } from "../extensions/plan-generator/stage-contract.ts";
 import { createPlanGeneratorStore } from "../extensions/plan-generator/store.ts";
 import {
@@ -324,6 +326,96 @@ Status: maybe
     assert.match(stage.evaluationPrompt, /Mark retry when Atomic Tasks or Edge Cases are too generic/);
     assert.match(stage.evaluationPrompt, /unresolved choices about scope, behavior, risk acceptance, or implementation direction as blocked user input/);
     assert.match(stage.evaluationPrompt, /atomic tasks to name concrete code touchpoints/);
+  });
+
+  it("requires Stage 05 to produce phase-based workstream handoff contracts", () => {
+    const stage = PLAN_GENERATOR_STAGE_ENVIRONMENTS["05-workstream-handoff"];
+    const message = buildStageAuthoringMessage(stage, "request");
+
+    assert.equal(stage.title, "Stage 05: workstream handoff");
+    assert.deepEqual(stage.requiredSections, [...STAGE_05_REQUIRED_SECTIONS]);
+    assert.deepEqual(stage.constructionChecklist, [...STAGE_05_CONSTRUCTION_CHECKLIST]);
+    assert.match(message, /split decision with rationale/i);
+    assert.match(message, /no-split exception/i);
+    assert.match(message, /Workstream Map/);
+    assert.match(message, /execution phase map/i);
+    assert.match(message, /dependency gates/i);
+    assert.match(message, /parallelization notes/i);
+    assert.match(message, /Shared Context/);
+    assert.match(message, /one self-contained handoff packet file per downstream agent\/workstream/i);
+    assert.match(message, /exactly one primary handoff file/i);
+    assert.match(message, /role, phase, dependency gates, summarized context, exact target files\/functions/i);
+    assert.match(message, /allowed edits, forbidden edits, tasks, validation, expected handoff output, dependencies, and integration notes/i);
+    assert.match(message, /Integration Sequence/);
+    assert.match(message, /aggregated Todo Contract/i);
+    assert.match(message, /Stage 05 construction checklist evidence/i);
+    assert.match(message, /README\/support files hold final user-facing handoff instructions/i);
+    assert.match(message, /\.dotdotgod-plan\/05_WORKSTREAM_HANDOFF\.md file holds only compact routing\/status metadata/i);
+    assert.match(message, /Keep Plan Mode separate from \/plan-generator/i);
+    assert.match(stage.evaluationPrompt, /lacks a split decision/i);
+    assert.match(stage.evaluationPrompt, /split is needed but the Workstream Map, execution phase map, dependency gates, parallelization notes, per-workstream contracts/i);
+    assert.match(stage.evaluationPrompt, /implementation agents must infer chat history/i);
+    assert.match(stage.evaluationPrompt, /more than one primary handoff file/i);
+    assert.match(stage.evaluationPrompt, /final user-facing handoff instructions are written only to \.dotdotgod-plan\/05_WORKSTREAM_HANDOFF\.md/i);
+  });
+
+  it("validates Stage 05 required sections and construction checklist evidence", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const taskDir = join(cwd, "docs", "plan", "stage-five");
+    mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
+    writeFileSync(
+      join(taskDir, "README.md"),
+      `# Stage Five
+
+Status: active
+
+## Workstream Handoff
+
+Split decision: yes. Split implementation into independent prompt, validation, and test workstreams.
+
+## Workstream Map
+
+- Phase 1: prompt contract workstream, primary handoff file PROMPT_CONTRACT.md, can run before tests.
+
+## Shared Context
+
+All subagents use the Stage 04 implementation design and existing plan-generator files.
+
+## Workstreams
+
+- Prompt contract: allowed edits in stage-contract.ts; forbidden edits in Plan Mode; validation via Pi tests; output summary required.
+
+## Integration Sequence
+
+1. Merge prompt contract.
+2. Run focused Pi tests.
+
+## Todo Contract
+
+- [ ] Update Stage 05 prompt contract.
+- [ ] Verify prompt and validation evidence tests.
+
+## Stage 05 Construction Checklist
+
+- [x] Handoffs: Split decision, phase map, workstream map, and primary handoff file are recorded.
+- [x] Do-not rules: Plan Mode and unrelated files are forbidden for this workstream.
+- [x] Focused verification: Focused Pi tests are listed.
+- [x] Chat-independent context: Durable content remains in README/support files, not only .dotdotgod-plan.
+`,
+    );
+    writeFileSync(
+      join(taskDir, ".dotdotgod-plan", "05_WORKSTREAM_HANDOFF.md"),
+      "Stage: 05-workstream-handoff\nStatus: completed\nUpdated: 2026-06-05\n",
+    );
+
+    const evidence = createStageValidationEvidence({
+      cwd,
+      currentPlan: "docs/plan/stage-five/README.md",
+      stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS["05-workstream-handoff"],
+    });
+
+    assert.equal(evidence.ok, true);
+    assert.equal(evidence.requiredSections.valid, STAGE_05_REQUIRED_SECTIONS.length);
   });
 
   it("detects unresolved user decisions in durable plan validation evidence", () => {
