@@ -281,6 +281,52 @@ describe('CLI docs helpers', () => {
     assert(customLocalTargets.some((error) => /custom-local/.test(error.message)));
   });
 
+  it('validates optional JSON-only contract traceability metadata', () => {
+    const root = fixture();
+    const file = join(root, 'docs/spec/FEATURE.md');
+    const base = { kind: 'spec', implementedBy: [], verifiedBy: [], relatedDocs: [], verificationCommands: [] };
+    assert.deepEqual(validateTraceabilityBlock({ ...base }, root, file), []);
+    assert.deepEqual(validateTraceabilityBlock({ ...base, contracts: [] }, root, file), []);
+    assert.deepEqual(validateTraceabilityBlock({
+      ...base,
+      contracts: [{
+        id: 'FEATURE-CONTRACT-001',
+        title: 'Contract summary',
+        sections: ['Contract Details', 'Missing Heading Is Allowed'],
+        implementedBy: ['packages/tool/index.mjs'],
+        verifiedBy: ['packages/tool/index.test.mjs'],
+        relatedDocs: ['docs/test/README.md'],
+        verificationCommands: ['node --test packages/tool/index.test.mjs'],
+      }],
+    }, root, file), []);
+
+    const invalidShape = validateTraceabilityBlock({ ...base, contracts: 'bad' }, root, file);
+    assert(invalidShape.some((error) => error.code === 'TRACEABILITY_INVALID_FIELD' && /Field "contracts"/.test(error.message)));
+    const invalidEntry = validateTraceabilityBlock({ ...base, contracts: [null] }, root, file);
+    assert(invalidEntry.some((error) => /Field "contracts\[0\]"/.test(error.message)));
+    const invalidMetadata = validateTraceabilityBlock({
+      ...base,
+      contracts: [
+        { id: '', title: '', extra: true, sections: ['ok', ''], implementedBy: ['../escape'], verificationCommands: [''] },
+        { id: 'DUPLICATE', title: 'First' },
+        { id: 'DUPLICATE', title: 'Second' },
+      ],
+    }, root, file);
+    assert(invalidMetadata.some((error) => /contracts\[0\]\.id/.test(error.message)));
+    assert(invalidMetadata.some((error) => /contracts\[0\]\.title/.test(error.message)));
+    assert(invalidMetadata.some((error) => /contracts\[0\]\.extra/.test(error.message)));
+    assert(invalidMetadata.some((error) => /contracts\[0\]\.sections\[1\]/.test(error.message)));
+    assert(invalidMetadata.some((error) => error.code === 'TRACEABILITY_INVALID_PATH' && /contracts\[0\]\.implementedBy/.test(error.message)));
+    assert(invalidMetadata.some((error) => error.code === 'TRACEABILITY_INVALID_COMMAND' && /contracts\[0\]\.verificationCommands/.test(error.message)));
+    assert(invalidMetadata.some((error) => /duplicates contract id/.test(error.message)));
+
+    writeFixtureFile(root, 'docs/archive/plan/contract-local/README.md', '# Contract Local\n');
+    const localTarget = validateTraceabilityBlock({ ...base, contracts: [{ id: 'LOCAL', title: 'Local target', verifiedBy: ['docs/archive/plan/contract-local/README.md'] }] }, root, file);
+    assert(localTarget.some((error) => error.code === 'TRACEABILITY_LOCAL_MEMORY_TARGET' && /contracts\[0\]\.verifiedBy/.test(error.message)));
+    const missingTarget = validateTraceabilityBlock({ ...base, contracts: [{ id: 'MISSING', title: 'Missing target', relatedDocs: ['docs/spec/MISSING.md'] }] }, root, file);
+    assert(missingTarget.some((error) => error.code === 'TRACEABILITY_MISSING_TARGET' && /contracts\[0\]\.relatedDocs/.test(error.message)));
+  });
+
   it('generates, validates, and strips traceability link regions', () => {
     const root = fixture();
     const file = join(root, 'docs/spec/FEATURE.md');
@@ -297,6 +343,18 @@ describe('CLI docs helpers', () => {
     assert.deepEqual(validateTraceabilityLinksRegion(synced.content, root, file), []);
     assert.equal(extractDotdotgodTraceabilityBlocks(stripTraceabilityLinksRegion(synced.content)).length, 0);
     assert.equal(renderCompactTraceabilityBlock(block.data).includes('\n  "kind"'), false);
+
+    const contractData = { ...block.data, contracts: [{ id: 'FEATURE-CONTRACT-001', title: 'Focused contract', sections: ['Traceability'], implementedBy: ['packages/tool/index.mjs'], verifiedBy: ['packages/tool/index.test.mjs'], relatedDocs: ['docs/test/README.md'], verificationCommands: ['node --test packages/tool/index.test.mjs'] }] };
+    const contractSynced = syncTraceabilityLinksInContent(content, contractData, root, file);
+    assert.equal(contractSynced.ok, true);
+    assert.match(contractSynced.content, /- Contracts:\n  - `FEATURE-CONTRACT-001` — Focused contract \(sections: 1, impl: 1, verify: 1, docs: 1, commands: 1\)/);
+    assert.match(contractSynced.content, /```json dotdotgod\n\{"kind":"spec".*"contracts":\[/s);
+    const contractReplaced = syncTraceabilityLinksInContent(contractSynced.content.replace('Focused contract', 'Stale contract'), contractData, root, file);
+    assert.equal(contractReplaced.ok, true);
+    assert.match(contractReplaced.content, /Focused contract/);
+    assert.doesNotMatch(contractReplaced.content, /Stale contract/);
+    const emptyContractSynced = syncTraceabilityLinksInContent(content, { ...block.data, contracts: [] }, root, file);
+    assert.doesNotMatch(emptyContractSynced.content, /- Contracts:/);
 
     const stale = synced.content.replace('index.mjs', 'stale.mjs');
     const replaced = syncTraceabilityLinksInContent(stale, block.data, root, file);
@@ -1126,7 +1184,7 @@ describe('CLI index and graph helpers', () => {
   it('builds graph nodes, semantic edges, scores, and bounded neighborhoods', () => {
     const root = fixture();
     mkdirSync(join(root, 'packages/pi/extensions/plan-mode'), { recursive: true });
-    writeFileSync(join(root, 'docs/spec/PLAN_MODE.md'), '# Plan Mode Tool Settings\n\n## Plan Mode Tools\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/pi/extensions/plan-mode/utils.ts"],\n  "verifiedBy": ["packages/pi/test/plan-mode-utils.test.ts"],\n  "relatedDocs": ["docs/spec/FEATURE.md"],\n  "verificationCommands": ["pnpm --filter @dotdotgod/pi test"]\n}\n```\n');
+    writeFileSync(join(root, 'docs/spec/PLAN_MODE.md'), '# Plan Mode Tool Settings\n\n## Plan Mode Tools\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/pi/extensions/plan-mode/utils.ts"],\n  "verifiedBy": ["packages/pi/test/plan-mode-utils.test.ts"],\n  "relatedDocs": ["docs/spec/FEATURE.md"],\n  "verificationCommands": ["pnpm --filter @dotdotgod/pi test"],\n  "contracts": [{\n    "id": "PLAN-MODE-TOOLS-001",\n    "title": "Plan mode tool access stays traceable",\n    "sections": ["Plan Mode Tools"],\n    "implementedBy": ["packages/tool/index.mjs"],\n    "verifiedBy": ["packages/tool/index.test.mjs"],\n    "relatedDocs": ["docs/spec/FEATURE.md"],\n    "verificationCommands": ["node --test packages/tool/index.test.mjs"]\n  }]\n}\n```\n');
     writeFileSync(join(root, 'packages/pi/extensions/plan-mode/utils.ts'), "const planModeTools = ['read'];\nvoid planModeTools;\n");
     const index = buildIndex(root);
     const summary = graphSummary(index);
@@ -1149,6 +1207,17 @@ describe('CLI index and graph helpers', () => {
     assert(index.graph.nodes.some((node) => node.id === 'package_resource:packages/tool/package.json#files:files:1' && node.type === 'package_resource'));
     assert(index.graph.edges.some((edge) => edge.source === 'file:docs/spec/FEATURE.md' && edge.target === 'file:packages/tool/index.mjs' && edge.relation === 'implemented_by' && edge.confidence === 'CURATED_TRACEABILITY'));
     assert(index.graph.edges.some((edge) => edge.source === 'file:docs/spec/FEATURE.md' && edge.target === 'file:packages/tool/index.test.mjs' && edge.relation === 'verified_by' && edge.confidence === 'CURATED_TRACEABILITY'));
+    const contractId = 'contract:docs/spec/PLAN_MODE.md#PLAN-MODE-TOOLS-001';
+    const contractNode = index.graph.nodes.find((node) => node.id === contractId);
+    assert.equal(contractNode?.type, 'contract');
+    assert.equal(contractNode.contractId, 'PLAN-MODE-TOOLS-001');
+    assert.equal(contractNode.title, 'Plan mode tool access stays traceable');
+    assert.deepEqual(contractNode.sections, ['Plan Mode Tools']);
+    assert(index.graph.edges.some((edge) => edge.source === 'file:docs/spec/PLAN_MODE.md' && edge.target === contractId && edge.relation === 'defines_contract' && edge.confidence === 'CURATED_TRACEABILITY'));
+    assert(index.graph.edges.some((edge) => edge.source === contractId && edge.target === 'file:packages/tool/index.mjs' && edge.relation === 'implemented_by' && edge.confidence === 'CURATED_TRACEABILITY'));
+    assert(index.graph.edges.some((edge) => edge.source === contractId && edge.target === 'file:packages/tool/index.test.mjs' && edge.relation === 'verified_by' && edge.confidence === 'CURATED_TRACEABILITY'));
+    assert(index.graph.edges.some((edge) => edge.source === contractId && edge.target === 'file:docs/spec/FEATURE.md' && edge.relation === 'related_doc' && edge.confidence === 'CURATED_TRACEABILITY'));
+    assert(index.graph.edges.some((edge) => edge.source === contractId && edge.target === `verification_command:${contractId}#0` && edge.relation === 'verification_command' && edge.confidence === 'CURATED_TRACEABILITY'));
     assert(index.graph.edges.some((edge) => edge.source === 'file:docs/README.md' && edge.target === 'file:docs/spec/README.md' && edge.relation === 'routes_to' && edge.confidence === 'CURATED_INDEX'));
     const related = neighborhood(index, 'packages/tool/index.mjs');
     assert(related.some((node) => node.id === 'file:packages/tool/index.mjs'));
@@ -1160,6 +1229,14 @@ describe('CLI index and graph helpers', () => {
     assert(impact.related.every((item) => typeof item.impactScore === 'number' && item.scoreBreakdown));
     assert(impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/FEATURE.md'));
     assert(impact.groups.tests.items.some((item) => item.id === 'file:packages/tool/index.test.mjs'));
+    const contractImpact = itemById(impact, contractId);
+    assert(contractImpact);
+    assert(contractImpact.reasons.includes('incoming:implemented_by'));
+    assert.equal(contractImpact.contractId, 'PLAN-MODE-TOOLS-001');
+    assert.equal(contractImpact.title, 'Plan mode tool access stays traceable');
+    assert(impact.groups.contracts.items.some((item) => item.id === contractId));
+    const compactImpact = buildCompactImpactReport(impact);
+    assert(compactImpact.groups.contracts.items.some((item) => item.contractId === 'PLAN-MODE-TOOLS-001' && item.title === 'Plan mode tool access stays traceable'));
     const semanticImpact = buildImpactReport(index, 'packages/pi/extensions/plan-mode/utils.ts');
     assert(semanticImpact.related.some((item) => item.id === 'file:docs/spec/PLAN_MODE.md' && (item.reasons.includes('incoming:semantic_similarity') || item.reasons.includes('incoming:implemented_by'))));
     assert(semanticImpact.related.some((item) => item.scoreBreakdown?.semantic > 0 || item.scoreBreakdown?.traceability > 0));

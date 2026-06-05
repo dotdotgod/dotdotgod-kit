@@ -68,18 +68,45 @@ function addTraceabilityTarget(graph, sourceId, root, relation, targetPath, data
   addEdge(graph, sourceId, targetId, relation, { confidence: 'CURATED_TRACEABILITY', ...data });
 }
 
+function contractNodeId(filePath, contractId) {
+  return `contract:${filePath}#${contractId}`;
+}
+
+function addTraceabilityCommands(graph, sourceId, filePath, commands, idPrefix) {
+  for (const [index, command] of (Array.isArray(commands) ? commands : []).entries()) {
+    if (typeof command !== 'string' || command.trim().length === 0) continue;
+    const id = `verification_command:${idPrefix}#${index}`;
+    addNode(graph, id, 'verification_command', { command, path: filePath });
+    addEdge(graph, sourceId, id, 'verification_command', { confidence: 'CURATED_TRACEABILITY' });
+  }
+}
+
+function addTraceabilityContracts(graph, root, fileId, filePath, contracts, config = defaultMemoryConfig()) {
+  if (!Array.isArray(contracts)) return;
+  for (const contract of contracts) {
+    if (!contract || typeof contract !== 'object' || Array.isArray(contract)) continue;
+    if (typeof contract.id !== 'string' || contract.id.trim().length === 0) continue;
+    if (typeof contract.title !== 'string' || contract.title.trim().length === 0) continue;
+    const id = contractNodeId(filePath, contract.id);
+    const sections = Array.isArray(contract.sections) ? contract.sections.filter((section) => typeof section === 'string' && section.trim().length > 0) : undefined;
+    addNode(graph, id, 'contract', { path: filePath, contractId: contract.id, title: contract.title, sections });
+    addEdge(graph, fileId, id, 'defines_contract', { confidence: 'CURATED_TRACEABILITY' });
+    for (const target of Array.isArray(contract.implementedBy) ? contract.implementedBy : []) addTraceabilityTarget(graph, id, root, 'implemented_by', target, {}, config);
+    for (const target of Array.isArray(contract.verifiedBy) ? contract.verifiedBy : []) addTraceabilityTarget(graph, id, root, 'verified_by', target, {}, config);
+    for (const target of Array.isArray(contract.relatedDocs) ? contract.relatedDocs : []) addTraceabilityTarget(graph, id, root, 'related_doc', target, {}, config);
+    addTraceabilityCommands(graph, id, filePath, Array.isArray(contract.verificationCommands) ? contract.verificationCommands : [], id);
+  }
+}
+
 export function addTraceabilityGraph(root, fileId, content, graph, config = defaultMemoryConfig()) {
+  const filePath = fileId.replace(/^file:/, '');
   for (const block of extractDotdotgodTraceabilityBlocks(content)) {
     if (block.error || !block.data || block.data.kind !== 'spec') continue;
     for (const target of block.data.implementedBy ?? []) addTraceabilityTarget(graph, fileId, root, 'implemented_by', target, {}, config);
     for (const target of block.data.verifiedBy ?? []) addTraceabilityTarget(graph, fileId, root, 'verified_by', target, {}, config);
     for (const target of block.data.relatedDocs ?? []) addTraceabilityTarget(graph, fileId, root, 'related_doc', target, {}, config);
-    for (const [index, command] of (Array.isArray(block.data.verificationCommands) ? block.data.verificationCommands : []).entries()) {
-      if (typeof command !== 'string' || command.trim().length === 0) continue;
-      const id = `verification_command:${fileId}#${index}`;
-      addNode(graph, id, 'verification_command', { command, path: fileId.replace(/^file:/, '') });
-      addEdge(graph, fileId, id, 'verification_command', { confidence: 'CURATED_TRACEABILITY' });
-    }
+    addTraceabilityCommands(graph, fileId, filePath, block.data.verificationCommands, fileId);
+    addTraceabilityContracts(graph, root, fileId, filePath, block.data.contracts, config);
   }
 }
 

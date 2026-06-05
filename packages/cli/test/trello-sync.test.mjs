@@ -178,7 +178,7 @@ describe('Trello dry-run planner', () => {
   it('reports present and missing traceability states', () => {
     const root = fixture();
     write(root, 'dotdotgod.config.json', JSON.stringify({ traceability: { required: ['docs/trello/required.md'], exclude: [] } }, null, 2));
-    write(root, 'docs/trello/present.md', `${card()}\n\n\`\`\`json dotdotgod\n{"kind":"spec","implementedBy":[],"verifiedBy":[],"relatedDocs":[],"verificationCommands":[]}\n\`\`\`\n`);
+    write(root, 'docs/trello/present.md', `${card()}\n\n\`\`\`json dotdotgod\n{"kind":"spec","implementedBy":[],"verifiedBy":[],"relatedDocs":[],"verificationCommands":[],"contracts":[{"id":"TRELLO-CONTRACT-001","title":"Trello contract metadata is accepted"}]}\n\`\`\`\n`);
     write(root, 'docs/trello/required.md', card());
     const { report, exitCode } = planTrelloDryRun(root, { github: { repositoryUrl: 'https://github.com/example/repo.git', branch: 'main', git: false } });
     assert.equal(exitCode, 1);

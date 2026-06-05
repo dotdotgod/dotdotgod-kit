@@ -129,6 +129,8 @@ impact:
 
 Compact text and YML output omit full ranking weights, long retrieval signal lists, and unbounded raw node metadata. Use raw JSON for diagnostics.
 
+When traceability metadata defines focused contracts, impact output may include a bounded `contracts` group. JSON/YML contract items include the defining `path`, `contractId`, `title`, and optional `sections`; compact text labels them as `<path>#<contractId> — <title>` so agents can identify the precise behavior without expanding verbose target lists.
+
 ## Candidate Selection
 
 Ranking computes explainable `impactScore` values for every candidate. Before returning the bounded first page, the CLI prefers curated/test/proximity candidates over low-confidence routing-only matches and caps low-actionability metadata nodes such as dependencies when actionable files or docs are available.
