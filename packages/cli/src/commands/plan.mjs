@@ -201,17 +201,37 @@ function readInternalStageState(taskDir, stageName) {
 
 function validateInternalStageState(root, taskDir, stageName, blockers) {
   const state = readInternalStageState(taskDir, stageName);
-  if (!state) return;
+  const expectedPath = internalStageFile(taskDir, stageName);
+  const rel = projectRelative(root, state?.file ?? expectedPath);
+  if (!state) {
+    addBlocker(blockers, 'missing-internal-stage', `Missing internal stage checkpoint: ${rel}`, { path: rel, stage: stageName });
+    return { state: undefined, valid: false };
+  }
+
+  let valid = true;
   const stage = contentMatch(state.content, /^Stage:\s*(\S+)\s*$/m);
   const status = contentMatch(state.content, /^Status:\s*(created|blocked|completed)\s*$/m);
   const updated = contentMatch(state.content, /^Updated:\s*(\S+)\s*$/m);
-  const rel = projectRelative(root, state.file);
-  const looksLikeGeneratorState = /^Stage:\s*\S+\s*$/m.test(state.content) || /^Status:\s*\S+\s*$/m.test(state.content) || /^Updated:\s*\S+\s*$/m.test(state.content);
-  if (!looksLikeGeneratorState) return;
-  if (stage && stage !== stageName) addBlocker(blockers, 'missing-internal-stage', `Internal stage file has wrong Stage field: ${rel}`, { path: rel, stage: stageName });
-  if (!stage) addBlocker(blockers, 'missing-internal-stage', `Internal stage file is missing Stage: ${rel}`, { path: rel, stage: stageName });
-  if (!status) addBlocker(blockers, 'missing-internal-stage', `Internal stage file is missing valid Status: ${rel}`, { path: rel, stage: stageName });
-  if (!updated) addBlocker(blockers, 'missing-internal-stage', `Internal stage file is missing Updated: ${rel}`, { path: rel, stage: stageName });
+  if (stage && stage !== stageName) {
+    valid = false;
+    addBlocker(blockers, 'missing-internal-stage', `Internal stage file has wrong Stage field: ${rel}`, { path: rel, stage: stageName });
+  }
+  if (!stage) {
+    valid = false;
+    addBlocker(blockers, 'missing-internal-stage', `Internal stage file is missing Stage: ${rel}`, { path: rel, stage: stageName });
+  }
+  if (!status) {
+    valid = false;
+    addBlocker(blockers, 'missing-internal-stage', `Internal stage file is missing valid Status: ${rel}`, { path: rel, stage: stageName });
+  } else if (status !== 'completed') {
+    valid = false;
+    addBlocker(blockers, 'open-internal-stage', `Internal stage checkpoint is not completed: ${rel}`, { path: rel, stage: stageName });
+  }
+  if (!updated) {
+    valid = false;
+    addBlocker(blockers, 'missing-internal-stage', `Internal stage file is missing Updated: ${rel}`, { path: rel, stage: stageName });
+  }
+  return { state, valid };
 }
 
 function contentMatch(content, pattern) {
@@ -492,28 +512,28 @@ export function validatePlanArtifact(planPath, options = {}) {
   const durableFiles = discoverDurablePlanMarkdownFiles(taskDir);
   if (durableFiles.length > 1) summary.splitFiles.detected = true;
   for (const stageName of stagesToValidate) {
-    validateInternalStageState(root, taskDir, stageName, blockers);
-    const files = durableFiles.length > 0 ? durableFiles : [absolutePlanPath];
-    const stageReadme = absolutePlanPath;
-    summary.stages.present += 1;
-    let stageValid = true;
+    const internal = validateInternalStageState(root, taskDir, stageName, blockers);
+    summary.stages.present += internal.state ? 1 : 0;
+    let stageValid = internal.valid;
+    const files = internal.state ? [internal.state.file] : [];
+    const fallbackPath = projectRelative(root, internalStageFile(taskDir, stageName));
     for (const header of PLAN_REQUIRED_HEADERS[stageName]) {
-      const found = findSection(files, header);
+      const found = files.length > 0 ? findSection(files, header) : undefined;
       if (!found) {
         stageValid = false;
-        addBlocker(blockers, 'missing-section', `Missing required section: ## ${header}`, { path: projectRelative(root, stageReadme), stage: stageName, section: header });
+        addBlocker(blockers, 'missing-section', `Missing required section in internal checkpoint: ## ${header}`, { path: fallbackPath, stage: stageName, section: header });
         continue;
       }
       summary.requiredSections.present += 1;
       const relFound = projectRelative(root, found.file);
       if (!contentHasValue(found.content)) {
         stageValid = false;
-        addBlocker(blockers, 'empty-section', `Required section has no content: ## ${header}`, { path: relFound, stage: stageName, section: header });
+        addBlocker(blockers, 'empty-section', `Required checkpoint section has no content: ## ${header}`, { path: relFound, stage: stageName, section: header });
         continue;
       }
       if (isPlaceholderContent(found.content)) {
         stageValid = false;
-        addBlocker(blockers, 'placeholder-section', `Required section only contains placeholder content: ## ${header}`, { path: relFound, stage: stageName, section: header });
+        addBlocker(blockers, 'placeholder-section', `Required checkpoint section only contains placeholder content: ## ${header}`, { path: relFound, stage: stageName, section: header });
         continue;
       }
       summary.requiredSections.valid += 1;
@@ -541,8 +561,8 @@ export function validatePlanArtifact(planPath, options = {}) {
         addBlocker(blockers, 'unresolved-assumption', 'Assumptions contain unresolved items.', { path: relFound, stage: stageName, section: header });
       }
     }
-    if (!validateWorkstreamHandoffContract(root, files, stageName, blockers)) stageValid = false;
-    if (!validateConstructionChecklist(root, files, stageName, blockers)) stageValid = false;
+    if (files.length > 0 && !validateWorkstreamHandoffContract(root, files, stageName, blockers)) stageValid = false;
+    if (files.length > 0 && !validateConstructionChecklist(root, files, stageName, blockers)) stageValid = false;
     if (stageValid) summary.stages.valid += 1;
   }
 

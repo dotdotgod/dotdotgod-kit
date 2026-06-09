@@ -35,6 +35,7 @@ export function runValidate(argv) {
     if (path.includes('/node_modules') || path === 'node_modules') return true;
     if (path.includes('/.git') || path === '.git') return true;
     if (path === CACHE_DIR || path.startsWith(`${CACHE_DIR}/`)) return true;
+    if (/^docs\/(?:plan|archive\/plan)\/[a-z0-9]+(?:-[a-z0-9]+)*\/\.dotdotgod-plan(?:\/|$)/.test(path)) return true;
     if (!options.includeLocalMemory && (path === 'docs/plan' || path.startsWith('docs/plan/') || path === 'docs/archive' || path.startsWith('docs/archive/'))) return true;
     return false;
   };

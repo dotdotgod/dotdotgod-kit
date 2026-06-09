@@ -370,11 +370,19 @@ function lineLooksResolved(line: string): boolean {
   );
 }
 
+function lineLooksLikePendingUserDecision(line: string): boolean {
+  return (
+    /\b(?:decision|user|confirmation|choice|input)\b.{0,40}\bpending\b/i.test(line) ||
+    /\bpending\b.{0,40}\b(?:decision|user|confirmation|choice|input)\b/i.test(line)
+  );
+}
+
 function lineLooksLikeUnresolvedUserDecision(line: string): boolean {
   const normalized = line.trim();
   if (!normalized || lineLooksResolved(normalized)) return false;
   return (
-    /\b(tbd|pending|undecided|unresolved decision|decision needed|needs user decision|user decision needed|user decision required|requires user input|awaiting user|choose later|choose before implementation)\b/i.test(normalized) ||
+    /\b(tbd|undecided|unresolved decision|decision needed|needs user decision|user decision needed|user decision required|requires user input|awaiting user|choose later|choose before implementation)\b/i.test(normalized) ||
+    lineLooksLikePendingUserDecision(normalized) ||
     /(미정|결정 필요|사용자 결정|사용자 입력 필요|유저 결정|유저 입력 필요|나중에 결정|확정 필요)/.test(normalized)
   );
 }
@@ -412,52 +420,58 @@ export function createStageValidationEvidence(options: {
     : path.join(options.cwd, options.currentPlan);
   const taskDir = path.dirname(planPath);
   const blockers: string[] = [];
-  const files = discoverDurableMarkdownFiles(taskDir);
-  blockers.push(...findUnresolvedUserDecisionBlockers({ cwd: options.cwd, files }));
+  const durableFiles = discoverDurableMarkdownFiles(taskDir);
+  blockers.push(...findUnresolvedUserDecisionBlockers({ cwd: options.cwd, files: durableFiles }));
+  const statePath = stageStatePath(taskDir, options.stage);
+  const stateFiles = existsSync(statePath) ? [statePath] : [];
+  if (stateFiles.length > 0) {
+    blockers.push(...findUnresolvedUserDecisionBlockers({ cwd: options.cwd, files: stateFiles }));
+  }
   const requiredSections = {
     total: options.stage.requiredSections.length,
     present: 0,
     valid: 0,
   };
 
+  if (!existsSync(statePath)) {
+    blockers.push(`Missing internal stage checkpoint: ${path.relative(options.cwd, statePath)}`);
+  } else {
+    const stateContent = readFileSync(statePath, "utf8");
+    if (!new RegExp(`^Stage:\\s*${escapeRegExp(options.stage.id)}\\s*$`, "m").test(stateContent)) {
+      blockers.push(`Internal stage file has missing or wrong Stage: ${path.relative(options.cwd, statePath)}`);
+    }
+    const status = /^Status:\s*(created|blocked|completed)\s*$/m.exec(stateContent)?.[1];
+    if (!status) {
+      blockers.push(`Internal stage file has missing or invalid Status: ${path.relative(options.cwd, statePath)}`);
+    } else if (status !== "completed") {
+      blockers.push(`Internal stage checkpoint is not completed: ${path.relative(options.cwd, statePath)}`);
+    }
+    if (!/^Updated:\s*\S+\s*$/m.test(stateContent)) {
+      blockers.push(`Internal stage file is missing Updated: ${path.relative(options.cwd, statePath)}`);
+    }
+  }
+
   for (const section of options.stage.requiredSections) {
-    const content = findMarkdownSection(files, section);
+    const content = stateFiles.length > 0 ? findMarkdownSection(stateFiles, section) : undefined;
     if (content === undefined) {
-      blockers.push(`Missing required section: ## ${section}`);
+      blockers.push(`Missing required checkpoint section: ## ${section}`);
       continue;
     }
     requiredSections.present += 1;
     if (!contentHasValue(content)) {
-      blockers.push(`Required section is empty or placeholder: ## ${section}`);
+      blockers.push(`Required checkpoint section is empty or placeholder: ## ${section}`);
       continue;
     }
     requiredSections.valid += 1;
   }
 
-  const checklist = findMarkdownSection(files, constructionChecklistHeader(options.stage.id));
+  const checklist = stateFiles.length > 0 ? findMarkdownSection(stateFiles, constructionChecklistHeader(options.stage.id)) : undefined;
   if (options.stage.constructionChecklist.length > 0 && checklist === undefined) {
-    blockers.push(`Missing construction checklist: ## ${constructionChecklistHeader(options.stage.id)}`);
+    blockers.push(`Missing checkpoint construction checklist: ## ${constructionChecklistHeader(options.stage.id)}`);
   } else if (checklist !== undefined) {
     for (const item of options.stage.constructionChecklist) {
       if (!checkedChecklistHas(checklist, item)) {
-        blockers.push(`Missing completed construction checklist item: ${item}`);
-      }
-    }
-  }
-
-  const statePath = stageStatePath(taskDir, options.stage);
-  if (existsSync(statePath)) {
-    const stateContent = readFileSync(statePath, "utf8");
-    const looksLikeState = /^(Stage|Status|Updated):\s*\S+/m.test(stateContent);
-    if (looksLikeState) {
-      if (!new RegExp(`^Stage:\\s*${escapeRegExp(options.stage.id)}\\s*$`, "m").test(stateContent)) {
-        blockers.push(`Internal stage file has missing or wrong Stage: ${path.relative(options.cwd, statePath)}`);
-      }
-      if (!/^Status:\s*(created|blocked|completed)\s*$/m.test(stateContent)) {
-        blockers.push(`Internal stage file has missing or invalid Status: ${path.relative(options.cwd, statePath)}`);
-      }
-      if (!/^Updated:\s*\S+\s*$/m.test(stateContent)) {
-        blockers.push(`Internal stage file is missing Updated: ${path.relative(options.cwd, statePath)}`);
+        blockers.push(`Missing completed checkpoint construction checklist item: ${item}`);
       }
     }
   }
