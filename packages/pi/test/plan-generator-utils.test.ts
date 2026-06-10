@@ -235,6 +235,49 @@ packages/pi/extensions/plan-generator/stage-contract.ts
     assert.equal(evidence.nextStage, "03-discovery");
   });
 
+  it("accepts Stage 02 checkpoint checklist compatibility formats", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const taskDir = join(cwd, "docs", "plan", "stage-two-compat");
+    mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
+    writeFileSync(join(taskDir, "README.md"), "# Stage Two Compat\n");
+    writeFileSync(
+      join(taskDir, ".dotdotgod-plan", "02_CONTEXT_LOAD.md"),
+      `Stage: 02-context-load
+Status: completed
+Updated: 2026-05-28
+
+## Memory Reads
+
+Project memory reviewed.
+
+## Impact Candidates
+
+packages/pi/extensions/plan-generator/index.ts
+
+## Related Files
+
+packages/pi/extensions/plan-generator/stage-contract.ts
+
+## Stage 02 Construction Checklist
+
+| Item | Status |
+| --- | --- |
+| Memory reads | completed - [x] |
+- completed - [x] Impact candidates
+Related files: completed - [x]
+- [x] Boundary risk — backend availability remains explicit.
+`,
+    );
+
+    const evidence = createStageValidationEvidence({
+      cwd,
+      currentPlan: "docs/plan/stage-two-compat/README.md",
+      stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_02_ID],
+    });
+
+    assert.equal(evidence.ok, true, evidence.blockers.join("\n"));
+  });
+
   it("reports Stage 02 validation blockers", () => {
     const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
     const taskDir = join(cwd, "docs", "plan", "stage-two");
@@ -360,6 +403,16 @@ packages/pi/extensions/plan-generator/stage-contract.ts
       assert.match(message, /Keep README\.md as the overview\/index/);
     }
     assert.match(PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION, /Do not put final user-facing plan content only in \.dotdotgod-plan\//);
+  });
+
+  it("tells Stage 02 to use canonical checkpoint checklist rows", () => {
+    const stage = PLAN_GENERATOR_STAGE_ENVIRONMENTS["02-context-load"];
+    const authoring = buildStageAuthoringMessage(stage, "request");
+    const retry = buildStageRetryMessage(stage, "request", "Missing checklist item", undefined);
+
+    assert.match(authoring, /canonical form `- \[x\] Category: evidence`/);
+    assert.match(authoring, /Memory reads, Impact candidates, Related files, and Boundary risk/);
+    assert.match(retry, /do not use tables, `completed - \[x\] Category`, or `Category: completed - \[x\]` shorthand/);
   });
 
   it("requires Stage 04 to produce concrete implementation design", () => {

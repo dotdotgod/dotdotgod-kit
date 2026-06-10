@@ -173,7 +173,7 @@ Include durable plan content for:
 - Impact Candidates;
 - Related Files.
 
-Also update .dotdotgod-plan/02_CONTEXT_LOAD.md as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include ## Memory Reads, ## Impact Candidates, ## Related Files, and include ## Stage 02 Construction Checklist with completed - [x] Memory reads, Impact candidates, Related files, and Boundary risk evidence rows.
+Also update .dotdotgod-plan/02_CONTEXT_LOAD.md as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include ## Memory Reads, ## Impact Candidates, ## Related Files, and include ## Stage 02 Construction Checklist. Write checklist rows in the canonical form \`- [x] Category: evidence\`, with exactly these completed categories: Memory reads, Impact candidates, Related files, and Boundary risk.
 
 The .dotdotgod-plan/02_CONTEXT_LOAD.md file is internal stage state context and validation evidence, not the final user-facing plan.
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
@@ -181,7 +181,7 @@ Do not edit source code. Do not advance beyond Stage 02.`;
 
 export const STAGE_02_RETRY_PROMPT = `Repair the /plan-generator Stage 02 context-load update.
 
-Use the Stage 02 requirements below and the previous evaluation. Update the durable plan artifact for readers and update .dotdotgod-plan/02_CONTEXT_LOAD.md as the machine-readable validation checkpoint.`;
+Use the Stage 02 requirements below and the previous evaluation. Update the durable plan artifact for readers and update .dotdotgod-plan/02_CONTEXT_LOAD.md as the machine-readable validation checkpoint. In ## Stage 02 Construction Checklist, use only canonical rows shaped \`- [x] Category: evidence\`; do not use tables, \`completed - [x] Category\`, or \`Category: completed - [x]\` shorthand.`;
 
 export const STAGE_02_EVALUATION_PROMPT = `Evaluate whether the latest assistant response completed /plan-generator Stage 02: context load.
 
@@ -213,7 +213,7 @@ Stage 03 must record actual findings from inspected code/docs, not only a list o
 Separate agent-resolvable research questions from user decisions. If any open question requires the user to choose scope, behavior, risk acceptance, or implementation direction, ask the user and stop instead of advancing.
 ${PLAN_GENERATOR_USER_DECISION_INSTRUCTION}
 
-Also update .dotdotgod-plan/03_DISCOVERY.md as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include ## Findings, ## Risks, ## Open Questions, and include ## Stage 03 Construction Checklist with completed - [x] Findings, Risks, Open questions, and Extension points evidence rows.
+Also update .dotdotgod-plan/03_DISCOVERY.md as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include ## Findings, ## Risks, ## Open Questions, and include ## Stage 03 Construction Checklist with completed rows in canonical \`- [x] Category: evidence\` form for Findings, Risks, Open questions, and Extension points.
 
 The .dotdotgod-plan/03_DISCOVERY.md file is internal stage state context and validation evidence, not the final user-facing plan.
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
@@ -422,7 +422,7 @@ Include durable plan content for:
 - Resume Point;
 - construction checklist evidence for Implementation design, Code touchpoints, Data/state flow, Edge cases, Atomic tasks, Test design, Validation plan, and Resume point.
 
-Also update .dotdotgod-plan/04_PLAN.md as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include the required Stage 04 sections, and include ## Stage 04 Construction Checklist with completed evidence rows.
+Also update .dotdotgod-plan/04_PLAN.md as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include the required Stage 04 sections, and include ## Stage 04 Construction Checklist with completed rows in canonical \`- [x] Category: evidence\` form.
 
 The .dotdotgod-plan/04_PLAN.md file is internal stage state context and validation evidence, not the final user-facing plan.
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
