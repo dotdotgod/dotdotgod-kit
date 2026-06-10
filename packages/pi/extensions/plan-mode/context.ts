@@ -1,22 +1,10 @@
 export function detectPlanExecutionIntent(text: string): boolean {
 	const normalized = text.replace(/\s+/g, " ").trim();
 	if (!normalized) return false;
-
-	const refinementOnly = /(refine|revise|edit|modify|adjust|improve|update)\b.*\b(plan|proposal)|\b(plan|proposal)\b.*\b(refine|revise|edit|modify|adjust|improve|update)\b|수정하자|수정해줘|다듬|보완|개선|계획하자|계획을 세우|계획 만들어|플랜.*(수정|다듬|보완|개선)/i;
-	const planningOnly = /(계획|플랜|설계).*(세우|만들|작성|검토|조사|분석|보자|해보자)|설계.*(진행|시작)|계획하자|계획을 세우|계획 만들어|which active plan should be executed|실행해야\s*할\s*때만|물어보게\s*(변경|바꾸)|\b(plan|design)\b.*\b(first|draft|create|write|review|refine)\b/i;
-	const explicitEnglishExecution = /\b(execute|start|run|begin|implement)\b.*\b(plan|docs\/plan\/[a-z0-9-]+\/README\.md|[a-z0-9]+(?:-[a-z0-9]+)+)\b|\b(proceed with|carry out)\b.*\b(plan|docs\/plan\/[a-z0-9-]+\/README\.md|[a-z0-9]+(?:-[a-z0-9]+)+)\b/i;
-	const explicitKoreanExecution = /((계획|플랜|docs\/plan\/[a-z0-9-]+\/README\.md|[a-z0-9]+(?:-[a-z0-9]+)+).*(진행|시작|실행)|(진행|시작|실행).*(계획|플랜|docs\/plan\/[a-z0-9-]+\/README\.md|[a-z0-9]+(?:-[a-z0-9]+)+))/i;
-	const bareEnglishExecution = /^(execute|start|run|begin|proceed)(\s+(it|this|now|the\s+plan))?[.!?]?$/i;
-	const bareKoreanExecution = /^(실행|시작)(하자|해줘|해주세요|합시다|해|해라|시켜줘)?[.!?。]*$/i;
-
-	const hasExecution = explicitEnglishExecution.test(normalized) || explicitKoreanExecution.test(normalized) || bareEnglishExecution.test(normalized) || bareKoreanExecution.test(normalized);
-	if (!hasExecution) return false;
-	if (planningOnly.test(normalized) && !explicitEnglishExecution.test(normalized)) return false;
-	if (refinementOnly.test(normalized) && !explicitEnglishExecution.test(normalized) && !explicitKoreanExecution.test(normalized)) return false;
-	return true;
+	return /^Execute the plan in docs\/plan\/[a-z0-9]+(?:-[a-z0-9]+)*\/README\.md\b/i.test(normalized);
 }
 
-export type PlanModeRequestKind = "advisory" | "implementation_request" | "explicit_execution" | "memory_load";
+export type PlanModeRequestKind = "advisory" | "explicit_execution" | "memory_load";
 
 export interface LatestPlanningRequestSelectionInput {
 	currentRequest?: string | undefined;
@@ -72,17 +60,10 @@ export function selectLatestPlanningRequest(input: LatestPlanningRequestSelectio
 export function classifyPlanModeRequest(text: string | undefined): PlanModeRequestKind {
 	const normalized = (text ?? "").replace(/\s+/g, " ").trim();
 	if (!normalized) return "advisory";
-	if (/^Load the dotdotgod project memory\b/i.test(normalized) || /\b(dd:load|\/dd:load|\/load|load-snapshot)\b/i.test(normalized) || /프로젝트.*메모리.*(로드|불러|읽)/i.test(normalized)) {
+	if (/^Load the dotdotgod project memory\b/i.test(normalized) || /^(?:\/dd:load|dd:load|\/load|load-snapshot)\b/i.test(normalized)) {
 		return "memory_load";
 	}
 	if (detectPlanExecutionIntent(normalized)) return "explicit_execution";
-
-	const advisoryPattern = /(어떻게|좋을까|괜찮|조사|분석|검토|설명|알려|의견|계획해|계획을 세|plan|research|investigate|analy[sz]e|review|explain|should|how would|what if|proposal|approach)/i;
-	const implementationPattern = /(구현|수정|고쳐|추가|적용|만들|작성|코딩|리팩터|리팩토|반영|실행해|implement|fix|add|apply|change|update|create|write|code|refactor|modify|wire|integrate|enforce)/i;
-	const explicitPlanPattern = /(계획|플랜|plan|proposal|approach)/i;
-
-	if (implementationPattern.test(normalized) && !explicitPlanPattern.test(normalized)) return "implementation_request";
-	if (implementationPattern.test(normalized) && !advisoryPattern.test(normalized)) return "implementation_request";
 	return "advisory";
 }
 
@@ -93,9 +74,6 @@ export function buildPlanModeRequestFraming(latestRequest: string | undefined): 
 	}
 	if (kind === "explicit_execution") {
 		return "Plan Mode request framing: the latest user request appears to explicitly execute an active plan. Resolve the referenced docs/plan/<task-slug>/README.md through the existing Plan Mode execution path before making source/code/config changes.";
-	}
-	if (kind === "implementation_request") {
-		return "Plan Mode request framing: the latest user request sounds like implementation or coding work. Because Plan Mode is active, do not modify source/code/config until execution mode. Create or update docs/plan/<task-slug>/README.md for durable work, but use a short in-chat checklist for obvious bounded changes unless the user asks for a saved plan.";
 	}
 	return "Plan Mode request framing: treat the latest user request as advisory or planning work. Answer without source/code/config changes. Create or update a docs/plan/<task-slug>/README.md file only when durable implementation steps are needed.";
 }
@@ -149,24 +127,17 @@ export function collectProjectMemoryContextCoverage(contextText: string | undefi
 }
 
 export function shouldLoadProjectMemoryForPlanning(input: ProjectMemoryLoadDecisionInput): ProjectMemoryLoadDecision {
-	const request = input.latestRequest ?? "";
-	if (/\b(do not|don't|skip|without)\b.*\b(load|context|memory)\b|로드하지|불러오지/i.test(request)) {
+	const request = input.latestRequest?.trim() ?? "";
+	if (/^(?:\/dd:no-load|dd:no-load|\/no-load)$/i.test(request)) {
 		return { loadNeeded: false, reason: "user-opt-out" };
 	}
 	if (input.hasRecentProjectMemoryLoad) return { loadNeeded: false, reason: "recent-load" };
 
 	const coverage = collectProjectMemoryContextCoverage(input.contextText);
 	const missingMarkers = REQUIRED_PROJECT_MEMORY_MARKERS.filter((marker) => !coverage.markers.includes(marker));
-	const requestNeedsCrossArea = /(구현|수정|코딩|검증|아키텍처|테스트|어댑터|런타임|implement|fix|code|validate|verification|architecture|test|adapter|runtime|cross-agent)/i.test(request);
 
 	if (missingMarkers.length > 0) {
 		return { loadNeeded: true, reason: "missing-baseline", missingMarkers, areas: coverage.areas };
-	}
-	if (requestNeedsCrossArea && coverage.areas.length <= 1) {
-		return { loadNeeded: true, reason: "single-area-only", areas: coverage.areas };
-	}
-	if (requestNeedsCrossArea && (!coverage.areas.includes("spec") || !coverage.areas.includes("arch") || !coverage.areas.includes("test"))) {
-		return { loadNeeded: true, reason: "request-needs-cross-area", areas: coverage.areas };
 	}
 	if (coverage.hasCompactionSummary && coverage.areas.length < 3) {
 		return { loadNeeded: true, reason: "compaction-missing-markers", areas: coverage.areas };

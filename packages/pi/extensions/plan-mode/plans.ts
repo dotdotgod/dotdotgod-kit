@@ -103,8 +103,16 @@ function parseDiscussionQueueOption(line: string): DiscussionQueueOption | undef
 	return {
 		label: optionMatch[1].trim(),
 		text,
-		recommended: /\brecommended\b/i.test(text),
+		recommended: false,
 	};
+}
+
+function applyRecommendedOptionLabels(options: DiscussionQueueOption[], labels: ReadonlySet<string>): void {
+	for (const option of options) option.recommended = labels.has(option.label.toLowerCase());
+}
+
+function parseRecommendedOptionLabels(value: string): Set<string> {
+	return new Set(value.split(/[,\s]+/).map((label) => label.trim().toLowerCase()).filter(Boolean));
 }
 
 export function extractDiscussionQueueItems(markdown: string): DiscussionQueueItem[] {
@@ -115,13 +123,16 @@ export function extractDiscussionQueueItems(markdown: string): DiscussionQueueIt
 	let current: DiscussionQueueItem | undefined;
 	let inOptions = false;
 	let explicitStatus: DiscussionQueueItemState | undefined;
+	let recommendedOptionLabels = new Set<string>();
 	const flush = () => {
 		if (!current) return;
 		current.status = explicitStatus ?? current.status;
+		applyRecommendedOptionLabels(current.options, recommendedOptionLabels);
 		items.push(current);
 		current = undefined;
 		inOptions = false;
 		explicitStatus = undefined;
+		recommendedOptionLabels = new Set<string>();
 	};
 
 	for (let i = sectionStart + 1; i < lines.length; i += 1) {
@@ -133,6 +144,7 @@ export function extractDiscussionQueueItems(markdown: string): DiscussionQueueIt
 			const checked = itemMatch[1]?.toLowerCase() === "x";
 			const meta = itemMatch[3].trim().split(/\s+/).filter(Boolean);
 			const [type = "discussion", ...flags] = meta;
+			recommendedOptionLabels = new Set<string>();
 			current = {
 				id: itemMatch[2],
 				type,
@@ -155,6 +167,7 @@ export function extractDiscussionQueueItems(markdown: string): DiscussionQueueIt
 			else if (key === "affects") current.affects = value;
 			else if (key === "verification-impact") current.verificationImpact = value;
 			else if (key === "status") explicitStatus = normalizeDiscussionQueueState(value, current.checked);
+			else if (key === "recommended" || key === "recommended-option") recommendedOptionLabels = parseRecommendedOptionLabels(value);
 			continue;
 		}
 		if (inOptions) {
@@ -225,6 +238,10 @@ export function extractPlanSlugMentions(text: string): string[] {
 	return slugs;
 }
 
+function hasStructuredExecutionRequest(request: string): boolean {
+	return /^Execute the plan in docs\/plan\/[a-z0-9]+(?:-[a-z0-9]+)*\/README\.md\b/i.test(request.replace(/\s+/g, " ").trim());
+}
+
 export function resolvePlanExecutionTarget(input: PlanExecutionTargetInput): PlanExecutionTargetResolution {
 	const request = input.request ?? "";
 	const explicitCandidates = [
@@ -236,7 +253,7 @@ export function resolvePlanExecutionTarget(input: PlanExecutionTargetInput): Pla
 		...(input.currentPlanPath ? [input.currentPlanPath] : []),
 		...(input.touchedPaths ?? []).map((path) => getCurrentPlanReadmePath(path)).filter((path): path is string => Boolean(path)),
 	];
-	const fallbackCandidates = input.allowActivePlanFallback ? (input.activePlanPaths ?? []) : [];
+	const fallbackCandidates = input.allowActivePlanFallback && hasStructuredExecutionRequest(request) ? (input.activePlanPaths ?? []) : [];
 	const candidateGroups = [explicitCandidates, contextCandidates, fallbackCandidates];
 	for (const group of candidateGroups) {
 		const existing = uniquePlanPaths(group).filter(input.pathExists);

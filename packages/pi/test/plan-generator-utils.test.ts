@@ -448,7 +448,8 @@ packages/pi/extensions/plan-generator/stage-contract.ts
     assert.equal(stage.title, "Stage 05: workstream handoff");
     assert.deepEqual(stage.requiredSections, [...STAGE_05_REQUIRED_SECTIONS]);
     assert.deepEqual(stage.constructionChecklist, [...STAGE_05_CONSTRUCTION_CHECKLIST]);
-    assert.match(message, /split decision with rationale/i);
+    assert.match(message, /Split decision: yes/i);
+    assert.match(message, /No-split rationale:/i);
     assert.match(message, /no-split exception/i);
     assert.match(message, /Workstream Map/);
     assert.match(message, /execution phase map/i);
@@ -465,8 +466,8 @@ packages/pi/extensions/plan-generator/stage-contract.ts
     assert.match(message, /README\/support files hold final user-facing handoff instructions/i);
     assert.match(message, /\.dotdotgod-plan\/05_WORKSTREAM_HANDOFF\.md file is internal stage state context and validation evidence/i);
     assert.match(message, /Keep Plan Mode separate from \/plan-generator/i);
-    assert.match(stage.evaluationPrompt, /lacks a split decision/i);
-    assert.match(stage.evaluationPrompt, /split is needed but the Workstream Map, execution phase map, dependency gates, parallelization notes, per-workstream contracts/i);
+    assert.match(stage.evaluationPrompt, /lacks "Split decision: yes" or "Split decision: no"/i);
+    assert.match(stage.evaluationPrompt, /split is needed but the Workstream Map, at least two "Workstream ID:" fields, execution phase map/i);
     assert.match(stage.evaluationPrompt, /implementation agents must infer chat history/i);
     assert.match(stage.evaluationPrompt, /more than one primary handoff file/i);
     assert.match(stage.evaluationPrompt, /matching \.dotdotgod-plan checkpoint has completed/i);
@@ -493,7 +494,8 @@ Updated: 2026-06-05
 
 ## Workstream Handoff
 
-Split decision: no. Rationale: one executor can finish this fixture.
+Split decision: no.
+No-split rationale: one executor can finish this fixture.
 
 ## Workstream Map
 
@@ -558,7 +560,9 @@ Store remains active until the user answers.
 
 ## Edge Cases
 
-- 미정: 사용자가 strict mode 여부를 결정해야 함.
+DecisionOwner: user
+DecisionState: unresolved
+Decision prompt: 사용자가 strict mode 여부를 결정해야 함.
 
 ## Atomic Tasks
 
@@ -601,7 +605,7 @@ Resume after the user chooses strict mode.
 
     assert.equal(evidence.ok, false);
     assert.match(evidence.blockers.join("\n"), /Unresolved user decision/);
-    assert.match(evidence.blockers.join("\n"), /미정/);
+    assert.match(evidence.blockers.join("\n"), /DecisionState: unresolved/);
   });
 
   it("extracts latest assistant text", () => {
@@ -940,7 +944,9 @@ Stay input-waiting until the user answers.
 
 ## Edge Cases
 
-- User decision needed: choose whether strict mode blocks Stage 03 or only Stage 04.
+DecisionOwner: user
+DecisionState: unresolved
+Decision prompt: choose whether strict mode blocks Stage 03 or only Stage 04.
 
 ## Atomic Tasks
 
@@ -989,7 +995,7 @@ Resume this stage after the user chooses.
     await handlePlanGeneratorAgentEnd(
       runtime.pi as never,
       runtime.ctx as never,
-      [{ role: "assistant", content: "Stage 04 updated with a pending user decision." }],
+      [{ role: "assistant", content: "Stage 04 updated with a structured user decision blocker." }],
       store,
     );
 

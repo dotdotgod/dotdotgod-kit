@@ -341,8 +341,7 @@ function findMarkdownSection(files: string[], heading: string): string | undefin
 }
 
 function contentHasValue(content: string): boolean {
-  const normalized = content.replace(/<!--[^]*?-->/g, "").trim();
-  return normalized.length > 0 && !/^(todo|tbd|placeholder|pending|n\/a|\.\.\.)$/i.test(normalized);
+  return content.replace(/<!--[^]*?-->/g, "").trim().length > 0;
 }
 
 function constructionChecklistHeader(stageId: PlanGeneratorStageId): string {
@@ -395,29 +394,20 @@ function checkedChecklistHas(content: string, category: string): boolean {
   });
 }
 
-function lineLooksResolved(line: string): boolean {
-  return (
-    /\[[xX]\]/.test(line) ||
-    /\b(answered|resolved|deferred|accepted-risk|accepted risk|not required|not needed|no user decision|no decision needed)\b/i.test(line) ||
-    /(해결|답변됨|보류|허용된 위험|필요 없음|필요없음|결정 필요 없음)/.test(line)
-  );
+function structuredFieldValue(line: string, field: string): string | undefined {
+  const match = new RegExp(`^\\s*(?:[-*+]\\s*)?${escapeRegExp(field)}\\s*:\\s*(\\S.*)$`, "i").exec(line);
+  return match?.[1]?.trim().toLowerCase();
 }
 
-function lineLooksLikePendingUserDecision(line: string): boolean {
-  return (
-    /\b(?:decision|user|confirmation|choice|input)\b.{0,40}\bpending\b/i.test(line) ||
-    /\bpending\b.{0,40}\b(?:decision|user|confirmation|choice|input)\b/i.test(line)
-  );
-}
-
-function lineLooksLikeUnresolvedUserDecision(line: string): boolean {
-  const normalized = line.trim();
-  if (!normalized || lineLooksResolved(normalized)) return false;
-  return (
-    /\b(tbd|undecided|unresolved decision|decision needed|needs user decision|user decision needed|user decision required|requires user input|awaiting user|choose later|choose before implementation)\b/i.test(normalized) ||
-    lineLooksLikePendingUserDecision(normalized) ||
-    /(미정|결정 필요|사용자 결정|사용자 입력 필요|유저 결정|유저 입력 필요|나중에 결정|확정 필요)/.test(normalized)
-  );
+function lineHasStructuredUserDecisionBlocker(lines: string[], index: number): boolean {
+  const line = lines[index] ?? "";
+  const decisionState = structuredFieldValue(line, "DecisionState") ?? structuredFieldValue(line, "Decision State");
+  const status = structuredFieldValue(line, "Status");
+  const blockerType = structuredFieldValue(line, "BlockerType") ?? structuredFieldValue(line, "Blocker Type");
+  const ownerWindow = lines.slice(Math.max(0, index - 3), Math.min(lines.length, index + 4));
+  const hasUserOwner = ownerWindow.some((candidate) => structuredFieldValue(candidate, "DecisionOwner") === "user" || structuredFieldValue(candidate, "Decision Owner") === "user");
+  if (hasUserOwner && ["unresolved", "pending", "blocked"].includes(decisionState ?? "")) return true;
+  return blockerType === "user-decision" && ["blocked", "unresolved", "pending"].includes(status ?? "");
 }
 
 function findUnresolvedUserDecisionBlockers(options: {
@@ -429,7 +419,7 @@ function findUnresolvedUserDecisionBlockers(options: {
     const relativePath = path.relative(options.cwd, file);
     const lines = readFileSync(file, "utf8").split(/\r?\n/);
     lines.forEach((line, index) => {
-      if (!lineLooksLikeUnresolvedUserDecision(line)) return;
+      if (!lineHasStructuredUserDecisionBlocker(lines, index)) return;
       const excerpt = line.trim().replace(/\s+/g, " ").slice(0, 180);
       blockers.push(`Unresolved user decision in ${relativePath}:${index + 1}: ${excerpt}`);
     });

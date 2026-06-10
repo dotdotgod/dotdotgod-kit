@@ -45,8 +45,8 @@ Use support files for implementation-part detail such as CLI changes, extension/
 Do not put final user-facing plan content only in .dotdotgod-plan/.`;
 
 export const PLAN_GENERATOR_USER_DECISION_INSTRUCTION = `Do not silently carry unresolved user decisions forward.
-If a missing choice requires the user to decide scope, behavior, product policy, risk acceptance, or implementation direction, stop the stage and ask the user a concrete question with options instead of writing only "TBD", "undecided", or "decision needed" in the durable plan.
-Open questions are allowed only when they are research gaps the agent can resolve by reading project context; unresolved user decisions block stage advancement.`;
+If a missing choice requires the user to decide scope, behavior, product policy, risk acceptance, or implementation direction, stop the stage and ask the user a concrete question with options. When a machine-readable blocker must be recorded, use structured fields such as \`DecisionOwner: user\` with \`DecisionState: unresolved\`, or \`BlockerType: user-decision\` with \`Status: blocked\`.
+Open questions are allowed only when they are research gaps the agent can resolve by reading project context; unresolved user decisions block stage advancement. Do not rely on prose keywords such as "TBD", "undecided", or "decision needed" as machine-readable state.`;
 
 export const STAGE_04_IMPLEMENTATION_DESIGN_INSTRUCTION = `Stage 04 must be an implementation design, not a generic project plan.
 For each atomic task, include concrete code touchpoints: files, functions/types/classes/commands, expected control flow, state/data changes, edge cases, tests, and completion criteria.
@@ -87,16 +87,16 @@ ${STAGE_05_REQUIRED_SECTIONS.map((section) => `- ${section};`).join("\n")}
 - Stage 05 construction checklist evidence for ${STAGE_05_CONSTRUCTION_CHECKLIST.join(", ")}.
 
 Required authoring details:
-- Under Workstream Handoff, state the split decision with rationale.
+- Under Workstream Handoff, state "Split decision: yes" or "Split decision: no" and include "No-split rationale:" when the split decision is no.
 - If no split is needed, state a clear no-split exception and keep a concrete Todo Contract as the implementation handoff contract.
-- If split is needed, include a Workstream Map with each workstream, owner/role, exact primary handoff file, target files/functions, dependencies, and whether it can run in parallel.
+- If split is needed, include a Workstream Map with at least two "Workstream ID:" fields plus owner/role, exact primary handoff file, target files/functions, dependencies, and whether it can run in parallel.
 - Include an execution phase map with phase names, dependency gates, sequencing constraints, and parallelization notes.
 - Include Shared Context that every downstream agent needs to work without this chat history.
 - Create or specify one self-contained handoff packet file per downstream agent/workstream, using UPPER_SNAKE_CASE markdown files under the task directory and README index links for large split contracts.
 - Each split-workstream subagent must receive exactly one primary handoff file and be able to work from that file alone.
 - Each primary handoff file must include role, phase, dependency gates, summarized context, exact target files/functions, allowed edits, forbidden edits, tasks, validation, expected handoff output, dependencies, and integration notes.
-- Under Workstreams, include per-workstream contracts with purpose, context, allowed edits, forbidden edits, tasks, validation, handoff output, and dependencies.
-- Include the Integration Sequence for combining workstream outputs after phase gates pass.
+- Under Workstreams, include per-workstream contracts with non-empty structured fields: "Workstream ID:", "Purpose:", "Required context:", "Allowed edits:", "Forbidden edits:", "Tasks:", "Validation:", "Handoff output:", and "Dependencies:".
+- Include the Integration Sequence for combining workstream outputs after phase gates pass, with non-empty structured fields: "Step:", "Validation:", and "Handoff:".
 - Include an aggregated Todo Contract that lists implementation todos across workstreams and phases.
 - Include Stage 05 construction checklist evidence for Handoffs, Do-not rules, Focused verification, and Chat-independent context. The evidence should mention the split decision, phase map, workstream map, shared context, per-workstream contracts, integration sequence, Todo Contract, and prompt/checkpoint boundary where relevant.
 
@@ -121,9 +121,10 @@ Rules:
 - pass: the durable plan artifact has enough human-readable handoff content and the matching .dotdotgod-plan checkpoint has completed Workstream Handoff, Workstream Map, Shared Context, Workstreams, Integration Sequence, Todo Contract, and Stage 05 construction checklist evidence to complete the staged plan, with no unresolved user decisions.
 - blocked: user input or project context is missing and the assistant cannot safely continue without it.
 - retry: the assistant can repair Stage 05 by trying again without asking the user.
-- Fail or retry when the durable plan lacks a split decision with rationale.
-- Fail or retry when split is needed but the Workstream Map, execution phase map, dependency gates, parallelization notes, per-workstream contracts, primary handoff file paths, Integration Sequence, or aggregated Todo Contract are missing.
-- Accept no-split plans only when they include a clear no-split exception and a concrete Todo Contract.
+- Fail or retry when the durable plan lacks "Split decision: yes" or "Split decision: no".
+- Fail or retry when "Split decision: no" lacks a non-empty "No-split rationale:" field.
+- Fail or retry when split is needed but the Workstream Map, at least two "Workstream ID:" fields, execution phase map, dependency gates, parallelization notes, per-workstream contracts, primary handoff file paths, Integration Sequence, or aggregated Todo Contract are missing.
+- Accept no-split plans only when they include a clear no-split exception, "No-split rationale:", and a concrete Todo Contract.
 - Fail or retry when implementation agents must infer chat history, project context, exact target files/functions, allowed edits, forbidden edits, tasks, validation, handoff output, dependencies, or integration notes.
 - Fail or retry when split-workstream subagents would need more than one primary handoff file or could not work from that file alone.
 - Fail or retry when final user-facing handoff instructions are written only to .dotdotgod-plan/05_WORKSTREAM_HANDOFF.md instead of README/support files.
