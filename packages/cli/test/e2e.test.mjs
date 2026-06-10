@@ -470,15 +470,18 @@ describe('dotdotgod CLI e2e', () => {
     assert(payload.errors.some((error) => error.code === 'TRACEABILITY_INVALID_FIELD' && /contracts\[0\]\.unknown/.test(error.message)));
   });
 
-  it('validates archived generator checkpoint state without naming errors', () => {
+  it('skips generator checkpoint workspaces during docs validation', () => {
     const root = createFixture();
     mkdirSync(join(root, 'docs/archive/plan/generated-task/.dotdotgod-plan'), { recursive: true });
     writeFileSync(join(root, 'docs/archive/plan/generated-task/README.md'), '# Generated Task\n');
     writeFileSync(join(root, 'docs/archive/plan/generated-task/.dotdotgod-plan/05_WORKSTREAM_HANDOFF.md'), '# 05 Workstream Handoff\n\nStage: 05-workstream-handoff\nStatus: completed\nUpdated: 2026-05-26T00:00:00.000Z\n');
+    writeFileSync(join(root, 'docs/archive/plan/generated-task/.dotdotgod-plan/lowercase.md'), `${'oversized checkpoint state\n'.repeat(600)}`);
 
     const validate = run(['validate', root, '--include-local-memory', '--json']);
     assert.equal(validate.status, 0, validate.stdout + validate.stderr);
-    assert.equal(JSON.parse(validate.stdout).ok, true);
+    const payload = JSON.parse(validate.stdout);
+    assert.equal(payload.ok, true);
+    assert.equal(payload.errors.some((error) => error.file.includes('.dotdotgod-plan')), false);
   });
 
   it('validates, indexes, reports status, snapshots, and graph impact results', () => {

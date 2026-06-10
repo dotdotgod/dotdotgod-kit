@@ -178,7 +178,7 @@ describe("plan-generator command helpers", () => {
     }
   });
 
-  it("validates Stage 02 durable sections and internal stage state metadata", () => {
+  it("validates Stage 02 checkpoint sections without parsing durable formatting", () => {
     const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
     const taskDir = join(cwd, "docs", "plan", "stage-two");
     mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
@@ -187,6 +187,21 @@ describe("plan-generator command helpers", () => {
       `# Stage Two
 
 Status: active
+
+## 02-context-load
+
+Reader-friendly durable content can use nested or duplicated structure.
+
+### Memory Reads
+
+Project memory reviewed.
+`, 
+    );
+    writeFileSync(
+      join(taskDir, ".dotdotgod-plan", "02_CONTEXT_LOAD.md"),
+      `Stage: 02-context-load
+Status: completed
+Updated: 2026-05-28
 
 ## Memory Reads
 
@@ -206,14 +221,7 @@ packages/pi/extensions/plan-generator/stage-contract.ts
 - [x] Impact candidates: Plan-generator files identified.
 - [x] Related files: Stage contract and tests identified.
 - [x] Boundary risk: Plan Mode boundary preserved.
-`,
-    );
-    writeFileSync(
-      join(taskDir, ".dotdotgod-plan", "02_CONTEXT_LOAD.md"),
-      `Stage: 02-context-load
-Status: completed
-Updated: 2026-05-28
-`,
+`, 
     );
 
     const evidence = createStageValidationEvidence({
@@ -246,8 +254,60 @@ Status: maybe
     });
 
     assert.equal(evidence.ok, false);
-    assert.match(evidence.blockers.join("\n"), /Missing required section: ## Memory Reads/);
+    assert.match(evidence.blockers.join("\n"), /Missing required checkpoint section: ## Memory Reads/);
     assert.match(evidence.blockers.join("\n"), /wrong Stage/);
+  });
+
+  it("does not treat implementation-pending status text as an unresolved user decision", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const taskDir = join(cwd, "docs", "plan", "stage-two-pending");
+    mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
+    writeFileSync(
+      join(taskDir, "README.md"),
+      `# Stage Two Pending
+
+Status: active
+
+## Notes
+
+- Source/config implementation is pending.
+`,
+    );
+    writeFileSync(
+      join(taskDir, ".dotdotgod-plan", "02_CONTEXT_LOAD.md"),
+      `Stage: 02-context-load
+Status: completed
+Updated: 2026-05-28
+
+## Memory Reads
+
+Project memory reviewed.
+
+## Impact Candidates
+
+packages/pi/extensions/plan-generator/index.ts
+
+## Related Files
+
+packages/pi/extensions/plan-generator/stage-contract.ts
+
+## Stage 02 Construction Checklist
+
+- [x] Memory reads: Project memory reviewed.
+- [x] Impact candidates: Plan-generator files identified.
+- [x] Related files: Stage contract and tests identified.
+- [x] Boundary risk: Plan Mode boundary preserved.
+`,
+    );
+
+    const evidence = createStageValidationEvidence({
+      cwd,
+      currentPlan: "docs/plan/stage-two-pending/README.md",
+      stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_02_ID],
+    });
+
+    assert.equal(evidence.ok, true);
+    assert.doesNotMatch(evidence.blockers.join("\n"), /Unresolved user decision/);
   });
 
   it("extracts dotdotgod plan-generator fenced block contents", () => {
@@ -350,13 +410,13 @@ Status: maybe
     assert.match(message, /aggregated Todo Contract/i);
     assert.match(message, /Stage 05 construction checklist evidence/i);
     assert.match(message, /README\/support files hold final user-facing handoff instructions/i);
-    assert.match(message, /\.dotdotgod-plan\/05_WORKSTREAM_HANDOFF\.md file holds only compact routing\/status metadata/i);
+    assert.match(message, /\.dotdotgod-plan\/05_WORKSTREAM_HANDOFF\.md file is internal stage state context and validation evidence/i);
     assert.match(message, /Keep Plan Mode separate from \/plan-generator/i);
     assert.match(stage.evaluationPrompt, /lacks a split decision/i);
     assert.match(stage.evaluationPrompt, /split is needed but the Workstream Map, execution phase map, dependency gates, parallelization notes, per-workstream contracts/i);
     assert.match(stage.evaluationPrompt, /implementation agents must infer chat history/i);
     assert.match(stage.evaluationPrompt, /more than one primary handoff file/i);
-    assert.match(stage.evaluationPrompt, /final user-facing handoff instructions are written only to \.dotdotgod-plan\/05_WORKSTREAM_HANDOFF\.md/i);
+    assert.match(stage.evaluationPrompt, /matching \.dotdotgod-plan checkpoint has completed/i);
   });
 
   it("validates Stage 05 required sections and construction checklist evidence", () => {
@@ -369,13 +429,22 @@ Status: maybe
 
 Status: active
 
+Reader-friendly durable handoff content can be split or summarized.
+`, 
+    );
+    writeFileSync(
+      join(taskDir, ".dotdotgod-plan", "05_WORKSTREAM_HANDOFF.md"),
+      `Stage: 05-workstream-handoff
+Status: completed
+Updated: 2026-06-05
+
 ## Workstream Handoff
 
-Split decision: yes. Split implementation into independent prompt, validation, and test workstreams.
+Split decision: no. Rationale: one executor can finish this fixture.
 
 ## Workstream Map
 
-- Phase 1: prompt contract workstream, primary handoff file PROMPT_CONTRACT.md, can run before tests.
+No split map; one executor owns the listed todo contract.
 
 ## Shared Context
 
@@ -383,29 +452,23 @@ All subagents use the Stage 04 implementation design and existing plan-generator
 
 ## Workstreams
 
-- Prompt contract: allowed edits in stage-contract.ts; forbidden edits in Plan Mode; validation via Pi tests; output summary required.
+No split workstreams; one executor completes the todo contract.
 
 ## Integration Sequence
 
-1. Merge prompt contract.
-2. Run focused Pi tests.
+No split integration sequence is needed beyond running focused validation.
 
 ## Todo Contract
 
-- [ ] Update Stage 05 prompt contract.
-- [ ] Verify prompt and validation evidence tests.
+Plan: update Stage 05 prompt contract. Verification: focused Pi tests.
 
 ## Stage 05 Construction Checklist
 
-- [x] Handoffs: Split decision, phase map, workstream map, and primary handoff file are recorded.
+- [x] Handoffs: Split decision and handoff shape are recorded.
 - [x] Do-not rules: Plan Mode and unrelated files are forbidden for this workstream.
 - [x] Focused verification: Focused Pi tests are listed.
 - [x] Chat-independent context: Durable content remains in README/support files, not only .dotdotgod-plan.
-`,
-    );
-    writeFileSync(
-      join(taskDir, ".dotdotgod-plan", "05_WORKSTREAM_HANDOFF.md"),
-      "Stage: 05-workstream-handoff\nStatus: completed\nUpdated: 2026-06-05\n",
+`, 
     );
 
     const evidence = createStageValidationEvidence({

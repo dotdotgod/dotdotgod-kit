@@ -102,7 +102,7 @@ Required authoring details:
 
 Prompt/checkpoint boundary:
 - README/support files hold final user-facing handoff instructions and subagent contract content.
-- The .dotdotgod-plan/05_WORKSTREAM_HANDOFF.md file holds only compact routing/status metadata and is internal stage state context, not the final user-facing plan.
+- The .dotdotgod-plan/05_WORKSTREAM_HANDOFF.md file is internal stage state context and validation evidence: set Status: completed, include the required Stage 05 sections, and include completed construction checklist rows in canonical - [x] Category: evidence form.
 - Do not put final user-facing plan content only in .dotdotgod-plan/.
 
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
@@ -118,7 +118,7 @@ Return only JSON shaped as:
 }
 
 Rules:
-- pass: the durable plan artifact has enough Workstream Handoff, Workstream Map, Shared Context, Workstreams, Integration Sequence, Todo Contract, and Stage 05 construction checklist evidence to complete the staged plan, with no unresolved user decisions.
+- pass: the durable plan artifact has enough human-readable handoff content and the matching .dotdotgod-plan checkpoint has completed Workstream Handoff, Workstream Map, Shared Context, Workstreams, Integration Sequence, Todo Contract, and Stage 05 construction checklist evidence to complete the staged plan, with no unresolved user decisions.
 - blocked: user input or project context is missing and the assistant cannot safely continue without it.
 - retry: the assistant can repair Stage 05 by trying again without asking the user.
 - Fail or retry when the durable plan lacks a split decision with rationale.
@@ -127,7 +127,7 @@ Rules:
 - Fail or retry when implementation agents must infer chat history, project context, exact target files/functions, allowed edits, forbidden edits, tasks, validation, handoff output, dependencies, or integration notes.
 - Fail or retry when split-workstream subagents would need more than one primary handoff file or could not work from that file alone.
 - Fail or retry when final user-facing handoff instructions are written only to .dotdotgod-plan/05_WORKSTREAM_HANDOFF.md instead of README/support files.
-- Treat .dotdotgod-plan/05_WORKSTREAM_HANDOFF.md as compact routing/status metadata and internal stage state context, not the durable prompt output.
+- Treat .dotdotgod-plan/05_WORKSTREAM_HANDOFF.md as internal stage state context and validation evidence, not the durable prompt output.
 - Treat unresolved choices about scope, behavior, risk acceptance, or implementation direction as blocked user input; do not pass a stage that only records them as undecided/TBD.
 - Do not include markdown fences or prose outside JSON.`;
 
@@ -171,16 +171,17 @@ Use the current stage state context as workflow context, then update the durable
 Include durable plan content for:
 - Memory Reads;
 - Impact Candidates;
-- Related Files;
-- Stage 02 construction checklist evidence for Memory reads, Impact candidates, Related files, and Boundary risk.
+- Related Files.
 
-The .dotdotgod-plan/02_CONTEXT_LOAD.md file is internal stage state context, not the final user-facing plan.
+Also update .dotdotgod-plan/02_CONTEXT_LOAD.md as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include ## Memory Reads, ## Impact Candidates, ## Related Files, and include ## Stage 02 Construction Checklist with completed - [x] Memory reads, Impact candidates, Related files, and Boundary risk evidence rows.
+
+The .dotdotgod-plan/02_CONTEXT_LOAD.md file is internal stage state context and validation evidence, not the final user-facing plan.
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond Stage 02.`;
 
 export const STAGE_02_RETRY_PROMPT = `Repair the /plan-generator Stage 02 context-load update.
 
-Use the Stage 02 requirements below and the previous evaluation. Update the durable plan artifact, not just the internal .dotdotgod-plan state context.`;
+Use the Stage 02 requirements below and the previous evaluation. Update the durable plan artifact for readers and update .dotdotgod-plan/02_CONTEXT_LOAD.md as the machine-readable validation checkpoint.`;
 
 export const STAGE_02_EVALUATION_PROMPT = `Evaluate whether the latest assistant response completed /plan-generator Stage 02: context load.
 
@@ -192,10 +193,10 @@ Return only JSON shaped as:
 }
 
 Rules:
-- pass: the durable plan artifact has enough Memory Reads, Impact Candidates, Related Files, and Stage 02 construction checklist evidence to continue to Stage 03 discovery.
+- pass: the durable plan artifact has enough human-readable context and .dotdotgod-plan/02_CONTEXT_LOAD.md has completed Stage 02 checkpoint sections plus checklist evidence to continue to Stage 03 discovery.
 - blocked: user input or project context is missing and the assistant cannot safely continue without it.
 - retry: the assistant can repair the Stage 02 response by trying again without asking the user.
-- Treat .dotdotgod-plan/02_CONTEXT_LOAD.md as stage state context, not the final durable plan artifact.
+- Treat .dotdotgod-plan/02_CONTEXT_LOAD.md as stage state context and validation evidence, not the final durable plan artifact.
 - Do not include markdown fences or prose outside JSON.`;
 
 export const STAGE_03_AUTHORING_PROMPT = `You are authoring /plan-generator Stage 03: discovery.
@@ -212,7 +213,9 @@ Stage 03 must record actual findings from inspected code/docs, not only a list o
 Separate agent-resolvable research questions from user decisions. If any open question requires the user to choose scope, behavior, risk acceptance, or implementation direction, ask the user and stop instead of advancing.
 ${PLAN_GENERATOR_USER_DECISION_INSTRUCTION}
 
-The .dotdotgod-plan/03_DISCOVERY.md file is internal stage state context, not the final user-facing plan.
+Also update .dotdotgod-plan/03_DISCOVERY.md as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include ## Findings, ## Risks, ## Open Questions, and include ## Stage 03 Construction Checklist with completed - [x] Findings, Risks, Open questions, and Extension points evidence rows.
+
+The .dotdotgod-plan/03_DISCOVERY.md file is internal stage state context and validation evidence, not the final user-facing plan.
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond Stage 03.`;
 
@@ -254,7 +257,7 @@ Use this completed stage context:
 Use this next planning context:
 {{nextContext}}
 
-Treat docs/plan/<task>/.dotdotgod-plan/NN_STAGE_NAME.md files as internal stage state context. Use them as workflow context and validation evidence, but write final plan content to README.md or task-local support markdown files outside .dotdotgod-plan/.
+Treat docs/plan/<task>/.dotdotgod-plan/NN_STAGE_NAME.md files as internal stage state context and validation evidence. Write final plan content to README.md or task-local support markdown files outside .dotdotgod-plan/, and keep the matching checkpoint in canonical machine-readable form with Status: completed, required sections, and completed construction checklist rows.
 
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
 
@@ -274,7 +277,9 @@ Include durable plan content for:
 ${options.requiredSections.map((section) => `- ${section};`).join("\n")}
 - construction checklist evidence for ${options.constructionChecklist.join(", ")}.
 
-The .dotdotgod-plan/${options.checkpointFileName} file is internal stage state context, not the final user-facing plan.
+Also update .dotdotgod-plan/${options.checkpointFileName} as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include the required sections, and include the stage construction checklist rows in canonical - [x] Category: evidence form.
+
+The .dotdotgod-plan/${options.checkpointFileName} file is internal stage state context and validation evidence, not the final user-facing plan.
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond this stage.`;
 }
@@ -300,11 +305,11 @@ Return only JSON shaped as:
 }
 
 Rules:
-- pass: the durable plan artifact has enough ${options.requiredSections.join(", ")} content${options.nextStage ? " to continue to the next stage" : " to complete the staged plan"}, with no unresolved user decisions.
+- pass: the durable plan artifact has enough human-readable content and the matching .dotdotgod-plan checkpoint has completed ${options.requiredSections.join(", ")} evidence${options.nextStage ? " to continue to the next stage" : " to complete the staged plan"}, with no unresolved user decisions.
 - blocked: user input or project context is missing and the assistant cannot safely continue without it.
 - retry: the assistant can repair this stage by trying again without asking the user.
 - Treat unresolved choices about scope, behavior, risk acceptance, or implementation direction as blocked user input; do not pass a stage that only records them as undecided/TBD.
-- Treat .dotdotgod-plan files as stage state context, not the final durable plan artifact.
+- Treat .dotdotgod-plan files as stage state context and validation evidence, not the final durable plan artifact.
 - Do not include markdown fences or prose outside JSON.`;
 }
 
@@ -417,7 +422,9 @@ Include durable plan content for:
 - Resume Point;
 - construction checklist evidence for Implementation design, Code touchpoints, Data/state flow, Edge cases, Atomic tasks, Test design, Validation plan, and Resume point.
 
-The .dotdotgod-plan/04_PLAN.md file is internal stage state context, not the final user-facing plan.
+Also update .dotdotgod-plan/04_PLAN.md as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include the required Stage 04 sections, and include ## Stage 04 Construction Checklist with completed evidence rows.
+
+The .dotdotgod-plan/04_PLAN.md file is internal stage state context and validation evidence, not the final user-facing plan.
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond Stage 04.`,
     retryPrompt: `${buildGenericRetryPrompt("Stage 04: plan")}

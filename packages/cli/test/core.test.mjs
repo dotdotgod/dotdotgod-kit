@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -710,10 +710,13 @@ function internalStageFileName(stage) {
   return match ? `${match[1]}_${match[2].replace(/-/g, '_').toUpperCase()}.md` : `${stage.replace(/-/g, '_').toUpperCase()}.md`;
 }
 
-function writeInternalPlanStage(root, slug, stage, content = internalStageContent(stage)) {
+function writeInternalPlanStage(root, slug, stage, content = internalStageContent(stage), status = 'completed') {
   const workspace = join(root, 'docs/plan', slug, '.dotdotgod-plan');
   mkdirSync(workspace, { recursive: true });
-  writeFileSync(join(workspace, internalStageFileName(stage)), content);
+  const body = /^Stage:\s*/m.test(content)
+    ? content
+    : `Stage: ${stage}\nStatus: ${status}\nUpdated: 2026-05-29T00:00:00.000Z\n\n${content}`;
+  writeFileSync(join(workspace, internalStageFileName(stage)), body);
 }
 
 function writeInternalPlanFixture(root, slug = 'internal-task', stages = ['01-intake', '02-context-load', '03-discovery', '04-plan', '05-workstream-handoff']) {
@@ -739,6 +742,7 @@ function writeValidPlanFixture(root, slug = 'my-task') {
     internalStageContent('05-workstream-handoff'),
   ].join('\n');
   writeFileSync(join(planDir, 'README.md'), readme);
+  for (const stage of ['01-intake', '02-context-load', '03-discovery', '04-plan', '05-workstream-handoff']) writeInternalPlanStage(root, slug, stage);
   writePlanStage(root, slug, '01-intake', internalStageContent('01-intake'));
   writePlanStage(root, slug, '02-context-load', internalStageContent('02-context-load'));
   writePlanStage(root, slug, '03-discovery', internalStageContent('03-discovery'));
@@ -785,6 +789,7 @@ describe('Plan artifact validation', () => {
     mkdirSync(planDir, { recursive: true });
     const planPath = join(planDir, 'README.md');
     writeFileSync(planPath, '# Incremental Task\n\n' + internalStageContent('01-intake'));
+    writeInternalPlanStage(root, slug, '01-intake');
 
     const stageResult = validatePlanArtifact(planPath, { root, stage: '01-intake' });
     assert.equal(stageResult.ok, true);
@@ -795,34 +800,33 @@ describe('Plan artifact validation', () => {
 
     const fullResult = validatePlanArtifact(planPath, { root });
     assert.equal(fullResult.ok, false);
-    assert(fullResult.blockers.some((blocker) => blocker.code === 'missing-section' && blocker.stage === '02-context-load'));
+    assert(fullResult.blockers.some((blocker) => blocker.code === 'missing-internal-stage' && blocker.stage === '02-context-load'));
   });
 
-  it('treats internal workspace checkpoints as state only and supports the final workstream handoff stage', () => {
+  it('validates internal workspace checkpoints as the stage contract', () => {
     const root = fixture();
     const planPath = writeInternalPlanFixture(root, 'internal-task', ['01-intake']);
 
     const checkpointOnly = validatePlanArtifact(planPath, { root, stage: '01' });
-    assert.equal(checkpointOnly.ok, false);
+    assert.equal(checkpointOnly.ok, true);
     assert.equal(checkpointOnly.stage, '01-intake');
-    assert(checkpointOnly.blockers.some((blocker) => blocker.code === 'missing-section' && blocker.path.endsWith('README.md')));
+    assert.equal(checkpointOnly.blockers.length, 0);
 
     assert.equal(resolvePlanValidationStage('05'), '05-workstream-handoff');
     assert.equal(resolvePlanValidationStage('05-workstream-handoff'), '05-workstream-handoff');
 
     const missingFinal = validatePlanArtifact(planPath, { root, stage: '05' });
     assert.equal(missingFinal.ok, false);
-    assert(missingFinal.blockers.some((blocker) => blocker.code === 'missing-section' && blocker.stage === '05-workstream-handoff'));
+    assert(missingFinal.blockers.some((blocker) => blocker.code === 'missing-internal-stage' && blocker.stage === '05-workstream-handoff'));
 
     const fullPlanPath = writeInternalPlanFixture(root, 'complete-internal-task');
-    writeFileSync(fullPlanPath, '# Complete Internal Task\n\n' + ['01-intake', '02-context-load', '03-discovery', '04-plan', '05-workstream-handoff'].map((stage) => internalStageContent(stage)).join('\n'));
     const fullResult = validatePlanArtifact(fullPlanPath, { root });
     assert.equal(fullResult.ok, true);
     assert.equal(fullResult.summary.stages.total, 5);
     assert.equal(fullResult.summary.stages.valid, 5);
   });
 
-  it('accepts valid split and no-split Stage 05 workstream handoff contracts', () => {
+  it('accepts valid split and no-split Stage 05 workstream handoff checkpoints', () => {
     const root = fixture();
     const noSplitPath = writeValidPlanFixture(root, 'no-split-task');
     const noSplitResult = validatePlanArtifact(noSplitPath, { root, stage: '05' });
@@ -831,19 +835,17 @@ describe('Plan artifact validation', () => {
     const splitDir = join(root, 'docs/plan/split-task');
     mkdirSync(splitDir, { recursive: true });
     const splitPath = join(splitDir, 'README.md');
-    writeFileSync(splitPath, '# Split Task\n\n## Workstream Handoff\nSplit decision: yes. Workstream 1 and Workstream 2 run in parallel.\n\n## Workstream Map\n- Workstream 1: CLI contract.\n- Workstream 2: Tests and fixtures.\n\n## Shared Context\nBoth workstreams read the Stage 04 plan and shared validation rules.\n\n## Workstreams\n- Workstream 1 purpose: update CLI validation. Required context/read: plan contract. Allowed edits: CLI command files. Forbidden edits/do not edit: unrelated docs. Tasks: implement rules. Validation: core test. Handoff output: changed files and risks. Dependencies: none.\n- Workstream 2 objective: update fixtures. Required context/read: current tests. Allowed edits: core tests. Forbidden edits/do not edit: unrelated docs. Tasks: add cases. Verify with core test. Output: test evidence. Dependencies: Workstream 1 interfaces.\n\n## Integration Sequence\nSequence: integrate Workstream 1 before Workstream 2, then verify validation and handoff evidence.\n\n## Todo Contract\nPlan: 1. Complete split workstreams.\n\n' + internalStageChecklist('05-workstream-handoff'));
+    writeFileSync(splitPath, '# Split Task\n\nDurable text can be shaped for readers.\n');
+    writeInternalPlanStage(root, 'split-task', '05-workstream-handoff', '# Workstream Handoff\n\n## Workstream Handoff\nSplit decision: yes. Workstream 1 and Workstream 2 run in parallel.\n\n## Workstream Map\n- Workstream 1: CLI contract.\n- Workstream 2: Tests and fixtures.\n\n## Shared Context\nBoth workstreams read the Stage 04 plan and shared validation rules.\n\n## Workstreams\n- Workstream 1 purpose: update CLI validation. Required context/read: plan contract. Allowed edits: CLI command files. Forbidden edits/do not edit: unrelated docs. Tasks: implement rules. Validation: core test. Handoff output: changed files and risks. Dependencies: none.\n- Workstream 2 objective: update fixtures. Required context/read: current tests. Allowed edits: core tests. Forbidden edits/do not edit: unrelated docs. Tasks: add cases. Verify with core test. Output: test evidence. Dependencies: Workstream 1 interfaces.\n\n## Integration Sequence\nSequence: integrate Workstream 1 before Workstream 2, then verify validation and handoff evidence.\n\n## Todo Contract\nPlan: 1. Complete split workstreams.\n\n' + internalStageChecklist('05-workstream-handoff'));
 
     const splitResult = validatePlanArtifact(splitPath, { root, stage: '05' });
     assert.equal(splitResult.ok, true);
   });
 
-  it('blocks incomplete Stage 05 workstream handoff sections and split semantics', () => {
+  it('blocks incomplete Stage 05 checkpoint sections and split semantics', () => {
     const root = fixture();
     const planPath = writeValidPlanFixture(root, 'broken-stage-five');
-    let readme = readFileSync(planPath, 'utf8');
-    readme = readme.replace('## Shared Context\nUse the fixture plan context and preserve Plan Mode boundaries.\n\n', '');
-    readme = readme.replace('Split decision: no. Rationale: this fixture is small enough for one executor.', 'This handoff does not record a decision.');
-    writeFileSync(planPath, readme);
+    writeInternalPlanStage(root, 'broken-stage-five', '05-workstream-handoff', internalStageContent('05-workstream-handoff').replace('## Shared Context\nUse the fixture plan context and preserve Plan Mode boundaries.\n\n', '').replace('Split decision: no. Rationale: this fixture is small enough for one executor.', 'This handoff does not record a decision.'));
 
     const result = validatePlanArtifact(planPath, { root, stage: '05' });
     assert.equal(result.ok, false);
@@ -851,67 +853,62 @@ describe('Plan artifact validation', () => {
     assert(result.blockers.some((blocker) => blocker.code === 'missing-workstream-split-decision'));
   });
 
-  it('blocks no-split Stage 05 handoffs without rationale', () => {
+  it('blocks no-split Stage 05 checkpoints without rationale', () => {
     const root = fixture();
     const planPath = writeValidPlanFixture(root, 'no-rationale-task');
-    const readme = readFileSync(planPath, 'utf8').replace('Split decision: no. Rationale: this fixture is small enough for one executor.', 'Split decision: no.');
-    writeFileSync(planPath, readme);
+    writeInternalPlanStage(root, 'no-rationale-task', '05-workstream-handoff', internalStageContent('05-workstream-handoff').replace('Split decision: no. Rationale: this fixture is small enough for one executor.', 'Split decision: no.'));
 
     const result = validatePlanArtifact(planPath, { root, stage: '05' });
     assert.equal(result.ok, false);
     assert(result.blockers.some((blocker) => blocker.code === 'missing-workstream-no-split-rationale'));
   });
 
-  it('blocks split Stage 05 support files without actionable workstream fields', () => {
+  it('blocks split Stage 05 checkpoints without actionable workstream fields', () => {
     const root = fixture();
     const planDir = join(root, 'docs/plan/support-split-task');
     mkdirSync(planDir, { recursive: true });
     const planPath = join(planDir, 'README.md');
     writeFileSync(planPath, '# Support Split Task\n\nSee `HANDOFF.md`.\n');
-    writeFixtureFile(root, 'docs/plan/support-split-task/HANDOFF.md', '# Handoff\n\n## Workstream Handoff\nSplit decision: yes. Workstream 1 and Workstream 2 are required.\n\n## Workstream Map\n- Workstream 1: CLI.\n- Workstream 2: Tests.\n\n## Shared Context\nShared context is captured here.\n\n## Workstreams\n- Workstream 1: CLI.\n- Workstream 2: Tests.\n\n## Integration Sequence\nSequence: integrate and verify.\n\n## Todo Contract\nPlan: 1. Execute split plan.\n\n' + internalStageChecklist('05-workstream-handoff'));
+    writeInternalPlanStage(root, 'support-split-task', '05-workstream-handoff', '# Handoff\n\n## Workstream Handoff\nSplit decision: yes. Workstream 1 and Workstream 2 are required.\n\n## Workstream Map\n- Workstream 1: CLI.\n- Workstream 2: Tests.\n\n## Shared Context\nShared context is captured here.\n\n## Workstreams\n- Workstream 1: CLI.\n- Workstream 2: Tests.\n\n## Integration Sequence\nSequence: integrate and verify.\n\n## Todo Contract\nPlan: 1. Execute split plan.\n\n' + internalStageChecklist('05-workstream-handoff'));
 
     const result = validatePlanArtifact(planPath, { root, stage: '05' });
     assert.equal(result.ok, false);
-    assert.equal(result.summary.splitFiles.detected, true);
     assert(result.blockers.some((blocker) => blocker.code === 'incomplete-workstream-split' && blocker.section === 'Workstreams'));
   });
 
-  it('accepts Stage 05 required sections from support files outside the internal workspace', () => {
+  it('ignores durable support-file shape when checkpoint validation passes', () => {
     const root = fixture();
     const planDir = join(root, 'docs/plan/support-stage-five');
-    mkdirSync(join(planDir, '.dotdotgod-plan'), { recursive: true });
+    mkdirSync(planDir, { recursive: true });
     const planPath = join(planDir, 'README.md');
-    writeFileSync(planPath, '# Support Stage Five\n\nDurable support file owns Stage 05.\n');
-    writeFixtureFile(root, 'docs/plan/support-stage-five/.dotdotgod-plan/IGNORED.md', '## Workstream Handoff\nTBD\n');
-    writeFixtureFile(root, 'docs/plan/support-stage-five/WORKSTREAM_HANDOFF.md', internalStageContent('05-workstream-handoff'));
+    writeFileSync(planPath, '# Support Stage Five\n\nDurable support file owns reader-friendly context.\n');
+    writeFixtureFile(root, 'docs/plan/support-stage-five/WORKSTREAM_HANDOFF.md', '## Workstream Handoff\nTBD for readers only.\n');
+    writeInternalPlanStage(root, 'support-stage-five', '05-workstream-handoff');
 
     const result = validatePlanArtifact(planPath, { root, stage: '05' });
     assert.equal(result.ok, true);
     assert.equal(result.summary.splitFiles.detected, true);
   });
 
-  it('blocks missing stages, invalid markdown names, and missing sections', () => {
+  it('blocks missing checkpoints and missing checkpoint sections', () => {
     const root = fixture();
     const planPath = writeValidPlanFixture(root);
-    writeFixtureFile(root, 'docs/plan/my-task/03-discovery/bad-name.md', '# Bad\n');
-    writeFileSync(planPath, readFileSync(planPath, 'utf8').replace('## Validation Plan\nRun focused unit tests.', '## Validation Plan\n'));
+    rmSync(join(root, 'docs/plan/my-task/.dotdotgod-plan/03_DISCOVERY.md'));
+    writeInternalPlanStage(root, 'my-task', '04-plan', internalStageContent('04-plan').replace('## Validation Plan\nRun focused unit tests.', '## Validation Plan\n'));
     const result = validatePlanArtifact(planPath, { root });
     assert.equal(result.ok, false);
-    assert(!result.blockers.some((blocker) => blocker.code === 'invalid-markdown-name'));
+    assert(result.blockers.some((blocker) => blocker.code === 'missing-internal-stage' && blocker.stage === '03-discovery'));
     assert(result.blockers.some((blocker) => blocker.code === 'empty-section' && blocker.section === 'Validation Plan'));
     assert(result.blockers.every((blocker) => typeof blocker.prompt === 'string' && blocker.prompt.includes(blocker.message)));
     assert.match(result.repairPrompt, /Refine the active plan artifact/);
     assert.match(result.repairPrompt, /Validation Plan/);
   });
 
-  it('blocks placeholder content, unresolved assumptions, and missing atomic verification', () => {
+  it('blocks placeholder checkpoint content, unresolved assumptions, and missing atomic verification', () => {
     const root = fixture();
     const planPath = writeValidPlanFixture(root);
-    let readme = readFileSync(planPath, 'utf8');
-    readme = readme.replace('## Request Summary\nBuild it.', '## Request Summary\nTBD');
-    readme = readme.replace('## Assumptions\nAll assumptions resolved.', '## Assumptions\n- [ ] Confirm target adapters.');
-    readme = readme.replace('- AT1: Add validator. Acceptance criteria: detects invalid plans. Verification: unit tests.', '- AT1: Add validator.');
-    writeFileSync(planPath, readme);
+    writeInternalPlanStage(root, 'my-task', '01-intake', internalStageContent('01-intake').replace('## Request Summary\nBuild it.', '## Request Summary\nTBD').replace('## Assumptions\nAll assumptions resolved.', '## Assumptions\n- [ ] Confirm target adapters.'));
+    writeInternalPlanStage(root, 'my-task', '04-plan', internalStageContent('04-plan').replace('- AT1: Add validator. Acceptance criteria: detects invalid plans. Verification: unit tests.', '- AT1: Add validator.'));
     const result = validatePlanArtifact(planPath, { root });
     assert.equal(result.ok, false);
     assert(result.blockers.some((blocker) => blocker.code === 'placeholder-section'));
@@ -935,7 +932,10 @@ describe('Plan artifact validation', () => {
 
   it('creates internal stage checkpoints by numeric prefix or stage name without overwriting', () => {
     const root = fixture();
-    const planPath = writeValidPlanFixture(root, 'single-task');
+    const planDir = join(root, 'docs/plan/single-task');
+    mkdirSync(planDir, { recursive: true });
+    const planPath = join(planDir, 'README.md');
+    writeFileSync(planPath, '# Single Task\n\nValid durable plan root.\n');
 
     const created = createPlanStageCheckpoint('02', { root, now: new Date('2026-05-29T00:00:00.000Z') });
     assert.deepEqual(created, {
@@ -956,8 +956,11 @@ describe('Plan artifact validation', () => {
 
   it('requires an explicit plan path when checkpoint creation is ambiguous', () => {
     const root = fixture();
-    writeValidPlanFixture(root, 'first-task');
-    writeValidPlanFixture(root, 'second-task');
+    for (const slug of ['first-task', 'second-task']) {
+      const planDir = join(root, 'docs/plan', slug);
+      mkdirSync(planDir, { recursive: true });
+      writeFileSync(join(planDir, 'README.md'), `# ${slug}\n\nValid durable plan root.\n`);
+    }
 
     assert.throws(() => createPlanStageCheckpoint('02', { root }), /Could not infer an active plan/);
 
@@ -965,18 +968,14 @@ describe('Plan artifact validation', () => {
     assert.equal(created.path, 'docs/plan/first-task/.dotdotgod-plan/02_CONTEXT_LOAD.md');
   });
 
-  it('blocks missing, malformed, open, and placeholder construction checklist items', () => {
+  it('blocks missing, malformed, open, and placeholder checkpoint construction checklist items', () => {
     const root = fixture();
-    const planDir = join(root, 'docs/plan/checklist-task');
-    mkdirSync(planDir, { recursive: true });
-    const planPath = join(planDir, 'README.md');
-    let readme = '# Checklist Task\n\n' + ['01-intake', '02-context-load', '03-discovery', '04-plan', '05-workstream-handoff'].map((stage) => internalStageContent(stage)).join('\n');
-    readme = readme.replace('## Stage 01 Construction Checklist', '## Stage 01 Missing Checklist');
-    readme = readme.replace('- [x] Impact candidates: CLI and Pi files are identified.', '- [ ] Impact candidates: pending confirmation.');
-    readme = readme.replace('- [x] Extension points: focused helper boundaries are identified.', '- [x] Extension points TBD');
-    readme = readme.replace('- [x] Handoffs: coordinator and implementation handoffs are listed.', '- [x] Handoffs: TBD');
-    readme = readme.replace('- [x] Validation plan: focused checks are identified.\n', '');
-    writeFileSync(planPath, readme);
+    const planPath = writeInternalPlanFixture(root, 'checklist-task');
+    writeInternalPlanStage(root, 'checklist-task', '01-intake', internalStageContent('01-intake').replace('## Stage 01 Construction Checklist', '## Stage 01 Missing Checklist'));
+    writeInternalPlanStage(root, 'checklist-task', '02-context-load', internalStageContent('02-context-load').replace('- [x] Impact candidates: CLI and Pi files are identified.', '- [ ] Impact candidates: pending confirmation.'));
+    writeInternalPlanStage(root, 'checklist-task', '03-discovery', internalStageContent('03-discovery').replace('- [x] Extension points: focused helper boundaries are identified.', '- [x] Extension points TBD'));
+    writeInternalPlanStage(root, 'checklist-task', '04-plan', internalStageContent('04-plan').replace('- [x] Validation plan: focused checks are identified.\n', ''));
+    writeInternalPlanStage(root, 'checklist-task', '05-workstream-handoff', internalStageContent('05-workstream-handoff').replace('- [x] Handoffs: coordinator and implementation handoffs are listed.', '- [x] Handoffs: TBD'));
 
     const result = validatePlanArtifact(planPath, { root });
     assert.equal(result.ok, false);

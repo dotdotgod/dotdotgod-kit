@@ -34,6 +34,7 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 - `landing-site/` — paused: plan for adding a static React landing and documentation site to the pnpm monorepo; waiting on framework, deployment, and design decisions.
 - `notion-docs-sync/` — active: plan for a Notion integration that links Notion task/issue pages with GitHub-hosted markdown under `docs/` and preserves traceability; Phase 1-3 use CLI dry-run, CLI write mode, and GitHub Actions without custom server resources.
 - `pi-subagents-resource-conflict/` — active: plan to suppress duplicate `pi-subagents` skill and prompt resources when standalone `pi-subagents` is already installed alongside `@dotdotgod/pi`.
+- `plan-generator-user-decision-surfacing/` — active: plan to surface durable-plan user-owned open decisions as `input-waiting` blockers with concrete final-response questions and options.
 - `plan-generator-stage-01-loop/` — active: plan to complete only the `/plan-generator` Stage 01 agent-end evaluation loop, pass/blocked/retry handling, store persistence, and next-context handoff.
 - `plan-generator-interrupt-toggle-resume/` — active: plan Esc pause, next-message same-stage resume, and no-arg `/plan-generator` toggle-off behavior for active generator workflows.
 - `plan-generator-path-resume/` — active: plan `/plan-generator docs/plan/<task>/README.md` path mode to resume existing durable plans from checkpoints or start Stage 01 in place when no checkpoint exists.
