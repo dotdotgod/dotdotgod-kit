@@ -384,19 +384,42 @@ function hasOpenChecklistEvidence(evidence) {
   return CHECKLIST_OPEN_RE.test(normalized);
 }
 
+function checklistStatusChecked(value) {
+  return /\[[xX]\]/.test(value) || /\bcompleted\b/i.test(value);
+}
+
+function parseChecklistLine(line, lineNumber) {
+  const trimmed = line.trim();
+  if (!trimmed) return undefined;
+  if (/^\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?$/.test(trimmed)) return undefined;
+
+  const canonical = /^\s*[-*+]\s*\[([^\]])\]\s*([^:]+):\s*(.*?)\s*$/.exec(line);
+  if (canonical) return { line, lineNumber, checked: canonical[1].trim().toLowerCase() === 'x', category: canonical[2].trim(), evidence: canonical[3].trim(), malformed: false };
+
+  const checkedDash = /^\s*[-*+]\s*\[([^\]])\]\s*(.+?)\s*[—–-]\s*(.*?)\s*$/.exec(line);
+  if (checkedDash) return { line, lineNumber, checked: checkedDash[1].trim().toLowerCase() === 'x', category: checkedDash[2].trim(), evidence: checkedDash[3].trim(), malformed: false };
+
+  const completedPrefix = /^\s*[-*+]\s*completed\s*[—–-]\s*\[([xX])\]\s*(.+?)(?::\s*(.*?))?\s*$/.exec(line);
+  if (completedPrefix) return { line, lineNumber, checked: true, category: completedPrefix[2].trim(), evidence: (completedPrefix[3] ?? 'completed').trim(), malformed: false };
+
+  const table = /^\s*\|(.+)\|\s*$/.exec(line);
+  if (table) {
+    const cells = table[1].split('|').map((cell) => cell.trim()).filter(Boolean);
+    if (cells.length >= 2 && !/^item$/i.test(cells[0]) && !/^category$/i.test(cells[0])) return { line, lineNumber, checked: checklistStatusChecked(cells.slice(1).join(' | ')), category: cells[0], evidence: cells.slice(1).join(' | '), malformed: false };
+    return undefined;
+  }
+
+  const colonStatus = /^\s*([^:|]+):\s*(completed\s*[—–-]\s*\[[xX]\]|\[[xX]\]|completed)(?:\s*[—–:\-]\s*(.*?))?\s*$/.exec(line);
+  if (colonStatus) return { line, lineNumber, checked: checklistStatusChecked(colonStatus[2]), category: colonStatus[1].trim(), evidence: (colonStatus[3] ?? colonStatus[2]).trim(), malformed: false };
+
+  return /^\s*[-*+]\s*/.test(line) ? { line, lineNumber, malformed: true } : undefined;
+}
+
 function parseChecklistRows(content) {
-  return content.split(/\r?\n/).map((line, index) => {
-    const match = /^\s*[-*+]\s*\[([^\]])\]\s*([^:]+):\s*(.*?)\s*$/.exec(line);
-    if (!match) return { line, lineNumber: index + 1, malformed: /^\s*[-*+]\s*/.test(line) && line.trim().length > 0 };
-    return {
-      line,
-      lineNumber: index + 1,
-      checked: match[1].trim().toLowerCase() === 'x',
-      category: match[2].trim(),
-      evidence: match[3].trim(),
-      malformed: false,
-    };
-  }).filter((row) => row.malformed || row.category);
+  return content
+    .split(/\r?\n/)
+    .map((line, index) => parseChecklistLine(line, index + 1))
+    .filter((row) => row?.malformed || row?.category);
 }
 
 function validateConstructionChecklist(root, files, stageName, blockers) {
@@ -415,7 +438,7 @@ function validateConstructionChecklist(root, files, stageName, blockers) {
   for (const row of rows) {
     if (row.malformed) {
       valid = false;
-      addBlocker(blockers, 'malformed-checklist-item', `Malformed construction checklist item at line ${row.lineNumber}: expected "- [x] Category: evidence".`, { path: relFound, stage: stageName, section: header });
+      addBlocker(blockers, 'malformed-checklist-item', `Malformed construction checklist item at line ${row.lineNumber}: expected canonical "- [x] Category: evidence" or a completed table/status row with non-placeholder evidence.`, { path: relFound, stage: stageName, section: header });
       continue;
     }
     if (!row.checked || hasOpenChecklistEvidence(row.evidence)) {
@@ -430,7 +453,7 @@ function validateConstructionChecklist(root, files, stageName, blockers) {
   for (const category of requiredCategories) {
     if (!byCategory.has(normalizeChecklistCategory(category))) {
       valid = false;
-      addBlocker(blockers, 'missing-checklist-item', `Missing construction checklist item: ${category}`, { path: relFound, stage: stageName, section: header });
+      addBlocker(blockers, 'missing-checklist-item', `Missing construction checklist item: ${category}. Preferred format: "- [x] ${category}: evidence".`, { path: relFound, stage: stageName, section: header });
     }
   }
   return valid;

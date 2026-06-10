@@ -349,15 +349,48 @@ function constructionChecklistHeader(stageId: PlanGeneratorStageId): string {
   return `Stage ${stageId.slice(0, 2)} Construction Checklist`;
 }
 
+function checklistStatusChecked(value: string): boolean {
+  return /\[[xX]\]/.test(value) || /\bcompleted\b/i.test(value);
+}
+
+function parseChecklistEvidenceLine(line: string): { checked: boolean; category: string; evidence: string } | undefined {
+  const trimmed = line.trim();
+  if (!trimmed) return undefined;
+  if (/^\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?$/.test(trimmed)) return undefined;
+
+  const canonical = /^\s*[-*+]\s*\[([^\]])\]\s*([^:]+):\s*(.*?)\s*$/.exec(line);
+  if (canonical) return { checked: canonical[1]?.trim().toLowerCase() === "x", category: canonical[2]?.trim() ?? "", evidence: canonical[3]?.trim() ?? "" };
+
+  const checkedDash = /^\s*[-*+]\s*\[([^\]])\]\s*(.+?)\s*[—–-]\s*(.*?)\s*$/.exec(line);
+  if (checkedDash) return { checked: checkedDash[1]?.trim().toLowerCase() === "x", category: checkedDash[2]?.trim() ?? "", evidence: checkedDash[3]?.trim() ?? "" };
+
+  const completedPrefix = /^\s*[-*+]\s*completed\s*[—–-]\s*\[([xX])\]\s*(.+?)(?::\s*(.*?))?\s*$/.exec(line);
+  if (completedPrefix) return { checked: true, category: completedPrefix[2]?.trim() ?? "", evidence: (completedPrefix[3] ?? "completed").trim() };
+
+  const table = /^\s*\|(.+)\|\s*$/.exec(line);
+  if (table) {
+    const cells = (table[1] ?? "").split("|").map((cell) => cell.trim()).filter(Boolean);
+    if (cells.length >= 2 && !/^item$/i.test(cells[0] ?? "") && !/^category$/i.test(cells[0] ?? "")) {
+      const evidence = cells.slice(1).join(" | ");
+      return { checked: checklistStatusChecked(evidence), category: cells[0] ?? "", evidence };
+    }
+  }
+
+  const colonStatus = /^\s*([^:|]+):\s*(completed\s*[—–-]\s*\[[xX]\]|\[[xX]\]|completed)(?:\s*[—–:\-]\s*(.*?))?\s*$/.exec(line);
+  if (colonStatus) return { checked: checklistStatusChecked(colonStatus[2] ?? ""), category: colonStatus[1]?.trim() ?? "", evidence: (colonStatus[3] ?? colonStatus[2] ?? "").trim() };
+
+  return undefined;
+}
+
 function checkedChecklistHas(content: string, category: string): boolean {
   const normalizedCategory = category.toLowerCase();
   return content.split(/\r?\n/).some((line) => {
-    const match = /^\s*[-*+]\s*\[x\]\s*([^:]+):\s*(.*?)\s*$/i.exec(line);
+    const row = parseChecklistEvidenceLine(line);
     return Boolean(
-      match &&
-        match[1]?.trim().toLowerCase() === normalizedCategory &&
-        match[2] &&
-        contentHasValue(match[2]),
+      row &&
+        row.checked &&
+        row.category.trim().toLowerCase() === normalizedCategory &&
+        contentHasValue(row.evidence),
     );
   });
 }

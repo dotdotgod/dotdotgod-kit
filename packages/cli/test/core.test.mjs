@@ -968,6 +968,23 @@ describe('Plan artifact validation', () => {
     assert.equal(created.path, 'docs/plan/first-task/.dotdotgod-plan/02_CONTEXT_LOAD.md');
   });
 
+  it('accepts completed Stage 02 checkpoint checklist compatibility formats', () => {
+    const root = fixture();
+    const planPath = writeInternalPlanFixture(root, 'compat-checklist-task');
+    writeInternalPlanStage(root, 'compat-checklist-task', '02-context-load', `${internalStageContent('02-context-load')}## Stage 02 Construction Checklist
+
+| Item | Status |
+| --- | --- |
+| Memory reads | completed - [x] |
+- completed - [x] Impact candidates
+Related files: completed - [x]
+- [x] Boundary risk — backend availability and image semantics remain explicit risks.
+`);
+
+    const result = validatePlanArtifact(planPath, { root, stage: '02-context-load' });
+    assert.equal(result.ok, true, JSON.stringify(result.blockers, null, 2));
+  });
+
   it('blocks missing, malformed, open, and placeholder checkpoint construction checklist items', () => {
     const root = fixture();
     const planPath = writeInternalPlanFixture(root, 'checklist-task');
