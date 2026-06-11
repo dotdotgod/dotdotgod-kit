@@ -436,16 +436,16 @@ describe("plan-mode command safety", () => {
 });
 
 describe("plan-mode request framing", () => {
-	it("classifies advisory, implementation, execution, and memory-load requests", () => {
+	it("classifies explicit runtime markers while leaving free-form prose advisory", () => {
 		assert.equal(classifyPlanModeRequest("현재 만들어져있는 plan모드를 조사해봐"), "advisory");
-		assert.equal(classifyPlanModeRequest("Claude Code하고 Codex에도 적용해줘"), "implementation_request");
+		assert.equal(classifyPlanModeRequest("Claude Code하고 Codex에도 적용해줘"), "advisory");
 		assert.equal(classifyPlanModeRequest("Execute the plan in docs/plan/foo/README.md"), "explicit_execution");
 		assert.equal(classifyPlanModeRequest("설계부터 진행하자"), "advisory");
 		assert.equal(classifyPlanModeRequest("Load the dotdotgod project memory."), "memory_load");
 	});
 
 	it("builds concise hidden framing for the latest request", () => {
-		assert.match(buildPlanModeRequestFraming("fix prompt behavior"), /Create or update docs\/plan\/<task-slug>\/README\.md for durable work/);
+		assert.match(buildPlanModeRequestFraming("fix prompt behavior"), /advisory or planning work/);
 		assert.match(buildPlanModeRequestFraming("이 방식이 좋을까?"), /advisory or planning work/);
 		assert.match(buildPlanModeRequestFraming("Load the dotdotgod project memory."), /project-memory load request/);
 	});
@@ -481,10 +481,10 @@ describe("plan-mode project-memory load conditions", () => {
 
 	it("does not request load after a recent load or user opt-out", () => {
 		assert.deepEqual(shouldLoadProjectMemoryForPlanning({ latestRequest: "implement framing", hasRecentProjectMemoryLoad: true }), { loadNeeded: false, reason: "recent-load" });
-		assert.deepEqual(shouldLoadProjectMemoryForPlanning({ latestRequest: "do not load more context", contextText: "" }), { loadNeeded: false, reason: "user-opt-out" });
+		assert.deepEqual(shouldLoadProjectMemoryForPlanning({ latestRequest: "/no-load", contextText: "" }), { loadNeeded: false, reason: "user-opt-out" });
 	});
 
-	it("requests load when only one docs area remains for cross-area work", () => {
+	it("does not infer cross-area load requirements from free-form request wording", () => {
 		const contextText = [
 			"AGENTS.md",
 			"README.md",
@@ -496,8 +496,8 @@ describe("plan-mode project-memory load conditions", () => {
 			"docs/spec/PLAN_MODE.md",
 		].join("\n");
 		const decision = shouldLoadProjectMemoryForPlanning({ latestRequest: "implement runtime validation behavior", contextText });
-		assert.equal(decision.loadNeeded, true);
-		assert.equal(decision.reason, "single-area-only");
+		assert.equal(decision.loadNeeded, false);
+		assert.deepEqual(decision.areas, ["spec"]);
 	});
 
 	it("keeps simple advisory work local when project memory coverage is sufficient", () => {
@@ -626,8 +626,9 @@ describe("plan-mode discussion queue helpers", () => {
   - Why: Affects validation model and implementation scope.
   - Affects: M2-T2, V1
   - Options:
-    - A: Markdown queue only for first slice. Recommended.
+    - A: Markdown queue only for first slice.
     - B: Add PLAN.json now.
+  - Recommended: A
   - Verification impact: B adds schema tests.
   - Status: open
 - [x] Q2 preference: Which label should the UI use?
@@ -731,16 +732,16 @@ describe("plan-mode execution handoff", () => {
 });
 
 describe("plan-mode explicit execution helpers", () => {
-	it("detects explicit English and Korean requests to execute a plan", () => {
+	it("detects structured execution handoff requests", () => {
+		assert.equal(detectPlanExecutionIntent("Execute the plan in docs/plan/impact-ranking-config/README.md."), true);
 		for (const request of [
-			"Execute the plan in docs/plan/impact-ranking-config/README.md.",
 			"execute the impact-ranking-config plan",
 			"start the plan in docs/plan/impact-ranking-config/README.md",
 			"impact-ranking-config 진행해줘",
 			"impact-ranking-config 플랜 시작하자",
 			"docs/plan/impact-ranking-config/README.md 실행해줘",
 		]) {
-			assert.equal(detectPlanExecutionIntent(request), true, request);
+			assert.equal(detectPlanExecutionIntent(request), false, request);
 		}
 	});
 
@@ -812,7 +813,7 @@ describe("plan-mode explicit execution helpers", () => {
 		);
 	});
 
-	it("reports ambiguity only for explicit execution requests that do not identify one active plan", () => {
+	it("does not report ambiguity for free-form execution prose", () => {
 		const resolution = resolvePlanExecutionTarget({
 			request: "실행하자",
 			activePlanPaths: ["docs/plan/one-task/README.md", "docs/plan/two-task/README.md"],
@@ -820,10 +821,10 @@ describe("plan-mode explicit execution helpers", () => {
 			pathExists: () => true,
 		});
 
-		assert.equal(detectPlanExecutionIntent("실행하자"), true);
-		assert.equal(resolution.status, "ambiguous");
+		assert.equal(detectPlanExecutionIntent("실행하자"), false);
+		assert.equal(resolution.status, "missing");
 		assert.equal(resolution.planPath, undefined);
-		assert.deepEqual(resolution.candidates, ["docs/plan/one-task/README.md", "docs/plan/two-task/README.md"]);
+		assert.deepEqual(resolution.candidates, []);
 	});
 
 	it("does not classify planning or implementation requests as active-plan execution", () => {

@@ -20,10 +20,12 @@ export {
   PLAN_STAGE_DIRECTORIES,
 };
 
-const PLACEHOLDER_RE = /^(?:[-*\s_`]*(?:tbd|todo|n\/a|placeholder|none)[.!?\s_`]*)+$/i;
-const CHECKLIST_OPEN_RE = /\b(?:open|unresolved|pending|needs confirmation|needs user|unknown)\b/i;
 function normalizeHeading(value) {
   return String(value ?? '').trim().toLowerCase().replace(/`/g, '').replace(/[\s/_-]+/g, ' ');
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function projectRelative(root, file) {
@@ -65,16 +67,6 @@ function contentHasValue(content) {
     .join('\n')
     .trim();
   return stripped.length > 0;
-}
-
-function isPlaceholderContent(content) {
-  const stripped = content
-    .split(/\r?\n/)
-    .map((line) => line.replace(/^\s*[-*+]\s+/, '').trim())
-    .filter(Boolean)
-    .join(' ')
-    .trim();
-  return Boolean(stripped) && PLACEHOLDER_RE.test(stripped);
 }
 
 function readMarkdownFiles(stageDir) {
@@ -264,33 +256,21 @@ function validateMarkdownNames(root, stageName, stageDir, blockers) {
   }
 }
 
-function sectionContains(content, words) {
-  const normalized = content.toLowerCase();
-  return words.some((word) => normalized.includes(word));
+function sectionContainsField(content, labels) {
+  const text = removeCodeBlocks(content);
+  return labels.some((label) => new RegExp(`(?:^|\\b)${escapeRegExp(label)}\\s*:\\s*\\S`, 'im').test(text));
 }
 
-function hasPendingRequiredWorkstream(content) {
-  return content.split(/\r?\n/).some((line) => {
-    const normalized = line.toLowerCase();
-    if (!normalized.includes('pending')) return false;
-    return /\byes\b|\brequired\b/.test(normalized);
-  });
+function hasUncheckedChecklistItem(content) {
+  return content.split(/\r?\n/).some((line) => /^\s*[-*+]\s*\[\s\]/.test(line));
 }
 
-function hasUnresolvedDiscussion(content) {
-  return content.split(/\r?\n/).some((line) => {
-    const normalized = line.toLowerCase();
-    if (/^\s*-\s*\[\s\]/.test(line)) return true;
-    return /status\s*:\s*(open|research[-_ ]requested|plan[-_ ]revision[-_ ]requested|unresolved|pending)/.test(normalized);
-  });
+function hasOpenStructuredStatus(content) {
+  return content.split(/\r?\n/).some((line) => /^\s*(?:[-*+]\s*)?(?:Status|DecisionState|Decision State)\s*:\s*(?:open|blocked|unresolved|pending|research[-_ ]requested|plan[-_ ]revision[-_ ]requested)\s*$/i.test(line));
 }
 
-function hasUnresolvedAssumption(content) {
-  return content.split(/\r?\n/).some((line) => {
-    const normalized = line.toLowerCase();
-    if (/^\s*-\s*\[\s\]/.test(line)) return true;
-    return /\b(unresolved|pending|unknown|needs user|needs confirmation)\b/.test(normalized);
-  });
+function hasUnresolvedStructuredItem(content) {
+  return hasUncheckedChecklistItem(content) || hasOpenStructuredStatus(content);
 }
 
 function workstreamSplitDecision(content) {
@@ -298,36 +278,32 @@ function workstreamSplitDecision(content) {
   return match?.[1].toLowerCase();
 }
 
+function fieldPattern(label, flags = 'im') {
+  return new RegExp(`^\\s*(?:[-*+]\\s*)?${escapeRegExp(label)}\\s*:\\s*(\\S.*)$`, flags);
+}
+
+function fieldHasValue(content, label) {
+  return Boolean(fieldPattern(label).exec(removeCodeBlocks(content))?.[1]?.trim());
+}
+
+function fieldOccurrences(content, label) {
+  return [...removeCodeBlocks(content).matchAll(fieldPattern(label, 'img'))].length;
+}
+
 function hasNoSplitRationale(content) {
-  return /\b(?:rationale|reason|because)\b/i.test(content);
+  return fieldHasValue(content, 'No-split rationale');
 }
 
 function hasMultipleWorkstreams(content) {
-  const normalized = removeCodeBlocks(content).toLowerCase();
-  const explicitIds = new Set([...normalized.matchAll(/\b(?:workstream|ws)\s*[-:#]?\s*([a-z0-9]+)\b/g)].map((match) => match[1]));
-  if (explicitIds.size >= 2) return true;
-  const workstreamMentions = normalized.match(/\bworkstreams?\b/g) ?? [];
-  return workstreamMentions.length >= 2 && /\b(?:multiple|parallel|split)\b/.test(normalized);
+  return fieldOccurrences(content, 'Workstream ID') >= 2;
 }
 
 function hasActionableWorkstreamFields(content) {
-  const normalized = content.toLowerCase();
-  const fieldGroups = [
-    ['purpose', 'objective'],
-    ['required context', 'read'],
-    ['allowed edit'],
-    ['forbidden edit', 'do not edit', 'do-not edit'],
-    ['task'],
-    ['validation', 'verify'],
-    ['handoff output', 'output'],
-    ['dependenc'],
-  ];
-  return fieldGroups.every((group) => group.some((term) => normalized.includes(term)));
+  return ['Workstream ID', 'Purpose', 'Required context', 'Allowed edits', 'Forbidden edits', 'Tasks', 'Validation', 'Handoff output', 'Dependencies'].every((label) => fieldHasValue(content, label));
 }
 
 function hasActionableIntegrationFields(content) {
-  const normalized = content.toLowerCase();
-  return ['sequence', 'integrat'].every((term) => normalized.includes(term)) && ['validation', 'verify', 'handoff'].some((term) => normalized.includes(term));
+  return ['Step', 'Validation', 'Handoff'].every((label) => fieldHasValue(content, label));
 }
 
 function validateWorkstreamHandoffContract(root, files, stageName, blockers) {
@@ -344,9 +320,9 @@ function validateWorkstreamHandoffContract(root, files, stageName, blockers) {
   if (decision === 'no') {
     if (!hasNoSplitRationale(handoff.content)) {
       valid = false;
-      addBlocker(blockers, 'missing-workstream-no-split-rationale', 'Workstream Handoff with `Split decision: no` must include a rationale.', { path: relHandoff, stage: stageName, section: 'Workstream Handoff' });
+      addBlocker(blockers, 'missing-workstream-no-split-rationale', 'Workstream Handoff with `Split decision: no` must include `No-split rationale:`.', { path: relHandoff, stage: stageName, section: 'Workstream Handoff' });
     }
-    if (!todo || !contentHasValue(todo.content) || isPlaceholderContent(todo.content)) valid = false;
+    if (!todo || !contentHasValue(todo.content)) valid = false;
     return valid;
   }
 
@@ -356,15 +332,15 @@ function validateWorkstreamHandoffContract(root, files, stageName, blockers) {
   const splitContent = [map?.content, workstreams?.content, integration?.content].filter(Boolean).join('\n');
   if (!hasMultipleWorkstreams(splitContent)) {
     valid = false;
-    addBlocker(blockers, 'incomplete-workstream-split', 'Split Stage 05 handoff must indicate multiple workstreams in Workstream Map, Workstreams, or Integration Sequence.', { path: projectRelative(root, map?.file ?? workstreams?.file ?? integration?.file ?? handoff.file), stage: stageName, section: 'Workstream Map' });
+    addBlocker(blockers, 'incomplete-workstream-split', 'Split Stage 05 handoff must include at least two `Workstream ID:` fields in Workstream Map, Workstreams, or Integration Sequence.', { path: projectRelative(root, map?.file ?? workstreams?.file ?? integration?.file ?? handoff.file), stage: stageName, section: 'Workstream Map' });
   }
   if (!workstreams || !hasActionableWorkstreamFields(workstreams.content)) {
     valid = false;
-    addBlocker(blockers, 'incomplete-workstream-split', 'Workstreams must mention purpose/objective, required context/read, allowed edits, forbidden edits/do-not-edit, tasks, validation, handoff output, and dependencies.', { path: projectRelative(root, workstreams?.file ?? handoff.file), stage: stageName, section: 'Workstreams' });
+    addBlocker(blockers, 'incomplete-workstream-split', 'Workstreams must include non-empty structured fields: Workstream ID, Purpose, Required context, Allowed edits, Forbidden edits, Tasks, Validation, Handoff output, and Dependencies.', { path: projectRelative(root, workstreams?.file ?? handoff.file), stage: stageName, section: 'Workstreams' });
   }
   if (!integration || !hasActionableIntegrationFields(integration.content)) {
     valid = false;
-    addBlocker(blockers, 'incomplete-workstream-split', 'Integration Sequence must describe actionable integration sequence and validation/handoff expectations.', { path: projectRelative(root, integration?.file ?? handoff.file), stage: stageName, section: 'Integration Sequence' });
+    addBlocker(blockers, 'incomplete-workstream-split', 'Integration Sequence must include non-empty structured fields: Step, Validation, and Handoff.', { path: projectRelative(root, integration?.file ?? handoff.file), stage: stageName, section: 'Integration Sequence' });
   }
   return valid;
 }
@@ -376,12 +352,6 @@ function constructionChecklistHeader(stageName) {
 
 function normalizeChecklistCategory(value) {
   return normalizeHeading(value).replace(/\s+/g, ' ');
-}
-
-function hasOpenChecklistEvidence(evidence) {
-  const normalized = evidence.toLowerCase();
-  if (/\bno\s+(?:open|unresolved|pending|unknown)\b/.test(normalized)) return false;
-  return CHECKLIST_OPEN_RE.test(normalized);
 }
 
 function checklistStatusChecked(value) {
@@ -438,16 +408,16 @@ function validateConstructionChecklist(root, files, stageName, blockers) {
   for (const row of rows) {
     if (row.malformed) {
       valid = false;
-      addBlocker(blockers, 'malformed-checklist-item', `Malformed construction checklist item at line ${row.lineNumber}: expected canonical "- [x] Category: evidence" or a completed table/status row with non-placeholder evidence.`, { path: relFound, stage: stageName, section: header });
+      addBlocker(blockers, 'malformed-checklist-item', `Malformed construction checklist item at line ${row.lineNumber}: expected canonical "- [x] Category: evidence" or a completed table/status row with non-empty evidence.`, { path: relFound, stage: stageName, section: header });
       continue;
     }
-    if (!row.checked || hasOpenChecklistEvidence(row.evidence)) {
+    if (!row.checked) {
       valid = false;
-      addBlocker(blockers, 'open-checklist-item', `Construction checklist item is open: ${row.category}`, { path: relFound, stage: stageName, section: header });
+      addBlocker(blockers, 'open-checklist-item', `Construction checklist item is unchecked: ${row.category}`, { path: relFound, stage: stageName, section: header });
     }
-    if (!contentHasValue(row.evidence) || isPlaceholderContent(row.evidence)) {
+    if (!contentHasValue(row.evidence)) {
       valid = false;
-      addBlocker(blockers, 'placeholder-checklist-item', `Construction checklist item only contains placeholder content: ${row.category}`, { path: relFound, stage: stageName, section: header });
+      addBlocker(blockers, 'empty-checklist-item', `Construction checklist item has no evidence: ${row.category}`, { path: relFound, stage: stageName, section: header });
     }
   }
   for (const category of requiredCategories) {
@@ -554,32 +524,23 @@ export function validatePlanArtifact(planPath, options = {}) {
         addBlocker(blockers, 'empty-section', `Required checkpoint section has no content: ## ${header}`, { path: relFound, stage: stageName, section: header });
         continue;
       }
-      if (isPlaceholderContent(found.content)) {
-        stageValid = false;
-        addBlocker(blockers, 'placeholder-section', `Required checkpoint section only contains placeholder content: ## ${header}`, { path: relFound, stage: stageName, section: header });
-        continue;
-      }
       summary.requiredSections.valid += 1;
 
       if (header === 'Atomic Tasks') {
-        if (!sectionContains(found.content, ['acceptance'])) {
+        if (!sectionContainsField(found.content, ['Acceptance', 'Acceptance criteria'])) {
           stageValid = false;
           addBlocker(blockers, 'missing-atomic-acceptance', 'Atomic Tasks must define acceptance criteria.', { path: relFound, stage: stageName, section: header });
         }
-        if (!sectionContains(found.content, ['verification', 'verify'])) {
+        if (!sectionContainsField(found.content, ['Verification'])) {
           stageValid = false;
           addBlocker(blockers, 'missing-atomic-verification', 'Atomic Tasks must define verification.', { path: relFound, stage: stageName, section: header });
         }
       }
-      if (header === 'Role / Area Workstreams' && hasPendingRequiredWorkstream(found.content)) {
-        stageValid = false;
-        addBlocker(blockers, 'pending-workstream', 'Required role/area workstream is pending.', { path: relFound, stage: stageName, section: header });
-      }
-      if (header === 'Discussion Queue' && hasUnresolvedDiscussion(found.content)) {
+      if (header === 'Discussion Queue' && hasUnresolvedStructuredItem(found.content)) {
         stageValid = false;
         addBlocker(blockers, 'unresolved-discussion', 'Discussion Queue has unresolved items.', { path: relFound, stage: stageName, section: header });
       }
-      if (header === 'Assumptions' && hasUnresolvedAssumption(found.content)) {
+      if (header === 'Assumptions' && hasUnresolvedStructuredItem(found.content)) {
         stageValid = false;
         addBlocker(blockers, 'unresolved-assumption', 'Assumptions contain unresolved items.', { path: relFound, stage: stageName, section: header });
       }

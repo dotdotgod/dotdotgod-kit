@@ -11,12 +11,15 @@ The `dotdotgod plan` command group validates durable plan artifacts and creates 
 - Plan Generator validation uses the simplified stages `01-intake`, `02-context-load`, `03-discovery`, `04-plan`, and optional final `05-workstream-handoff`.
 - Validation MUST NOT require removed standalone decision queue, approval, execution-slices, or verify/replan/close stages.
 - New workspace plans MAY use internal files under `.dotdotgod-plan/NN_STAGE_NAME.md` such as `03_DISCOVERY.md`.
-- Required headers MUST exist in the selected stage artifact or a valid split file and contain non-placeholder content.
-- Unresolved assumptions and atomic tasks without acceptance criteria or verification MUST be blockers.
+- Required headers MUST exist in the selected internal checkpoint and contain non-empty content.
+- Code validation MUST NOT infer blocker state or evidence quality from ordinary prose keywords. It MAY validate structured fields, enum values, checkboxes, headings, and non-empty content.
+- Unresolved assumptions and discussion items MUST be blockers only when represented by unchecked checklist items or explicit structured fields such as `Status: unresolved` or `DecisionState: unresolved`.
+- Atomic tasks without explicit `Acceptance:`/`Acceptance criteria:` and `Verification:` fields MUST be blockers.
 - `--stage` MUST accept a canonical stage name or unambiguous numeric prefix such as `04` or `05`.
 - Stage-scoped validation MUST validate only the selected stage and MUST NOT require later stages.
 - Clean stage-scoped success MAY include optional `nextStage` guidance for the following stage.
 - General docs validation MUST tolerate `.dotdotgod-plan/NN_STAGE_NAME.md` internal uppercase numeric filenames.
+- Stage 05 split handoff validation MUST use structural fields such as `Workstream ID:`, `Purpose:`, `Required context:`, `Allowed edits:`, `Forbidden edits:`, `Tasks:`, `Validation:`, `Handoff output:`, `Dependencies:`, `Step:`, and `Handoff:` instead of keyword-based actionability checks.
 - Human output MUST list blockers, include an agent repair prompt, and exit non-zero on failure.
 - JSON output MUST include `ok`, `planPath`, `blockers`, `warnings`, `summary`, and failure output MUST include repair prompts.
 
