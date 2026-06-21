@@ -19,6 +19,7 @@ import {
   runPlanGeneratorCommand,
   setPlanGeneratorModeStatus,
   startNewGeneratorTask,
+  default as planGeneratorExtension,
 } from "../extensions/plan-generator/index.ts";
 import {
   createReadmeScaffold,
@@ -465,7 +466,7 @@ packages/pi/extensions/plan-generator/stage-contract.ts
     assert.match(message, /Stage 05 construction checklist evidence/i);
     assert.match(message, /README\/support files hold final user-facing handoff instructions/i);
     assert.match(message, /\.dotdotgod-plan\/05_WORKSTREAM_HANDOFF\.md file is internal stage state context and validation evidence/i);
-    assert.match(message, /Keep Plan Mode separate from \/plan-generator/i);
+    assert.match(message, /Keep Plan Mode separate from \/plan-goal/i);
     assert.match(stage.evaluationPrompt, /lacks "Split decision: yes" or "Split decision: no"/i);
     assert.match(stage.evaluationPrompt, /split is needed but the Workstream Map, at least two "Workstream ID:" fields, execution phase map/i);
     assert.match(stage.evaluationPrompt, /implementation agents must infer chat history/i);
@@ -634,6 +635,22 @@ Resume after the user chooses strict mode.
 });
 
 describe("plan-generator command runtime", () => {
+  it("registers only /plan-goal as the staged generator command", () => {
+    const registered = new Map<string, unknown>();
+    const pi = {
+      on() {},
+      registerCommand(name: string, options: unknown) {
+        registered.set(name, options);
+      },
+      sendMessage() {},
+    };
+
+    planGeneratorExtension(pi as never);
+
+    assert.equal(registered.has("plan-goal"), true);
+    assert.equal(registered.has("plan-generator"), false);
+  });
+
   it("shows help without creating plan files", async () => {
     const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
     const runtime = fakeRuntime(cwd);
@@ -693,6 +710,26 @@ describe("plan-generator command runtime", () => {
     assert.equal(details?.currentPlan, "docs/plan/add-staged-authoring-smoke/README.md");
     assert.equal(details?.currentStage, "01-intake");
     assert.equal(details?.status, "active");
+  });
+
+  it("uses /plan-goal as the staged generator command without goal-mode prompt divergence", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
+    const runtime = fakeRuntime(cwd, { hasUI: true });
+    await runPlanGeneratorCommand(
+      runtime.pi as never,
+      runtime.ctx as never,
+      "Add goal smoke",
+      undefined,
+      checkpointCreator(cwd) as never,
+    );
+
+    assert.equal(runtime.sent.length, 1);
+    assert.match(runtime.sent[0]?.message ?? "", /You are authoring \/plan-goal Stage 01/);
+    assert.doesNotMatch(runtime.sent[0]?.message ?? "", /\/plan-goal mode/);
+    assert.equal(runtime.statuses.at(-1)?.value, "⏸ generate plan");
+    const details = (runtime.customMessages.at(-1) as { details?: { mode?: string; currentPlan?: string } }).details;
+    assert.equal(details?.mode, undefined);
+    assert.equal(details?.currentPlan, "docs/plan/add-goal-smoke/README.md");
   });
 
   it("does not duplicate Stage 01 authoring on agent_end after command bootstrap", async () => {
@@ -793,7 +830,7 @@ describe("plan-generator command runtime", () => {
     assert.equal(store.getState().breaker, 0);
     assert.equal(store.getState().lastResumedUserInput, "Use before_agent_start for the resume hook.");
     assert.equal(runtime.sent.length, 1);
-    assert.match(runtime.sent[0]?.message ?? "", /Resume the same \/plan-generator stage/);
+    assert.match(runtime.sent[0]?.message ?? "", /Resume the same \/plan-goal stage/);
     assert.match(runtime.sent[0]?.message ?? "", /Need migration target/);
     assert.match(runtime.sent[0]?.message ?? "", /Use before_agent_start for the resume hook/);
     assert.match(runtime.sent[0]?.message ?? "", /Checkpoint details for resume/);
@@ -1077,7 +1114,7 @@ Resume this stage after the user chooses.
     assert.equal(runtime.sent.length, 1);
   });
 
-  it("toggles an active generator into resumable pause for no-arg /plan-generator", async () => {
+  it("toggles an active generator into resumable pause for no-arg /plan-goal", async () => {
     const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
     const store = createPlanGeneratorStore(runtime.pi as never);
@@ -1093,7 +1130,7 @@ Resume this stage after the user chooses.
 
     assert.equal(store.getState().status, "input-waiting");
     assert.equal(store.getState().currentStage, "01-intake");
-    assert.match(store.getState().waitingMessage ?? "", /Paused \/plan-generator/);
+    assert.match(store.getState().waitingMessage ?? "", /Paused \/plan-goal/);
     assert.equal(runtime.sent.length, 1);
     assert.equal(isPlanGeneratorWorkflowActive(), true);
   });
@@ -1174,7 +1211,7 @@ Resume this stage after the user chooses.
     assert.equal(store.getState().currentStage, "02-context-load");
     assert.equal(store.getState().status, "active");
     assert.equal(runtime.sent.length, 1);
-    assert.match(runtime.sent[0]?.message ?? "", /Resume the same \/plan-generator stage/);
+    assert.match(runtime.sent[0]?.message ?? "", /Resume the same \/plan-goal stage/);
     assert.match(runtime.sent[0]?.message ?? "", /Checkpoint details for path resume/);
     assert.equal(isPlanGeneratorWorkflowActive(), true);
   });

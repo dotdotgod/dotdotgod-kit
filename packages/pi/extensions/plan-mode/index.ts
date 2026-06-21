@@ -445,7 +445,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       if (!path || !isManagedPlanMarkdownPath(ctx.cwd, path, { allowPlanGeneratorCheckpoint })) {
         return {
           block: true,
-          reason: `Plan mode: ${event.toolName} is only allowed for markdown plan files under ${PLAN_DIRECTORY}/ or ${ARCHIVE_DIRECTORY}/. During active /plan-generator workflows, docs/plan/<task>/.dotdotgod-plan/*.md checkpoint files are also allowed. Directories must be kebab-case and markdown file names must be UPPER_SNAKE_CASE.md. Use execution mode for source changes.`,
+          reason: `Plan mode: ${event.toolName} is only allowed for markdown plan files under ${PLAN_DIRECTORY}/ or ${ARCHIVE_DIRECTORY}/. During active /plan-goal workflows, docs/plan/<task>/.dotdotgod-plan/*.md checkpoint files are also allowed. Directories must be kebab-case and markdown file names must be UPPER_SNAKE_CASE.md. Use execution mode for source changes.`,
         };
       }
       const normalizedPath = normalizeToolPath(path).replace(/\\/g, "/");
