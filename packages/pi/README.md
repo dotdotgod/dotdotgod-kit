@@ -36,7 +36,7 @@ A good first run:
 | Create the docs-first project scaffold | `project-initializer` skill |
 | Load project memory without broad file reads | `/dd:load` or `/load` |
 | Plan safely before source/config edits | `/plan` and `/plan <request>` |
-| Generate a staged durable plan | `/plan-generator` |
+| Generate a staged durable plan | `/plan-goal` |
 | Show execution progress | `/todos` |
 | Review changed-file impact | `/impact-check` or `dotdotgod_graph_impact` |
 | Improve docs clarity | `document-clarify` skill |
@@ -75,9 +75,9 @@ Plan Mode helps Pi:
 - remind agents to run impact checks after source/config edits,
 - archive completed plans under `docs/archive/plan/`.
 
-### `/plan-generator`
+### `/plan-goal`
 
-Use `/plan-generator` when you want Pi to author a plan through explicit stages instead of writing a one-pass plan.
+Use `/plan-goal` when you want Pi to author a plan through explicit stages instead of writing a one-pass plan.
 
 The simplified stages are:
 
@@ -91,12 +91,14 @@ The generator creates or resumes `docs/plan/<task-slug>/README.md` and stores in
 
 Useful controls:
 
-- `/plan-generator <request>` starts a new staged plan.
-- `/plan-generator docs/plan/<task-slug>/README.md` resumes or starts staged work for that managed plan path.
-- `/plan-generator` with no argument pauses an active or waiting generator so it can resume from later input.
-- `/plan-generator --stop` stops the active generator and clears the shared workflow flag.
+- `/plan-goal <request>` starts a new staged plan.
+- `/plan-goal docs/plan/<task-slug>/README.md` resumes or starts staged work for that managed plan path.
+- `/plan-goal` with no argument pauses an active or waiting generator so it can resume from later input.
+- `/plan-goal --stop` stops the active generator and clears the shared workflow flag.
 
-While `/plan-generator` is active or waiting, Plan Mode suppresses normal execution review so the staged authoring loop can finish first.
+`/plan-goal` does not execute implementation work automatically. Plan Mode still requires user approval before source/config edits.
+
+While `/plan-goal` is active or waiting, Plan Mode suppresses normal execution review so the staged authoring loop can finish first.
 
 ## Loading and Impact Checks
 
@@ -109,7 +111,7 @@ While `/plan-generator` is active or waiting, Plan Mode suppresses normal execut
 - `project-initializer` skill
 - `document-clarify` skill
 - `plan-mode` extension
-- `plan-generator` extension
+- `plan-generator` extension, including `/plan-goal`
 - `load-project` extension
 - `pi-subagents` wrapper resources
 - package-local `@dotdotgod/cli` dependency

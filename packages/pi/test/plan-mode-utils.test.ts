@@ -757,7 +757,7 @@ describe("plan-mode explicit execution helpers", () => {
 			"run tests",
 			"implement the package version bump",
 			"refine the impact-ranking-config plan",
-			"Continue authoring the durable plan at docs/plan/task/README.md using /plan-generator stage 01-intake. Ask exactly one unresolved question if needed.",
+			"Continue authoring the durable plan at docs/plan/task/README.md using /plan-goal stage 01-intake. Ask exactly one unresolved question if needed.",
 		]) {
 			assert.equal(detectPlanExecutionIntent(request), false, request);
 			assert.notEqual(classifyPlanModeRequest(request), "explicit_execution", request);
@@ -952,7 +952,7 @@ describe("plan-mode tool settings", () => {
 		assert.match(prompt, /post-coding dotdotgod validate/);
 		assert.match(prompt, /You may create or update only the allowed docs\/plan or docs\/archive markdown files/);
 		assert.match(prompt, /\.dotdotgod-plan\/\*\.md/);
-		assert.match(prompt, /active \/plan-generator/);
+		assert.match(prompt, /active \/plan-goal/);
 		assert.doesNotMatch(prompt, /Do NOT attempt to make changes/);
 	});
 });
@@ -1030,7 +1030,7 @@ describe("plan-mode compaction helpers", () => {
 		assert.equal(isPlanModeRuntimeRequest("[PLAN MODE ACTIVE]\nStay in planning"), true);
 		assert.equal(isPlanModeRuntimeRequest("Load the dotdotgod project memory."), true);
 		assert.equal(isPlanModeRuntimeRequest("Continue the following Plan Mode request after planning-focused compaction."), true);
-		const generatorFollowUp = "Continue authoring the durable plan at docs/plan/generator-task/README.md using /plan-generator stage 01-intake. Ask exactly one unresolved question if needed.";
+		const generatorFollowUp = "Continue authoring the durable plan at docs/plan/generator-task/README.md using /plan-goal stage 01-intake. Ask exactly one unresolved question if needed.";
 		assert.equal(isPlanModeRuntimeRequest(generatorFollowUp), true);
 		assert.deepEqual(
 			selectLatestPlanningRequest({

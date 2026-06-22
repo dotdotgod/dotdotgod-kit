@@ -11,6 +11,7 @@ This README is a navigation summary. Detailed behavior contracts live in the tra
 - `/plan`: toggle plan mode when no request text is provided.
 - `/plan <request>`: enable Plan Mode if needed and send `<request>` as the first or next planning request without toggling Plan Mode off.
 - `/plan <path>`: when `<path>` resolves to `docs/plan/<task>/README.md` or `docs/plan/<task>`, load that existing plan as the active plan and populate `/todos`.
+- `/plan-goal`: author a durable implementation plan through staged generator checkpoints.
 - `/todos`: show current plan progress.
 - `/impact-check`: run `dotdotgod graph impact --yml` for pending source/config edits and current git source/config changes.
 - `dotdotgod_graph_impact`: LLM-callable impact tool for changed-file impact review.
@@ -35,7 +36,7 @@ docs/plan/<task-slug>/README.md
 
 Supporting files may live in the same task directory as UPPER_SNAKE_CASE markdown files, for example `RESEARCH_NOTES.md`, `PROGRESS.md`, `DECISIONS.md`, or `VERIFY.md`.
 
-Plan Mode uses the durable task `README.md` as the planning and execution-review product. It may create or edit durable plans directly and may execute plans that were not produced by `/plan-generator`. `/plan-generator` owns staged authoring, `.dotdotgod-plan/NN_STAGE_NAME.md` checkpoint writes, and stage validation; those files are not Plan Mode write targets.
+Plan Mode uses the durable task `README.md` as the planning and execution-review product. It may create or edit durable plans directly and may execute plans that were not produced by `/plan-goal`. `/plan-goal` owns staged authoring, `.dotdotgod-plan/NN_STAGE_NAME.md` checkpoint writes, and stage validation; those files are not Plan Mode write targets.
 
 Plans should include scope/status, target files and rationale, implementation steps, risks and edge cases when useful, verification method, and a final archive-housekeeping step.
 

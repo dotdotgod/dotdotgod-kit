@@ -26,11 +26,11 @@ export interface PlanGeneratorStageCheckpointContext {
   unavailable?: string | undefined;
 }
 
-export const PLAN_GENERATOR_HELP = `Usage:
-/plan-generator
-/plan-generator <request>
-/plan-generator docs/plan/<task>/README.md
-/plan-generator --help`;
+export const PLAN_GOAL_HELP = `Usage:
+/plan-goal
+/plan-goal <request>
+/plan-goal docs/plan/<task>/README.md
+/plan-goal --help`;
 
 export const STAGE_01_ID: PlanGeneratorStageId = "01-intake";
 export const STAGE_02_ID: PlanGeneratorStageId = "02-context-load";
@@ -76,11 +76,11 @@ export const STAGE_05_CONSTRUCTION_CHECKLIST = [
   "Chat-independent context",
 ] as const;
 
-export const STAGE_05_AUTHORING_PROMPT = `You are authoring /plan-generator Stage 05: workstream handoff.
+export const STAGE_05_AUTHORING_PROMPT = `You are authoring /plan-goal Stage 05: workstream handoff.
 
 Use the current stage state context as workflow context, then update the durable plan artifact under docs/plan/<task>/.
 
-Stage 05 produces a phase-based, subagent-ready Workstream Handoff Contract for implementation. Keep Plan Mode separate from /plan-generator: do not ask Plan Mode to validate stages or write .dotdotgod-plan files.
+Stage 05 produces a phase-based, subagent-ready Workstream Handoff Contract for implementation. Keep Plan Mode separate from /plan-goal: do not ask Plan Mode to validate stages or write .dotdotgod-plan files.
 
 Include durable plan content for:
 ${STAGE_05_REQUIRED_SECTIONS.map((section) => `- ${section};`).join("\n")}
@@ -108,7 +108,7 @@ Prompt/checkpoint boundary:
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond Stage 05.`;
 
-export const STAGE_05_EVALUATION_PROMPT = `Evaluate whether the latest assistant response completed /plan-generator Stage 05: workstream handoff.
+export const STAGE_05_EVALUATION_PROMPT = `Evaluate whether the latest assistant response completed /plan-goal Stage 05: workstream handoff.
 
 Return only JSON shaped as:
 {
@@ -132,7 +132,7 @@ Rules:
 - Treat unresolved choices about scope, behavior, risk acceptance, or implementation direction as blocked user input; do not pass a stage that only records them as undecided/TBD.
 - Do not include markdown fences or prose outside JSON.`;
 
-export const STAGE_01_AUTHORING_PROMPT = `You are authoring /plan-generator Stage 01: intake.
+export const STAGE_01_AUTHORING_PROMPT = `You are authoring /plan-goal Stage 01: intake.
 
 Create the initial planning context for the user's durable plan request. Focus only on Stage 01.
 
@@ -146,11 +146,11 @@ Include:
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond Stage 01.`;
 
-export const STAGE_01_RETRY_PROMPT = `Rewrite the /plan-generator Stage 01 intake context.
+export const STAGE_01_RETRY_PROMPT = `Rewrite the /plan-goal Stage 01 intake context.
 
 Use the Stage 01 requirements below and repair the previous response. Keep the result concise, specific, and suitable for deriving the next planning context.`;
 
-export const STAGE_01_EVALUATION_PROMPT = `Evaluate whether the latest assistant response completed /plan-generator Stage 01 intake.
+export const STAGE_01_EVALUATION_PROMPT = `Evaluate whether the latest assistant response completed /plan-goal Stage 01 intake.
 
 Return only JSON shaped as:
 {
@@ -165,7 +165,7 @@ Rules:
 - retry: the assistant can repair the Stage 01 response by trying again without asking the user.
 - Do not include markdown fences or prose outside JSON.`;
 
-export const STAGE_02_AUTHORING_PROMPT = `You are authoring /plan-generator Stage 02: context load.
+export const STAGE_02_AUTHORING_PROMPT = `You are authoring /plan-goal Stage 02: context load.
 
 Use the current stage state context as workflow context, then update the durable plan artifact under docs/plan/<task>/.
 
@@ -180,11 +180,11 @@ The .dotdotgod-plan/02_CONTEXT_LOAD.md file is internal stage state context and 
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond Stage 02.`;
 
-export const STAGE_02_RETRY_PROMPT = `Repair the /plan-generator Stage 02 context-load update.
+export const STAGE_02_RETRY_PROMPT = `Repair the /plan-goal Stage 02 context-load update.
 
 Use the Stage 02 requirements below and the previous evaluation. Update the durable plan artifact for readers and update .dotdotgod-plan/02_CONTEXT_LOAD.md as the machine-readable validation checkpoint. In ## Stage 02 Construction Checklist, use only canonical rows shaped \`- [x] Category: evidence\`; do not use tables, \`completed - [x] Category\`, or \`Category: completed - [x]\` shorthand.`;
 
-export const STAGE_02_EVALUATION_PROMPT = `Evaluate whether the latest assistant response completed /plan-generator Stage 02: context load.
+export const STAGE_02_EVALUATION_PROMPT = `Evaluate whether the latest assistant response completed /plan-goal Stage 02: context load.
 
 Return only JSON shaped as:
 {
@@ -200,7 +200,7 @@ Rules:
 - Treat .dotdotgod-plan/02_CONTEXT_LOAD.md as stage state context and validation evidence, not the final durable plan artifact.
 - Do not include markdown fences or prose outside JSON.`;
 
-export const STAGE_03_AUTHORING_PROMPT = `You are authoring /plan-generator Stage 03: discovery.
+export const STAGE_03_AUTHORING_PROMPT = `You are authoring /plan-goal Stage 03: discovery.
 
 Use the current stage state context as workflow context, then update the durable plan artifact under docs/plan/<task>/.
 
@@ -220,11 +220,11 @@ The .dotdotgod-plan/03_DISCOVERY.md file is internal stage state context and val
 ${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond Stage 03.`;
 
-export const STAGE_03_RETRY_PROMPT = `Repair the /plan-generator Stage 03 discovery update.
+export const STAGE_03_RETRY_PROMPT = `Repair the /plan-goal Stage 03 discovery update.
 
 Use the Stage 03 requirements below and the previous evaluation. Update the durable plan artifact, not just the internal .dotdotgod-plan state context.`;
 
-export const STAGE_03_EVALUATION_PROMPT = `Evaluate whether the latest assistant response completed /plan-generator Stage 03: discovery.
+export const STAGE_03_EVALUATION_PROMPT = `Evaluate whether the latest assistant response completed /plan-goal Stage 03: discovery.
 
 Return only JSON shaped as:
 {
@@ -241,7 +241,7 @@ Rules:
 - Treat .dotdotgod-plan/03_DISCOVERY.md as stage state context, not the final durable plan artifact.
 - Do not include markdown fences or prose outside JSON.`;
 
-export const STAGE_NEXT_CONTEXT_PROMPT = `Create the next planning context from the completed /plan-generator stage context.
+export const STAGE_NEXT_CONTEXT_PROMPT = `Create the next planning context from the completed /plan-goal stage context.
 
 Return plain text only. The next context should prepare the agent to update the next stage state context and durable plan files, including likely sections, validation expectations, unresolved questions, and whether implementation-part support files should be split under docs/plan/<task>/. Do not execute source/config changes.`;
 
@@ -270,7 +270,7 @@ function buildGenericAuthoringPrompt(options: {
   requiredSections: readonly string[];
   constructionChecklist: readonly string[];
 }): string {
-  return `You are authoring /plan-generator ${options.title}.
+  return `You are authoring /plan-goal ${options.title}.
 
 Use the current stage state context as workflow context, then update the durable plan artifact under docs/plan/<task>/.
 
@@ -286,7 +286,7 @@ Do not edit source code. Do not advance beyond this stage.`;
 }
 
 function buildGenericRetryPrompt(title: string): string {
-  return `Repair the /plan-generator ${title} update.
+  return `Repair the /plan-goal ${title} update.
 
 Use the stage requirements below and the previous evaluation. Update the durable plan artifact, not just the internal .dotdotgod-plan state context.`;
 }
@@ -296,7 +296,7 @@ function buildGenericEvaluationPrompt(options: {
   requiredSections: readonly string[];
   nextStage?: PlanGeneratorStageId | undefined;
 }): string {
-  return `Evaluate whether the latest assistant response completed /plan-generator ${options.title}.
+  return `Evaluate whether the latest assistant response completed /plan-goal ${options.title}.
 
 Return only JSON shaped as:
 {
@@ -406,7 +406,7 @@ export const PLAN_GENERATOR_STAGE_ENVIRONMENTS: Record<
       "Validation plan",
       "Resume point",
     ],
-    authoringPrompt: `You are authoring /plan-generator Stage 04: plan.
+    authoringPrompt: `You are authoring /plan-goal Stage 04: plan.
 
 Use the current stage state context as workflow context, then update the durable plan artifact under docs/plan/<task>/.
 
@@ -488,7 +488,7 @@ ${content}`;
 export function buildStageAuthoringMessage(
   stage: PlanGeneratorStageEnvironment,
   request: string,
-  checkpointContext?: PlanGeneratorStageCheckpointContext | undefined,
+  checkpointContext?: PlanGeneratorStageCheckpointContext | undefined
 ): string {
   return `${stage.authoringPrompt}${renderCheckpointContext("Current stage checkpoint context", checkpointContext)}
 
@@ -500,7 +500,7 @@ export function buildStageRetryMessage(
   stage: PlanGeneratorStageEnvironment,
   request: string,
   previousMessage: string,
-  checkpointContext?: PlanGeneratorStageCheckpointContext | undefined,
+  checkpointContext?: PlanGeneratorStageCheckpointContext | undefined
 ): string {
   return `${stage.retryPrompt}
 
@@ -525,11 +525,11 @@ export function buildStageResumeMessage(
   request: string,
   waitingMessage: string,
   latestUserInput: string,
-  checkpointContext?: PlanGeneratorStageCheckpointContext | undefined,
+  checkpointContext?: PlanGeneratorStageCheckpointContext | undefined
 ): string {
   return `${stage.retryPrompt}
 
-Resume the same /plan-generator stage after follow-up user input. Do not advance stages unless this stage now satisfies validation.
+Resume the same /plan-goal stage after follow-up user input. Do not advance stages unless this stage now satisfies validation.
 
 Stage requirements:
 ${stage.authoringPrompt}${renderCheckpointContext("Current stage checkpoint context", checkpointContext)}

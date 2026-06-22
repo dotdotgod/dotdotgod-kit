@@ -12,8 +12,8 @@ import {
   buildStageResumeMessage,
   buildStageRetryMessage,
   getPlanGeneratorStageEnvironment,
-  PLAN_GENERATOR_HELP,
   PLAN_GENERATOR_MAX_BREAKER,
+  PLAN_GOAL_HELP,
   PLAN_GENERATOR_STAGE_ENVIRONMENTS,
   STAGE_01_ID,
   type PlanGeneratorStageCheckpointContext,
@@ -49,11 +49,23 @@ interface StageEvaluation {
   stage01Context?: string | undefined;
 }
 
+const PLAN_GOAL_COMMAND = {
+  commandName: "plan-goal",
+  help: PLAN_GOAL_HELP,
+  description: "Create durable dotdotgod staged plans",
+  statusLabel: "⏸ generate plan",
+  progressNoun: "plan",
+} as const;
+
+function commandLabel(): string {
+  return "/plan-goal";
+}
+
 function setPlanGeneratorModeStatus(ctx: ExtensionContext): void {
   if (!ctx.hasUI) return;
   ctx.ui.setStatus(
     "plan-mode",
-    ctx.ui.theme.fg("warning", "⏸ generate plan"),
+    ctx.ui.theme.fg("warning", PLAN_GOAL_COMMAND.statusLabel),
   );
 }
 
@@ -169,9 +181,9 @@ function isPlanGeneratorStopInput(input: string): boolean {
     normalized === "stop" ||
     normalized === "cancel" ||
     normalized === "abandon" ||
-    normalized === "/plan-generator --stop" ||
-    normalized === "/plan-generator stop" ||
-    normalized === "/plan-generator cancel"
+    normalized === "/plan-goal --stop" ||
+    normalized === "/plan-goal stop" ||
+    normalized === "/plan-goal cancel"
   );
 }
 
@@ -179,8 +191,7 @@ function isPlanGeneratorStopOrSwitchInput(input: string): boolean {
   const normalized = input.trim().toLowerCase();
   return (
     isPlanGeneratorStopInput(input) ||
-    (normalized.startsWith("/plan-generator") &&
-      normalized !== "/plan-generator")
+    (normalized.startsWith("/plan-goal") && normalized !== "/plan-goal")
   );
 }
 
@@ -228,7 +239,7 @@ async function evaluateStage(
   stage: PlanGeneratorStageEnvironment,
   requestContext: string,
   assistantText: string,
-  validationEvidence?: PlanGeneratorStageValidationEvidence | undefined,
+  validationEvidence?: PlanGeneratorStageValidationEvidence | undefined
 ): Promise<StageEvaluation | undefined> {
   if (!stage.evaluationPrompt) return undefined;
   const result = await authCreate(ctx, {
@@ -244,13 +255,14 @@ async function evaluateStage(
 async function evaluateStage01(
   ctx: ExtensionContext,
   requestContext: string,
-  assistantText: string,
+  assistantText: string
 ): Promise<StageEvaluation | undefined> {
   return evaluateStage(
     ctx,
     PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_01_ID],
     requestContext,
     assistantText,
+    undefined,
   );
 }
 
@@ -277,7 +289,7 @@ async function waitForPlanGeneratorUserDecision(options: {
     options.ctx.ui.notify(`${options.stage.title} is waiting for user input.`, "warning");
   }
   await options.pi.sendUserMessage(
-    `The current /plan-generator ${options.stage.title} cannot advance because the durable plan contains an unresolved user decision. Ask the user a concrete question with clear options, then wait for their answer before updating the same stage.\n\n${options.message}`,
+    `The current ${commandLabel()} ${options.stage.title} cannot advance because the durable plan contains an unresolved user decision. Ask the user a concrete question with clear options, then wait for their answer before updating the same stage.\n\n${options.message}`,
     { deliverAs: "followUp" },
   );
 }
@@ -332,7 +344,9 @@ async function startExistingGeneratorTask(
   target: ExistingPlanGeneratorResumeTarget,
   store = createPlanGeneratorStore(pi),
   createCheckpoint: PlanStageCheckpointCreator = defaultPlanStageCheckpointCreator,
+  options = PLAN_GOAL_COMMAND,
 ): Promise<void> {
+  const label = commandLabel();
   if (target.message) {
     store.updateState({
       currentPlan: undefined,
@@ -348,7 +362,7 @@ async function startExistingGeneratorTask(
   }
 
   if (target.completed) {
-    const message = `Plan generator checkpoints appear complete: ${target.currentPlan}`;
+    const message = `${label} checkpoints appear complete: ${target.currentPlan}`;
     store.updateState({
       currentPlan: target.currentPlan,
       currentStage: undefined,
@@ -381,7 +395,7 @@ async function startExistingGeneratorTask(
   activatePlanGeneratorWorkflow(pi, {
     planPath: target.currentPlan,
     stage: stage.id,
-    reason: `Resuming /plan-generator from ${target.currentPlan}.`,
+    reason: `Resuming ${label} from ${target.currentPlan}.`,
   });
   setPlanGeneratorProgressStatus(ctx, target.hasCheckpoint ? "⏳ resuming plan stage" : "⏳ creating stage checkpoint");
 
@@ -390,8 +404,8 @@ async function startExistingGeneratorTask(
       await createStageCheckpointOrThrow(ctx, stage, target.currentPlan, createCheckpoint);
     } catch (error) {
       const message = error instanceof Error
-        ? `Could not resume /plan-generator: ${error.message}`
-        : "Could not resume /plan-generator.";
+        ? `Could not resume ${label}: ${error.message}`
+        : `Could not resume ${label}.`;
       store.updateState({
         currentPlan: target.currentPlan,
         currentStage: stage.id,
@@ -420,7 +434,7 @@ async function startExistingGeneratorTask(
   activatePlanGeneratorWorkflow(pi, {
     planPath: target.currentPlan,
     stage: stage.id,
-    reason: `Resuming /plan-generator from ${target.currentPlan}.`,
+    reason: `Resuming ${label} from ${target.currentPlan}.`,
   });
   setPlanGeneratorModeStatus(ctx);
   const checkpointContext = checkpointContextFor(ctx, target.currentPlan, stage);
@@ -428,15 +442,15 @@ async function startExistingGeneratorTask(
     ? buildStageResumeMessage(
         stage,
         target.currentPlan,
-        "Resuming existing /plan-generator plan from checkpoint.",
-        "Continue from explicit /plan-generator path resume.",
-        checkpointContext,
+        `Resuming existing ${label} plan from checkpoint.`,
+        `Continue from explicit ${label} path resume.`,
+        checkpointContext
       )
     : buildStageAuthoringMessage(stage, target.currentPlan, checkpointContext);
   await pi.sendUserMessage(message, { deliverAs: "followUp" });
   if (ctx.hasUI) {
     ctx.ui.notify(
-      `Resumed /plan-generator task ${target.currentPlan}.`,
+      `Resumed ${label} task ${target.currentPlan}.`,
       "info",
     );
   }
@@ -448,7 +462,9 @@ async function startNewGeneratorTask(
   request: string,
   store = createPlanGeneratorStore(pi),
   createCheckpoint: PlanStageCheckpointCreator = defaultPlanStageCheckpointCreator,
+  options = PLAN_GOAL_COMMAND,
 ): Promise<void> {
+  const label = commandLabel();
   store.updateState({
     currentPlan: undefined,
     currentStage: undefined,
@@ -463,17 +479,17 @@ async function startNewGeneratorTask(
   activatePlanGeneratorWorkflow(pi, {
     reason: request,
   });
-  setPlanGeneratorProgressStatus(ctx, "⏳ generating plan slug");
+  setPlanGeneratorProgressStatus(ctx, `⏳ generating ${options.progressNoun} slug`);
 
   let task: PlanGeneratorTaskPath;
   try {
     task = await resolveCollisionFreeTaskPath(ctx, request);
-    setPlanGeneratorProgressStatus(ctx, "⏳ creating plan files");
+    setPlanGeneratorProgressStatus(ctx, `⏳ creating ${options.progressNoun} files`);
     ensureInitialReadme(task, request);
   } catch (error) {
     const message = error instanceof Error
-      ? `Could not start /plan-generator: ${error.message}`
-      : "Could not start /plan-generator.";
+      ? `Could not start ${label}: ${error.message}`
+      : `Could not start ${label}.`;
     store.updateState({
       currentPlan: undefined,
       currentStage: undefined,
@@ -498,8 +514,8 @@ async function startNewGeneratorTask(
     );
   } catch (error) {
     const message = error instanceof Error
-      ? `Could not start /plan-generator: ${error.message}`
-      : "Could not start /plan-generator.";
+      ? `Could not start ${label}: ${error.message}`
+      : `Could not start ${label}.`;
     store.updateState({
       currentPlan,
       currentStage: STAGE_01_ID,
@@ -539,14 +555,14 @@ async function startNewGeneratorTask(
     buildStageAuthoringMessage(
       PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_01_ID],
       request,
-      checkpointContext,
+      checkpointContext
     ),
     { deliverAs: "followUp" },
   );
 
   if (ctx.hasUI) {
     ctx.ui.notify(
-      `Started /plan-generator task docs/plan/${task.taskSlug}.`,
+      `Started ${label} task docs/plan/${task.taskSlug}.`,
       "info",
     );
   }
@@ -557,26 +573,27 @@ async function pausePlanGeneratorTask(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext | ExtensionContext,
   store: PlanGeneratorStore,
-  reason = "Paused /plan-generator. Send the next message to resume this stage.",
+  reason?: string,
 ): Promise<boolean> {
   const state = store.getState();
   if (!state.currentPlan || !state.currentStage || !["active", "input-waiting"].includes(state.status)) {
     return false;
   }
+  const pauseReason = reason ?? `Paused ${commandLabel()}. Send the next message to resume this stage.`;
   store.updateState({
     status: "input-waiting",
-    message: reason,
-    waitingMessage: reason,
+    message: pauseReason,
+    waitingMessage: pauseReason,
     latestUserInput: undefined,
     lastResumedUserInput: undefined,
   });
   activatePlanGeneratorWorkflow(pi, {
     planPath: state.currentPlan,
     stage: state.currentStage,
-    reason,
+    reason: pauseReason,
   });
   setPlanGeneratorModeStatus(ctx);
-  if (ctx.hasUI) ctx.ui.notify(reason, "warning");
+  if (ctx.hasUI) ctx.ui.notify(pauseReason, "warning");
   return true;
 }
 
@@ -594,7 +611,8 @@ async function stopPlanGeneratorTask(
   });
   clearDotdotgodWorkflowState(pi, "stopped", reason);
   clearPlanGeneratorModeStatus(ctx);
-  if (ctx.hasUI) ctx.ui.notify("Stopped /plan-generator.", "info");
+  const label = commandLabel();
+  if (ctx.hasUI) ctx.ui.notify(`Stopped ${label}.`, "info");
 }
 
 async function runPlanGeneratorCommand(
@@ -603,6 +621,7 @@ async function runPlanGeneratorCommand(
   args: string,
   store = createPlanGeneratorStore(pi),
   createCheckpoint: PlanStageCheckpointCreator = defaultPlanStageCheckpointCreator,
+  options = PLAN_GOAL_COMMAND,
 ): Promise<void> {
   const request = args.trim();
   if (["--stop", "stop", "cancel"].includes(request)) {
@@ -613,12 +632,12 @@ async function runPlanGeneratorCommand(
     return;
   }
   if (request === "--help" || request === "-h") {
-    if (ctx.hasUI) ctx.ui.notify(PLAN_GENERATOR_HELP, "info");
+    if (ctx.hasUI) ctx.ui.notify(options.help, "info");
     return;
   }
   const existingTarget = resolveExistingPlanGeneratorResumeTarget(ctx.cwd, request);
   if (existingTarget) {
-    await startExistingGeneratorTask(pi, ctx, existingTarget, store, createCheckpoint);
+    await startExistingGeneratorTask(pi, ctx, existingTarget, store, createCheckpoint, options);
     return;
   }
 
@@ -626,12 +645,12 @@ async function runPlanGeneratorCommand(
 
   if (!initialRequest) {
     if (ctx.hasUI) {
-      ctx.ui.notify("What durable plan should /plan-generator create?", "info");
+      ctx.ui.notify(`What durable ${options.progressNoun} should ${commandLabel()} create?`, "info");
     }
     return;
   }
 
-  await startNewGeneratorTask(pi, ctx, initialRequest, store, createCheckpoint);
+  await startNewGeneratorTask(pi, ctx, initialRequest, store, createCheckpoint, options);
 }
 
 async function resumePlanGeneratorFromUserInput(
@@ -680,7 +699,7 @@ async function resumePlanGeneratorFromUserInput(
       requestContext,
       waitingMessage,
       userInput,
-      checkpointContextFor(ctx, state.currentPlan, stage),
+      checkpointContextFor(ctx, state.currentPlan, stage)
     ),
     { deliverAs: "followUp" },
   );
@@ -700,7 +719,7 @@ async function handlePlanGeneratorAgentEnd(
   if (!state.currentPlan || !stage || state.status !== "active") return;
 
   if (state.breaker >= PLAN_GENERATOR_MAX_BREAKER) {
-    const message = `Stopped /plan-generator after too many ${stage.title} retries.`;
+    const message = `Stopped ${commandLabel()} after too many ${stage.title} retries.`;
     store.updateState({
       currentStage: undefined,
       status: "blocked",
@@ -711,7 +730,7 @@ async function handlePlanGeneratorAgentEnd(
     clearPlanGeneratorModeStatus(ctx);
     if (ctx.hasUI) {
       ctx.ui.notify(
-        `Stopped /plan-generator after too many ${stage.title} retries.`,
+        `Stopped ${commandLabel()} after too many ${stage.title} retries.`,
         "warning",
       );
     }
@@ -739,7 +758,7 @@ async function handlePlanGeneratorAgentEnd(
       store,
       state,
       stage,
-      message: `Unresolved user decision detected. Please choose before /plan-generator continues.\n${blockers}`,
+      message: `Unresolved user decision detected. Please choose before ${commandLabel()} continues.\n${blockers}`,
     });
     return;
   }
@@ -845,7 +864,7 @@ async function handlePlanGeneratorAgentEnd(
   if (stage.nextStage) {
     const nextStage = getPlanGeneratorStageEnvironment(stage.nextStage);
     if (!nextStage) {
-      const message = `Unknown next /plan-generator stage: ${stage.nextStage}`;
+      const message = `Unknown next ${commandLabel()} stage: ${stage.nextStage}`;
       store.updateState({ status: "blocked", message, breaker: 0 });
       clearDotdotgodWorkflowState(pi, "blocked", message);
       clearPlanGeneratorModeStatus(ctx);
@@ -858,8 +877,8 @@ async function handlePlanGeneratorAgentEnd(
       nextCheckpointContext = checkpointContextFor(ctx, state.currentPlan, nextStage);
     } catch (error) {
       const message = error instanceof Error
-        ? `Could not create next /plan-generator checkpoint: ${error.message}`
-        : "Could not create next /plan-generator checkpoint.";
+        ? `Could not create next ${commandLabel()} checkpoint: ${error.message}`
+        : `Could not create next ${commandLabel()} checkpoint.`;
       store.updateState({
         status: "active",
         message,
@@ -904,7 +923,7 @@ async function handlePlanGeneratorAgentEnd(
       { deliverAs: "followUp" },
     );
   } else {
-    clearDotdotgodWorkflowState(pi, "completed", "Plan generator stage sequence complete.");
+    clearDotdotgodWorkflowState(pi, "completed", `${commandLabel()} stage sequence complete.`);
     clearPlanGeneratorModeStatus(ctx);
   }
 }
@@ -925,7 +944,7 @@ function restorePlanGeneratorWorkflowFromStore(
   activatePlanGeneratorWorkflow(pi, {
     planPath: state.currentPlan,
     stage: state.currentStage,
-    reason: "Restored /plan-generator workflow from session state.",
+    reason: `Restored ${commandLabel()} workflow from session state.`,
   });
   return true;
 }
@@ -955,7 +974,7 @@ function registerPlanGeneratorInterruptHandler(
       pi,
       ctx,
       store,
-      "Paused /plan-generator by interrupt. Send the next message to resume this stage.",
+      `Paused ${commandLabel()} by interrupt. Send the next message to resume this stage.`,
     );
   });
 }
@@ -981,9 +1000,9 @@ export default function planGeneratorExtension(pi: ExtensionAPI): void {
     await handlePlanGeneratorAgentEnd(pi, ctx, event.messages, store);
   });
 
-  pi.registerCommand("plan-generator", {
-    description: "Create durable dotdotgod staged plans",
-    handler: async (args, ctx) => runPlanGeneratorCommand(pi, ctx, args, store),
+  pi.registerCommand("plan-goal", {
+    description: PLAN_GOAL_COMMAND.description,
+    handler: async (args, ctx) => runPlanGeneratorCommand(pi, ctx, args, store, defaultPlanStageCheckpointCreator, PLAN_GOAL_COMMAND),
   });
 }
 
@@ -994,6 +1013,7 @@ export {
   evaluateStage01,
   handlePlanGeneratorAgentEnd,
   latestAssistantText,
+  PLAN_GOAL_COMMAND,
   pausePlanGeneratorTask,
   registerPlanGeneratorInterruptHandler,
   resumePlanGeneratorFromUserInput,

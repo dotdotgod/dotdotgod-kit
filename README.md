@@ -137,6 +137,7 @@ For the detailed model, read [Context curation](docs/concept/CONTEXT_CURATION.md
 - Expand explicit `[[...]]` references and high-signal fuzzy references.
 - Review changed-file impact before broad tests, commits, pushes, or publishing.
 - Use Pi Plan Mode for safe planning, execution tracking, impact reminders, and archive handoff.
+- Generate staged Pi plans with `/plan-goal`, the single staged durable plan generator command.
 - Package the same conventions for Pi, Claude Code, Codex, and CLI-only workflows.
 
 ## Develop This Repository

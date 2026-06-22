@@ -54,9 +54,9 @@ Prefer live repository docs in this order:
    ```
 
    Skip the saved plan for obvious bounded work such as typos, single-file documentation clarifications, targeted test/validation runs, or one-file fixes with an unambiguous implementation path.
-4. For durable active plans that will be executed, keep the user-facing plan in `docs/plan/<task-slug>/README.md`. If `/plan-generator` staged planning is useful, it may record internal checkpoints under `docs/plan/<task-slug>/.dotdotgod-plan/NN_STAGE_NAME.md`; do not make legacy stage directories such as `01-intake/README.md` the required plan product.
+4. For durable active plans that will be executed, keep the user-facing plan in `docs/plan/<task-slug>/README.md`. If `/plan-goal` staged planning is useful, it may record internal checkpoints under `docs/plan/<task-slug>/.dotdotgod-plan/NN_STAGE_NAME.md`; do not make legacy stage directories such as `01-intake/README.md` the required plan product.
 5. Use UPPER_SNAKE_CASE support files in the task directory only when they improve resume quality, such as `ROLE_AREA_WORKSTREAMS.md`, `ATOMIC_TASKS.md`, `PROGRESS_LOG.md`, or `VERIFICATION_EVIDENCE.md`.
-6. For long-running durable tasks, use concise README sections or optional support files for chronological progress, durable decisions, resume state, and task-specific verification checklists. `.dotdotgod-plan/` checkpoints are `/plan-generator` state, not a general Plan Mode requirement.
+6. For long-running durable tasks, use concise README sections or optional support files for chronological progress, durable decisions, resume state, and task-specific verification checklists. `.dotdotgod-plan/` checkpoints are `/plan-goal` state, not a general Plan Mode requirement.
 7. When a durable plan is created, include:
    - scope and current status
    - target files and rationale
@@ -67,7 +67,7 @@ Prefer live repository docs in this order:
    - current resume state when useful
    - final housekeeping step to move completed work to `docs/archive/plan/<task-slug>/`
    - for Claude Code/Codex plans, a concrete `dd:impact` or `impact-review` step before broad verification or final handoff when source/config/docs files changed
-8. Before executing a durable active plan, ensure the user has explicitly asked to execute it and resolve any plan-local Discussion Queue items that block execution review. Plan Mode does not require `dotdotgod plan validate` before execution; `/plan-generator` and manual/non-Plan-Mode workflows may still use the CLI plan-validation contract when appropriate.
+8. Before executing a durable active plan, ensure the user has explicitly asked to execute it and resolve any plan-local Discussion Queue items that block execution review. Plan Mode does not require `dotdotgod plan validate` before execution; `/plan-goal` and manual/non-Plan-Mode workflows may still use the CLI plan-validation contract when appropriate.
 9. Update `docs/plan/README.md` if the repository keeps active plan entries there.
 10. Use repository-local package manager evidence for verification commands. In this repository, prefer `pnpm run verify`, `pnpm run pack:dry-run`, and `.husky/pre-push` when applicable.
 11. After creating or updating behavior specs, run project validation when possible. For dotdotgod projects, `dotdotgod validate` enforces machine-readable `json dotdotgod` traceability blocks as the final section in specs. Use `dotdotgod validate --check-index` when you need to confirm markdown fingerprints match the graph index. If validation fails, use the schema, property guidance, and example shown in the validation error to repair the spec.
