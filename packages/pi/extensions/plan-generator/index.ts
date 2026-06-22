@@ -61,6 +61,22 @@ function commandLabel(): string {
   return "/plan-goal";
 }
 
+export function buildPlanGoalDocumentClarifyFollowUp(planPath: string): string {
+  return `The ${commandLabel()} stage sequence is complete for ${planPath}.
+
+Run a final document-clarify pass before implementation:
+
+- Use the document-clarify skill.
+- Clarify ${planPath} and any task-local support or workstream handoff markdown files referenced by that README.
+- Preserve the plan's scope, user decisions, validation requirements, workstream dependencies, Todo Contract, and handoff contracts.
+- Do not execute implementation work.
+- Do not edit source or config files.
+- Treat docs/plan/<task>/.dotdotgod-plan/*.md files as internal checkpoint state and validation evidence, not final user-facing documentation to polish.
+- Do not weaken acceptance criteria, verification commands, do-not rules, or blocker descriptions.
+
+Stop after reporting the clarified plan path and any remaining blockers.`;
+}
+
 function setPlanGeneratorModeStatus(ctx: ExtensionContext): void {
   if (!ctx.hasUI) return;
   ctx.ui.setStatus(
@@ -706,12 +722,15 @@ async function resumePlanGeneratorFromUserInput(
   return true;
 }
 
+type PlanGeneratorStageEvaluator = typeof evaluateStage;
+
 async function handlePlanGeneratorAgentEnd(
   pi: ExtensionAPI,
   ctx: ExtensionContext,
   messages: unknown[],
   store: PlanGeneratorStore,
   createCheckpoint: PlanStageCheckpointCreator = defaultPlanStageCheckpointCreator,
+  stageEvaluator: PlanGeneratorStageEvaluator = evaluateStage,
 ): Promise<void> {
   if (!isPlanGeneratorWorkflowActive()) return;
   const state = store.getState();
@@ -746,7 +765,7 @@ async function handlePlanGeneratorAgentEnd(
         currentPlan: state.currentPlan,
         stage,
       });
-  const evaluation = await evaluateStage(ctx, stage, requestContext, assistantText, validationEvidence);
+  const evaluation = await stageEvaluator(ctx, stage, requestContext, assistantText, validationEvidence);
 
   if (hasUnresolvedUserDecisionBlocker(validationEvidence)) {
     const blockers = validationEvidence?.blockers
@@ -925,6 +944,10 @@ async function handlePlanGeneratorAgentEnd(
   } else {
     clearDotdotgodWorkflowState(pi, "completed", `${commandLabel()} stage sequence complete.`);
     clearPlanGeneratorModeStatus(ctx);
+    await pi.sendUserMessage(
+      buildPlanGoalDocumentClarifyFollowUp(state.currentPlan),
+      { deliverAs: "followUp" },
+    );
   }
 }
 
