@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import {
+  buildPlanGoalDocumentClarifyFollowUp,
   clearPlanGeneratorModeStatus,
   handlePlanGeneratorAgentEnd,
   latestAssistantText,
@@ -404,6 +405,30 @@ packages/pi/extensions/plan-generator/stage-contract.ts
       assert.match(message, /Keep README\.md as the overview\/index/);
     }
     assert.match(PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION, /Do not put final user-facing plan content only in \.dotdotgod-plan\//);
+  });
+
+  it("builds the final document-clarify follow-up without changing plan semantics", () => {
+    const message = buildPlanGoalDocumentClarifyFollowUp("docs/plan/example/README.md");
+
+    assert.match(message, /stage sequence is complete/);
+    assert.match(message, /document-clarify skill/);
+    assert.match(message, /docs\/plan\/example\/README\.md/);
+    assert.match(message, /task-local support or workstream handoff markdown files/);
+    assert.match(message, /Preserve the plan's scope, user decisions, validation requirements, workstream dependencies, Todo Contract, and handoff contracts/);
+    assert.match(message, /Do not execute implementation work/);
+    assert.match(message, /Do not edit source or config files/);
+    assert.match(message, /\.dotdotgod-plan\/\*\.md files as internal checkpoint state and validation evidence/);
+  });
+
+  it("keeps document-clarify out of non-terminal stage handoffs", () => {
+    const message = buildStageHandoffMessage({
+      stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS["04-plan"],
+      planPath: "docs/plan/example/README.md",
+      stageContext: "stage context",
+      nextContext: "next context",
+    });
+
+    assert.doesNotMatch(message, /document-clarify/);
   });
 
   it("tells Stage 02 to use canonical checkpoint checklist rows", () => {
@@ -1233,6 +1258,96 @@ Resume this stage after the user chooses.
     assert.equal(runtime.sent.length, 0);
     assert.match(runtime.notifications[0]?.message ?? "", /Plan README does not exist/);
     assert.equal(existsSync(join(cwd, "docs", "plan", "docs-plan-missing-plan-readme-md")), false);
+  });
+
+  it("queues a document-clarify follow-up after Stage 05 passes", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const runtime = fakeRuntime(cwd, { hasUI: true });
+    const store = createPlanGeneratorStore(runtime.pi as never);
+    const taskDir = join(cwd, "docs", "plan", "stage-five-complete");
+    mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
+    writeFileSync(join(taskDir, "README.md"), "# Stage Five Complete\n");
+    writeFileSync(
+      join(taskDir, ".dotdotgod-plan", "05_WORKSTREAM_HANDOFF.md"),
+      `Stage: 05-workstream-handoff
+Status: completed
+Updated: 2026-06-23T00:00:00.000Z
+
+## Workstream Handoff
+
+Split decision: no
+No-split rationale: single implementation lane.
+
+## Workstream Map
+
+Workstream ID: main
+
+## Shared Context
+
+Use the durable plan README.
+
+## Workstreams
+
+Purpose: implement the documented work.
+Required context: README.
+Allowed edits: scoped files.
+Forbidden edits: unrelated files.
+Tasks: implement tasks.
+Validation: focused tests.
+Handoff output: summary.
+Dependencies: none.
+
+## Integration Sequence
+
+Step: apply implementation.
+Validation: run focused tests.
+Handoff: report results.
+
+## Todo Contract
+
+- Implement scoped work.
+
+## Stage 05 Construction Checklist
+
+- [x] Handoffs: split decision and handoff contract are present.
+- [x] Do-not rules: unrelated edits are forbidden.
+- [x] Focused verification: focused tests are named.
+- [x] Chat-independent context: README context is sufficient.
+`,
+    );
+    store.updateState({
+      currentPlan: "docs/plan/stage-five-complete/README.md",
+      currentStage: "05-workstream-handoff",
+      status: "active",
+      breaker: 0,
+      originalRequest: "Prepare a final plan.",
+    });
+    activatePlanGeneratorWorkflow(runtime.pi as never, {
+      planPath: "docs/plan/stage-five-complete/README.md",
+      stage: "05-workstream-handoff",
+    });
+
+    await handlePlanGeneratorAgentEnd(
+      runtime.pi as never,
+      runtime.ctx as never,
+      [{ role: "assistant", content: "Stage 05 handoff is complete." }],
+      store,
+      checkpointCreator(cwd) as never,
+      async (_ctx, stage, _requestContext, _assistantText, validationEvidence) => {
+        assert.equal(stage.id, "05-workstream-handoff");
+        assert.equal(validationEvidence?.ok, true);
+        return { status: "pass", stageContext: "Stage 05 complete." };
+      },
+    );
+
+    assert.equal(store.getState().status, "pass");
+    assert.equal(store.getState().currentStage, undefined);
+    assert.equal(isPlanGeneratorWorkflowActive(), false);
+    assert.equal(runtime.sent.length, 1);
+    assert.match(runtime.sent[0]?.message ?? "", /document-clarify skill/);
+    assert.match(runtime.sent[0]?.message ?? "", /docs\/plan\/stage-five-complete\/README\.md/);
+    assert.match(runtime.sent[0]?.message ?? "", /Do not execute implementation work/);
+    assert.match(runtime.sent[0]?.message ?? "", /Do not edit source or config files/);
   });
 
   it("does not queue another stage for a completed final checkpoint", async () => {
