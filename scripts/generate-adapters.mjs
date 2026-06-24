@@ -43,6 +43,7 @@ function copyDirectory(sourceRelativeDir, targetRelativeDir) {
 
 const loadBody = read("packages/shared/workflows/load.md");
 const planBody = read("packages/shared/workflows/plan.md");
+const planGoalBody = read("packages/shared/workflows/plan-goal.md");
 const initBody = read("packages/shared/workflows/init.md");
 const impactBody = read("packages/shared/workflows/impact.md");
 const docClarifyBody = read("packages/shared/workflows/doc-clarify.md");
@@ -73,6 +74,7 @@ const yaml = {
   init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize agent docs and local docs folders."\n  default_prompt: "Initialize this project with dotdotgod init when available, otherwise use the bundled fallback; include AGENTS.md, CLAUDE.md, CODEX.md, docs folders, and local memory gitignore entries."\n`,
   impact: `interface:\n  display_name: "Impact Review"\n  short_description: "Review changed files with dotdotgod graph impact."\n  default_prompt: "Review current changed source, config, and docs files with dotdotgod graph impact before broad verification or handoff."\n`,
   docClarify: `interface:\n  display_name: "Document Clarify"\n  short_description: "Clarify dotdotgod project documentation."\n  default_prompt: "Clarify the target docs using dotdotgod memory-area metadata, default document roles, and docs-as-code clarity rules while preserving behavior contracts."\n`,
+  planGoal: `interface:\n  display_name: "Staged Planning"\n  short_description: "Run dotdotgod 5-stage planning pipeline."\n  default_prompt: "Run plan-goal staged planning: intake, context-load, discovery, plan, workstream-handoff."\n`,
 };
 
 write(
@@ -133,6 +135,15 @@ write(
   ),
 );
 write(
+  "packages/claude-code/commands/dd/plan-goal.md",
+  command(
+    `description: Create a durable staged plan using dotdotgod 5-stage pipeline\nargument-hint: <task or change request>\nallowed-tools: [Read, Glob, Grep, Bash, Write, Edit]`,
+    "/dd:plan-goal - Staged Planning",
+    "Run the dotdotgod 5-stage planning pipeline.\n\nTask request: `$ARGUMENTS`",
+    planGoalBody,
+  ),
+);
+write(
   "packages/claude-code/skills/project-load/SKILL.md",
   skill(
     `name: project-load\ndescription: Use this skill when the user asks Claude Code to load, refresh, inspect, summarize, or resume a repository's dotdotgod project memory; when starting unfamiliar work; or when a dd:load style project context pass is requested.\nversion: 1.0.0`,
@@ -172,11 +183,20 @@ write(
     docClarifyBody,
   ),
 );
+write(
+  "packages/claude-code/skills/plan-goal/SKILL.md",
+  skill(
+    `name: plan-goal\ndescription: Use this skill when the user asks Claude Code to run a staged planning pipeline, create a durable plan with checkpoint files, or use dotdotgod plan-goal stages (intake, context-load, discovery, plan, workstream-handoff); when dd:plan-goal or staged planning is mentioned.\nversion: 1.0.0`,
+    "Staged Planning",
+    planGoalBody,
+  ),
+);
 write("packages/claude-code/skills/project-load/agents/openai.yaml", yaml.load);
 write("packages/claude-code/skills/doc-first-planning/agents/openai.yaml", yaml.plan);
 write("packages/claude-code/skills/project-initializer/agents/openai.yaml", yaml.init);
 write("packages/claude-code/skills/impact-review/agents/openai.yaml", yaml.impact);
 write("packages/claude-code/skills/document-clarify/agents/openai.yaml", yaml.docClarify);
+write("packages/claude-code/skills/plan-goal/agents/openai.yaml", yaml.planGoal);
 copyDirectory("packages/shared/initializer/scripts", "packages/claude-code/skills/project-initializer/scripts");
 copyDirectory("packages/shared/initializer/references", "packages/claude-code/skills/project-initializer/references");
 
@@ -220,11 +240,20 @@ write(
     docClarifyBody,
   ),
 );
+write(
+  "packages/codex/skills/plan-goal/SKILL.md",
+  skill(
+    `name: plan-goal\ndescription: Run dotdotgod 5-stage planning pipeline to create a durable plan with checkpoint files. Use when Codex is asked for staged planning, plan-goal, or a structured intake-to-handoff plan with .dotdotgod-plan checkpoints.`,
+    "Staged Planning",
+    planGoalBody,
+  ),
+);
 write("packages/codex/skills/project-load/agents/openai.yaml", yaml.load);
 write("packages/codex/skills/doc-first-planning/agents/openai.yaml", yaml.plan);
 write("packages/codex/skills/project-initializer/agents/openai.yaml", yaml.init);
 write("packages/codex/skills/impact-review/agents/openai.yaml", yaml.impact);
 write("packages/codex/skills/document-clarify/agents/openai.yaml", yaml.docClarify);
+write("packages/codex/skills/plan-goal/agents/openai.yaml", yaml.planGoal);
 copyDirectory("packages/shared/initializer/scripts", "packages/codex/skills/project-initializer/scripts");
 copyDirectory("packages/shared/initializer/references", "packages/codex/skills/project-initializer/references");
 
