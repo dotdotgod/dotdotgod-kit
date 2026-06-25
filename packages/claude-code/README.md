@@ -14,6 +14,7 @@ Install or register this package as a Claude Code plugin, then use the bundled `
 /dd:init
 /dd:load
 /dd:plan Update the API migration plan.
+/dd:plan-goal Add the new export API to the auth module.
 /dd:impact
 ```
 
@@ -30,10 +31,11 @@ claude --plugin-dir /path/to/dotdotgod/packages/claude-code
 | `/dd:init` | Start a repository with dotdotgod conventions. | Creates or normalizes `AGENTS.md`, thin agent entrypoints, docs indexes, active-plan space, and archive map. |
 | `/dd:load` | Load project memory read-only. | Prefers `dotdotgod load-snapshot <root> --json`, then falls back to README-index reads. |
 | `/dd:plan` | Plan before implementation. | Writes or updates durable task intent in `docs/plan/<task-slug>/README.md`. |
+| `/dd:plan-goal` | Run 5-stage structured planning before implementation. | Produces durable checkpoint files in `docs/plan/<task>/.dotdotgod-plan/` and a plan README. |
 | `/dd:impact` | Review changed files before verification or handoff. | Uses `dotdotgod graph impact` to identify likely related docs, tests, commands, and source files. |
 | `document-clarify` | Improve docs wording without changing behavior contracts. | Clarifies README/spec/test/arch/plan/archive docs using memory-area roles. |
 
-The package also includes matching skills for init, load, planning, and impact-review workflows.
+The package also includes matching skills for init, load, planning, plan-goal, and impact-review workflows.
 
 ## Shared Project-Memory Contract
 
