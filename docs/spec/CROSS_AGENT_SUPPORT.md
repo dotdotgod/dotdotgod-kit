@@ -15,6 +15,7 @@ Current first-class support.
 - Package entrypoint: npm package with `package.json#pi` manifest and runtime dependencies for `@dotdotgod/cli` plus `pi-subagents`.
 - Initialization: `project-initializer` skill.
 - Documentation clarity: `document-clarify` skill.
+- Completed `/plan-goal` plan clarity: packaged `dotdotgod.plan-doc-clarifier` subagent when `pi-subagents` is available, with `document-clarify` as the fallback.
 - Runtime workflow: `plan-mode`, `load-project`, and dependency-provided `pi-subagents` extensions.
 - Commands and tools: `/plan`, `/todos`, `/load`, `/dd:load`, `/impact-check`, and the `subagent` delegation tool when the dependency resources load.
 
@@ -79,7 +80,7 @@ Required workflows:
 - load project memory in a read-only context
 - plan safely before source/config changes
 - review changed files with graph-impact evidence before broad verification, commits, pushes, publishing, or final handoff when the CLI or an equivalent project-local impact command is available; otherwise preserve the same review intent through targeted specs/tests/docs reads
-- clarify project documentation using configured memory-area roles and dotdotgod default document roles while preserving behavior contracts
+- clarify project documentation using configured memory-area roles and dotdotgod default document roles while preserving behavior contracts; Pi may use a fresh-context doc-only subagent for completed `/plan-goal` plan files
 - preserve completed plans and temporary reports in the archive structure
 
 Optional workflows:

@@ -23,8 +23,10 @@ Confirm the loader prompt includes a compact `Load snapshot:` section with cache
 2. Confirm `/dd:load` and Plan Mode context shaping can run `dotdotgod load-snapshot`, validation, and graph-impact commands through the package-local CLI dependency when no global CLI is on `PATH`.
 3. Confirm the `subagent` tool is available.
 4. Confirm builtin agents include `scout`, `researcher`, `planner`, `worker`, `reviewer`, `context-builder`, `oracle`, and `delegate`.
-5. Run a simple read-only subagent task, such as listing available agents or asking `scout` to inspect one README.
-6. Confirm subagent prompts are discoverable if prompt templates are enabled in the active Pi runtime.
+5. Confirm package agents include `dotdotgod.plan-doc-clarifier`, and inspect it to verify `defaultContext: fresh`, `inheritProjectContext: false`, and `inheritSkills: false`.
+6. Run a simple read-only subagent task, such as listing available agents or asking `scout` to inspect one README.
+7. Confirm the plan-doc clarifier can be launched with `context: "fresh"` and explicit `reads` containing one plan README, and that its prompt refuses broad project-memory reads unless explicitly named.
+8. Confirm subagent prompts are discoverable if prompt templates are enabled in the active Pi runtime.
 7. If standalone `pi-subagents` is also installed, confirm `@dotdotgod/pi` does not raise a duplicate `subagent` tool error, skill/prompt conflict warnings, or `Extension runtime not initialized` startup error, and leaves the existing standalone tool, skill, and prompts registered.
 
 ## Plan Mode

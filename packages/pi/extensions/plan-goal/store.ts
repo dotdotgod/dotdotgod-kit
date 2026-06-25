@@ -2,11 +2,11 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import type { PlanGeneratorStageId } from "./stage-contract.ts";
+import type { PlanGoalStageId } from "./stage-contract.ts";
 
-const PLAN_GENERATOR_STORE_TYPE = "plan-generator";
+const PLAN_GOAL_STORE_TYPE = "plan-goal";
 
-export type PlanGeneratorStatus =
+export type PlanGoalStatus =
   | "pass"
   | "idle"
   | "active"
@@ -14,11 +14,11 @@ export type PlanGeneratorStatus =
   | "blocked"
   | "stopped";
 
-export interface PlanGeneratorStoreState {
+export interface PlanGoalStoreState {
   currentPlan?: string | undefined;
-  currentStage?: PlanGeneratorStageId | undefined;
+  currentStage?: PlanGoalStageId | undefined;
   breaker: number;
-  status: PlanGeneratorStatus;
+  status: PlanGoalStatus;
   message?: string | undefined;
   originalRequest?: string | undefined;
   waitingMessage?: string | undefined;
@@ -26,25 +26,25 @@ export interface PlanGeneratorStoreState {
   lastResumedUserInput?: string | undefined;
 }
 
-const initialState: PlanGeneratorStoreState = {
+const initialState: PlanGoalStoreState = {
   breaker: 0,
   status: "idle",
 };
 
-export interface PlanGeneratorStore {
-  getState(): PlanGeneratorStoreState;
+export interface PlanGoalStore {
+  getState(): PlanGoalStoreState;
   setCurrentPlan(currentPlan: string | undefined): void;
-  setCurrentStage(currentStage: PlanGeneratorStageId | undefined): void;
-  setStatus(status: PlanGeneratorStatus, message?: string): void;
-  updateState(patch: Partial<PlanGeneratorStoreState>): void;
+  setCurrentStage(currentStage: PlanGoalStageId | undefined): void;
+  setStatus(status: PlanGoalStatus, message?: string): void;
+  updateState(patch: Partial<PlanGoalStoreState>): void;
   addBreaker(): void;
   resetBreaker(): void;
   restore(ctx: ExtensionContext): void;
 }
 
 function normalizeStoreState(
-  value: Partial<PlanGeneratorStoreState>,
-): PlanGeneratorStoreState {
+  value: Partial<PlanGoalStoreState>,
+): PlanGoalStoreState {
   return {
     ...initialState,
     ...value,
@@ -56,23 +56,23 @@ function normalizeStoreState(
   };
 }
 
-function readPlanGeneratorState(
+function readPlanGoalState(
   details: unknown,
-): PlanGeneratorStoreState | undefined {
+): PlanGoalStoreState | undefined {
   if (!details || typeof details !== "object") return undefined;
-  return normalizeStoreState(details as Partial<PlanGeneratorStoreState>);
+  return normalizeStoreState(details as Partial<PlanGoalStoreState>);
 }
 
-export function createPlanGeneratorStore(pi: ExtensionAPI): PlanGeneratorStore {
-  let state: PlanGeneratorStoreState = { ...initialState };
+export function createPlanGoalStore(pi: ExtensionAPI): PlanGoalStore {
+  let state: PlanGoalStoreState = { ...initialState };
 
-  const getState = (): PlanGeneratorStoreState => ({ ...state });
+  const getState = (): PlanGoalStoreState => ({ ...state });
 
   const persist = (): void => {
     pi.sendMessage(
       {
-        customType: PLAN_GENERATOR_STORE_TYPE,
-        content: `Plan generator state: ${state.currentPlan ?? "none"}`,
+        customType: PLAN_GOAL_STORE_TYPE,
+        content: `Plan goal state: ${state.currentPlan ?? "none"}`,
         display: false,
         details: getState(),
       },
@@ -80,7 +80,7 @@ export function createPlanGeneratorStore(pi: ExtensionAPI): PlanGeneratorStore {
     );
   };
 
-  const updateState = (patch: Partial<PlanGeneratorStoreState>): void => {
+  const updateState = (patch: Partial<PlanGoalStoreState>): void => {
     state = normalizeStoreState({ ...state, ...patch });
     persist();
   };
@@ -90,12 +90,12 @@ export function createPlanGeneratorStore(pi: ExtensionAPI): PlanGeneratorStore {
   };
 
   const setCurrentStage = (
-    currentStage: PlanGeneratorStageId | undefined,
+    currentStage: PlanGoalStageId | undefined,
   ): void => {
     updateState({ currentStage });
   };
 
-  const setStatus = (status: PlanGeneratorStatus, message?: string): void => {
+  const setStatus = (status: PlanGoalStatus, message?: string): void => {
     updateState({ status, message });
   };
 
@@ -108,23 +108,23 @@ export function createPlanGeneratorStore(pi: ExtensionAPI): PlanGeneratorStore {
   };
 
   const restore = (ctx: ExtensionContext): void => {
-    let restoredState: PlanGeneratorStoreState | undefined;
+    let restoredState: PlanGoalStoreState | undefined;
 
     for (const entry of ctx.sessionManager.getBranch()) {
       if (entry.type !== "message") continue;
 
       const msg = entry.message;
-      let restored: PlanGeneratorStoreState | undefined;
+      let restored: PlanGoalStoreState | undefined;
       if (
         msg.role === "toolResult" &&
-        msg.toolName === PLAN_GENERATOR_STORE_TYPE
+        msg.toolName === PLAN_GOAL_STORE_TYPE
       ) {
-        restored = readPlanGeneratorState(msg.details);
+        restored = readPlanGoalState(msg.details);
       } else if (
         msg.role === "custom" &&
-        msg.customType === PLAN_GENERATOR_STORE_TYPE
+        msg.customType === PLAN_GOAL_STORE_TYPE
       ) {
-        restored = readPlanGeneratorState(msg.details);
+        restored = readPlanGoalState(msg.details);
       }
       if (restored) restoredState = restored;
     }
@@ -144,9 +144,9 @@ export function createPlanGeneratorStore(pi: ExtensionAPI): PlanGeneratorStore {
   };
 }
 
-export function initPlanGeneratorStore(
+export function initPlanGoalStore(
   pi: ExtensionAPI,
-  store: PlanGeneratorStore,
+  store: PlanGoalStore,
 ): void {
   pi.on("session_start", async (_event, ctx) => {
     store.restore(ctx);

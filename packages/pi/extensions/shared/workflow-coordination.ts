@@ -2,7 +2,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 export const DOTDOTGOD_WORKFLOW_CUSTOM_TYPE = "dotdotgod-workflow";
 
-export type DotdotgodWorkflowName = "plan-generator";
+export type DotdotgodWorkflowName = "plan-goal";
 export type DotdotgodWorkflowStatus = "active" | "stopped" | "completed" | "blocked";
 
 export interface DotdotgodWorkflowState {
@@ -31,17 +31,17 @@ export function getDotdotgodWorkflowState(): DotdotgodWorkflowState {
   return { ...workflowState };
 }
 
-export function isPlanGeneratorWorkflowActive(): boolean {
+export function isPlanGoalWorkflowActive(): boolean {
   return (
-    workflowState.activeWorkflow === "plan-generator" &&
+    workflowState.activeWorkflow === "plan-goal" &&
     workflowState.status === "active" &&
     workflowState.suppressPlanModeExecutionPrompt
   );
 }
 
-export function restorePlanGeneratorWorkflowActive(entries: readonly unknown[]): boolean {
+export function restorePlanGoalWorkflowActive(entries: readonly unknown[]): boolean {
   restoreDotdotgodWorkflowState(entries);
-  return isPlanGeneratorWorkflowActive();
+  return isPlanGoalWorkflowActive();
 }
 
 export function setDotdotgodWorkflowState(
@@ -56,12 +56,12 @@ export function setDotdotgodWorkflowState(
   return getDotdotgodWorkflowState();
 }
 
-export function activatePlanGeneratorWorkflow(
+export function activatePlanGoalWorkflow(
   pi: Pick<ExtensionAPI, "appendEntry"> | undefined,
   state: { planPath?: string | undefined; stage?: string | undefined; reason?: string | undefined },
 ): DotdotgodWorkflowState {
   return setDotdotgodWorkflowState(pi, {
-    activeWorkflow: "plan-generator",
+    activeWorkflow: "plan-goal",
     suppressPlanModeExecutionPrompt: true,
     status: "active",
     planPath: state.planPath,
@@ -99,7 +99,7 @@ export function restoreDotdotgodWorkflowState(entries: readonly unknown[]): Dotd
     const status = state.status;
     if (!["active", "stopped", "completed", "blocked"].includes(status ?? "")) continue;
     workflowState = {
-      activeWorkflow: state.activeWorkflow === "plan-generator" ? "plan-generator" : undefined,
+      activeWorkflow: state.activeWorkflow === "plan-goal" ? "plan-goal" : undefined,
       suppressPlanModeExecutionPrompt: state.suppressPlanModeExecutionPrompt === true,
       planPath: typeof state.planPath === "string" ? state.planPath : undefined,
       stage: typeof state.stage === "string" ? state.stage : undefined,

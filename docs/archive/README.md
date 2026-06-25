@@ -19,6 +19,7 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/plan-goal-doc-only-clarifier/`: added a packaged `dotdotgod.plan-doc-clarifier` subagent and `/plan-goal` final follow-up guidance so completed plans can be clarified from fresh, explicit-file-only context.
 - `plan/plan-goal-document-clarify-pass/`: added a terminal `/plan-goal` Stage 05 follow-up that asks the agent to run `document-clarify` on the durable plan and workstream handoff docs without changing scope or executing source/config work.
 - `plan/plan-generator-plan-goal/`: replaced the user-facing `/plan-generator` command with `/plan-goal`, removed goal-mode prompt/state divergence, and refreshed Pi docs/tests around the single staged generator command.
 - `plan/remove-natural-language-rule-gates/`: removed prose keyword semantic gates from CLI plan validation, Pi Plan Generator user-decision blocking, Stage 05 workstream validation, and Plan Mode request classification in favor of structured markers and LLM-owned qualitative judgment.

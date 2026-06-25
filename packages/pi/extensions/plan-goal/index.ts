@@ -11,15 +11,15 @@ import {
   buildStageHandoffMessage,
   buildStageResumeMessage,
   buildStageRetryMessage,
-  getPlanGeneratorStageEnvironment,
-  PLAN_GENERATOR_MAX_BREAKER,
+  getPlanGoalStageEnvironment,
+  PLAN_GOAL_MAX_BREAKER,
   PLAN_GOAL_HELP,
-  PLAN_GENERATOR_STAGE_ENVIRONMENTS,
+  PLAN_GOAL_STAGE_ENVIRONMENTS,
   STAGE_01_ID,
-  type PlanGeneratorStageCheckpointContext,
-  type PlanGeneratorStageEnvironment,
+  type PlanGoalStageCheckpointContext,
+  type PlanGoalStageEnvironment,
 } from "./stage-contract.ts";
-import { createPlanGeneratorStore, initPlanGeneratorStore, type PlanGeneratorStore } from "./store.ts";
+import { createPlanGoalStore, initPlanGoalStore, type PlanGoalStore } from "./store.ts";
 import {
   createPlanStageCheckpointViaCli,
   createStageValidationEvidence,
@@ -28,16 +28,16 @@ import {
   hasUnresolvedUserDecisionBlocker,
   readStageCheckpointContext,
   resolveCollisionFreeTaskPath,
-  resolveExistingPlanGeneratorResumeTarget,
-  type ExistingPlanGeneratorResumeTarget,
-  type PlanGeneratorStageCheckpointResult,
-  type PlanGeneratorStageValidationEvidence,
-  type PlanGeneratorTaskPath,
+  resolveExistingPlanGoalResumeTarget,
+  type ExistingPlanGoalResumeTarget,
+  type PlanGoalStageCheckpointResult,
+  type PlanGoalStageValidationEvidence,
+  type PlanGoalTaskPath,
 } from "./plan-files.ts";
 import {
-  activatePlanGeneratorWorkflow,
+  activatePlanGoalWorkflow,
   clearDotdotgodWorkflowState,
-  isPlanGeneratorWorkflowActive,
+  isPlanGoalWorkflowActive,
   restoreDotdotgodWorkflowState,
 } from "../shared/workflow-coordination.ts";
 import { authCreate, createTextUserMessage } from "./utils.ts";
@@ -64,10 +64,12 @@ function commandLabel(): string {
 export function buildPlanGoalDocumentClarifyFollowUp(planPath: string): string {
   return `The ${commandLabel()} stage sequence is complete for ${planPath}.
 
-Run a final document-clarify pass before implementation:
+Run a final fresh-context plan documentation clarity pass before implementation:
 
-- Use the document-clarify skill.
-- Clarify ${planPath} and any task-local support or workstream handoff markdown files referenced by that README.
+- Prefer the dedicated subagent: subagent({ agent: "dotdotgod.plan-doc-clarifier", context: "fresh", reads: ["${planPath}"], task: "Clarify ${planPath} and any explicitly named task-local support or workstream handoff markdown files only. Do not use parent conversation context." }).
+- Before launching the subagent, resolve any task-local support or workstream handoff markdown files referenced by ${planPath} and add only those explicit markdown paths to reads and the task text.
+- The subagent must not inspect AGENTS.md, docs indexes, specs, tests, architecture notes, source/config files, archive bodies, or docs/plan/<task>/.dotdotgod-plan/*.md checkpoint files unless an allowed target is explicitly named.
+- If the subagent tool or dotdotgod.plan-doc-clarifier agent is unavailable, fall back to the document-clarify skill with the same fresh-context, explicit-file-only boundaries.
 - Preserve the plan's scope, user decisions, validation requirements, workstream dependencies, Todo Contract, and handoff contracts.
 - Do not execute implementation work.
 - Do not edit source or config files.
@@ -77,7 +79,7 @@ Run a final document-clarify pass before implementation:
 Stop after reporting the clarified plan path and any remaining blockers.`;
 }
 
-function setPlanGeneratorModeStatus(ctx: ExtensionContext): void {
+function setPlanGoalModeStatus(ctx: ExtensionContext): void {
   if (!ctx.hasUI) return;
   ctx.ui.setStatus(
     "plan-mode",
@@ -85,7 +87,7 @@ function setPlanGeneratorModeStatus(ctx: ExtensionContext): void {
   );
 }
 
-function setPlanGeneratorProgressStatus(ctx: ExtensionContext, label: string): void {
+function setPlanGoalProgressStatus(ctx: ExtensionContext, label: string): void {
   if (!ctx.hasUI) return;
   ctx.ui.setStatus("plan-mode", ctx.ui.theme.fg("warning", label));
 }
@@ -129,7 +131,7 @@ function getPlanModeFallbackStatus(ctx: ExtensionContext): string | undefined {
   return undefined;
 }
 
-function clearPlanGeneratorModeStatus(ctx: ExtensionContext): void {
+function clearPlanGoalModeStatus(ctx: ExtensionContext): void {
   if (!ctx.hasUI) return;
   ctx.ui.setStatus("plan-mode", getPlanModeFallbackStatus(ctx));
 }
@@ -191,7 +193,7 @@ function latestUserTextFromSession(ctx: ExtensionContext): string {
   return "";
 }
 
-function isPlanGeneratorStopInput(input: string): boolean {
+function isPlanGoalStopInput(input: string): boolean {
   const normalized = input.trim().toLowerCase();
   return (
     normalized === "stop" ||
@@ -203,10 +205,10 @@ function isPlanGeneratorStopInput(input: string): boolean {
   );
 }
 
-function isPlanGeneratorStopOrSwitchInput(input: string): boolean {
+function isPlanGoalStopOrSwitchInput(input: string): boolean {
   const normalized = input.trim().toLowerCase();
   return (
-    isPlanGeneratorStopInput(input) ||
+    isPlanGoalStopInput(input) ||
     (normalized.startsWith("/plan-goal") && normalized !== "/plan-goal")
   );
 }
@@ -252,10 +254,10 @@ function normalizeStageEvaluation(
 
 async function evaluateStage(
   ctx: ExtensionContext,
-  stage: PlanGeneratorStageEnvironment,
+  stage: PlanGoalStageEnvironment,
   requestContext: string,
   assistantText: string,
-  validationEvidence?: PlanGeneratorStageValidationEvidence | undefined
+  validationEvidence?: PlanGoalStageValidationEvidence | undefined
 ): Promise<StageEvaluation | undefined> {
   if (!stage.evaluationPrompt) return undefined;
   const result = await authCreate(ctx, {
@@ -275,19 +277,19 @@ async function evaluateStage01(
 ): Promise<StageEvaluation | undefined> {
   return evaluateStage(
     ctx,
-    PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_01_ID],
+    PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_01_ID],
     requestContext,
     assistantText,
     undefined,
   );
 }
 
-async function waitForPlanGeneratorUserDecision(options: {
+async function waitForPlanGoalUserDecision(options: {
   pi: ExtensionAPI;
   ctx: ExtensionContext;
-  store: PlanGeneratorStore;
-  state: ReturnType<PlanGeneratorStore["getState"]>;
-  stage: PlanGeneratorStageEnvironment;
+  store: PlanGoalStore;
+  state: ReturnType<PlanGoalStore["getState"]>;
+  stage: PlanGoalStageEnvironment;
   message: string;
 }): Promise<void> {
   options.store.updateState({
@@ -295,12 +297,12 @@ async function waitForPlanGeneratorUserDecision(options: {
     message: options.message,
     waitingMessage: options.message,
   });
-  activatePlanGeneratorWorkflow(options.pi, {
+  activatePlanGoalWorkflow(options.pi, {
     planPath: options.state.currentPlan,
     stage: options.state.currentStage,
     reason: options.message,
   });
-  setPlanGeneratorModeStatus(options.ctx);
+  setPlanGoalModeStatus(options.ctx);
   if (options.ctx.hasUI) {
     options.ctx.ui.notify(`${options.stage.title} is waiting for user input.`, "warning");
   }
@@ -312,7 +314,7 @@ async function waitForPlanGeneratorUserDecision(options: {
 
 async function createNextContext(
   ctx: ExtensionContext,
-  stage: PlanGeneratorStageEnvironment,
+  stage: PlanGoalStageEnvironment,
   stageContext: string,
 ): Promise<string | undefined> {
   if (!stage.nextContextPrompt) return stageContext;
@@ -324,16 +326,16 @@ async function createNextContext(
 
 type PlanStageCheckpointCreator = (
   ctx: ExtensionCommandContext | ExtensionContext,
-  stage: PlanGeneratorStageEnvironment,
+  stage: PlanGoalStageEnvironment,
   planPath: string,
-) => PlanGeneratorStageCheckpointResult | Promise<PlanGeneratorStageCheckpointResult>;
+) => PlanGoalStageCheckpointResult | Promise<PlanGoalStageCheckpointResult>;
 
 const defaultPlanStageCheckpointCreator: PlanStageCheckpointCreator = (ctx, stage, planPath) =>
   createPlanStageCheckpointViaCli((ctx as { cwd: string }).cwd, stage.id, planPath);
 
 async function createStageCheckpointOrThrow(
   ctx: ExtensionCommandContext | ExtensionContext,
-  stage: PlanGeneratorStageEnvironment,
+  stage: PlanGoalStageEnvironment,
   planPath: string,
   createCheckpoint: PlanStageCheckpointCreator,
 ): Promise<void> {
@@ -345,7 +347,7 @@ async function createStageCheckpointOrThrow(
 function checkpointContextFor(
   ctx: ExtensionCommandContext | ExtensionContext,
   planPath: string,
-  stage: PlanGeneratorStageEnvironment,
+  stage: PlanGoalStageEnvironment,
 ) {
   return readStageCheckpointContext({
     cwd: (ctx as { cwd: string }).cwd,
@@ -357,8 +359,8 @@ function checkpointContextFor(
 async function startExistingGeneratorTask(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
-  target: ExistingPlanGeneratorResumeTarget,
-  store = createPlanGeneratorStore(pi),
+  target: ExistingPlanGoalResumeTarget,
+  store = createPlanGoalStore(pi),
   createCheckpoint: PlanStageCheckpointCreator = defaultPlanStageCheckpointCreator,
   options = PLAN_GOAL_COMMAND,
 ): Promise<void> {
@@ -372,7 +374,7 @@ async function startExistingGeneratorTask(
       message: target.message,
     });
     clearDotdotgodWorkflowState(pi, "blocked", target.message);
-    clearPlanGeneratorModeStatus(ctx);
+    clearPlanGoalModeStatus(ctx);
     if (ctx.hasUI) ctx.ui.notify(target.message, "warning");
     return;
   }
@@ -391,12 +393,12 @@ async function startExistingGeneratorTask(
       lastResumedUserInput: undefined,
     });
     clearDotdotgodWorkflowState(pi, "completed", message);
-    clearPlanGeneratorModeStatus(ctx);
+    clearPlanGoalModeStatus(ctx);
     if (ctx.hasUI) ctx.ui.notify(message, "info");
     return;
   }
 
-  const stage = PLAN_GENERATOR_STAGE_ENVIRONMENTS[target.stageId];
+  const stage = PLAN_GOAL_STAGE_ENVIRONMENTS[target.stageId];
   store.updateState({
     currentPlan: target.currentPlan,
     currentStage: stage.id,
@@ -408,12 +410,12 @@ async function startExistingGeneratorTask(
     latestUserInput: undefined,
     lastResumedUserInput: undefined,
   });
-  activatePlanGeneratorWorkflow(pi, {
+  activatePlanGoalWorkflow(pi, {
     planPath: target.currentPlan,
     stage: stage.id,
     reason: `Resuming ${label} from ${target.currentPlan}.`,
   });
-  setPlanGeneratorProgressStatus(ctx, target.hasCheckpoint ? "⏳ resuming plan stage" : "⏳ creating stage checkpoint");
+  setPlanGoalProgressStatus(ctx, target.hasCheckpoint ? "⏳ resuming plan stage" : "⏳ creating stage checkpoint");
 
   if (!target.hasCheckpoint) {
     try {
@@ -430,7 +432,7 @@ async function startExistingGeneratorTask(
         message,
       });
       clearDotdotgodWorkflowState(pi, "blocked", message);
-      clearPlanGeneratorModeStatus(ctx);
+      clearPlanGoalModeStatus(ctx);
       if (ctx.hasUI) ctx.ui.notify(message, "warning");
       throw error;
     }
@@ -447,12 +449,12 @@ async function startExistingGeneratorTask(
     latestUserInput: undefined,
     lastResumedUserInput: undefined,
   });
-  activatePlanGeneratorWorkflow(pi, {
+  activatePlanGoalWorkflow(pi, {
     planPath: target.currentPlan,
     stage: stage.id,
     reason: `Resuming ${label} from ${target.currentPlan}.`,
   });
-  setPlanGeneratorModeStatus(ctx);
+  setPlanGoalModeStatus(ctx);
   const checkpointContext = checkpointContextFor(ctx, target.currentPlan, stage);
   const message = target.hasCheckpoint
     ? buildStageResumeMessage(
@@ -476,7 +478,7 @@ async function startNewGeneratorTask(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
   request: string,
-  store = createPlanGeneratorStore(pi),
+  store = createPlanGoalStore(pi),
   createCheckpoint: PlanStageCheckpointCreator = defaultPlanStageCheckpointCreator,
   options = PLAN_GOAL_COMMAND,
 ): Promise<void> {
@@ -492,15 +494,15 @@ async function startNewGeneratorTask(
     latestUserInput: undefined,
     lastResumedUserInput: undefined,
   });
-  activatePlanGeneratorWorkflow(pi, {
+  activatePlanGoalWorkflow(pi, {
     reason: request,
   });
-  setPlanGeneratorProgressStatus(ctx, `⏳ generating ${options.progressNoun} slug`);
+  setPlanGoalProgressStatus(ctx, `⏳ generating ${options.progressNoun} slug`);
 
-  let task: PlanGeneratorTaskPath;
+  let task: PlanGoalTaskPath;
   try {
     task = await resolveCollisionFreeTaskPath(ctx, request);
-    setPlanGeneratorProgressStatus(ctx, `⏳ creating ${options.progressNoun} files`);
+    setPlanGoalProgressStatus(ctx, `⏳ creating ${options.progressNoun} files`);
     ensureInitialReadme(task, request);
   } catch (error) {
     const message = error instanceof Error
@@ -514,17 +516,17 @@ async function startNewGeneratorTask(
       message,
     });
     clearDotdotgodWorkflowState(pi, "blocked", message);
-    clearPlanGeneratorModeStatus(ctx);
+    clearPlanGoalModeStatus(ctx);
     if (ctx.hasUI) ctx.ui.notify(message, "warning");
     throw error;
   }
 
   const currentPlan = relativePlanPath(ctx, task.readmePath);
   try {
-    setPlanGeneratorProgressStatus(ctx, "⏳ creating stage checkpoint");
+    setPlanGoalProgressStatus(ctx, "⏳ creating stage checkpoint");
     await createStageCheckpointOrThrow(
       ctx,
-      PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_01_ID],
+      PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_01_ID],
       currentPlan,
       createCheckpoint,
     );
@@ -540,7 +542,7 @@ async function startNewGeneratorTask(
       message,
     });
     clearDotdotgodWorkflowState(pi, "blocked", message);
-    clearPlanGeneratorModeStatus(ctx);
+    clearPlanGoalModeStatus(ctx);
     if (ctx.hasUI) ctx.ui.notify(message, "warning");
     throw error;
   }
@@ -556,20 +558,20 @@ async function startNewGeneratorTask(
     latestUserInput: undefined,
     lastResumedUserInput: undefined,
   });
-  activatePlanGeneratorWorkflow(pi, {
+  activatePlanGoalWorkflow(pi, {
     planPath: currentPlan,
     stage: STAGE_01_ID,
     reason: request,
   });
-  setPlanGeneratorModeStatus(ctx);
+  setPlanGoalModeStatus(ctx);
   const checkpointContext = checkpointContextFor(
     ctx,
     currentPlan,
-    PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_01_ID],
+    PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_01_ID],
   );
   await pi.sendUserMessage(
     buildStageAuthoringMessage(
-      PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_01_ID],
+      PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_01_ID],
       request,
       checkpointContext
     ),
@@ -585,10 +587,10 @@ async function startNewGeneratorTask(
 
 }
 
-async function pausePlanGeneratorTask(
+async function pausePlanGoalTask(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext | ExtensionContext,
-  store: PlanGeneratorStore,
+  store: PlanGoalStore,
   reason?: string,
 ): Promise<boolean> {
   const state = store.getState();
@@ -603,20 +605,20 @@ async function pausePlanGeneratorTask(
     latestUserInput: undefined,
     lastResumedUserInput: undefined,
   });
-  activatePlanGeneratorWorkflow(pi, {
+  activatePlanGoalWorkflow(pi, {
     planPath: state.currentPlan,
     stage: state.currentStage,
     reason: pauseReason,
   });
-  setPlanGeneratorModeStatus(ctx);
+  setPlanGoalModeStatus(ctx);
   if (ctx.hasUI) ctx.ui.notify(pauseReason, "warning");
   return true;
 }
 
-async function stopPlanGeneratorTask(
+async function stopPlanGoalTask(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext | ExtensionContext,
-  store: PlanGeneratorStore,
+  store: PlanGoalStore,
   reason = "Stopped by user.",
 ): Promise<void> {
   store.updateState({
@@ -626,32 +628,32 @@ async function stopPlanGeneratorTask(
     breaker: 0,
   });
   clearDotdotgodWorkflowState(pi, "stopped", reason);
-  clearPlanGeneratorModeStatus(ctx);
+  clearPlanGoalModeStatus(ctx);
   const label = commandLabel();
   if (ctx.hasUI) ctx.ui.notify(`Stopped ${label}.`, "info");
 }
 
-async function runPlanGeneratorCommand(
+async function runPlanGoalCommand(
   pi: ExtensionAPI,
   ctx: ExtensionCommandContext,
   args: string,
-  store = createPlanGeneratorStore(pi),
+  store = createPlanGoalStore(pi),
   createCheckpoint: PlanStageCheckpointCreator = defaultPlanStageCheckpointCreator,
   options = PLAN_GOAL_COMMAND,
 ): Promise<void> {
   const request = args.trim();
   if (["--stop", "stop", "cancel"].includes(request)) {
-    await stopPlanGeneratorTask(pi, ctx, store);
+    await stopPlanGoalTask(pi, ctx, store);
     return;
   }
-  if (!request && await pausePlanGeneratorTask(pi, ctx, store)) {
+  if (!request && await pausePlanGoalTask(pi, ctx, store)) {
     return;
   }
   if (request === "--help" || request === "-h") {
     if (ctx.hasUI) ctx.ui.notify(options.help, "info");
     return;
   }
-  const existingTarget = resolveExistingPlanGeneratorResumeTarget(ctx.cwd, request);
+  const existingTarget = resolveExistingPlanGoalResumeTarget(ctx.cwd, request);
   if (existingTarget) {
     await startExistingGeneratorTask(pi, ctx, existingTarget, store, createCheckpoint, options);
     return;
@@ -669,14 +671,14 @@ async function runPlanGeneratorCommand(
   await startNewGeneratorTask(pi, ctx, initialRequest, store, createCheckpoint, options);
 }
 
-async function resumePlanGeneratorFromUserInput(
+async function resumePlanGoalFromUserInput(
   pi: ExtensionAPI,
   ctx: ExtensionContext,
-  store: PlanGeneratorStore,
+  store: PlanGoalStore,
   latestUserInput = latestUserTextFromSession(ctx),
 ): Promise<boolean> {
   const state = store.getState();
-  const stage = getPlanGeneratorStageEnvironment(state.currentStage);
+  const stage = getPlanGoalStageEnvironment(state.currentStage);
   const userInput = latestUserInput.trim();
   if (
     state.status !== "input-waiting" ||
@@ -687,9 +689,9 @@ async function resumePlanGeneratorFromUserInput(
   ) {
     return false;
   }
-  if (isPlanGeneratorStopOrSwitchInput(userInput)) {
-    if (isPlanGeneratorStopInput(userInput)) {
-      await stopPlanGeneratorTask(pi, ctx, store, "Stopped by user input.");
+  if (isPlanGoalStopOrSwitchInput(userInput)) {
+    if (isPlanGoalStopInput(userInput)) {
+      await stopPlanGoalTask(pi, ctx, store, "Stopped by user input.");
     }
     return false;
   }
@@ -703,12 +705,12 @@ async function resumePlanGeneratorFromUserInput(
     lastResumedUserInput: userInput,
     breaker: 0,
   });
-  activatePlanGeneratorWorkflow(pi, {
+  activatePlanGoalWorkflow(pi, {
     planPath: state.currentPlan,
     stage: state.currentStage,
     reason: `Resuming ${stage.title} after user input.`,
   });
-  setPlanGeneratorModeStatus(ctx);
+  setPlanGoalModeStatus(ctx);
   await pi.sendUserMessage(
     buildStageResumeMessage(
       stage,
@@ -722,22 +724,22 @@ async function resumePlanGeneratorFromUserInput(
   return true;
 }
 
-type PlanGeneratorStageEvaluator = typeof evaluateStage;
+type PlanGoalStageEvaluator = typeof evaluateStage;
 
-async function handlePlanGeneratorAgentEnd(
+async function handlePlanGoalAgentEnd(
   pi: ExtensionAPI,
   ctx: ExtensionContext,
   messages: unknown[],
-  store: PlanGeneratorStore,
+  store: PlanGoalStore,
   createCheckpoint: PlanStageCheckpointCreator = defaultPlanStageCheckpointCreator,
-  stageEvaluator: PlanGeneratorStageEvaluator = evaluateStage,
+  stageEvaluator: PlanGoalStageEvaluator = evaluateStage,
 ): Promise<void> {
-  if (!isPlanGeneratorWorkflowActive()) return;
+  if (!isPlanGoalWorkflowActive()) return;
   const state = store.getState();
-  const stage = getPlanGeneratorStageEnvironment(state.currentStage);
+  const stage = getPlanGoalStageEnvironment(state.currentStage);
   if (!state.currentPlan || !stage || state.status !== "active") return;
 
-  if (state.breaker >= PLAN_GENERATOR_MAX_BREAKER) {
+  if (state.breaker >= PLAN_GOAL_MAX_BREAKER) {
     const message = `Stopped ${commandLabel()} after too many ${stage.title} retries.`;
     store.updateState({
       currentStage: undefined,
@@ -746,7 +748,7 @@ async function handlePlanGeneratorAgentEnd(
       breaker: 0,
     });
     clearDotdotgodWorkflowState(pi, "blocked", message);
-    clearPlanGeneratorModeStatus(ctx);
+    clearPlanGoalModeStatus(ctx);
     if (ctx.hasUI) {
       ctx.ui.notify(
         `Stopped ${commandLabel()} after too many ${stage.title} retries.`,
@@ -771,7 +773,7 @@ async function handlePlanGeneratorAgentEnd(
     const blockers = validationEvidence?.blockers
       .filter((blocker) => blocker.startsWith("Unresolved user decision in "))
       .join("\n");
-    await waitForPlanGeneratorUserDecision({
+    await waitForPlanGoalUserDecision({
       pi,
       ctx,
       store,
@@ -790,12 +792,12 @@ async function handlePlanGeneratorAgentEnd(
         message,
         waitingMessage: message,
       });
-      activatePlanGeneratorWorkflow(pi, {
+      activatePlanGoalWorkflow(pi, {
         planPath: state.currentPlan,
         stage: state.currentStage,
         reason: message,
       });
-      setPlanGeneratorModeStatus(ctx);
+      setPlanGoalModeStatus(ctx);
       if (ctx.hasUI) {
         ctx.ui.notify(`${stage.title} is waiting for user input.`, "warning");
       }
@@ -827,12 +829,12 @@ async function handlePlanGeneratorAgentEnd(
       message,
       waitingMessage: message,
     });
-    activatePlanGeneratorWorkflow(pi, {
+    activatePlanGoalWorkflow(pi, {
       planPath: state.currentPlan,
       stage: state.currentStage,
       reason: message,
     });
-    setPlanGeneratorModeStatus(ctx);
+    setPlanGoalModeStatus(ctx);
     if (ctx.hasUI) {
       ctx.ui.notify(evaluation.message ?? `${stage.title} is waiting for user input.`, "warning");
     }
@@ -879,19 +881,19 @@ async function handlePlanGeneratorAgentEnd(
     return;
   }
 
-  let nextCheckpointContext: PlanGeneratorStageCheckpointContext | undefined;
+  let nextCheckpointContext: PlanGoalStageCheckpointContext | undefined;
   if (stage.nextStage) {
-    const nextStage = getPlanGeneratorStageEnvironment(stage.nextStage);
+    const nextStage = getPlanGoalStageEnvironment(stage.nextStage);
     if (!nextStage) {
       const message = `Unknown next ${commandLabel()} stage: ${stage.nextStage}`;
       store.updateState({ status: "blocked", message, breaker: 0 });
       clearDotdotgodWorkflowState(pi, "blocked", message);
-      clearPlanGeneratorModeStatus(ctx);
+      clearPlanGoalModeStatus(ctx);
       if (ctx.hasUI) ctx.ui.notify(message, "warning");
       return;
     }
     try {
-      setPlanGeneratorProgressStatus(ctx, "⏳ creating stage checkpoint");
+      setPlanGoalProgressStatus(ctx, "⏳ creating stage checkpoint");
       await createStageCheckpointOrThrow(ctx, nextStage, state.currentPlan, createCheckpoint);
       nextCheckpointContext = checkpointContextFor(ctx, state.currentPlan, nextStage);
     } catch (error) {
@@ -903,7 +905,7 @@ async function handlePlanGeneratorAgentEnd(
         message,
         breaker: state.breaker + 1,
       });
-      setPlanGeneratorModeStatus(ctx);
+      setPlanGoalModeStatus(ctx);
       if (ctx.hasUI) ctx.ui.notify(message, "warning");
       await pi.sendUserMessage(
         buildStageRetryMessage(
@@ -925,12 +927,12 @@ async function handlePlanGeneratorAgentEnd(
     breaker: 0,
   });
   if (stage.nextStage) {
-    activatePlanGeneratorWorkflow(pi, {
+    activatePlanGoalWorkflow(pi, {
       planPath: state.currentPlan,
       stage: stage.nextStage,
       reason: `${stage.title} passed.`,
     });
-    setPlanGeneratorModeStatus(ctx);
+    setPlanGoalModeStatus(ctx);
     await pi.sendUserMessage(
       buildStageHandoffMessage({
         stage,
@@ -943,7 +945,7 @@ async function handlePlanGeneratorAgentEnd(
     );
   } else {
     clearDotdotgodWorkflowState(pi, "completed", `${commandLabel()} stage sequence complete.`);
-    clearPlanGeneratorModeStatus(ctx);
+    clearPlanGoalModeStatus(ctx);
     await pi.sendUserMessage(
       buildPlanGoalDocumentClarifyFollowUp(state.currentPlan),
       { deliverAs: "followUp" },
@@ -951,11 +953,11 @@ async function handlePlanGeneratorAgentEnd(
   }
 }
 
-function restorePlanGeneratorWorkflowFromStore(
+function restorePlanGoalWorkflowFromStore(
   pi: ExtensionAPI,
-  store: PlanGeneratorStore,
+  store: PlanGoalStore,
 ): boolean {
-  if (isPlanGeneratorWorkflowActive()) return false;
+  if (isPlanGoalWorkflowActive()) return false;
   const state = store.getState();
   if (
     !["active", "input-waiting"].includes(state.status) ||
@@ -964,7 +966,7 @@ function restorePlanGeneratorWorkflowFromStore(
   ) {
     return false;
   }
-  activatePlanGeneratorWorkflow(pi, {
+  activatePlanGoalWorkflow(pi, {
     planPath: state.currentPlan,
     stage: state.currentStage,
     reason: `Restored ${commandLabel()} workflow from session state.`,
@@ -972,19 +974,19 @@ function restorePlanGeneratorWorkflowFromStore(
   return true;
 }
 
-function restorePlanGeneratorWorkflowSession(
+function restorePlanGoalWorkflowSession(
   pi: ExtensionAPI,
   ctx: ExtensionContext,
-  store: PlanGeneratorStore,
+  store: PlanGoalStore,
 ): void {
   restoreDotdotgodWorkflowState(ctx.sessionManager.getBranch());
-  restorePlanGeneratorWorkflowFromStore(pi, store);
-  if (isPlanGeneratorWorkflowActive()) setPlanGeneratorModeStatus(ctx);
+  restorePlanGoalWorkflowFromStore(pi, store);
+  if (isPlanGoalWorkflowActive()) setPlanGoalModeStatus(ctx);
 }
 
-function registerPlanGeneratorInterruptHandler(
+function registerPlanGoalInterruptHandler(
   pi: ExtensionAPI,
-  store: PlanGeneratorStore,
+  store: PlanGoalStore,
 ): void {
   const interruptAwareApi = pi as ExtensionAPI & {
     on(
@@ -993,7 +995,7 @@ function registerPlanGeneratorInterruptHandler(
     ): void;
   };
   interruptAwareApi.on("interrupt", async (_event, ctx) => {
-    await pausePlanGeneratorTask(
+    await pausePlanGoalTask(
       pi,
       ctx,
       store,
@@ -1003,47 +1005,47 @@ function registerPlanGeneratorInterruptHandler(
 }
 
 export default function planGeneratorExtension(pi: ExtensionAPI): void {
-  const store = createPlanGeneratorStore(pi);
-  initPlanGeneratorStore(pi, store);
-  registerPlanGeneratorInterruptHandler(pi, store);
+  const store = createPlanGoalStore(pi);
+  initPlanGoalStore(pi, store);
+  registerPlanGoalInterruptHandler(pi, store);
 
   pi.on("session_start", async (_event, ctx) => {
-    restorePlanGeneratorWorkflowSession(pi, ctx, store);
+    restorePlanGoalWorkflowSession(pi, ctx, store);
   });
   pi.on("session_tree", async (_event, ctx) => {
-    restorePlanGeneratorWorkflowSession(pi, ctx, store);
+    restorePlanGoalWorkflowSession(pi, ctx, store);
   });
 
   pi.on("before_agent_start", async (_event, ctx) => {
-    restorePlanGeneratorWorkflowSession(pi, ctx, store);
-    await resumePlanGeneratorFromUserInput(pi, ctx, store);
+    restorePlanGoalWorkflowSession(pi, ctx, store);
+    await resumePlanGoalFromUserInput(pi, ctx, store);
   });
 
   pi.on("agent_end", async (event, ctx) => {
-    await handlePlanGeneratorAgentEnd(pi, ctx, event.messages, store);
+    await handlePlanGoalAgentEnd(pi, ctx, event.messages, store);
   });
 
   pi.registerCommand("plan-goal", {
     description: PLAN_GOAL_COMMAND.description,
-    handler: async (args, ctx) => runPlanGeneratorCommand(pi, ctx, args, store, defaultPlanStageCheckpointCreator, PLAN_GOAL_COMMAND),
+    handler: async (args, ctx) => runPlanGoalCommand(pi, ctx, args, store, defaultPlanStageCheckpointCreator, PLAN_GOAL_COMMAND),
   });
 }
 
 export {
-  clearPlanGeneratorModeStatus,
+  clearPlanGoalModeStatus,
   defaultPlanStageCheckpointCreator,
   evaluateStage,
   evaluateStage01,
-  handlePlanGeneratorAgentEnd,
+  handlePlanGoalAgentEnd,
   latestAssistantText,
   PLAN_GOAL_COMMAND,
-  pausePlanGeneratorTask,
-  registerPlanGeneratorInterruptHandler,
-  resumePlanGeneratorFromUserInput,
-  runPlanGeneratorCommand,
-  restorePlanGeneratorWorkflowFromStore,
-  restorePlanGeneratorWorkflowSession,
-  setPlanGeneratorModeStatus,
+  pausePlanGoalTask,
+  registerPlanGoalInterruptHandler,
+  resumePlanGoalFromUserInput,
+  runPlanGoalCommand,
+  restorePlanGoalWorkflowFromStore,
+  restorePlanGoalWorkflowSession,
+  setPlanGoalModeStatus,
   startNewGeneratorTask,
-  stopPlanGeneratorTask,
+  stopPlanGoalTask,
 };

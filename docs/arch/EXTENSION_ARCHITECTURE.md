@@ -30,6 +30,7 @@ Distribution metadata:
 - `@dotdotgod/cli` is a package dependency used by Pi extensions as a source-checkout, package-local, then global CLI fallback chain.
 - `pi-subagents` is a pinned package dependency whose skill and prompts are resolved by the dotdotgod wrapper through Node package resolution. The wrapper defers duplicate tool detection until `session_start`; when a standalone `subagent` tool already exists it suppresses package-local tool, skill, and prompt resources, and when dotdotgod owns registration it exposes the dependency resources during `resources_discover`. This lets hoisted, package-local, and local development installs coexist with standalone `pi-subagents` without duplicate resource warnings or runtime action calls during extension loading.
 
+
 ## Resource Responsibilities
 
 ### Generated vs Hand-Authored Resources
@@ -44,11 +45,9 @@ The initializer skill describes a safe setup workflow and delegates deterministi
 
 The script owns scaffold generation, overwrite policy, dry-run reporting, and optional dotdot setting generation.
 
-### `document-clarify` Skill
+### `document-clarify` Skill and Plan Clarifier Subagent
 
-The document clarity skill guides agents through documentation copy improvements for README indexes, specs, tests, architecture docs, plans, archives, and custom memory areas.
-
-It uses resolved memory-area `description` and `clarify` metadata when configured, falls back to dotdotgod's default document roles when absent, and preserves behavior contracts plus generated traceability sections.
+The document clarity skill improves project docs using configured metadata while preserving behavior contracts and traceability. `dotdotgod.plan-doc-clarifier` is the fresh, explicit-file-only `/plan-goal` fallback-aware subagent.
 
 ### `plan-mode` Extension
 

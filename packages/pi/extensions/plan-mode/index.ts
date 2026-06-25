@@ -15,9 +15,9 @@ import { Key, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { recordContextMetric } from "../context-metrics/utils.js";
 import {
-  isPlanGeneratorWorkflowActive,
+  isPlanGoalWorkflowActive,
   restoreDotdotgodWorkflowState,
-  restorePlanGeneratorWorkflowActive,
+  restorePlanGoalWorkflowActive,
 } from "../shared/workflow-coordination.ts";
 import { ContextOrchestrationController } from "./controllers/context-orchestration.js";
 import { ContextShapingController, type ContextShapingSnapshot } from "./controllers/context-shaping.js";
@@ -25,7 +25,7 @@ import { ExecutionFlowController } from "./controllers/execution-flow.js";
 import { ExecutionProgressController, type ExecutionProgressSnapshot } from "./controllers/execution-progress.js";
 import { GateController, type GateSnapshot } from "./controllers/gates.js";
 import { ModeLifecycleController, type ModeLifecycleSnapshot } from "./controllers/mode-lifecycle.js";
-import { PlanArtifactController, shouldSuppressGeneratorPlanReview, type PlanArtifactSnapshot } from "./controllers/plan-artifact.js";
+import { PlanArtifactController, shouldSuppressPlanGoalReview, type PlanArtifactSnapshot } from "./controllers/plan-artifact.js";
 import { ReviewGateController } from "./controllers/review-gates.js";
 import { NORMAL_MODE_TOOLS } from "./runtime/constants.js";
 import {
@@ -43,7 +43,7 @@ import {
   getToolPath,
   isActivePlanMarkdownPath,
   isManagedPlanMarkdownPath,
-  isPlanGeneratorCheckpointMarkdownPath,
+  isPlanGoalCheckpointMarkdownPath,
   normalizeToolPath,
   PLAN_DIRECTORY,
   planPathExists,
@@ -199,7 +199,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   });
 
   function updateStatus(ctx: ExtensionContext): void {
-    if (isPlanGeneratorWorkflowActive()) return;
+    if (isPlanGoalWorkflowActive()) return;
     if (modeLifecycle.executing && executionProgress.todos.length > 0) {
       const completed = executionProgress.todos.filter((t) => t.completed).length;
       ctx.ui.setStatus(
@@ -440,9 +440,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
     if (event.toolName === "write" || event.toolName === "edit") {
       const path = getToolPath(event.input);
-      const allowPlanGeneratorCheckpoint = isPlanGeneratorWorkflowActive() ||
-        restorePlanGeneratorWorkflowActive(ctx.sessionManager.getBranch());
-      if (!path || !isManagedPlanMarkdownPath(ctx.cwd, path, { allowPlanGeneratorCheckpoint })) {
+      const allowPlanGoalCheckpoint = isPlanGoalWorkflowActive() ||
+        restorePlanGoalWorkflowActive(ctx.sessionManager.getBranch());
+      if (!path || !isManagedPlanMarkdownPath(ctx.cwd, path, { allowPlanGoalCheckpoint })) {
         return {
           block: true,
           reason: `Plan mode: ${event.toolName} is only allowed for markdown plan files under ${PLAN_DIRECTORY}/ or ${ARCHIVE_DIRECTORY}/. During active /plan-goal workflows, docs/plan/<task>/.dotdotgod-plan/*.md checkpoint files are also allowed. Directories must be kebab-case and markdown file names must be UPPER_SNAKE_CASE.md. Use execution mode for source changes.`,
@@ -452,7 +452,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       if (!planArtifact.touchedPlanPaths.includes(normalizedPath)) {
         planArtifact.markTouched(normalizedPath);
       }
-      if (isActivePlanMarkdownPath(ctx.cwd, path) && !isPlanGeneratorCheckpointMarkdownPath(ctx.cwd, path)) {
+      if (isActivePlanMarkdownPath(ctx.cwd, path) && !isPlanGoalCheckpointMarkdownPath(ctx.cwd, path)) {
         planArtifact.setActivePlanFromMarkdownPath(path);
       }
     }
@@ -502,7 +502,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   });
 
   pi.on("before_agent_start", async (_event, ctx) => {
-    if (isPlanGeneratorWorkflowActive()) return;
+    if (isPlanGoalWorkflowActive()) return;
     if (modeLifecycle.planningEnabled && !modeLifecycle.executing) {
       const latestUserEntry = [...ctx.sessionManager.getEntries()]
         .reverse()
@@ -651,7 +651,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
   });
 
   pi.on("agent_end", async (event, ctx) => {
-    if (isPlanGeneratorWorkflowActive()) {
+    if (isPlanGoalWorkflowActive()) {
       persistState();
       return;
     }
@@ -672,7 +672,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
       executionMode: modeLifecycle.executing,
       hasUI: ctx.hasUI,
       pendingPlanChoicePath: planArtifact.pendingReviewPath,
-      suppressPlanChoice: planArtifact.suppressChoiceForInlineRequest || shouldSuppressGeneratorPlanReview(ctx.cwd, planArtifact.pendingReviewPath),
+      suppressPlanChoice: planArtifact.suppressChoiceForInlineRequest || shouldSuppressPlanGoalReview(ctx.cwd, planArtifact.pendingReviewPath),
     });
     if (!shouldShowChoice) {
       if (!planArtifact.pendingReviewPath && contextOrchestration.flushPendingPlanningLoad(ctx))

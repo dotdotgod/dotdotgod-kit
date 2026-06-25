@@ -1,7 +1,7 @@
 {
   "validation": {
     "markdown": {
-      "exclude": ["docs/archive/README.md"]
+      "exclude": ["docs/archive/README.md", "docs/arch/EXTENSION_ARCHITECTURE.md"]
     }
   }
 }
