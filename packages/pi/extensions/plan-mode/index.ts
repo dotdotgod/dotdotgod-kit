@@ -17,7 +17,6 @@ import { recordContextMetric } from "../context-metrics/utils.js";
 import {
   isPlanGoalWorkflowActive,
   restoreDotdotgodWorkflowState,
-  restorePlanGoalWorkflowActive,
 } from "../shared/workflow-coordination.ts";
 import { ContextOrchestrationController } from "./controllers/context-orchestration.js";
 import { ContextShapingController, type ContextShapingSnapshot } from "./controllers/context-shaping.js";
@@ -440,9 +439,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
     if (event.toolName === "write" || event.toolName === "edit") {
       const path = getToolPath(event.input);
-      const allowPlanGoalCheckpoint = isPlanGoalWorkflowActive() ||
-        restorePlanGoalWorkflowActive(ctx.sessionManager.getBranch());
-      if (!path || !isManagedPlanMarkdownPath(ctx.cwd, path, { allowPlanGoalCheckpoint })) {
+      if (!path || !isManagedPlanMarkdownPath(ctx.cwd, path)) {
         return {
           block: true,
           reason: `Plan mode: ${event.toolName} is only allowed for markdown plan files under ${PLAN_DIRECTORY}/ or ${ARCHIVE_DIRECTORY}/. During active /plan-goal workflows, docs/plan/<task>/.dotdotgod-plan/*.md checkpoint files are also allowed. Directories must be kebab-case and markdown file names must be UPPER_SNAKE_CASE.md. Use execution mode for source changes.`,

@@ -11,6 +11,13 @@ For the broader development philosophy behind these conventions, see `DEVELOPMEN
 - Do not abstract reused code when the reused behavior is likely to split into separate features or flows later.
 - Prefer local, explicit code until a stable reuse pattern appears.
 
+## Speculative Design
+
+- Do not add states, options, or parameters for scenarios that do not exist yet.
+- Remove a flag, option, or interface field when every call site sets the same value.
+- A parameter with one valid value in all callers is not a parameter — it is a hidden constant.
+- When a future scenario arrives, add the abstraction then, informed by the actual requirement.
+
 ## Source File Size
 
 - Keep source files small enough to read in one focused pass by humans and coding agents.

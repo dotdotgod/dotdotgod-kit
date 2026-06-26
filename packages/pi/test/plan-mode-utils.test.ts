@@ -522,14 +522,13 @@ describe("plan-mode current plan path helpers", () => {
 		assert.equal(getCurrentPlanReadmePath("packages/pi/README.md"), undefined);
 	});
 
-	it("keeps checkpoint path resolution scoped to active Plan Goal writes", () => {
+	it("allows checkpoint paths inside docs/plan regardless of workflow state", () => {
 		const root = mkdtempSync(join(tmpdir(), "plan-mode-paths-"));
 		const checkpoint = "docs/plan/landing-site/.dotdotgod-plan/01_INTAKE.md";
 		assert.equal(getCurrentPlanReadmePath(checkpoint), "docs/plan/landing-site/README.md");
 		assert.equal(isPlanGoalCheckpointMarkdownPath(root, checkpoint), true);
-		assert.equal(isManagedPlanMarkdownPath(root, checkpoint), false);
-		assert.equal(isManagedPlanMarkdownPath(root, checkpoint, { allowPlanGoalCheckpoint: true }), true);
-		assert.equal(isManagedPlanMarkdownPath(root, "docs/plan/landing-site/.hidden/01_INTAKE.md", { allowPlanGoalCheckpoint: true }), false);
+		assert.equal(isManagedPlanMarkdownPath(root, checkpoint), true);
+		assert.equal(isManagedPlanMarkdownPath(root, "docs/plan/landing-site/.hidden/01_INTAKE.md"), false);
 		assert.equal(isActivePlanMarkdownPath(root, checkpoint), false);
 		assert.equal(isManagedPlanMarkdownPath(root, "docs/plan/landing-site/README.md"), true);
 		assert.equal(isActivePlanMarkdownPath(root, "docs/plan/landing-site/README.md"), true);
@@ -1116,7 +1115,7 @@ describe("plan-mode plan choice trigger", () => {
 		assert.equal(isPlanGoalWorkflowActive(), false);
 	});
 
-	it("allows checkpoint writes after restoring stale workflow state from the session branch", () => {
+	it("restores plan-goal workflow active state from session branch entries", () => {
 		restoreDotdotgodWorkflowState([]);
 		const root = mkdtempSync(join(tmpdir(), "plan-mode-checkpoint-restore-"));
 		const checkpoint = "docs/plan/api-migration-handoff-plan/.dotdotgod-plan/01_INTAKE.md";
@@ -1126,7 +1125,6 @@ describe("plan-mode plan choice trigger", () => {
 				customType: DOTDOTGOD_WORKFLOW_CUSTOM_TYPE,
 				data: {
 					activeWorkflow: "plan-goal",
-					suppressPlanModeExecutionPrompt: true,
 					status: "active",
 					planPath: "docs/plan/api-migration-handoff-plan/README.md",
 					stage: "01-intake",
@@ -1136,9 +1134,9 @@ describe("plan-mode plan choice trigger", () => {
 		];
 
 		assert.equal(isPlanGoalWorkflowActive(), false);
-		assert.equal(isManagedPlanMarkdownPath(root, checkpoint), false);
+		assert.equal(isManagedPlanMarkdownPath(root, checkpoint), true);
 		assert.equal(restorePlanGoalWorkflowActive(entries), true);
-		assert.equal(isManagedPlanMarkdownPath(root, checkpoint, { allowPlanGoalCheckpoint: isPlanGoalWorkflowActive() }), true);
+		assert.equal(isPlanGoalWorkflowActive(), true);
 	});
 
 	it("detects generator checkpoint state before showing execution review", () => {
