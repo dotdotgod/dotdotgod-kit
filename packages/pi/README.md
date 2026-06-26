@@ -40,6 +40,7 @@ A good first run:
 | Show execution progress | `/todos` |
 | Review changed-file impact | `/impact-check` or `dotdotgod_graph_impact` |
 | Improve docs clarity | `document-clarify` skill |
+| Clarify completed `/plan-goal` plans without inherited context | `dotdotgod.plan-doc-clarifier` subagent |
 | Delegate analysis or implementation work | bundled `pi-subagents` resources |
 
 ## Project Initializer
@@ -98,6 +99,8 @@ Useful controls:
 
 `/plan-goal` does not execute implementation work automatically. Plan Mode still requires user approval before source/config edits.
 
+After the final stage passes, `/plan-goal` queues one documentation-clarity follow-up. The follow-up prefers the packaged `dotdotgod.plan-doc-clarifier` subagent with `context: "fresh"` and explicit `reads` limited to the durable plan README plus named task-local support or workstream markdown. If the subagent tool or packaged agent is unavailable, agents should fall back to the `document-clarify` skill with the same explicit-file-only boundaries.
+
 While `/plan-goal` is active or waiting, Plan Mode suppresses normal execution review so the staged authoring loop can finish first.
 
 ## Loading and Impact Checks
@@ -110,8 +113,9 @@ While `/plan-goal` is active or waiting, Plan Mode suppresses normal execution r
 
 - `project-initializer` skill
 - `document-clarify` skill
+- `dotdotgod.plan-doc-clarifier` packaged subagent
 - `plan-mode` extension
-- `plan-generator` extension, including `/plan-goal`
+- `plan-goal` extension, providing the `/plan-goal` command
 - `load-project` extension
 - `pi-subagents` wrapper resources
 - package-local `@dotdotgod/cli` dependency

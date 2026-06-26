@@ -35,7 +35,7 @@ function isMarkdownPathInside(cwd: string, path: string, directory: string): boo
 	return segments.slice(0, -1).every(isKebabCaseDirectory);
 }
 
-export function isPlanGeneratorCheckpointMarkdownPath(cwd: string, path: string): boolean {
+export function isPlanGoalCheckpointMarkdownPath(cwd: string, path: string): boolean {
 	const relativePath = relativePathInside(cwd, path, PLAN_DIRECTORY);
 	if (!relativePath) return false;
 	const segments = relativePath.split(/[\\/]+/);
@@ -47,10 +47,10 @@ export function isPlanGeneratorCheckpointMarkdownPath(cwd: string, path: string)
 	);
 }
 
-export function isManagedPlanMarkdownPath(cwd: string, path: string, options: { allowPlanGeneratorCheckpoint?: boolean } = {}): boolean {
+export function isManagedPlanMarkdownPath(cwd: string, path: string, options: { allowPlanGoalCheckpoint?: boolean } = {}): boolean {
 	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY) ||
 		isMarkdownPathInside(cwd, path, ARCHIVE_DIRECTORY) ||
-		(options.allowPlanGeneratorCheckpoint === true && isPlanGeneratorCheckpointMarkdownPath(cwd, path));
+		(options.allowPlanGoalCheckpoint === true && isPlanGoalCheckpointMarkdownPath(cwd, path));
 }
 
 export function isActivePlanMarkdownPath(cwd: string, path: string): boolean {

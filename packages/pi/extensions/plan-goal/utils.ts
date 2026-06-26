@@ -61,8 +61,8 @@ export function extractFencedBlockContents(
   return [...text.matchAll(pattern)].map((match) => match[1] ?? "");
 }
 
-export function extractPlanGeneratorBlocks(text: string): string[] {
-  return extractFencedBlockContents(text, "json dotdotgod-plan-generator");
+export function extractPlanGoalBlocks(text: string): string[] {
+  return extractFencedBlockContents(text, "json dotdotgod-plan-goal");
 }
 
 export function stableBlockerSetKey(blockers: string[]): string {

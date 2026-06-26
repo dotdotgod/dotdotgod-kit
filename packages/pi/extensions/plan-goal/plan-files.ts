@@ -5,30 +5,30 @@ import { parseJsonWithRepair } from "@earendil-works/pi-ai";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { buildDotdotgodCliCandidates } from "../shared/dotdotgod-cli.ts";
 import {
-  PLAN_GENERATOR_STAGE_ENVIRONMENTS,
+  PLAN_GOAL_STAGE_ENVIRONMENTS,
   STAGE_01_ID,
-  type PlanGeneratorStageCheckpointContext,
-  type PlanGeneratorStageEnvironment,
-  type PlanGeneratorStageId,
+  type PlanGoalStageCheckpointContext,
+  type PlanGoalStageEnvironment,
+  type PlanGoalStageId,
 } from "./stage-contract.ts";
 import { authCreate, createTextUserMessage, isValidPlanSlug, toKebabCase } from "./utils.ts";
 
-export interface PlanGeneratorTaskPath {
+export interface PlanGoalTaskPath {
   taskSlug: string;
   taskDir: string;
   readmePath: string;
 }
 
-export interface ExistingPlanGeneratorResumeTarget {
+export interface ExistingPlanGoalResumeTarget {
   currentPlan: string;
   taskSlug: string;
-  stageId: PlanGeneratorStageId;
+  stageId: PlanGoalStageId;
   hasCheckpoint: boolean;
   completed: boolean;
   message?: string | undefined;
 }
 
-export interface PlanGeneratorSlugProposal {
+export interface PlanGoalSlugProposal {
   slug: string;
 }
 
@@ -49,7 +49,7 @@ export async function createSlugProposal(
   });
   if (!jsonText) return undefined;
 
-  const proposal = parseJsonWithRepair<PlanGeneratorSlugProposal>(jsonText);
+  const proposal = parseJsonWithRepair<PlanGoalSlugProposal>(jsonText);
   return typeof proposal?.slug === "string" ? proposal.slug : undefined;
 }
 
@@ -67,7 +67,7 @@ export async function resolveCollisionFreeTaskPath(
   ctx: ExtensionCommandContext,
   request: string,
   createProposal: SlugProposalFactory = createSlugProposal,
-): Promise<PlanGeneratorTaskPath> {
+): Promise<PlanGoalTaskPath> {
   const safeBaseSlug =
     safePlanSlug(await createProposal(ctx, request)) ??
     safePlanSlug(request) ??
@@ -101,7 +101,7 @@ ${requestSummary.trim()}
 }
 
 export function ensureInitialReadme(
-  task: PlanGeneratorTaskPath,
+  task: PlanGoalTaskPath,
   requestSummary = "",
 ): void {
   const title = task.taskSlug
@@ -114,8 +114,8 @@ export function ensureInitialReadme(
   writeFileSync(task.readmePath, createReadmeScaffold(title, requestSummary));
 }
 
-export interface PlanGeneratorStageValidationEvidence {
-  stage: PlanGeneratorStageId;
+export interface PlanGoalStageValidationEvidence {
+  stage: PlanGoalStageId;
   ok: boolean;
   blockers: readonly string[];
   requiredSections: {
@@ -123,17 +123,17 @@ export interface PlanGeneratorStageValidationEvidence {
     present: number;
     valid: number;
   };
-  nextStage?: PlanGeneratorStageId | undefined;
+  nextStage?: PlanGoalStageId | undefined;
 }
 
-export interface PlanGeneratorStageCheckpointResult {
+export interface PlanGoalStageCheckpointResult {
   ok: boolean;
   duplicate?: boolean | undefined;
   path?: string | undefined;
   error?: string | undefined;
 }
 
-function parseCheckpointResult(stdout: string): PlanGeneratorStageCheckpointResult {
+function parseCheckpointResult(stdout: string): PlanGoalStageCheckpointResult {
   const parsed = JSON.parse(stdout.trim()) as { ok?: unknown; path?: unknown };
   return {
     ok: parsed.ok === true,
@@ -143,10 +143,10 @@ function parseCheckpointResult(stdout: string): PlanGeneratorStageCheckpointResu
 
 export function createPlanStageCheckpointViaCli(
   cwd: string,
-  stage: PlanGeneratorStageId,
+  stage: PlanGoalStageId,
   planPath: string,
   timeoutMs = 10_000,
-): PlanGeneratorStageCheckpointResult {
+): PlanGoalStageCheckpointResult {
   const args = ["plan", "stage", "create", stage, planPath, "--json"];
   const candidates = buildDotdotgodCliCandidates(cwd, args);
   const errors: string[] = [];
@@ -169,12 +169,12 @@ export function createPlanStageCheckpointViaCli(
   return { ok: false, error: errors.join("; ") || "dotdotgod plan stage create failed" };
 }
 
-function stageStatePath(taskDir: string, stage: PlanGeneratorStageEnvironment): string {
+function stageStatePath(taskDir: string, stage: PlanGoalStageEnvironment): string {
   return path.join(taskDir, ".dotdotgod-plan", stage.checkpointFileName);
 }
 
-function stageOrder(): PlanGeneratorStageEnvironment[] {
-  return Object.values(PLAN_GENERATOR_STAGE_ENVIRONMENTS);
+function stageOrder(): PlanGoalStageEnvironment[] {
+  return Object.values(PLAN_GOAL_STAGE_ENVIRONMENTS);
 }
 
 function parseCheckpointStatus(content: string): string | undefined {
@@ -200,10 +200,10 @@ function managedPlanReadmeFromInput(cwd: string, input: string): { absolutePath:
   return { absolutePath, currentPlan: relative, taskSlug: parts[2] ?? "" };
 }
 
-export function resolveExistingPlanGeneratorResumeTarget(
+export function resolveExistingPlanGoalResumeTarget(
   cwd: string,
   input: string,
-): ExistingPlanGeneratorResumeTarget | undefined {
+): ExistingPlanGoalResumeTarget | undefined {
   const readme = managedPlanReadmeFromInput(cwd, input);
   if (!readme) return undefined;
   if (!existsSync(readme.absolutePath)) {
@@ -230,7 +230,7 @@ export function resolveExistingPlanGeneratorResumeTarget(
       }
       return { stage, index, status };
     })
-    .filter((value): value is { stage: PlanGeneratorStageEnvironment; index: number; status: string | undefined } => Boolean(value));
+    .filter((value): value is { stage: PlanGoalStageEnvironment; index: number; status: string | undefined } => Boolean(value));
 
   if (discovered.length === 0) {
     return {
@@ -282,9 +282,9 @@ function truncateUtf8(value: string, maxBytes: number): { content: string; trunc
 export function readStageCheckpointContext(options: {
   cwd: string;
   currentPlan: string;
-  stage: PlanGeneratorStageEnvironment;
+  stage: PlanGoalStageEnvironment;
   maxBytes?: number | undefined;
-}): PlanGeneratorStageCheckpointContext {
+}): PlanGoalStageCheckpointContext {
   const planPath = path.isAbsolute(options.currentPlan)
     ? options.currentPlan
     : path.join(options.cwd, options.currentPlan);
@@ -344,7 +344,7 @@ function contentHasValue(content: string): boolean {
   return content.replace(/<!--[^]*?-->/g, "").trim().length > 0;
 }
 
-function constructionChecklistHeader(stageId: PlanGeneratorStageId): string {
+function constructionChecklistHeader(stageId: PlanGoalStageId): string {
   return `Stage ${stageId.slice(0, 2)} Construction Checklist`;
 }
 
@@ -428,7 +428,7 @@ function findUnresolvedUserDecisionBlockers(options: {
 }
 
 export function hasUnresolvedUserDecisionBlocker(
-  evidence: PlanGeneratorStageValidationEvidence | undefined,
+  evidence: PlanGoalStageValidationEvidence | undefined,
 ): boolean {
   return Boolean(evidence?.blockers.some((blocker) => blocker.startsWith("Unresolved user decision in ")));
 }
@@ -436,8 +436,8 @@ export function hasUnresolvedUserDecisionBlocker(
 export function createStageValidationEvidence(options: {
   cwd: string;
   currentPlan: string;
-  stage: PlanGeneratorStageEnvironment;
-}): PlanGeneratorStageValidationEvidence {
+  stage: PlanGoalStageEnvironment;
+}): PlanGoalStageValidationEvidence {
   const planPath = path.isAbsolute(options.currentPlan)
     ? options.currentPlan
     : path.join(options.cwd, options.currentPlan);
@@ -509,7 +509,7 @@ export function createStageValidationEvidence(options: {
 }
 
 export function formatStageValidationEvidence(
-  evidence: PlanGeneratorStageValidationEvidence,
+  evidence: PlanGoalStageValidationEvidence,
 ): string {
   return [
     `stage: ${evidence.stage}`,

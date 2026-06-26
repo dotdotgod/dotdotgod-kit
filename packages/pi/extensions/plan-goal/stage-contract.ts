@@ -1,14 +1,14 @@
-export type PlanGeneratorStageId =
+export type PlanGoalStageId =
   | "01-intake"
   | "02-context-load"
   | "03-discovery"
   | "04-plan"
   | "05-workstream-handoff";
 
-export interface PlanGeneratorStageEnvironment {
-  id: PlanGeneratorStageId;
+export interface PlanGoalStageEnvironment {
+  id: PlanGoalStageId;
   title: string;
-  nextStage?: PlanGeneratorStageId | undefined;
+  nextStage?: PlanGoalStageId | undefined;
   checkpointFileName: string;
   requiredSections: readonly string[];
   constructionChecklist: readonly string[];
@@ -19,7 +19,7 @@ export interface PlanGeneratorStageEnvironment {
   handoffPrompt: string;
 }
 
-export interface PlanGeneratorStageCheckpointContext {
+export interface PlanGoalStageCheckpointContext {
   path: string;
   content?: string | undefined;
   truncated?: boolean | undefined;
@@ -32,19 +32,19 @@ export const PLAN_GOAL_HELP = `Usage:
 /plan-goal docs/plan/<task>/README.md
 /plan-goal --help`;
 
-export const STAGE_01_ID: PlanGeneratorStageId = "01-intake";
-export const STAGE_02_ID: PlanGeneratorStageId = "02-context-load";
-export const STAGE_03_ID: PlanGeneratorStageId = "03-discovery";
-export const NEXT_STAGE_ID: PlanGeneratorStageId = STAGE_02_ID;
+export const STAGE_01_ID: PlanGoalStageId = "01-intake";
+export const STAGE_02_ID: PlanGoalStageId = "02-context-load";
+export const STAGE_03_ID: PlanGoalStageId = "03-discovery";
+export const NEXT_STAGE_ID: PlanGoalStageId = STAGE_02_ID;
 
-export const PLAN_GENERATOR_MAX_BREAKER = 5;
+export const PLAN_GOAL_MAX_BREAKER = 5;
 
-export const PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION = `When the implementation design has multiple independent parts, split the durable plan into task-local support markdown files under docs/plan/<task>/.
+export const PLAN_GOAL_PLAN_SPLIT_INSTRUCTION = `When the implementation design has multiple independent parts, split the durable plan into task-local support markdown files under docs/plan/<task>/.
 Keep README.md as the overview/index, and link each support file with a one-line purpose.
 Use support files for implementation-part detail such as CLI changes, extension/runtime changes, tests, docs, migration, or rollout.
 Do not put final user-facing plan content only in .dotdotgod-plan/.`;
 
-export const PLAN_GENERATOR_USER_DECISION_INSTRUCTION = `Do not silently carry unresolved user decisions forward.
+export const PLAN_GOAL_USER_DECISION_INSTRUCTION = `Do not silently carry unresolved user decisions forward.
 If a missing choice requires the user to decide scope, behavior, product policy, risk acceptance, or implementation direction, stop the stage and ask the user a concrete question with options. When a machine-readable blocker must be recorded, use structured fields such as \`DecisionOwner: user\` with \`DecisionState: unresolved\`, or \`BlockerType: user-decision\` with \`Status: blocked\`.
 Open questions are allowed only when they are research gaps the agent can resolve by reading project context; unresolved user decisions block stage advancement. Do not rely on prose keywords such as "TBD", "undecided", or "decision needed" as machine-readable state.`;
 
@@ -52,7 +52,7 @@ export const STAGE_04_IMPLEMENTATION_DESIGN_INSTRUCTION = `Stage 04 must be an i
 For each atomic task, include concrete code touchpoints: files, functions/types/classes/commands, expected control flow, state/data changes, edge cases, tests, and completion criteria.
 Atomic Tasks and Edge Cases must be handoff-ready: a different agent should be able to implement the same work without this chat history and without guessing omitted decisions.
 If exact code cannot be determined, record the specific discovery gap and the next read needed.
-${PLAN_GENERATOR_USER_DECISION_INSTRUCTION}`;
+${PLAN_GOAL_USER_DECISION_INSTRUCTION}`;
 
 export const STAGE_04_HANDOFF_READY_EVALUATION_RULES = `Stage 04 pass/fail quality bar:
 - Atomic Tasks must be specific enough to assign immediately, with no missing implementation decisions or vague verbs such as "update logic" without named code touchpoints.
@@ -105,7 +105,7 @@ Prompt/checkpoint boundary:
 - The .dotdotgod-plan/05_WORKSTREAM_HANDOFF.md file is internal stage state context and validation evidence: set Status: completed, include the required Stage 05 sections, and include completed construction checklist rows in canonical - [x] Category: evidence form.
 - Do not put final user-facing plan content only in .dotdotgod-plan/.
 
-${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
+${PLAN_GOAL_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond Stage 05.`;
 
 export const STAGE_05_EVALUATION_PROMPT = `Evaluate whether the latest assistant response completed /plan-goal Stage 05: workstream handoff.
@@ -143,7 +143,7 @@ Include:
 - unknowns or risks;
 - a concise Stage 01 context summary that can guide the next planning stage.
 
-${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
+${PLAN_GOAL_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond Stage 01.`;
 
 export const STAGE_01_RETRY_PROMPT = `Rewrite the /plan-goal Stage 01 intake context.
@@ -177,7 +177,7 @@ Include durable plan content for:
 Also update .dotdotgod-plan/02_CONTEXT_LOAD.md as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include ## Memory Reads, ## Impact Candidates, ## Related Files, and include ## Stage 02 Construction Checklist. Write checklist rows in the canonical form \`- [x] Category: evidence\`, with exactly these completed categories: Memory reads, Impact candidates, Related files, and Boundary risk.
 
 The .dotdotgod-plan/02_CONTEXT_LOAD.md file is internal stage state context and validation evidence, not the final user-facing plan.
-${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
+${PLAN_GOAL_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond Stage 02.`;
 
 export const STAGE_02_RETRY_PROMPT = `Repair the /plan-goal Stage 02 context-load update.
@@ -212,12 +212,12 @@ Include durable plan content for:
 
 Stage 03 must record actual findings from inspected code/docs, not only a list of files to inspect.
 Separate agent-resolvable research questions from user decisions. If any open question requires the user to choose scope, behavior, risk acceptance, or implementation direction, ask the user and stop instead of advancing.
-${PLAN_GENERATOR_USER_DECISION_INSTRUCTION}
+${PLAN_GOAL_USER_DECISION_INSTRUCTION}
 
 Also update .dotdotgod-plan/03_DISCOVERY.md as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include ## Findings, ## Risks, ## Open Questions, and include ## Stage 03 Construction Checklist with completed rows in canonical \`- [x] Category: evidence\` form for Findings, Risks, Open questions, and Extension points.
 
 The .dotdotgod-plan/03_DISCOVERY.md file is internal stage state context and validation evidence, not the final user-facing plan.
-${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
+${PLAN_GOAL_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond Stage 03.`;
 
 export const STAGE_03_RETRY_PROMPT = `Repair the /plan-goal Stage 03 discovery update.
@@ -260,7 +260,7 @@ Use this next planning context:
 
 Treat docs/plan/<task>/.dotdotgod-plan/NN_STAGE_NAME.md files as internal stage state context and validation evidence. Write final plan content to README.md or task-local support markdown files outside .dotdotgod-plan/, and keep the matching checkpoint in canonical machine-readable form with Status: completed, required sections, and completed construction checklist rows.
 
-${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
+${PLAN_GOAL_PLAN_SPLIT_INSTRUCTION}
 
 Write or update the matching next stage state context file when applicable. Keep this as planning work only; do not execute source/config changes. After updating the plan files, stop and report the plan path.`;
 
@@ -281,7 +281,7 @@ ${options.requiredSections.map((section) => `- ${section};`).join("\n")}
 Also update .dotdotgod-plan/${options.checkpointFileName} as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include the required sections, and include the stage construction checklist rows in canonical - [x] Category: evidence form.
 
 The .dotdotgod-plan/${options.checkpointFileName} file is internal stage state context and validation evidence, not the final user-facing plan.
-${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
+${PLAN_GOAL_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond this stage.`;
 }
 
@@ -294,7 +294,7 @@ Use the stage requirements below and the previous evaluation. Update the durable
 function buildGenericEvaluationPrompt(options: {
   title: string;
   requiredSections: readonly string[];
-  nextStage?: PlanGeneratorStageId | undefined;
+  nextStage?: PlanGoalStageId | undefined;
 }): string {
   return `Evaluate whether the latest assistant response completed /plan-goal ${options.title}.
 
@@ -314,9 +314,9 @@ Rules:
 - Do not include markdown fences or prose outside JSON.`;
 }
 
-export const PLAN_GENERATOR_STAGE_ENVIRONMENTS: Record<
-  PlanGeneratorStageId,
-  PlanGeneratorStageEnvironment
+export const PLAN_GOAL_STAGE_ENVIRONMENTS: Record<
+  PlanGoalStageId,
+  PlanGoalStageEnvironment
 > = {
   "01-intake": {
     id: "01-intake",
@@ -426,7 +426,7 @@ Include durable plan content for:
 Also update .dotdotgod-plan/04_PLAN.md as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include the required Stage 04 sections, and include ## Stage 04 Construction Checklist with completed rows in canonical \`- [x] Category: evidence\` form.
 
 The .dotdotgod-plan/04_PLAN.md file is internal stage state context and validation evidence, not the final user-facing plan.
-${PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION}
+${PLAN_GOAL_PLAN_SPLIT_INSTRUCTION}
 Do not edit source code. Do not advance beyond Stage 04.`,
     retryPrompt: `${buildGenericRetryPrompt("Stage 04: plan")}
 
@@ -463,15 +463,15 @@ ${STAGE_04_HANDOFF_READY_EVALUATION_RULES}
   },
 };
 
-export function getPlanGeneratorStageEnvironment(
-  stageId: PlanGeneratorStageId | undefined,
-): PlanGeneratorStageEnvironment | undefined {
-  return stageId ? PLAN_GENERATOR_STAGE_ENVIRONMENTS[stageId] : undefined;
+export function getPlanGoalStageEnvironment(
+  stageId: PlanGoalStageId | undefined,
+): PlanGoalStageEnvironment | undefined {
+  return stageId ? PLAN_GOAL_STAGE_ENVIRONMENTS[stageId] : undefined;
 }
 
 function renderCheckpointContext(
   title: string,
-  checkpointContext: PlanGeneratorStageCheckpointContext | undefined,
+  checkpointContext: PlanGoalStageCheckpointContext | undefined,
 ): string {
   if (!checkpointContext) return "";
   const content = checkpointContext.unavailable
@@ -486,9 +486,9 @@ ${content}`;
 }
 
 export function buildStageAuthoringMessage(
-  stage: PlanGeneratorStageEnvironment,
+  stage: PlanGoalStageEnvironment,
   request: string,
-  checkpointContext?: PlanGeneratorStageCheckpointContext | undefined
+  checkpointContext?: PlanGoalStageCheckpointContext | undefined
 ): string {
   return `${stage.authoringPrompt}${renderCheckpointContext("Current stage checkpoint context", checkpointContext)}
 
@@ -497,10 +497,10 @@ ${request}`;
 }
 
 export function buildStageRetryMessage(
-  stage: PlanGeneratorStageEnvironment,
+  stage: PlanGoalStageEnvironment,
   request: string,
   previousMessage: string,
-  checkpointContext?: PlanGeneratorStageCheckpointContext | undefined
+  checkpointContext?: PlanGoalStageCheckpointContext | undefined
 ): string {
   return `${stage.retryPrompt}
 
@@ -521,11 +521,11 @@ ${previousMessage}`;
 }
 
 export function buildStageResumeMessage(
-  stage: PlanGeneratorStageEnvironment,
+  stage: PlanGoalStageEnvironment,
   request: string,
   waitingMessage: string,
   latestUserInput: string,
-  checkpointContext?: PlanGeneratorStageCheckpointContext | undefined
+  checkpointContext?: PlanGoalStageCheckpointContext | undefined
 ): string {
   return `${stage.retryPrompt}
 
@@ -551,14 +551,14 @@ ${latestUserInput}`;
 }
 
 export function buildStageHandoffMessage(options: {
-  stage: PlanGeneratorStageEnvironment;
+  stage: PlanGoalStageEnvironment;
   planPath: string;
   stageContext: string;
   nextContext: string;
-  nextCheckpointContext?: PlanGeneratorStageCheckpointContext | undefined;
+  nextCheckpointContext?: PlanGoalStageCheckpointContext | undefined;
 }): string {
   const nextStage = options.stage.nextStage
-    ? PLAN_GENERATOR_STAGE_ENVIRONMENTS[options.stage.nextStage].title
+    ? PLAN_GOAL_STAGE_ENVIRONMENTS[options.stage.nextStage].title
     : "none";
   return options.stage.handoffPrompt
     .replaceAll("{{planPath}}", options.planPath)
@@ -570,14 +570,14 @@ export function buildStageHandoffMessage(options: {
 
 export function buildStage01AuthoringMessage(request: string): string {
   return buildStageAuthoringMessage(
-    PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_01_ID],
+    PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_01_ID],
     request,
   );
 }
 
 export function buildStage01RetryMessage(request: string, previousMessage: string): string {
   return buildStageRetryMessage(
-    PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_01_ID],
+    PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_01_ID],
     request,
     previousMessage,
   );
@@ -589,7 +589,7 @@ export function buildPlanFileHandoffMessage(options: {
   nextContext: string;
 }): string {
   return buildStageHandoffMessage({
-    stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_01_ID],
+    stage: PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_01_ID],
     planPath: options.planPath,
     stageContext: options.stage01Context,
     nextContext: options.nextContext,

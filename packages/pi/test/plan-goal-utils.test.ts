@@ -11,45 +11,45 @@ import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import {
   buildPlanGoalDocumentClarifyFollowUp,
-  clearPlanGeneratorModeStatus,
-  handlePlanGeneratorAgentEnd,
+  clearPlanGoalModeStatus,
+  handlePlanGoalAgentEnd,
   latestAssistantText,
-  pausePlanGeneratorTask,
-  restorePlanGeneratorWorkflowFromStore,
-  resumePlanGeneratorFromUserInput,
-  runPlanGeneratorCommand,
-  setPlanGeneratorModeStatus,
+  pausePlanGoalTask,
+  restorePlanGoalWorkflowFromStore,
+  resumePlanGoalFromUserInput,
+  runPlanGoalCommand,
+  setPlanGoalModeStatus,
   startNewGeneratorTask,
   default as planGeneratorExtension,
-} from "../extensions/plan-generator/index.ts";
+} from "../extensions/plan-goal/index.ts";
 import {
   createReadmeScaffold,
   createStageValidationEvidence,
   resolveCollisionFreeTaskPath,
-} from "../extensions/plan-generator/plan-files.ts";
+} from "../extensions/plan-goal/plan-files.ts";
 import {
   buildStageAuthoringMessage,
   buildStageHandoffMessage,
   buildStageResumeMessage,
   buildStageRetryMessage,
-  PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION,
-  PLAN_GENERATOR_STAGE_ENVIRONMENTS,
+  PLAN_GOAL_PLAN_SPLIT_INSTRUCTION,
+  PLAN_GOAL_STAGE_ENVIRONMENTS,
   STAGE_02_ID,
   STAGE_05_CONSTRUCTION_CHECKLIST,
   STAGE_05_REQUIRED_SECTIONS,
-} from "../extensions/plan-generator/stage-contract.ts";
-import { createPlanGeneratorStore } from "../extensions/plan-generator/store.ts";
+} from "../extensions/plan-goal/stage-contract.ts";
+import { createPlanGoalStore } from "../extensions/plan-goal/store.ts";
 import {
-  activatePlanGeneratorWorkflow,
+  activatePlanGoalWorkflow,
   getDotdotgodWorkflowState,
-  isPlanGeneratorWorkflowActive,
+  isPlanGoalWorkflowActive,
   restoreDotdotgodWorkflowState,
 } from "../extensions/shared/workflow-coordination.ts";
 import {
-  extractPlanGeneratorBlocks,
+  extractPlanGoalBlocks,
   stableBlockerSetKey,
   toKebabCase,
-} from "../extensions/plan-generator/utils.ts";
+} from "../extensions/plan-goal/utils.ts";
 
 function checkpointCreator(cwd: string) {
   return async (_ctx: unknown, stage: { id: string; checkpointFileName: string }, planPath: string) => {
@@ -107,7 +107,7 @@ function fakeRuntime(cwd: string, options: { idle?: boolean; editorValue?: strin
   return { pi, ctx, sent, notifications, statuses, customMessages, customEntries };
 }
 
-describe("plan-generator command helpers", () => {
+describe("plan-goal command helpers", () => {
   it("creates README scaffolds", () => {
     assert.equal(toKebabCase("Add Plan Generator!"), "add-plan-generator");
     const scaffold = createReadmeScaffold("Task Title", "Initial request");
@@ -117,7 +117,7 @@ describe("plan-generator command helpers", () => {
   });
 
   it("prefers LLM slug proposals before request-derived fallback", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const task = await resolveCollisionFreeTaskPath(
       { cwd } as never,
       "Add Plan Generator",
@@ -127,7 +127,7 @@ describe("plan-generator command helpers", () => {
   });
 
   it("creates collision-free task paths from LLM proposals", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     mkdirSync(join(cwd, "docs", "plan", "ai-suggested-slug"), { recursive: true });
     const task = await resolveCollisionFreeTaskPath(
       { cwd } as never,
@@ -142,7 +142,7 @@ describe("plan-generator command helpers", () => {
   });
 
   it("falls back to request text when LLM slug proposals are unusable", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     mkdirSync(join(cwd, "docs", "plan", "add-plan-generator"), { recursive: true });
     const task = await resolveCollisionFreeTaskPath(
       { cwd } as never,
@@ -153,7 +153,7 @@ describe("plan-generator command helpers", () => {
   });
 
   it("falls back to new-plan for unusable proposal and request text", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const task = await resolveCollisionFreeTaskPath(
       { cwd } as never,
       "!!!",
@@ -172,7 +172,7 @@ describe("plan-generator command helpers", () => {
     ] as const;
 
     for (const [index, stageId] of stageIds.entries()) {
-      const stage = PLAN_GENERATOR_STAGE_ENVIRONMENTS[stageId];
+      const stage = PLAN_GOAL_STAGE_ENVIRONMENTS[stageId];
       assert.equal(stage.authoringPrompt.length > 0, true);
       assert.equal(stage.retryPrompt.length > 0, true);
       assert.equal(stage.evaluationPrompt.length > 0, true);
@@ -181,7 +181,7 @@ describe("plan-generator command helpers", () => {
   });
 
   it("validates Stage 02 checkpoint sections without parsing durable formatting", () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const taskDir = join(cwd, "docs", "plan", "stage-two");
     mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
     writeFileSync(
@@ -211,11 +211,11 @@ Project memory reviewed.
 
 ## Impact Candidates
 
-packages/pi/extensions/plan-generator/index.ts
+packages/../extensions/plan-goal/index.ts
 
 ## Related Files
 
-packages/pi/extensions/plan-generator/stage-contract.ts
+packages/../extensions/plan-goal/stage-contract.ts
 
 ## Stage 02 Construction Checklist
 
@@ -229,7 +229,7 @@ packages/pi/extensions/plan-generator/stage-contract.ts
     const evidence = createStageValidationEvidence({
       cwd,
       currentPlan: "docs/plan/stage-two/README.md",
-      stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_02_ID],
+      stage: PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_02_ID],
     });
 
     assert.equal(evidence.ok, true);
@@ -238,7 +238,7 @@ packages/pi/extensions/plan-generator/stage-contract.ts
   });
 
   it("accepts Stage 02 checkpoint checklist compatibility formats", () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const taskDir = join(cwd, "docs", "plan", "stage-two-compat");
     mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
     writeFileSync(join(taskDir, "README.md"), "# Stage Two Compat\n");
@@ -254,11 +254,11 @@ Project memory reviewed.
 
 ## Impact Candidates
 
-packages/pi/extensions/plan-generator/index.ts
+packages/../extensions/plan-goal/index.ts
 
 ## Related Files
 
-packages/pi/extensions/plan-generator/stage-contract.ts
+packages/../extensions/plan-goal/stage-contract.ts
 
 ## Stage 02 Construction Checklist
 
@@ -274,14 +274,14 @@ Related files: completed - [x]
     const evidence = createStageValidationEvidence({
       cwd,
       currentPlan: "docs/plan/stage-two-compat/README.md",
-      stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_02_ID],
+      stage: PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_02_ID],
     });
 
     assert.equal(evidence.ok, true, evidence.blockers.join("\n"));
   });
 
   it("reports Stage 02 validation blockers", () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const taskDir = join(cwd, "docs", "plan", "stage-two");
     mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
     writeFileSync(join(taskDir, "README.md"), "# Stage Two\n");
@@ -295,7 +295,7 @@ Status: maybe
     const evidence = createStageValidationEvidence({
       cwd,
       currentPlan: "docs/plan/stage-two/README.md",
-      stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_02_ID],
+      stage: PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_02_ID],
     });
 
     assert.equal(evidence.ok, false);
@@ -304,7 +304,7 @@ Status: maybe
   });
 
   it("does not treat implementation-pending status text as an unresolved user decision", () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const taskDir = join(cwd, "docs", "plan", "stage-two-pending");
     mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
     writeFileSync(
@@ -330,11 +330,11 @@ Project memory reviewed.
 
 ## Impact Candidates
 
-packages/pi/extensions/plan-generator/index.ts
+packages/../extensions/plan-goal/index.ts
 
 ## Related Files
 
-packages/pi/extensions/plan-generator/stage-contract.ts
+packages/../extensions/plan-goal/stage-contract.ts
 
 ## Stage 02 Construction Checklist
 
@@ -348,16 +348,16 @@ packages/pi/extensions/plan-generator/stage-contract.ts
     const evidence = createStageValidationEvidence({
       cwd,
       currentPlan: "docs/plan/stage-two-pending/README.md",
-      stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS[STAGE_02_ID],
+      stage: PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_02_ID],
     });
 
     assert.equal(evidence.ok, true);
     assert.doesNotMatch(evidence.blockers.join("\n"), /Unresolved user decision/);
   });
 
-  it("extracts dotdotgod plan-generator fenced block contents", () => {
-    const blocks = extractPlanGeneratorBlocks(
-      'before\n```json dotdotgod-plan-generator\n{"first":"value"}\n```\nbetween\n```json dotdotgod-plan-generator\n{}\n```\nafter',
+  it("extracts dotdotgod plan-goal fenced block contents", () => {
+    const blocks = extractPlanGoalBlocks(
+      'before\n```json dotdotgod-plan-goal\n{"first":"value"}\n```\nbetween\n```json dotdotgod-plan-goal\n{}\n```\nafter',
     );
     assert.deepEqual(blocks, ['{"first":"value"}\n', "{}\n"]);
   });
@@ -368,7 +368,7 @@ packages/pi/extensions/plan-generator/stage-contract.ts
 
   it("includes next checkpoint context in stage handoff messages", () => {
     const message = buildStageHandoffMessage({
-      stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS["01-intake"],
+      stage: PLAN_GOAL_STAGE_ENVIRONMENTS["01-intake"],
       planPath: "docs/plan/add-staged-authoring-smoke/README.md",
       stageContext: "completed intake context",
       nextContext: "next context",
@@ -384,7 +384,7 @@ packages/pi/extensions/plan-generator/stage-contract.ts
   });
 
   it("keeps the plan split instruction in generated stage messages", () => {
-    const stage = PLAN_GENERATOR_STAGE_ENVIRONMENTS["03-discovery"];
+    const stage = PLAN_GOAL_STAGE_ENVIRONMENTS["03-discovery"];
     const checkpointContext = {
       path: "docs/plan/example/.dotdotgod-plan/03_DISCOVERY.md",
       content: "checkpoint",
@@ -404,25 +404,29 @@ packages/pi/extensions/plan-generator/stage-contract.ts
       assert.match(message, /split the durable plan into task-local support markdown files/);
       assert.match(message, /Keep README\.md as the overview\/index/);
     }
-    assert.match(PLAN_GENERATOR_PLAN_SPLIT_INSTRUCTION, /Do not put final user-facing plan content only in \.dotdotgod-plan\//);
+    assert.match(PLAN_GOAL_PLAN_SPLIT_INSTRUCTION, /Do not put final user-facing plan content only in \.dotdotgod-plan\//);
   });
 
-  it("builds the final document-clarify follow-up without changing plan semantics", () => {
+  it("builds the final doc-only subagent follow-up without changing plan semantics", () => {
     const message = buildPlanGoalDocumentClarifyFollowUp("docs/plan/example/README.md");
 
     assert.match(message, /stage sequence is complete/);
+    assert.match(message, /dotdotgod\.plan-doc-clarifier/);
+    assert.match(message, /context: "fresh"/);
+    assert.match(message, /reads: \["docs\/plan\/example\/README\.md"\]/);
     assert.match(message, /document-clarify skill/);
-    assert.match(message, /docs\/plan\/example\/README\.md/);
     assert.match(message, /task-local support or workstream handoff markdown files/);
+    assert.match(message, /explicit markdown paths to reads and the task text/);
+    assert.match(message, /must not inspect AGENTS\.md, docs indexes, specs, tests, architecture notes, source\/config files/);
     assert.match(message, /Preserve the plan's scope, user decisions, validation requirements, workstream dependencies, Todo Contract, and handoff contracts/);
     assert.match(message, /Do not execute implementation work/);
     assert.match(message, /Do not edit source or config files/);
-    assert.match(message, /\.dotdotgod-plan\/\*\.md files as internal checkpoint state and validation evidence/);
+    assert.match(message, /\.dotdotgod-plan\/\*\.md checkpoint files/);
   });
 
   it("keeps document-clarify out of non-terminal stage handoffs", () => {
     const message = buildStageHandoffMessage({
-      stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS["04-plan"],
+      stage: PLAN_GOAL_STAGE_ENVIRONMENTS["04-plan"],
       planPath: "docs/plan/example/README.md",
       stageContext: "stage context",
       nextContext: "next context",
@@ -432,7 +436,7 @@ packages/pi/extensions/plan-generator/stage-contract.ts
   });
 
   it("tells Stage 02 to use canonical checkpoint checklist rows", () => {
-    const stage = PLAN_GENERATOR_STAGE_ENVIRONMENTS["02-context-load"];
+    const stage = PLAN_GOAL_STAGE_ENVIRONMENTS["02-context-load"];
     const authoring = buildStageAuthoringMessage(stage, "request");
     const retry = buildStageRetryMessage(stage, "request", "Missing checklist item", undefined);
 
@@ -442,7 +446,7 @@ packages/pi/extensions/plan-generator/stage-contract.ts
   });
 
   it("requires Stage 04 to produce concrete implementation design", () => {
-    const stage = PLAN_GENERATOR_STAGE_ENVIRONMENTS["04-plan"];
+    const stage = PLAN_GOAL_STAGE_ENVIRONMENTS["04-plan"];
     const message = buildStageAuthoringMessage(stage, "request");
 
     assert.deepEqual(stage.requiredSections, [
@@ -459,7 +463,7 @@ packages/pi/extensions/plan-generator/stage-contract.ts
     assert.match(message, /files, functions\/types\/classes\/commands/);
     assert.match(message, /a different agent should be able to implement the same work/);
     assert.match(message, /Do not silently carry unresolved user decisions forward/);
-    assert.match(PLAN_GENERATOR_STAGE_ENVIRONMENTS["03-discovery"].authoringPrompt, /Separate agent-resolvable research questions from user decisions/);
+    assert.match(PLAN_GOAL_STAGE_ENVIRONMENTS["03-discovery"].authoringPrompt, /Separate agent-resolvable research questions from user decisions/);
     assert.match(stage.evaluationPrompt, /Atomic Tasks must be specific enough to assign immediately/);
     assert.match(stage.evaluationPrompt, /Edge Cases must cover failure paths/);
     assert.match(stage.evaluationPrompt, /Mark retry when Atomic Tasks or Edge Cases are too generic/);
@@ -468,7 +472,7 @@ packages/pi/extensions/plan-generator/stage-contract.ts
   });
 
   it("requires Stage 05 to produce phase-based workstream handoff contracts", () => {
-    const stage = PLAN_GENERATOR_STAGE_ENVIRONMENTS["05-workstream-handoff"];
+    const stage = PLAN_GOAL_STAGE_ENVIRONMENTS["05-workstream-handoff"];
     const message = buildStageAuthoringMessage(stage, "request");
 
     assert.equal(stage.title, "Stage 05: workstream handoff");
@@ -500,7 +504,7 @@ packages/pi/extensions/plan-generator/stage-contract.ts
   });
 
   it("validates Stage 05 required sections and construction checklist evidence", () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const taskDir = join(cwd, "docs", "plan", "stage-five");
     mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
     writeFileSync(
@@ -529,7 +533,7 @@ No split map; one executor owns the listed todo contract.
 
 ## Shared Context
 
-All subagents use the Stage 04 implementation design and existing plan-generator files.
+All subagents use the Stage 04 implementation design and existing plan-goal files.
 
 ## Workstreams
 
@@ -555,7 +559,7 @@ Plan: update Stage 05 prompt contract. Verification: focused Pi tests.
     const evidence = createStageValidationEvidence({
       cwd,
       currentPlan: "docs/plan/stage-five/README.md",
-      stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS["05-workstream-handoff"],
+      stage: PLAN_GOAL_STAGE_ENVIRONMENTS["05-workstream-handoff"],
     });
 
     assert.equal(evidence.ok, true);
@@ -563,7 +567,7 @@ Plan: update Stage 05 prompt contract. Verification: focused Pi tests.
   });
 
   it("detects unresolved user decisions in durable plan validation evidence", () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const taskDir = join(cwd, "docs", "plan", "decision-blocker");
     mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
     writeFileSync(
@@ -578,7 +582,7 @@ Use the existing extension flow.
 
 ## Code Touchpoints
 
-packages/pi/extensions/plan-generator/index.ts
+packages/../extensions/plan-goal/index.ts
 
 ## Data/State Flow
 
@@ -592,7 +596,7 @@ Decision prompt: 사용자가 strict mode 여부를 결정해야 함.
 
 ## Atomic Tasks
 
-- Update blocker detection in plan-generator runtime.
+- Update blocker detection in plan-goal runtime.
 
 ## Test Design
 
@@ -600,7 +604,7 @@ Decision prompt: 사용자가 strict mode 여부를 결정해야 함.
 
 ## Validation Plan
 
-- pnpm --filter @dotdotgod/pi test -- plan-generator-utils.test.ts
+- pnpm --filter @dotdotgod/pi test -- plan-goal-utils.test.ts
 
 ## Resume Point
 
@@ -609,7 +613,7 @@ Resume after the user chooses strict mode.
 ## Stage 04 Construction Checklist
 
 - [x] Implementation design: Existing flow with decision blocker.
-- [x] Code touchpoints: packages/pi/extensions/plan-generator/index.ts.
+- [x] Code touchpoints: packages/../extensions/plan-goal/index.ts.
 - [x] Data/state flow: input-waiting state.
 - [x] Edge cases: user decision blocker.
 - [x] Atomic tasks: runtime detection.
@@ -626,7 +630,7 @@ Resume after the user chooses strict mode.
     const evidence = createStageValidationEvidence({
       cwd,
       currentPlan: "docs/plan/decision-blocker/README.md",
-      stage: PLAN_GENERATOR_STAGE_ENVIRONMENTS["04-plan"],
+      stage: PLAN_GOAL_STAGE_ENVIRONMENTS["04-plan"],
     });
 
     assert.equal(evidence.ok, false);
@@ -646,11 +650,11 @@ Resume after the user chooses strict mode.
   });
 
   it("sets and clears the generator-owned plan-mode status label", () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
 
-    setPlanGeneratorModeStatus(runtime.ctx as never);
-    clearPlanGeneratorModeStatus(runtime.ctx as never);
+    setPlanGoalModeStatus(runtime.ctx as never);
+    clearPlanGoalModeStatus(runtime.ctx as never);
 
     assert.deepEqual(runtime.statuses, [
       { key: "plan-mode", value: "⏸ generate plan" },
@@ -659,7 +663,7 @@ Resume after the user chooses strict mode.
   });
 });
 
-describe("plan-generator command runtime", () => {
+describe("plan-goal command runtime", () => {
   it("registers only /plan-goal as the staged generator command", () => {
     const registered = new Map<string, unknown>();
     const pi = {
@@ -677,25 +681,25 @@ describe("plan-generator command runtime", () => {
   });
 
   it("shows help without creating plan files", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd);
-    await runPlanGeneratorCommand(runtime.pi as never, runtime.ctx as never, "--help");
+    await runPlanGoalCommand(runtime.pi as never, runtime.ctx as never, "--help");
     assert.equal(existsSync(join(cwd, "docs", "plan")), false);
     assert.equal(runtime.notifications.length, 0);
     assert.equal(runtime.sent.length, 0);
   });
 
   it("does not send loop-driving messages for empty invocation without a request", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd);
-    await runPlanGeneratorCommand(runtime.pi as never, runtime.ctx as never, "");
+    await runPlanGoalCommand(runtime.pi as never, runtime.ctx as never, "");
     assert.equal(runtime.sent.length, 0);
   });
 
   it("creates a durable README and immediately queues Stage 01 authoring", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    await runPlanGeneratorCommand(
+    await runPlanGoalCommand(
       runtime.pi as never,
       runtime.ctx as never,
       "Add staged authoring smoke",
@@ -722,7 +726,7 @@ describe("plan-generator command runtime", () => {
       { key: "plan-mode", value: "⏳ creating stage checkpoint" },
       { key: "plan-mode", value: "⏸ generate plan" },
     ]);
-    assert.equal(isPlanGeneratorWorkflowActive(), true);
+    assert.equal(isPlanGoalWorkflowActive(), true);
     assert.equal(getDotdotgodWorkflowState().planPath, "docs/plan/add-staged-authoring-smoke/README.md");
     assert.equal(runtime.customEntries[0]?.customType, "dotdotgod-workflow");
     assert.equal((runtime.customEntries[0]?.data as { planPath?: string }).planPath, undefined);
@@ -740,7 +744,7 @@ describe("plan-generator command runtime", () => {
   it("uses /plan-goal as the staged generator command without goal-mode prompt divergence", async () => {
     const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    await runPlanGeneratorCommand(
+    await runPlanGoalCommand(
       runtime.pi as never,
       runtime.ctx as never,
       "Add goal smoke",
@@ -758,9 +762,9 @@ describe("plan-generator command runtime", () => {
   });
 
   it("does not duplicate Stage 01 authoring on agent_end after command bootstrap", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd);
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     await startNewGeneratorTask(
       runtime.pi as never,
       runtime.ctx as never,
@@ -770,7 +774,7 @@ describe("plan-generator command runtime", () => {
     );
 
     assert.equal(runtime.sent.length, 1);
-    await handlePlanGeneratorAgentEnd(
+    await handlePlanGoalAgentEnd(
       runtime.pi as never,
       runtime.ctx as never,
       [],
@@ -785,9 +789,9 @@ describe("plan-generator command runtime", () => {
   });
 
   it("restores shared workflow state from active generator store state", () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd);
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     store.updateState({
       currentPlan: "docs/plan/resume-handoff-followup-work/README.md",
       currentStage: "02-context-load",
@@ -796,17 +800,17 @@ describe("plan-generator command runtime", () => {
     });
 
     restoreDotdotgodWorkflowState([]);
-    assert.equal(isPlanGeneratorWorkflowActive(), false);
-    assert.equal(restorePlanGeneratorWorkflowFromStore(runtime.pi as never, store), true);
-    assert.equal(isPlanGeneratorWorkflowActive(), true);
+    assert.equal(isPlanGoalWorkflowActive(), false);
+    assert.equal(restorePlanGoalWorkflowFromStore(runtime.pi as never, store), true);
+    assert.equal(isPlanGoalWorkflowActive(), true);
     assert.equal(getDotdotgodWorkflowState().planPath, "docs/plan/resume-handoff-followup-work/README.md");
     assert.equal(getDotdotgodWorkflowState().stage, "02-context-load");
   });
 
   it("restores shared workflow state from input-waiting generator store state", () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd);
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     store.updateState({
       currentPlan: "docs/plan/resume-handoff-followup-work/README.md",
       currentStage: "03-discovery",
@@ -816,16 +820,16 @@ describe("plan-generator command runtime", () => {
     });
 
     restoreDotdotgodWorkflowState([]);
-    assert.equal(restorePlanGeneratorWorkflowFromStore(runtime.pi as never, store), true);
-    assert.equal(isPlanGeneratorWorkflowActive(), true);
+    assert.equal(restorePlanGoalWorkflowFromStore(runtime.pi as never, store), true);
+    assert.equal(isPlanGoalWorkflowActive(), true);
     assert.equal(getDotdotgodWorkflowState().planPath, "docs/plan/resume-handoff-followup-work/README.md");
     assert.equal(getDotdotgodWorkflowState().stage, "03-discovery");
   });
 
   it("resumes an input-waiting stage from follow-up user input", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     const taskDir = join(cwd, "docs", "plan", "resume-input");
     mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
     writeFileSync(join(taskDir, "README.md"), "# Resume Input\n");
@@ -843,7 +847,7 @@ describe("plan-generator command runtime", () => {
       waitingMessage: "Need migration target.",
     });
 
-    const resumed = await resumePlanGeneratorFromUserInput(
+    const resumed = await resumePlanGoalFromUserInput(
       runtime.pi as never,
       runtime.ctx as never,
       store,
@@ -859,13 +863,13 @@ describe("plan-generator command runtime", () => {
     assert.match(runtime.sent[0]?.message ?? "", /Need migration target/);
     assert.match(runtime.sent[0]?.message ?? "", /Use before_agent_start for the resume hook/);
     assert.match(runtime.sent[0]?.message ?? "", /Checkpoint details for resume/);
-    assert.equal(isPlanGeneratorWorkflowActive(), true);
+    assert.equal(isPlanGoalWorkflowActive(), true);
   });
 
   it("does not resume stopped or terminal blocked generator states", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd);
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     store.updateState({
       currentPlan: "docs/plan/resume-input/README.md",
       currentStage: "03-discovery",
@@ -874,7 +878,7 @@ describe("plan-generator command runtime", () => {
     });
 
     assert.equal(
-      await resumePlanGeneratorFromUserInput(runtime.pi as never, runtime.ctx as never, store, "continue"),
+      await resumePlanGoalFromUserInput(runtime.pi as never, runtime.ctx as never, store, "continue"),
       false,
     );
     store.updateState({
@@ -884,16 +888,16 @@ describe("plan-generator command runtime", () => {
       breaker: 0,
     });
     assert.equal(
-      await resumePlanGeneratorFromUserInput(runtime.pi as never, runtime.ctx as never, store, "continue"),
+      await resumePlanGoalFromUserInput(runtime.pi as never, runtime.ctx as never, store, "continue"),
       false,
     );
     assert.equal(runtime.sent.length, 0);
   });
 
   it("stops an input-waiting generator when follow-up input is a stop request", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd);
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     store.updateState({
       currentPlan: "docs/plan/resume-input/README.md",
       currentStage: "03-discovery",
@@ -902,7 +906,7 @@ describe("plan-generator command runtime", () => {
     });
 
     assert.equal(
-      await resumePlanGeneratorFromUserInput(runtime.pi as never, runtime.ctx as never, store, "stop"),
+      await resumePlanGoalFromUserInput(runtime.pi as never, runtime.ctx as never, store, "stop"),
       false,
     );
     assert.equal(store.getState().status, "stopped");
@@ -911,9 +915,9 @@ describe("plan-generator command runtime", () => {
   });
 
   it("keeps active bootstrap state when session_tree restore has no persisted generator entry yet", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd);
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     await startNewGeneratorTask(
       runtime.pi as never,
       runtime.ctx as never,
@@ -926,7 +930,7 @@ describe("plan-generator command runtime", () => {
     assert.equal(store.getState().status, "active");
     assert.equal(store.getState().currentStage, "01-intake");
 
-    await handlePlanGeneratorAgentEnd(
+    await handlePlanGoalAgentEnd(
       runtime.pi as never,
       runtime.ctx as never,
       [],
@@ -938,9 +942,9 @@ describe("plan-generator command runtime", () => {
   });
 
   it("waits for user input instead of retrying when the assistant asks the user to decide", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     await startNewGeneratorTask(
       runtime.pi as never,
       runtime.ctx as never,
@@ -961,7 +965,7 @@ describe("plan-generator command runtime", () => {
       originalRequest: "Add staged authoring smoke",
     });
 
-    await handlePlanGeneratorAgentEnd(
+    await handlePlanGoalAgentEnd(
       runtime.pi as never,
       runtime.ctx as never,
       [
@@ -977,13 +981,13 @@ describe("plan-generator command runtime", () => {
     assert.equal(store.getState().breaker, 4);
     assert.equal(runtime.sent.length, 1);
     assert.match(store.getState().waitingMessage ?? "", /판단해 주세요/);
-    assert.equal(isPlanGeneratorWorkflowActive(), true);
+    assert.equal(isPlanGoalWorkflowActive(), true);
   });
 
   it("asks the user instead of advancing when durable plan carries an unresolved decision", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     const taskDir = join(cwd, "docs", "plan", "decision-blocker");
     mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
     writeFileSync(
@@ -998,7 +1002,7 @@ Use the generator store path.
 
 ## Code Touchpoints
 
-packages/pi/extensions/plan-generator/index.ts
+packages/../extensions/plan-goal/index.ts
 
 ## Data/State Flow
 
@@ -1020,7 +1024,7 @@ Decision prompt: choose whether strict mode blocks Stage 03 or only Stage 04.
 
 ## Validation Plan
 
-- pnpm --filter @dotdotgod/pi test -- plan-generator-utils.test.ts
+- pnpm --filter @dotdotgod/pi test -- plan-goal-utils.test.ts
 
 ## Resume Point
 
@@ -1029,7 +1033,7 @@ Resume this stage after the user chooses.
 ## Stage 04 Construction Checklist
 
 - [x] Implementation design: generator store path.
-- [x] Code touchpoints: packages/pi/extensions/plan-generator/index.ts.
+- [x] Code touchpoints: packages/../extensions/plan-goal/index.ts.
 - [x] Data/state flow: input-waiting.
 - [x] Edge cases: unresolved user decision.
 - [x] Atomic tasks: blocker handling.
@@ -1049,12 +1053,12 @@ Resume this stage after the user chooses.
       breaker: 0,
       originalRequest: "Plan decision blocker handling.",
     });
-    activatePlanGeneratorWorkflow(runtime.pi as never, {
+    activatePlanGoalWorkflow(runtime.pi as never, {
       planPath: "docs/plan/decision-blocker/README.md",
       stage: "04-plan",
     });
 
-    await handlePlanGeneratorAgentEnd(
+    await handlePlanGoalAgentEnd(
       runtime.pi as never,
       runtime.ctx as never,
       [{ role: "assistant", content: "Stage 04 updated with a structured user decision blocker." }],
@@ -1066,11 +1070,11 @@ Resume this stage after the user chooses.
     assert.match(store.getState().waitingMessage ?? "", /Unresolved user decision/);
     assert.equal(runtime.sent.length, 1);
     assert.match(runtime.sent[0]?.message ?? "", /Ask the user a concrete question with clear options/);
-    assert.equal(isPlanGeneratorWorkflowActive(), true);
+    assert.equal(isPlanGoalWorkflowActive(), true);
   });
 
   it("restores the underlying Plan Mode status when clearing the generator overlay", () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, {
       hasUI: true,
       sessionBranch: [{
@@ -1080,8 +1084,8 @@ Resume this stage after the user chooses.
       }],
     });
 
-    setPlanGeneratorModeStatus(runtime.ctx as never);
-    clearPlanGeneratorModeStatus(runtime.ctx as never);
+    setPlanGoalModeStatus(runtime.ctx as never);
+    clearPlanGoalModeStatus(runtime.ctx as never);
 
     assert.deepEqual(runtime.statuses.at(-1), {
       key: "plan-mode",
@@ -1090,9 +1094,9 @@ Resume this stage after the user chooses.
   });
 
   it("stops the active generator and clears the shared workflow flag", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     await startNewGeneratorTask(
       runtime.pi as never,
       runtime.ctx as never,
@@ -1100,24 +1104,24 @@ Resume this stage after the user chooses.
       store,
       checkpointCreator(cwd) as never,
     );
-    assert.equal(isPlanGeneratorWorkflowActive(), true);
+    assert.equal(isPlanGoalWorkflowActive(), true);
 
-    await runPlanGeneratorCommand(runtime.pi as never, runtime.ctx as never, "--stop", store);
+    await runPlanGoalCommand(runtime.pi as never, runtime.ctx as never, "--stop", store);
 
-    assert.equal(isPlanGeneratorWorkflowActive(), false);
+    assert.equal(isPlanGoalWorkflowActive(), false);
     assert.equal(store.getState().status, "stopped");
     assert.deepEqual(runtime.statuses.at(-1), {
       key: "plan-mode",
       value: undefined,
     });
-    await handlePlanGeneratorAgentEnd(runtime.pi as never, runtime.ctx as never, [], store);
+    await handlePlanGoalAgentEnd(runtime.pi as never, runtime.ctx as never, [], store);
     assert.equal(runtime.sent.length, 1);
   });
 
   it("pauses the active generator as resumable input-waiting state", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     await startNewGeneratorTask(
       runtime.pi as never,
       runtime.ctx as never,
@@ -1127,7 +1131,7 @@ Resume this stage after the user chooses.
     );
 
     assert.equal(
-      await pausePlanGeneratorTask(runtime.pi as never, runtime.ctx as never, store, "Paused by interrupt."),
+      await pausePlanGoalTask(runtime.pi as never, runtime.ctx as never, store, "Paused by interrupt."),
       true,
     );
 
@@ -1135,14 +1139,14 @@ Resume this stage after the user chooses.
     assert.equal(store.getState().currentPlan, "docs/plan/add-staged-authoring-smoke/README.md");
     assert.equal(store.getState().currentStage, "01-intake");
     assert.equal(store.getState().waitingMessage, "Paused by interrupt.");
-    assert.equal(isPlanGeneratorWorkflowActive(), true);
+    assert.equal(isPlanGoalWorkflowActive(), true);
     assert.equal(runtime.sent.length, 1);
   });
 
   it("toggles an active generator into resumable pause for no-arg /plan-goal", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     await startNewGeneratorTask(
       runtime.pi as never,
       runtime.ctx as never,
@@ -1151,19 +1155,19 @@ Resume this stage after the user chooses.
       checkpointCreator(cwd) as never,
     );
 
-    await runPlanGeneratorCommand(runtime.pi as never, runtime.ctx as never, "", store);
+    await runPlanGoalCommand(runtime.pi as never, runtime.ctx as never, "", store);
 
     assert.equal(store.getState().status, "input-waiting");
     assert.equal(store.getState().currentStage, "01-intake");
     assert.match(store.getState().waitingMessage ?? "", /Paused \/plan-goal/);
     assert.equal(runtime.sent.length, 1);
-    assert.equal(isPlanGeneratorWorkflowActive(), true);
+    assert.equal(isPlanGoalWorkflowActive(), true);
   });
 
   it("resumes a generator paused by interrupt from the next user message", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     await startNewGeneratorTask(
       runtime.pi as never,
       runtime.ctx as never,
@@ -1171,10 +1175,10 @@ Resume this stage after the user chooses.
       store,
       checkpointCreator(cwd) as never,
     );
-    await pausePlanGeneratorTask(runtime.pi as never, runtime.ctx as never, store, "Paused by interrupt.");
+    await pausePlanGoalTask(runtime.pi as never, runtime.ctx as never, store, "Paused by interrupt.");
 
     assert.equal(
-      await resumePlanGeneratorFromUserInput(runtime.pi as never, runtime.ctx as never, store, "Continue with Stage 01 details."),
+      await resumePlanGoalFromUserInput(runtime.pi as never, runtime.ctx as never, store, "Continue with Stage 01 details."),
       true,
     );
 
@@ -1187,14 +1191,14 @@ Resume this stage after the user chooses.
   });
 
   it("starts Stage 01 in an existing plan README path with no checkpoints", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     const taskDir = join(cwd, "docs", "plan", "existing-plan");
     mkdirSync(taskDir, { recursive: true });
     writeFileSync(join(taskDir, "README.md"), "# Existing Plan\n");
 
-    await runPlanGeneratorCommand(
+    await runPlanGoalCommand(
       runtime.pi as never,
       runtime.ctx as never,
       "docs/plan/existing-plan/README.md",
@@ -1209,13 +1213,13 @@ Resume this stage after the user chooses.
     assert.equal(runtime.sent.length, 1);
     assert.match(runtime.sent[0]?.message ?? "", /Stage 01: intake/);
     assert.match(runtime.sent[0]?.message ?? "", /docs\/plan\/existing-plan\/README\.md/);
-    assert.equal(isPlanGeneratorWorkflowActive(), true);
+    assert.equal(isPlanGoalWorkflowActive(), true);
   });
 
   it("resumes an existing plan README path from the latest checkpoint", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     const taskDir = join(cwd, "docs", "plan", "existing-plan");
     mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
     writeFileSync(join(taskDir, "README.md"), "# Existing Plan\n");
@@ -1224,7 +1228,7 @@ Resume this stage after the user chooses.
       "Stage: 02-context-load\nStatus: blocked\n\nCheckpoint details for path resume.\n",
     );
 
-    await runPlanGeneratorCommand(
+    await runPlanGoalCommand(
       runtime.pi as never,
       runtime.ctx as never,
       "docs/plan/existing-plan/README.md",
@@ -1238,15 +1242,15 @@ Resume this stage after the user chooses.
     assert.equal(runtime.sent.length, 1);
     assert.match(runtime.sent[0]?.message ?? "", /Resume the same \/plan-goal stage/);
     assert.match(runtime.sent[0]?.message ?? "", /Checkpoint details for path resume/);
-    assert.equal(isPlanGeneratorWorkflowActive(), true);
+    assert.equal(isPlanGoalWorkflowActive(), true);
   });
 
   it("warns for a missing managed plan README path instead of creating a slug", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
 
-    await runPlanGeneratorCommand(
+    await runPlanGoalCommand(
       runtime.pi as never,
       runtime.ctx as never,
       "docs/plan/missing-plan/README.md",
@@ -1261,9 +1265,9 @@ Resume this stage after the user chooses.
   });
 
   it("queues a document-clarify follow-up after Stage 05 passes", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     const taskDir = join(cwd, "docs", "plan", "stage-five-complete");
     mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
     writeFileSync(join(taskDir, "README.md"), "# Stage Five Complete\n");
@@ -1322,12 +1326,12 @@ Handoff: report results.
       breaker: 0,
       originalRequest: "Prepare a final plan.",
     });
-    activatePlanGeneratorWorkflow(runtime.pi as never, {
+    activatePlanGoalWorkflow(runtime.pi as never, {
       planPath: "docs/plan/stage-five-complete/README.md",
       stage: "05-workstream-handoff",
     });
 
-    await handlePlanGeneratorAgentEnd(
+    await handlePlanGoalAgentEnd(
       runtime.pi as never,
       runtime.ctx as never,
       [{ role: "assistant", content: "Stage 05 handoff is complete." }],
@@ -1342,8 +1346,10 @@ Handoff: report results.
 
     assert.equal(store.getState().status, "pass");
     assert.equal(store.getState().currentStage, undefined);
-    assert.equal(isPlanGeneratorWorkflowActive(), false);
+    assert.equal(isPlanGoalWorkflowActive(), false);
     assert.equal(runtime.sent.length, 1);
+    assert.match(runtime.sent[0]?.message ?? "", /dotdotgod\.plan-doc-clarifier/);
+    assert.match(runtime.sent[0]?.message ?? "", /context: "fresh"/);
     assert.match(runtime.sent[0]?.message ?? "", /document-clarify skill/);
     assert.match(runtime.sent[0]?.message ?? "", /docs\/plan\/stage-five-complete\/README\.md/);
     assert.match(runtime.sent[0]?.message ?? "", /Do not execute implementation work/);
@@ -1351,9 +1357,9 @@ Handoff: report results.
   });
 
   it("does not queue another stage for a completed final checkpoint", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { hasUI: true });
-    const store = createPlanGeneratorStore(runtime.pi as never);
+    const store = createPlanGoalStore(runtime.pi as never);
     const taskDir = join(cwd, "docs", "plan", "complete-plan");
     mkdirSync(join(taskDir, ".dotdotgod-plan"), { recursive: true });
     writeFileSync(join(taskDir, "README.md"), "# Complete Plan\n");
@@ -1362,7 +1368,7 @@ Handoff: report results.
       "Stage: 05-workstream-handoff\nStatus: completed\n",
     );
 
-    await runPlanGeneratorCommand(
+    await runPlanGoalCommand(
       runtime.pi as never,
       runtime.ctx as never,
       "docs/plan/complete-plan/README.md",
@@ -1377,9 +1383,9 @@ Handoff: report results.
   });
 
   it("treats non-README path-like input as a new request instead of resuming", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd);
-    await runPlanGeneratorCommand(
+    await runPlanGoalCommand(
       runtime.pi as never,
       runtime.ctx as never,
       "docs/plan/complete-task",
@@ -1395,9 +1401,9 @@ Handoff: report results.
   });
 
   it("uses UI editor text for empty invocation when available", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plan-generator-"));
+    const cwd = mkdtempSync(join(tmpdir(), "plan-goal-"));
     const runtime = fakeRuntime(cwd, { editorValue: "Editor supplied task" });
-    await runPlanGeneratorCommand(
+    await runPlanGoalCommand(
       runtime.pi as never,
       runtime.ctx as never,
       "",

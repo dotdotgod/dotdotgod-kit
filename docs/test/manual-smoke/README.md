@@ -5,7 +5,7 @@ Use this domain for adapter, Plan Mode, initializer, publishing, and README land
 ## Domain Map
 
 - [`PI_ADAPTER.md`](PI_ADAPTER.md): Pi adapter install/load checks, Plan Mode checks, and `/impact-check` checks.
-- [`PLAN_GENERATOR.md`](PLAN_GENERATOR.md): `/plan-goal` staged authoring, checkpoint, review, and Plan Mode boundary smoke checks.
+- [`PLAN_GOAL.md`](PLAN_GOAL.md): `/plan-goal` staged authoring, checkpoint, review, and Plan Mode boundary smoke checks.
 - [`CROSS_AGENT_ADAPTERS.md`](CROSS_AGENT_ADAPTERS.md): Claude Code, Codex, and cross-agent planning parity checks.
 - [`INITIALIZER_AND_PUBLISHING.md`](INITIALIZER_AND_PUBLISHING.md): initializer parity, published Pi install, and README landing review.
 
