@@ -2,28 +2,21 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 export const DOTDOTGOD_WORKFLOW_CUSTOM_TYPE = "dotdotgod-workflow";
 
-export type DotdotgodWorkflowName = "plan-goal";
-export type DotdotgodWorkflowStatus = "active" | "stopped" | "completed" | "blocked";
-
 export interface DotdotgodWorkflowState {
-  activeWorkflow?: DotdotgodWorkflowName | undefined;
-  planPath?: string | undefined;
-  stage?: string | undefined;
-  status: DotdotgodWorkflowStatus;
-  reason?: string | undefined;
+  activeWorkflow?: "plan-goal" | undefined;
+  status: "active" | "stopped";
   updatedAt: string;
 }
 
-function inactiveState(status: Exclude<DotdotgodWorkflowStatus, "active">, reason?: string): DotdotgodWorkflowState {
+function inactiveState(): DotdotgodWorkflowState {
   return {
     activeWorkflow: undefined,
-    status,
-    reason,
+    status: "stopped",
     updatedAt: new Date().toISOString(),
   };
 }
 
-let workflowState: DotdotgodWorkflowState = inactiveState("stopped");
+let workflowState: DotdotgodWorkflowState = inactiveState();
 
 export function getDotdotgodWorkflowState(): DotdotgodWorkflowState {
   return { ...workflowState };
@@ -52,27 +45,21 @@ export function setDotdotgodWorkflowState(
 
 export function activatePlanGoalWorkflow(
   pi: Pick<ExtensionAPI, "appendEntry"> | undefined,
-  state: { planPath?: string | undefined; stage?: string | undefined; reason?: string | undefined },
 ): DotdotgodWorkflowState {
   return setDotdotgodWorkflowState(pi, {
     activeWorkflow: "plan-goal",
     status: "active",
-    planPath: state.planPath,
-    stage: state.stage,
-    reason: state.reason,
   });
 }
 
 export function clearDotdotgodWorkflowState(
   pi: Pick<ExtensionAPI, "appendEntry"> | undefined,
-  status: Exclude<DotdotgodWorkflowStatus, "active"> = "stopped",
-  reason?: string,
 ): DotdotgodWorkflowState {
-  return setDotdotgodWorkflowState(pi, inactiveState(status, reason));
+  return setDotdotgodWorkflowState(pi, inactiveState());
 }
 
 export function restoreDotdotgodWorkflowState(entries: readonly unknown[]): DotdotgodWorkflowState {
-  workflowState = inactiveState("stopped");
+  workflowState = inactiveState();
   for (const entry of entries) {
     const candidate = entry as {
       type?: unknown;
@@ -88,15 +75,13 @@ export function restoreDotdotgodWorkflowState(entries: readonly unknown[]): Dotd
         ? candidate.message.details
         : undefined;
     if (!value || typeof value !== "object") continue;
-    const state = value as Partial<DotdotgodWorkflowState>;
-    const status = state.status;
-    if (!["active", "stopped", "completed", "blocked"].includes(status ?? "")) continue;
+    const state = value as Partial<DotdotgodWorkflowState> & { status?: unknown };
+    const rawStatus = state.status;
+    // normalize legacy "completed"/"blocked" statuses to "stopped"
+    const status: "active" | "stopped" = rawStatus === "active" ? "active" : "stopped";
     workflowState = {
       activeWorkflow: state.activeWorkflow === "plan-goal" ? "plan-goal" : undefined,
-      planPath: typeof state.planPath === "string" ? state.planPath : undefined,
-      stage: typeof state.stage === "string" ? state.stage : undefined,
-      status: status as DotdotgodWorkflowStatus,
-      reason: typeof state.reason === "string" ? state.reason : undefined,
+      status,
       updatedAt: typeof state.updatedAt === "string" ? state.updatedAt : new Date().toISOString(),
     };
   }

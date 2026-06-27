@@ -8,7 +8,6 @@ const PLAN_GOAL_STORE_TYPE = "plan-goal";
 
 export type PlanGoalStatus =
   | "pass"
-  | "idle"
   | "active"
   | "input-waiting"
   | "blocked"
@@ -28,7 +27,7 @@ export interface PlanGoalStoreState {
 
 const initialState: PlanGoalStoreState = {
   breaker: 0,
-  status: "idle",
+  status: "stopped",
 };
 
 export interface PlanGoalStore {

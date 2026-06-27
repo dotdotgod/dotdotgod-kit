@@ -41,7 +41,6 @@ import {
 import { createPlanGoalStore } from "../extensions/plan-goal/store.ts";
 import {
   activatePlanGoalWorkflow,
-  getDotdotgodWorkflowState,
   isPlanGoalWorkflowActive,
   restoreDotdotgodWorkflowState,
 } from "../extensions/shared/workflow-coordination.ts";
@@ -727,9 +726,7 @@ describe("plan-goal command runtime", () => {
       { key: "plan-mode", value: "⏸ generate plan" },
     ]);
     assert.equal(isPlanGoalWorkflowActive(), true);
-    assert.equal(getDotdotgodWorkflowState().planPath, "docs/plan/add-staged-authoring-smoke/README.md");
     assert.equal(runtime.customEntries[0]?.customType, "dotdotgod-workflow");
-    assert.equal((runtime.customEntries[0]?.data as { planPath?: string }).planPath, undefined);
     assert.equal(runtime.customEntries.at(-1)?.customType, "dotdotgod-workflow");
     const startupDetails = (runtime.customMessages[0] as { details?: { currentPlan?: string; currentStage?: string; status?: string } }).details;
     assert.equal(startupDetails?.currentPlan, undefined);
@@ -803,8 +800,8 @@ describe("plan-goal command runtime", () => {
     assert.equal(isPlanGoalWorkflowActive(), false);
     assert.equal(restorePlanGoalWorkflowFromStore(runtime.pi as never, store), true);
     assert.equal(isPlanGoalWorkflowActive(), true);
-    assert.equal(getDotdotgodWorkflowState().planPath, "docs/plan/resume-handoff-followup-work/README.md");
-    assert.equal(getDotdotgodWorkflowState().stage, "02-context-load");
+    assert.equal(store.getState().currentPlan, "docs/plan/resume-handoff-followup-work/README.md");
+    assert.equal(store.getState().currentStage, "02-context-load");
   });
 
   it("restores shared workflow state from input-waiting generator store state", () => {
@@ -822,8 +819,8 @@ describe("plan-goal command runtime", () => {
     restoreDotdotgodWorkflowState([]);
     assert.equal(restorePlanGoalWorkflowFromStore(runtime.pi as never, store), true);
     assert.equal(isPlanGoalWorkflowActive(), true);
-    assert.equal(getDotdotgodWorkflowState().planPath, "docs/plan/resume-handoff-followup-work/README.md");
-    assert.equal(getDotdotgodWorkflowState().stage, "03-discovery");
+    assert.equal(store.getState().currentPlan, "docs/plan/resume-handoff-followup-work/README.md");
+    assert.equal(store.getState().currentStage, "03-discovery");
   });
 
   it("resumes an input-waiting stage from follow-up user input", async () => {
@@ -1053,10 +1050,7 @@ Resume this stage after the user chooses.
       breaker: 0,
       originalRequest: "Plan decision blocker handling.",
     });
-    activatePlanGoalWorkflow(runtime.pi as never, {
-      planPath: "docs/plan/decision-blocker/README.md",
-      stage: "04-plan",
-    });
+    activatePlanGoalWorkflow(runtime.pi as never);
 
     await handlePlanGoalAgentEnd(
       runtime.pi as never,
@@ -1326,10 +1320,7 @@ Handoff: report results.
       breaker: 0,
       originalRequest: "Prepare a final plan.",
     });
-    activatePlanGoalWorkflow(runtime.pi as never, {
-      planPath: "docs/plan/stage-five-complete/README.md",
-      stage: "05-workstream-handoff",
-    });
+    activatePlanGoalWorkflow(runtime.pi as never);
 
     await handlePlanGoalAgentEnd(
       runtime.pi as never,
