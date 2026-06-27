@@ -7,7 +7,6 @@ export type DotdotgodWorkflowStatus = "active" | "stopped" | "completed" | "bloc
 
 export interface DotdotgodWorkflowState {
   activeWorkflow?: DotdotgodWorkflowName | undefined;
-  suppressPlanModeExecutionPrompt: boolean;
   planPath?: string | undefined;
   stage?: string | undefined;
   status: DotdotgodWorkflowStatus;
@@ -18,7 +17,6 @@ export interface DotdotgodWorkflowState {
 function inactiveState(status: Exclude<DotdotgodWorkflowStatus, "active">, reason?: string): DotdotgodWorkflowState {
   return {
     activeWorkflow: undefined,
-    suppressPlanModeExecutionPrompt: false,
     status,
     reason,
     updatedAt: new Date().toISOString(),
@@ -32,11 +30,7 @@ export function getDotdotgodWorkflowState(): DotdotgodWorkflowState {
 }
 
 export function isPlanGoalWorkflowActive(): boolean {
-  return (
-    workflowState.activeWorkflow === "plan-goal" &&
-    workflowState.status === "active" &&
-    workflowState.suppressPlanModeExecutionPrompt
-  );
+  return workflowState.activeWorkflow === "plan-goal" && workflowState.status === "active";
 }
 
 export function restorePlanGoalWorkflowActive(entries: readonly unknown[]): boolean {
@@ -62,7 +56,6 @@ export function activatePlanGoalWorkflow(
 ): DotdotgodWorkflowState {
   return setDotdotgodWorkflowState(pi, {
     activeWorkflow: "plan-goal",
-    suppressPlanModeExecutionPrompt: true,
     status: "active",
     planPath: state.planPath,
     stage: state.stage,
@@ -100,7 +93,6 @@ export function restoreDotdotgodWorkflowState(entries: readonly unknown[]): Dotd
     if (!["active", "stopped", "completed", "blocked"].includes(status ?? "")) continue;
     workflowState = {
       activeWorkflow: state.activeWorkflow === "plan-goal" ? "plan-goal" : undefined,
-      suppressPlanModeExecutionPrompt: state.suppressPlanModeExecutionPrompt === true,
       planPath: typeof state.planPath === "string" ? state.planPath : undefined,
       stage: typeof state.stage === "string" ? state.stage : undefined,
       status: status as DotdotgodWorkflowStatus,

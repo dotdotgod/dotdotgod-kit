@@ -47,10 +47,10 @@ export function isPlanGoalCheckpointMarkdownPath(cwd: string, path: string): boo
 	);
 }
 
-export function isManagedPlanMarkdownPath(cwd: string, path: string, options: { allowPlanGoalCheckpoint?: boolean } = {}): boolean {
+export function isManagedPlanMarkdownPath(cwd: string, path: string): boolean {
 	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY) ||
 		isMarkdownPathInside(cwd, path, ARCHIVE_DIRECTORY) ||
-		(options.allowPlanGoalCheckpoint === true && isPlanGoalCheckpointMarkdownPath(cwd, path));
+		isPlanGoalCheckpointMarkdownPath(cwd, path);
 }
 
 export function isActivePlanMarkdownPath(cwd: string, path: string): boolean {
