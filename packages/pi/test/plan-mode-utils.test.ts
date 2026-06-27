@@ -1096,7 +1096,6 @@ describe("plan-mode plan choice trigger", () => {
 		const entries: Array<{ customType: string; data: unknown }> = [];
 		activatePlanGoalWorkflow(
 			{ appendEntry: (customType: string, data: unknown) => entries.push({ customType, data }) } as never,
-			{ planPath: "docs/plan/generator-task/README.md", stage: "01-intake" },
 		);
 		assert.equal(isPlanGoalWorkflowActive(), true);
 		assert.equal(entries[0]?.customType, DOTDOTGOD_WORKFLOW_CUSTOM_TYPE);
@@ -1111,7 +1110,7 @@ describe("plan-mode plan choice trigger", () => {
 			false,
 		);
 
-		clearDotdotgodWorkflowState(undefined, "stopped", "test complete");
+		clearDotdotgodWorkflowState(undefined);
 		assert.equal(isPlanGoalWorkflowActive(), false);
 	});
 

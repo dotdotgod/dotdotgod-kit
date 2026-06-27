@@ -297,11 +297,7 @@ async function waitForPlanGoalUserDecision(options: {
     message: options.message,
     waitingMessage: options.message,
   });
-  activatePlanGoalWorkflow(options.pi, {
-    planPath: options.state.currentPlan,
-    stage: options.state.currentStage,
-    reason: options.message,
-  });
+  activatePlanGoalWorkflow(options.pi);
   setPlanGoalModeStatus(options.ctx);
   if (options.ctx.hasUI) {
     options.ctx.ui.notify(`${options.stage.title} is waiting for user input.`, "warning");
@@ -373,7 +369,7 @@ async function startExistingGeneratorTask(
       breaker: 0,
       message: target.message,
     });
-    clearDotdotgodWorkflowState(pi, "blocked", target.message);
+    clearDotdotgodWorkflowState(pi);
     clearPlanGoalModeStatus(ctx);
     if (ctx.hasUI) ctx.ui.notify(target.message, "warning");
     return;
@@ -392,7 +388,7 @@ async function startExistingGeneratorTask(
       latestUserInput: undefined,
       lastResumedUserInput: undefined,
     });
-    clearDotdotgodWorkflowState(pi, "completed", message);
+    clearDotdotgodWorkflowState(pi);
     clearPlanGoalModeStatus(ctx);
     if (ctx.hasUI) ctx.ui.notify(message, "info");
     return;
@@ -410,11 +406,7 @@ async function startExistingGeneratorTask(
     latestUserInput: undefined,
     lastResumedUserInput: undefined,
   });
-  activatePlanGoalWorkflow(pi, {
-    planPath: target.currentPlan,
-    stage: stage.id,
-    reason: `Resuming ${label} from ${target.currentPlan}.`,
-  });
+  activatePlanGoalWorkflow(pi);
   setPlanGoalProgressStatus(ctx, target.hasCheckpoint ? "⏳ resuming plan stage" : "⏳ creating stage checkpoint");
 
   if (!target.hasCheckpoint) {
@@ -431,7 +423,7 @@ async function startExistingGeneratorTask(
         breaker: 0,
         message,
       });
-      clearDotdotgodWorkflowState(pi, "blocked", message);
+      clearDotdotgodWorkflowState(pi);
       clearPlanGoalModeStatus(ctx);
       if (ctx.hasUI) ctx.ui.notify(message, "warning");
       throw error;
@@ -449,11 +441,7 @@ async function startExistingGeneratorTask(
     latestUserInput: undefined,
     lastResumedUserInput: undefined,
   });
-  activatePlanGoalWorkflow(pi, {
-    planPath: target.currentPlan,
-    stage: stage.id,
-    reason: `Resuming ${label} from ${target.currentPlan}.`,
-  });
+  activatePlanGoalWorkflow(pi);
   setPlanGoalModeStatus(ctx);
   const checkpointContext = checkpointContextFor(ctx, target.currentPlan, stage);
   const message = target.hasCheckpoint
@@ -494,9 +482,7 @@ async function startNewGeneratorTask(
     latestUserInput: undefined,
     lastResumedUserInput: undefined,
   });
-  activatePlanGoalWorkflow(pi, {
-    reason: request,
-  });
+  activatePlanGoalWorkflow(pi);
   setPlanGoalProgressStatus(ctx, `⏳ generating ${options.progressNoun} slug`);
 
   let task: PlanGoalTaskPath;
@@ -515,7 +501,7 @@ async function startNewGeneratorTask(
       breaker: 0,
       message,
     });
-    clearDotdotgodWorkflowState(pi, "blocked", message);
+    clearDotdotgodWorkflowState(pi);
     clearPlanGoalModeStatus(ctx);
     if (ctx.hasUI) ctx.ui.notify(message, "warning");
     throw error;
@@ -541,7 +527,7 @@ async function startNewGeneratorTask(
       breaker: 0,
       message,
     });
-    clearDotdotgodWorkflowState(pi, "blocked", message);
+    clearDotdotgodWorkflowState(pi);
     clearPlanGoalModeStatus(ctx);
     if (ctx.hasUI) ctx.ui.notify(message, "warning");
     throw error;
@@ -558,11 +544,7 @@ async function startNewGeneratorTask(
     latestUserInput: undefined,
     lastResumedUserInput: undefined,
   });
-  activatePlanGoalWorkflow(pi, {
-    planPath: currentPlan,
-    stage: STAGE_01_ID,
-    reason: request,
-  });
+  activatePlanGoalWorkflow(pi);
   setPlanGoalModeStatus(ctx);
   const checkpointContext = checkpointContextFor(
     ctx,
@@ -605,11 +587,7 @@ async function pausePlanGoalTask(
     latestUserInput: undefined,
     lastResumedUserInput: undefined,
   });
-  activatePlanGoalWorkflow(pi, {
-    planPath: state.currentPlan,
-    stage: state.currentStage,
-    reason: pauseReason,
-  });
+  activatePlanGoalWorkflow(pi);
   setPlanGoalModeStatus(ctx);
   if (ctx.hasUI) ctx.ui.notify(pauseReason, "warning");
   return true;
@@ -627,7 +605,7 @@ async function stopPlanGoalTask(
     message: reason,
     breaker: 0,
   });
-  clearDotdotgodWorkflowState(pi, "stopped", reason);
+  clearDotdotgodWorkflowState(pi);
   clearPlanGoalModeStatus(ctx);
   const label = commandLabel();
   if (ctx.hasUI) ctx.ui.notify(`Stopped ${label}.`, "info");
@@ -705,11 +683,7 @@ async function resumePlanGoalFromUserInput(
     lastResumedUserInput: userInput,
     breaker: 0,
   });
-  activatePlanGoalWorkflow(pi, {
-    planPath: state.currentPlan,
-    stage: state.currentStage,
-    reason: `Resuming ${stage.title} after user input.`,
-  });
+  activatePlanGoalWorkflow(pi);
   setPlanGoalModeStatus(ctx);
   await pi.sendUserMessage(
     buildStageResumeMessage(
@@ -747,7 +721,7 @@ async function handlePlanGoalAgentEnd(
       message,
       breaker: 0,
     });
-    clearDotdotgodWorkflowState(pi, "blocked", message);
+    clearDotdotgodWorkflowState(pi);
     clearPlanGoalModeStatus(ctx);
     if (ctx.hasUI) {
       ctx.ui.notify(
@@ -792,11 +766,7 @@ async function handlePlanGoalAgentEnd(
         message,
         waitingMessage: message,
       });
-      activatePlanGoalWorkflow(pi, {
-        planPath: state.currentPlan,
-        stage: state.currentStage,
-        reason: message,
-      });
+      activatePlanGoalWorkflow(pi);
       setPlanGoalModeStatus(ctx);
       if (ctx.hasUI) {
         ctx.ui.notify(`${stage.title} is waiting for user input.`, "warning");
@@ -829,11 +799,7 @@ async function handlePlanGoalAgentEnd(
       message,
       waitingMessage: message,
     });
-    activatePlanGoalWorkflow(pi, {
-      planPath: state.currentPlan,
-      stage: state.currentStage,
-      reason: message,
-    });
+    activatePlanGoalWorkflow(pi);
     setPlanGoalModeStatus(ctx);
     if (ctx.hasUI) {
       ctx.ui.notify(evaluation.message ?? `${stage.title} is waiting for user input.`, "warning");
@@ -887,7 +853,7 @@ async function handlePlanGoalAgentEnd(
     if (!nextStage) {
       const message = `Unknown next ${commandLabel()} stage: ${stage.nextStage}`;
       store.updateState({ status: "blocked", message, breaker: 0 });
-      clearDotdotgodWorkflowState(pi, "blocked", message);
+      clearDotdotgodWorkflowState(pi);
       clearPlanGoalModeStatus(ctx);
       if (ctx.hasUI) ctx.ui.notify(message, "warning");
       return;
@@ -927,11 +893,7 @@ async function handlePlanGoalAgentEnd(
     breaker: 0,
   });
   if (stage.nextStage) {
-    activatePlanGoalWorkflow(pi, {
-      planPath: state.currentPlan,
-      stage: stage.nextStage,
-      reason: `${stage.title} passed.`,
-    });
+    activatePlanGoalWorkflow(pi);
     setPlanGoalModeStatus(ctx);
     await pi.sendUserMessage(
       buildStageHandoffMessage({
@@ -944,7 +906,7 @@ async function handlePlanGoalAgentEnd(
       { deliverAs: "followUp" },
     );
   } else {
-    clearDotdotgodWorkflowState(pi, "completed", `${commandLabel()} stage sequence complete.`);
+    clearDotdotgodWorkflowState(pi);
     clearPlanGoalModeStatus(ctx);
     await pi.sendUserMessage(
       buildPlanGoalDocumentClarifyFollowUp(state.currentPlan),
@@ -966,11 +928,7 @@ function restorePlanGoalWorkflowFromStore(
   ) {
     return false;
   }
-  activatePlanGoalWorkflow(pi, {
-    planPath: state.currentPlan,
-    stage: state.currentStage,
-    reason: `Restored ${commandLabel()} workflow from session state.`,
-  });
+  activatePlanGoalWorkflow(pi);
   return true;
 }
 
