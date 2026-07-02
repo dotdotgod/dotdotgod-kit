@@ -48,6 +48,29 @@ export const PLAN_GOAL_USER_DECISION_INSTRUCTION = `Do not silently carry unreso
 If a missing choice requires the user to decide scope, behavior, product policy, risk acceptance, or implementation direction, stop the stage and ask the user a concrete question with options. When a machine-readable blocker must be recorded, use structured fields such as \`DecisionOwner: user\` with \`DecisionState: unresolved\`, or \`BlockerType: user-decision\` with \`Status: blocked\`.
 Open questions are allowed only when they are research gaps the agent can resolve by reading project context; unresolved user decisions block stage advancement. Do not rely on prose keywords such as "TBD", "undecided", or "decision needed" as machine-readable state.`;
 
+export const PLAN_GOAL_STAGE_03_SUBAGENT_ASSIST_INSTRUCTION = `Optional read-only subagent assistance:
+- If the \`subagent\` tool is available and the request is broad, ambiguous, risky, or spans multiple files, you may ask read-only \`scout\`, \`context-builder\`, \`reviewer\`, or \`researcher\` agents for bounded Stage 03 discovery help.
+- Send only the plan path, relevant checkpoint summary, explicit target files or docs, Stage 03 objective, and read-only constraints; do not send unrelated archive bodies or broad project memory.
+- Subagents are advisory only. They must not edit project/source/config files, write durable plan files, update .dotdotgod-plan checkpoints, decide stage completion, or launch their own orchestration.
+- Continue the normal single-agent Stage 03 path when subagent assistance is unavailable, unnecessary, fails, times out, or returns weak evidence.
+- Summarize accepted findings into the durable plan and checkpoint yourself; record conflicting or rejected findings only as risks or open questions when useful.`;
+
+export const STAGE_03_SUBAGENT_HANDOFF_GUIDANCE = `
+
+Stage 03 optional subagent-assist handoff:
+Before authoring Stage 03, decide whether the request is broad, ambiguous, risky, or spans multiple files. If yes and the \`subagent\` tool is available, launch a small fresh-context read-only fanout, then summarize accepted findings yourself in the durable plan and checkpoint. If the tool is unavailable or assistance is unnecessary, continue the normal single-agent Stage 03 path.
+
+Example shape:
+subagent({
+  tasks: [
+    { agent: "scout", task: "Inspect local code/docs relevant to this /plan-goal Stage 03 discovery. Return concrete findings, risks, related files, and agent-resolvable open questions. Do not modify project/source files or .dotdotgod-plan checkpoints." },
+    { agent: "reviewer", task: "Review the likely /plan-goal implementation direction for correctness, regression, validation, and boundary risks. Return evidence-backed findings only. Do not modify project/source files or .dotdotgod-plan checkpoints." }
+  ],
+  context: "fresh",
+  concurrency: 2,
+  async: true
+})`;
+
 export const STAGE_04_IMPLEMENTATION_DESIGN_INSTRUCTION = `Stage 04 must be an implementation design, not a generic project plan.
 For each atomic task, include concrete code touchpoints: files, functions/types/classes/commands, expected control flow, state/data changes, edge cases, tests, and completion criteria.
 Atomic Tasks and Edge Cases must be handoff-ready: a different agent should be able to implement the same work without this chat history and without guessing omitted decisions.
@@ -213,6 +236,8 @@ Include durable plan content for:
 Stage 03 must record actual findings from inspected code/docs, not only a list of files to inspect.
 Separate agent-resolvable research questions from user decisions. If any open question requires the user to choose scope, behavior, risk acceptance, or implementation direction, ask the user and stop instead of advancing.
 ${PLAN_GOAL_USER_DECISION_INSTRUCTION}
+
+${PLAN_GOAL_STAGE_03_SUBAGENT_ASSIST_INSTRUCTION}
 
 Also update .dotdotgod-plan/03_DISCOVERY.md as the machine-readable checkpoint: set Status: completed, keep Stage and Updated metadata, include ## Findings, ## Risks, ## Open Questions, and include ## Stage 03 Construction Checklist with completed rows in canonical \`- [x] Category: evidence\` form for Findings, Risks, Open questions, and Extension points.
 
@@ -560,12 +585,13 @@ export function buildStageHandoffMessage(options: {
   const nextStage = options.stage.nextStage
     ? PLAN_GOAL_STAGE_ENVIRONMENTS[options.stage.nextStage].title
     : "none";
+  const nextContext = `${options.nextContext}${renderCheckpointContext("Next stage checkpoint context", options.nextCheckpointContext)}${options.stage.nextStage === STAGE_03_ID ? STAGE_03_SUBAGENT_HANDOFF_GUIDANCE : ""}`;
   return options.stage.handoffPrompt
     .replaceAll("{{planPath}}", options.planPath)
     .replaceAll("{{stageTitle}}", options.stage.title)
     .replaceAll("{{nextStage}}", nextStage)
     .replaceAll("{{stageContext}}", options.stageContext)
-    .replaceAll("{{nextContext}}", `${options.nextContext}${renderCheckpointContext("Next stage checkpoint context", options.nextCheckpointContext)}`);
+    .replaceAll("{{nextContext}}", nextContext);
 }
 
 export function buildStage01AuthoringMessage(request: string): string {

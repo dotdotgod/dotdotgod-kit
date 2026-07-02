@@ -434,6 +434,29 @@ packages/../extensions/plan-goal/stage-contract.ts
     assert.doesNotMatch(message, /document-clarify/);
   });
 
+  it("adds a concrete optional subagent handoff when entering Stage 03", () => {
+    const message = buildStageHandoffMessage({
+      stage: PLAN_GOAL_STAGE_ENVIRONMENTS["02-context-load"],
+      planPath: "docs/plan/example/README.md",
+      stageContext: "stage context",
+      nextContext: "next context",
+    });
+
+    assert.match(message, /Stage 03 optional subagent-assist handoff/);
+    assert.match(message, /launch a small fresh-context read-only fanout/);
+    assert.match(message, /agent: "scout"/);
+    assert.match(message, /agent: "reviewer"/);
+    assert.match(message, /Do not modify project\/source files or \.dotdotgod-plan checkpoints/);
+
+    const nonStage03Message = buildStageHandoffMessage({
+      stage: PLAN_GOAL_STAGE_ENVIRONMENTS["03-discovery"],
+      planPath: "docs/plan/example/README.md",
+      stageContext: "stage context",
+      nextContext: "next context",
+    });
+    assert.doesNotMatch(nonStage03Message, /Stage 03 optional subagent-assist handoff/);
+  });
+
   it("tells Stage 02 to use canonical checkpoint checklist rows", () => {
     const stage = PLAN_GOAL_STAGE_ENVIRONMENTS["02-context-load"];
     const authoring = buildStageAuthoringMessage(stage, "request");
@@ -463,6 +486,10 @@ packages/../extensions/plan-goal/stage-contract.ts
     assert.match(message, /a different agent should be able to implement the same work/);
     assert.match(message, /Do not silently carry unresolved user decisions forward/);
     assert.match(PLAN_GOAL_STAGE_ENVIRONMENTS["03-discovery"].authoringPrompt, /Separate agent-resolvable research questions from user decisions/);
+    assert.match(PLAN_GOAL_STAGE_ENVIRONMENTS["03-discovery"].authoringPrompt, /Optional read-only subagent assistance/);
+    assert.match(PLAN_GOAL_STAGE_ENVIRONMENTS["03-discovery"].authoringPrompt, /Subagents are advisory only/);
+    assert.match(PLAN_GOAL_STAGE_ENVIRONMENTS["03-discovery"].authoringPrompt, /Continue the normal single-agent Stage 03 path/);
+    assert.match(PLAN_GOAL_STAGE_ENVIRONMENTS["03-discovery"].authoringPrompt, /must not edit project\/source\/config files/);
     assert.match(stage.evaluationPrompt, /Atomic Tasks must be specific enough to assign immediately/);
     assert.match(stage.evaluationPrompt, /Edge Cases must cover failure paths/);
     assert.match(stage.evaluationPrompt, /Mark retry when Atomic Tasks or Edge Cases are too generic/);
