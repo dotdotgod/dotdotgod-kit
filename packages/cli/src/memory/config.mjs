@@ -11,7 +11,15 @@ export const DEFAULT_TRACEABILITY_POLICY = {
   exclude: ['**/README.md'],
 };
 export const DEFAULT_VALIDATION_POLICY = {
-  markdown: { maxLines: 200, maxChars: 10000, exclude: [] },
+  markdown: {
+    maxLines: 200,
+    maxChars: 10000,
+    exclude: [],
+    filename: {
+      warnNumberedSeries: true,
+      allow: [],
+    },
+  },
 };
 export const DEFAULT_INTEGRATIONS_POLICY = {
   trello: { syncPaths: [] },
@@ -101,11 +109,15 @@ export function cloneTraceabilityPolicy(policy = DEFAULT_TRACEABILITY_POLICY) {
 }
 
 export function cloneValidationPolicy(policy = DEFAULT_VALIDATION_POLICY) {
+  const filename = policy.markdown?.filename;
   return {
     markdown: {
       maxLines: policy.markdown?.maxLines ?? DEFAULT_VALIDATION_POLICY.markdown.maxLines,
       maxChars: policy.markdown?.maxChars ?? DEFAULT_VALIDATION_POLICY.markdown.maxChars,
       exclude: [...(policy.markdown?.exclude ?? [])],
+      filename: filename
+        ? { warnNumberedSeries: filename.warnNumberedSeries ?? true, allow: [...(filename.allow ?? [])] }
+        : { ...DEFAULT_VALIDATION_POLICY.markdown.filename, allow: [] },
     },
   };
 }
@@ -221,11 +233,16 @@ function normalizeTraceabilityPolicy(raw) {
 function normalizeValidationPolicy(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return cloneValidationPolicy();
   const markdown = raw.markdown && typeof raw.markdown === 'object' && !Array.isArray(raw.markdown) ? raw.markdown : {};
+  const filename = markdown.filename && typeof markdown.filename === 'object' && !Array.isArray(markdown.filename) ? markdown.filename : undefined;
   return cloneValidationPolicy({
     markdown: {
       maxLines: Number.isInteger(markdown.maxLines) ? markdown.maxLines : DEFAULT_VALIDATION_POLICY.markdown.maxLines,
       maxChars: Number.isInteger(markdown.maxChars) ? markdown.maxChars : DEFAULT_VALIDATION_POLICY.markdown.maxChars,
       exclude: Array.isArray(markdown.exclude) ? markdown.exclude.map(normalizePathPattern) : [],
+      filename: filename ? {
+        warnNumberedSeries: typeof filename.warnNumberedSeries === 'boolean' ? filename.warnNumberedSeries : true,
+        allow: Array.isArray(filename.allow) ? filename.allow.map(normalizePathPattern) : [],
+      } : undefined,
     },
   });
 }
@@ -314,6 +331,16 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
         if (markdown.maxChars !== undefined && (!Number.isInteger(markdown.maxChars) || markdown.maxChars < 1)) add('VALIDATION_CONFIG_INVALID_MAX_CHARS', 'validation.markdown.maxChars', 'Expected a positive integer.');
         if (markdown.exclude !== undefined && !Array.isArray(markdown.exclude)) add('VALIDATION_CONFIG_INVALID_EXCLUDE', 'validation.markdown.exclude', 'Expected an array of path strings.');
         else if (Array.isArray(markdown.exclude) && markdown.exclude.some((value) => !isValidPathPattern(value))) add('VALIDATION_CONFIG_INVALID_EXCLUDE', 'validation.markdown.exclude', 'Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+        if (markdown.filename !== undefined) {
+          const fn = markdown.filename;
+          if (!fn || typeof fn !== 'object' || Array.isArray(fn)) {
+            add('VALIDATION_CONFIG_INVALID_FILENAME', 'validation.markdown.filename', 'Expected an object.');
+          } else {
+            if (fn.warnNumberedSeries !== undefined && typeof fn.warnNumberedSeries !== 'boolean') add('VALIDATION_CONFIG_INVALID_FILENAME', 'validation.markdown.filename.warnNumberedSeries', 'Expected a boolean.');
+            if (fn.allow !== undefined && !Array.isArray(fn.allow)) add('VALIDATION_CONFIG_INVALID_FILENAME_ALLOW', 'validation.markdown.filename.allow', 'Expected an array of path strings.');
+            else if (Array.isArray(fn.allow) && fn.allow.some((value) => !isValidPathPattern(value))) add('VALIDATION_CONFIG_INVALID_FILENAME_ALLOW', 'validation.markdown.filename.allow', 'Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+          }
+        }
       }
     }
   }

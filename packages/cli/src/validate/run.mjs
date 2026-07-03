@@ -2,9 +2,9 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { usage } from '../cli/usage.mjs';
 import { rel } from '../common/paths.mjs';
-import { extractAnchors, extractLinks, isKebabCase, isUpperSnakeMarkdown } from '../docs/markdown.mjs';
+import { extractAnchors, extractFirstHeading, extractLinks, isKebabCase, isNumberedSeriesFilename, isUpperSnakeMarkdown, suggestFilenameFromHeading } from '../docs/markdown.mjs';
 import { extractDotdotgodTraceabilityBlocks, stripTraceabilityLinksRegion, syncTraceabilityLinksInContent, traceabilityExample, validateTraceabilityBlock, validateTraceabilityLinksRegion, validateTraceabilityPlacement } from '../docs/traceability.mjs';
-import { DEFAULT_VALIDATION_POLICY, cloneValidationPolicy, isMarkdownSizeExcluded, readMemoryConfig, requiresTraceability, resolveMemoryArea } from '../memory/config.mjs';
+import { DEFAULT_VALIDATION_POLICY, cloneValidationPolicy, isMarkdownSizeExcluded, matchPathPattern, readMemoryConfig, requiresTraceability, resolveMemoryArea } from '../memory/config.mjs';
 import { cacheFile, collectIndexFiles, fingerprint } from '../index/files.mjs';
 import { CACHE_DIR, CACHE_VERSION } from '../index/constants.mjs';
 import { readIndex } from '../index/cache.mjs';
@@ -26,9 +26,11 @@ export function runValidate(argv) {
   const root = resolve(options.root);
   const docs = join(root, 'docs');
   const errors = [];
+  const warnings = [];
   const markdownFiles = [];
   const fileCache = new Map();
   const addError = (file, code, message, line = null, fix = null, prompt = null) => errors.push({ file: rel(root, file), line, code, message: fix ? `${message}\nFix: ${fix}` : message, ...(prompt ? { prompt } : {}) });
+  const addWarning = (file, code, message, metadata = {}) => warnings.push({ file: rel(root, file), code, message, ...metadata });
   const shouldSkipDir = (dir) => {
     const path = rel(root, dir);
     if (!path || path === '.') return false;
@@ -66,7 +68,32 @@ export function runValidate(argv) {
     return `Split ${path} into focused documents by documentation area and role. Keep the current ${areaText} area semantics and ${roleText} role intact, move role-specific detail into smaller UPPER_SNAKE_CASE markdown files, and update the nearest README.md index with each new file's purpose.`;
   };
   for (const error of memoryConfig.errors ?? []) errors.push(error);
+  const FILENAME_QUALITY_AREAS = new Set(
+    (memoryConfig.areas ?? [])
+      .filter(area => area.scope === 'shared')
+      .flatMap(area => area.paths ?? [])
+      .map(p => { const m = p.match(/^docs\/([^/*]+)\/\*\*$/); return m ? m[1] : null; })
+      .filter(Boolean)
+  );
+  const FILENAME_QUALITY_PROMPT =
+    'Background: Filenames and paths are LLM/agent context signals used for impact ranking, search, and retrieval. ' +
+    'Abstract or sequentially numbered filenames carry low information signal.\n' +
+    'Naming principles:\n' +
+    '1. Filenames in docs/spec, docs/arch, docs/test should be meaning-based wherever possible.\n' +
+    '2. The filename alone should let you infer the primary subject: endpoint, screen, policy, state, or response type.\n' +
+    '3. When splitting documents, derive names from headings, API paths, or domain terms rather than sequence numbers or abstract words.\n' +
+    'Avoid - numbered splits: API_1.md, API_2.md, API_3_1_*.md, 01_*.md, *_01.md\n' +
+    'Avoid - overly abstract: COMMON.md, OVERVIEW.md, DETAILS.md, NOTES.md, MISC.md, PART_1.md, SECTION_1.md\n' +
+    'Acceptable exceptions: README.md (directory index), files with clear HTTP status code semantics (e.g. RESPONSE_200_OK.md), ' +
+    'files in the project validation.markdown.filename.allow allowlist.\n' +
+    'Good renames: API_1.md → BIZ_RESERVATIONS_SCHEDULE.md, COMMON.md → BIZ_AUTH_ERROR_CONVENTIONS.md, OVERVIEW.md → REGISTRATION_HANDOFF_SUMMARY.md';
   walk(docs);
+  const dirSiblingMap = new Map();
+  for (const f of markdownFiles) {
+    const dir = dirname(f);
+    if (!dirSiblingMap.has(dir)) dirSiblingMap.set(dir, []);
+    dirSiblingMap.get(dir).push(basename(f));
+  }
   for (const file of markdownFiles) {
     const name = basename(file);
     const docsRel = rel(docs, file);
@@ -75,6 +102,23 @@ export function runValidate(argv) {
     if (docsRel && !docsRel.startsWith('..') && !isPlanInternalWorkspaceFile && !isUpperSnakeMarkdown(name)) addError(file, 'FILE_NAMING', `Markdown file must be UPPER_SNAKE_CASE.md or README.md: ${name}`, null, 'rename the markdown file to UPPER_SNAKE_CASE.md or README.md and update any links that reference it.');
     const content = readFileSync(file, 'utf8');
     fileCache.set(file, content);
+    const docArea = docsRel?.split('/')[0];
+    if (name !== 'README.md' && !isPlanInternalWorkspaceFile
+        && isUpperSnakeMarkdown(name) && FILENAME_QUALITY_AREAS.has(docArea)) {
+      const fp = validationPolicy.markdown?.filename ?? {};
+      const allow = fp.allow ?? [];
+      if (!allow.some((p) => matchPathPattern(rootRel, p)) && (fp.warnNumberedSeries ?? true)) {
+        const siblings = dirSiblingMap.get(dirname(file)) ?? [];
+        if (isNumberedSeriesFilename(name, siblings)) {
+          const heading = extractFirstHeading(content);
+          const suggestion = suggestFilenameFromHeading(heading);
+          addWarning(file, 'FILE_NAMING_NUMBERED',
+            `Numbered series filename: ${name}. Filenames are LLM context signals; use API path, domain, or subject instead of sequence numbers.`,
+            { pattern: 'numbered-series', ...(heading ? { heading } : {}), ...(suggestion ? { suggestion } : {}), prompt: FILENAME_QUALITY_PROMPT }
+          );
+        }
+      }
+    }
     const budgetContent = stripTraceabilityLinksRegion(content);
     const lines = budgetContent.split('\n').length;
     const chars = budgetContent.length;
@@ -159,11 +203,21 @@ export function runValidate(argv) {
     const content = readFileSync(gitignore, 'utf8').split('\n').map((line) => line.trim());
     for (const required of ['docs/plan', 'docs/archive', CACHE_DIR]) if (!content.includes(required)) addError(gitignore, 'MISSING_GITIGNORE_ENTRY', `Expected .gitignore entry: ${required}`, null, `add ${required} to .gitignore so local plans, archives, and cache files stay untracked.`);
   }
-  if (options.json) console.log(JSON.stringify({ ok: errors.length === 0, errors }, null, 2));
-  else if (errors.length === 0) console.log(`✅ docs validation passed (${markdownFiles.length} markdown files)`);
+  if (options.json) console.log(JSON.stringify({ ok: errors.length === 0, errors, warnings }, null, 2));
   else {
-    for (const error of errors) console.log(`${error.line ? `${error.file}:${error.line}` : error.file} [${error.code}] ${error.message}${error.prompt ? `\nPrompt: ${error.prompt}` : ''}`);
-    console.log(`\n❌ ${errors.length} docs validation error(s)`);
+    for (const w of warnings) {
+      console.log(`⚠ ${w.file} [${w.code}] ${w.message}`);
+      if (w.heading) console.log(`  Heading: "${w.heading}"`);
+      if (w.suggestion) console.log(`  Suggestion: rename to ${w.suggestion} and update links`);
+      if (w.prompt) console.log(`  Prompt: ${w.prompt}`);
+    }
+    if (errors.length === 0) {
+      const warnNote = warnings.length > 0 ? `, ${warnings.length} warning(s)` : '';
+      console.log(`✅ docs validation passed (${markdownFiles.length} markdown files${warnNote})`);
+    } else {
+      for (const error of errors) console.log(`${error.line ? `${error.file}:${error.line}` : error.file} [${error.code}] ${error.message}${error.prompt ? `\nPrompt: ${error.prompt}` : ''}`);
+      console.log(`\n❌ ${errors.length} docs validation error(s)`);
+    }
   }
   process.exit(errors.length === 0 ? 0 : 1);
 }

@@ -53,6 +53,7 @@ For the fuller command matrix, see `docs/test/README.md`.
 - `docs/`: each docs subdirectory `README.md` acts as the local table of contents; list important files, task directories, status, and a one-line purpose for each entry.
 - `docs/`: start small with a single focused markdown file; when one domain grows into multiple docs, promote it to `docs/<area>/<domain>/README.md` plus related UPPER_SNAKE_CASE files in that directory.
 - `docs/arch/`: code conventions may start as `CODE_CONVENTIONS.md`; when they grow across multiple topics, use `docs/arch/conventions/README.md` as the index with supporting UPPER_SNAKE_CASE files.
+- `docs/spec`, `docs/arch`, and `docs/test` filenames are LLM context signals; avoid sequence-based names such as `API_1.md`, and use UPPER_SNAKE_CASE names that reveal the API path, screen, policy, or domain.
 - `docs/plan/`: local active implementation plans. Create one kebab-case directory per task (`docs/plan/<task-slug>/`), keep the task overview/index in that directory's `README.md`, and add supporting UPPER_SNAKE_CASE plan files alongside it. Ignored by git by default.
 - `docs/archive/`: local completed plans, temporary/private reports, historical notes, payload captures. Move completed plan task directories to `docs/archive/plan/<task-slug>/`; put temporary reports and investigations under `docs/archive/report/<report-slug>/`. Ignored by git by default.
 

@@ -13,7 +13,7 @@ import { runTrelloSync } from './trello/sync.mjs';
 export { CACHE_VERSION } from './index/constants.mjs';
 export { commandUsage, hasHelpToken, helpCommandFromArgs, isHelpToken, isVersionToken, parseCommon, printVersion, usage } from './cli/usage.mjs';
 export { rel } from './common/paths.mjs';
-export { extractAnchors, extractLinks, headingToAnchor, isKebabCase, isUpperSnakeMarkdown, removeCodeBlocks } from './docs/markdown.mjs';
+export { extractAnchors, extractFirstHeading, extractLinks, headingToAnchor, isKebabCase, isNumberedSeriesFilename, isUpperSnakeMarkdown, removeCodeBlocks, suggestFilenameFromHeading } from './docs/markdown.mjs';
 export { extractDotdotgodTraceabilityBlocks, findTraceabilityLinksRegion, isLocalRelativeTraceabilityPath, renderCompactTraceabilityBlock, stripTraceabilityLinksRegion, syncTraceabilityLinksInContent, traceabilityExample, validateTraceabilityBlock, validateTraceabilityLinksRegion, validateTraceabilityPlacement } from './docs/traceability.mjs';
 export { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_INTEGRATIONS_POLICY, DEFAULT_VALIDATION_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, cloneIntegrationsPolicy, cloneReferenceExpansionPolicy, cloneValidationPolicy, defaultDotdotgodConfigData, defaultDotdotgodConfigText, defaultMemoryConfig, isMarkdownSizeExcluded, isValidPathPattern, matchPathPattern, memoryAreaForPath, memoryConfigSummary, memoryRoleForPath, normalizeLowSignalTerm, readMemoryConfig, requiresTraceability, resolveMemoryArea, retrievalPriorityForPath, trelloSyncPaths, validateMemoryConfigData } from './memory/config.mjs';
 export { buildCommunities, relationWeight } from './graph/communities.mjs';
