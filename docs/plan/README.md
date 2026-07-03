@@ -39,6 +39,7 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 - `plan-generator-interrupt-toggle-resume/` — active: plan Esc pause, next-message same-stage resume, and no-arg `/plan-generator` toggle-off behavior for active generator workflows.
 - `plan-generator-path-resume/` — active: plan `/plan-generator docs/plan/<task>/README.md` path mode to resume existing durable plans from checkpoints or start Stage 01 in place when no checkpoint exists.
 - `plan-generator-stage-simplification/` — active: simplify `/plan-generator` and CLI plan validation from the old 9-stage flow to intake, context load, discovery, plan, and optional workstream handoff.
+- `plan-goal-subagent-orchestration/` — active: plan optional read-only `pi-subagents` assistance for `/plan-goal` context load, discovery, plan drafting, and workstream handoff stages while keeping the parent runtime authoritative.
 - `plan-generator-resume-progress/` — paused: earlier resume-semantics plan paused after the stage-flow review; resume after the simplified generator stage model lands.
 - `restore-plan-generator-llm-slug/` — active: plan to restore LLM-generated task slugs for `/plan-generator` while keeping deterministic fallback, collision handling, and regression tests.
 
