@@ -66,6 +66,7 @@ Look for problems that prevent first-time developers, contributors, or AI coding
 - weak information scent in links, headings, and README routes
 - examples that are not runnable or are disconnected from the described behavior
 - mixed document roles, such as specs becoming implementation plans or architecture notes becoming tutorials
+- filenames that are sequentially numbered (API_1.md, 01_AUTH.md) — filenames and paths are LLM context metadata and should be as specific as the document title; prefer names derived from the primary endpoint, screen, policy, or domain
 
 Use plain language, active voice, descriptive links, global-audience wording, and concise sections. Keep exact commands, paths, package names, API names, and behavior claims unless verified evidence supports a change.
 

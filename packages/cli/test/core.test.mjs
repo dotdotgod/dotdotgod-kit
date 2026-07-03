@@ -23,6 +23,7 @@ import {
   detectPackageManager,
   extractAnchors,
   extractBracketReferences,
+  extractFirstHeading,
   extractFuzzyReferences,
   extractDotdotgodTraceabilityBlocks,
   extractLinks,
@@ -31,6 +32,7 @@ import {
   graphSummary,
   headingToAnchor,
   isKebabCase,
+  isNumberedSeriesFilename,
   isReadmeIndexPath,
   isUpperSnakeMarkdown,
   memoryAreaForPath,
@@ -47,6 +49,7 @@ import {
   retrievalPriorityForPath,
   shouldIndexPath,
   stripTraceabilityLinksRegion,
+  suggestFilenameFromHeading,
   syncTraceabilityLinksInContent,
   validateMemoryConfigData,
   validatePlanArtifact,
@@ -146,6 +149,25 @@ describe('CLI docs helpers', () => {
     assert.equal(isUpperSnakeMarkdown('README.md'), true);
     assert.equal(isUpperSnakeMarkdown('LOAD_PROJECT.md'), true);
     assert.equal(isUpperSnakeMarkdown('load-project.md'), false);
+  });
+
+  it('detects numbered series filenames via sibling comparison', () => {
+    assert.equal(isNumberedSeriesFilename('API_1.md', ['API_1.md', 'API_2.md']), true);
+    assert.equal(isNumberedSeriesFilename('API_2.md', ['API_1.md', 'API_2.md']), true);
+    assert.equal(isNumberedSeriesFilename('01_AUTH.md', ['01_AUTH.md', '02_AUTH.md']), true);
+    assert.equal(isNumberedSeriesFilename('API_1.md', ['API_1.md']), false, 'single file — no sibling');
+    assert.equal(isNumberedSeriesFilename('BIZ_SUMMARY.md', ['BIZ_SUMMARY.md', 'BIZ_DETAIL.md']), false, 'no numeric segment');
+    assert.equal(isNumberedSeriesFilename('API_V2.md', ['API_V2.md', 'API_V3.md']), false, 'V2 is not pure numeric');
+    assert.equal(isNumberedSeriesFilename('AUTH.md', ['AUTH.md', 'OVERVIEW.md']), false, 'single segment stem');
+  });
+
+  it('extracts first heading and suggests snake_case filename', () => {
+    assert.equal(extractFirstHeading('# Biz Reservations API\n\nContent'), 'Biz Reservations API');
+    assert.equal(extractFirstHeading('## Secondary Heading\n'), 'Secondary Heading');
+    assert.equal(extractFirstHeading('No heading here'), undefined);
+    assert.equal(suggestFilenameFromHeading('Biz Reservations API'), 'BIZ_RESERVATIONS_API.md');
+    assert.equal(suggestFilenameFromHeading('한국어 제목'), undefined, 'Korean-only heading produces no suggestion — agent decides');
+    assert.equal(suggestFilenameFromHeading(undefined), undefined);
   });
 
   it('extracts anchors and local links while ignoring code blocks and external links', () => {

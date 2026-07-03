@@ -34,6 +34,46 @@ export function headingToAnchor(text) {
     .replace(/\s+/g, '-');
 }
 
+export function isNumberedSeriesFilename(name, siblingNames) {
+  const stem = name.replace(/\.md$/, '');
+  const parts = stem.split('_');
+  if (parts.length < 2) return false;
+  const lastSeg = parts[parts.length - 1];
+  const firstSeg = parts[0];
+  if (/^\d+$/.test(lastSeg)) {
+    const prefix = parts.slice(0, -1).join('_');
+    if (siblingNames.some(sib => {
+      if (sib === name) return false;
+      const s = sib.replace(/\.md$/, '').split('_');
+      return s.length >= 2 && /^\d+$/.test(s[s.length - 1]) && s.slice(0, -1).join('_') === prefix;
+    })) return true;
+  }
+  if (/^\d+$/.test(firstSeg)) {
+    const suffix = parts.slice(1).join('_');
+    if (siblingNames.some(sib => {
+      if (sib === name) return false;
+      const s = sib.replace(/\.md$/, '').split('_');
+      return s.length >= 2 && /^\d+$/.test(s[0]) && s.slice(1).join('_') === suffix;
+    })) return true;
+  }
+  return false;
+}
+
+export function extractFirstHeading(content) {
+  const match = content.match(/^#+\s+(.+)$/m);
+  return match ? match[1].replace(/[`*_]/g, '').trim() : undefined;
+}
+
+export function suggestFilenameFromHeading(heading) {
+  if (!heading) return undefined;
+  const stem = heading
+    .replace(/[^A-Za-z0-9\s]/g, '')
+    .trim()
+    .replace(/\s+/g, '_')
+    .toUpperCase();
+  return stem.length >= 3 ? `${stem}.md` : undefined;
+}
+
 export function extractAnchors(content) {
   const anchors = new Set();
   const seen = new Map();
