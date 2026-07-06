@@ -153,8 +153,10 @@ export class ContextOrchestrationController {
 		this.contextShaping.lastLoadEntryCount = entryCount;
 		this.contextShaping.pendingLoadPrompt = buildLoadPrompt(
 			ctx.cwd,
-			"compact",
+			"",
 			collectSnapshot(ctx.cwd),
+			undefined,
+			{ mode: "compact" },
 		);
 		this.contextShaping.pendingLoadReason = "plan-mode-context-shaping";
 		recordContextMetric(ctx, this.options.getFlag, "plan-mode:load-queued", {

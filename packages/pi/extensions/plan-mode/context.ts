@@ -18,12 +18,22 @@ export interface LatestPlanningRequestSelection {
 	changed: boolean;
 }
 
+export function isSyntheticProjectMemoryLoadPrompt(text: string | undefined): boolean {
+	const normalized = (text ?? "").trim();
+	if (!normalized) return false;
+	return (
+		normalized.startsWith("Load the dotdotgod project memory in ") ||
+		normalized.startsWith("Load the dotdotgod project memory.") ||
+		normalized.includes("Do not modify files. Only load and summarize project memory.")
+	);
+}
+
 export function isPlanModeRuntimeRequest(text: string | undefined): boolean {
 	const normalized = (text ?? "").trim();
 	return (
 		!normalized ||
 		normalized.includes("[PLAN MODE ACTIVE]") ||
-		normalized.startsWith("Load the dotdotgod project memory.") ||
+		isSyntheticProjectMemoryLoadPrompt(normalized) ||
 		normalized.startsWith("Continue the latest Plan Mode request after planning-focused compaction.") ||
 		normalized.startsWith("Continue the following Plan Mode request after planning-focused compaction.") ||
 		/^Continue authoring the durable plan at docs\/plan\/[a-z0-9]+(?:-[a-z0-9]+)*\/README\.md using \/plan-goal stage \d{2}-[a-z0-9]+(?:-[a-z0-9]+)*\./.test(normalized)

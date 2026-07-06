@@ -23,7 +23,7 @@ export const MEMORY_DIRECTORIES = ["docs/spec", "docs/test", "docs/arch", "docs/
 export interface ProjectMemorySnapshot {
 	present: string[];
 	missing: string[];
-	directories: Array<{ path: string; exists: boolean; markdownFiles: string[] }>;
+	directories: Array<{ path: string; exists: boolean; markdownFiles: string[]; readmeFiles: string[] }>;
 }
 
 export interface LoadCommandInfo {
@@ -45,7 +45,7 @@ export function pathExists(cwd: string, path: string): boolean {
 	return existsSync(join(cwd, path));
 }
 
-export function listMarkdownFiles(cwd: string, directory: string, limit = 20): string[] {
+function walkMarkdownFiles(cwd: string, directory: string, limit: number, matches: (fileName: string) => boolean): string[] {
 	const root = join(cwd, directory);
 	if (!existsSync(root)) return [];
 
@@ -64,7 +64,7 @@ export function listMarkdownFiles(cwd: string, directory: string, limit = 20): s
 			const absolute = join(current, entry.name);
 			if (entry.isDirectory()) {
 				walk(absolute);
-			} else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
+			} else if (entry.isFile() && matches(entry.name)) {
 				results.push(relative(cwd, absolute));
 			}
 		}
@@ -74,6 +74,14 @@ export function listMarkdownFiles(cwd: string, directory: string, limit = 20): s
 	return results;
 }
 
+export function listMarkdownFiles(cwd: string, directory: string, limit = 20): string[] {
+	return walkMarkdownFiles(cwd, directory, limit, (fileName) => fileName.toLowerCase().endsWith(".md"));
+}
+
+export function listReadmeFiles(cwd: string, directory: string, limit = 20): string[] {
+	return walkMarkdownFiles(cwd, directory, limit, (fileName) => fileName.toLowerCase() === "readme.md");
+}
+
 export function collectSnapshot(cwd: string): ProjectMemorySnapshot {
 	const present = MARKER_FILES.filter((file) => pathExists(cwd, file));
 	const missing = MARKER_FILES.filter((file) => !pathExists(cwd, file));
@@ -81,6 +89,7 @@ export function collectSnapshot(cwd: string): ProjectMemorySnapshot {
 		path: directory,
 		exists: pathExists(cwd, directory),
 		markdownFiles: listMarkdownFiles(cwd, directory),
+		readmeFiles: listReadmeFiles(cwd, directory),
 	}));
 
 	return { present, missing, directories };

@@ -78,8 +78,8 @@ The debug path is for measurement and investigation only; normal package behavio
 
 `load-project` owns runtime project memory loading:
 
-- `/load` command
-- `/dd:load` namespaced alias
+- `/load` compatibility command
+- `/dd:load` namespaced full-load command and `/dd:load:compact` compact-load command
 - direct `dotdotgod load-snapshot <cwd> --json` invocation when available
 - lightweight detection of baseline memory files as a fallback and prompt scaffold
 - read-only, snapshot-first loader prompt generation with compact directory summaries when the CLI snapshot is available

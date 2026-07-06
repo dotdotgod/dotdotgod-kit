@@ -8,7 +8,13 @@ import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-c
 import { recordContextMetric } from "../context-metrics/utils.js";
 import { buildLoadPrompt, collectSnapshot, estimateTextMetrics, hasOtherLoadCommand, runDotdotgodLoadSnapshot } from "./utils.js";
 
-async function runLoadCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext, args: string, commandName: "load" | "dd:load") {
+async function runLoadCommand(
+	pi: ExtensionAPI,
+	ctx: ExtensionCommandContext,
+	args: string,
+	commandName: "load" | "dd:load" | "dd:load:compact",
+) {
+	const mode = commandName === "dd:load:compact" ? "compact" : "full";
 	const snapshot = collectSnapshot(ctx.cwd);
 	const loadSnapshot = runDotdotgodLoadSnapshot(ctx.cwd);
 	const conflict = hasOtherLoadCommand(pi.getCommands());
@@ -20,7 +26,7 @@ async function runLoadCommand(pi: ExtensionAPI, ctx: ExtensionCommandContext, ar
 		);
 	}
 
-	const prompt = buildLoadPrompt(ctx.cwd, args, snapshot, loadSnapshot);
+	const prompt = buildLoadPrompt(ctx.cwd, args, snapshot, loadSnapshot, { mode });
 	const promptMetrics = estimateTextMetrics(prompt);
 	recordContextMetric(ctx, (name) => pi.getFlag(name), "load-project:before-send", {
 		commandName,
@@ -65,12 +71,17 @@ export default function loadProjectExtension(pi: ExtensionAPI): void {
 	});
 
 	pi.registerCommand("load", {
-		description: "Load dotdotgod docs for the current project",
+		description: "Load dotdotgod docs for the current project in full mode",
 		handler: async (args, ctx) => runLoadCommand(pi, ctx, args, "load"),
 	});
 
 	pi.registerCommand("dd:load", {
-		description: "Load dotdotgod docs for the current project (namespaced alias)",
+		description: "Load dotdotgod docs for the current project in full mode (namespaced alias)",
 		handler: async (args, ctx) => runLoadCommand(pi, ctx, args, "dd:load"),
+	});
+
+	pi.registerCommand("dd:load:compact", {
+		description: "Load dotdotgod docs for the current project in compact mode",
+		handler: async (args, ctx) => runLoadCommand(pi, ctx, args, "dd:load:compact"),
 	});
 }

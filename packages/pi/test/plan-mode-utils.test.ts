@@ -76,12 +76,14 @@ import {
 	shouldTrackImpactPath,
 	shouldShapePlanningContextOnAgentStart,
 	isPlanModeRuntimeRequest,
+	isSyntheticProjectMemoryLoadPrompt,
 	selectLatestPlanningRequest,
 	upsertPendingImpact,
 	clearPendingImpactForPath,
 	type PendingImpactItem,
 	type TodoItem,
 } from "../extensions/plan-mode/utils.ts";
+import { buildLoadPrompt } from "../extensions/load-project/utils.ts";
 
 describe("plan-mode user-message delivery", () => {
 	it("uses explicit follow-up delivery for synthetic user messages", () => {
@@ -1045,6 +1047,46 @@ describe("plan-mode compaction helpers", () => {
 			}),
 			{ request: "현재 요청", pendingInlineRequest: undefined, changed: false },
 		);
+	});
+
+	it("skips synthetic project-memory load prompts when selecting the latest request", () => {
+		const syntheticFullLoad = "Load the dotdotgod project memory in full mode.\nCurrent working directory: /project";
+		const syntheticCompactLoad = "Load the dotdotgod project memory in compact mode.\nCurrent working directory: /project";
+		assert.equal(isSyntheticProjectMemoryLoadPrompt(syntheticFullLoad), true);
+		assert.equal(isSyntheticProjectMemoryLoadPrompt(syntheticCompactLoad), true);
+		assert.equal(isSyntheticProjectMemoryLoadPrompt("Do not modify files. Only load and summarize project memory."), true);
+		assert.equal(isSyntheticProjectMemoryLoadPrompt("load 동작을 검토해줘"), false);
+		assert.equal(isPlanModeRuntimeRequest(syntheticCompactLoad), true);
+
+		const actualLoadPrompt = buildLoadPrompt("/project", "", {
+			present: ["AGENTS.md"],
+			missing: [],
+			directories: [{ path: "docs/spec", exists: true, markdownFiles: ["docs/spec/README.md"], readmeFiles: ["docs/spec/README.md"] }],
+		}, undefined, { mode: "compact" });
+		assert.equal(isPlanModeRuntimeRequest(actualLoadPrompt), true);
+	});
+
+	it("frames a later human request after a compact load as its own intent, not a load request", () => {
+		const syntheticCompactLoad = buildLoadPrompt("/project", "", {
+			present: ["AGENTS.md"],
+			missing: [],
+			directories: [{ path: "docs/spec", exists: true, markdownFiles: ["docs/spec/README.md"], readmeFiles: ["docs/spec/README.md"] }],
+		}, undefined, { mode: "compact" });
+
+		const afterSyntheticLoad = selectLatestPlanningRequest({
+			currentRequest: "이전 계획 요청",
+			latestUserText: syntheticCompactLoad,
+		});
+		assert.deepEqual(afterSyntheticLoad, { request: "이전 계획 요청", pendingInlineRequest: undefined, changed: false });
+
+		const laterHumanRequest = "load 커맨드의 compact 동작을 검토하고 바꾸고 싶어";
+		const afterHumanRequest = selectLatestPlanningRequest({
+			currentRequest: afterSyntheticLoad.request,
+			latestUserText: laterHumanRequest,
+		});
+		assert.deepEqual(afterHumanRequest, { request: laterHumanRequest, pendingInlineRequest: undefined, changed: true });
+		assert.equal(classifyPlanModeRequest(afterHumanRequest.request), "advisory");
+		assert.match(buildPlanModeRequestFraming(afterHumanRequest.request), /advisory or planning work/);
 	});
 
 	it("detects token-based planning compaction reasons", () => {

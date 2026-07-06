@@ -72,6 +72,7 @@ export {
 	buildPlanModeRequestFraming,
 	collectProjectMemoryContextCoverage,
 	isPlanModeRuntimeRequest,
+	isSyntheticProjectMemoryLoadPrompt,
 	selectLatestPlanningRequest,
 	shouldLoadProjectMemoryForPlanning,
 } from "./context.ts";
