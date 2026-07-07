@@ -1,10 +1,12 @@
 # @dotdotgod/pi
 
-[![npm version](https://img.shields.io/npm/v/@dotdotgod/pi.svg)](https://www.npmjs.com/package/@dotdotgod/pi) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod--kit-181717?logo=github)](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/pi) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](../../LICENSE)
+[![npm version](https://img.shields.io/npm/v/@dotdotgod/pi.svg)](https://www.npmjs.com/package/@dotdotgod/pi) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod--kit-181717?logo=github)](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/pi) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](https://github.com/dotdotgod/dotdotgod-kit/blob/main/LICENSE)
 
 Pi adapter for dotdotgod's docs-first project-memory workflow.
 
 Use this package when you want Pi to initialize project memory, load bounded repository context, plan before source edits, generate staged durable plans, run impact-aware checks, and archive completed work for future sessions.
+
+Pi is the fullest dotdotgod experience: it is the only adapter that enforces Plan Mode before source edits, generates staged durable plans, and can gate commit, push, and publish on pending impact checks. Throughout, the maintained graph stays a compact map for targeted reads, not a giant report to consume in full.
 
 ## Start Here
 
@@ -105,7 +107,7 @@ While `/plan-goal` is active or waiting, Plan Mode suppresses normal execution r
 
 ## Loading and Impact Checks
 
-`/dd:load` starts from `dotdotgod load-snapshot` when available, then reads only relevant docs from the fixed memory surface. The snapshot includes cache status, graph size, memory areas, communities, and archive policy.
+`/dd:load` starts from `dotdotgod load-snapshot` when available, then reads only relevant docs from the fixed memory surface. The snapshot includes cache status, graph size, memory areas, communities, archive policy, and configured pinned files such as code-convention docs pinned via `load.pinnedPaths`/`load.pinnedBodies` in `dotdotgod.config.json`.
 
 `/impact-check` and the `dotdotgod_graph_impact` tool use the maintained graph to surface related specs, tests, docs, commands, source, and config after a change. Pi can remind the agent to run impact checks and can block commit, push, or publish commands until pending impact checks pass.
 
@@ -132,7 +134,7 @@ pnpm --filter @dotdotgod/pi run pack:dry-run
 
 ## Learn More
 
-See the [root README](../../README.md), [GitHub repository](https://github.com/dotdotgod/dotdotgod-kit), [Context curation](../../docs/concept/CONTEXT_CURATION.md), [Context mechanics](../../docs/concept/CONTEXT_MECHANICS.md), [Memory area config](../../docs/spec/MEMORY_AREA_CONFIG.md), and [Traceability config](../../docs/spec/TRACEABILITY_CONFIG.md).
+See the [root README](https://github.com/dotdotgod/dotdotgod-kit#readme), [Context curation](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/concept/CONTEXT_CURATION.md), [Context mechanics](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/concept/CONTEXT_MECHANICS.md), [Memory area config](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/MEMORY_AREA_CONFIG.md), and [Traceability config](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/TRACEABILITY_CONFIG.md).
 
 ## Compared with Graphify-Style Memory
 

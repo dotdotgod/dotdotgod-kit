@@ -1,10 +1,12 @@
 # @dotdotgod/cli
 
-[![npm version](https://img.shields.io/npm/v/@dotdotgod/cli.svg)](https://www.npmjs.com/package/@dotdotgod/cli) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod--kit-181717?logo=github)](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/cli) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](../../LICENSE)
+[![npm version](https://img.shields.io/npm/v/@dotdotgod/cli.svg)](https://www.npmjs.com/package/@dotdotgod/cli) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod--kit-181717?logo=github)](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/cli) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](https://github.com/dotdotgod/dotdotgod-kit/blob/main/LICENSE)
 
 Command-line tools for dotdotgod project memory.
 
 Use this package when you want to initialize a docs-first project scaffold, validate project-memory docs, build a local graph/cache, load bounded context snapshots, expand project references, or ask what should be checked after a file changes.
+
+These commands implement dotdotgod's project-memory loop — init, load, plan, impact — for shells, scripts, CI, and any agent without a dedicated adapter.
 
 ## Start Here
 
@@ -34,7 +36,7 @@ dotdotgod graph impact . --changed <path> --compact
 - `init` creates `AGENTS.md`, thin agent entrypoints, docs indexes, active-plan space, archive map, and local cache ignores.
 - `validate` checks the dotdotgod docs/project-memory structure, local links, traceability blocks, config validity, and optional index freshness.
 - `index` builds `.dotdotgod/manifest.json` and compact graph shards from maintained project files.
-- `load-snapshot` returns a bounded first-pass project map for AI agents.
+- `load-snapshot` returns a bounded first-pass project map for AI agents, including files pinned through the `load.pinnedPaths`/`load.pinnedBodies` config so context such as code conventions stays visible on every load.
 - `resolve` and `expand` map explicit or high-signal prompt references to project files.
 - `graph impact` ranks likely related specs, tests, docs, commands, and source files for a changed path.
 - `traceability links` checks or repairs generated Markdown traceability-link sections.
@@ -139,4 +141,4 @@ Default exclusions include dependency, generated, cache, and secret-like paths s
 
 ## Learn More
 
-See the [root README](../../README.md), [GitHub repository](https://github.com/dotdotgod/dotdotgod-kit), [Context curation](../../docs/concept/CONTEXT_CURATION.md), [Context mechanics](../../docs/concept/CONTEXT_MECHANICS.md), [Memory area config](../../docs/spec/MEMORY_AREA_CONFIG.md), and [Traceability config](../../docs/spec/TRACEABILITY_CONFIG.md).
+See the [root README](https://github.com/dotdotgod/dotdotgod-kit#readme), [Context curation](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/concept/CONTEXT_CURATION.md), [Context mechanics](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/concept/CONTEXT_MECHANICS.md), [Memory area config](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/MEMORY_AREA_CONFIG.md), and [Traceability config](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/TRACEABILITY_CONFIG.md).

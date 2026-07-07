@@ -21,7 +21,7 @@ const INDEX_TEXT_FILENAMES = new Set([
 ]);
 const INDEX_EXCLUDED_DIRS = new Set(['.git', CACHE_DIR, 'node_modules', 'vendor', '.venv', 'venv', 'target', 'dist', 'build', 'coverage', '.next', '.turbo', '.cache', '.pytest_cache', '__pycache__']);
 
-function isExcludedIndexDir(path) {
+export function isExcludedIndexDir(path) {
   return path.split('/').some((part) => INDEX_EXCLUDED_DIRS.has(part));
 }
 

@@ -8,6 +8,17 @@ Use it when you want future AI coding sessions to start from durable project kno
 
 Repository: <https://github.com/dotdotgod/dotdotgod-kit>
 
+## The Working Loop
+
+Every adapter drives the same four-step loop:
+
+1. **init** — create the docs-first project-memory scaffold once.
+2. **load** — start each session from a bounded project-memory snapshot instead of broad file reads.
+3. **plan** — write durable task intent under `docs/plan/` before source edits.
+4. **impact** — after changes, ask the graph what else must be checked before handoff.
+
+Pick the package that runs this loop in your agent, then initialize your repository.
+
 ## Pick the Package You Need
 
 | Package | Use it when | First step |
@@ -119,8 +130,7 @@ If impact results become noisy, improve the maintained links or split mixed-resp
 
 ## Why This Structure Helps
 
-- **Repeatable loading:** every supported agent starts from the same rules and docs map.
-- **Less context noise:** agents read targeted docs instead of broad file lists or old chat history.
+- **Repeatable, low-noise loading:** every supported agent starts from the same rules and docs map, and reads targeted docs instead of broad file lists or old chat history.
 - **Better impact precision:** explicit links explain why a file is related.
 - **Safer execution:** planning happens before source changes, and implementation follows explicit steps.
 - **Reusable history:** active plans and archived outcomes survive compaction and handoff.

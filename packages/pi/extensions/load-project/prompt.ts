@@ -73,6 +73,12 @@ interface LoadSnapshotLike {
 		method?: string;
 		fallback?: boolean;
 	};
+	pinnedFiles?: {
+		paths?: Array<{ path?: string; status?: string; pinnedBy?: string[] }>;
+		omittedPaths?: number;
+		bodies?: Array<{ path?: string; status?: string; reason?: string; truncated?: boolean; chars?: number; content?: string }>;
+		omittedBodies?: number;
+	};
 	bounds?: {
 		fullGraphIncluded?: boolean;
 		archiveBodiesIncluded?: boolean;
@@ -157,6 +163,15 @@ export function formatLoadSnapshotSummary(result: LoadSnapshotRunResult, communi
 		`- Communities: total=${formatCount(communities?.total)}, omitted=${formatCount(communities?.omitted)}, top=${formatLabels(communities?.communities, communityLimit)}`,
 	);
 
+	const pinned = snapshot.pinnedFiles;
+	if (pinned && ((pinned.paths?.length ?? 0) > 0 || (pinned.omittedPaths ?? 0) > 0)) {
+		const labels = (pinned.paths ?? []).map((entry) =>
+			entry.status && entry.status !== "present" ? `${entry.path ?? "unknown"} (${entry.status})` : entry.path ?? "unknown",
+		);
+		const omittedSuffix = (pinned.omittedPaths ?? 0) > 0 ? `; omitted=${pinned.omittedPaths}` : "";
+		lines.push(`- Pinned files: ${truncateList(labels, 10)}${omittedSuffix}`);
+	}
+
 	for (const community of communities?.communities?.slice(0, communityLimit) ?? []) {
 		const parts = [
 			`files=${truncateList(community.files, 3)}`,
@@ -183,6 +198,19 @@ export function formatLoadSnapshotSummary(result: LoadSnapshotRunResult, communi
 			lines.push(
 				`  - ${area.label ?? area.area ?? "memory area"}: role=${area.role ?? "unknown"}; priority=${formatCount(area.priority)}; files=${truncateList(area.files, 3)}; omitted=${formatCount(area.omitted)}`,
 			);
+		}
+
+		if (pinned && (pinned.bodies?.length ?? 0) > 0) {
+			lines.push(`- Pinned file contents: ${pinned.bodies?.length} shown, ${formatCount(pinned.omittedBodies ?? 0)} omitted`);
+			for (const body of pinned.bodies ?? []) {
+				if (body.status === "present" || body.status === "truncated") {
+					const detail = body.truncated ? `truncated to first ${body.content?.length ?? 0} of ${formatCount(body.chars)} chars` : `${formatCount(body.chars)} chars`;
+					lines.push(`--- ${body.path ?? "unknown"} (${detail}) ---`, body.content ?? "");
+				} else {
+					lines.push(`--- ${body.path ?? "unknown"} (${body.status ?? "unknown"}${body.reason ? `: ${body.reason}` : ""}) ---`);
+				}
+			}
+			lines.push("--- end pinned file contents ---");
 		}
 	}
 

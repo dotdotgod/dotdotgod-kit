@@ -28,6 +28,7 @@ Human output summarizes:
 - markdown validation line and character budgets
 - markdown validation size-check exclude patterns
 - impact ranking preset
+- load pinned path and pinned body lists
 - fuzzy reference expansion low-signal policy
 - config validation errors, when present
 
@@ -52,6 +53,7 @@ The config command surfaces the same policy families that validation, snapshots,
 - `validation.markdown`: line/character budgets and narrow size-check exclusions.
 - `impactRanking`: presets, weights, PPR, relation boosts, routing hints, and compact impact behavior.
 - `referenceExpansion.fuzzy.lowSignal`: `add`/`remove` term lists that tune low-signal fuzzy prompt matching without replacing built-in defaults.
+- `load.pinnedPaths` and `load.pinnedBodies`: file lists that always surface pinned paths, and bounded pinned file contents, in `load-snapshot` output and full load prompts.
 
 ## Init Command
 
@@ -66,6 +68,7 @@ The init command creates `dotdotgod.config.json` with the current built-in defau
 - `validation.markdown`
 - `impactRanking`
 - `referenceExpansion.fuzzy.lowSignal.add/remove`
+- `load.pinnedPaths` and `load.pinnedBodies` as empty arrays
 
 The generated file must validate with `dotdotgod validate`. The generated memory areas omit optional `description` and `clarify` metadata so the template stays concise; projects can add those fields when custom document areas need role or clarity guidance. The generated reference-expansion section uses empty `add` and `remove` arrays; the resolved defaults remain visible in `dotdotgod config <root> --json` output.
 
