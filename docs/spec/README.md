@@ -27,7 +27,7 @@ Project-level config is optional and lives in `dotdotgod.config.json` or `.dotdo
 - `PLAN_MODE.md`: compatibility route for Plan Mode behavior docs.
 - `plan-mode/README.md`: `/plan`, `/todos`, safe planning restrictions, context shaping, concise plan review choice, and execution tracking.
 - `PLAN_MODE_TOOL_SETTINGS.md`: optional Plan Mode extra tool allowlist settings and prompt requirements.
-- `LOAD_PROJECT.md`: `/load` and `/dd:load` read-only project memory loading behavior.
+- `LOAD_PROJECT.md`: `/load`, `/dd:load`, and `/dd:load:compact` read-only project memory loading behavior.
 - `MEMORY_AREA_CONFIG.md`: optional config for shared/local and fresh/stale memory-area policy.
 - `TRACEABILITY_CONFIG.md`: optional config for traceability enforcement paths, generated-link drift checks, and repair flow.
 - `VALIDATION_CONFIG.md`: optional config for markdown validation size budgets and explicit size-check exclusions.

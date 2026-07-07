@@ -34,7 +34,7 @@ A good first run:
 | Need | Pi command or feature |
 | --- | --- |
 | Create the docs-first project scaffold | `project-initializer` skill |
-| Load project memory without broad file reads | `/dd:load` or `/load` |
+| Load project memory without broad file reads | `/dd:load` (full), `/dd:load:compact` (compact), or `/load` |
 | Plan safely before source/config edits | `/plan` and `/plan <request>` |
 | Generate a staged durable plan | `/plan-goal` |
 | Show execution progress | `/todos` |

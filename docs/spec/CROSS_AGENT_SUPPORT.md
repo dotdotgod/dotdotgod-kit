@@ -17,7 +17,7 @@ Current first-class support.
 - Documentation clarity: `document-clarify` skill.
 - Completed `/plan-goal` plan clarity: packaged `dotdotgod.plan-doc-clarifier` subagent when `pi-subagents` is available, with `document-clarify` as the fallback.
 - Runtime workflow: `plan-mode`, `load-project`, and dependency-provided `pi-subagents` extensions.
-- Commands and tools: `/plan`, `/todos`, `/load`, `/dd:load`, `/impact-check`, and the `subagent` delegation tool when the dependency resources load.
+- Commands and tools: `/plan`, `/todos`, `/load`, `/dd:load`, `/dd:load:compact`, `/impact-check`, and the `subagent` delegation tool when the dependency resources load.
 
 ### Claude Code
 

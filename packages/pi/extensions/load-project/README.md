@@ -6,13 +6,15 @@ See the workspace behavior contract in `docs/spec/LOAD_PROJECT.md` and the exten
 
 ## Commands
 
-- `/load` — load current project memory in full mode.
-- `/dd:load` — stable namespaced alias for command-conflict avoidance.
-- `/load compact` or `/dd:load compact` — request compact/delta-oriented memory for prompt-injected refreshes or already-loaded sessions.
+- `/load` — load current project memory in full mode; compatibility command for duplicate `/load` conflict handling.
+- `/dd:load` — stable namespaced full-load command.
+- `/dd:load:compact` — explicit compact/delta-oriented load for prompt-injected refreshes or already-loaded sessions.
+
+Load mode is selected only by the command name. Free-form arguments are focus text and never change the mode.
 
 ## Behavior
 
-The command checks for the expected dotdotgod scaffold, then sends a read-only loader prompt to the agent. Explicit manual loads default to full mode. Compact mode emphasizes deltas, routing hints, and next reads for prompt-injected refreshes or already-loaded sessions.
+The command checks for the expected dotdotgod scaffold, then sends a read-only loader prompt to the agent. Explicit manual loads default to full mode. Compact mode emphasizes deltas, routing hints, and next reads for prompt-injected refreshes or already-loaded sessions. The documentation directory summary defaults to a README-based table of contents, with targeted subtree listings only when the request identifies a specific docs path.
 
 Baseline files and directories include:
 
