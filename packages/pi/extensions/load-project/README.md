@@ -16,6 +16,8 @@ Load mode is selected only by the command name. Free-form arguments are focus te
 
 The command checks for the expected dotdotgod scaffold, then sends a read-only loader prompt to the agent. Explicit manual loads default to full mode. Compact mode emphasizes deltas, routing hints, and next reads for prompt-injected refreshes or already-loaded sessions. The documentation directory summary defaults to a README-based table of contents, with targeted subtree listings only when the request identifies a specific docs path.
 
+When the CLI snapshot reports configured pinned files (`load.pinnedPaths`/`load.pinnedBodies` in `dotdotgod.config.json`), both modes list the pinned paths with per-file statuses; only full mode also embeds the bounded pinned body contents, so compact loads stay compact.
+
 Baseline files and directories include:
 
 - `AGENTS.md`

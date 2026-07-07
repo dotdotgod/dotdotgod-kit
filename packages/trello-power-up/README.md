@@ -2,7 +2,7 @@
 
 Static Trello Power-Up frontend for dotdotgod's Trello docs-sync integration.
 
-This package is not an agent adapter. It is the GitHub Pages frontend Trello opens to render linked repository docs from the `dotdotgod-view` Trello custom field. That custom field stores the docs and repository links that dotdotgod's Trello sync workflow attaches to a card.
+This package is not an agent adapter. It is the GitHub Pages frontend Trello opens to render linked repository docs from the `dotdotgod-view` Trello custom field. That custom field stores the docs and repository links that dotdotgod's Trello sync workflow attaches to a card, so Trello cards stay connected to the durable project memory (specs, tests, architecture docs) they describe.
 
 ## GitHub Pages URL
 

@@ -81,9 +81,16 @@ Impact ranking uses this metadata as a bounded memory-policy score. Curated trac
 - `memoryConfig`: the resolved config source and area definitions, including optional `description` and `clarify` metadata when configured
 - `memoryPolicy`: area ids grouped by shared/local and fresh/stale
 - `memoryAreas`: bounded files by configured area, including optional area clarity metadata when configured
+- `pinnedFiles`: configured pinned paths and bounded pinned bodies from the `load` policy family
 - `bounds.archiveBodiesIncluded`: whether stale archive bodies were indexed
 
 The snapshot remains a navigation layer. It does not embed the full graph or archive bodies by default.
+
+## Load Pinned Files Policy
+
+The `load` policy family is separate from `memory.areas` on purpose: memory areas classify retrieval roles and index inclusion, while `load.pinnedPaths`/`load.pinnedBodies` express "always show this file during project loading" regardless of classification.
+
+Pinned files are read directly from disk at snapshot time instead of through the graph index, so stale caches or non-indexed paths cannot hide them. Direct reads therefore carry stronger safety checks: repository-relative path validation, secret-like path rejection in both validation and runtime expansion, binary detection via null-byte sniffing, a bounded directory walk for patterns, and hard caps on pinned path counts, body counts, and body characters with omitted/truncated reporting. Archive-body defaults are unchanged; a broad archive pattern in `pinnedBodies` is explicit configured intent and still runs inside the same bounds and secret checks.
 
 ## Validation Policy
 

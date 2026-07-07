@@ -36,6 +36,18 @@ const RICH_SNAPSHOT_DATA = {
 			tests: ["packages/pi/test/load-project-utils.test.ts"],
 		}],
 	},
+	pinnedFiles: {
+		paths: [
+			{ path: "docs/arch/CODE_CONVENTIONS.md", status: "present", pinnedBy: ["pinnedBodies", "pinnedPaths"] },
+			{ path: "docs/arch/MISSING_CONVENTIONS.md", status: "missing", pinnedBy: ["pinnedPaths"] },
+		],
+		omittedPaths: 0,
+		bodies: [
+			{ path: "docs/arch/CODE_CONVENTIONS.md", status: "present", truncated: false, chars: 24, content: "# Conventions\nUse tabs.\n" },
+			{ path: "docs/arch/generated.png", status: "skipped", reason: "binary" },
+		],
+		omittedBodies: 1,
+	},
 	bounds: { fullGraphIncluded: false, archiveBodiesIncluded: false, archiveMapIncluded: true },
 	commandGuidance: { source: "local-source", packageManager: "pnpm", install: null, validate: "node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory", loadSnapshot: "node packages/cli/bin/dotdotgod.mjs load-snapshot . --json", index: "node packages/cli/bin/dotdotgod.mjs index . --json", status: "node packages/cli/bin/dotdotgod.mjs status . --json", verify: "pnpm run verify" },
 };
@@ -155,6 +167,9 @@ describe("load-project prompt", () => {
 		assert.match(prompt, /archiveBodiesIncluded=false/);
 		assert.match(prompt, /archiveMapIncluded=true/);
 		assert.match(prompt, /Memory policy: shared=rules, specs; local=plans; fresh=rules; stale=archive/);
+		assert.match(prompt, /Pinned files: docs\/arch\/CODE_CONVENTIONS\.md, docs\/arch\/MISSING_CONVENTIONS\.md \(missing\)/);
+		assert.doesNotMatch(prompt, /Pinned file contents/);
+		assert.doesNotMatch(prompt, /Use tabs\./);
 		assert.match(prompt, /Communities: total=1, omitted=0, top=Pi Load/);
 		assert.match(prompt, /files=packages\/pi\/extensions\/load-project\/index\.ts/);
 		assert.match(prompt, /docs=docs\/spec\/LOAD_PROJECT\.md/);
@@ -189,6 +204,12 @@ describe("load-project prompt", () => {
 		assert.match(prompt, /events=load-project:before-send/);
 		assert.match(prompt, /topTypes=heading:6, file:4/);
 		assert.match(prompt, /role=behavior-truth/);
+		assert.match(prompt, /Pinned files: docs\/arch\/CODE_CONVENTIONS\.md, docs\/arch\/MISSING_CONVENTIONS\.md \(missing\)/);
+		assert.match(prompt, /Pinned file contents: 2 shown, 1 omitted/);
+		assert.match(prompt, /--- docs\/arch\/CODE_CONVENTIONS\.md \(24 chars\) ---/);
+		assert.match(prompt, /Use tabs\./);
+		assert.match(prompt, /--- docs\/arch\/generated\.png \(skipped: binary\) ---/);
+		assert.match(prompt, /--- end pinned file contents ---/);
 		assert.match(prompt, /Project summary/);
 	});
 

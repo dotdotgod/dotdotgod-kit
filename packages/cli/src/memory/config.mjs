@@ -24,6 +24,10 @@ export const DEFAULT_VALIDATION_POLICY = {
 export const DEFAULT_INTEGRATIONS_POLICY = {
   trello: { syncPaths: [] },
 };
+export const DEFAULT_LOAD_POLICY = {
+  pinnedPaths: [],
+  pinnedBodies: [],
+};
 export const DEFAULT_IMPACT_RANKING_POLICY = {
   preset: 'balanced',
   weights: { ppr: 40, traceability: 30, memoryPolicy: 10, verification: 15, proximity: 10, semantic: 10, freshness: 5, archivePenalty: -25 },
@@ -170,8 +174,15 @@ export function cloneIntegrationsPolicy(policy = DEFAULT_INTEGRATIONS_POLICY) {
   return { trello: { syncPaths: [...(policy.trello?.syncPaths ?? [])] } };
 }
 
+export function cloneLoadPolicy(policy = DEFAULT_LOAD_POLICY) {
+  return {
+    pinnedPaths: [...(policy.pinnedPaths ?? [])],
+    pinnedBodies: [...(policy.pinnedBodies ?? [])],
+  };
+}
+
 export function defaultMemoryConfig() {
-  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), integrations: cloneIntegrationsPolicy() };
+  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), integrations: cloneIntegrationsPolicy(), load: cloneLoadPolicy() };
 }
 
 export function normalizePathPattern(value = '') {
@@ -253,9 +264,15 @@ function normalizeIntegrationsPolicy(raw) {
   return cloneIntegrationsPolicy({ trello: { syncPaths: [...new Set(syncPaths)] } });
 }
 
-function isSecretLikePathPattern(value = '') {
+export function isSecretLikePathPattern(value = '') {
   const normalized = normalizePathPattern(value);
   return /(^|\/)(\.env|\.npmrc|\.pypirc|id_rsa|id_dsa|id_ed25519|credentials?|secrets?)(\.|\/|$)/i.test(normalized);
+}
+
+function normalizeLoadPolicy(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return cloneLoadPolicy();
+  const normalize = (values) => (Array.isArray(values) ? [...new Set(values.map(normalizePathPattern))] : []);
+  return cloneLoadPolicy({ pinnedPaths: normalize(raw.pinnedPaths), pinnedBodies: normalize(raw.pinnedBodies) });
 }
 
 export function trelloSyncPaths(config = defaultMemoryConfig()) {
@@ -357,6 +374,22 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
         else {
           if (trello.syncPaths.some((value) => !isValidPathPattern(value) || (typeof value === 'string' && value.trim().startsWith('/')))) add('INTEGRATIONS_TRELLO_INVALID_SYNC_PATHS', 'integrations.trello.syncPaths', 'Expected repository-relative path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
           if (trello.syncPaths.some((value) => typeof value === 'string' && isSecretLikePathPattern(value))) add('INTEGRATIONS_TRELLO_SECRET_SYNC_PATH', 'integrations.trello.syncPaths', 'Sync paths must not target secrets, credentials, environment files, or private keys.');
+        }
+      }
+    }
+  }
+  const load = data.load;
+  if (load !== undefined) {
+    if (!load || typeof load !== 'object' || Array.isArray(load)) {
+      add('LOAD_CONFIG_INVALID', 'load', 'Expected an object.');
+    } else {
+      for (const [key, code] of [['pinnedPaths', 'LOAD_CONFIG_INVALID_PINNED_PATHS'], ['pinnedBodies', 'LOAD_CONFIG_INVALID_PINNED_BODIES']]) {
+        const values = load[key];
+        if (values === undefined) continue;
+        if (!Array.isArray(values)) add(code, `load.${key}`, 'Expected an array of path strings.');
+        else {
+          if (values.some((value) => !isValidPathPattern(value) || (typeof value === 'string' && value.trim().startsWith('/')))) add(code, `load.${key}`, 'Expected repository-relative path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+          if (values.some((value) => typeof value === 'string' && isSecretLikePathPattern(value))) add('LOAD_CONFIG_SECRET_PINNED_PATH', `load.${key}`, 'Pinned load paths must not target secrets, credentials, environment files, or private keys.');
         }
       }
     }
@@ -472,7 +505,8 @@ export function readMemoryConfig(root = '.') {
       const impactRanking = normalizeImpactRankingPolicy(data.impactRanking);
       const referenceExpansion = normalizeReferenceExpansionPolicy(data.referenceExpansion);
       const integrations = normalizeIntegrationsPolicy(data.integrations);
-      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, integrations, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, referenceExpansion, integrations, source: name, errors: [] };
+      const load = normalizeLoadPolicy(data.load);
+      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, integrations, load, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, referenceExpansion, integrations, load, source: name, errors: [] };
     } catch (error) {
       return { ...defaultMemoryConfig(), source: name, errors: [{ file: name, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}\nFix: repair ${name} so it is valid JSON, or regenerate the default config with \`dotdotgod config init <root> --force\` if you want to reset it.` }] };
     }
@@ -505,6 +539,7 @@ export function defaultDotdotgodConfigData() {
     impactRanking: cloneImpactRankingPolicy(config.impactRanking),
     referenceExpansion: { fuzzy: { lowSignal: { add: [], remove: [] } } },
     integrations: cloneIntegrationsPolicy(config.integrations),
+    load: cloneLoadPolicy(config.load),
   };
 }
 
@@ -531,6 +566,7 @@ export function memoryConfigSummary(config) {
     impactRanking: cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY),
     referenceExpansion: cloneReferenceExpansionPolicy(config.referenceExpansion),
     integrations: cloneIntegrationsPolicy(config.integrations),
+    load: cloneLoadPolicy(config.load),
   };
 }
 

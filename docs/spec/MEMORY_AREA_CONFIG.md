@@ -61,6 +61,26 @@ The built-in default areas intentionally omit `description` and `clarify` metada
 
 Archive bodies under `docs/archive/**` are stale local memory and are excluded from default indexing/loading unless explicit project policy includes them. Agents should use the archive map first and read archive bodies only through targeted lookup when the current task needs history.
 
+## Load Pinned Files
+
+The optional top-level `load` policy family pins always-visible files into load output:
+
+- `load.pinnedPaths`: array of repository-relative paths or path patterns whose matches are always listed in load-snapshot output and Pi load prompts.
+- `load.pinnedBodies`: array of repository-relative paths or path patterns whose matching file contents are also embedded in full load output.
+
+Behavior contract:
+
+- Both options are arrays; scalar strings are invalid.
+- Files matched by `pinnedBodies` are also surfaced as pinned paths without duplicating them in `pinnedPaths`.
+- Pinned files are read directly from disk, so pinned paths do not need to be present in the graph index.
+- Matches and bodies are bounded: at most 20 pinned paths, 5 pinned bodies, and 10,000 characters per body, with omitted and truncated counts reported.
+- Missing files are reported with a `missing` status instead of failing; binary files are skipped.
+- Secret-like paths such as `.env`, credentials, secrets, and private keys are rejected by validation and skipped at runtime.
+- Broad archive patterns stay subject to the same bounds and secret checks; pinning does not re-enable default archive-body indexing.
+- `dotdotgod config init` writes empty `load.pinnedPaths` and `load.pinnedBodies` arrays for discoverability.
+
+The motivating use case is keeping code conventions such as `docs/arch/CODE_CONVENTIONS.md` visible on every project-memory load.
+
 ## Validation Behavior
 
 `dotdotgod validate` reports memory config errors for:
@@ -78,6 +98,7 @@ Archive bodies under `docs/archive/**` are stale local memory and are excluded f
 - invalid `clarify` values when present; `clarify` must be an object, `documentType` and `clarityGoal` must be non-empty strings, and `audience` and `editRules` must be arrays of non-empty strings
 - exact duplicate path patterns that are not excluded by the subsequent area
 - malformed `referenceExpansion.fuzzy.lowSignal.add` or `remove` arrays
+- non-object `load`; non-array or invalid `load.pinnedPaths`/`load.pinnedBodies` patterns, absolute or traversal pinned paths, and secret-like pinned paths
 
 Invalid memory config does not make the CLI crash. Runtime commands fall back to the default memory config while validation reports repairable errors.
 
@@ -88,6 +109,7 @@ Invalid memory config does not make the CLI crash. Runtime commands fall back to
 - `memoryConfig`: the resolved source, memory-area definitions, optional area `description`/`clarify` metadata, traceability path policy, and reference-expansion fuzzy low-signal policy.
 - `memoryPolicy`: bounded lists of shared, local, fresh, and stale area ids.
 - `memoryAreas`: bounded file summaries grouped by configured area, including area clarity metadata when configured.
+- `pinnedFiles`: configured pinned paths with per-file statuses and bounded pinned bodies read directly from disk.
 - archive bounds showing whether archive bodies were included.
 
 The load snapshot must not embed the full graph or stale archive bodies by default.

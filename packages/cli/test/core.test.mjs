@@ -11,6 +11,7 @@ import {
   buildGraph,
   buildImpactReport,
   buildMemoryAreas,
+  buildPinnedFiles,
   buildIndex,
   buildPlanValidationRepairPrompt,
   buildCompactImpactReport,
@@ -619,6 +620,92 @@ describe('CLI docs helpers', () => {
     assert.equal(requiresTraceability('docs/product/README.md', config), false);
     assert.equal(requiresTraceability('docs/product/DRAFT.md', config), false);
     assert.equal(requiresTraceability('docs/spec/FEATURE.md', config), false);
+  });
+
+  it('loads configurable pinned load files with normalization and validation', () => {
+    assert.deepEqual(defaultMemoryConfig().load, { pinnedPaths: [], pinnedBodies: [] });
+    assert.deepEqual(defaultDotdotgodConfigData().load, { pinnedPaths: [], pinnedBodies: [] });
+
+    const root = fixture();
+    writeFixtureJson(root, 'dotdotgod.config.json', {
+      load: {
+        pinnedPaths: ['./docs/arch/CODE_CONVENTIONS.md', 'docs/arch/CODE_CONVENTIONS.md'],
+        pinnedBodies: ['docs/arch/**'],
+      },
+    });
+    const config = readMemoryConfig(root);
+    assert.equal(config.source, 'dotdotgod.config.json');
+    assert.deepEqual(config.load.pinnedPaths, ['docs/arch/CODE_CONVENTIONS.md']);
+    assert.deepEqual(config.load.pinnedBodies, ['docs/arch/**']);
+    assert.deepEqual(memoryConfigSummary(config).load, config.load);
+
+    const invalid = validateMemoryConfigData({
+      load: {
+        pinnedPaths: ['/etc/hosts', '../escape.md', 'docs/*.md'],
+        pinnedBodies: [42, '.env', 'secrets/keys.md'],
+      },
+    }, root);
+    const codes = new Set(invalid.map((error) => error.code));
+    assert(codes.has('LOAD_CONFIG_INVALID_PINNED_PATHS'));
+    assert(codes.has('LOAD_CONFIG_INVALID_PINNED_BODIES'));
+    assert(codes.has('LOAD_CONFIG_SECRET_PINNED_PATH'));
+    assert(validateMemoryConfigData({ load: [] }, root).some((error) => error.code === 'LOAD_CONFIG_INVALID'));
+    assert(validateMemoryConfigData({ load: { pinnedPaths: 'docs/arch/CODE_CONVENTIONS.md' } }, root).some((error) => error.code === 'LOAD_CONFIG_INVALID_PINNED_PATHS'));
+
+    writeFixtureJson(root, 'dotdotgod.config.json', { load: { pinnedPaths: ['../escape.md'] } });
+    const fallback = readMemoryConfig(root);
+    assert(fallback.errors.some((error) => error.code === 'LOAD_CONFIG_INVALID_PINNED_PATHS'));
+    assert.deepEqual(fallback.load, { pinnedPaths: [], pinnedBodies: [] });
+  });
+
+  it('builds pinned load files from direct disk reads with bounds and safety checks', () => {
+    const root = fixture();
+    writeFixtureFile(root, 'docs/arch/CODE_CONVENTIONS.md', '# Conventions\nUse project idioms.\n');
+    writeFixtureFile(root, 'docs/arch/EXTRA.md', '# Extra\n');
+    writeFixtureFile(root, 'docs/arch/image.png', Buffer.from([0x89, 0x50, 0x00, 0x47]));
+    writeFixtureFile(root, 'docs/arch/secrets.md', '# Do not pin\n');
+    writeFixtureJson(root, 'dotdotgod.config.json', {
+      load: {
+        pinnedPaths: ['docs/arch/CODE_CONVENTIONS.md', 'docs/arch/MISSING.md'],
+        pinnedBodies: ['docs/arch/**'],
+      },
+    });
+    const config = readMemoryConfig(root);
+    const pinned = buildPinnedFiles(root, config);
+    assert.equal(pinned.source, 'dotdotgod.config.json');
+    const conventions = pinned.paths.find((entry) => entry.path === 'docs/arch/CODE_CONVENTIONS.md');
+    assert.equal(conventions.status, 'present');
+    assert.deepEqual(conventions.pinnedBy, ['pinnedBodies', 'pinnedPaths']);
+    const missing = pinned.paths.find((entry) => entry.path === 'docs/arch/MISSING.md');
+    assert.equal(missing.status, 'missing');
+    const extra = pinned.paths.find((entry) => entry.path === 'docs/arch/EXTRA.md');
+    assert.deepEqual(extra.pinnedBy, ['pinnedBodies']);
+    const body = pinned.bodies.find((entry) => entry.path === 'docs/arch/CODE_CONVENTIONS.md');
+    assert.equal(body.status, 'present');
+    assert.equal(body.truncated, false);
+    assert.match(body.content, /Use project idioms/);
+    const binary = pinned.bodies.find((entry) => entry.path === 'docs/arch/image.png');
+    assert.equal(binary.status, 'skipped');
+    assert.equal(binary.reason, 'binary');
+    assert.equal(pinned.bodies.some((entry) => entry.path === 'docs/arch/MISSING.md'), false);
+    assert.equal(pinned.paths.some((entry) => entry.path === 'docs/arch/secrets.md'), false);
+    assert.equal(pinned.bodies.some((entry) => entry.path === 'docs/arch/secrets.md'), false);
+
+    const bounded = buildPinnedFiles(root, config, { paths: 1, bodies: 1, bodyChars: 10 });
+    assert.equal(bounded.paths.length, 1);
+    assert(bounded.omittedPaths > 0);
+    assert.equal(bounded.bodies.length, 1);
+    assert(bounded.omittedBodies > 0);
+    const truncated = bounded.bodies[0];
+    assert.equal(truncated.status, 'truncated');
+    assert.equal(truncated.truncated, true);
+    assert.equal(truncated.content.length, 10);
+    assert(truncated.chars > 10);
+
+    writeFixtureJson(root, 'dotdotgod.config.json', { load: { pinnedBodies: ['docs/arch/CODE_CONVENTIONS.md'] } });
+    const bodyOnly = buildPinnedFiles(root, readMemoryConfig(root));
+    assert.equal(bodyOnly.paths.some((entry) => entry.path === 'docs/arch/CODE_CONVENTIONS.md'), true);
+    assert.deepEqual(buildPinnedFiles(root, defaultMemoryConfig()).paths, []);
   });
 
   it('keeps Claude Code and Codex hook JSON examples parseable with supported events', () => {

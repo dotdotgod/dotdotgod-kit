@@ -101,7 +101,7 @@ In full mode, the agent may include the fuller project summary, key working rule
 - routing: graph node/edge counts, memory policy, bounded memory-area labels, and bounded communities with labels, files, docs, commands when present, tests, and omitted counts
 - archive and boundedness: full-graph inclusion, archive-body inclusion, archive-map inclusion, and README-only or targeted docs listings
 
-Compact prompts omit command guidance, graph type breakdowns, community events, cache paths, schema versions, and index size details. Default full loads may additionally include command guidance, debug metadata, and more detailed area entries. `docs/archive/README.md` remains included as the archive map; other archive bodies remain excluded by default. The raw CLI `load-snapshot` payload is unchanged; field selection happens in the prompt.
+Configured `load.pinnedPaths` and `load.pinnedBodies` surface as pinned files: both modes list pinned paths with per-file statuses, and only full mode embeds the bounded pinned body contents. Compact prompts omit command guidance, graph type breakdowns, community events, cache paths, schema versions, and index size details. Default full loads may additionally include command guidance, debug metadata, and more detailed area entries. `docs/archive/README.md` remains included as the archive map; other archive bodies remain excluded by default. The raw CLI `load-snapshot` payload is unchanged; field selection happens in the prompt.
 
 The snapshot includes `commandGuidance` so agents running full loads see environment-aware commands:
 

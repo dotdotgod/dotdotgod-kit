@@ -15,11 +15,11 @@ export { commandUsage, hasHelpToken, helpCommandFromArgs, isHelpToken, isVersion
 export { rel } from './common/paths.mjs';
 export { extractAnchors, extractFirstHeading, extractLinks, headingToAnchor, isKebabCase, isNumberedSeriesFilename, isUpperSnakeMarkdown, removeCodeBlocks, suggestFilenameFromHeading } from './docs/markdown.mjs';
 export { extractDotdotgodTraceabilityBlocks, findTraceabilityLinksRegion, isLocalRelativeTraceabilityPath, renderCompactTraceabilityBlock, stripTraceabilityLinksRegion, syncTraceabilityLinksInContent, traceabilityExample, validateTraceabilityBlock, validateTraceabilityLinksRegion, validateTraceabilityPlacement } from './docs/traceability.mjs';
-export { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_INTEGRATIONS_POLICY, DEFAULT_VALIDATION_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, cloneIntegrationsPolicy, cloneReferenceExpansionPolicy, cloneValidationPolicy, defaultDotdotgodConfigData, defaultDotdotgodConfigText, defaultMemoryConfig, isMarkdownSizeExcluded, isValidPathPattern, matchPathPattern, memoryAreaForPath, memoryConfigSummary, memoryRoleForPath, normalizeLowSignalTerm, readMemoryConfig, requiresTraceability, resolveMemoryArea, retrievalPriorityForPath, trelloSyncPaths, validateMemoryConfigData } from './memory/config.mjs';
+export { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_INTEGRATIONS_POLICY, DEFAULT_LOAD_POLICY, DEFAULT_VALIDATION_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, cloneIntegrationsPolicy, cloneLoadPolicy, cloneReferenceExpansionPolicy, cloneValidationPolicy, defaultDotdotgodConfigData, defaultDotdotgodConfigText, defaultMemoryConfig, isMarkdownSizeExcluded, isSecretLikePathPattern, isValidPathPattern, matchPathPattern, memoryAreaForPath, memoryConfigSummary, memoryRoleForPath, normalizeLowSignalTerm, readMemoryConfig, requiresTraceability, resolveMemoryArea, retrievalPriorityForPath, trelloSyncPaths, validateMemoryConfigData } from './memory/config.mjs';
 export { buildCommunities, relationWeight } from './graph/communities.mjs';
 export { addEdge, addNode, compactGraph, expandGraph, graphStats, jsonSize, shardFile, writeJson } from './graph/store.mjs';
 export { cacheFile, collectIndexFiles, fingerprint, shouldIndexPath } from './index/files.mjs';
-export { buildMemoryAreas, detectCommandGuidance, detectPackageManager } from './load-snapshot/summary.mjs';
+export { buildMemoryAreas, buildPinnedFiles, detectCommandGuidance, detectPackageManager } from './load-snapshot/summary.mjs';
 export { isReadmeIndexPath, retrievalMetadataForPath, fileNodeMetadata } from './graph/metadata.mjs';
 export { extractMarkdownGraph, extractPackageGraph, buildGraph } from './graph/extract.mjs';
 export { addDeterministicSemanticEdges } from './graph/semantic.mjs';

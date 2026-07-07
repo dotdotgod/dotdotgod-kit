@@ -44,6 +44,8 @@ function formatConfigOutput(payload) {
   lines.push(`- validation markdown: maxLines=${payload.config.validation.markdown.maxLines}, maxChars=${payload.config.validation.markdown.maxChars}`);
   lines.push(`- validation markdown exclude: ${(payload.config.validation.markdown.exclude ?? []).join(', ') || 'none'}`);
   lines.push(`- impact ranking preset: ${payload.config.impactRanking.preset}`);
+  lines.push(`- load pinned paths: ${(payload.config.load?.pinnedPaths ?? []).join(', ') || 'none'}`);
+  lines.push(`- load pinned bodies: ${(payload.config.load?.pinnedBodies ?? []).join(', ') || 'none'}`);
   lines.push(`- trello sync paths: ${(payload.config.integrations?.trello?.syncPaths ?? []).join(', ') || 'none'}`);
   const lowSignal = payload.config.referenceExpansion?.fuzzy?.lowSignal ?? { terms: [], add: [], remove: [] };
   lines.push(`- fuzzy low-signal terms: ${(lowSignal.terms ?? []).join(', ') || 'none'} (add: ${(lowSignal.add ?? []).join(', ') || 'none'}; remove: ${(lowSignal.remove ?? []).join(', ') || 'none'})`);

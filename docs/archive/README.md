@@ -19,6 +19,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/load-pinned-files-config/`: added `load.pinnedPaths`/`load.pinnedBodies` config so teams can pin files such as code conventions into every load — direct disk-read `pinnedFiles` in `load-snapshot` with bounds and secret/binary skips, compact path-only and full body-embedding Pi load prompts, and spec/arch/test/README updates.
+- `plan/readme-clarity-review/`: clarified GitHub- and npm-facing READMEs — added the root working-loop section, concrete Claude Code/Codex install wording, adapter positioning lines, and absolute GitHub URLs for npm-fragile relative links.
 - `plan/plan-goal-doc-only-clarifier/`: added a packaged `dotdotgod.plan-doc-clarifier` subagent and `/plan-goal` final follow-up guidance so completed plans can be clarified from fresh, explicit-file-only context.
 - `plan/plan-goal-document-clarify-pass/`: added a terminal `/plan-goal` Stage 05 follow-up that asks the agent to run `document-clarify` on the durable plan and workstream handoff docs without changing scope or executing source/config work.
 - `plan/plan-generator-plan-goal/`: replaced the user-facing `/plan-generator` command with `/plan-goal`, removed goal-mode prompt/state divergence, and refreshed Pi docs/tests around the single staged generator command.

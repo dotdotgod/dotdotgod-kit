@@ -787,6 +787,35 @@ describe('dotdotgod CLI e2e', () => {
     assert.deepEqual(snapshot.memoryConfig.traceability.required, ['docs/spec/**']);
   });
 
+  it('returns configured pinned load files from direct disk reads', () => {
+    const root = createFixture();
+    writeConfig(root, {
+      load: {
+        pinnedPaths: ['packages/app/helper.mjs', 'docs/arch/PINNED_MISSING.md'],
+        pinnedBodies: ['docs/plan/task/README.md'],
+      },
+    });
+    const snapshot = json(run(['load-snapshot', root, '--json']));
+    assert.deepEqual(snapshot.pinnedFiles.configured, { pinnedPaths: ['packages/app/helper.mjs', 'docs/arch/PINNED_MISSING.md'], pinnedBodies: ['docs/plan/task/README.md'] });
+    const helper = snapshot.pinnedFiles.paths.find((entry) => entry.path === 'packages/app/helper.mjs');
+    assert.equal(helper.status, 'present');
+    assert(snapshot.memoryAreas.areas.every((area) => !area.files.includes('packages/app/helper.mjs')));
+    assert.equal(snapshot.pinnedFiles.paths.find((entry) => entry.path === 'docs/arch/PINNED_MISSING.md').status, 'missing');
+    const planBody = snapshot.pinnedFiles.bodies.find((entry) => entry.path === 'docs/plan/task/README.md');
+    assert.equal(planBody.status, 'present');
+    assert.match(planBody.content, /# Task/);
+    assert.equal(snapshot.quality.pinnedPaths, 3);
+    assert.equal(snapshot.quality.pinnedBodies, 1);
+    assert.equal(snapshot.bounds.pinnedBodyChars, 10000);
+
+    writeConfig(root, { load: { pinnedBodies: ['.env'] } });
+    const invalid = run(['validate', root, '--include-local-memory', '--json']);
+    assert.notEqual(invalid.status, 0);
+    assert(JSON.parse(invalid.stdout).errors.some((error) => error.code === 'LOAD_CONFIG_SECRET_PINNED_PATH'));
+    const fallbackSnapshot = json(run(['load-snapshot', root, '--json']));
+    assert.deepEqual(fallbackSnapshot.pinnedFiles.configured, { pinnedPaths: [], pinnedBodies: [] });
+  });
+
   it('reports validation failures and stale indexes', () => {
     const root = createFixture();
     mkdirSync(join(root, 'docs/BadDir'), { recursive: true });
