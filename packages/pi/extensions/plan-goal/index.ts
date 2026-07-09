@@ -5,7 +5,6 @@ import type {
   ExtensionCommandContext,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { askFirstRequest } from "./questions.ts";
 import {
   buildStageAuthoringMessage,
   buildStageHandoffMessage,
@@ -57,12 +56,8 @@ const PLAN_GOAL_COMMAND = {
   progressNoun: "plan",
 } as const;
 
-function commandLabel(): string {
-  return "/plan-goal";
-}
-
 export function buildPlanGoalDocumentClarifyFollowUp(planPath: string): string {
-  return `The ${commandLabel()} stage sequence is complete for ${planPath}.
+  return `The /plan-goal stage sequence is complete for ${planPath}.
 
 Run a final fresh-context plan documentation clarity pass before implementation:
 
@@ -134,10 +129,6 @@ function getPlanModeFallbackStatus(ctx: ExtensionContext): string | undefined {
 function clearPlanGoalModeStatus(ctx: ExtensionContext): void {
   if (!ctx.hasUI) return;
   ctx.ui.setStatus("plan-mode", getPlanModeFallbackStatus(ctx));
-}
-
-function relativePlanPath(ctx: ExtensionCommandContext, readmePath: string): string {
-  return path.relative(ctx.cwd, readmePath).split(path.sep).join("/");
 }
 
 function textFromMessage(message: unknown): string {
@@ -303,7 +294,7 @@ async function waitForPlanGoalUserDecision(options: {
     options.ctx.ui.notify(`${options.stage.title} is waiting for user input.`, "warning");
   }
   await options.pi.sendUserMessage(
-    `The current ${commandLabel()} ${options.stage.title} cannot advance because the durable plan contains an unresolved user decision. Ask the user a concrete question with clear options, then wait for their answer before updating the same stage.\n\n${options.message}`,
+    `The current /plan-goal ${options.stage.title} cannot advance because the durable plan contains an unresolved user decision. Ask the user a concrete question with clear options, then wait for their answer before updating the same stage.\n\n${options.message}`,
     { deliverAs: "followUp" },
   );
 }
@@ -360,7 +351,7 @@ async function startExistingGeneratorTask(
   createCheckpoint: PlanStageCheckpointCreator = defaultPlanStageCheckpointCreator,
   options = PLAN_GOAL_COMMAND,
 ): Promise<void> {
-  const label = commandLabel();
+  const label = "/plan-goal";
   if (target.message) {
     store.updateState({
       currentPlan: undefined,
@@ -470,7 +461,7 @@ async function startNewGeneratorTask(
   createCheckpoint: PlanStageCheckpointCreator = defaultPlanStageCheckpointCreator,
   options = PLAN_GOAL_COMMAND,
 ): Promise<void> {
-  const label = commandLabel();
+  const label = "/plan-goal";
   store.updateState({
     currentPlan: undefined,
     currentStage: undefined,
@@ -507,7 +498,7 @@ async function startNewGeneratorTask(
     throw error;
   }
 
-  const currentPlan = relativePlanPath(ctx, task.readmePath);
+  const currentPlan = path.relative(ctx.cwd, task.readmePath).split(path.sep).join("/");
   try {
     setPlanGoalProgressStatus(ctx, "⏳ creating stage checkpoint");
     await createStageCheckpointOrThrow(
@@ -579,7 +570,7 @@ async function pausePlanGoalTask(
   if (!state.currentPlan || !state.currentStage || !["active", "input-waiting"].includes(state.status)) {
     return false;
   }
-  const pauseReason = reason ?? `Paused ${commandLabel()}. Send the next message to resume this stage.`;
+  const pauseReason = reason ?? `Paused /plan-goal. Send the next message to resume this stage.`;
   store.updateState({
     status: "input-waiting",
     message: pauseReason,
@@ -607,7 +598,7 @@ async function stopPlanGoalTask(
   });
   clearDotdotgodWorkflowState(pi);
   clearPlanGoalModeStatus(ctx);
-  const label = commandLabel();
+  const label = "/plan-goal";
   if (ctx.hasUI) ctx.ui.notify(`Stopped ${label}.`, "info");
 }
 
@@ -637,11 +628,15 @@ async function runPlanGoalCommand(
     return;
   }
 
-  const initialRequest = request || (await askFirstRequest(ctx));
+  const initialRequest =
+    request ||
+    (ctx.hasUI && typeof ctx.ui.editor === "function"
+      ? await ctx.ui.editor("Describe the plan request", "")
+      : undefined);
 
   if (!initialRequest) {
     if (ctx.hasUI) {
-      ctx.ui.notify(`What durable ${options.progressNoun} should ${commandLabel()} create?`, "info");
+      ctx.ui.notify(`What durable ${options.progressNoun} should /plan-goal create?`, "info");
     }
     return;
   }
@@ -714,7 +709,7 @@ async function handlePlanGoalAgentEnd(
   if (!state.currentPlan || !stage || state.status !== "active") return;
 
   if (state.breaker >= PLAN_GOAL_MAX_BREAKER) {
-    const message = `Stopped ${commandLabel()} after too many ${stage.title} retries.`;
+    const message = `Stopped /plan-goal after too many ${stage.title} retries.`;
     store.updateState({
       currentStage: undefined,
       status: "blocked",
@@ -725,7 +720,7 @@ async function handlePlanGoalAgentEnd(
     clearPlanGoalModeStatus(ctx);
     if (ctx.hasUI) {
       ctx.ui.notify(
-        `Stopped ${commandLabel()} after too many ${stage.title} retries.`,
+        `Stopped /plan-goal after too many ${stage.title} retries.`,
         "warning",
       );
     }
@@ -753,7 +748,7 @@ async function handlePlanGoalAgentEnd(
       store,
       state,
       stage,
-      message: `Unresolved user decision detected. Please choose before ${commandLabel()} continues.\n${blockers}`,
+      message: `Unresolved user decision detected. Please choose before /plan-goal continues.\n${blockers}`,
     });
     return;
   }
@@ -851,7 +846,7 @@ async function handlePlanGoalAgentEnd(
   if (stage.nextStage) {
     const nextStage = getPlanGoalStageEnvironment(stage.nextStage);
     if (!nextStage) {
-      const message = `Unknown next ${commandLabel()} stage: ${stage.nextStage}`;
+      const message = `Unknown next /plan-goal stage: ${stage.nextStage}`;
       store.updateState({ status: "blocked", message, breaker: 0 });
       clearDotdotgodWorkflowState(pi);
       clearPlanGoalModeStatus(ctx);
@@ -864,8 +859,8 @@ async function handlePlanGoalAgentEnd(
       nextCheckpointContext = checkpointContextFor(ctx, state.currentPlan, nextStage);
     } catch (error) {
       const message = error instanceof Error
-        ? `Could not create next ${commandLabel()} checkpoint: ${error.message}`
-        : `Could not create next ${commandLabel()} checkpoint.`;
+        ? `Could not create next /plan-goal checkpoint: ${error.message}`
+        : `Could not create next /plan-goal checkpoint.`;
       store.updateState({
         status: "active",
         message,
@@ -957,7 +952,7 @@ function registerPlanGoalInterruptHandler(
       pi,
       ctx,
       store,
-      `Paused ${commandLabel()} by interrupt. Send the next message to resume this stage.`,
+      `Paused /plan-goal by interrupt. Send the next message to resume this stage.`,
     );
   });
 }

@@ -6,7 +6,7 @@ import { defaultMemoryConfig } from '../memory/config.mjs';
 import { addEdge, addNode } from './store.mjs';
 import { addMemoryAreaMembership, addPackageResource, addTraceabilityGraph, fileNodeMetadata, headingId, isReadmeIndexPath } from './metadata.mjs';
 
-export function extractMarkdownGraph(root, file, graph, config = defaultMemoryConfig()) {
+function extractMarkdownGraph(root, file, graph, config = defaultMemoryConfig()) {
   const path = rel(root, file);
   const content = readFileSync(file, 'utf8');
   const fileId = `file:${path}`;
@@ -30,7 +30,7 @@ export function extractMarkdownGraph(root, file, graph, config = defaultMemoryCo
   addTraceabilityGraph(root, fileId, content, graph, config);
 }
 
-export function extractPackageGraph(root, file, graph) {
+function extractPackageGraph(root, file, graph) {
   const path = rel(root, file);
   const fileId = `file:${path}`;
   let pkg;

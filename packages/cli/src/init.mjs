@@ -1,10 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 
-function utcTimestamp() {
-  return new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-}
-
 function action(status, path, extra = {}) {
   return { status, path, ...extra };
 }
@@ -14,10 +10,6 @@ function formatAction(item) {
   if (item.backup) extras.push(`backup=${item.backup}`);
   if (item.add) extras.push(`add=${item.add}`);
   return `${item.status.padEnd(13)} ${item.path}${extras.length > 0 ? ` ${extras.join(' ')}` : ''}`;
-}
-
-function normalizeRoot(root) {
-  return resolve(root);
 }
 
 function parseInitOptions(argv) {
@@ -42,7 +34,7 @@ function parseInitOptions(argv) {
     }
   }
   if (!options.root) throw new Error('Missing required argument: <root>');
-  options.root = normalizeRoot(options.root);
+  options.root = resolve(options.root);
   if (!options.projectName) options.projectName = basename(options.root);
   return options;
 }
@@ -65,7 +57,7 @@ function writeInitFile(options, relativePath, content, actions) {
 
   let backup = '';
   if (existsSync(target) && options.force) {
-    backup = `${target}.bak.${utcTimestamp()}`;
+    backup = `${target}.bak.${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')}`;
     if (!options.dryRun) renameSync(target, backup);
   }
 

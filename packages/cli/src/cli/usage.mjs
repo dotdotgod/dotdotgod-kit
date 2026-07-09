@@ -137,17 +137,15 @@ export function isVersionToken(value) {
   return VERSION_TOKENS.has(value);
 }
 
-export function readCliVersion() {
+export function printVersion() {
+  let version = 'unknown';
   try {
     const data = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
-    return typeof data.version === 'string' ? data.version : 'unknown';
+    if (typeof data.version === 'string') version = data.version;
   } catch {
-    return 'unknown';
+    // keep 'unknown'
   }
-}
-
-export function printVersion() {
-  console.log(readCliVersion());
+  console.log(version);
   process.exit(0);
 }
 

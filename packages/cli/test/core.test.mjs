@@ -38,16 +38,14 @@ import {
   isUpperSnakeMarkdown,
   memoryAreaForPath,
   memoryConfigSummary,
-  memoryRoleForPath,
-  neighborhood,
   normalizeReferenceAlias,
   PLAN_STAGE_DIRECTORIES,
   readMemoryConfig,
+  resolveMemoryArea,
   resolvePlanValidationStage,
   resolveReferenceCandidates,
   renderCompactTraceabilityBlock,
   requiresTraceability,
-  retrievalPriorityForPath,
   shouldIndexPath,
   stripTraceabilityLinksRegion,
   suggestFilenameFromHeading,
@@ -393,13 +391,13 @@ describe('CLI docs helpers', () => {
 
   it('classifies dotdotgod memory paths for deterministic retrieval hints', () => {
     assert.equal(memoryAreaForPath('AGENTS.md'), 'rules');
-    assert.equal(memoryRoleForPath('docs/spec/README.md'), 'behavior-truth');
+    assert.equal(resolveMemoryArea('docs/spec/README.md')?.role, 'behavior-truth');
     assert.equal(memoryAreaForPath('docs/arch/CODE_CONVENTIONS.md'), 'architecture');
     assert.equal(memoryAreaForPath('docs/test/README.md'), 'test');
     assert.equal(memoryAreaForPath('docs/plan/task/README.md'), 'active-plan');
     assert.equal(memoryAreaForPath('docs/archive/README.md'), 'archive-map');
     assert.equal(isReadmeIndexPath('docs/spec/README.md'), true);
-    assert(retrievalPriorityForPath('docs/plan/task/README.md') > retrievalPriorityForPath('packages/tool/index.mjs'));
+    assert((resolveMemoryArea('docs/plan/task/README.md')?.priority ?? 30) > (resolveMemoryArea('packages/tool/index.mjs')?.priority ?? 30));
   });
 
   it('serializes the built-in policy as a valid project config template', () => {
@@ -1411,7 +1409,7 @@ describe('CLI index and graph helpers', () => {
     assert(index.graph.edges.some((edge) => edge.source === contractId && edge.target === 'file:docs/spec/FEATURE.md' && edge.relation === 'related_doc' && edge.confidence === 'CURATED_TRACEABILITY'));
     assert(index.graph.edges.some((edge) => edge.source === contractId && edge.target === `verification_command:${contractId}#0` && edge.relation === 'verification_command' && edge.confidence === 'CURATED_TRACEABILITY'));
     assert(index.graph.edges.some((edge) => edge.source === 'file:docs/README.md' && edge.target === 'file:docs/spec/README.md' && edge.relation === 'routes_to' && edge.confidence === 'CURATED_INDEX'));
-    const related = neighborhood(index, 'packages/tool/index.mjs');
+    const related = buildImpactReport(index, 'packages/tool/index.mjs').related;
     assert(related.some((node) => node.id === 'file:packages/tool/index.mjs'));
     assert(related.length <= 25);
     const impact = buildImpactReport(index, 'packages/tool/index.mjs');

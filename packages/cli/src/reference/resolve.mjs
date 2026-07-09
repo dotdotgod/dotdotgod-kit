@@ -5,10 +5,6 @@ import { readFreshIndex } from '../index/cache.mjs';
 import { buildCompactImpactReport, buildImpactReport } from '../impact/report.mjs';
 import { DEFAULT_REFERENCE_LIMIT, extractBracketReferences, extractFuzzyReferences, isArchiveBodyPath, normalizeReferenceAlias, referenceCandidateAliases, referencePathForNode } from './extract.mjs';
 
-function incomingRouteBonus(graph, nodeId) {
-  return graph.edges.some((edge) => edge.target === nodeId && edge.relation === 'routes_to') ? 6 : 0;
-}
-
 function exactReferenceScore(ref, alias, kind) {
   const rawRef = String(ref).trim().replace(/^\[\[/, '').replace(/\]\]$/, '').split('|')[0].trim().replace(/\\/g, '/').replace(/^\.\//, '');
   const rawAlias = String(alias).trim().replace(/\\/g, '/').replace(/^\.\//, '');
@@ -40,7 +36,7 @@ export function resolveReferenceCandidates(index, ref, options = {}) {
     }
     if (!best) continue;
     const retrievalPriority = Number(node.retrievalPriority ?? node.retrieval?.priority ?? 30);
-    const routeBonus = incomingRouteBonus(graph, node.id);
+    const routeBonus = graph.edges.some((edge) => edge.target === node.id && edge.relation === 'routes_to') ? 6 : 0;
     const memoryBonus = Math.min(12, Math.max(0, retrievalPriority / 10));
     const headingBonus = node.type === 'heading' ? 2 : 0;
     const score = Number((best.score + routeBonus + memoryBonus + headingBonus).toFixed(1));
@@ -80,13 +76,6 @@ function parseReferenceOptions(argv, command) {
   return { ...options, root: resolve(operands[0] ?? '.'), json: filtered.includes('--json'), rootArgv: operands.slice(1) };
 }
 
-function attachImpactToRef(index, refResult) {
-  const topPath = refResult.top?.path;
-  if (!topPath) return refResult;
-  const impact = buildCompactImpactReport(buildImpactReport(index, topPath));
-  return { ...refResult, impact: { changed: topPath, related: impact.related, groups: impact.groups, omittedRelated: impact.omittedRelated, quality: impact.quality } };
-}
-
 function formatReferenceOutput(payload) {
   const refreshNote = payload.metadata.cacheRefreshed ? ', refreshed' : '';
   const lines = [`${payload.command}: ${payload.refs.length} reference(s) (${payload.status.status}${refreshNote} index)`];
@@ -124,7 +113,12 @@ export function runExpand(argv) {
     ...refsInPrompt.map((item) => ({ ...resolveReferenceCandidates(index, item.target, options), source: 'explicit', raw: item.raw, label: item.label })),
     ...fuzzyRefs.map((item) => ({ ...resolveReferenceCandidates(index, item.target, options), source: 'fuzzy', raw: item.raw, confidence: item.confidence, reasons: item.reasons })),
   ];
-  if (options.withImpact) refs = refs.map((item) => attachImpactToRef(index, item));
+  if (options.withImpact) refs = refs.map((item) => {
+    const topPath = item.top?.path;
+    if (!topPath) return item;
+    const impact = buildCompactImpactReport(buildImpactReport(index, topPath));
+    return { ...item, impact: { changed: topPath, related: impact.related, groups: impact.groups, omittedRelated: impact.omittedRelated, quality: impact.quality } };
+  });
   const payload = { ok: status.ok, command: 'expand', root: options.root, prompt, status, metadata, refs, omitted: refs.reduce((sum, item) => sum + item.omitted, 0) };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else console.log(formatReferenceOutput(payload));

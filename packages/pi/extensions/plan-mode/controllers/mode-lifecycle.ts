@@ -27,10 +27,6 @@ export class ModeLifecycleController {
 		this.activeTools = [];
 	}
 
-	startReview(): void {
-		this.mode = "reviewing";
-	}
-
 	startExecution(): void {
 		this.mode = "executing";
 		this.activeTools = [];

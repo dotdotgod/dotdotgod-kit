@@ -19,16 +19,14 @@ export class ExecutionProgressController {
 		this.todos = todos.map((todo) => ({ ...todo }));
 	}
 
-	readTodosFromPlan(cwd: string, planPath: string): TodoItem[] {
-		try {
-			return extractTodoItems(readFileSync(resolve(cwd, planPath), "utf8"));
-		} catch {
-			return [];
-		}
-	}
-
 	loadTodosFromPlan(cwd: string, planPath: string): TodoItem[] {
-		this.setTodos(this.readTodosFromPlan(cwd, planPath));
+		let todos: TodoItem[] = [];
+		try {
+			todos = extractTodoItems(readFileSync(resolve(cwd, planPath), "utf8"));
+		} catch {
+			todos = [];
+		}
+		this.setTodos(todos);
 		return this.todos;
 	}
 
@@ -46,10 +44,6 @@ export class ExecutionProgressController {
 
 	markCompletedFromText(text: string): number {
 		return markCompletedSteps(text, this.todos);
-	}
-
-	completedCount(): number {
-		return this.todos.filter((todo) => todo.completed).length;
 	}
 
 	isComplete(): boolean {

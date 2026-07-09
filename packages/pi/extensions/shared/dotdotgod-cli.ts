@@ -13,26 +13,15 @@ export interface DotdotgodCliCandidateOptions {
 	includeGlobal?: boolean;
 }
 
-export function resolvePiPackageRoot(): string {
-	return resolve(dirname(fileURLToPath(import.meta.url)), "..");
-}
-
-export function resolveLocalWorkspaceCli(cwd: string): string | undefined {
-	const localCli = join(cwd, "packages/cli/bin/dotdotgod.mjs");
-	return existsSync(localCli) ? localCli : undefined;
-}
-
-export function resolveBundledCli(packageRoot = resolvePiPackageRoot()): string | undefined {
-	const bundledCli = join(packageRoot, "node_modules/@dotdotgod/cli/bin/dotdotgod.mjs");
-	return existsSync(bundledCli) ? bundledCli : undefined;
-}
-
 export function buildDotdotgodCliCandidates(cwd: string, args: string[], options: DotdotgodCliCandidateOptions = {}): DotdotgodCliCandidate[] {
 	const candidates: DotdotgodCliCandidate[] = [];
-	const localCli = resolveLocalWorkspaceCli(cwd);
+	const localCliPath = join(cwd, "packages/cli/bin/dotdotgod.mjs");
+	const localCli = existsSync(localCliPath) ? localCliPath : undefined;
 	if (localCli) candidates.push({ command: process.execPath, args: [localCli, ...args], label: "local workspace CLI" });
 
-	const bundledCli = resolveBundledCli(options.packageRoot);
+	const packageRoot = options.packageRoot ?? resolve(dirname(fileURLToPath(import.meta.url)), "..");
+	const bundledCliPath = join(packageRoot, "node_modules/@dotdotgod/cli/bin/dotdotgod.mjs");
+	const bundledCli = existsSync(bundledCliPath) ? bundledCliPath : undefined;
 	if (bundledCli && bundledCli !== localCli) candidates.push({ command: process.execPath, args: [bundledCli, ...args], label: "bundled @dotdotgod/cli" });
 
 	if (options.includeGlobal !== false) candidates.push({ command: "dotdotgod", args, label: "dotdotgod" });

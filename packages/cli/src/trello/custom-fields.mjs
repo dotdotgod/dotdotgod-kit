@@ -8,7 +8,7 @@ export function dotdotgodCustomFieldName({ env = process.env, name = '' } = {}) 
   return cleanString(name) || cleanString(env.DOTDOTGOD_TRELLO_CUSTOM_FIELD_NAME) || DEFAULT_DOTDOTGOD_CUSTOM_FIELD_NAME;
 }
 
-export function buildLinkedDocsCustomFieldData({ docsPath, githubUrl, trelloUrl, repositoryKey, repositoryLabel, title, summary, traceabilityState, traceabilityDetails = [] } = {}) {
+function buildLinkedDocsCustomFieldData({ docsPath, githubUrl, trelloUrl, repositoryKey, repositoryLabel, title, summary, traceabilityState, traceabilityDetails = [] } = {}) {
   return {
     repositoryKey: cleanString(repositoryKey),
     repositoryLabel: cleanString(repositoryLabel) || cleanString(repositoryKey).split('/').filter(Boolean).at(-1) || '',
@@ -22,12 +22,8 @@ export function buildLinkedDocsCustomFieldData({ docsPath, githubUrl, trelloUrl,
   };
 }
 
-function normalizeEntry(entry = {}) {
-  return buildLinkedDocsCustomFieldData(entry);
-}
-
 export function serializeLinkedDocsCustomFieldPayload(entries = []) {
-  return JSON.stringify({ version: 1, entries: entries.map(normalizeEntry) });
+  return JSON.stringify({ version: 1, entries: entries.map((entry) => buildLinkedDocsCustomFieldData(entry)) });
 }
 
 export function parseLinkedDocsCustomFieldPayload(text = '') {
@@ -54,7 +50,7 @@ export function parseLinkedDocsCustomFieldPayload(text = '') {
       },
     };
   }
-  const entries = parsed.entries.map(normalizeEntry);
+  const entries = parsed.entries.map((entry) => buildLinkedDocsCustomFieldData(entry));
   const keys = entries.map((entry) => entry.repositoryKey).filter(Boolean);
   if (keys.length !== new Set(keys).size) {
     return {
@@ -69,7 +65,7 @@ export function parseLinkedDocsCustomFieldPayload(text = '') {
 }
 
 export function mergeLinkedDocsCustomFieldValue(existingText = '', entry = {}) {
-  const current = normalizeEntry(entry);
+  const current = buildLinkedDocsCustomFieldData(entry);
   if (!current.repositoryKey) {
     return {
       ok: false,

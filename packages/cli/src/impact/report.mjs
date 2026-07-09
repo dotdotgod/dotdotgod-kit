@@ -121,7 +121,3 @@ export function buildCompactImpactReport(impact, limits = {}) {
   const top10 = (impact.related ?? []).filter((item) => item.id !== `file:${impact.changed}`).slice(0, 10);
   return { changed: impact.changed, compact: true, ranking: { method: impact.ranking?.method, preset: impact.ranking?.preset, configSource: impact.ranking?.configSource }, related, groups, omittedRelated: (impact.omittedRelated ?? 0) + Math.max(0, (impact.related?.length ?? 0) - related.length), quality: { rawRelated: impact.related?.length ?? 0, compactRelated: related.length, semanticOnlyTop10: top10.filter((item) => isSemanticOnlyImpactItem(item)).length, curatedTop10: top10.filter((item) => hasCuratedImpactReason(item)).length, lowActionabilityTop10: top10.filter((item) => isLowActionabilityImpactItem(item)).length } };
 }
-
-export function neighborhood(index, changedPath) {
-  return buildImpactReport(index, changedPath).related;
-}

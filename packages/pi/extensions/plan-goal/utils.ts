@@ -1,4 +1,3 @@
-import * as path from "node:path";
 import { complete, type Context, type UserMessage } from "@earendil-works/pi-ai";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
@@ -25,10 +24,6 @@ export function toKebabCase(input: string): string {
     .toLowerCase();
 }
 
-export function toUpperSnake(input: string): string {
-  return toKebabCase(input).replace(/-/g, "_").toUpperCase();
-}
-
 export function escapeMarkdown(value: string): string {
   return value.replace(/\r\n/g, "\n").trim();
 }
@@ -37,16 +32,11 @@ export function dedupeStrings(values: string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
-export function normalizeRelativePath(cwd: string, input: string): string {
-  const absolute = path.isAbsolute(input) ? input : path.resolve(cwd, input);
-  return path.relative(cwd, absolute).split(path.sep).join("/");
-}
-
 export function isValidPlanSlug(slug: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
 }
 
-function escapeRegExp(value: string): string {
+export function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
