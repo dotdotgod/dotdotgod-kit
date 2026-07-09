@@ -3,5 +3,13 @@
     "markdown": {
       "exclude": ["docs/archive/README.md", "docs/arch/EXTENSION_ARCHITECTURE.md"]
     }
+  },
+  "load": {
+    "documentationSummary": {
+      "exclude": ["docs/plan", "docs/archive"]
+    }
+  },
+  "planMode": {
+    "writablePaths": ["docs/plan/**", "docs/archive/**"]
   }
 }

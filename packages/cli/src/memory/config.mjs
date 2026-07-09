@@ -27,6 +27,12 @@ export const DEFAULT_INTEGRATIONS_POLICY = {
 export const DEFAULT_LOAD_POLICY = {
   pinnedPaths: [],
   pinnedBodies: [],
+  documentationSummary: {
+    exclude: ['docs/plan', 'docs/archive'],
+  },
+};
+export const DEFAULT_PLAN_MODE_POLICY = {
+  writablePaths: ['docs/plan/**', 'docs/archive/**'],
 };
 export const DEFAULT_IMPACT_RANKING_POLICY = {
   preset: 'balanced',
@@ -75,6 +81,7 @@ const DEFAULT_MEMORY_AREAS = [
   { id: 'active-plan', label: 'Active Plans', paths: ['docs/plan/**'], scope: 'local', freshness: 'fresh', role: 'active-task-intent', priority: 95, includeBodiesByDefault: true },
   { id: 'archive-map', label: 'Archive Map', paths: ['docs/archive/README.md'], scope: 'local', freshness: 'stale', role: 'historical-memory-map', priority: 65, includeBodiesByDefault: true },
   { id: 'archive-body', label: 'Archive Body', paths: ['docs/archive/**'], excludePaths: ['docs/archive/README.md'], scope: 'local', freshness: 'stale', role: 'historical-memory-body', priority: 20, includeBodiesByDefault: false },
+  { id: 'docs', label: 'Project Documentation', paths: ['docs/**'], scope: 'shared', freshness: 'fresh', role: 'project-documentation', priority: 60, includeBodiesByDefault: true },
 ];
 
 function cloneClarifyGuidance(clarify) {
@@ -178,11 +185,18 @@ export function cloneLoadPolicy(policy = DEFAULT_LOAD_POLICY) {
   return {
     pinnedPaths: [...(policy.pinnedPaths ?? [])],
     pinnedBodies: [...(policy.pinnedBodies ?? [])],
+    documentationSummary: {
+      exclude: [...(policy.documentationSummary?.exclude ?? DEFAULT_LOAD_POLICY.documentationSummary.exclude)],
+    },
   };
 }
 
+export function clonePlanModePolicy(policy = DEFAULT_PLAN_MODE_POLICY) {
+  return { writablePaths: [...(policy.writablePaths ?? DEFAULT_PLAN_MODE_POLICY.writablePaths)] };
+}
+
 export function defaultMemoryConfig() {
-  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), integrations: cloneIntegrationsPolicy(), load: cloneLoadPolicy() };
+  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), integrations: cloneIntegrationsPolicy(), load: cloneLoadPolicy(), planMode: clonePlanModePolicy() };
 }
 
 export function normalizePathPattern(value = '') {
@@ -261,10 +275,26 @@ export function isSecretLikePathPattern(value = '') {
   return /(^|\/)(\.env|\.npmrc|\.pypirc|id_rsa|id_dsa|id_ed25519|credentials?|secrets?)(\.|\/|$)/i.test(normalized);
 }
 
+function normalizePlanModePolicy(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return clonePlanModePolicy();
+  const writablePaths = raw.writablePaths === undefined
+    ? DEFAULT_PLAN_MODE_POLICY.writablePaths
+    : [...new Set((Array.isArray(raw.writablePaths) ? raw.writablePaths : []).map(normalizePathPattern))];
+  return clonePlanModePolicy({ writablePaths });
+}
+
 function normalizeLoadPolicy(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return cloneLoadPolicy();
   const normalize = (values) => (Array.isArray(values) ? [...new Set(values.map(normalizePathPattern))] : []);
-  return cloneLoadPolicy({ pinnedPaths: normalize(raw.pinnedPaths), pinnedBodies: normalize(raw.pinnedBodies) });
+  return cloneLoadPolicy({
+    pinnedPaths: normalize(raw.pinnedPaths),
+    pinnedBodies: normalize(raw.pinnedBodies),
+    documentationSummary: {
+      exclude: raw.documentationSummary?.exclude === undefined
+        ? DEFAULT_LOAD_POLICY.documentationSummary.exclude
+        : normalize(raw.documentationSummary.exclude),
+    },
+  });
 }
 
 export function trelloSyncPaths(config = defaultMemoryConfig()) {
@@ -384,6 +414,25 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
           if (values.some((value) => typeof value === 'string' && isSecretLikePathPattern(value))) add('LOAD_CONFIG_SECRET_PINNED_PATH', `load.${key}`, 'Pinned load paths must not target secrets, credentials, environment files, or private keys.');
         }
       }
+      if (load.documentationSummary !== undefined) {
+        const summary = load.documentationSummary;
+        if (!summary || typeof summary !== 'object' || Array.isArray(summary)) {
+          add('LOAD_CONFIG_INVALID_DOCUMENTATION_SUMMARY', 'load.documentationSummary', 'Expected an object.');
+        } else if (summary.exclude !== undefined) {
+          if (!Array.isArray(summary.exclude)) add('LOAD_CONFIG_INVALID_DOCUMENTATION_SUMMARY_EXCLUDE', 'load.documentationSummary.exclude', 'Expected an array of path strings.');
+          else if (summary.exclude.some((value) => !isValidPathPattern(value) || (typeof value === 'string' && value.trim().startsWith('/')))) add('LOAD_CONFIG_INVALID_DOCUMENTATION_SUMMARY_EXCLUDE', 'load.documentationSummary.exclude', 'Expected repository-relative path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+        }
+      }
+    }
+  }
+  const planMode = data.planMode;
+  if (planMode !== undefined) {
+    if (!planMode || typeof planMode !== 'object' || Array.isArray(planMode)) {
+      add('PLAN_MODE_CONFIG_INVALID', 'planMode', 'Expected an object.');
+    } else if (planMode.writablePaths !== undefined) {
+      const paths = planMode.writablePaths;
+      if (!Array.isArray(paths)) add('PLAN_MODE_CONFIG_INVALID_WRITABLE_PATHS', 'planMode.writablePaths', 'Expected an array of documentation path strings.');
+      else if (paths.some((value) => !isValidPathPattern(value) || typeof value !== 'string' || value.trim().startsWith('/') || (!normalizePathPattern(value).startsWith('docs/') && normalizePathPattern(value) !== 'docs') || normalizePathPattern(value).startsWith('docs/.') || isSecretLikePathPattern(value))) add('PLAN_MODE_CONFIG_INVALID_WRITABLE_PATHS', 'planMode.writablePaths', 'Expected safe repository-relative paths under docs/ using exact paths or /** subtree patterns.');
     }
   }
   const referenceExpansion = data.referenceExpansion;
@@ -498,7 +547,8 @@ export function readMemoryConfig(root = '.') {
       const referenceExpansion = normalizeReferenceExpansionPolicy(data.referenceExpansion);
       const integrations = normalizeIntegrationsPolicy(data.integrations);
       const load = normalizeLoadPolicy(data.load);
-      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, integrations, load, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, referenceExpansion, integrations, load, source: name, errors: [] };
+      const planMode = normalizePlanModePolicy(data.planMode);
+      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, integrations, load, planMode, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, referenceExpansion, integrations, load, planMode, source: name, errors: [] };
     } catch (error) {
       return { ...defaultMemoryConfig(), source: name, errors: [{ file: name, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}\nFix: repair ${name} so it is valid JSON, or regenerate the default config with \`dotdotgod config init <root> --force\` if you want to reset it.` }] };
     }
@@ -532,6 +582,7 @@ export function defaultDotdotgodConfigData() {
     referenceExpansion: { fuzzy: { lowSignal: { add: [], remove: [] } } },
     integrations: cloneIntegrationsPolicy(config.integrations),
     load: cloneLoadPolicy(config.load),
+    planMode: clonePlanModePolicy(config.planMode),
   };
 }
 
@@ -559,6 +610,7 @@ export function memoryConfigSummary(config) {
     referenceExpansion: cloneReferenceExpansionPolicy(config.referenceExpansion),
     integrations: cloneIntegrationsPolicy(config.integrations),
     load: cloneLoadPolicy(config.load),
+    planMode: clonePlanModePolicy(config.planMode),
   };
 }
 

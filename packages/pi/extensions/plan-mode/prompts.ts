@@ -47,16 +47,16 @@ export function resolvePlanModeTools(extraTools: unknown, availableTools?: reado
 	});
 }
 
-function buildPlanModeFullContextPrompt(allowedTools = DEFAULT_PLAN_MODE_TOOLS): string {
+function buildPlanModeFullContextPrompt(allowedTools = DEFAULT_PLAN_MODE_TOOLS, writablePaths: readonly string[] = ["docs/plan/**", "docs/archive/**"]): string {
 	return `[PLAN MODE ACTIVE]
 You are in Plan Mode. This is a read-only exploration and design phase before code changes.
 
 Restrictions:
 - Allowed tools: ${allowedTools.join(", ")}
-- edit/write are allowed only for markdown plan/archive files under docs/plan/ or docs/archive/.
+- edit/write are allowed only for valid markdown files matching the configured documentation paths: ${writablePaths.join(", ") || "none"}.
 - Exception: while active /plan-goal workflows are authoring a plan, edit/write may also update checkpoint files under docs/plan/<task-slug>/.dotdotgod-plan/*.md.
 - Under docs/, directories must use kebab-case and markdown file names must use UPPER_SNAKE_CASE.md, including README.md; the only non-kebab-case directory exception is the active generator .dotdotgod-plan checkpoint directory.
-- Forbidden: source/code/config file mutation outside docs/plan/ and docs/archive/.
+- Forbidden: source/code/config mutation; configured writable paths remain limited to documentation markdown.
 - Bash is restricted to read-only allowlisted commands.
 
 Project context:
@@ -85,11 +85,13 @@ In the final response, use a Plan: section only for concrete executable steps. A
 Do not change source/code/config files in Plan Mode. You may create or update only the allowed docs/plan or docs/archive markdown files needed to produce the durable plan.`;
 }
 
-const PLAN_MODE_COMPACT_CONTEXT_PROMPT = `[PLAN MODE ACTIVE]
-Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for UPPER_SNAKE_CASE markdown under docs/plan/ or docs/archive/; while active /plan-goal workflows are running, their docs/plan/<task-slug>/.dotdotgod-plan/*.md checkpoint files are also allowed. bash remains read-only allowlisted. Use AGENTS.md and docs indexes as source of truth when needed. Create or maintain docs/plan/<task-slug>/README.md only when durable implementation steps are needed; otherwise use a short in-chat checklist. Use a Plan: section only for concrete executable steps when ready.`;
+function buildPlanModeCompactContextPrompt(writablePaths: readonly string[]): string {
+	return `[PLAN MODE ACTIVE]
+Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for valid documentation markdown matching: ${writablePaths.join(", ") || "none"}; active /plan-goal docs/plan/<task-slug>/.dotdotgod-plan/*.md checkpoint files remain a narrow exception. bash remains read-only except safe directory operations inside the same paths. Use AGENTS.md and docs indexes as source of truth when needed. Create or maintain docs/plan/<task-slug>/README.md only when durable implementation steps are needed; otherwise use a short in-chat checklist. Use a Plan: section only for concrete executable steps when ready.`;
+}
 
-export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS): string {
-	return compact ? PLAN_MODE_COMPACT_CONTEXT_PROMPT : buildPlanModeFullContextPrompt(allowedTools);
+export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS, writablePaths: readonly string[] = ["docs/plan/**", "docs/archive/**"]): string {
+	return compact ? buildPlanModeCompactContextPrompt(writablePaths) : buildPlanModeFullContextPrompt(allowedTools, writablePaths);
 }
 
 export interface PlanCompactionFocus {

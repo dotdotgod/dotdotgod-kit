@@ -36,7 +36,7 @@ The command does not modify source, docs, or config files. This is a project-con
 
 It first tries to run `dotdotgod load-snapshot <cwd> --json` and include a bounded snapshot summary in the loader prompt. The CLI read can lazily refresh `.dotdotgod/` cache metadata when the cache is missing or stale. If the CLI is unavailable or returns invalid JSON, the command falls back to a lightweight snapshot of expected memory files and docs directories, then sends a read-only loader prompt to the agent.
 
-The documentation directory summary defaults to a book-like README table of contents: `README.md` paths per docs area, including nested domain `README.md` files, instead of full markdown file listings. A targeted subtree listing appears only when the load request identifies a specific docs path. When no README indexes exist and no valid CLI snapshot is available, the bounded fallback lists only a small number of discovered markdown files per docs area so those repositories remain usable without flooding the prompt.
+The documentation directory summary dynamically discovers a sorted, bounded set of direct `docs/` child directories and defaults to a book-like README table of contents: `README.md` paths per included area, including nested domain `README.md` files, instead of full markdown file listings. `load.documentationSummary.exclude` independently controls which docs directories are omitted; its zero-config default is `docs/plan` and `docs/archive`. This summary policy is separate from local-memory classification, graph indexing, and archive-body inclusion. A targeted subtree listing appears only when the load request identifies a specific included docs path. When no README indexes exist and no valid CLI snapshot is available, the bounded fallback lists only a small number of discovered markdown files per included docs area so those repositories remain usable without flooding the prompt.
 
 The agent is instructed to use read-only tools such as:
 
@@ -71,8 +71,8 @@ The loader prompt asks the agent to:
 - inspect docs/spec, docs/arch, and docs/test selectively unless a task needs a full refresh
 - follow `README.md` indexes, including domain directories such as `docs/<area>/<domain>/README.md`
 - follow expanded convention directories such as `docs/arch/conventions/README.md`
-- list `docs/plan` first and read only relevant active plan files
-- exclude `docs/archive` from the documentation directory summary
+- omit `docs/plan` and `docs/archive` from the documentation directory summary by default, while allowing `load.documentationSummary.exclude` to configure that list independently from memory scope
+- list `docs/plan` first and read only relevant active plan files when the request, snapshot routing, or configured summary inclusion makes plans relevant
 - use `docs/archive/README.md` or targeted archive paths only when the user request or current task makes completed plans/reports relevant
 - distinguish completed plan archives under `docs/archive/plan/` from temporary reports under `docs/archive/report/` when archive lookup is needed
 
@@ -101,7 +101,7 @@ In full mode, the agent may include the fuller project summary, key working rule
 - routing: graph node/edge counts, memory policy, bounded memory-area labels, and bounded communities with labels, files, docs, commands when present, tests, and omitted counts
 - archive and boundedness: full-graph inclusion, archive-body inclusion, archive-map inclusion, and README-only or targeted docs listings
 
-Configured `load.pinnedPaths` and `load.pinnedBodies` surface as pinned files: both modes list pinned paths with per-file statuses, and only full mode embeds the bounded pinned body contents. Compact prompts omit command guidance, graph type breakdowns, community events, cache paths, schema versions, and index size details. Default full loads may additionally include command guidance, debug metadata, and more detailed area entries. `docs/archive/README.md` remains included as the archive map; other archive bodies remain excluded by default. The raw CLI `load-snapshot` payload is unchanged; field selection happens in the prompt.
+Configured `load.documentationSummary.exclude` filters docs directories from the Pi prompt's book-like summary; it defaults to `docs/plan` and `docs/archive` and does not alter memory areas or indexing. Configured `load.pinnedPaths` and `load.pinnedBodies` surface as pinned files: both modes list pinned paths with per-file statuses, and only full mode embeds the bounded pinned body contents. Compact prompts omit command guidance, graph type breakdowns, community events, cache paths, schema versions, and index size details. Default full loads may additionally include command guidance, debug metadata, and more detailed area entries. `docs/archive/README.md` remains included as the archive map; other archive bodies remain excluded by default. The raw CLI `load-snapshot` payload is unchanged; field selection happens in the prompt.
 
 The snapshot includes `commandGuidance` so agents running full loads see environment-aware commands:
 

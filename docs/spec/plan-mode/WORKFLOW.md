@@ -8,7 +8,7 @@ After Plan Mode is enabled, the first user planning request triggers one context
 2. Request planning-focused compaction if context is too large or noisy.
 3. If both are needed, compact first, flush the load, then resume the latest request.
 
-Curated loads send the compact-mode prompt behind `/dd:load:compact` over baseline files, docs indexes, specs, architecture, tests, and active plans. Manual `/load` and `/dd:load` stay full. Compact loads exclude full repository scans and archive bodies unless targeted. When the CLI is available, Plan Mode validates, refreshes a bounded load snapshot, and runs advisory `graph impact --json` checks for likely targets.
+Curated loads use compact `/dd:load:compact` semantics over baseline files and bounded dynamic `docs/` indexes; manual loads stay full. Plan Mode passes the CLI snapshot into automatic rendering so configured summary exclusions match explicit loads, with bounded defaults on failure. It also validates and runs advisory impact checks when the CLI is available.
 
 Latest-request selection skips synthetic load prompts, so later human requests are framed by their own content.
 

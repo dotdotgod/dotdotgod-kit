@@ -19,6 +19,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/docs-memory-discovery-policy/`: replaced Pi's fixed docs summary list with bounded dynamic discovery, added the default `docs/**` memory catch-all and configured local-memory discovery, unified automatic load-summary policy, and added fail-closed `planMode.writablePaths`.
+- `plan/load-documentation-summary-exclusions/`: added independent `load.documentationSummary.exclude` policy; defaults and the workspace config omit `docs/plan` and `docs/archive` from Pi load prompt documentation summaries without changing local-memory classification or archive indexing.
 - `plan/load-pinned-files-config/`: added `load.pinnedPaths`/`load.pinnedBodies` config so teams can pin files such as code conventions into every load — direct disk-read `pinnedFiles` in `load-snapshot` with bounds and secret/binary skips, compact path-only and full body-embedding Pi load prompts, and spec/arch/test/README updates.
 - `plan/readme-clarity-review/`: clarified GitHub- and npm-facing READMEs — added the root working-loop section, concrete Claude Code/Codex install wording, adapter positioning lines, and absolute GitHub URLs for npm-fragile relative links.
 - `plan/plan-goal-doc-only-clarifier/`: added a packaged `dotdotgod.plan-doc-clarifier` subagent and `/plan-goal` final follow-up guidance so completed plans can be clarified from fresh, explicit-file-only context.

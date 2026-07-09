@@ -137,23 +137,35 @@ export function tokenizeShellCommand(command: string): string[] | undefined {
 	return tokens;
 }
 
-export function isPlanArchivePath(path: string): boolean {
+const DEFAULT_WRITABLE_PATHS = ["docs/plan/**", "docs/archive/**"];
+
+function matchesWritablePath(path: string, patterns: readonly string[]): boolean {
+	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/").replace(/\/$/, "");
+	if (normalized.includes("\0") || normalized.includes("*") || normalized.startsWith("/") || normalized.startsWith("../") || normalized.includes("/../")) return false;
+	return patterns.some((pattern) => {
+		const candidate = pattern.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/$/, "");
+		if (candidate.endsWith("/**")) {
+			const root = candidate.slice(0, -3);
+			return normalized === root || normalized.startsWith(`${root}/`);
+		}
+		return normalized === candidate;
+	});
+}
+
+export function isPlanArchivePath(path: string, writablePaths: readonly string[] = DEFAULT_WRITABLE_PATHS): boolean {
 	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
 	if (normalized.includes("\0") || normalized.includes("*")) return false;
 	if (normalized.startsWith("/") || normalized.startsWith("../") || normalized.includes("/../")) return false;
-	return (
-		normalized.startsWith("docs/plan/") ||
-		normalized.startsWith("docs/archive/") ||
-		normalized === "docs/archive/plan"
-	);
+	return matchesWritablePath(normalized, writablePaths);
 }
 
-export function isProtectedPlanArchiveRoot(path: string): boolean {
+export function isProtectedPlanArchiveRoot(path: string, writablePaths: readonly string[] = DEFAULT_WRITABLE_PATHS): boolean {
 	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
-	return normalized === "docs/plan" || normalized === "docs/archive" || normalized === "docs/archive/plan";
+	if (normalized === "docs/archive/plan" && matchesWritablePath(normalized, writablePaths)) return true;
+	return writablePaths.some((pattern) => normalized === pattern.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/\*\*$/, "").replace(/\/$/, ""));
 }
 
-export function isSafePlanArchiveCommand(command: string): boolean {
+export function isSafePlanArchiveCommand(command: string, writablePaths: readonly string[] = DEFAULT_WRITABLE_PATHS): boolean {
 	if (/[;&|<>`$\n\r]/.test(command)) return false;
 
 	const tokens = tokenizeShellCommand(command.trim());
@@ -163,13 +175,13 @@ export function isSafePlanArchiveCommand(command: string): boolean {
 	if (program === "mkdir") {
 		const paths = args.filter((arg) => arg !== "-p");
 		const options = args.filter((arg) => arg.startsWith("-"));
-		return paths.length > 0 && options.every((option) => option === "-p") && paths.every(isPlanArchivePath);
+		return paths.length > 0 && options.every((option) => option === "-p") && paths.every((path) => isPlanArchivePath(path, writablePaths));
 	}
 
 	if (program === "mv") {
 		const paths = args.filter((arg) => !arg.startsWith("-"));
 		const options = args.filter((arg) => arg.startsWith("-"));
-		return paths.length >= 2 && options.every((option) => option === "-f" || option === "-n") && paths.every(isPlanArchivePath);
+		return paths.length >= 2 && options.every((option) => option === "-f" || option === "-n") && paths.every((path) => isPlanArchivePath(path, writablePaths));
 	}
 
 	if (program === "rm" || program === "rmdir") {
@@ -182,16 +194,16 @@ export function isSafePlanArchiveCommand(command: string): boolean {
 		return (
 			paths.length > 0 &&
 			optionsAllowed &&
-			paths.every(isPlanArchivePath) &&
-			paths.every((path) => !isProtectedPlanArchiveRoot(path))
+			paths.every((path) => isPlanArchivePath(path, writablePaths)) &&
+			paths.every((path) => !isProtectedPlanArchiveRoot(path, writablePaths))
 		);
 	}
 
 	return false;
 }
 
-export function isSafeCommand(command: string): boolean {
-	if (isSafePlanArchiveCommand(command)) return true;
+export function isSafeCommand(command: string, writablePaths: readonly string[] = DEFAULT_WRITABLE_PATHS): boolean {
+	if (isSafePlanArchiveCommand(command, writablePaths)) return true;
 	const isDestructive = DESTRUCTIVE_PATTERNS.some((p) => p.test(command));
 	const isSafe = SAFE_PATTERNS.some((p) => p.test(command));
 	return !isDestructive && isSafe;
@@ -277,8 +289,8 @@ export interface PlanModeBashDecision {
 	reason?: string;
 }
 
-export async function shouldAllowPlanModeBashCommand(command: string, approval?: PlanModeBashApproval): Promise<PlanModeBashDecision> {
-	if (isSafeCommand(command)) return { allow: true };
+export async function shouldAllowPlanModeBashCommand(command: string, approval?: PlanModeBashApproval, writablePaths: readonly string[] = DEFAULT_WRITABLE_PATHS): Promise<PlanModeBashDecision> {
+	if (isSafeCommand(command, writablePaths)) return { allow: true };
 
 	if (isDotdotgodCliCommand(command)) {
 		if (isAutoAllowedDotdotgodPlanModeCommand(command)) return { allow: true };

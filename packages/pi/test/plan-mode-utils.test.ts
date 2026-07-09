@@ -239,6 +239,13 @@ describe("plan-mode command safety", () => {
 		}
 	});
 
+	it("uses configured writable documentation paths for safe housekeeping", () => {
+		const paths = ["docs/proposals/**"];
+		assert.equal(isSafePlanArchiveCommand("mkdir -p docs/proposals/new-design", paths), true);
+		assert.equal(isSafePlanArchiveCommand("mkdir -p docs/plan/new-design", paths), false);
+		assert.equal(isSafePlanArchiveCommand("rm -rf docs/proposals", paths), false);
+	});
+
 	it("blocks plan/archive housekeeping commands that escape local memory", () => {
 		for (const command of [
 			"rm -rf docs/plan",
@@ -533,6 +540,9 @@ describe("plan-mode current plan path helpers", () => {
 		assert.equal(isManagedPlanMarkdownPath(root, "docs/plan/landing-site/.hidden/01_INTAKE.md"), false);
 		assert.equal(isActivePlanMarkdownPath(root, checkpoint), false);
 		assert.equal(isManagedPlanMarkdownPath(root, "docs/plan/landing-site/README.md"), true);
+		assert.equal(isManagedPlanMarkdownPath(root, "docs/proposals/new-design/README.md", ["docs/proposals/**"]), true);
+		assert.equal(isManagedPlanMarkdownPath(root, "docs/proposals/README.md", ["docs/proposals/README.md"]), true);
+		assert.equal(isManagedPlanMarkdownPath(root, "docs/plan/landing-site/README.md", ["docs/proposals/**"]), false);
 		assert.equal(isActivePlanMarkdownPath(root, "docs/plan/landing-site/README.md"), true);
 	});
 });
@@ -946,8 +956,9 @@ describe("plan-mode tool settings", () => {
 	});
 
 	it("injects the resolved Plan Mode tool list into the full prompt", () => {
-		const prompt = buildPlanModeContextPrompt(false, ["read", "bash", "ctx_search"]);
+		const prompt = buildPlanModeContextPrompt(false, ["read", "bash", "ctx_search"], ["docs/proposals/**"]);
 		assert.match(prompt, /Allowed tools: read, bash, ctx_search/);
+		assert.match(prompt, /docs\/proposals\/\*\*/);
 		assert.match(prompt, /using questionnaire if available/);
 		assert.match(prompt, /run dotdotgod graph impact for intended changed files/);
 		assert.match(prompt, /post-coding dotdotgod validate/);

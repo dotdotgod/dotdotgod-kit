@@ -3,6 +3,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 
 export const PLAN_DIRECTORY = "docs/plan";
 export const ARCHIVE_DIRECTORY = "docs/archive";
+export const DEFAULT_PLAN_MODE_WRITABLE_PATHS = ["docs/plan/**", "docs/archive/**"] as const;
 
 export function normalizeToolPath(path: string): string {
 	return path.replace(/^@/, "");
@@ -47,10 +48,24 @@ export function isPlanGoalCheckpointMarkdownPath(cwd: string, path: string): boo
 	);
 }
 
-export function isManagedPlanMarkdownPath(cwd: string, path: string): boolean {
-	return isMarkdownPathInside(cwd, path, PLAN_DIRECTORY) ||
-		isMarkdownPathInside(cwd, path, ARCHIVE_DIRECTORY) ||
-		isPlanGoalCheckpointMarkdownPath(cwd, path);
+function writableDirectory(pattern: string): string | undefined {
+	const normalized = pattern.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
+	if (!normalized.startsWith("docs/") || normalized.includes("..") || normalized.startsWith("docs/.")) return undefined;
+	if (normalized.includes("*") && !normalized.endsWith("/**")) return undefined;
+	return normalized.endsWith("/**") ? normalized.slice(0, -3) : normalized;
+}
+
+export function isManagedPlanMarkdownPath(cwd: string, path: string, writablePaths: readonly string[] = DEFAULT_PLAN_MODE_WRITABLE_PATHS): boolean {
+	return writablePaths.some((pattern) => {
+		const directory = writableDirectory(pattern);
+		if (!directory) return false;
+		if (pattern.replaceAll("\\", "/").replace(/\/+$/, "").endsWith("/**")) return isMarkdownPathInside(cwd, path, directory);
+		const target = resolve(cwd, normalizeToolPath(path));
+		if (target !== resolve(cwd, directory)) return false;
+		const segments = directory.split("/");
+		const fileName = segments.pop();
+		return Boolean(fileName && isPlanMarkdownFile(fileName) && segments.slice(1).every(isKebabCaseDirectory));
+	}) || isPlanGoalCheckpointMarkdownPath(cwd, path);
 }
 
 export function isActivePlanMarkdownPath(cwd: string, path: string): boolean {

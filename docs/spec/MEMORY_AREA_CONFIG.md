@@ -52,8 +52,11 @@ Without config, the CLI behaves as if these areas were configured:
 - `docs/plan/**`: local fresh active-plan memory.
 - `docs/archive/README.md`: local stale archive map included by default.
 - `docs/archive/**`: local stale archive body excluded by default.
+- all remaining `docs/**`: shared fresh project documentation through a final low-priority catch-all area.
 
 The built-in default areas intentionally omit `description` and `clarify` metadata so `dotdotgod config init` stays concise. The `document-clarify` workflow carries the default dotdotgod document-role fallback for zero-config projects.
+
+Configured local areas with body inclusion enabled are also direct-disk discovery roots, so ignored local files are not limited to the built-in plan directory. Exact paths and `/**` subtrees are expanded under the normal secret, generated-file, supported-file, and bounded traversal checks; broad `**/suffix` patterns are classification-only.
 
 ## Archive Map and Archive Body
 
@@ -61,9 +64,22 @@ The built-in default areas intentionally omit `description` and `clarify` metada
 
 Archive bodies under `docs/archive/**` are stale local memory and are excluded from default indexing/loading unless explicit project policy includes them. Agents should use the archive map first and read archive bodies only through targeted lookup when the current task needs history.
 
+## Load Documentation Summary
+
+The optional `load.documentationSummary.exclude` array controls which docs directories are omitted from the Pi load prompt's `Documentation directory summary`.
+
+Behavior contract:
+
+- The zero-config default is `docs/plan` and `docs/archive`.
+- The policy is independent from `memory.areas`; changing local-memory scope does not change summary exclusions, and changing exclusions does not change indexing or retrieval metadata.
+- An explicit empty array includes all discovered summary directories, including plan and archive indexes.
+- Values use the same repository-relative exact and supported subtree path patterns as other path policies.
+- The policy filters only the book-like directory summary. Baseline-file detection, load-snapshot memory areas, pinned files, archive-body policy, and later targeted agent reads remain unchanged.
+- `dotdotgod config init` materializes the default list so projects can manage it independently.
+
 ## Load Pinned Files
 
-The optional top-level `load` policy family pins always-visible files into load output:
+The optional top-level `load` policy family also pins always-visible files into load output:
 
 - `load.pinnedPaths`: array of repository-relative paths or path patterns whose matches are always listed in load-snapshot output and Pi load prompts.
 - `load.pinnedBodies`: array of repository-relative paths or path patterns whose matching file contents are also embedded in full load output.
@@ -98,7 +114,8 @@ The motivating use case is keeping code conventions such as `docs/arch/CODE_CONV
 - invalid `clarify` values when present; `clarify` must be an object, `documentType` and `clarityGoal` must be non-empty strings, and `audience` and `editRules` must be arrays of non-empty strings
 - exact duplicate path patterns that are not excluded by the subsequent area
 - malformed `referenceExpansion.fuzzy.lowSignal.add` or `remove` arrays
-- non-object `load`; non-array or invalid `load.pinnedPaths`/`load.pinnedBodies` patterns, absolute or traversal pinned paths, and secret-like pinned paths
+- non-object `load`; invalid `load.documentationSummary` objects; non-array or invalid `load.documentationSummary.exclude` patterns; non-array or invalid `load.pinnedPaths`/`load.pinnedBodies` patterns; absolute or traversal paths; and secret-like pinned paths
+- invalid `planMode.writablePaths`; entries must be safe repository-relative exact or `/**` documentation paths under `docs/`
 
 Invalid memory config does not make the CLI crash. Runtime commands fall back to the default memory config while validation reports repairable errors.
 
@@ -109,6 +126,7 @@ Invalid memory config does not make the CLI crash. Runtime commands fall back to
 - `memoryConfig`: the resolved source, memory-area definitions, optional area `description`/`clarify` metadata, traceability path policy, and reference-expansion fuzzy low-signal policy.
 - `memoryPolicy`: bounded lists of shared, local, fresh, and stale area ids.
 - `memoryAreas`: bounded file summaries grouped by configured area, including area clarity metadata when configured.
+- `memoryConfig.load.documentationSummary.exclude`: the independently resolved Pi documentation-summary exclusion policy.
 - `pinnedFiles`: configured pinned paths with per-file statuses and bounded pinned bodies read directly from disk.
 - archive bounds showing whether archive bodies were included.
 

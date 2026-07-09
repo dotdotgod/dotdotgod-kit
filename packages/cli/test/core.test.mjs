@@ -404,6 +404,8 @@ describe('CLI docs helpers', () => {
     const data = defaultDotdotgodConfigData();
     assert.deepEqual(validateMemoryConfigData(data), []);
     assert(data.memory.areas.some((area) => area.id === 'archive-body' && area.includeBodiesByDefault === false));
+    assert(data.memory.areas.some((area) => area.id === 'docs' && area.paths.includes('docs/**')));
+    assert.deepEqual(data.planMode.writablePaths, ['docs/plan/**', 'docs/archive/**']);
     assert.deepEqual(data.traceability.required, ['docs/spec/**']);
     assert.equal(data.validation.markdown.maxLines, 200);
     assert.equal(data.validation.markdown.maxChars, 10000);
@@ -620,40 +622,61 @@ describe('CLI docs helpers', () => {
     assert.equal(requiresTraceability('docs/spec/FEATURE.md', config), false);
   });
 
-  it('loads configurable pinned load files with normalization and validation', () => {
-    assert.deepEqual(defaultMemoryConfig().load, { pinnedPaths: [], pinnedBodies: [] });
-    assert.deepEqual(defaultDotdotgodConfigData().load, { pinnedPaths: [], pinnedBodies: [] });
+  it('loads configurable pinned files and documentation-summary exclusions', () => {
+    const defaultLoad = {
+      pinnedPaths: [],
+      pinnedBodies: [],
+      documentationSummary: { exclude: ['docs/plan', 'docs/archive'] },
+    };
+    assert.deepEqual(defaultMemoryConfig().load, defaultLoad);
+    assert.deepEqual(defaultDotdotgodConfigData().load, defaultLoad);
 
     const root = fixture();
     writeFixtureJson(root, 'dotdotgod.config.json', {
       load: {
         pinnedPaths: ['./docs/arch/CODE_CONVENTIONS.md', 'docs/arch/CODE_CONVENTIONS.md'],
         pinnedBodies: ['docs/arch/**'],
+        documentationSummary: { exclude: ['./docs/private', 'docs/private'] },
       },
     });
     const config = readMemoryConfig(root);
     assert.equal(config.source, 'dotdotgod.config.json');
     assert.deepEqual(config.load.pinnedPaths, ['docs/arch/CODE_CONVENTIONS.md']);
     assert.deepEqual(config.load.pinnedBodies, ['docs/arch/**']);
+    assert.deepEqual(config.load.documentationSummary.exclude, ['docs/private']);
     assert.deepEqual(memoryConfigSummary(config).load, config.load);
 
     const invalid = validateMemoryConfigData({
       load: {
         pinnedPaths: ['/etc/hosts', '../escape.md', 'docs/*.md'],
         pinnedBodies: [42, '.env', 'secrets/keys.md'],
+        documentationSummary: { exclude: 'docs/plan' },
       },
     }, root);
     const codes = new Set(invalid.map((error) => error.code));
     assert(codes.has('LOAD_CONFIG_INVALID_PINNED_PATHS'));
     assert(codes.has('LOAD_CONFIG_INVALID_PINNED_BODIES'));
     assert(codes.has('LOAD_CONFIG_SECRET_PINNED_PATH'));
+    assert(codes.has('LOAD_CONFIG_INVALID_DOCUMENTATION_SUMMARY_EXCLUDE'));
     assert(validateMemoryConfigData({ load: [] }, root).some((error) => error.code === 'LOAD_CONFIG_INVALID'));
+    assert(validateMemoryConfigData({ load: { documentationSummary: [] } }, root).some((error) => error.code === 'LOAD_CONFIG_INVALID_DOCUMENTATION_SUMMARY'));
     assert(validateMemoryConfigData({ load: { pinnedPaths: 'docs/arch/CODE_CONVENTIONS.md' } }, root).some((error) => error.code === 'LOAD_CONFIG_INVALID_PINNED_PATHS'));
 
     writeFixtureJson(root, 'dotdotgod.config.json', { load: { pinnedPaths: ['../escape.md'] } });
     const fallback = readMemoryConfig(root);
     assert(fallback.errors.some((error) => error.code === 'LOAD_CONFIG_INVALID_PINNED_PATHS'));
-    assert.deepEqual(fallback.load, { pinnedPaths: [], pinnedBodies: [] });
+    assert.deepEqual(fallback.load, defaultLoad);
+  });
+
+  it('loads and validates configurable Plan Mode writable documentation paths', () => {
+    const root = fixture();
+    writeFixtureJson(root, 'dotdotgod.config.json', { planMode: { writablePaths: ['docs/proposals/**'] } });
+    const config = readMemoryConfig(root);
+    assert.deepEqual(config.planMode.writablePaths, ['docs/proposals/**']);
+    assert.deepEqual(memoryConfigSummary(config).planMode, config.planMode);
+    assert(validateMemoryConfigData({ planMode: { writablePaths: [] } }, root).length === 0);
+    assert(validateMemoryConfigData({ planMode: { writablePaths: ['src/**'] } }, root).some((error) => error.code === 'PLAN_MODE_CONFIG_INVALID_WRITABLE_PATHS'));
+    assert(validateMemoryConfigData({ planMode: { writablePaths: '../docs/**' } }, root).some((error) => error.code === 'PLAN_MODE_CONFIG_INVALID_WRITABLE_PATHS'));
   });
 
   it('builds pinned load files from direct disk reads with bounds and safety checks', () => {
@@ -1368,6 +1391,7 @@ describe('CLI index and graph helpers', () => {
     assert.equal(shouldIndexPath('node_modules/a/index.js'), false);
     assert.equal(shouldIndexPath('src/main.go'), true);
     assert.equal(shouldIndexPath('crates/app/src/lib.rs'), true);
+    assert.equal(defaultMemoryConfig().areas.at(-1).id, 'docs');
     assert.equal(shouldIndexPath('Dockerfile'), true);
   });
 
