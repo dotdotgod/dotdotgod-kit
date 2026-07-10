@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 
-export function normalizeGitHubRepositoryKey(value = '') {
+function normalizeGitHubRepositoryKey(value = '') {
   const text = String(value).trim();
   const match = text.match(/^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/u);
   if (!match) return null;

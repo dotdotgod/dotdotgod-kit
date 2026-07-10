@@ -593,31 +593,3 @@ export function buildStageHandoffMessage(options: {
     .replaceAll("{{stageContext}}", options.stageContext)
     .replaceAll("{{nextContext}}", nextContext);
 }
-
-export function buildStage01AuthoringMessage(request: string): string {
-  return buildStageAuthoringMessage(
-    PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_01_ID],
-    request,
-  );
-}
-
-export function buildStage01RetryMessage(request: string, previousMessage: string): string {
-  return buildStageRetryMessage(
-    PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_01_ID],
-    request,
-    previousMessage,
-  );
-}
-
-export function buildPlanFileHandoffMessage(options: {
-  planPath: string;
-  stage01Context: string;
-  nextContext: string;
-}): string {
-  return buildStageHandoffMessage({
-    stage: PLAN_GOAL_STAGE_ENVIRONMENTS[STAGE_01_ID],
-    planPath: options.planPath,
-    stageContext: options.stage01Context,
-    nextContext: options.nextContext,
-  });
-}

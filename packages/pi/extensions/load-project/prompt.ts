@@ -128,7 +128,8 @@ export function extractDocsPathMentions(text: string): string[] {
 	return [...new Set(cleaned)];
 }
 
-export function formatLoadSnapshotSummary(result: LoadSnapshotRunResult, communityLimit = 5, options: LoadPromptOptions = {}): string {
+export function formatLoadSnapshotSummary(result: LoadSnapshotRunResult, options: LoadPromptOptions = {}): string {
+	const communityLimit = 5;
 	if (!result.ok) {
 		return `Load snapshot: unavailable; using bounded fallback snapshot. Reason: ${result.error ?? "unknown error"}`;
 	}
@@ -271,7 +272,7 @@ export function buildLoadPrompt(
 	const directorySummary = formatDirectorySummary(snapshot, args, hasLoadSnapshot, full);
 
 	const mode = args.trim() ? `\nUser arguments: ${args.trim()}\n` : "";
-	const loadSnapshotText = loadSnapshot ? `\n${formatLoadSnapshotSummary(loadSnapshot, 5, options)}\n` : "";
+	const loadSnapshotText = loadSnapshot ? `\n${formatLoadSnapshotSummary(loadSnapshot, options)}\n` : "";
 	const responseShape = full
 		? `Response format:\n- Project summary\n- Key working rules\n- Available commands and verification methods\n- Documentation map\n- Active plans\n- Relevant archive notes when requested or directly relevant\n- Open TODO/TBD items or questions to clarify`
 		: `Response format:\n- Compact project-memory status: what is available, stale, missing, or newly refreshed\n- Relevant docs map: only the docs areas or README indexes likely needed for the current request\n- Active plan hints: active plan paths only when relevant\n- Next recommended reads: a short, bounded list; say when no further reads are needed`;

@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { SEMANTIC_RELATIONS } from '../memory/config.mjs';
+import { CACHE_DIR } from '../index/constants.mjs';
 
-const CACHE_DIR = '.dotdotgod';
 const GRAPH_NODE_SHARDS = ['docs', 'packages', 'source'];
 const GRAPH_EDGE_SHARDS = ['docs-links', 'packages', 'other'];
 

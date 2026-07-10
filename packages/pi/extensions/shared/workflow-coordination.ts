@@ -18,7 +18,7 @@ function inactiveState(): DotdotgodWorkflowState {
 
 let workflowState: DotdotgodWorkflowState = inactiveState();
 
-export function getDotdotgodWorkflowState(): DotdotgodWorkflowState {
+function getDotdotgodWorkflowState(): DotdotgodWorkflowState {
   return { ...workflowState };
 }
 

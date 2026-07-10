@@ -32,12 +32,7 @@ const initialState: PlanGoalStoreState = {
 
 export interface PlanGoalStore {
   getState(): PlanGoalStoreState;
-  setCurrentPlan(currentPlan: string | undefined): void;
-  setCurrentStage(currentStage: PlanGoalStageId | undefined): void;
-  setStatus(status: PlanGoalStatus, message?: string): void;
   updateState(patch: Partial<PlanGoalStoreState>): void;
-  addBreaker(): void;
-  resetBreaker(): void;
   restore(ctx: ExtensionContext): void;
 }
 
@@ -84,28 +79,6 @@ export function createPlanGoalStore(pi: ExtensionAPI): PlanGoalStore {
     persist();
   };
 
-  const setCurrentPlan = (currentPlan: string | undefined): void => {
-    updateState({ currentPlan });
-  };
-
-  const setCurrentStage = (
-    currentStage: PlanGoalStageId | undefined,
-  ): void => {
-    updateState({ currentStage });
-  };
-
-  const setStatus = (status: PlanGoalStatus, message?: string): void => {
-    updateState({ status, message });
-  };
-
-  const addBreaker = (): void => {
-    updateState({ breaker: state.breaker + 1 });
-  };
-
-  const resetBreaker = (): void => {
-    updateState({ breaker: 0 });
-  };
-
   const restore = (ctx: ExtensionContext): void => {
     let restoredState: PlanGoalStoreState | undefined;
 
@@ -133,12 +106,7 @@ export function createPlanGoalStore(pi: ExtensionAPI): PlanGoalStore {
 
   return {
     getState,
-    setCurrentPlan,
-    setCurrentStage,
-    setStatus,
     updateState,
-    addBreaker,
-    resetBreaker,
     restore,
   };
 }

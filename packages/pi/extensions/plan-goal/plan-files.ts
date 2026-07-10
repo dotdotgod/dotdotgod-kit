@@ -11,7 +11,7 @@ import {
   type PlanGoalStageEnvironment,
   type PlanGoalStageId,
 } from "./stage-contract.ts";
-import { authCreate, createTextUserMessage, isValidPlanSlug, toKebabCase } from "./utils.ts";
+import { authCreate, createTextUserMessage, escapeRegExp, isValidPlanSlug, toKebabCase } from "./utils.ts";
 
 export interface PlanGoalTaskPath {
   taskSlug: string;
@@ -145,7 +145,6 @@ export function createPlanStageCheckpointViaCli(
   cwd: string,
   stage: PlanGoalStageId,
   planPath: string,
-  timeoutMs = 10_000,
 ): PlanGoalStageCheckpointResult {
   const args = ["plan", "stage", "create", stage, planPath, "--json"];
   const candidates = buildDotdotgodCliCandidates(cwd, args);
@@ -155,7 +154,7 @@ export function createPlanStageCheckpointViaCli(
       cwd,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-      timeout: timeoutMs,
+      timeout: 10_000,
       maxBuffer: 1024 * 1024,
     });
     const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`.trim();
@@ -322,10 +321,6 @@ function discoverDurableMarkdownFiles(taskDir: string): string[] {
     if (path.basename(right) === "README.md" && path.dirname(right) === taskDir) return 1;
     return left.localeCompare(right);
   });
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function findMarkdownSection(files: string[], heading: string): string | undefined {

@@ -225,14 +225,6 @@ export function memoryAreaForPath(path = '', config = defaultMemoryConfig()) {
   return resolveMemoryArea(path, config)?.id;
 }
 
-export function memoryRoleForPath(path = '', config = defaultMemoryConfig()) {
-  return resolveMemoryArea(path, config)?.role;
-}
-
-export function retrievalPriorityForPath(path = '', config = defaultMemoryConfig()) {
-  return resolveMemoryArea(path, config)?.priority ?? 30;
-}
-
 function normalizeTraceabilityPolicy(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return cloneTraceabilityPolicy();
   return {

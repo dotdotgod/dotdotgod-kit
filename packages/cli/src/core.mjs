@@ -15,17 +15,17 @@ export { commandUsage, hasHelpToken, helpCommandFromArgs, isHelpToken, isVersion
 export { rel } from './common/paths.mjs';
 export { extractAnchors, extractFirstHeading, extractLinks, headingToAnchor, isKebabCase, isNumberedSeriesFilename, isUpperSnakeMarkdown, removeCodeBlocks, suggestFilenameFromHeading } from './docs/markdown.mjs';
 export { extractDotdotgodTraceabilityBlocks, findTraceabilityLinksRegion, isLocalRelativeTraceabilityPath, renderCompactTraceabilityBlock, stripTraceabilityLinksRegion, syncTraceabilityLinksInContent, traceabilityExample, validateTraceabilityBlock, validateTraceabilityLinksRegion, validateTraceabilityPlacement } from './docs/traceability.mjs';
-export { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_INTEGRATIONS_POLICY, DEFAULT_LOAD_POLICY, DEFAULT_VALIDATION_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, cloneIntegrationsPolicy, cloneLoadPolicy, cloneReferenceExpansionPolicy, cloneValidationPolicy, defaultDotdotgodConfigData, defaultDotdotgodConfigText, defaultMemoryConfig, isMarkdownSizeExcluded, isSecretLikePathPattern, isValidPathPattern, matchPathPattern, memoryAreaForPath, memoryConfigSummary, memoryRoleForPath, normalizeLowSignalTerm, readMemoryConfig, requiresTraceability, resolveMemoryArea, retrievalPriorityForPath, trelloSyncPaths, validateMemoryConfigData } from './memory/config.mjs';
+export { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_INTEGRATIONS_POLICY, DEFAULT_LOAD_POLICY, DEFAULT_VALIDATION_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, cloneIntegrationsPolicy, cloneLoadPolicy, cloneReferenceExpansionPolicy, cloneValidationPolicy, defaultDotdotgodConfigData, defaultDotdotgodConfigText, defaultMemoryConfig, isMarkdownSizeExcluded, isSecretLikePathPattern, isValidPathPattern, matchPathPattern, memoryAreaForPath, memoryConfigSummary, normalizeLowSignalTerm, readMemoryConfig, requiresTraceability, resolveMemoryArea, trelloSyncPaths, validateMemoryConfigData } from './memory/config.mjs';
 export { buildCommunities, relationWeight } from './graph/communities.mjs';
 export { addEdge, addNode, compactGraph, expandGraph, graphStats, jsonSize, shardFile, writeJson } from './graph/store.mjs';
 export { cacheFile, collectIndexFiles, fingerprint, shouldIndexPath } from './index/files.mjs';
 export { buildMemoryAreas, buildPinnedFiles, detectCommandGuidance, detectPackageManager } from './load-snapshot/summary.mjs';
-export { isReadmeIndexPath, retrievalMetadataForPath, fileNodeMetadata } from './graph/metadata.mjs';
-export { extractMarkdownGraph, extractPackageGraph, buildGraph } from './graph/extract.mjs';
+export { isReadmeIndexPath, retrievalMetadataForPath } from './graph/metadata.mjs';
+export { buildGraph } from './graph/extract.mjs';
 export { addDeterministicSemanticEdges } from './graph/semantic.mjs';
 export { buildIndex, writeIndex, readIndex, getStatus, runIndex, runStatus, readFreshIndex, graphSummary } from './index/cache.mjs';
 export { runValidate } from './validate/run.mjs';
-export { buildImpactReport, buildCompactImpactReport, neighborhood } from './impact/report.mjs';
+export { buildImpactReport, buildCompactImpactReport } from './impact/report.mjs';
 export { formatCompactImpactOutput, formatYmlGraphImpactError, formatYmlImpactOutput } from './impact/format.mjs';
 export { runConfig } from './commands/config.mjs';
 export { runLoadSnapshot } from './commands/load-snapshot.mjs';
@@ -36,11 +36,11 @@ export { parseGraphOptions, runGraph } from './commands/graph.mjs';
 export { buildPlanValidationRepairPrompt, createPlanStageCheckpoint, formatPlanValidationText, PLAN_REQUIRED_HEADERS, PLAN_STAGE_DIRECTORIES, resolvePlanValidationStage, runPlan, validatePlanArtifact } from './commands/plan.mjs';
 export { planTrelloDryRun, runTrelloSync } from './trello/sync.mjs';
 export { parseTrelloMetadata, extractTrelloShortLink } from './trello/metadata.mjs';
-export { normalizeGitHubRemote, normalizeGitHubRepositoryKey, resolveGitHubFileUrl, resolveGitHubRepositoryIdentity } from './trello/github-url.mjs';
+export { normalizeGitHubRemote, resolveGitHubFileUrl, resolveGitHubRepositoryIdentity } from './trello/github-url.mjs';
 export { buildLinkedDocsData, summarizeTraceability } from './trello/summary.mjs';
 export { formatTrelloDryRunReport, formatTrelloWriteReport } from './trello/report.mjs';
 export { createTrelloClient, resolveTrelloCredentials } from './trello/client.mjs';
-export { buildLinkedDocsCustomFieldData, customFieldTextValue, DEFAULT_DOTDOTGOD_CUSTOM_FIELD_NAME, dotdotgodCustomFieldName, mergeLinkedDocsCustomFieldValue, parseLinkedDocsCustomFieldPayload, serializeLinkedDocsCustomFieldPayload } from './trello/custom-fields.mjs';
+export { customFieldTextValue, DEFAULT_DOTDOTGOD_CUSTOM_FIELD_NAME, dotdotgodCustomFieldName, mergeLinkedDocsCustomFieldValue, parseLinkedDocsCustomFieldPayload, serializeLinkedDocsCustomFieldPayload } from './trello/custom-fields.mjs';
 
 export async function runCli(argv = process.argv.slice(2)) {
   const [command = 'help', ...args] = argv;

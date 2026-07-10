@@ -14,7 +14,7 @@ function parseLoadSnapshotJson(stdout: string): unknown {
 	return JSON.parse(trimmed) as unknown;
 }
 
-export function runDotdotgodLoadSnapshot(cwd: string, timeoutMs = 10_000): LoadSnapshotRunResult {
+export function runDotdotgodLoadSnapshot(cwd: string): LoadSnapshotRunResult {
 	const candidates = buildDotdotgodCliCandidates(cwd, ["load-snapshot", cwd, "--json"]);
 
 	const errors: string[] = [];
@@ -24,7 +24,7 @@ export function runDotdotgodLoadSnapshot(cwd: string, timeoutMs = 10_000): LoadS
 				cwd,
 				encoding: "utf8",
 				stdio: ["ignore", "pipe", "pipe"],
-				timeout: timeoutMs,
+				timeout: 10_000,
 				maxBuffer: 1024 * 1024,
 			});
 			return { ok: true, command: candidate.label, data: parseLoadSnapshotJson(stdout) };

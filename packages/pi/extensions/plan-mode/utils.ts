@@ -26,7 +26,6 @@ export {
 	DOTDOTGOD_WORKFLOW_CUSTOM_TYPE,
 	activatePlanGoalWorkflow,
 	clearDotdotgodWorkflowState,
-	getDotdotgodWorkflowState,
 	isPlanGoalWorkflowActive,
 	restoreDotdotgodWorkflowState,
 	restorePlanGoalWorkflowActive,

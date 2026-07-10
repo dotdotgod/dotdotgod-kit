@@ -4,9 +4,8 @@ import { spawnSync } from 'node:child_process';
 import { basename, extname, join } from 'node:path';
 import { rel } from '../common/paths.mjs';
 import { defaultMemoryConfig, readMemoryConfig, resolveMemoryArea } from '../memory/config.mjs';
+import { CACHE_DIR, MANIFEST_FILE } from './constants.mjs';
 
-const CACHE_DIR = '.dotdotgod';
-const MANIFEST_FILE = 'manifest.json';
 const INDEX_TEXT_EXTENSIONS = new Set([
   '.md', '.mdx', '.markdown', '.txt', '.rst', '.adoc', '.org',
   '.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx', '.py', '.pyw', '.go', '.rs', '.java', '.kt', '.kts', '.swift', '.rb', '.php', '.cs', '.cpp', '.cc', '.cxx', '.c', '.h', '.hpp', '.m', '.mm', '.scala', '.clj', '.cljs', '.ex', '.exs', '.erl', '.hrl', '.lua', '.pl', '.pm', '.r', '.R', '.sql',
