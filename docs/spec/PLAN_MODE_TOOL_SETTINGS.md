@@ -21,11 +21,17 @@ Behavior:
 - Tool names that are not installed in the current Pi session are ignored.
 - The resolved active tool list is used both for `pi.setActiveTools()` and for the hidden full Plan Mode prompt.
 
-This lets users opt into external read-oriented tools, such as context-mode tools, without making external plugins part of the default Plan Mode surface. Extra tools remain subject to Plan Mode path, command, and mutation guards; the setting MUST NOT grant source/config mutation authority beyond the existing Plan Mode policy.
+This lets users opt into external read-oriented tools, such as context-mode tools, without making external plugins part of the default Plan Mode surface. Extra tools remain subject to Plan Mode path, command, and mutation guards.
+
+## Writable Documentation Paths
+
+Project config may define `planMode.writablePaths` as an array of repository-relative exact paths or `/**` subtree patterns under `docs/`. The default is `docs/plan/**` and `docs/archive/**`; an explicit array replaces that default, and an empty array disables general Plan Mode document mutation.
+
+The resolved policy applies to `edit`/`write` and constrained `mkdir`/`mv`/`rm`/`rmdir` operations. It permits only conventionally named Markdown and safe directory operations, protects configured roots from deletion, and never permits source/config paths, traversal, secret-like paths, arbitrary shell composition, or unsupported file types. Config resolution fails closed to the built-in defaults. The `/plan-goal` checkpoint path remains a narrow system exception, while active-plan tracking and archive lifecycle remain specific to plan/archive paths.
 
 ## Prompt Requirements
 
-The full Plan Mode prompt must render the resolved active tool list from current settings.
+The full Plan Mode prompt must render the resolved active tool list and writable documentation paths from current settings. The compact prompt must also name the resolved writable paths.
 
 The prompt must not contradict Plan Mode permissions. It should clearly distinguish forbidden source/code/config mutation from allowed durable plan/archive markdown updates.
 

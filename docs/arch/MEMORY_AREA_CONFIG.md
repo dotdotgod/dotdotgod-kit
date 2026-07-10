@@ -32,8 +32,9 @@ The default config is equivalent to the previous hard-coded behavior:
 - local fresh area for active plans
 - local stale archive map included by default
 - local stale archive bodies excluded by default
+- a final shared fresh `docs/**` catch-all for concept, report, and project-defined documentation areas
 
-This preserves zero-config behavior for initialized projects and package consumers.
+Specific areas keep first-match precedence over the catch-all.
 
 ## Path Matching
 
@@ -55,7 +56,7 @@ File discovery still respects gitignore and the supported text/source/config fil
 
 After generic exclusions for secrets, generated files, dependencies, and build outputs, memory-area policy can exclude matched files when `includeBodiesByDefault` is `false`. This is how archive bodies remain outside the default index and load snapshot.
 
-`docs/plan` and `docs/archive/README.md` remain explicit local-memory candidates so active plans and the archive map can be surfaced even when local memory paths are ignored by git.
+Ignored local-memory recovery is derived from configured local areas whose bodies are enabled. Exact paths and `/**` subtree roots are walked directly under a hard cap, then every candidate passes the normal index safety and area-inclusion checks. Broad `**/suffix` patterns do not trigger repository-wide local walks. The archive map remains discoverable while the archive-body area's disabled body policy prevents recursive archive indexing.
 
 ## Graph Metadata
 
@@ -86,9 +87,15 @@ Impact ranking uses this metadata as a bounded memory-policy score. Curated trac
 
 The snapshot remains a navigation layer. It does not embed the full graph or archive bodies by default.
 
+## Load Documentation Summary Policy
+
+`load.documentationSummary.exclude` is separate from `memory.areas` on purpose. Memory areas classify retrieval roles and index inclusion, while the documentation-summary policy controls only which discovered docs directories Pi renders in the load prompt's book-like table of contents. Both built-in and materialized workspace defaults exclude `docs/plan` and `docs/archive`, but neither policy is derived from local-memory scope. An explicit empty exclusion list opts both directories into the summary without changing their memory classification or archive-body policy.
+
+The CLI owns validation, normalization, fallback defaults, config display, and snapshot serialization. The Pi adapter dynamically discovers a sorted, bounded set of direct `docs/` child directories, reads the resolved policy from `load-snapshot.memoryConfig`, and applies the built-in exclusion list when the CLI snapshot is unavailable. Plan Mode automatic compact loads obtain the same CLI snapshot instead of silently using fallback exclusions.
+
 ## Load Pinned Files Policy
 
-The `load` policy family is separate from `memory.areas` on purpose: memory areas classify retrieval roles and index inclusion, while `load.pinnedPaths`/`load.pinnedBodies` express "always show this file during project loading" regardless of classification.
+The pinned-file portion of the `load` policy family is also separate from `memory.areas`: `load.pinnedPaths`/`load.pinnedBodies` express "always show this file during project loading" regardless of classification.
 
 Pinned files are read directly from disk at snapshot time instead of through the graph index, so stale caches or non-indexed paths cannot hide them. Direct reads therefore carry stronger safety checks: repository-relative path validation, secret-like path rejection in both validation and runtime expansion, binary detection via null-byte sniffing, a bounded directory walk for patterns, and hard caps on pinned path counts, body counts, and body characters with omitted/truncated reporting. Archive-body defaults are unchanged; a broad archive pattern in `pinnedBodies` is explicit configured intent and still runs inside the same bounds and secret checks.
 
@@ -96,7 +103,7 @@ Pinned files are read directly from disk at snapshot time instead of through the
 
 Validation owns schema checks for the optional config. Projects may omit the config file. Memory scope and git tracking are related but separate: local-memory defaults still require `docs/plan`, `docs/archive`, and `.dotdotgod` to be ignored. Custom memory scopes do not automatically create gitignore rules.
 
-Optional `description` and `clarify` fields are metadata for humans and agent skills. They must be valid strings/arrays when present, but they do not affect path matching, inclusion policy, traceability enforcement, impact ranking weights, or default config initialization.
+Optional `description` and `clarify` fields are metadata for humans and agent skills. They must be valid strings/arrays when present, but they do not affect path matching, inclusion policy, traceability enforcement, impact ranking weights, or default config initialization. Load documentation-summary exclusions are validated independently and do not reclassify memory areas.
 
 The same config file can define `traceability.required` and `traceability.exclude` arrays. When absent, the default traceability policy requires `docs/spec/**` and excludes `**/README.md`. Custom required arrays replace the default list, which lets projects move behavior-traceability enforcement to other shared documentation areas while keeping the traceability block schema unchanged.
 

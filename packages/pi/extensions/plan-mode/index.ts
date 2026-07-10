@@ -39,6 +39,7 @@ import {
 } from "./runtime/messages.js";
 import {
   ARCHIVE_DIRECTORY,
+  DEFAULT_PLAN_MODE_WRITABLE_PATHS,
   getToolPath,
   isActivePlanMarkdownPath,
   isManagedPlanMarkdownPath,
@@ -91,6 +92,16 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   const contextShaping = new ContextShapingController();
   const gates = new GateController();
   const executionProgress = new ExecutionProgressController();
+  let writablePaths: readonly string[] = DEFAULT_PLAN_MODE_WRITABLE_PATHS;
+
+  function refreshPlanModePolicy(cwd: string): void {
+    const result = runDotdotgodCli(cwd, ["config", cwd, "--json"]);
+    const data = result.data as { config?: { planMode?: { writablePaths?: unknown } } } | undefined;
+    const configured = data?.config?.planMode?.writablePaths;
+    writablePaths = Array.isArray(configured) && configured.every((value) => typeof value === "string")
+      ? configured as string[]
+      : DEFAULT_PLAN_MODE_WRITABLE_PATHS;
+  }
   const contextOrchestration = new ContextOrchestrationController(
     modeLifecycle,
     planArtifact,
@@ -267,6 +278,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
   function setPlanModeEnabled(ctx: ExtensionContext, enabled: boolean): void {
     if (enabled) {
+      refreshPlanModePolicy(ctx.cwd);
       executionProgress.clear();
       planArtifact.resetForFreshPlanning();
       contextShaping.resetForPlanning();
@@ -427,7 +439,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       const decision = await shouldAllowPlanModeBashCommand(command, {
         hasUI: ctx.hasUI,
         confirm: (title, message) => ctx.ui.confirm(title, message),
-      });
+      }, writablePaths);
       if (!decision.allow) {
         return {
           block: true,
@@ -439,10 +451,10 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
     if (event.toolName === "write" || event.toolName === "edit") {
       const path = getToolPath(event.input);
-      if (!path || !isManagedPlanMarkdownPath(ctx.cwd, path)) {
+      if (!path || !isManagedPlanMarkdownPath(ctx.cwd, path, writablePaths)) {
         return {
           block: true,
-          reason: `Plan mode: ${event.toolName} is only allowed for markdown plan files under ${PLAN_DIRECTORY}/ or ${ARCHIVE_DIRECTORY}/. During active /plan-goal workflows, docs/plan/<task>/.dotdotgod-plan/*.md checkpoint files are also allowed. Directories must be kebab-case and markdown file names must be UPPER_SNAKE_CASE.md. Use execution mode for source changes.`,
+          reason: `Plan mode: ${event.toolName} is only allowed for documentation markdown matching ${writablePaths.join(", ") || "no configured paths"}. Active /plan-goal checkpoint files remain a narrow exception. Directories must be kebab-case and markdown file names must be UPPER_SNAKE_CASE.md. Use execution mode for source changes.`,
         };
       }
       const normalizedPath = normalizeToolPath(path).replace(/\\/g, "/");
@@ -569,6 +581,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       const baseContent = buildPlanModeContextPrompt(
         contextShaping.fullPromptInjected,
         modeLifecycle.activeTools,
+        writablePaths,
       );
       const requestFraming = buildPlanModeRequestFraming(planArtifact.lastPlanningRequest);
       const content = [
@@ -711,6 +724,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
   });
 
   pi.on("session_start", async (_event, ctx) => {
+    refreshPlanModePolicy(ctx.cwd);
     if (pi.getFlag("plan") === true) {
       modeLifecycle.enablePlanning(getPlanModeTools());
       contextShaping.shapePending = true;

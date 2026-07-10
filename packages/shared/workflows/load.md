@@ -15,7 +15,7 @@ Do not modify files during the load pass unless the user explicitly asks for edi
    - If `dotdotgod` is installed or available in the repository, run `dotdotgod load-snapshot <root> --json`. This bounded CLI snapshot backs `/dd:load` and `/dd:load:compact`.
    - If the local environment allows package execution but no `dotdotgod` binary is available, optionally run `npx @dotdotgod/cli load-snapshot <root> --json`.
    - Treat the snapshot as the first-pass project-memory map for cache trust/freshness status, graph size, memory policy, top memory areas, top related communities, and archive inclusion policy. Avoid expanding command/event-heavy details unless the user asks for a full or diagnostic load.
-   - Treat docs structure as metadata: use README.md paths as a book-like table of contents and expand a specific docs subtree only when the user request, a graph community, a memory area, or a README route identifies it.
+   - Treat docs structure as metadata: use README.md paths as a book-like table of contents and expand a specific docs subtree only when the user request, a graph community, a memory area, or a README route identifies it. Respect `load.documentationSummary.exclude`; its default omits `docs/plan` and `docs/archive` independently from local-memory classification.
    - During load/planning, treat `dotdotgod status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and `index` as bounded context/status helpers. `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, and `index` are project-content safe but may refresh ignored `.dotdotgod/` cache metadata. Avoid mutating scaffold/config commands such as `init` or `config init` unless the user explicitly asks for initialization or config creation.
    - Use `dotdotgod graph impact <root> --changed <path> --yml` as a task-focused structured impact map when the user identifies a likely source/config/doc file. In Claude Code, `/dd:impact` can run the same review; in Codex, `dd:impact` is the command-like trigger for the `impact-review` skill.
    - Use `grep` or `find` after `expand`, impact, and targeted reads when the task needs fallback discovery or raw source text search.
@@ -33,8 +33,8 @@ Do not modify files during the load pass unless the user explicitly asks for edi
    - `docs/archive/README.md`
 4. Start with `AGENTS.md`, `README.md`, and `docs/README.md` when they are not already clear from the CLI snapshot or loaded context.
 5. Follow README indexes. Read relevant docs under `docs/spec`, `docs/test`, and `docs/arch` selectively unless the task needs a full refresh.
-6. List `docs/plan` entries first, then selectively read only relevant active plans.
-7. Use `docs/archive/README.md` as the archive history map. Do not scan archive bodies by default; read targeted completed plans under `docs/archive/plan/` or reports under `docs/archive/report/` only when directly relevant.
+6. When plans are relevant through the request or snapshot routing, list `docs/plan` entries first, then selectively read only relevant active plans. Do not infer documentation-summary inclusion from local-memory scope.
+7. Use `docs/archive/README.md` as the archive history map when history is relevant. Do not scan archive bodies by default; read targeted completed plans under `docs/archive/plan/` or reports under `docs/archive/report/` only when directly relevant.
 8. Avoid broad reads of generated outputs, dependencies, databases, caches, secrets, and `.env*` contents.
 
 ## Output Shape

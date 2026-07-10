@@ -6,7 +6,7 @@
 
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { recordContextMetric } from "../context-metrics/utils.js";
-import { buildLoadPrompt, collectSnapshot, estimateTextMetrics, hasOtherLoadCommand, runDotdotgodLoadSnapshot } from "./utils.js";
+import { buildLoadPrompt, collectSnapshot, documentationSummaryDirectories, estimateTextMetrics, hasOtherLoadCommand, runDotdotgodLoadSnapshot } from "./utils.js";
 
 async function runLoadCommand(
 	pi: ExtensionAPI,
@@ -31,7 +31,7 @@ async function runLoadCommand(
 	recordContextMetric(ctx, (name) => pi.getFlag(name), "load-project:before-send", {
 		commandName,
 		promptMetrics,
-		directorySummaryPaths: snapshot.directories.map((directory) => directory.path),
+		directorySummaryPaths: documentationSummaryDirectories(snapshot, loadSnapshot).map((directory) => directory.path),
 		loadSnapshot: {
 			ok: loadSnapshot.ok,
 			command: loadSnapshot.command,

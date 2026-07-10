@@ -79,6 +79,11 @@ interface LoadSnapshotLike {
 		bodies?: Array<{ path?: string; status?: string; reason?: string; truncated?: boolean; chars?: number; content?: string }>;
 		omittedBodies?: number;
 	};
+	memoryConfig?: {
+		load?: {
+			documentationSummary?: { exclude?: string[] };
+		};
+	};
 	bounds?: {
 		fullGraphIncluded?: boolean;
 		archiveBodiesIncluded?: boolean;
@@ -218,16 +223,43 @@ export function formatLoadSnapshotSummary(result: LoadSnapshotRunResult, options
 	return lines.join("\n");
 }
 
+export const DEFAULT_DOCUMENTATION_SUMMARY_EXCLUDE = ["docs/plan", "docs/archive"];
+
+function matchesDocumentationSummaryPath(path: string, pattern: string): boolean {
+	const normalizedPath = path.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
+	const normalizedPattern = pattern.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
+	if (normalizedPattern.endsWith("/**")) {
+		const prefix = normalizedPattern.slice(0, -3);
+		return normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`);
+	}
+	if (normalizedPattern.startsWith("**/")) {
+		const suffix = normalizedPattern.slice(3);
+		return normalizedPath === suffix || normalizedPath.endsWith(`/${suffix}`);
+	}
+	return normalizedPath === normalizedPattern;
+}
+
+export function documentationSummaryDirectories(
+	snapshot: ProjectMemorySnapshot,
+	loadSnapshot?: LoadSnapshotRunResult,
+): ProjectMemorySnapshot["directories"] {
+	const data = loadSnapshot?.ok ? asLoadSnapshot(loadSnapshot.data) : undefined;
+	const configured = data?.memoryConfig?.load?.documentationSummary?.exclude;
+	const exclude = Array.isArray(configured) ? configured : DEFAULT_DOCUMENTATION_SUMMARY_EXCLUDE;
+	return snapshot.directories.filter((directory) => !exclude.some((pattern) => matchesDocumentationSummaryPath(directory.path, pattern)));
+}
+
 function formatDirectorySummary(
 	snapshot: ProjectMemorySnapshot,
 	args: string,
-	hasLoadSnapshot: boolean,
+	loadSnapshot: LoadSnapshotRunResult | undefined,
 	full: boolean,
 ): string {
 	const docsPathMentions = extractDocsPathMentions(args);
 	const fallbackMarkdownLimit = full ? 20 : 5;
+	const hasLoadSnapshot = loadSnapshot?.ok === true;
 
-	return snapshot.directories
+	const entries = documentationSummaryDirectories(snapshot, loadSnapshot)
 		.map((directory) => {
 			if (!directory.exists) return `- ${directory.path}: missing`;
 
@@ -254,8 +286,9 @@ function formatDirectorySummary(
 			const shown = directory.markdownFiles.slice(0, fallbackMarkdownLimit);
 			const omitted = directory.markdownFiles.length > shown.length ? `\n  - ... ${directory.markdownFiles.length - shown.length} more discovered files omitted; use README indexes before expanding` : "";
 			return `- ${directory.path}: bounded fallback listing\n${shown.map((file) => `  - ${file}`).join("\n")}${omitted}`;
-		})
-		.join("\n");
+		});
+	if ((snapshot.omittedDirectories ?? 0) > 0) entries.push(`- ... ${snapshot.omittedDirectories} more top-level documentation directories omitted`);
+	return entries.join("\n");
 }
 
 export function buildLoadPrompt(
@@ -268,8 +301,7 @@ export function buildLoadPrompt(
 	const full = options.mode !== "compact";
 	const present = snapshot.present.length > 0 ? snapshot.present.map((file) => `- ${file}`).join("\n") : "- none";
 	const missing = snapshot.missing.length > 0 ? snapshot.missing.map((file) => `- ${file}`).join("\n") : "- none";
-	const hasLoadSnapshot = loadSnapshot?.ok === true;
-	const directorySummary = formatDirectorySummary(snapshot, args, hasLoadSnapshot, full);
+	const directorySummary = formatDirectorySummary(snapshot, args, loadSnapshot, full);
 
 	const mode = args.trim() ? `\nUser arguments: ${args.trim()}\n` : "";
 	const loadSnapshotText = loadSnapshot ? `\n${formatLoadSnapshotSummary(loadSnapshot, options)}\n` : "";

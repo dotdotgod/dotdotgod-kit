@@ -151,11 +151,12 @@ export class ContextOrchestrationController {
 		}
 
 		this.contextShaping.lastLoadEntryCount = entryCount;
+		const loadSnapshot = runDotdotgodCli(ctx.cwd, ["load-snapshot", ctx.cwd, "--json"]);
 		this.contextShaping.pendingLoadPrompt = buildLoadPrompt(
 			ctx.cwd,
 			"",
 			collectSnapshot(ctx.cwd),
-			undefined,
+			loadSnapshot,
 			{ mode: "compact" },
 		);
 		this.contextShaping.pendingLoadReason = "plan-mode-context-shaping";

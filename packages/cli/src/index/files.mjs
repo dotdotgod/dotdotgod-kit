@@ -70,25 +70,38 @@ function walkIndexCandidates(root, config = readMemoryConfig(root)) {
   return files;
 }
 
-function addDotdotgodLocalMemoryCandidates(root, candidates) {
-  for (const file of ['AGENTS.md', 'CLAUDE.md', 'CODEX.md', 'README.md', 'docs/README.md', 'docs/spec/README.md', 'docs/test/README.md', 'docs/arch/README.md', 'docs/plan/README.md', 'docs/archive/README.md']) {
-    if (existsSync(join(root, file))) candidates.add(file);
-  }
-  const planRoot = join(root, 'docs/plan');
-  const walkPlan = (dir) => {
-    if (!existsSync(dir)) return;
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const path = join(dir, entry.name);
-      if (entry.isDirectory()) walkPlan(path);
-      else if (entry.isFile()) candidates.add(rel(root, path));
+function addConfiguredLocalMemoryCandidates(root, candidates, config, limit = 5000) {
+  let added = 0;
+  const addPath = (path) => {
+    if (added >= limit || !existsSync(path)) return;
+    let stat;
+    try { stat = statSync(path); } catch { return; }
+    const pathRel = rel(root, path);
+    if (stat.isFile()) {
+      candidates.add(pathRel);
+      added += 1;
+      return;
+    }
+    if (!stat.isDirectory() || isExcludedIndexDir(pathRel)) return;
+    for (const entry of readdirSync(path, { withFileTypes: true })) {
+      if (added >= limit) return;
+      addPath(join(path, entry.name));
     }
   };
-  walkPlan(planRoot);
+
+  for (const area of config.areas ?? []) {
+    if (area.scope !== 'local' || area.includeBodiesByDefault === false) continue;
+    for (const pattern of area.paths ?? []) {
+      if (pattern.startsWith('**/')) continue;
+      const base = pattern.endsWith('/**') ? pattern.slice(0, -3) : pattern;
+      addPath(join(root, base));
+    }
+  }
 }
 
 export function collectIndexFiles(root, config = readMemoryConfig(root)) {
   const candidates = new Set(gitIndexCandidates(root) ?? walkIndexCandidates(root, config));
-  addDotdotgodLocalMemoryCandidates(root, candidates);
+  addConfiguredLocalMemoryCandidates(root, candidates, config);
   return [...candidates].filter((path) => shouldIndexPath(path, config)).map((path) => join(root, path)).filter(existsSync).sort();
 }
 

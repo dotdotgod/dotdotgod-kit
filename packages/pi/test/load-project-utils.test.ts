@@ -93,6 +93,8 @@ describe("load-project snapshot", () => {
 		assert.equal(spec?.exists, true);
 		assert.deepEqual(spec?.readmeFiles, ["docs/spec/README.md", "docs/spec/domain/README.md"]);
 		assert.equal(snapshot.directories.some((dir) => dir.path === "docs/archive"), false);
+		write(root, "docs/concept/README.md");
+		assert.equal(collectSnapshot(root).directories.some((dir) => dir.path === "docs/concept"), true);
 	});
 
 	it("lists markdown files recursively with a limit", () => {
@@ -182,8 +184,7 @@ describe("load-project prompt", () => {
 		assert.doesNotMatch(prompt, /topTypes=/);
 		assert.match(prompt, /Use the Load snapshot section first/);
 		assert.match(prompt, /Do not re-scan every listed file/);
-		assert.match(prompt, /docs\/archive: README table of contents/);
-		assert.match(prompt, /- docs\/archive\/README\.md/);
+		assert.doesNotMatch(prompt, /docs\/archive: README table of contents/);
 		assert.doesNotMatch(prompt, /docs\/archive\/plan\/old-task\/README\.md/);
 	});
 
@@ -233,7 +234,7 @@ describe("load-project prompt", () => {
 		assert.match(prompt, /book-like table of contents/);
 	});
 
-	it("narrows compact plan README output without omitted-index lines", () => {
+	it("narrows compact plan README output without omitted-index lines when configured for inclusion", () => {
 		const prompt = buildLoadPrompt("/project", "", {
 			present: ["AGENTS.md"],
 			missing: [],
@@ -243,13 +244,36 @@ describe("load-project prompt", () => {
 				markdownFiles: ["docs/plan/README.md", "docs/plan/a/README.md", "docs/plan/b/README.md"],
 				readmeFiles: ["docs/plan/README.md", "docs/plan/a/README.md", "docs/plan/b/README.md"],
 			}],
-		}, undefined, { mode: "compact" });
+		}, { ok: true, data: { memoryConfig: { load: { documentationSummary: { exclude: [] } } } } }, { mode: "compact" });
 
 		assert.match(prompt, /docs\/plan: README table of contents/);
 		assert.match(prompt, /- docs\/plan\/README\.md/);
 		assert.doesNotMatch(prompt, /docs\/plan\/a\/README\.md/);
 		assert.doesNotMatch(prompt, /docs\/plan\/b\/README\.md/);
 		assert.doesNotMatch(prompt, /more README indexes omitted/);
+	});
+
+	it("excludes plan and archive summaries by default and can include them independently from local memory", () => {
+		const snapshot = {
+			present: ["docs/plan/README.md", "docs/archive/README.md"],
+			missing: [],
+			directories: [
+				{ path: "docs/spec", exists: true, markdownFiles: ["docs/spec/README.md"], readmeFiles: ["docs/spec/README.md"] },
+				{ path: "docs/plan", exists: true, markdownFiles: ["docs/plan/README.md"], readmeFiles: ["docs/plan/README.md"] },
+				{ path: "docs/archive", exists: true, markdownFiles: ["docs/archive/README.md"], readmeFiles: ["docs/archive/README.md"] },
+			],
+		};
+		const defaultPrompt = buildLoadPrompt("/project", "", snapshot);
+		assert.match(defaultPrompt, /docs\/spec: README table of contents/);
+		assert.doesNotMatch(defaultPrompt, /docs\/plan: README table of contents/);
+		assert.doesNotMatch(defaultPrompt, /docs\/archive: README table of contents/);
+
+		const configuredPrompt = buildLoadPrompt("/project", "", snapshot, {
+			ok: true,
+			data: { memoryConfig: { load: { documentationSummary: { exclude: [] } } } },
+		});
+		assert.match(configuredPrompt, /docs\/plan: README table of contents/);
+		assert.match(configuredPrompt, /docs\/archive: README table of contents/);
 	});
 
 	it("expands a targeted docs subtree when the request identifies it", () => {
