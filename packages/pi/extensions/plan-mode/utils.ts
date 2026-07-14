@@ -42,6 +42,7 @@ export {
 	mergeImpactCheckPaths,
 	pendingImpactSummary,
 	getChangedPathFromDotdotgodImpactCommand,
+	getChangedPathsFromDotdotgodImpactCommand,
 	isCommitLikeCommand,
 	isBroadVerificationCommand,
 	formatExpandableToolOutput,

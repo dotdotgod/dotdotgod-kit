@@ -55,6 +55,7 @@ For the fuller command matrix, see `docs/test/README.md`.
 - `docs/arch/`: code conventions may start as `CODE_CONVENTIONS.md`; when they grow across multiple topics, use `docs/arch/conventions/README.md` as the index with supporting UPPER_SNAKE_CASE files.
 - `docs/spec`, `docs/arch`, and `docs/test` filenames are LLM context signals; avoid sequence-based names such as `API_1.md`, and use UPPER_SNAKE_CASE names that reveal the API path, screen, policy, or domain.
 - `docs/plan/`: local active implementation plans. Create one kebab-case directory per task (`docs/plan/<task-slug>/`), keep the task overview/index in that directory's `README.md`, and add supporting UPPER_SNAKE_CASE plan files alongside it. Ignored by git by default.
+- `docs/post/`: local project posts about questions, decisions, experiments, and implementation work. Create one kebab-case directory per post (`docs/post/<post-slug>/`) and keep the post or overview in that directory's `README.md`. Ignored by git by default.
 - `docs/archive/`: local completed plans, temporary/private reports, historical notes, payload captures. Move completed plan task directories to `docs/archive/plan/<task-slug>/`; put temporary reports and investigations under `docs/archive/report/<report-slug>/`. Ignored by git by default.
 
 ## Agent-Specific Entrypoints

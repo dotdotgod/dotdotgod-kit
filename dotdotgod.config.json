@@ -1,4 +1,20 @@
 {
+  "memory": {
+    "areas": [
+      { "id": "rules", "label": "Agent Rules", "paths": ["AGENTS.md"], "scope": "shared", "freshness": "fresh", "role": "agent-working-rules", "priority": 100, "includeBodiesByDefault": true },
+      { "id": "agent-entrypoint", "label": "Agent Entrypoints", "paths": ["CLAUDE.md", "CODEX.md"], "scope": "shared", "freshness": "fresh", "role": "agent-specific-entrypoint", "priority": 85, "includeBodiesByDefault": true },
+      { "id": "project-overview", "label": "Project Overview", "paths": ["README.md"], "scope": "shared", "freshness": "fresh", "role": "project-map", "priority": 85, "includeBodiesByDefault": true },
+      { "id": "docs-index", "label": "Docs Index", "paths": ["docs/README.md"], "scope": "shared", "freshness": "fresh", "role": "documentation-routing-map", "priority": 90, "includeBodiesByDefault": true },
+      { "id": "spec", "label": "Product Specs", "paths": ["docs/spec/**"], "scope": "shared", "freshness": "fresh", "role": "behavior-truth", "priority": 80, "includeBodiesByDefault": true },
+      { "id": "architecture", "label": "Architecture", "paths": ["docs/arch/**"], "scope": "shared", "freshness": "fresh", "role": "architecture-rationale", "priority": 75, "includeBodiesByDefault": true },
+      { "id": "test", "label": "Tests", "paths": ["docs/test/**"], "scope": "shared", "freshness": "fresh", "role": "verification-knowledge", "priority": 70, "includeBodiesByDefault": true },
+      { "id": "active-plan", "label": "Active Plans", "paths": ["docs/plan/**"], "scope": "local", "freshness": "fresh", "role": "active-task-intent", "priority": 95, "includeBodiesByDefault": true },
+      { "id": "project-post", "label": "Project Posts", "paths": ["docs/post/**"], "scope": "local", "freshness": "fresh", "role": "project-journal", "description": "Local posts about project questions, decisions, and implementation work.", "priority": 65, "includeBodiesByDefault": true },
+      { "id": "archive-map", "label": "Archive Map", "paths": ["docs/archive/README.md"], "scope": "local", "freshness": "stale", "role": "historical-memory-map", "priority": 65, "includeBodiesByDefault": true },
+      { "id": "archive-body", "label": "Archive Body", "paths": ["docs/archive/**"], "excludePaths": ["docs/archive/README.md"], "scope": "local", "freshness": "stale", "role": "historical-memory-body", "priority": 20, "includeBodiesByDefault": false },
+      { "id": "docs", "label": "Project Documentation", "paths": ["docs/**"], "scope": "shared", "freshness": "fresh", "role": "project-documentation", "priority": 60, "includeBodiesByDefault": true }
+    ]
+  },
   "validation": {
     "markdown": {
       "exclude": ["docs/archive/README.md", "docs/arch/EXTENSION_ARCHITECTURE.md"]
@@ -6,7 +22,7 @@
   },
   "load": {
     "documentationSummary": {
-      "exclude": ["docs/plan", "docs/archive"]
+      "exclude": ["docs/plan", "docs/post", "docs/archive"]
     }
   },
   "planMode": {

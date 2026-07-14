@@ -10,6 +10,7 @@ This document defines the long-term documentation structure used by dotdotgod an
 - `docs/test/`: test strategy, coverage notes, regression cases, and manual verification records.
 - `docs/arch/`: architecture decisions, code conventions, module boundaries, data flow, infrastructure/runtime dependencies, integration boundaries, and migration design.
 - `docs/plan/`: local active implementation plans.
+- `docs/post/`: local project posts about questions, decisions, experiments, and implementation work.
 - `docs/archive/`: local completed plans, historical notes, payload captures, and investigation notes.
 
 ## Naming
@@ -116,7 +117,7 @@ with supporting UPPER_SNAKE_CASE files in the same directory.
 The default docs structure separates shared and local memory:
 
 - Shared memory is durable project memory intended to be committed and used by every agent. By default this includes `docs/spec/`, `docs/arch/`, and `docs/test/`.
-- Local memory is ignored project-local working memory. By default this includes `docs/plan/` and `docs/archive/`.
+- Local memory is ignored project-local working memory. This project uses `docs/plan/`, `docs/post/`, and `docs/archive/`.
 - Fresh memory is current or active memory that should be surfaced early, such as active plans.
 - Stale memory is historical or completed memory that should be available through an index or targeted lookup, such as archive bodies.
 - The archive map is `docs/archive/README.md`; it is stale local memory but stays visible by default.
@@ -144,4 +145,6 @@ Temporary investigations, reports, payload captures, and historical notes move t
 docs/archive/report/<report-slug>/
 ```
 
-`docs/plan` and `docs/archive` are ignored by git by default.
+Project posts use `docs/post/<post-slug>/README.md` and remain local working memory rather than shared behavior contracts.
+
+`docs/plan`, `docs/post`, and `docs/archive` are ignored by git in this project.

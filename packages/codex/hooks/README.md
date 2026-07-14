@@ -72,7 +72,7 @@ Use validation hooks only by explicit opt-in. They are useful for docs-heavy ses
 
 A `UserPromptSubmit` hook can add a reminder for implementation-like prompts. Keep the command fast and non-mutating. Prefer reminders over automatic planning because `dd:plan` and the planning skill are the explicit durable workflow.
 
-For planning-like prompts, use an advisory reminder that asks Codex to resolve explicit `[[...]]` project-memory refs with `dotdotgod expand`, identify the complete target file list, and run graph impact checks for every target file before finalizing the plan:
+For planning-like prompts, use an advisory reminder that asks Codex to resolve explicit `[[...]]` project-memory refs with `dotdotgod expand`, identify the complete target file list, and run one bounded multi-seed graph impact command with repeated `--changed` options for up to 20 unique paths before finalizing the plan. Split only larger sets into ordered batches:
 
 ```json
 {
@@ -83,7 +83,7 @@ For planning-like prompts, use an advisory reminder that asks Codex to resolve e
         "hooks": [
           {
             "type": "command",
-            "command": "printf '%s\\n' 'dotdotgod: advisory reminder only. If the prompt contains [[...]] refs, run dotdotgod expand . \"<prompt>\" --json before broad grep/find. For planning work, identify the complete target file list, run dotdotgod graph impact . --changed <path> --compact for every target file, and use impact output to strengthen related docs, risks, and verification steps. After edits, use dd:impact before broad verification or handoff.'",
+            "command": "printf '%s\\n' 'dotdotgod: advisory reminder only. If the prompt contains [[...]] refs, run dotdotgod expand . \"<prompt>\" --json before broad grep/find. For planning work, identify the complete target file list, run one bounded dotdotgod graph impact . --changed <path-a> --changed <path-b> --compact command for up to 20 unique paths, split only larger sets into ordered batches, and use combined and per-seed impact output to strengthen related docs, risks, and verification steps. After edits, use dd:impact before broad verification or handoff.'",
             "timeout": 10
           }
         ]

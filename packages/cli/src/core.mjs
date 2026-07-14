@@ -57,7 +57,7 @@ export async function runCli(argv = process.argv.slice(2)) {
   else if (command === 'resolve') runResolve(args);
   else if (command === 'expand') runExpand(args);
   else if (command === 'traceability') runTraceability(args);
-  else if (command === 'graph') runGraph(args);
+  else if (command === 'graph') await runGraph(args);
   else if (command === 'plan') runPlan(args);
   else if (command === 'trello') {
     const result = await Promise.resolve(runTrelloSync(args));

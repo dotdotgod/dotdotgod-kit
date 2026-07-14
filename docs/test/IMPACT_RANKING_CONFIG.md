@@ -18,7 +18,8 @@ Verify configurable `graph impact` ranking, score breakdown output, deterministi
 | Routing controls | Thresholds suppress weak hints, `topKPerFile` caps outgoing routing hints, and archive-body hints are excluded unless opted in. |
 | Score breakdown | Seed, traceability, verification, proximity, routing, memory priority/freshness, archive penalty, and `0..100` score cap are asserted separately. |
 | PPR | Stronger weighted paths get higher PPR contribution; disabled PPR reports `policy-score`; relation-weight overrides affect PPR contribution predictably. |
-| Compatibility | Grouped impact buckets and `omittedRelated` remain present; removed aliases such as `graph query` fail as unknown graph commands. |
+| Multi-seed ranking | Repeated `--changed` inputs are ordered and deduplicated, all changed files lead the combined ranking with seed score `100`, restart weight is shared equally, each changed file returns at most five non-seed results, and more than 20 unique paths fails before index refresh. |
+| Compatibility | Single-string engine calls and one-`--changed` CLI calls retain their existing ranking; grouped impact buckets and `omittedRelated` remain present; removed aliases such as `graph query` fail as unknown graph commands. |
 | Structured output | `graph impact --yml` returns compact grouped items with scores, reasons, omitted counts, and recommended actions, while `--json` keeps the full payload. |
 | Planning integration | Plan Mode formats bounded likely target files with group counts, top related paths, scores, and reasons, and runtime impact tools return YML summaries. |
 | Selection noise control | First-page results cap low-actionability metadata nodes and prefer curated/test/proximity candidates over routing-only matches. |
@@ -28,7 +29,8 @@ Verify configurable `graph impact` ranking, score breakdown output, deterministi
 
 | Scenario | Expected coverage |
 | --- | --- |
-| Balanced default | `graph impact --json` reports `personalized-pagerank+policy`; changed file is rank 1 with seed score; traceability spec outranks routing-only docs; all related items have `impactScore` and `scoreBreakdown`. |
+| Balanced default | `graph impact --json` reports `personalized-pagerank+policy`; changed files lead in normalized input order with seed scores; traceability spec outranks routing-only docs; all related items have `impactScore` and `scoreBreakdown`. |
+| Multi-seed output | JSON, YML, and compact output expose all changed files, a deduplicated combined ranking, and bounded top-five `perSeed` results; shared candidates may occur in more than one per-seed list. |
 | Preset overrides | `docs-first` raises traceability scoring; `code-proximity` raises nearby package/docs rank; `test-focused` raises verification scoring. |
 | Archive-aware | With archive bodies explicitly indexed and archive routing hints opted in, archive penalty is less severe than balanced but fresh curated specs still outrank archive bodies. |
 | Invalid config fallback | `validate --json` reports impact config errors while `graph impact --json` exits successfully with balanced fallback scoring. |
@@ -61,7 +63,8 @@ For `graph impact --json`, confirm:
 - `impact.ranking.method` and `impact.ranking.weights` are present.
 - Top-level `related` mirrors `impact.related`.
 - Related items include numeric `impactScore` and structured `scoreBreakdown`.
-- The changed file is first with `impactScore: 100` and `scoreBreakdown.seed: 100`.
+- Every changed file appears first in normalized input order with `impactScore: 100` and `scoreBreakdown.seed: 100`.
+- `changedFiles` contains ordered unique paths, and each `perSeed` entry contains no more than five non-seed related nodes.
 - Curated traceability reasons outrank comparable routing-only hints.
 - Compact JSON omits raw `ranking.weights` and keeps `related.length <= 10` by default.
 - Low-actionability package/dependency metadata does not dominate the first page when actionable files/docs/tests exist.

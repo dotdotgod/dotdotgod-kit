@@ -81,13 +81,13 @@ Write mode:
 Checks or writes generated Markdown traceability link sections from canonical fenced json dotdotgod blocks.`;
     case 'graph':
       return `Usage:
-  dotdotgod graph impact <root> --changed <path> [--compact|--json|--yml|--yaml]
+  dotdotgod graph impact <root> --changed <path> [--changed <path> ...] [--compact|--json|--yml|--yaml]
   dotdotgod graph communities <root> [--json]`;
     case 'graph impact':
       return `Usage:
-  dotdotgod graph impact <root> --changed <path> [--compact|--json|--yml|--yaml]
+  dotdotgod graph impact <root> --changed <path> [--changed <path> ...] [--compact|--json|--yml|--yaml]
 
-Ranks nodes related to a changed file. <root> is the project root; --changed is a project-relative file path. Use --compact for a short text summary or --yml/--yaml for structured agent-facing output.`;
+Ranks nodes related to one or more changed files. <root> is the project root; repeat --changed with project-relative file paths. Results include a combined ranking and the top five related nodes for each changed file. Use --compact for a short text summary or --yml/--yaml for structured agent-facing output.`;
     case 'graph communities':
       return `Usage:
   dotdotgod graph communities <root> [--json]`;
@@ -109,7 +109,7 @@ Ranks nodes related to a changed file. <root> is the project root; --changed is 
   dotdotgod plan validate docs/plan/<task-slug>/README.md [--stage stage] [--json]
   dotdotgod plan stage create <stage> [docs/plan/<task-slug>/README.md] [--json]
   dotdotgod trello sync <root> [--dry-run]
-  dotdotgod graph impact <root> --changed <path> [--compact|--json|--yml|--yaml]
+  dotdotgod graph impact <root> --changed <path> [--changed <path> ...] [--compact|--json|--yml|--yaml]
   dotdotgod graph communities <root> [--json]`;
   }
 }

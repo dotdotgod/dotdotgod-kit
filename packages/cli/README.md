@@ -38,7 +38,7 @@ dotdotgod graph impact . --changed <path> --compact
 - `index` builds `.dotdotgod/manifest.json` and compact graph shards from maintained project files.
 - `load-snapshot` returns a bounded first-pass project map for AI agents, including files pinned through the `load.pinnedPaths`/`load.pinnedBodies` config so context such as code conventions stays visible on every load.
 - `resolve` and `expand` map explicit or high-signal prompt references to project files.
-- `graph impact` ranks likely related specs, tests, docs, commands, and source files for a changed path.
+- `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five.
 - `traceability links` checks or repairs generated Markdown traceability-link sections.
 - `plan validate` validates active plan artifacts and simplified Plan Generator checkpoints before execution.
 - `plan stage create` creates an internal `.dotdotgod-plan/NN_STAGE_NAME.md` checkpoint for a simplified Plan Generator stage.
@@ -66,8 +66,8 @@ dotdotgod plan validate docs/plan/<task-slug>/README.md
 dotdotgod plan validate docs/plan/<task-slug>/README.md --stage 04
 dotdotgod plan stage create 02 docs/plan/<task-slug>/README.md
 dotdotgod graph impact . --changed <path>
-dotdotgod graph impact . --changed <path> --compact
-dotdotgod graph impact . --changed <path> --yml
+dotdotgod graph impact . --changed <path> --changed <another-path> --compact
+dotdotgod graph impact . --changed <path> --changed <another-path> --yml
 dotdotgod graph communities .
 ```
 
@@ -104,7 +104,7 @@ files:
 - packages/pi/extensions/plan-mode/index.ts (45; implemented_by, semantic_similarity)
 ```
 
-`graph impact` needs `--changed <path>` so ranking has a seed file. Use `--compact` for short text, `--yml` or `--yaml` for compact structured agent-facing output, and `--json` for machine-readable detail.
+`graph impact` needs at least one `--changed <path>` and accepts repeated options. Multi-file output preserves input order, deduplicates repeated paths, returns a bounded combined ranking, and includes the top five non-seed results for each changed file. Use `--compact` for short text, `--yml` or `--yaml` for compact structured agent-facing output, and `--json` for machine-readable detail.
 
 The graph is built from maintained project files: Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, imports, exports, commands, tests, and deterministic routing hints.
 

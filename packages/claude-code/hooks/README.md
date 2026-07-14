@@ -114,7 +114,7 @@ Use this only when you want stop-time docs validation. It may be noisier than ad
 
 A `UserPromptSubmit` hook can add a reminder for implementation-like prompts. Keep the command fast and non-mutating. Prefer reminders over automatic planning because `/dd:plan` and the planning skill are the explicit durable workflow.
 
-`UserPromptSubmit` does not support matchers in Claude Code settings, so filter on the submitted `prompt` field inside the hook command. For planning-like prompts, use an advisory reminder that asks Claude to resolve explicit `[[...]]` project-memory refs with `dotdotgod expand`, identify the complete target file list, and run graph impact checks for every target file before finalizing the plan:
+`UserPromptSubmit` does not support matchers in Claude Code settings, so filter on the submitted `prompt` field inside the hook command. For planning-like prompts, use an advisory reminder that asks Claude to resolve explicit `[[...]]` project-memory refs with `dotdotgod expand`, identify the complete target file list, and run one bounded multi-seed graph impact command with repeated `--changed` options for up to 20 unique paths before finalizing the plan. Split only larger sets into ordered batches:
 
 ```json
 {
@@ -124,7 +124,7 @@ A `UserPromptSubmit` hook can add a reminder for implementation-like prompts. Ke
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -c \"import json,re,sys; p=json.load(sys.stdin).get('prompt',''); msg='dotdotgod: advisory reminder only. If the prompt contains [[...]] refs, run dotdotgod expand . \\\"<prompt>\\\" --json before broad grep/find. For planning work, identify the complete target file list, run dotdotgod graph impact . --changed <path> --compact for every target file, and use impact output to strengthen related docs, risks, and verification steps. After edits, use /dd:impact before broad verification or handoff. If docs change, run dotdotgod validate . --include-local-memory --check-index.'; print(msg) if re.search(r'plan|planning|플랜|계획|\\[\\[', p, re.I) else None\"",
+            "command": "python3 -c \"import json,re,sys; p=json.load(sys.stdin).get('prompt',''); msg='dotdotgod: advisory reminder only. If the prompt contains [[...]] refs, run dotdotgod expand . \\\"<prompt>\\\" --json before broad grep/find. For planning work, identify the complete target file list, run one bounded dotdotgod graph impact . --changed <path-a> --changed <path-b> --compact command for up to 20 unique paths, split only larger sets into ordered batches, and use combined and per-seed impact output to strengthen related docs, risks, and verification steps. After edits, use /dd:impact before broad verification or handoff. If docs change, run dotdotgod validate . --include-local-memory --check-index.'; print(msg) if re.search(r'plan|planning|플랜|계획|\\[\\[', p, re.I) else None\"",
             "timeout": 10
           }
         ]

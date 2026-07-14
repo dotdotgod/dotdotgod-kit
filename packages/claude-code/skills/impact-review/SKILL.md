@@ -20,12 +20,13 @@ This workflow is the Claude Code and Codex counterpart to Pi's `/impact-check` r
    - Check git status and preserve unrelated user edits.
    - Include unstaged, staged, and untracked source/config/docs files that are relevant to the current task.
    - Exclude dependencies, generated caches, build artifacts, secrets, and unrelated local-memory files unless the user explicitly asks about them.
-2. Prefer bounded graph impact.
-   - For each relevant changed source/config file, run `dotdotgod graph impact <root> --changed <path> --compact` or `--yml`.
-   - If the local repository uses the source checkout CLI, use `node packages/cli/bin/dotdotgod.mjs graph impact <root> --changed <path> --compact` or `--yml`.
+2. Prefer bounded multi-seed graph impact.
+   - Collect the complete relevant changed-file set, preserve first-seen order, and run one command with repeated `--changed <path>` options for up to 20 unique paths: `dotdotgod graph impact <root> --changed <path-a> --changed <path-b> --compact` or `--yml`.
+   - If more than 20 unique paths remain, split them into ordered batches of at most 20. Do not run one command per file unless only one relevant path exists.
+   - If the local repository uses the source checkout CLI, use `node packages/cli/bin/dotdotgod.mjs graph impact <root> --changed <path-a> --changed <path-b> --compact` or `--yml`.
    - If the CLI is unavailable, continue with README indexes, traceability blocks, package metadata, and targeted grep/find fallback.
 3. Inspect impact output selectively.
-   - Review related specs, tests, architecture docs, and source files with the highest scores and clearest reasons.
+   - Review the deduplicated combined ranking and each seed's non-seed top-five results, prioritizing related specs, tests, architecture docs, and source files with the highest scores and clearest reasons.
    - When behavior specs appear through `implemented_by`, `verified_by`, or `related_doc`, read those docs before broad verification.
    - Do not paste large raw impact JSON into the response unless the user asks for diagnostics.
 4. Repair or update related docs/tests when the impact output shows stale, missing, or contradictory project memory.

@@ -33,13 +33,16 @@ function cappedTraceabilityScore(reasons, boosts, cap) {
   return clamp(Math.max(...values) + Math.min(5, Math.max(0, values.length - 1) * 2), 0, cap);
 }
 
-export function buildPersonalizedPageRank(graph, seed, policy) {
+export function buildPersonalizedPageRank(graph, seeds, policy) {
   if (policy.ppr.enabled === false) return new Map();
+  const seedList = Array.isArray(seeds) ? [...new Set(seeds)] : [seeds];
+  const seedSet = new Set(seedList);
+  const restart = seedList.length > 0 ? 1 / seedList.length : 0;
   const damping = policy.ppr.damping ?? 0.85;
   const iterations = policy.ppr.iterations ?? 20;
   const tolerance = policy.ppr.tolerance ?? 0.000001;
   const ids = new Set(graph.nodes.map((node) => node.id));
-  ids.add(seed);
+  for (const seed of seedList) ids.add(seed);
   const adjacency = new Map([...ids].map((id) => [id, []]));
   for (const edge of graph.edges) {
     const weight = policy.relationWeights[edge.relation] ?? relationWeight(edge.relation);
@@ -49,9 +52,9 @@ export function buildPersonalizedPageRank(graph, seed, policy) {
     adjacency.get(edge.source).push([edge.target, weight]);
     adjacency.get(edge.target).push([edge.source, weight]);
   }
-  let ranks = new Map([...adjacency.keys()].map((id) => [id, id === seed ? 1 : 0]));
+  let ranks = new Map([...adjacency.keys()].map((id) => [id, seedSet.has(id) ? restart : 0]));
   for (let i = 0; i < iterations; i += 1) {
-    const next = new Map([...adjacency.keys()].map((id) => [id, id === seed ? 1 - damping : 0]));
+    const next = new Map([...adjacency.keys()].map((id) => [id, seedSet.has(id) ? (1 - damping) * restart : 0]));
     for (const [id, edges] of adjacency.entries()) {
       const rank = ranks.get(id) ?? 0;
       const total = edges.reduce((sum, [, weight]) => sum + weight, 0);
@@ -65,8 +68,10 @@ export function buildPersonalizedPageRank(graph, seed, policy) {
   return ranks;
 }
 
-export function scoreImpactItem(item, seed, changedPath, policy, pprScores, maxPpr) {
-  if (item.id === seed) return { impactScore: 100, scoreBreakdown: { seed: 100, ppr: 40, traceability: 0, memoryPolicy: 0, verification: 0, proximity: 0, semantic: 0, freshness: 0, archivePenalty: 0 } };
+export function scoreImpactItem(item, seeds, changedPaths, policy, pprScores, maxPpr) {
+  const seedSet = seeds instanceof Set ? seeds : new Set(Array.isArray(seeds) ? seeds : [seeds]);
+  const paths = Array.isArray(changedPaths) ? changedPaths : [changedPaths];
+  if (seedSet.has(item.id)) return { impactScore: 100, scoreBreakdown: { seed: 100, ppr: 40, traceability: 0, memoryPolicy: 0, verification: 0, proximity: 0, semantic: 0, freshness: 0, archivePenalty: 0 } };
   const reasons = item.reasons ?? [];
   const retrieval = item.retrieval ?? {};
   const pprNormalized = maxPpr > 0 ? (pprScores.get(item.id) ?? 0) / maxPpr : 0;
@@ -78,7 +83,7 @@ export function scoreImpactItem(item, seed, changedPath, policy, pprScores, maxP
   const semantic = clamp(sumReasonBoosts(reasons, policy.semanticBoosts), 0, Math.abs(policy.weights.semantic ?? 10));
   const freshness = retrieval.freshness === 'fresh' ? Math.abs(policy.weights.freshness ?? 5) : retrieval.freshness === 'stale' ? -Math.abs(policy.weights.freshness ?? 5) : 0;
   let archivePenalty = 0;
-  if (!changedPath.startsWith('docs/archive/')) {
+  if (!paths.some((path) => path.startsWith('docs/archive/'))) {
     if (retrieval.area === 'archive-body') archivePenalty -= Math.abs(policy.weights.archivePenalty ?? -25);
     if (retrieval.includeBodiesByDefault === false) archivePenalty -= 10;
     if (retrieval.freshness === 'stale' && retrieval.area !== 'archive-map') archivePenalty -= 5;
@@ -125,10 +130,17 @@ function impactSelectionScore(item) {
   return score;
 }
 
-export function compareImpactItems(seed) {
+export function compareImpactItems(seeds) {
+  const seedList = Array.isArray(seeds) ? seeds : [seeds];
+  const seedOrder = new Map(seedList.map((seed, index) => [seed, index]));
   return (a, b) => {
-    if (a.id === seed) return -1;
-    if (b.id === seed) return 1;
+    const aSeed = seedOrder.get(a.id);
+    const bSeed = seedOrder.get(b.id);
+    if (aSeed !== undefined || bSeed !== undefined) {
+      if (aSeed === undefined) return 1;
+      if (bSeed === undefined) return -1;
+      return aSeed - bSeed;
+    }
     return impactSelectionScore(b) - impactSelectionScore(a) || (b.impactScore ?? 0) - (a.impactScore ?? 0) || a.id.localeCompare(b.id);
   };
 }
