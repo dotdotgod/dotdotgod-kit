@@ -49,6 +49,11 @@ const SEEDS = [
     must: ['docs/spec/LOAD_PROJECT.md', 'docs/spec/CROSS_AGENT_SUPPORT.md', 'docs/arch/CROSS_AGENT_ARCHITECTURE.md'],
     should: ['packages/claude-code/commands/dd/load.md', 'packages/claude-code/skills/project-load/SKILL.md', 'packages/codex/skills/project-load/SKILL.md', 'scripts/generate-adapters.mjs', 'packages/shared/workflows/init.md', 'packages/shared/workflows/plan.md'],
   },
+  {
+    seeds: ['packages/cli/src/commands/graph.mjs', 'packages/cli/src/impact/report.mjs'],
+    must: ['docs/spec/cli/GRAPH_IMPACT.md', 'packages/cli/test/core.test.mjs', 'packages/cli/test/e2e.test.mjs', 'docs/test/IMPACT_RANKING_CONFIG.md'],
+    should: ['packages/cli/src/impact/scoring.mjs', 'packages/cli/src/impact/format.mjs', 'docs/arch/IMPACT_RANKING_CONFIG.md', 'docs/test/GRAPH_IMPACT_QUALITY.md', 'packages/cli/README.md'],
+  },
 ];
 
 function parseArgs(argv) {
@@ -86,11 +91,20 @@ function canonicalItemKey(item) {
   return item.path ?? item.id?.replace(/^file:/, '').replace(/^test:/, '') ?? item.id;
 }
 
-function topWithoutSeed(items, seed, k) {
+function seedsFor(gold) {
+  return gold.seeds ?? [gold.seed];
+}
+
+function seedLabel(gold) {
+  return seedsFor(gold).join(' + ');
+}
+
+function topWithoutSeed(items, seeds, k) {
+  const seedKeys = new Set(seeds.flatMap((seed) => [seed, idForPath(seed)]));
   const seen = new Set();
   const top = [];
   for (const item of items) {
-    if (itemKeys(item).has(seed) || itemKeys(item).has(idForPath(seed))) continue;
+    if ([...itemKeys(item)].some((key) => seedKeys.has(key))) continue;
     const key = canonicalItemKey(item);
     if (seen.has(key)) continue;
     seen.add(key);
@@ -101,7 +115,7 @@ function topWithoutSeed(items, seed, k) {
 }
 
 function precisionAt(items, gold, k) {
-  const top = topWithoutSeed(items, gold.seed, k);
+  const top = topWithoutSeed(items, seedsFor(gold), k);
   if (top.length === 0) return 0;
   return top.filter((item) => relevanceForItem(item, gold) >= 2).length / k;
 }
@@ -109,7 +123,7 @@ function precisionAt(items, gold, k) {
 function recallMustAt(items, gold, k) {
   if (gold.must.length === 0) return 1;
   const found = new Set();
-  for (const item of topWithoutSeed(items, gold.seed, k)) {
+  for (const item of topWithoutSeed(items, seedsFor(gold), k)) {
     for (const key of itemKeys(item)) if (gold.must.includes(key)) found.add(key);
     for (const path of gold.must) if (itemKeys(item).has(idForPath(path))) found.add(path);
   }
@@ -117,7 +131,7 @@ function recallMustAt(items, gold, k) {
 }
 
 function mrr(items, gold) {
-  const top = topWithoutSeed(items, gold.seed, items.length);
+  const top = topWithoutSeed(items, seedsFor(gold), items.length);
   const index = top.findIndex((item) => relevanceForItem(item, gold) === 3);
   return index === -1 ? 0 : 1 / (index + 1);
 }
@@ -127,7 +141,7 @@ function dcg(relevances) {
 }
 
 function ndcgAt(items, gold, k) {
-  const rels = topWithoutSeed(items, gold.seed, k).map((item) => relevanceForItem(item, gold));
+  const rels = topWithoutSeed(items, seedsFor(gold), k).map((item) => relevanceForItem(item, gold));
   const ideal = [...Array(Math.min(k, gold.must.length + gold.should.length))]
     .map((_, index) => index < gold.must.length ? 3 : 2);
   const idealScore = dcg(ideal);
@@ -153,22 +167,22 @@ function lexicalScore(seed, path) {
   return overlap * 3 + sameDir + samePackage;
 }
 
-function lexicalBaseline(index, seed) {
+function lexicalBaseline(index, seeds) {
   return (index.graph.nodes ?? [])
-    .filter((node) => node.type === 'file' && node.path && node.path !== seed)
-    .map((node) => ({ ...node, impactScore: lexicalScore(seed, node.path), reasons: ['lexical-path'] }))
+    .filter((node) => node.type === 'file' && node.path && !seeds.includes(node.path))
+    .map((node) => ({ ...node, impactScore: Math.max(...seeds.map((seed) => lexicalScore(seed, node.path))), reasons: ['lexical-path'] }))
     .filter((item) => item.impactScore > 0)
     .sort((a, b) => b.impactScore - a.impactScore || a.path.localeCompare(b.path));
 }
 
-function snapshotBaseline(index, seed) {
+function snapshotBaseline(index, seeds) {
   const memoryAreas = buildMemoryAreas(index, { items: 4 });
   const paths = [
     'AGENTS.md', 'README.md', 'docs/README.md', 'docs/spec/README.md', 'docs/test/README.md', 'docs/arch/README.md', 'docs/plan/README.md', 'docs/archive/README.md',
     ...memoryAreas.areas.flatMap((area) => area.files ?? []),
   ];
   return [...new Set(paths)]
-    .filter((path) => path !== seed)
+    .filter((path) => !seeds.includes(path))
     .map((path, index) => ({ id: idForPath(path), type: 'file', path, impactScore: 100 - index, reasons: ['snapshot-readme'] }));
 }
 
@@ -182,7 +196,7 @@ function hasCurated(item) {
 }
 
 function evaluateItems(items, gold) {
-  const top10 = topWithoutSeed(items, gold.seed, 10);
+  const top10 = topWithoutSeed(items, seedsFor(gold), 10);
   return {
     precisionAt5: round(precisionAt(items, gold, 5)),
     precisionAt10: round(precisionAt(items, gold, 10)),
@@ -241,12 +255,13 @@ function main() {
   const options = parseArgs(process.argv.slice(2));
   const { status, index, metadata } = readFreshIndex(options.root);
   const rows = SEEDS.map((gold) => {
-    const report = buildImpactReport(index, gold.seed);
+    const seeds = seedsFor(gold);
+    const report = buildImpactReport(index, seeds);
     const graph = evaluateItems(report.related, gold);
-    const lexical = evaluateItems(lexicalBaseline(index, gold.seed), gold);
-    const snapshot = evaluateItems(snapshotBaseline(index, gold.seed), gold);
+    const lexical = evaluateItems(lexicalBaseline(index, seeds), gold);
+    const snapshot = evaluateItems(snapshotBaseline(index, seeds), gold);
     return {
-      seed: gold.seed,
+      seed: seedLabel(gold),
       relatedCount: report.related.length,
       omittedRelated: report.omittedRelated,
       graph,

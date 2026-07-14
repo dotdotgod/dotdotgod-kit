@@ -120,15 +120,24 @@ export function pendingImpactSummary(items: readonly PendingImpactItem[], limit 
 	return [...shown, ...omitted].join("\n");
 }
 
-export function getChangedPathFromDotdotgodImpactCommand(command: string): string | undefined {
+export function getChangedPathsFromDotdotgodImpactCommand(command: string): string[] {
 	const args = getDotdotgodCliArgs(command);
-	if (!args || args[0] !== "graph" || args[1] !== "impact") return undefined;
+	if (!args || args[0] !== "graph" || args[1] !== "impact") return [];
+	const changed: string[] = [];
 	for (let i = 2; i < args.length; i += 1) {
 		const arg = args[i];
-		if (arg === "--changed") return args[i + 1];
-		if (arg?.startsWith("--changed=")) return arg.slice("--changed=".length);
+		if (arg === "--changed" && args[i + 1]) {
+			changed.push(args[i + 1]!);
+			i += 1;
+		} else if (arg?.startsWith("--changed=")) {
+			changed.push(arg.slice("--changed=".length));
+		}
 	}
-	return undefined;
+	return [...new Set(changed.filter(Boolean))];
+}
+
+export function getChangedPathFromDotdotgodImpactCommand(command: string): string | undefined {
+	return getChangedPathsFromDotdotgodImpactCommand(command)[0];
 }
 
 export function isCommitLikeCommand(command: string): boolean {

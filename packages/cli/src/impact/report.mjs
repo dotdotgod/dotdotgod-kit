@@ -11,7 +11,13 @@ function addImpactItem(group, item, limit = 10) {
   group.items.push(item);
 }
 
-function selectImpactItems(sortedItems, maxRelated, seed) {
+function normalizeChangedPaths(changedPaths) {
+  const values = Array.isArray(changedPaths) ? changedPaths : [changedPaths];
+  return [...new Set(values.filter((value) => typeof value === 'string' && value.length > 0))];
+}
+
+function selectImpactItems(sortedItems, maxRelated, seeds) {
+  const seedSet = new Set(seeds);
   const selected = [];
   const selectedIds = new Set();
   const deferred = [];
@@ -22,35 +28,36 @@ function selectImpactItems(sortedItems, maxRelated, seed) {
   const add = (item, force = false) => {
     if (selected.length >= maxRelated || selectedIds.has(item.id)) return;
     const pathKey = item.path ?? item.id;
-    if (!force && item.id !== seed && selected.length < firstPageLimit) {
+    if (!force && !seedSet.has(item.id) && selected.length < firstPageLimit) {
       if (pathKey && (firstPagePathCounts.get(pathKey) ?? 0) >= 2) return deferred.push(item);
       if (isLowActionabilityImpactItem(item) && lowActionabilityInFirstPage >= 2) return deferred.push(item);
       if (isSemanticOnlyImpactItem(item) && semanticOnlyInFirstPage >= 3) return deferred.push(item);
     }
     selected.push(item);
     selectedIds.add(item.id);
-    if (selected.length <= firstPageLimit && item.id !== seed) {
+    if (selected.length <= firstPageLimit && !seedSet.has(item.id)) {
       if (pathKey) firstPagePathCounts.set(pathKey, (firstPagePathCounts.get(pathKey) ?? 0) + 1);
       if (isLowActionabilityImpactItem(item)) lowActionabilityInFirstPage += 1;
       if (isSemanticOnlyImpactItem(item)) semanticOnlyInFirstPage += 1;
     }
   };
-  for (const item of sortedItems) if (item.id === seed) add(item, true);
-  for (const item of sortedItems) if (item.id !== seed) add(item);
+  for (const item of sortedItems) if (seedSet.has(item.id)) add(item, true);
+  for (const item of sortedItems) if (!seedSet.has(item.id)) add(item);
   for (const item of deferred) add(item, true);
   return selected;
 }
 
-export function buildImpactReport(index, changedPath, limits = {}) {
+function buildCombinedImpactReport(index, changedPaths, limits = {}) {
   const graph = index?.graph ?? { nodes: [], edges: [] };
   const config = index?.memoryConfig ? { ...defaultMemoryConfig(), ...index.memoryConfig } : defaultMemoryConfig();
   const policy = cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY);
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
-  const seed = `file:${changedPath}`;
-  const maxRelated = limits.related ?? 25;
+  const seeds = changedPaths.map((path) => `file:${path}`);
+  const seedSet = new Set(seeds);
+  const maxRelated = Math.max(limits.related ?? 25, seeds.length);
   const groups = { files: { items: [], omitted: 0 }, docs: { items: [], omitted: 0 }, contracts: { items: [], omitted: 0 }, tests: { items: [], omitted: 0 }, commands: { items: [], omitted: 0 }, events: { items: [], omitted: 0 }, packageResources: { items: [], omitted: 0 }, symbols: { items: [], omitted: 0 } };
-  const relatedIds = new Set([seed]);
-  const reasons = new Map([[seed, new Set(['changed-file'])]]);
+  const relatedIds = new Set(seeds);
+  const reasons = new Map(seeds.map((seed) => [seed, new Set(['changed-file'])]));
   const addReason = (id, reason) => {
     relatedIds.add(id);
     if (!reasons.has(id)) reasons.set(id, new Set());
@@ -58,27 +65,27 @@ export function buildImpactReport(index, changedPath, limits = {}) {
   };
 
   for (const edge of graph.edges) {
-    if (edge.source === seed) addReason(edge.target, edge.relation);
-    if (edge.target === seed) addReason(edge.source, `incoming:${edge.relation}`);
+    if (seedSet.has(edge.source)) addReason(edge.target, edge.relation);
+    if (seedSet.has(edge.target)) addReason(edge.source, `incoming:${edge.relation}`);
   }
   const expansionRelations = new Set(['implemented_by', 'verified_by', 'related_doc', 'verification_command', ...SEMANTIC_RELATIONS]);
   for (const edge of graph.edges) {
     if (!expansionRelations.has(edge.relation)) continue;
-    if (relatedIds.has(edge.source) && edge.target !== seed) addReason(edge.target, edge.relation);
+    if (relatedIds.has(edge.source) && !seedSet.has(edge.target)) addReason(edge.target, edge.relation);
   }
 
-  const pprScores = buildPersonalizedPageRank(graph, seed, policy);
-  const candidatePprMax = Math.max(0, ...[...relatedIds].filter((id) => id !== seed).map((id) => pprScores.get(id) ?? 0));
+  const pprScores = buildPersonalizedPageRank(graph, seeds, policy);
+  const candidatePprMax = Math.max(0, ...[...relatedIds].filter((id) => !seedSet.has(id)).map((id) => pprScores.get(id) ?? 0));
   const relatedAll = [...relatedIds].map((id) => {
     const node = nodeById.get(id) ?? { id };
     const path = node.path ?? id.replace(/^file:/, '').replace(/^test:/, '');
     const reasonList = [...(reasons.get(id) ?? [])];
     const retrieval = node.retrieval ?? retrievalMetadataForPath(path);
     const reasonSignals = reasonList.map((reason) => `reason:${reason}`);
-    const scored = scoreImpactItem({ ...node, reasons: reasonList, retrieval }, seed, changedPath, policy, pprScores, candidatePprMax);
+    const scored = scoreImpactItem({ ...node, reasons: reasonList, retrieval }, seedSet, changedPaths, policy, pprScores, candidatePprMax);
     return { ...node, reasons: reasonList, retrieval: { ...retrieval, signals: [...new Set([...(retrieval.signals ?? []), ...reasonSignals])] }, ...scored };
-  }).sort(compareImpactItems(seed));
-  const related = selectImpactItems(relatedAll, maxRelated, seed);
+  }).sort(compareImpactItems(seeds));
+  const related = selectImpactItems(relatedAll, maxRelated, seeds);
   for (const item of related) {
     if (item.type === 'file') {
       const area = docsArea(item.path);
@@ -91,7 +98,19 @@ export function buildImpactReport(index, changedPath, limits = {}) {
     else if (item.type === 'event') addImpactItem(groups.events, item, limits.events ?? 10);
     else if (item.type === 'package_resource') addImpactItem(groups.packageResources, item, limits.packageResources ?? 10);
   }
-  return { changed: changedPath, ranking: { method: policy.ppr.enabled === false ? 'policy-score' : 'personalized-pagerank+policy', preset: policy.preset, configSource: index?.memoryConfig?.source ?? 'default', weights: policy.weights, ppr: policy.ppr }, related, groups, omittedRelated: Math.max(0, relatedAll.length - related.length) };
+  return { changed: changedPaths[0], changedFiles: changedPaths, ranking: { method: policy.ppr.enabled === false ? 'policy-score' : 'personalized-pagerank+policy', preset: policy.preset, configSource: index?.memoryConfig?.source ?? 'default', weights: policy.weights, ppr: policy.ppr }, related, groups, omittedRelated: Math.max(0, relatedAll.length - related.length) };
+}
+
+export function buildImpactReport(index, changedPaths, limits = {}) {
+  const normalized = normalizeChangedPaths(changedPaths);
+  const aggregate = buildCombinedImpactReport(index, normalized, limits);
+  const perSeedLimit = limits.perSeed ?? 5;
+  aggregate.perSeed = normalized.map((changed) => {
+    const report = buildCombinedImpactReport(index, [changed], { ...limits, related: Math.max(limits.related ?? 25, perSeedLimit + 1) });
+    const related = report.related.filter((item) => item.id !== `file:${changed}`).slice(0, perSeedLimit);
+    return { changed, related, omittedRelated: Math.max(0, report.related.length - 1 - related.length) + report.omittedRelated };
+  });
+  return aggregate;
 }
 
 function compactScoreBreakdown(scoreBreakdown = {}) {
@@ -113,11 +132,14 @@ function compactImpactGroup(group = { items: [], omitted: 0 }, limit = 5) {
 }
 
 export function buildCompactImpactReport(impact, limits = {}) {
-  const relatedLimit = limits.related ?? 10;
+  const relatedLimit = Math.max(limits.related ?? 10, impact.changedFiles?.length ?? 1);
   const groupLimit = limits.groupItems ?? 5;
+  const changedFiles = impact.changedFiles ?? [impact.changed];
+  const seedIds = new Set(changedFiles.map((path) => `file:${path}`));
   const related = (impact.related ?? []).slice(0, relatedLimit).map(compactImpactItem);
   const groupNames = ['files', 'docs', 'contracts', 'tests', 'commands', 'events', 'packageResources', 'symbols'];
   const groups = Object.fromEntries(groupNames.map((name) => [name, compactImpactGroup(impact.groups?.[name], groupLimit)]));
-  const top10 = (impact.related ?? []).filter((item) => item.id !== `file:${impact.changed}`).slice(0, 10);
-  return { changed: impact.changed, compact: true, ranking: { method: impact.ranking?.method, preset: impact.ranking?.preset, configSource: impact.ranking?.configSource }, related, groups, omittedRelated: (impact.omittedRelated ?? 0) + Math.max(0, (impact.related?.length ?? 0) - related.length), quality: { rawRelated: impact.related?.length ?? 0, compactRelated: related.length, semanticOnlyTop10: top10.filter((item) => isSemanticOnlyImpactItem(item)).length, curatedTop10: top10.filter((item) => hasCuratedImpactReason(item)).length, lowActionabilityTop10: top10.filter((item) => isLowActionabilityImpactItem(item)).length } };
+  const perSeed = (impact.perSeed ?? []).map((entry) => ({ changed: entry.changed, related: (entry.related ?? []).slice(0, limits.perSeed ?? 5).map(compactImpactItem), omittedRelated: entry.omittedRelated ?? 0 }));
+  const top10 = (impact.related ?? []).filter((item) => !seedIds.has(item.id)).slice(0, 10);
+  return { changed: impact.changed, changedFiles, perSeed, compact: true, ranking: { method: impact.ranking?.method, preset: impact.ranking?.preset, configSource: impact.ranking?.configSource }, related, groups, omittedRelated: (impact.omittedRelated ?? 0) + Math.max(0, (impact.related?.length ?? 0) - related.length), quality: { rawRelated: impact.related?.length ?? 0, compactRelated: related.length, semanticOnlyTop10: top10.filter((item) => isSemanticOnlyImpactItem(item)).length, curatedTop10: top10.filter((item) => hasCuratedImpactReason(item)).length, lowActionabilityTop10: top10.filter((item) => isLowActionabilityImpactItem(item)).length } };
 }

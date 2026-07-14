@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import {
 	clearPendingImpactForPath,
 	formatMultiImpactSummary,
-	getChangedPathFromDotdotgodImpactCommand,
+	getChangedPathsFromDotdotgodImpactCommand,
 	isBroadVerificationCommand,
 	isCommitLikeCommand,
 	mergeImpactCheckPaths,
@@ -77,7 +77,8 @@ export class GateController {
 	runImpactChecks(
 		cwd: string,
 		paths: readonly string[],
-		runImpact: (path: string) => ImpactCliResult,
+		runImpact: (paths: readonly string[]) => ImpactCliResult,
+		batchSize = 20,
 	): { summary: string; checked: string[]; failed: string[] } {
 		const normalizedPaths = [
 			...new Set(
@@ -91,19 +92,22 @@ export class GateController {
 		const checked: string[] = [];
 		const failed: string[] = [];
 		const checkedFingerprints = new Map<string, string | undefined>();
-		for (const path of normalizedPaths) {
-			checkedFingerprints.set(path, this.fingerprintPath(cwd, path));
-			const result = runImpact(path);
+		const boundedBatchSize = Math.max(1, Math.min(20, Math.trunc(batchSize) || 20));
+		for (let offset = 0; offset < normalizedPaths.length; offset += boundedBatchSize) {
+			const batch = normalizedPaths.slice(offset, offset + boundedBatchSize);
+			for (const path of batch) checkedFingerprints.set(path, this.fingerprintPath(cwd, path));
+			const result = runImpact(batch);
+			const label = batch.join(", ");
 			if (result.ok) {
 				results.push({
-					path,
+					path: label,
 					data: result.data,
 					...(result.stdout ? { summary: result.stdout } : {}),
 				});
-				checked.push(path);
+				checked.push(...batch);
 			} else {
-				results.push({ path, error: result.error ?? "unknown error" });
-				failed.push(path);
+				results.push({ path: label, error: result.error ?? "unknown error" });
+				failed.push(...batch);
 			}
 		}
 		const summary = formatMultiImpactSummary(results);
@@ -129,9 +133,9 @@ export class GateController {
 	}
 
 	clearFromImpactCommandResult(cwd: string, command: string, output: string): boolean {
-		const changed = getChangedPathFromDotdotgodImpactCommand(command);
-		if (!changed || output.includes('"ok": false')) return false;
-		return this.clearPendingImpact(cwd, changed);
+		const changed = getChangedPathsFromDotdotgodImpactCommand(command);
+		if (changed.length === 0 || output.includes('"ok": false')) return false;
+		return changed.map((path) => this.clearPendingImpact(cwd, path)).some(Boolean);
 	}
 
 	snapshot(): GateSnapshot {

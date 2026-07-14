@@ -257,13 +257,12 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     ctx: ExtensionContext,
     paths: string[],
   ): { summary: string; checked: string[]; failed: string[] } {
-    const result = gates.runImpactChecks(ctx.cwd, paths, (path) =>
+    const result = gates.runImpactChecks(ctx.cwd, paths, (batch) =>
       runDotdotgodCli(ctx.cwd, [
         "graph",
         "impact",
         ctx.cwd,
-        "--changed",
-        path,
+        ...batch.flatMap((path) => ["--changed", path]),
         "--yml",
       ]),
     );

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Verify baseline `dotdotgod` command discovery, version reporting, init/config command discovery, plan validation, and invalid `graph impact` usage guidance.
+Verify baseline `dotdotgod` command discovery, version reporting, init/config command discovery, plan validation, and invalid `graph impact` guidance.
 
 ## Automated Coverage
 

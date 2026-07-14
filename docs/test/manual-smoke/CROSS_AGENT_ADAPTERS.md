@@ -23,13 +23,13 @@ Confirm these commands are discoverable or invokable:
 
 For `/dd:load`, generated guidance should prefer `dotdotgod load-snapshot <root> --json`, treat the snapshot as the first-pass project-memory map, keep `docs/archive/README.md` as the archive map, and fall back to README-index reads when the CLI is unavailable.
 
-For `/dd:impact`, generated guidance should identify changed source/config/docs files, run bounded `dotdotgod graph impact` checks, inspect related specs/tests/docs selectively, and choose focused verification before handoff.
+For `/dd:impact`, generated guidance should identify changed source/config/docs files, run one repeated-`--changed` multi-seed `dotdotgod graph impact` command for up to 20 unique paths (and ordered batches only above that bound), inspect the combined ranking and per-seed results selectively, and choose focused verification before handoff.
 
 ## Codex Adapter
 
 Install or add `/path/to/dotdotgod/packages/codex` with the current local plugin workflow.
 
-Confirm `project-load`, `doc-first-planning`, `project-initializer`, and `impact-review` skills are discoverable. Trigger phrases `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` should activate the expected workflows. For `dd:load`, use the same snapshot/archive/fallback expectations as Claude Code. For `dd:impact`, use the same changed-file graph-impact and focused-verification expectations as Claude Code.
+Confirm `project-load`, `doc-first-planning`, `project-initializer`, and `impact-review` skills are discoverable. Trigger phrases `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` should activate the expected workflows. For `dd:load`, use the same snapshot/archive/fallback expectations as Claude Code. For `dd:impact`, use the same bounded multi-seed changed-file graph-impact and focused-verification expectations as Claude Code.
 
 ## Cross-Agent Planning Parity
 

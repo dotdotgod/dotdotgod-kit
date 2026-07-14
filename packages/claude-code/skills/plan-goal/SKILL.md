@@ -78,7 +78,7 @@ Use the Stage 01 context, then update the durable plan artifact and checkpoint.
 
 Include in the durable plan and checkpoint:
 - **Memory Reads** — agent docs, README indexes, specs, architecture notes, test docs, and active plans consulted. Use `dotdotgod expand <root> "<request>" --json` when the request contains `[[...]]` refs; use `--fuzzy` for high-signal doc names before broad grep/find.
-- **Impact Candidates** — for each likely target file, run `dotdotgod graph impact <root> --changed <path> --compact` and record related specs, tests, scores, and reasons. Fall back to README indexes and traceability blocks when the CLI is unavailable.
+- **Impact Candidates** — collect the likely target files and run one bounded multi-seed `dotdotgod graph impact <root> --changed <path-a> --changed <path-b> --compact` command for up to 20 unique paths, splitting only larger sets into ordered batches. Record the combined ranking and each seed's non-seed top-five specs, tests, scores, and reasons. Fall back to README indexes and traceability blocks when the CLI is unavailable.
 - **Related Files** — source, config, and doc files identified as relevant.
 
 Construction checklist categories: Memory reads, Impact candidates, Related files, Boundary risk.

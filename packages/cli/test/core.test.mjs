@@ -774,15 +774,17 @@ describe('CLI docs helpers', () => {
     assert.match(codexHooks, /plugin_hooks/);
     assert.match(codexHooks, /dd:impact/);
     assert.match(codexHooks, /UserPromptSubmit/);
-    assert.match(codexHooks, /dotdotgod graph impact \. --changed <path> --compact/);
+    assert.match(codexHooks, /dotdotgod graph impact \. --changed <path-a> --changed <path-b> --compact/);
     assert.match(codexHooks, /complete target file list/);
-    assert.match(codexHooks, /every target file/);
+    assert.match(codexHooks, /one bounded multi-seed graph impact command/);
+    assert.match(codexHooks, /up to 20 unique paths/);
     assert.match(claudeHooks, /UserPromptSubmit` does not support matchers/);
     assert.match(claudeHooks, /submitted `prompt` field/);
     assert.match(claudeHooks, /does not ship a default hook config/);
     assert.match(claudeHooks, /\/dd:impact/);
-    assert.match(claudeHooks, /dotdotgod graph impact \. --changed <path> --compact/);
-    assert.match(claudeHooks, /every target file/);
+    assert.match(claudeHooks, /dotdotgod graph impact \. --changed <path-a> --changed <path-b> --compact/);
+    assert.match(claudeHooks, /one bounded multi-seed graph impact command/);
+    assert.match(claudeHooks, /up to 20 unique paths/);
     assert.match(claudeHooks, /PostToolBatch/);
     assert.match(claudeHooks, /StopFailure/);
     assert.match(claudeHooks, /SessionEnd/);
@@ -1300,6 +1302,47 @@ describe('impact ranking unit coverage', () => {
     const capped = itemById(buildImpactReport(capIndex, 'packages/cap/seed.mjs'), 'file:docs/spec/CAP.md');
     assert.equal(capped.impactScore, 100);
     assert.equal(rankOf(buildImpactReport(capIndex, 'packages/cap/seed.mjs'), 'file:packages/cap/seed.mjs'), 0);
+  });
+
+  it('combines multiple changed files while retaining per-seed top-five rankings', () => {
+    const nodes = [
+      { id: 'file:packages/multi/a.mjs', type: 'file', path: 'packages/multi/a.mjs' },
+      { id: 'file:packages/multi/b.mjs', type: 'file', path: 'packages/multi/b.mjs' },
+      ...Array.from({ length: 6 }, (_, index) => ({ id: `file:docs/spec/A_${index}.md`, type: 'file', path: `docs/spec/A_${index}.md` })),
+      ...Array.from({ length: 6 }, (_, index) => ({ id: `file:docs/test/B_${index}.md`, type: 'file', path: `docs/test/B_${index}.md` })),
+      { id: 'file:packages/multi/shared.test.mjs', type: 'file', path: 'packages/multi/shared.test.mjs' },
+    ];
+    const edges = [
+      ...Array.from({ length: 6 }, (_, index) => ({ source: 'file:packages/multi/a.mjs', target: `file:docs/spec/A_${index}.md`, relation: 'related_doc' })),
+      ...Array.from({ length: 6 }, (_, index) => ({ source: 'file:packages/multi/b.mjs', target: `file:docs/test/B_${index}.md`, relation: 'verified_by' })),
+      { source: 'file:packages/multi/a.mjs', target: 'file:packages/multi/shared.test.mjs', relation: 'verified_by' },
+      { source: 'file:packages/multi/a.mjs', target: 'file:packages/multi/shared.test.mjs', relation: 'related_doc' },
+      { source: 'file:packages/multi/b.mjs', target: 'file:packages/multi/shared.test.mjs', relation: 'verified_by' },
+      { source: 'file:packages/multi/b.mjs', target: 'file:packages/multi/shared.test.mjs', relation: 'related_doc' },
+    ];
+    const index = { memoryConfig: defaultMemoryConfig(), graph: { nodes, edges } };
+    const report = buildImpactReport(index, ['packages/multi/a.mjs', 'packages/multi/b.mjs', 'packages/multi/a.mjs'], { related: 25 });
+
+    assert.equal(report.changed, 'packages/multi/a.mjs');
+    assert.deepEqual(report.changedFiles, ['packages/multi/a.mjs', 'packages/multi/b.mjs']);
+    assert.deepEqual(report.related.slice(0, 2).map((item) => item.id), ['file:packages/multi/a.mjs', 'file:packages/multi/b.mjs']);
+    assert(report.related.slice(0, 2).every((item) => item.impactScore === 100 && item.scoreBreakdown.seed === 100));
+    assert.equal(report.perSeed.length, 2);
+    assert(report.perSeed.every((entry) => entry.related.length === 5));
+    assert(report.perSeed.every((entry) => entry.related.every((item) => item.id !== `file:${entry.changed}`)));
+    assert(report.perSeed[0].related.some((item) => item.path === 'packages/multi/shared.test.mjs'));
+    assert(report.perSeed[1].related.some((item) => item.path === 'packages/multi/shared.test.mjs'));
+
+    const single = buildImpactReport(index, 'packages/multi/a.mjs');
+    assert.equal(single.changed, 'packages/multi/a.mjs');
+    assert.deepEqual(single.changedFiles, ['packages/multi/a.mjs']);
+    assert.equal(single.related[0].id, 'file:packages/multi/a.mjs');
+    assert.equal(single.perSeed[0].related.length, 5);
+
+    const compact = buildCompactImpactReport(report);
+    assert.deepEqual(compact.changedFiles, report.changedFiles);
+    assert.equal(compact.perSeed.length, 2);
+    assert(compact.perSeed.every((entry) => entry.related.length === 5));
   });
 
   it('uses changed-file PPR, disabled-PPR fallback, relation weights, and grouping compatibility', () => {

@@ -4,7 +4,7 @@
 
 Graph impact quality checks measure whether `dotdotgod graph impact` surfaces the files an agent should inspect for representative changed-file seeds.
 
-The quality script keeps seed/gold expectations checked in so ranking changes can be compared without rebuilding the archived ad hoc evaluation script.
+The quality script keeps seed/gold expectations checked in so ranking changes can be compared without rebuilding the archived ad hoc evaluation script. Multi-seed cases evaluate a deduplicated combined ranking while excluding every changed seed from relevance metrics; per-seed top-five behavior remains covered by CLI unit and E2E tests.
 
 ## Command
 

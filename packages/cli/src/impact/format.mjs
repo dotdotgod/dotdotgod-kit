@@ -15,7 +15,8 @@ function formatCompactImpactGroup(name, group) {
 
 export function formatCompactImpactOutput(payload, impact) {
   const refreshNote = payload.metadata.cacheRefreshed ? ', refreshed' : '';
-  const lines = [`graph impact compact: ${impact.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${payload.status.status}${refreshNote} index)`];
+  const lines = [`graph impact compact: ${impact.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${payload.status.status}${refreshNote} index)`, `changed files: ${(impact.changedFiles ?? [impact.changed]).join(', ')}`];
+  for (const entry of impact.perSeed ?? []) lines.push(...formatCompactImpactGroup(`top for ${entry.changed}`, { items: entry.related }));
   for (const name of ['docs', 'contracts', 'tests', 'files', 'commands', 'events', 'packageResources', 'symbols']) lines.push(...formatCompactImpactGroup(name, impact.groups[name]));
   return lines.join('\n');
 }
@@ -58,6 +59,7 @@ export function formatYmlImpactOutput(payload, impact) {
     'impact:',
     `  ok: ${payload.ok ? 'true' : 'false'}`,
     `  changed: ${ymlScalar(payload.changed)}`,
+    `  changed_files: ${ymlList(payload.changedFiles ?? [payload.changed])}`,
     `  root: ${ymlScalar(payload.root)}`,
     '  output: "yml"',
     '  status:',
@@ -69,8 +71,16 @@ export function formatYmlImpactOutput(payload, impact) {
     `    method: ${ymlScalar(impact.ranking?.method)}`,
     `    preset: ${ymlScalar(impact.ranking?.preset)}`,
     `    config_source: ${ymlScalar(impact.ranking?.configSource)}`,
-    '  groups:',
+    '  per_seed:',
   ];
+  for (const entry of impact.perSeed ?? []) {
+    lines.push(`    - changed: ${ymlScalar(entry.changed)}`);
+    lines.push(`      omitted_related: ${entry.omittedRelated ?? 0}`);
+    lines.push('      related:');
+    if ((entry.related ?? []).length === 0) lines.push('        []');
+    else for (const item of entry.related) lines.push(...formatYmlImpactItem(item));
+  }
+  lines.push('  groups:');
   for (const name of ['docs', 'contracts', 'tests', 'files', 'commands', 'events', 'packageResources', 'symbols']) lines.push(...formatYmlImpactGroup(name, impact.groups[name]));
   lines.push('  recommended_actions:');
   lines.push('    - "review_related_docs"');

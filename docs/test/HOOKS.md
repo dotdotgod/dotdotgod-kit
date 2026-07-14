@@ -18,7 +18,7 @@ For Claude Code hook examples:
 - confirm examples use Claude settings-style `hooks` JSON
 - confirm advisory examples use fast commands and avoid full workspace verification
 - confirm `UserPromptSubmit` examples do not rely on matcher filtering and inspect the submitted `prompt` field when they need prompt-specific behavior
-- confirm prompt reminder examples stay advisory, non-mutating, mention `dotdotgod expand` only for explicit `[[...]]` project-memory refs, require `dotdotgod graph impact` for every identified target file during planning work, and point post-edit review to `/dd:impact`
+- confirm prompt reminder examples stay advisory and non-mutating, mention `dotdotgod expand` only for explicit `[[...]]` project-memory refs, collect the complete target set into one repeated-`--changed` multi-seed command for up to 20 unique paths, split only larger sets, and point post-edit review to `/dd:impact`
 - confirm validation examples use `dotdotgod validate . --include-local-memory --check-index`
 - confirm current lifecycle notes distinguish success `Stop` hooks from API-error `StopFailure` hooks and optional `SessionEnd` cleanup
 - confirm `PostToolBatch` is described as batch-level guidance, not as a default validation hook
@@ -32,7 +32,7 @@ For Codex hook examples:
 
 - confirm examples are documented as optional trusted configuration-layer hooks
 - confirm examples include `hooks.json` and inline `config.toml` shapes
-- confirm prompt reminder examples stay advisory, non-mutating, mention `dotdotgod expand` only for explicit `[[...]]` project-memory refs, require `dotdotgod graph impact` for every identified target file during planning work, and point post-edit review to `dd:impact`
+- confirm prompt reminder examples stay advisory and non-mutating, mention `dotdotgod expand` only for explicit `[[...]]` project-memory refs, collect the complete target set into one repeated-`--changed` multi-seed command for up to 20 unique paths, split only larger sets, and point post-edit review to `dd:impact`
 - confirm validation examples use `dotdotgod validate . --include-local-memory --check-index`
 - confirm docs tell users to open `/hooks` and approve trusted hooks when Codex reports that a hook needs review
 - confirm docs do not imply Codex has Claude/Pi slash-command parity

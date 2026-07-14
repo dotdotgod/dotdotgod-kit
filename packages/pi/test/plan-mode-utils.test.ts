@@ -42,6 +42,7 @@ import {
 	getPlanGoalReviewEligibility,
 	shouldSuppressPlanGoalReview,
 	getChangedPathFromDotdotgodImpactCommand,
+	getChangedPathsFromDotdotgodImpactCommand,
 	getNextPlanReviewActionIndex,
 	getPlanCompactionReason,
 	getPlanReviewActionChoice,
@@ -143,28 +144,77 @@ describe("plan-mode domain controllers", () => {
 		);
 	});
 
-	it("tracks impact, builds command gates, and clears after impact checks", () => {
+	it("batches impact checks, preserves order, and clears successful paths", () => {
 		const root = mkdtempSync(join(tmpdir(), "plan-mode-controller-"));
-		const sourcePath = "packages/pi/extensions/plan-mode/index.ts";
+		const sourcePaths = [
+			"packages/pi/extensions/plan-mode/index.ts",
+			"packages/pi/extensions/plan-mode/impact.ts",
+		];
 		mkdirSync(join(root, "packages/pi/extensions/plan-mode"), { recursive: true });
-		writeFileSync(join(root, sourcePath), "export const value = 1;\n");
+		for (const path of sourcePaths) writeFileSync(join(root, path), `export const value = "${path}";\n`);
 
 		const gates = new GateController();
-		assert.equal(gates.trackPendingImpact(root, sourcePath, "edit"), true);
-		assert.equal(gates.pendingImpactItems.length, 1);
+		for (const path of sourcePaths) assert.equal(gates.trackPendingImpact(root, path, "edit"), true);
 		assert.match(gates.buildPendingImpactReminder() ?? "", /packages\/pi\/extensions\/plan-mode\/index\.ts/);
 		assert.match(gates.buildCommitBlockReason("git commit -m test") ?? "", /impact not checked/);
 		assert.match(gates.buildBroadVerificationPrompt("pnpm run verify") ?? "", /Pending dotdotgod graph impact checks/);
 
-		const result = gates.runImpactChecks(
-			root,
-			[sourcePath],
-			(path) => ({ ok: true, stdout: `- Impact: changed=${path}` }),
-		);
+		const batches: string[][] = [];
+		const result = gates.runImpactChecks(root, [...sourcePaths, sourcePaths[0]!], (batch) => {
+			batches.push([...batch]);
+			return { ok: true, stdout: `impact:\n  changed_files: [${batch.join(", ")}]` };
+		});
 
-		assert.deepEqual(result.checked, [sourcePath]);
+		assert.deepEqual(batches, [sourcePaths]);
+		assert.deepEqual(result.checked, sourcePaths);
 		assert.deepEqual(result.failed, []);
 		assert.equal(gates.pendingImpactItems.length, 0);
+	});
+
+	it("retains failed batches and files modified during successful checks", () => {
+		const root = mkdtempSync(join(tmpdir(), "plan-mode-controller-"));
+		const paths = ["src/one.ts", "src/two.ts", "src/three.ts"];
+		mkdirSync(join(root, "src"), { recursive: true });
+		for (const path of paths) {
+			writeFileSync(join(root, path), "export const value = 1;\n");
+		}
+		const gates = new GateController();
+		for (const path of paths) gates.trackPendingImpact(root, path, "edit");
+
+		let call = 0;
+		const result = gates.runImpactChecks(root, paths, (batch) => {
+			call += 1;
+			if (call === 1) {
+				writeFileSync(join(root, batch[0] ?? ""), "export const changed = true;\n");
+				return { ok: true, stdout: "impact:\n  ok: true" };
+			}
+			return { ok: false, error: "failed" };
+		}, 2);
+
+		assert.deepEqual(result.checked, paths.slice(0, 2));
+		assert.deepEqual(result.failed, paths.slice(2));
+		assert.deepEqual(gates.pendingImpactItems.map((item) => item.path), [paths[0], paths[2]]);
+	});
+
+	it("clears every pending path from a successful manual multi-seed command", () => {
+		const root = mkdtempSync(join(tmpdir(), "plan-mode-controller-"));
+		const paths = ["src/one.ts", "src/two.ts"];
+		mkdirSync(join(root, "src"), { recursive: true });
+		for (const path of paths) {
+			writeFileSync(join(root, path), "export const value = 1;\n");
+		}
+		const gates = new GateController();
+		for (const path of paths) gates.trackPendingImpact(root, path, "edit");
+
+		assert.equal(
+			gates.clearFromImpactCommandResult(
+				root,
+				"dotdotgod graph impact . --changed src/one.ts --changed=src/two.ts --yml",
+				"impact:\n  ok: true",
+			),
+			true,
+		);
+		assert.deepEqual(gates.pendingImpactItems, []);
 	});
 
 	it("resolves execution targets from active and mentioned plans", () => {
@@ -347,8 +397,13 @@ describe("plan-mode command safety", () => {
 	});
 
 	it("detects impact-check commands and commit gates", () => {
+		assert.deepEqual(
+			getChangedPathsFromDotdotgodImpactCommand("dotdotgod graph impact . --changed packages/pi/extensions/plan-mode/index.ts --changed=packages/pi/extensions/plan-mode/utils.ts --changed packages/pi/extensions/plan-mode/index.ts --yml"),
+			["packages/pi/extensions/plan-mode/index.ts", "packages/pi/extensions/plan-mode/utils.ts"],
+		);
 		assert.equal(getChangedPathFromDotdotgodImpactCommand("dotdotgod graph impact . --changed packages/pi/extensions/plan-mode/index.ts --yml"), "packages/pi/extensions/plan-mode/index.ts");
 		assert.equal(getChangedPathFromDotdotgodImpactCommand("node /tmp/repo/packages/cli/bin/dotdotgod.mjs graph impact . --changed=packages/pi/extensions/plan-mode/utils.ts --json"), "packages/pi/extensions/plan-mode/utils.ts");
+		assert.deepEqual(getChangedPathsFromDotdotgodImpactCommand("dotdotgod graph communities . --json"), []);
 		assert.equal(getChangedPathFromDotdotgodImpactCommand("dotdotgod graph communities . --json"), undefined);
 		assert.equal(isCommitLikeCommand("git commit -m test"), true);
 		assert.equal(isCommitLikeCommand("git push"), true);

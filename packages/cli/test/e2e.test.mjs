@@ -198,6 +198,12 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(missingChangedValueJson.status, 2);
     assert.equal(JSON.parse(missingChangedValueJson.stdout).error.code, 'MISSING_CHANGED');
     assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
+
+    const tooManyArgs = Array.from({ length: 21 }, (_, index) => ['--changed', `packages/app/file-${index}.mjs`]).flat();
+    const tooManyChanged = run(['graph', 'impact', root, ...tooManyArgs, '--json']);
+    assert.equal(tooManyChanged.status, 2);
+    assert.equal(JSON.parse(tooManyChanged.stdout).error.code, 'TOO_MANY_CHANGED');
+    assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
   });
 
   it('resolves and expands references from the graph index', () => {
@@ -585,12 +591,27 @@ describe('dotdotgod CLI e2e', () => {
     assert(impact.related.some((item) => item.id === 'file:packages/app/index.mjs' && item.retrieval?.signals.includes('reason:changed-file')));
     assert(!impact.related.some((item) => item.id.startsWith('file:docs/archive/plan/')));
     assert.equal(typeof impact.impact.omittedRelated, 'number');
+    assert.deepEqual(impact.changedFiles, ['packages/app/index.mjs']);
+    assert.deepEqual(impact.impact.changedFiles, ['packages/app/index.mjs']);
+    assert.equal(impact.impact.perSeed.length, 1);
+    assert(impact.impact.perSeed[0].related.length <= 5);
 
-    const ymlImpactResult = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--yml']);
+    const multiImpact = json(run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--changed', 'packages/app/index.test.mjs', '--changed', 'packages/app/index.mjs', '--json']));
+    assert.equal(multiImpact.changed, 'packages/app/index.mjs');
+    assert.deepEqual(multiImpact.changedFiles, ['packages/app/index.mjs', 'packages/app/index.test.mjs']);
+    assert.deepEqual(multiImpact.impact.changedFiles, multiImpact.changedFiles);
+    assert.deepEqual(multiImpact.related.slice(0, 2).map((item) => item.id), ['file:packages/app/index.mjs', 'file:packages/app/index.test.mjs']);
+    assert(multiImpact.related.slice(0, 2).every((item) => item.impactScore === 100));
+    assert.equal(multiImpact.impact.perSeed.length, 2);
+    assert(multiImpact.impact.perSeed.every((entry) => entry.related.length <= 5 && entry.related.every((item) => item.path !== entry.changed)));
+
+    const ymlImpactResult = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--changed', 'packages/app/index.test.mjs', '--yml']);
     assert.equal(ymlImpactResult.status, 0, ymlImpactResult.stderr || ymlImpactResult.stdout);
     assert.match(ymlImpactResult.stdout, /^impact:\n/);
     assert.match(ymlImpactResult.stdout, /output: "yml"/);
     assert.match(ymlImpactResult.stdout, /changed: "packages\/app\/index\.mjs"/);
+    assert.match(ymlImpactResult.stdout, /changed_files: \["packages\/app\/index\.mjs", "packages\/app\/index\.test\.mjs"\]/);
+    assert.match(ymlImpactResult.stdout, /per_seed:/);
     assert.match(ymlImpactResult.stdout, /docs:\n      omitted:/);
     assert.match(ymlImpactResult.stdout, /contracts:\n      omitted:/);
     assert.match(ymlImpactResult.stdout, /contract_id: "APP-ROUTING-001"/);
@@ -602,9 +623,11 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(yamlAlias.status, 0, yamlAlias.stderr || yamlAlias.stdout);
     assert.match(yamlAlias.stdout, /output: "yml"/);
 
-    const compactText = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--compact']);
+    const compactText = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--changed', 'packages/app/index.test.mjs', '--compact']);
     assert.equal(compactText.status, 0, compactText.stderr || compactText.stdout);
     assert.match(compactText.stdout, /graph impact compact:/);
+    assert.match(compactText.stdout, /changed files: packages\/app\/index\.mjs, packages\/app\/index\.test\.mjs/);
+    assert.match(compactText.stdout, /top for packages\/app\/index\.mjs:/);
     assert.match(compactText.stdout, /docs:/);
     assert.match(compactText.stdout, /contracts:/);
     assert.match(compactText.stdout, /docs\/spec\/APP\.md#APP-ROUTING-001/);
