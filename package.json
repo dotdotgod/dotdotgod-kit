@@ -19,6 +19,7 @@
     "measure:context:json": "node scripts/measure-context.mjs --json",
     "measure:graph-impact": "node scripts/evaluate-graph-impact.mjs . --markdown",
     "measure:graph-impact:json": "node scripts/evaluate-graph-impact.mjs . --json",
+    "thumbnail:terminal": "node scripts/generate-terminal-thumbnail.mjs",
     "pack:dry-run:packages": "pnpm -r --if-present run pack:dry-run",
     "pack:dry-run": "pnpm run verify:generated && pnpm run pack:dry-run:packages",
     "publish:all": "pnpm --filter @dotdotgod/cli publish --access public && pnpm --filter @dotdotgod/pi publish --access public && pnpm --filter @dotdotgod/claude-code publish --access public && pnpm --filter @dotdotgod/codex publish --access public",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@types/node": "^25.7.0",
     "husky": "^9.1.7",
+    "sharp": "^0.35.3",
     "typescript": "^6.0.3"
   }
 }

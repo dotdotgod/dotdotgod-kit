@@ -9,7 +9,6 @@
       { "id": "architecture", "label": "Architecture", "paths": ["docs/arch/**"], "scope": "shared", "freshness": "fresh", "role": "architecture-rationale", "priority": 75, "includeBodiesByDefault": true },
       { "id": "test", "label": "Tests", "paths": ["docs/test/**"], "scope": "shared", "freshness": "fresh", "role": "verification-knowledge", "priority": 70, "includeBodiesByDefault": true },
       { "id": "active-plan", "label": "Active Plans", "paths": ["docs/plan/**"], "scope": "local", "freshness": "fresh", "role": "active-task-intent", "priority": 95, "includeBodiesByDefault": true },
-      { "id": "project-post", "label": "Project Posts", "paths": ["docs/post/**"], "scope": "local", "freshness": "fresh", "role": "project-journal", "description": "Local posts about project questions, decisions, and implementation work.", "priority": 65, "includeBodiesByDefault": true },
       { "id": "archive-map", "label": "Archive Map", "paths": ["docs/archive/README.md"], "scope": "local", "freshness": "stale", "role": "historical-memory-map", "priority": 65, "includeBodiesByDefault": true },
       { "id": "archive-body", "label": "Archive Body", "paths": ["docs/archive/**"], "excludePaths": ["docs/archive/README.md"], "scope": "local", "freshness": "stale", "role": "historical-memory-body", "priority": 20, "includeBodiesByDefault": false },
       { "id": "docs", "label": "Project Documentation", "paths": ["docs/**"], "scope": "shared", "freshness": "fresh", "role": "project-documentation", "priority": 60, "includeBodiesByDefault": true }
