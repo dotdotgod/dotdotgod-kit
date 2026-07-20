@@ -1,7 +1,8 @@
 node_modules/
 docs/plan
-docs/post
 docs/archive
 
 # dotdotgod local index/cache
 .dotdotgod
+
+.DS_Store
