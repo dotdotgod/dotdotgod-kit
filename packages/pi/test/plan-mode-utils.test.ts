@@ -338,7 +338,7 @@ describe("plan-mode command safety", () => {
 			"dotdotgod --version",
 			"dotdotgod --help",
 			"dotdotgod status . --json",
-			"dotdotgod load-snapshot . --json",
+			"dotdotgod query . 'Plan Mode tools' --json",
 			"dotdotgod resolve . PLAN_MODE --json",
 			"dotdotgod expand . 'Update [[PLAN_MODE]]' --json",
 			"dotdotgod graph impact . --changed packages/pi/index.ts --json",
@@ -1052,16 +1052,16 @@ describe("plan-mode compaction helpers", () => {
 
 	it("builds current-work-focused custom instructions", () => {
 		const focus = formatPlanCompactionFocus({
-			task: "Integrate load-snapshot into /dd:load",
-			activePlanPaths: ["docs/plan/load-snapshot-integration/README.md"],
-			touchedMemoryPaths: ["docs/plan/load-snapshot-integration/README.md"],
+			task: "Integrate documentation query into /dd:load",
+			activePlanPaths: ["docs/plan/documentation-query-integration/README.md"],
+			touchedMemoryPaths: ["docs/plan/documentation-query-integration/README.md"],
 			todoSummary: "1/3 completed",
 			pendingLoadAfterCompaction: true,
 			constraints: ["Use pnpm", "Exclude archive bodies"],
 		});
 		assert.match(focus ?? "", /Current work focus/);
-		assert.match(focus ?? "", /Integrate load-snapshot/);
-		assert.match(focus ?? "", /docs\/plan\/load-snapshot-integration\/README\.md/);
+		assert.match(focus ?? "", /Integrate documentation query/);
+		assert.match(focus ?? "", /docs\/plan\/documentation-query-integration\/README\.md/);
 
 		const instructions = buildPlanCompactionInstructions("because", { task: "Do the current task" });
 		assert.match(instructions, /Reason: because/);

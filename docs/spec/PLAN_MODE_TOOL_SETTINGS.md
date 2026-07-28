@@ -35,7 +35,7 @@ The full Plan Mode prompt must render the resolved active tool list and writable
 
 The prompt must not contradict Plan Mode permissions. It should clearly distinguish forbidden source/code/config mutation from allowed durable plan/archive markdown updates.
 
-The prompt should prefer already-loaded project memory and load-snapshot summaries before asking the agent to re-read baseline docs.
+The prompt should prefer already-loaded project memory and documentation maps before asking the agent to re-read baseline docs.
 
 ## Traceability
 

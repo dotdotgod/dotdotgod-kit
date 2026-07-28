@@ -20,7 +20,7 @@ Confirm the loader prompt includes a compact `Load snapshot:` section with cache
 ## Packaged CLI And Subagents
 
 1. Install `@dotdotgod/pi` into a clean Pi package environment without separately installing `@dotdotgod/cli` or `pi-subagents`.
-2. Confirm `/dd:load` and Plan Mode context shaping can run `dotdotgod load-snapshot`, validation, and graph-impact commands through the package-local CLI dependency when no global CLI is on `PATH`.
+2. Confirm `/dd:load` can run `dotdotgod query` for focused loads and Plan Mode context shaping can run validation and graph-impact commands through the package-local CLI dependency when no global CLI is on `PATH`.
 3. Confirm the `subagent` tool is available.
 4. Confirm builtin agents include `scout`, `researcher`, `planner`, `worker`, `reviewer`, `context-builder`, `oracle`, and `delegate`.
 5. Confirm package agents include `dotdotgod.plan-doc-clarifier`, and inspect it to verify `defaultContext: fresh`, `inheritProjectContext: false`, and `inheritSkills: false`.

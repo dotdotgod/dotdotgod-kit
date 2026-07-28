@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { rel } from '../common/paths.mjs';
 import { isExcludedIndexDir } from '../index/files.mjs';
-import { defaultMemoryConfig, isSecretLikePathPattern, matchPathPattern, memoryAreaForPath } from '../memory/config.mjs';
+import { defaultMemoryConfig, isSecretLikePathPattern, matchPathPattern, memoryAreaForPath } from './config.mjs';
 
 export function detectPackageManager(root) {
   const packageFile = join(root, 'package.json');
@@ -43,7 +43,7 @@ export function detectCommandGuidance(root) {
     packageManager,
     install: source === 'missing-install' ? 'npm install -D @dotdotgod/cli' : null,
     validate: source === 'local-source' ? `${prefix} validate . --include-local-memory` : `${prefix} validate .`,
-    loadSnapshot: `${prefix} load-snapshot . --json`,
+    query: `${prefix} query . \"<focus>\" --json`,
     index: `${prefix} index . --json`,
     status: `${prefix} status . --json`,
     verify: packageJson?.scripts?.verify ? `${packageManager} run verify` : null,

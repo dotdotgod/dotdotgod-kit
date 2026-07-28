@@ -90,7 +90,7 @@ Responsibilities:
 - planning workflow guidance using Claude-native command and skill components
 - impact review workflow guidance using `/dd:impact` and `impact-review` for Pi-like changed-file graph checks without Pi runtime enforcement
 - documentation clarity workflow guidance using `document-clarify` for config-aware docs copy improvements without changing behavior contracts
-- generated load guidance that prefers `dotdotgod load-snapshot` when available and falls back to README-index reads
+- generated load guidance that renders the shared Markdown tree and uses `dotdotgod query` for focused semantic routing
 - optional hook documentation for advisory reminders, opt-in validation, and narrowly scoped plan-safety patterns
 
 ### Codex Adapter
@@ -110,7 +110,7 @@ Responsibilities:
 
 - Codex plugin manifest and package resources
 - reusable skills for initialization, loading, planning, impact-review, and documentation clarity workflows
-- generated load guidance that prefers `dotdotgod load-snapshot` when available and falls back to README-index reads
+- generated load guidance that renders the shared Markdown tree and uses `dotdotgod query` for focused semantic routing
 - `AGENTS.md`-first instruction flow
 - command-like trigger phrases: `dd:init`, `dd:load`, `dd:plan`, and `dd:impact`
 - optional MCP/tooling integration when useful
@@ -124,7 +124,7 @@ Claude Code and Codex hooks are optional workflow accelerators, not required set
 
 Current platform evidence: Claude Code plugins can ship skills, command markdown, agents, hooks, MCP servers, LSP servers, and monitors, and plugin hooks can live at `hooks/hooks.json` or in the manifest. Codex plugins primarily bundle skills, apps, and MCP servers; current Codex hook docs also allow plugin-bundled hooks only when users enable `plugin_hooks`, and non-managed hooks require trust review. Dotdotgod therefore keeps hooks as documented opt-in guidance for now and uses skills/commands for default cross-agent parity.
 
-Default examples should be advisory or read-only. `dotdotgod status` is safe for stop-time cache reporting because it does not rebuild the cache. `dotdotgod validate . --include-local-memory --check-index` is appropriate as an explicit validation hook because it checks docs and markdown index fingerprints without refreshing the cache. `dotdotgod load-snapshot` and `dotdotgod graph ...` are useful for context and impact, but they may lazily refresh `.dotdotgod/`, so hook docs must label them as cache-aware opt-ins with possible cache-refresh side effects.
+Default examples should be advisory or read-only. `dotdotgod status` is safe for stop-time cache reporting because it does not rebuild the cache. `dotdotgod validate . --include-local-memory --check-index` is appropriate as an explicit validation hook because it checks docs and markdown index fingerprints without refreshing the cache. `dotdotgod query` and `dotdotgod graph ...` are useful for context and impact, but they may refresh ignored `.dotdotgod/` caches, so hook docs must label them as cache-aware opt-ins.
 
 Claude Code hook guidance may reference current lifecycle events such as `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolBatch`, `Stop`, `StopFailure`, and `SessionEnd` when useful. It must not present undocumented plan-mode transition hooks such as `PrePlanMode`, `PostPlanMode`, plan accept, or plan reject as available unless Claude Code officially documents them. SDLC guidance should frame hooks as optional guardrails around plan, implement, verify, review, and archive phases, with `AGENTS.md` remaining the cross-agent project brain.
 

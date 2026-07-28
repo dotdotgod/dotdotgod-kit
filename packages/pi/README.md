@@ -108,7 +108,7 @@ While `/plan-goal` is active or waiting, Plan Mode suppresses normal execution r
 
 ## Loading and Impact Checks
 
-`/dd:load` starts from `dotdotgod load-snapshot` when available, then reads only relevant docs from the fixed memory surface. The snapshot includes cache status, graph size, memory areas, communities, archive policy, and configured pinned files such as code-convention docs pinned via `load.pinnedPaths`/`load.pinnedBodies` in `dotdotgod.config.json`.
+`/dd:load` renders shared Markdown paths as a prefix-compressed documentation tree, excluding plan/archive local memory by default. Without arguments it expands through directory depth 5; with arguments it runs `dotdotgod query` for up to 30 local multilingual E5 results and renders the tree through depth 3.
 
 `/impact-check` and the `dotdotgod_graph_impact` tool use the maintained graph to surface related specs, tests, docs, commands, source, and config after a change. Pi can remind the agent to run impact checks and can block commit, push, or publish commands until pending impact checks pass.
 

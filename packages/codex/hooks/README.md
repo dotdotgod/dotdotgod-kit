@@ -11,7 +11,7 @@ Current Codex docs support `hooks.json` and inline `config.toml` hooks next to a
 - Use `dd:load` or the `project-load` skill when you intentionally want a curated project-memory load.
 - Use `dd:plan` or the `doc-first-planning` skill before implementation, refactors, migrations, or multi-step work.
 - Use `dd:impact` or the `impact-review` skill after source/config/docs edits and before broad verification, commits, pushes, publishing, or final handoff.
-- During planning, prefer bounded dotdotgod context/status helpers: `status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and intentional `index` refreshes. Do not run mutating scaffold/config commands such as `init` or `config init` from hooks unless the user explicitly requested that setup.
+- During planning, prefer bounded dotdotgod context/status helpers: `status`, `query`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and intentional `index` refreshes. Do not run mutating scaffold/config commands such as `init` or `config init` from hooks unless the user explicitly requested that setup.
 - Use hooks for small reminders at session start, prompt submission, supported tool boundaries, or stop time.
 
 ## Opt-In Levels
@@ -41,7 +41,7 @@ This example reminds Codex to use dotdotgod intentionally at session start:
         "hooks": [
           {
             "type": "command",
-            "command": "printf '%s\\n' 'dotdotgod: use dd:load or dotdotgod load-snapshot when project memory is needed.'",
+            "command": "printf '%s\\n' 'dotdotgod: use dd:load for project memory or dotdotgod query for focused documentation search.'",
             "timeout": 10
           }
         ]
@@ -127,5 +127,5 @@ A strict script must read hook JSON from stdin, confirm the session is explicitl
 - Do not block all source writes without an explicit plan-only state signal.
 - Do not imply Codex has Claude/Pi slash-command parity.
 - Do not imply plugin-bundled hooks run unless the user has enabled Codex `plugin_hooks` and trusted the hook source.
-- Treat `dotdotgod load-snapshot` as a cache-aware opt-in, not as a side-effect-free strict hook; it may lazily refresh the ignored `.dotdotgod/` cache.
+- Treat `dotdotgod query` as a cache-aware opt-in; it may refresh `.dotdotgod/vectors/` and download the local model on first use.
 - Do not return raw `dotdotgod status` JSON from `Stop`; Codex stop hooks need Codex-compatible hook output. Use a tested wrapper if you want stop-time status reporting.

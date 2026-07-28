@@ -6,6 +6,7 @@ Use these files instead of the legacy monolithic `docs/spec/CLI_INTERFACE.md` wh
 
 - `DISCOVERY.md`: top-level help/version, subcommand help, command side-effect boundaries, unknown commands, and validation budget override flags.
 - `GRAPH_IMPACT.md`: `dotdotgod graph impact` required arguments, output modes, structured failures, and unsupported graph subcommands.
+- `QUERY.md`: local multilingual E5 documentation indexing, vector cache, ranking, output, and failure behavior.
 - `TRACEABILITY_LINKS.md`: `dotdotgod traceability links` help, check, write, JSON output, and generated-region repair behavior.
 - `PLAN_COMMANDS.md`: `dotdotgod plan validate` and `dotdotgod plan stage create` behavior for simplified Plan Generator stages.
 

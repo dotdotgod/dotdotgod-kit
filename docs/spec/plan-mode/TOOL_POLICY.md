@@ -16,7 +16,7 @@ While plan mode is active:
 Bounded dotdotgod context/status commands are auto-allowed when invoked directly as `dotdotgod ...` or through `node packages/cli/bin/dotdotgod.mjs ...`:
 
 - `status`
-- `load-snapshot`
+- `query`
 - `resolve`
 - `expand`
 - `graph impact`
@@ -24,7 +24,7 @@ Bounded dotdotgod context/status commands are auto-allowed when invoked directly
 - read-only `config`
 - `index`
 
-`index`, `load-snapshot`, `resolve`, `expand`, `graph impact`, and `graph communities` are project-content safe but may create or refresh ignored `.dotdotgod/` cache metadata. They must not modify source, docs, or config files.
+`index`, `query`, `resolve`, `expand`, `graph impact`, and `graph communities` are project-content safe but may create or refresh ignored `.dotdotgod/` cache metadata. They must not modify source, docs, or config files.
 
 Plan Mode also auto-allows the narrow `/plan-goal` stage-validation shape `dotdotgod plan validate docs/plan/<task-slug>/README.md --stage <stage-id> --json`, including the source-checkout `node packages/cli/bin/dotdotgod.mjs` form. This exception supports staged authoring while Plan Mode is active; it does not make arbitrary `dotdotgod plan validate` calls a Plan Mode execution gate.
 

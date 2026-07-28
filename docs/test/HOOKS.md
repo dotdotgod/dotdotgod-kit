@@ -43,6 +43,6 @@ For both adapters:
 
 - `dotdotgod status` may be shown as read-only cache reporting, but Codex Stop examples must not return raw status JSON as hook output
 - `dotdotgod validate . --include-local-memory --check-index` may be shown as explicit opt-in validation and index-freshness checking
-- `dotdotgod load-snapshot` and `dotdotgod graph` must be labeled cache-aware because they can lazily refresh `.dotdotgod/`
+- `dotdotgod query` and `dotdotgod graph` must be labeled cache-aware because they can refresh `.dotdotgod/` caches
 - `/dd:impact`, `dd:impact`, and `impact-review` should be documented as the default cross-agent counterpart to Pi's `/impact-check` reminders
 - `dotdotgod index`, `pnpm run verify:cache`, full `pnpm run verify`, and archive moves must not be default automatic hook actions

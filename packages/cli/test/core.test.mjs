@@ -17,6 +17,7 @@ import {
   buildCompactImpactReport,
   createPlanStageCheckpoint,
   collectIndexFiles,
+  chunkMarkdown,
   defaultDotdotgodConfigData,
   defaultDotdotgodConfigText,
   defaultMemoryConfig,
@@ -40,7 +41,9 @@ import {
   memoryConfigSummary,
   normalizeReferenceAlias,
   PLAN_STAGE_DIRECTORIES,
+  queryDocumentation,
   readMemoryConfig,
+  readVectorCache,
   resolveMemoryArea,
   resolvePlanValidationStage,
   resolveReferenceCandidates,
@@ -535,7 +538,7 @@ describe('CLI docs helpers', () => {
       packageManager: 'pnpm',
       install: null,
       validate: 'node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory',
-      loadSnapshot: 'node packages/cli/bin/dotdotgod.mjs load-snapshot . --json',
+      query: 'node packages/cli/bin/dotdotgod.mjs query . "<focus>" --json',
       index: 'node packages/cli/bin/dotdotgod.mjs index . --json',
       status: 'node packages/cli/bin/dotdotgod.mjs status . --json',
       verify: 'pnpm run verify',
@@ -552,7 +555,7 @@ describe('CLI docs helpers', () => {
     assert.equal(guidance.source, 'missing-install');
     assert.equal(guidance.packageManager, 'pnpm');
     assert.equal(guidance.install, 'npm install -D @dotdotgod/cli');
-    assert.equal(guidance.loadSnapshot, 'npx dotdotgod load-snapshot . --json');
+    assert.equal(guidance.query, 'npx dotdotgod query . "<focus>" --json');
   });
 
   it('loads configurable impact ranking policy with preset and partial overrides', () => {
@@ -1512,7 +1515,7 @@ describe('CLI index and graph helpers', () => {
     assert(graph.edges.some((edge) => edge.relation === 'declares_package'));
   });
 
-  it('keeps generated Claude Code and Codex load guidance snapshot-first', () => {
+  it('keeps generated Claude Code and Codex load guidance documentation-map-first', () => {
     const repoRoot = resolve('..', '..');
     for (const file of [
       'packages/claude-code/commands/dd/load.md',
@@ -1520,10 +1523,40 @@ describe('CLI index and graph helpers', () => {
       'packages/codex/skills/project-load/SKILL.md',
     ]) {
       const content = readFileSync(join(repoRoot, file), 'utf8');
-      assert.match(content, /dotdotgod load-snapshot <root> --json/);
+      assert.match(content, /dotdotgod query <root>/);
+      assert.match(content, /directory depth 5/);
       assert.match(content, /docs\/archive\/README\.md/);
-      assert.match(content, /Do not scan archive bodies by default/);
-      assert.match(content, /manual README-index fallback/);
+      assert.doesNotMatch(content, /load-snapshot/);
     }
+  });
+});
+
+describe('local documentation vector query', () => {
+  it('chunks Markdown by heading and searches shared docs with an incremental fake embedder', async () => {
+    const root = fixture();
+    writeFileSync(join(root, 'docs/spec/SEARCH.md'), '# Search\n\nSemantic retrieval policy.\n\n## Korean\n\n한국어 문서 검색 정책.\n');
+    writeFileSync(join(root, 'docs/spec/LOAD.md'), '# Load\n\n한국어 프로젝트 문서 검색.\n');
+    const chunks = chunkMarkdown('docs/spec/SEARCH.md', readFileSync(join(root, 'docs/spec/SEARCH.md'), 'utf8'));
+    assert(chunks.some((chunk) => chunk.heading === 'Search > Korean'));
+    let embeddedTexts = 0;
+    const fakeEmbed = async (texts) => {
+      embeddedTexts += texts.length;
+      return texts.map((text) => {
+        const vector = Array(384).fill(0);
+        vector[/한국어|korean/i.test(text) ? 0 : 1] = 1;
+        return vector;
+      });
+    };
+    const first = await queryDocumentation(root, '한국어', { limit: 3, embed: fakeEmbed });
+    const searchResult = first.results.find((result) => result.path === 'docs/spec/SEARCH.md');
+    assert.equal(searchResult?.heading, 'Search > Korean');
+    assert(first.results.length <= 3);
+    assert.equal(new Set(first.results.map((result) => result.path)).size, first.results.length, 'limit counts unique Markdown files');
+    assert(first.results.some((result) => result.path === 'docs/spec/LOAD.md'));
+    assert.equal(first.results.some((result) => result.path.startsWith('docs/plan/') || result.path.startsWith('docs/archive/')), false);
+    const firstEmbedded = embeddedTexts;
+    await queryDocumentation(root, '한국어', { limit: 3, embed: fakeEmbed });
+    assert.equal(embeddedTexts, firstEmbedded + 1, 'the second query should reuse every cached passage vector');
+    assert.equal(readVectorCache(root)?.manifest.model, 'Xenova/multilingual-e5-small');
   });
 });

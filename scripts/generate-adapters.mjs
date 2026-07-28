@@ -72,7 +72,7 @@ function command(frontmatter, title, intro, body) {
 }
 
 const yaml = {
-  load: `interface:\n  display_name: "Project Load"\n  short_description: "Load dotdotgod project memory."\n  default_prompt: "Load this project's dotdotgod memory and summarize rules, docs, commands, active plans, and open questions."\n`,
+  load: `interface:\n  display_name: "Project Load"\n  short_description: "Load dotdotgod project memory."\n  default_prompt: "Load this project's dotdotgod memory and summarize rules, docs, commands, relevant active plans, and questions surfaced by the loaded material."\n`,
   plan: `interface:\n  display_name: "Doc-First Planning"\n  short_description: "Plan work from dotdotgod docs first."\n  default_prompt: "Plan this change from AGENTS.md, docs/spec, docs/test, docs/arch, and docs/plan before implementation."\n`,
   init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize project memory and config."\n  default_prompt: "Initialize shared project memory and the complete default config with dotdotgod init or the bundled fallback, preserving existing files."\n`,
   impact: `interface:\n  display_name: "Impact Review"\n  short_description: "Review changed files with dotdotgod graph impact."\n  default_prompt: "Review current changed source, config, and docs files with dotdotgod graph impact before broad verification or handoff."\n`,

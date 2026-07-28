@@ -9,7 +9,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `TRACEABILITY_CONFIG.md`: configurable traceability enforcement validation smoke checks.
 - `VALIDATION_CONFIG.md`: markdown validation budget and size-check exclusion coverage.
 - `CONTEXT_MEASUREMENT.md`: context measurement commands and runtime context debug smoke checks.
-- `COMMAND_GUIDANCE.md`: environment-aware load-snapshot command guidance checks.
+- `COMMAND_GUIDANCE.md`: environment-aware query and project command guidance checks.
 - `IMPACT_RANKING_CONFIG.md`: configurable graph impact ranking, compact output, semantic-edge, and selection-noise checks.
 - `GRAPH_IMPACT_QUALITY.md`: graph impact quality scoring script, metrics, and baseline comparison checks.
 - `CONFIG_COMMAND.md`: project-level config show/init command checks.
@@ -28,7 +28,7 @@ Use source-checkout commands in this repository. Installed `dotdotgod` or `npx @
 | --- | --- | --- |
 | Docs/project-memory correctness | `node packages/cli/bin/dotdotgod.mjs validate . ...` | Checks docs, config, traceability, and optional index freshness. |
 | Generated traceability drift | `node packages/cli/bin/dotdotgod.mjs traceability links . --check --json` | Focused check; use `--write` only to repair generated links and compact JSON. |
-| Graph/cache smoke | `load-snapshot`, `graph impact`, `graph communities`, `status` | Snapshot/graph commands may lazily refresh ignored `.dotdotgod/`; `status` does not rebuild. |
+| Search/graph cache smoke | `query`, `graph impact`, `graph communities`, `status` | Query/graph commands may refresh ignored `.dotdotgod/` caches; `status` does not rebuild. |
 | Release-style workspace gate | `pnpm run verify` | Runs package checks, tests, typecheck, generated-resource checks, and docs validation. |
 
 Everyday docs and project-memory checks:
@@ -62,7 +62,7 @@ node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensi
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --yml
 node scripts/evaluate-graph-impact.mjs . --json
 node packages/cli/bin/dotdotgod.mjs graph communities . --json
-node packages/cli/bin/dotdotgod.mjs load-snapshot . --json
+node packages/cli/bin/dotdotgod.mjs query . "project documentation" --limit 5 --json
 node packages/cli/bin/dotdotgod.mjs status . --json
 ```
 

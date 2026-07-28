@@ -6,7 +6,7 @@
 
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { recordContextMetric } from "../context-metrics/utils.js";
-import { buildLoadPrompt, collectSnapshot, documentationSummaryDirectories, estimateTextMetrics, hasOtherLoadCommand, runDotdotgodLoadSnapshot } from "./utils.js";
+import { buildLoadPrompt, collectSnapshot, documentationSummaryDirectories, estimateTextMetrics, hasOtherLoadCommand, runDotdotgodQuery } from "./utils.js";
 
 async function runLoadCommand(
 	pi: ExtensionAPI,
@@ -16,7 +16,7 @@ async function runLoadCommand(
 ) {
 	const mode = commandName === "dd:load:compact" ? "compact" : "full";
 	const snapshot = collectSnapshot(ctx.cwd);
-	const loadSnapshot = runDotdotgodLoadSnapshot(ctx.cwd);
+	const queryResult = args.trim() ? runDotdotgodQuery(ctx.cwd, args.trim()) : undefined;
 	const conflict = hasOtherLoadCommand(pi.getCommands());
 
 	if (ctx.hasUI && conflict) {
@@ -26,17 +26,13 @@ async function runLoadCommand(
 		);
 	}
 
-	const prompt = buildLoadPrompt(ctx.cwd, args, snapshot, loadSnapshot, { mode });
+	const prompt = buildLoadPrompt(ctx.cwd, args, snapshot, queryResult, { mode });
 	const promptMetrics = estimateTextMetrics(prompt);
 	recordContextMetric(ctx, (name) => pi.getFlag(name), "load-project:before-send", {
 		commandName,
 		promptMetrics,
-		directorySummaryPaths: documentationSummaryDirectories(snapshot, loadSnapshot).map((directory) => directory.path),
-		loadSnapshot: {
-			ok: loadSnapshot.ok,
-			command: loadSnapshot.command,
-			error: loadSnapshot.error,
-		},
+		directorySummaryPaths: documentationSummaryDirectories(snapshot).map((directory) => directory.path),
+		query: queryResult ? { ok: queryResult.ok, command: queryResult.command, error: queryResult.error } : undefined,
 	});
 	const deliverAs = ctx.isIdle() ? undefined : "followUp";
 	pi.sendUserMessage(prompt, deliverAs ? { deliverAs } : undefined);
@@ -44,11 +40,7 @@ async function runLoadCommand(
 		commandName,
 		entryCount: ctx.sessionManager.getEntries().length,
 		promptMetrics,
-		loadSnapshot: {
-			ok: loadSnapshot.ok,
-			command: loadSnapshot.command,
-			error: loadSnapshot.error,
-		},
+		query: queryResult ? { ok: queryResult.ok, command: queryResult.command, error: queryResult.error } : undefined,
 	});
 	recordContextMetric(ctx, (name) => pi.getFlag(name), "load-project:after-send", { commandName, deliverAs: deliverAs ?? "immediate" });
 

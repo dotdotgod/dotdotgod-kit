@@ -19,8 +19,8 @@ Use this workflow for README indexes, specs, test docs, architecture docs, activ
 Prefer live repository context in this order:
 
 1. The user's target file or requested documentation area.
-2. Resolved dotdotgod memory-area metadata from `dotdotgod load-snapshot <root> --json` when available.
-3. Resolved config from `dotdotgod config <root> --json` when a snapshot is unavailable or stale.
+2. Relevant documentation from `dotdotgod query <root> "<focus>" --json` when semantic routing is useful.
+3. Resolved config from `dotdotgod config <root> --json` when memory-area or documentation-map policy is needed.
 4. The nearest README index, especially `docs/README.md` and the local area `README.md`.
 5. Directly linked specs, tests, architecture notes, commands, and traceability targets needed to preserve meaning.
 6. `docs/archive/README.md` as the history map; read archive bodies only when the current clarification task needs a targeted past decision.

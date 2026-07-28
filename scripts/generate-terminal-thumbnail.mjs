@@ -40,7 +40,7 @@ const PRESETS = {
     title: '모든 문서를|읽히지 않고도|최신 컨텍스트',
     subtitle: '최신성·범위·탐색 순서를 함께 관리한다',
     label: 'PROJECT MEMORY / LOAD',
-    command: '$ dotdotgod load-snapshot . --json',
+    command: '$ dotdotgod query . "project memory"',
     lines: [
       [202, 0, '', 'current docs', '#f7faf8', 700],
       [252, 1, '└─', 'fresh index', '#56d986', 700],

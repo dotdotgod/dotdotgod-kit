@@ -10,12 +10,12 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - The index records whether archive bodies were included; default indexes exclude archive bodies.
 - `dotdotgod status <root>` reports `missing`, `fresh`, or `stale` from file fingerprints and schema state without rebuilding the graph.
 - `dotdotgod index <root>` incrementally rebuilds changed file graph shards when a compatible manifest already exists.
-- Agent-facing read commands such as `load-snapshot` and `graph ...` lazily refresh missing or stale caches before returning output.
+- Graph-facing commands such as `resolve`, `expand`, and `graph ...` lazily refresh missing or stale graph caches before returning output; `query` maintains its separate vector cache.
 - Lazy refresh output includes cache refresh metadata, changed-file counts, elapsed timing, rebuild mode, and cache size details.
 
 Completion hooks that refresh the index are optional. The default workflow relies on lazy refresh and avoids mutating the cache after every task.
 
-Claude Code and Codex hook examples should prefer `dotdotgod status` for read-only stop-time cache reporting and `dotdotgod validate . --include-local-memory --check-index` for explicit docs validation plus markdown index-fingerprint checks. Hook examples that call `load-snapshot`, `graph`, `index`, or `verify:cache` must describe the cache-refresh side effect or keep those commands opt-in.
+Claude Code and Codex hook examples should prefer `dotdotgod status` for read-only stop-time cache reporting and `dotdotgod validate . --include-local-memory --check-index` for explicit docs validation plus markdown index-fingerprint checks. Hook examples that call `query`, `graph`, `index`, or `verify:cache` must describe the cache-refresh side effect or keep those commands opt-in.
 
 `pnpm run verify:cache` validates docs, runs `dotdotgod index`, and checks `dotdotgod status`; the Husky pre-push hook runs this gate and may update ignored cache files locally.
 

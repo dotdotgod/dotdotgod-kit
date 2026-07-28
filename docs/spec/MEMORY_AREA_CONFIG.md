@@ -71,28 +71,12 @@ Behavior contract:
 - The policy is independent from `memory.areas`; changing local-memory scope does not change summary exclusions, and changing exclusions does not change indexing or retrieval metadata.
 - An explicit empty array includes all discovered summary directories, including plan and archive indexes.
 - Values use the same repository-relative exact and supported subtree path patterns as other path policies.
-- The policy filters only the book-like directory summary. Baseline-file detection, load-snapshot memory areas, pinned files, archive-body policy, and later targeted agent reads remain unchanged.
+- The policy filters the documentation tree and vector-query corpus. Baseline-file detection, graph memory areas, archive-body policy, and later targeted reads remain unchanged.
 - `dotdotgod config init` materializes the default list so projects can manage it independently.
 
-## Load Pinned Files
+## Legacy Load Pinned Fields
 
-The optional top-level `load` policy family also pins always-visible files into load output:
-
-- `load.pinnedPaths`: array of repository-relative paths or path patterns whose matches are always listed in load-snapshot output and Pi load prompts.
-- `load.pinnedBodies`: array of repository-relative paths or path patterns whose matching file contents are also embedded in full load output.
-
-Behavior contract:
-
-- Both options are arrays; scalar strings are invalid.
-- Files matched by `pinnedBodies` are also surfaced as pinned paths without duplicating them in `pinnedPaths`.
-- Pinned files are read directly from disk, so pinned paths do not need to be present in the graph index.
-- Matches and bodies are bounded: at most 20 pinned paths, 5 pinned bodies, and 10,000 characters per body, with omitted and truncated counts reported.
-- Missing files are reported with a `missing` status instead of failing; binary files are skipped.
-- Secret-like paths such as `.env`, credentials, secrets, and private keys are rejected by validation and skipped at runtime.
-- Broad archive patterns stay subject to the same bounds and secret checks; pinning does not re-enable default archive-body indexing.
-- `dotdotgod config init` writes empty `load.pinnedPaths` and `load.pinnedBodies` arrays for discoverability.
-
-The motivating use case is keeping code conventions such as `docs/arch/CODE_CONVENTIONS.md` visible on every project-memory load.
+`load.pinnedPaths` and `load.pinnedBodies` remain accepted, validated, and serialized for config compatibility, but they no longer alter Load output. Secret-like values remain invalid. New projects should rely on the complete documentation tree and focused local query instead of pinned bodies.
 
 ## Validation Behavior
 
@@ -116,18 +100,9 @@ The motivating use case is keeping code conventions such as `docs/arch/CODE_CONV
 
 Invalid memory config does not make the CLI crash. Runtime commands fall back to the default memory config while validation reports repairable errors.
 
-## Load Snapshot Effects
+## Load and Query Effects
 
-`dotdotgod load-snapshot <root> --json` includes:
-
-- `memoryConfig`: the resolved source, memory-area definitions, optional area `description`/`clarify` metadata, traceability path policy, and reference-expansion fuzzy low-signal policy.
-- `memoryPolicy`: bounded lists of shared, local, fresh, and stale area ids.
-- `memoryAreas`: bounded file summaries grouped by configured area, including area clarity metadata when configured.
-- `memoryConfig.load.documentationSummary.exclude`: the independently resolved Pi documentation-summary exclusion policy.
-- `pinnedFiles`: configured pinned paths with per-file statuses and bounded pinned bodies read directly from disk.
-- archive bounds showing whether archive bodies were included.
-
-The load snapshot must not embed the full graph or stale archive bodies by default.
+Pi Load applies `load.documentationSummary.exclude` before rendering the Markdown tree. `dotdotgod query` applies the same exclusions before chunking and embedding shared documentation. Memory-area metadata remains available through `dotdotgod config` and graph commands rather than being injected into Load narrative.
 
 ## Traceability
 
@@ -141,7 +116,7 @@ The load snapshot must not embed the full graph or stale archive bodies by defau
 - Implemented by:
   - [packages/cli/src/memory/config.mjs](../../packages/cli/src/memory/config.mjs)
   - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
-  - [packages/cli/src/load-snapshot/summary.mjs](../../packages/cli/src/load-snapshot/summary.mjs)
+  - [packages/cli/src/commands/query.mjs](../../packages/cli/src/commands/query.mjs)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
@@ -159,5 +134,5 @@ The load snapshot must not embed the full graph or stale archive bodies by defau
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/memory/config.mjs","packages/cli/src/core.mjs","packages/cli/src/load-snapshot/summary.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/README.md","docs/test/MEMORY_AREA_CONFIG.md"],"relatedDocs":["docs/spec/CONFIG_COMMAND.md","docs/arch/MEMORY_AREA_CONFIG.md","docs/arch/DOCS_STRUCTURE.md","docs/arch/VALIDATION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
+{"kind":"spec","implementedBy":["packages/cli/src/memory/config.mjs","packages/cli/src/core.mjs","packages/cli/src/commands/query.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/README.md","docs/test/MEMORY_AREA_CONFIG.md"],"relatedDocs":["docs/spec/CONFIG_COMMAND.md","docs/arch/MEMORY_AREA_CONFIG.md","docs/arch/DOCS_STRUCTURE.md","docs/arch/VALIDATION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
 ```

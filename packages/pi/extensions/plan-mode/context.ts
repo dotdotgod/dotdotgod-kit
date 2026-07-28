@@ -70,7 +70,7 @@ export function selectLatestPlanningRequest(input: LatestPlanningRequestSelectio
 export function classifyPlanModeRequest(text: string | undefined): PlanModeRequestKind {
 	const normalized = (text ?? "").replace(/\s+/g, " ").trim();
 	if (!normalized) return "advisory";
-	if (/^Load the dotdotgod project memory\b/i.test(normalized) || /^(?:\/dd:load|dd:load|\/load|load-snapshot)\b/i.test(normalized)) {
+	if (/^Load the dotdotgod project memory\b/i.test(normalized) || /^(?:\/dd:load|dd:load|\/load)\b/i.test(normalized)) {
 		return "memory_load";
 	}
 	if (detectPlanExecutionIntent(normalized)) return "explicit_execution";

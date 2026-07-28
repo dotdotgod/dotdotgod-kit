@@ -34,8 +34,9 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 - `landing-site/` — paused: plan for adding a static React landing and documentation site to the pnpm monorepo; waiting on framework, deployment, and design decisions.
 - `graph-serve/` — ready: local React/Sigma graph explorer for bounded community and impact navigation with explainable relationships, accessible list parity, and purposeful graph morphing.
 - `graph-node-impact-activation/` — active: impact-only graph workspace with file-node re-rooting, code/document emphasis, accessible inspection parity, and interruptible reduced-motion-aware Sigma transitions.
+- `load-documentation-vector-query/` — active: replace load-snapshot with a complete prefix-compressed Markdown documentation tree and local multilingual E5 vector retrieval through `dotdotgod query`.
 - `load-request-framing/` — ready-to-archive: implemented synthetic load-prompt skipping in Plan Mode latest-request framing, explicit `/dd:load` full and `/dd:load:compact` commands, and reduced compact load-snapshot prompt content.
-- `load-snapshot-prompt-safety/` — active: audit and harden `dotdotgod load-snapshot` and Pi `/dd:load` rendering so project-derived prompt-like strings are treated as data, not instructions.
+- `load-snapshot-prompt-safety/` — ready-to-archive: superseded by removal of `load-snapshot` in `load-documentation-vector-query/`; retain only until archive housekeeping.
 - `notion-docs-sync/` — active: plan for a Notion integration that links Notion task/issue pages with GitHub-hosted markdown under `docs/` and preserves traceability; Phase 1-3 use CLI dry-run, CLI write mode, and GitHub Actions without custom server resources.
 - `pi-subagents-resource-conflict/` — active: plan to suppress duplicate `pi-subagents` skill and prompt resources when standalone `pi-subagents` is already installed alongside `@dotdotgod/pi`.
 - `plan-generator-user-decision-surfacing/` — active: plan to surface durable-plan user-owned open decisions as `input-waiting` blockers with concrete final-response questions and options.

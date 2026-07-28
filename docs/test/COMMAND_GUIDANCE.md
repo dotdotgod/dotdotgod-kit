@@ -2,7 +2,7 @@
 
 ## Scope
 
-Verify environment-aware command guidance in `dotdotgod load-snapshot` and Pi load prompt formatting.
+Verify environment-aware `dotdotgod query` guidance and Pi documentation-map prompt formatting.
 
 ## Cases
 
@@ -17,5 +17,5 @@ Verify environment-aware command guidance in `dotdotgod load-snapshot` and Pi lo
 ```bash
 pnpm --filter @dotdotgod/cli test
 pnpm --filter @dotdotgod/pi test
-node packages/cli/bin/dotdotgod.mjs load-snapshot . --json
+node packages/cli/bin/dotdotgod.mjs query . "project documentation" --limit 5 --json
 ```

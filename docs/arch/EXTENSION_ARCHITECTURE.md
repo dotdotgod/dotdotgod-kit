@@ -56,7 +56,7 @@ The document clarity skill improves project docs using configured metadata while
 - Entry points: `/plan`, `/plan <request>`, `/todos`, and `Ctrl+Alt+P`.
 - Tool/write policy: planning/execution tool switching, optional `--plan-extra-tools`, plan/archive markdown filters, active `/plan-goal` checkpoint exceptions, read-only bash allowlist, bounded dotdotgod context/status commands, `dotdotgod_graph_impact`, `/impact-check`, and one-command approval for other dotdotgod CLI commands.
 - Runtime state: mode flags, todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/plan <request>` delivery, request-framing classification, and pending source/config impact-check records.
-- Context shaping: first-request context checks, queued planning-load delivery, queued post-compaction request resume, compaction debounce, CLI planning-context summary, baseline-doc coverage checks, single-area-only context detection, optional validation, bounded load-snapshot refresh, and bounded multi-file advisory graph impact checks when the CLI is available.
+- Context shaping: first-request context checks, queued planning-load delivery, queued post-compaction request resume, compaction debounce, CLI planning-context summary, baseline-doc coverage checks, single-area-only context detection, optional validation, documentation-tree refresh, and bounded multi-file advisory graph impact checks when the CLI is available.
 - Impact-check integration: structured `graph impact --yml` runtime summaries, short pending-impact reminders after source/config edits, pending-path plus git source/config union checks, and stale pending-record cleanup after successful checks.
 - UX: queue-first Discussion Queue Console, then saved-plan execute/stay/refine/cancel review only after queue clearance. Explicit execution requests use the same queue-first review flow. Plan Mode suppresses review for generator-authored or actively generating plans, but it does not run generator stage validation. Generator status overlays restore the underlying Plan Mode status when cleared.
 - Prompt ownership: first-turn safety/workflow prompt, compact reminder, per-request framing, active tool list, impact-plan refinement and project validation guidance, discussion-queue follow-ups that update durable plan markdown, and compaction instructions that demote stale history.
@@ -80,9 +80,10 @@ The debug path is for measurement and investigation only; normal package behavio
 
 - `/load` compatibility command
 - `/dd:load` namespaced full-load command and `/dd:load:compact` compact-load command
-- direct `dotdotgod load-snapshot <cwd> --json` invocation when available
-- lightweight detection of baseline memory files as a fallback and prompt scaffold
-- read-only, snapshot-first loader prompt generation with compact directory summaries when the CLI snapshot is available
+- complete shared Markdown discovery with configured plan/archive exclusions
+- prefix-compressed tree rendering through depth 5 without focus or depth 3 with focus
+- local `dotdotgod query` invocation for up to 30 focused multilingual E5 results
+- lightweight detection of baseline memory files and narrative loader prompt generation
 - command-conflict guidance for `/load`
 
 The shared CLI owns deterministic validation, cache/index management, bounded graph impact reports, community summaries, and environment-aware command guidance. The load extension includes compact CLI snapshot metadata in `/dd:load` without turning project loading into a full graph dump. It preserves `docs/archive/README.md` as the archive map while keeping archive bodies excluded by default.

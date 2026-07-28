@@ -23,7 +23,7 @@ Confirm these commands are discoverable or invokable:
 
 For `/dd:init`, generated guidance should preserve existing files, use the CLI or bundled fallback, and create the same complete default project config. Confirm the packaged initializer contains both `scripts/init_project.sh` and `templates/dotdotgod.config.json`.
 
-For `/dd:load`, generated guidance should prefer `dotdotgod load-snapshot <root> --json`, treat the snapshot as the first-pass project-memory map, keep `docs/archive/README.md` as the archive map, and fall back to README-index reads when the CLI is unavailable.
+For `/dd:load`, generated guidance should render the shared Markdown tree through depth 5 without arguments, use `dotdotgod query` for up to 30 focused results plus a depth-3 map with arguments, keep `docs/archive/README.md` as the separate history map, and fall back to README-index reads when query is unavailable.
 
 For `/dd:impact`, generated guidance should identify changed source/config/docs files, run one repeated-`--changed` multi-seed `dotdotgod graph impact` command for up to 20 unique paths (and ordered batches only above that bound), inspect the combined ranking and per-seed results selectively, and choose focused verification before handoff.
 
