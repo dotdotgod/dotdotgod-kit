@@ -33,7 +33,7 @@ dotdotgod graph impact . --changed <path> --compact
 
 ## What It Does
 
-- `init` creates `AGENTS.md`, thin agent entrypoints, docs indexes, active-plan space, archive map, and local cache ignores.
+- `init` creates `AGENTS.md`, thin agent entrypoints, docs indexes, active-plan space, archive map, local cache ignores, and the complete editable default config.
 - `validate` checks the dotdotgod docs/project-memory structure, local links, traceability blocks, config validity, and optional index freshness.
 - `index` builds `.dotdotgod/manifest.json` and compact graph shards from maintained project files.
 - `load-snapshot` returns a bounded first-pass project map for AI agents, including files pinned through the `load.pinnedPaths`/`load.pinnedBodies` config so context such as code conventions stays visible on every load.

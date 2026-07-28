@@ -53,6 +53,7 @@ The bundled `project-initializer` skill creates or normalizes this memory surfac
 AGENTS.md                    # canonical working rules for agents
 CLAUDE.md                    # thin Claude Code pointer to AGENTS.md
 CODEX.md                     # thin Codex pointer to AGENTS.md
+dotdotgod.config.json        # complete editable default project policy
 docs/
   README.md                  # project documentation map
   spec/README.md             # behavior, requirements, product truth
@@ -62,7 +63,7 @@ docs/
   archive/README.md          # completed-work history map, ignored by git
 ```
 
-The package includes `@dotdotgod/cli` as a runtime dependency. Pi extensions prefer a source-checkout CLI when present, then the package-local CLI, then a global `dotdotgod` fallback. The initializer also includes a shell fallback for constrained environments.
+The package includes `@dotdotgod/cli` as a runtime dependency. Pi extensions prefer a source-checkout CLI when present, then the package-local CLI, then a global `dotdotgod` fallback. The initializer also includes a shell fallback and generated canonical config template for constrained environments.
 
 ## Planning Workflow
 

@@ -2,9 +2,9 @@
 
 ## Purpose
 
-`project-initializer` creates a conservative documentation and agent-instruction baseline for a software project.
+`project-initializer` creates shared agent instructions, documentation indexes, local-memory ignores, and a complete editable project config.
 
-It is exposed through the shared `dotdotgod init` CLI command and as generated Pi, Claude Code, and Codex initializer guidance. Adapter guidance uses the CLI command when it is already available and keeps the bundled POSIX shell script as an offline fallback, so missing CLI access never blocks baseline initialization.
+The `dotdotgod init` CLI command and bundled POSIX fallback produce the same baseline file set and canonical config for Pi, Claude Code, and Codex workflows.
 
 ## CLI Contract
 
@@ -25,6 +25,7 @@ The initializer creates these files when missing:
 - `AGENTS.md`
 - `CLAUDE.md`
 - `CODEX.md`
+- `dotdotgod.config.json`
 - `docs/README.md`
 - `docs/spec/README.md`
 - `docs/test/README.md`
@@ -40,10 +41,9 @@ It also ensures `.gitignore` contains:
 
 ## CLI Availability Policy
 
-- Adapter initializer workflows MUST NOT require users to install `dotdotgod` before creating the baseline scaffold.
-- If `dotdotgod init` is unavailable because the CLI command is missing or not executable, adapters MUST use the bundled fallback script so initialization can continue.
-- The fallback scaffold MUST create baseline docs indexes and local-memory `.gitignore` entries so agents can navigate `AGENTS.md` and README indexes before the CLI is installed.
-- CLI-only validation, graph cache, and load-snapshot features are outside the baseline scaffold and MUST NOT change the initialized docs shape.
+- Adapters use `dotdotgod init` when available and the bundled fallback otherwise.
+- Both paths MUST create the same baseline file set, local-memory `.gitignore` entries, and structurally identical `dotdotgod.config.json` data.
+- The fallback MUST copy a generated config template derived from the CLI's canonical default serializer.
 
 ## Overwrite Policy
 
@@ -51,6 +51,13 @@ It also ensures `.gitignore` contains:
 - `--force` replaces generated files only after moving the current file to `<name>.bak.<timestamp>`.
 - `--dry-run` reports intended create/update/replace actions without writing files.
 - `--json` is supported by `dotdotgod init` for structured action reporting.
+
+## Config Policy
+
+- New projects receive the complete public editable defaults rendered by `defaultDotdotgodConfigText()`.
+- Existing `dotdotgod.config.json` files follow the normal skip, dry-run, and force-backup rules.
+- If `.dotdotgodrc.json` exists, initialization preserves it, reports a config conflict, and skips `dotdotgod.config.json` even under `--force`; unrelated scaffold work continues.
+- The fallback template is generated and packaged with each adapter rather than maintained separately in shell.
 
 ## Project Name
 
@@ -79,8 +86,6 @@ Generated docs follow these conventions:
 
 - The initializer does not merge into files already present unless `--force` is explicitly used.
 - The initializer does not infer project stack beyond the project name.
-- The initializer does not require the CLI in adapter contexts; missing CLI access must fall back to the bundled script.
-- The initializer does not require or create a project config file by default; use `dotdotgod config init` when a project wants editable policy.
 - `docs/plan`, `docs/archive`, and `.dotdotgod` are local working/cache areas by default and are ignored by git unless a project deliberately changes that policy.
 
 ## Traceability
@@ -95,7 +100,9 @@ Generated docs follow these conventions:
 - Implemented by:
   - [packages/cli/src/init.mjs](../../packages/cli/src/init.mjs)
   - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
+  - [packages/cli/src/memory/config.mjs](../../packages/cli/src/memory/config.mjs)
   - [packages/shared/initializer/scripts/init_project.sh](../../packages/shared/initializer/scripts/init_project.sh)
+  - [packages/shared/initializer/templates/dotdotgod.config.json](../../packages/shared/initializer/templates/dotdotgod.config.json)
   - [packages/pi/skills/project-initializer/scripts/init_project.sh](../../packages/pi/skills/project-initializer/scripts/init_project.sh)
   - [packages/claude-code/skills/project-initializer/scripts/init_project.sh](../../packages/claude-code/skills/project-initializer/scripts/init_project.sh)
   - [packages/codex/skills/project-initializer/scripts/init_project.sh](../../packages/codex/skills/project-initializer/scripts/init_project.sh)
@@ -103,9 +110,11 @@ Generated docs follow these conventions:
 - Verified by:
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
   - [docs/test/README.md](../test/README.md)
+  - [docs/test/CONFIG_COMMAND.md](../test/CONFIG_COMMAND.md)
   - [docs/test/MANUAL_SMOKE.md](../test/MANUAL_SMOKE.md)
 - Related docs:
   - [docs/spec/CLI_INTERFACE.md](CLI_INTERFACE.md)
+  - [docs/spec/CONFIG_COMMAND.md](CONFIG_COMMAND.md)
   - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../arch/CROSS_AGENT_ARCHITECTURE.md)
   - [docs/arch/DOCS_STRUCTURE.md](../arch/DOCS_STRUCTURE.md)
 - Verification commands:
@@ -117,5 +126,5 @@ Generated docs follow these conventions:
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/init.mjs","packages/cli/src/core.mjs","packages/shared/initializer/scripts/init_project.sh","packages/pi/skills/project-initializer/scripts/init_project.sh","packages/claude-code/skills/project-initializer/scripts/init_project.sh","packages/codex/skills/project-initializer/scripts/init_project.sh","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/e2e.test.mjs","docs/test/README.md","docs/test/MANUAL_SMOKE.md"],"relatedDocs":["docs/spec/CLI_INTERFACE.md","docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"],"verificationCommands":["node packages/cli/bin/dotdotgod.mjs init . --dry-run --project-name fixture-name","sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name .","pnpm --filter @dotdotgod/cli test","pnpm run verify:generated"]}
+{"kind":"spec","implementedBy":["packages/cli/src/init.mjs","packages/cli/src/core.mjs","packages/cli/src/memory/config.mjs","packages/shared/initializer/scripts/init_project.sh","packages/shared/initializer/templates/dotdotgod.config.json","packages/pi/skills/project-initializer/scripts/init_project.sh","packages/claude-code/skills/project-initializer/scripts/init_project.sh","packages/codex/skills/project-initializer/scripts/init_project.sh","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/e2e.test.mjs","docs/test/README.md","docs/test/CONFIG_COMMAND.md","docs/test/MANUAL_SMOKE.md"],"relatedDocs":["docs/spec/CLI_INTERFACE.md","docs/spec/CONFIG_COMMAND.md","docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"],"verificationCommands":["node packages/cli/bin/dotdotgod.mjs init . --dry-run --project-name fixture-name","sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name .","pnpm --filter @dotdotgod/cli test","pnpm run verify:generated"]}
 ```

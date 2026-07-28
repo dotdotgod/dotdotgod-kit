@@ -37,7 +37,7 @@ claude --plugin-dir /path/to/dotdotgod/packages/claude-code
 
 | Command or skill | Use it for | Result |
 | --- | --- | --- |
-| `/dd:init` | Start a repository with dotdotgod conventions. | Creates or normalizes `AGENTS.md`, thin agent entrypoints, docs indexes, active-plan space, and archive map. |
+| `/dd:init` | Start a repository with dotdotgod conventions. | Creates or normalizes shared agent files, docs indexes, local-memory areas, and the complete default project config. |
 | `/dd:load` | Load project memory read-only. | Prefers `dotdotgod load-snapshot <root> --json`, then falls back to README-index reads. |
 | `/dd:plan` | Plan before implementation. | Writes or updates durable task intent in `docs/plan/<task-slug>/README.md`. |
 | `/dd:plan-goal` | Run 5-stage structured planning before implementation. | Produces durable checkpoint files in `docs/plan/<task>/.dotdotgod-plan/` and a plan README. |
