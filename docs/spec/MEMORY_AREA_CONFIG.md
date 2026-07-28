@@ -13,12 +13,9 @@ The config makes four memory concepts explicit:
 
 ## Config File
 
-The CLI looks for one optional JSON config file at the project root:
+The CLI looks for the optional `dotdotgod.config.json` file at the project root.
 
-1. `dotdotgod.config.json`
-2. `.dotdotgodrc.json`
-
-If neither file exists, the CLI uses its built-in defaults. The zero-config default must support the default docs scaffold. Use `dotdotgod config <root>` to inspect the resolved policy, or `dotdotgod config init <root>` to materialize the defaults as `dotdotgod.config.json` for a project. The project-level config also carries related CLI policies such as fuzzy reference-expansion low-signal `add`/`remove` terms.
+If the file does not exist, the CLI uses its built-in defaults. The zero-config default must support the default docs scaffold. Use `dotdotgod config <root>` to inspect the resolved policy, or `dotdotgod config init <root>` to materialize the defaults as `dotdotgod.config.json` for a project. The project-level config also carries related CLI policies such as fuzzy reference-expansion low-signal `add`/`remove` terms.
 
 ## Memory Area Fields
 

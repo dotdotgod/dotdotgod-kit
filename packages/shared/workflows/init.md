@@ -24,18 +24,17 @@ Use the bundled fallback when the CLI is unavailable:
 {{INIT_SCRIPT_COMMAND}}
 ```
 
-Both paths create the same baseline file set and canonical config while preserving existing files by default. Use `--dry-run` for unfamiliar repositories, `--dotdot-setting` for the optional documentation and code-convention guidance, and `--force` only with explicit user approval.
+Both paths create the same baseline file set and canonical config while preserving existing files. Use `--dry-run` for unfamiliar repositories and `--dotdot-setting` for the optional documentation and code-convention guidance.
 
 ## Workflow
 
 1. Inspect the project root.
-   - Check `AGENTS.md`, `AGENT.md`, `CLAUDE.md`, `CODEX.md`, `README.md`, `.gitignore`, `docs/`, `dotdotgod.config.json`, and `.dotdotgodrc.json`.
+   - Check `AGENTS.md`, `AGENT.md`, `CLAUDE.md`, `CODEX.md`, `README.md`, `.gitignore`, `docs/`, and `dotdotgod.config.json`.
    - Preserve project-specific instructions and unrelated user work.
    - Keep `AGENTS.md` canonical when both `AGENT.md` and `AGENTS.md` exist.
 2. Run the initializer.
    - Use the CLI when available; otherwise use the bundled fallback.
-   - Existing files are skipped unless the user approved `--force`.
-   - If `.dotdotgodrc.json` exists, preserve it and skip creation of `dotdotgod.config.json`, including under `--force`.
+   - Existing files are always preserved and skipped.
 3. Review and validate.
    - Fill project-specific placeholders in `AGENTS.md` when the required context is known.
    - Keep `CLAUDE.md` and `CODEX.md` thin.
@@ -43,7 +42,8 @@ Both paths create the same baseline file set and canonical config while preservi
    - Run `dotdotgod validate <project-root>` after creating or changing config when the CLI is available.
    - Inspect `dotdotgod config <project-root> --json` when validation fails or resolved policy needs review.
 4. Report the result.
-   - List created, skipped, replaced, backed-up, conflicting, and invalid files.
+   - List created, updated, and skipped files, plus validation failures.
+   - Report when CLI validation was unavailable.
    - Identify existing instructions that still require manual consolidation.
 
 ## Bundled Resources

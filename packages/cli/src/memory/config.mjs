@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 import { rel } from '../common/paths.mjs';
 import { isKebabCase } from '../docs/markdown.mjs';
 
-const MEMORY_CONFIG_FILES = ['dotdotgod.config.json', '.dotdotgodrc.json'];
+const MEMORY_CONFIG_FILE = 'dotdotgod.config.json';
 const MEMORY_SCOPES = new Set(['shared', 'local']);
 const MEMORY_FRESHNESS = new Set(['fresh', 'stale']);
 export const DEFAULT_TRACEABILITY_POLICY = {
@@ -533,27 +533,24 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
 }
 
 export function readMemoryConfig(root = '.') {
-  for (const name of MEMORY_CONFIG_FILES) {
-    const path = join(root, name);
-    if (!existsSync(path)) continue;
-    try {
-      const data = JSON.parse(readFileSync(path, 'utf8'));
-      const errors = validateMemoryConfigData(data, root, name);
-      if (errors.length > 0) return { ...defaultMemoryConfig(), source: name, errors };
-      const configuredAreas = data.memory?.areas?.map(normalizeMemoryArea) ?? [];
-      const traceability = data.traceability === undefined ? cloneTraceabilityPolicy() : normalizeTraceabilityPolicy(data.traceability);
-      const validation = data.validation === undefined ? cloneValidationPolicy() : normalizeValidationPolicy(data.validation);
-      const impactRanking = normalizeImpactRankingPolicy(data.impactRanking);
-      const referenceExpansion = normalizeReferenceExpansionPolicy(data.referenceExpansion);
-      const integrations = normalizeIntegrationsPolicy(data.integrations);
-      const load = normalizeLoadPolicy(data.load);
-      const planMode = normalizePlanModePolicy(data.planMode);
-      return configuredAreas.length > 0 ? { source: name, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, integrations, load, planMode, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, referenceExpansion, integrations, load, planMode, source: name, errors: [] };
-    } catch (error) {
-      return { ...defaultMemoryConfig(), source: name, errors: [{ file: name, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}\nFix: repair ${name} so it is valid JSON, or regenerate the default config with \`dotdotgod config init <root> --force\` if you want to reset it.` }] };
-    }
+  const path = join(root, MEMORY_CONFIG_FILE);
+  if (!existsSync(path)) return defaultMemoryConfig();
+  try {
+    const data = JSON.parse(readFileSync(path, 'utf8'));
+    const errors = validateMemoryConfigData(data, root, MEMORY_CONFIG_FILE);
+    if (errors.length > 0) return { ...defaultMemoryConfig(), source: MEMORY_CONFIG_FILE, errors };
+    const configuredAreas = data.memory?.areas?.map(normalizeMemoryArea) ?? [];
+    const traceability = data.traceability === undefined ? cloneTraceabilityPolicy() : normalizeTraceabilityPolicy(data.traceability);
+    const validation = data.validation === undefined ? cloneValidationPolicy() : normalizeValidationPolicy(data.validation);
+    const impactRanking = normalizeImpactRankingPolicy(data.impactRanking);
+    const referenceExpansion = normalizeReferenceExpansionPolicy(data.referenceExpansion);
+    const integrations = normalizeIntegrationsPolicy(data.integrations);
+    const load = normalizeLoadPolicy(data.load);
+    const planMode = normalizePlanModePolicy(data.planMode);
+    return configuredAreas.length > 0 ? { source: MEMORY_CONFIG_FILE, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, integrations, load, planMode, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, referenceExpansion, integrations, load, planMode, source: MEMORY_CONFIG_FILE, errors: [] };
+  } catch (error) {
+    return { ...defaultMemoryConfig(), source: MEMORY_CONFIG_FILE, errors: [{ file: MEMORY_CONFIG_FILE, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}\nFix: repair ${MEMORY_CONFIG_FILE} so it is valid JSON, or remove it before regenerating the default config with \`dotdotgod config init <root>\`.` }] };
   }
-  return defaultMemoryConfig();
 }
 
 function serializableMemoryArea(area) {

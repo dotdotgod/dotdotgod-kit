@@ -11,7 +11,7 @@ export function commandUsage(command = 'root') {
   dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]`;
     case 'init':
       return `Usage:
-  dotdotgod init <root> [--project-name NAME] [--dotdot-setting] [--force] [--dry-run] [--json]
+  dotdotgod init <root> [--project-name NAME] [--dotdot-setting] [--dry-run] [--json]
 
 Create AGENTS.md, agent entrypoints, docs indexes, and local memory gitignore entries.`;
     case 'index':
@@ -20,12 +20,12 @@ Create AGENTS.md, agent entrypoints, docs indexes, and local memory gitignore en
     case 'config':
       return `Usage:
   dotdotgod config <root> [--json]
-  dotdotgod config init <root> [--force] [--json]
+  dotdotgod config init <root> [--json]
 
 Inspect or initialize the project-level dotdotgod config file.`;
     case 'config init':
       return `Usage:
-  dotdotgod config init <root> [--force] [--json]
+  dotdotgod config init <root> [--json]
 
 Create dotdotgod.config.json with the built-in default memory, traceability, validation, and impact ranking policy.`;
     case 'status':
@@ -97,10 +97,10 @@ Ranks nodes related to one or more changed files. <root> is the project root; re
   dotdotgod [--version|-v]
   dotdotgod help [command]
   dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]
-  dotdotgod init <root> [--project-name NAME] [--dotdot-setting] [--force] [--dry-run] [--json]
+  dotdotgod init <root> [--project-name NAME] [--dotdot-setting] [--dry-run] [--json]
   dotdotgod index <root> [--json]
   dotdotgod config <root> [--json]
-  dotdotgod config init <root> [--force] [--json]
+  dotdotgod config init <root> [--json]
   dotdotgod status <root> [--json]
   dotdotgod load-snapshot <root> [--json]
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]

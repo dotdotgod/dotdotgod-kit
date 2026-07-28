@@ -74,7 +74,7 @@ function command(frontmatter, title, intro, body) {
 const yaml = {
   load: `interface:\n  display_name: "Project Load"\n  short_description: "Load dotdotgod project memory."\n  default_prompt: "Load this project's dotdotgod memory and summarize rules, docs, commands, active plans, and open questions."\n`,
   plan: `interface:\n  display_name: "Doc-First Planning"\n  short_description: "Plan work from dotdotgod docs first."\n  default_prompt: "Plan this change from AGENTS.md, docs/spec, docs/test, docs/arch, and docs/plan before implementation."\n`,
-  init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize project memory and config."\n  default_prompt: "Initialize this project with dotdotgod init when available, otherwise use the bundled fallback; preserve existing files and create shared agent docs, docs indexes, local memory ignores, and the complete default project config."\n`,
+  init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize project memory and config."\n  default_prompt: "Initialize shared project memory and the complete default config with dotdotgod init or the bundled fallback, preserving existing files."\n`,
   impact: `interface:\n  display_name: "Impact Review"\n  short_description: "Review changed files with dotdotgod graph impact."\n  default_prompt: "Review current changed source, config, and docs files with dotdotgod graph impact before broad verification or handoff."\n`,
   docClarify: `interface:\n  display_name: "Document Clarify"\n  short_description: "Clarify dotdotgod project documentation."\n  default_prompt: "Clarify the target docs using dotdotgod memory-area metadata, default document roles, and docs-as-code clarity rules while preserving behavior contracts."\n`,
   planGoal: `interface:\n  display_name: "Staged Planning"\n  short_description: "Run dotdotgod 5-stage planning pipeline."\n  default_prompt: "Run plan-goal staged planning: intake, context-load, discovery, plan, workstream-handoff."\n`,
@@ -83,7 +83,7 @@ const yaml = {
 write(
   "packages/pi/skills/project-initializer/SKILL.md",
   skill(
-    `name: project-initializer\ndescription: Initialize a new software project with shared AI agent instructions and a documentation scaffold. Use when asked to set up a new project, create or normalize AGENTS.md/CLAUDE.md/CODEX.md, create docs/spec docs/test docs/arch docs/plan docs/archive, or establish a doc-first project baseline for multiple AI agents.`,
+    `name: project-initializer\ndescription: Initialize or normalize shared project memory and a complete editable dotdotgod config. Use when asked to set up shared agent entrypoints, docs indexes, local-memory ignores, or dotdotgod.config.json.`,
     "Project Initializer",
     renderInitBody("pi"),
   ),
@@ -123,9 +123,9 @@ write(
 write(
   "packages/claude-code/commands/dd/init.md",
   command(
-    `description: Initialize dotdotgod shared agent docs and documentation scaffold\nargument-hint: [project-root] [--project-name NAME] [--dotdot-setting] [--force] [--dry-run]\nallowed-tools: [Read, Glob, Grep, Bash]`,
+    `description: Initialize dotdotgod project memory and config\nargument-hint: [project-root] [--dotdot-setting] [--dry-run]\nallowed-tools: [Read, Glob, Grep, Bash, Write, Edit]`,
     "/dd:init - Initialize Project Memory",
-    "Initialize or normalize a repository with dotdotgod shared agent docs and docs folders.\n\nArguments: `$ARGUMENTS`",
+    "Initialize or normalize a repository with dotdotgod project memory and the complete default config.\n\nArguments: `$ARGUMENTS`",
     renderInitBody("claude"),
   ),
 );
@@ -166,7 +166,7 @@ write(
 write(
   "packages/claude-code/skills/project-initializer/SKILL.md",
   skill(
-    `name: project-initializer\ndescription: Use this skill when Claude Code is asked to initialize or normalize a project with dotdotgod shared agent instructions, AGENTS.md/CLAUDE.md/CODEX.md, docs/spec docs/test docs/arch docs/plan docs/archive, or a doc-first project baseline.\nversion: 1.0.0`,
+    `name: project-initializer\ndescription: Initialize or normalize shared project memory and a complete editable dotdotgod config. Use when asked to set up shared agent entrypoints, docs indexes, local-memory ignores, or dotdotgod.config.json.\nversion: 1.0.0`,
     "Project Initializer",
     renderInitBody("claude"),
   ),
@@ -224,7 +224,7 @@ write(
 write(
   "packages/codex/skills/project-initializer/SKILL.md",
   skill(
-    `name: project-initializer\ndescription: Initialize a project with dotdotgod shared agent instructions and documentation scaffold. Use when Codex is asked to set up or normalize AGENTS.md/CLAUDE.md/CODEX.md, create docs/spec docs/test docs/arch docs/plan docs/archive, run dd:init, or establish a doc-first project baseline for multiple AI agents.`,
+    `name: project-initializer\ndescription: Initialize or normalize shared project memory and a complete editable dotdotgod config. Use when asked to set up shared agent entrypoints, docs indexes, local-memory ignores, or dotdotgod.config.json.`,
     "Project Initializer",
     renderInitBody("codex"),
   ),

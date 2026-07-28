@@ -8,10 +8,7 @@ The ranking must remain explainable: every ranked item should expose an `impactS
 
 ## Config File
 
-Impact ranking policy lives in the same optional root config files as memory and traceability policy. Use `dotdotgod config <root>` to inspect the resolved policy or `dotdotgod config init <root>` to create an editable default config.
-
-1. `dotdotgod.config.json`
-2. `.dotdotgodrc.json`
+Impact ranking policy lives in the optional root `dotdotgod.config.json` file alongside memory and traceability policy. Use `dotdotgod config <root>` to inspect the resolved policy or `dotdotgod config init <root>` to create an editable default config.
 
 ## Config Shape
 
