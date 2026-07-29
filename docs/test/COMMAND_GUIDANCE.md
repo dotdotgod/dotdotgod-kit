@@ -10,7 +10,7 @@ Verify environment-aware `dotdotgod query` guidance and Pi documentation-map pro
 - A project that declares `@dotdotgod/cli` returns `source: "project-install"` and `npx dotdotgod` commands.
 - A project without the CLI returns `source: "missing-install"`, `install: "npm install -D @dotdotgod/cli"`, and `npx dotdotgod` commands.
 - Package manager detection prefers `package.json.packageManager`, then lockfiles, then `npm`.
-- Pi `/dd:load` renders snapshot-provided command guidance when available and keeps the lightweight fallback usable when unavailable.
+- Pi `/dd:load` uses repository-local command guidance from baseline docs and keeps README-based fallback usable when CLI query is unavailable.
 
 ## Verification Commands
 

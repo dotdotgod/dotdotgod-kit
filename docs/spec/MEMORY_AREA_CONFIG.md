@@ -27,11 +27,11 @@ A config may define `memory.areas` as an ordered array. Each area supports:
 - `excludePaths`: optional array of exact paths or `/**` subtree patterns excluded from this area.
 - `scope`: `shared` or `local`.
 - `freshness`: `fresh` or `stale`.
-- `role`: retrieval role surfaced in graph and snapshot metadata.
+- `role`: retrieval role surfaced in graph metadata and config summaries.
 - `description`: optional non-empty string explaining the area's document purpose for agents and readers.
 - `clarify`: optional documentation-clarity guidance used by `document-clarify` skills. Supported optional fields are `audience`, `documentType`, `clarityGoal`, and `editRules`.
 - `priority`: integer from 0 to 100 used for bounded retrieval ordering.
-- `includeBodiesByDefault`: boolean controlling whether matching files are included in the default index and load snapshot.
+- `includeBodiesByDefault`: boolean controlling whether matching files are included in the default graph index. It does not control the Load documentation map or vector-query corpus.
 
 All path fields are arrays; scalar string path settings are invalid. The first matching configured area classifies a path after its `excludePaths` are applied. `description` and `clarify` are optional project metadata; they do not change path matching, traceability enforcement, or index inclusion.
 
@@ -63,12 +63,12 @@ Archive bodies under `docs/archive/**` are stale local memory and are excluded f
 
 ## Load Documentation Summary
 
-The optional `load.documentationSummary.exclude` array controls which docs directories are omitted from the Pi load prompt's `Documentation directory summary`.
+The optional `load.documentationSummary.exclude` array controls which docs paths are omitted from the Pi Load `Documentation map`.
 
 Behavior contract:
 
 - The zero-config default is `docs/plan` and `docs/archive`.
-- The policy is independent from `memory.areas`; changing local-memory scope does not change summary exclusions, and changing exclusions does not change indexing or retrieval metadata.
+- The policy is independent from `memory.areas`; changing local-memory scope does not change map/query exclusions, and changing exclusions does not change graph indexing or retrieval metadata.
 - An explicit empty array includes all discovered summary directories, including plan and archive indexes.
 - Values use the same repository-relative exact and supported subtree path patterns as other path policies.
 - The policy filters the documentation tree and vector-query corpus. Baseline-file detection, graph memory areas, archive-body policy, and later targeted reads remain unchanged.
@@ -102,7 +102,7 @@ Invalid memory config does not make the CLI crash. Runtime commands fall back to
 
 ## Load and Query Effects
 
-Pi Load applies `load.documentationSummary.exclude` before rendering the Markdown tree. `dotdotgod query` applies the same exclusions before chunking and embedding shared documentation. Memory-area metadata remains available through `dotdotgod config` and graph commands rather than being injected into Load narrative.
+Pi Load applies `load.documentationSummary.exclude` before rendering the Markdown tree. `dotdotgod query` applies the same exclusions before chunking and embedding shared documentation. `memory.areas[].includeBodiesByDefault` independently controls graph indexing. Default policies align by excluding plan/archive bodies, but changing one policy does not change the other. Memory-area metadata remains available through `dotdotgod config` and graph commands rather than being injected into Load narrative.
 
 ## Traceability
 

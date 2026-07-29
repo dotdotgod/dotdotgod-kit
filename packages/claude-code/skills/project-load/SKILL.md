@@ -10,7 +10,7 @@ version: 1.0.0
 
 ## Goal
 
-Load the current repository's dotdotgod project memory without modifying project files. Use a full load for an explicit project overview and a compact load to refresh an already-loaded session. Treat free-form arguments as query text, not as mode switches.
+Load the current repository's dotdotgod project memory without modifying source, documentation, or project config. A focused query may refresh ignored `.dotdotgod/vectors/` data and the runtime's user-level model cache. Use a full load for an explicit project overview and a compact load to refresh an already-loaded session. Treat free-form arguments as query text, not as mode switches.
 
 ## Workflow
 
@@ -26,7 +26,7 @@ Load the current repository's dotdotgod project memory without modifying project
    - Without arguments, expand through directory depth 5. At the boundary, summarize deeper descendants with exact directory and Markdown-file counts.
 4. Use query routing only when arguments are present.
    - Run `dotdotgod query <root> "<arguments>" --limit 30 --json` when the command is available.
-   - Show at most the top 30 query results and render the documentation tree through directory depth 3.
+   - Show the best-ranked chunk from each of at most 30 distinct Markdown files and render the documentation tree through directory depth 3.
    - If query is unavailable, continue from the tree, README indexes, and targeted reads.
 5. Read document bodies selectively.
    - Follow README indexes as maintained tables of contents.

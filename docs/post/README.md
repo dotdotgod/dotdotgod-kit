@@ -25,5 +25,5 @@ Follow [`docs/arch/post/WRITING_GUIDE.md`](../arch/post/WRITING_GUIDE.md) when d
 
 - `document-directory-as-table-of-contents/` — draft: Korean post, English edition, and terminal thumbnails explaining how directories, filenames, README indexes, and headings form a book-like table of contents for AI agent memory.
 - `how-dotdotgod-maintains-document-toc/` — draft: Korean and English editions with terminal thumbnails explaining how dotdotgod initializes, validates, traces, loads, and archives the documentation table of contents.
-- `how-load-keeps-ai-context-fresh/` — draft: explains how Load refreshes stale indexes, builds bounded role-aware snapshots, controls README exposure, and routes AI agents to selective reads.
+- `how-load-keeps-ai-context-fresh/` — draft: explains how Load builds depth-bounded documentation maps, uses focused local multilingual query, excludes local-memory bodies by default, and routes AI agents to selective reads.
 - `how-graph-impact-finds-related-docs/` — draft: explains how graph impact turns changed files into an explainable, bounded review list of related specs, architecture, tests, commands, and source files.

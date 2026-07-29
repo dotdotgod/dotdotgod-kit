@@ -27,14 +27,14 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 - `PLAN_MODE.md`: compatibility route for Plan Mode behavior docs.
 - `plan-mode/README.md`: `/plan`, `/todos`, safe planning restrictions, context shaping, concise plan review choice, and execution tracking.
 - `PLAN_MODE_TOOL_SETTINGS.md`: optional Plan Mode extra tool allowlist settings and prompt requirements.
-- `LOAD_PROJECT.md`: `/load`, `/dd:load`, and `/dd:load:compact` read-only project memory loading behavior.
+- `LOAD_PROJECT.md`: `/load`, `/dd:load`, and `/dd:load:compact` documentation-map and focused-query behavior.
 - `MEMORY_AREA_CONFIG.md`: optional config for shared/local and fresh/stale memory-area policy.
 - `TRACEABILITY_CONFIG.md`: optional config for traceability enforcement paths, generated-link drift checks, and repair flow.
 - `VALIDATION_CONFIG.md`: optional config for markdown validation size budgets and explicit size-check exclusions.
 - `IMPACT_RANKING_CONFIG.md`: optional config for `graph impact` ranking presets, score breakdowns, compact text/YML output, PPR, and deterministic semantic links.
 - `CONFIG_COMMAND.md`: CLI behavior for inspecting and initializing project-level dotdotgod config files.
 - `TRELLO_DOCS_SYNC.md`: Trello card to markdown sync contract with local/PR dry-run, trusted GitHub Actions writes, `dotdotgod-view` custom field data, and Power-Up UI display.
-- `cli/README.md`: focused CLI specs for discovery/help, graph impact, traceability links, and plan commands.
+- `cli/README.md`: focused CLI specs for discovery/help, local multilingual query and vector cache, graph impact, traceability links, and plan commands.
 - `CLI_INTERFACE.md`: compatibility route for the legacy monolithic CLI interface spec; new behavior belongs under `cli/`.
 - `REFERENCE_EXPANSION.md`: CLI reference resolution and prompt-time expansion from the dotdotgod graph/index.
 - `CROSS_AGENT_SUPPORT.md`: cross-agent support contract for Pi, Claude Code, Codex, and shared docs workflows.

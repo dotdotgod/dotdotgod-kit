@@ -12,7 +12,7 @@
 
 ```bash
 dotdotgod graph impact . \
-  --changed packages/cli/src/commands/load-snapshot.mjs \
+  --changed packages/cli/src/commands/query.mjs \
   --yml
 ```
 
@@ -20,8 +20,8 @@ dotdotgod graph impact . \
 
 ```bash
 dotdotgod graph impact . \
-  --changed packages/cli/src/commands/load-snapshot.mjs \
-  --changed packages/cli/src/load-snapshot/summary.mjs \
+  --changed packages/cli/src/commands/query.mjs \
+  --changed packages/cli/src/query/chunks.mjs \
   --yml
 ```
 
@@ -80,7 +80,7 @@ dotdotgod graph impact . \
 impact:
   ok: true
   changed_files:
-    - packages/cli/src/commands/load-snapshot.mjs
+    - packages/cli/src/commands/query.mjs
   groups:
     docs:
       items:

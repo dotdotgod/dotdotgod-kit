@@ -15,7 +15,7 @@ Load aliases:
 /dd:load
 ```
 
-Confirm the loader prompt includes a compact `Load snapshot:` section with cache status, refresh metadata, graph counts, bounded memory-area/community summaries, and `fullGraphIncluded=false`. `docs/archive/README.md` should remain visible as the archive map; other archive bodies should stay out of the prompt. Temporarily remove the CLI from `PATH` to verify the package-local `@dotdotgod/cli` dependency is used before the lightweight fallback.
+Run `/dd:load` without arguments and confirm the prompt contains a prefix-compressed documentation map through directory depth 5 without query results. Run `/dd:load project memory` and confirm it contains a depth-3 map plus at most 30 distinct Markdown-file results. `docs/plan/**` and `docs/archive/**` bodies should remain excluded by default while their README maps remain targeted routing entrypoints. Temporarily remove the global CLI from `PATH` to verify the package-local `@dotdotgod/cli` dependency is tried before README-only fallback.
 
 ## Packaged CLI And Subagents
 
@@ -51,7 +51,7 @@ Confirm the loader prompt includes a compact `Load snapshot:` section with cache
 20. Confirm source/config mutation remains blocked.
 21. Confirm high-context compaction is checked after the first planning request, not immediately when `/plan` is enabled.
 22. Confirm planning compaction preserves current work, active/touched plan paths, todos, verification, pending load state, and `[DONE:n]` markers.
-23. With the CLI available, confirm first-turn context shaping adds validation, snapshot, and graph impact; without the CLI, Plan Mode continues.
+23. With the CLI available, confirm first-turn context shaping adds validation, documentation query, and graph impact; without the CLI, Plan Mode continues.
 24. Confirm bounded dotdotgod context/status commands are allowed while `init`, `config init`, shell chaining, redirects, pipes, command substitution, and package-runner wrappers remain blocked or require approval.
 25. Confirm a queued project-memory load flushes after the active prompt without `Agent is already processing a prompt` or `Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.` errors.
 26. Confirm later planning turns do not automatically repeat load/compaction decisions.

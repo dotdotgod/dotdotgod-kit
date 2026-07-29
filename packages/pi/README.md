@@ -139,4 +139,4 @@ See the [root README](https://github.com/dotdotgod/dotdotgod-kit#readme), [Conte
 
 ## Compared with Graphify-Style Memory
 
-The Pi adapter focuses on workflow. It initializes the project-memory scaffold, loads a bounded snapshot, plans before source edits, checks changed-file impact, and archives completed work for future sessions. The graph is a compact map for targeted reads, not a giant report for agents to consume in full.
+The Pi adapter focuses on workflow. It initializes the project-memory scaffold, loads a depth-bounded documentation map with optional focused query results, plans before source edits, checks changed-file impact, and archives completed work for future sessions. The graph is a compact map for targeted reads, not a giant report for agents to consume in full.

@@ -65,7 +65,7 @@ A summary should provide an application rule, boundary, or next step rather than
 
 Describe what an implementation guarantees and what it does not guarantee. Prefer narrow statements supported by code and tests over broad claims.
 
-For example, a loader may verify index freshness, build a bounded snapshot, and route an agent through README indexes. Those mechanisms do not prove that every statement in the loaded documents is true.
+For example, a loader may build a depth-bounded documentation map, add focused local query routes, and guide an agent through README indexes. Those mechanisms do not prove that every statement in the loaded documents is true.
 
 Link the relevant spec, architecture document, test, plan, or source path when it lets the reader verify a technical statement.
 

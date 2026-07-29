@@ -42,7 +42,7 @@ If the project config is invalid, `ok` is `false`, errors use the same validatio
 
 ## Policy Families
 
-The config command surfaces the same policy families that validation, snapshots, reference expansion, and graph impact use:
+The config command surfaces the same policy families that validation, Load/query routing, reference expansion, and graph impact use:
 
 - `memory.areas`: ordered path classifiers for shared/local and fresh/stale project memory, including optional `description` and `clarify` metadata when a project defines document-area guidance.
 - `traceability.required` and `traceability.exclude`: path rules that decide which markdown files must end with a valid `json dotdotgod` block.

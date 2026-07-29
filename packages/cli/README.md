@@ -4,7 +4,7 @@
 
 Command-line tools for dotdotgod project memory.
 
-Use this package when you want to initialize a docs-first project scaffold, validate project-memory docs, build a local graph/cache, load bounded context snapshots, expand project references, or ask what should be checked after a file changes.
+Use this package when you want to initialize a docs-first project scaffold, validate project-memory docs, build a local graph/cache, search shared documentation locally, expand project references, or ask what should be checked after a file changes.
 
 These commands implement dotdotgod's project-memory loop — init, load, plan, impact — for shells, scripts, CI, and any agent without a dedicated adapter.
 
@@ -36,7 +36,7 @@ dotdotgod graph impact . --changed <path> --compact
 - `init` creates `AGENTS.md`, thin agent entrypoints, docs indexes, active-plan space, archive map, local cache ignores, and the complete editable default config.
 - `validate` checks the dotdotgod docs/project-memory structure, local links, traceability blocks, config validity, and optional index freshness.
 - `index` builds `.dotdotgod/manifest.json` and compact graph shards from maintained project files.
-- `query` locally embeds shared Markdown with `Xenova/multilingual-e5-small`, incrementally stores vectors under `.dotdotgod/vectors/`, and returns relevant document chunks.
+- `query` locally embeds shared Markdown with `Xenova/multilingual-e5-small`, incrementally stores vectors under `.dotdotgod/vectors/`, and returns the best-ranked chunk from each relevant Markdown file.
 - `resolve` and `expand` map explicit or high-signal prompt references to project files.
 - `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five.
 - `traceability links` checks or repairs generated Markdown traceability-link sections.

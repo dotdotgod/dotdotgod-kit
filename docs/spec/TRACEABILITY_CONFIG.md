@@ -34,7 +34,7 @@ All path fields are arrays. Scalar string path settings are invalid and validati
 - If `traceability.required` is an empty array, no files require traceability. This is allowed only through explicit config.
 - Custom `required` uses complete-list semantics for the configured enforcement paths.
 - Traceability block parsing and graph extraction work in any markdown file that contains a valid block; the config only controls which files fail validation when the block is missing or invalid.
-- Invalid config is reported by `dotdotgod validate`. Runtime commands fall back to the default policy so read-only snapshot and graph commands remain usable.
+- Invalid config is reported by `dotdotgod validate`. Runtime commands fall back to the default policy so graph, Load, and query routing remain usable.
 
 ## Generated Markdown Link Section
 

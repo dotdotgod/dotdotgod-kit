@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { createHash } from 'node:crypto';
-import { matchPathPattern } from '../memory/config.mjs';
+import { isSecretLikePathPattern, matchPathPattern } from '../memory/config.mjs';
 
 const MAX_CHUNK_CHARS = 1600;
 const SKIPPED_DIRECTORIES = new Set(['node_modules', 'dist', 'build', 'coverage', '.git', '.dotdotgod']);
@@ -25,7 +25,7 @@ export function collectDocumentationMarkdown(root, exclude = ['docs/plan', 'docs
       if (entry.name.startsWith('.')) continue;
       const absolute = join(directory, entry.name);
       const path = relative(root, absolute).replaceAll('\\', '/');
-      if (exclude.some((pattern) => matchPathPattern(path, pattern) || path === pattern || path.startsWith(`${pattern}/`))) continue;
+      if (isSecretLikePathPattern(path) || exclude.some((pattern) => matchPathPattern(path, pattern) || path === pattern || path.startsWith(`${pattern}/`))) continue;
       if (entry.isDirectory()) {
         if (!SKIPPED_DIRECTORIES.has(entry.name)) walk(absolute);
       } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) files.push(path);

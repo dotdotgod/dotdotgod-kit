@@ -45,7 +45,7 @@ docs/spec/README.md
     ↓
 docs/spec/cli/README.md
     ↓
-docs/spec/cli/LOAD_SNAPSHOT.md
+docs/spec/cli/QUERY.md
 ```
 
 각 README에는 중요한 문서와 하위 디렉터리, 상태, 한 줄 설명을 기록한다. 문서를 추가하거나 이름을 바꾸거나 분리하거나 아카이브할 때는 가장 가까운 README를 같은 변경에서 갱신한다.
