@@ -1,4 +1,4 @@
 interface:
   display_name: "Project Initializer"
-  short_description: "Initialize agent docs and local docs folders."
-  default_prompt: "Initialize this project with dotdotgod init when available, otherwise use the bundled fallback; include AGENTS.md, CLAUDE.md, CODEX.md, docs folders, and local memory gitignore entries."
+  short_description: "Initialize project memory and config."
+  default_prompt: "Initialize this project with dotdotgod init when available, otherwise use the bundled fallback; preserve existing files and create shared agent docs, docs indexes, local memory ignores, and the complete default project config."

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { CACHE_VERSION } from '../src/core.mjs';
+import { defaultDotdotgodConfigData } from '../src/memory/config.mjs';
 
 const bin = resolve('bin/dotdotgod.mjs');
 const cliPackage = JSON.parse(readFileSync(resolve('package.json'), 'utf8'));
@@ -265,6 +266,7 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(dryRun.dryRun, true);
     assert.equal(existsSync(join(root, 'AGENTS.md')), false);
     assert(dryRun.actions.some((item) => item.status === 'would_create' && item.path.endsWith('/AGENTS.md')));
+    assert(dryRun.actions.some((item) => item.status === 'would_create' && item.path.endsWith('/dotdotgod.config.json')));
     assert(dryRun.actions.some((item) => item.status === 'would_create' && item.path.endsWith('/.gitignore') && item.add === '.dotdotgod'));
 
     const initialized = json(run(['init', root, '--project-name', 'Fixture App', '--json']));
@@ -278,6 +280,7 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(existsSync(join(root, 'docs/arch/README.md')), true);
     assert.equal(existsSync(join(root, 'docs/plan/README.md')), true);
     assert.equal(existsSync(join(root, 'docs/archive/README.md')), true);
+    assert.deepEqual(JSON.parse(readFileSync(join(root, 'dotdotgod.config.json'), 'utf8')), defaultDotdotgodConfigData());
     assert.match(readFileSync(join(root, 'AGENTS.md'), 'utf8'), /Name: Fixture App/);
     const gitignoreEntries = readFileSync(join(root, '.gitignore'), 'utf8').trim().split(/\r?\n/);
     assert(gitignoreEntries.includes('docs/plan'));
@@ -288,12 +291,24 @@ describe('dotdotgod CLI e2e', () => {
 
     const skipped = json(run(['init', root, '--json']));
     assert(skipped.actions.some((item) => item.status === 'skipped' && item.path.endsWith('/AGENTS.md')));
+    assert(skipped.actions.some((item) => item.status === 'skipped' && item.path.endsWith('/dotdotgod.config.json')));
 
+    writeFileSync(join(root, 'dotdotgod.config.json'), '{"custom":true}\n');
     const forced = json(run(['init', root, '--force', '--json']));
     const replacedAgents = forced.actions.find((item) => item.path.endsWith('/AGENTS.md'));
     assert.equal(replacedAgents.status, 'replaced');
     assert.match(replacedAgents.backup, /AGENTS\.md\.bak\./);
     assert.equal(existsSync(replacedAgents.backup), true);
+    const replacedConfig = forced.actions.find((item) => item.path.endsWith('/dotdotgod.config.json'));
+    assert.equal(replacedConfig.status, 'replaced');
+    assert.match(replacedConfig.backup, /dotdotgod\.config\.json\.bak\./);
+    assert.equal(readFileSync(replacedConfig.backup, 'utf8'), '{"custom":true}\n');
+    assert.deepEqual(JSON.parse(readFileSync(join(root, 'dotdotgod.config.json'), 'utf8')), defaultDotdotgodConfigData());
+    const forcedAgain = json(run(['init', root, '--force', '--json']));
+    const replacedConfigAgain = forcedAgain.actions.find((item) => item.path.endsWith('/dotdotgod.config.json'));
+    assert.notEqual(replacedConfigAgain.backup, replacedConfig.backup);
+    assert.equal(existsSync(replacedConfig.backup), true);
+    assert.equal(existsSync(replacedConfigAgain.backup), true);
 
     const dotdotRoot = mkdtempSync(join(tmpdir(), 'dotdotgod-init-dotdot-'));
     json(run(['init', dotdotRoot, '--dotdot-setting', '--json']));
@@ -301,16 +316,57 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(existsSync(join(dotdotRoot, 'docs/arch/CODE_CONVENTIONS.md')), true);
     assert.match(readFileSync(join(dotdotRoot, 'AGENTS.md'), 'utf8'), /DOCS_STRUCTURE\.md/);
     assert.match(readFileSync(join(dotdotRoot, 'AGENTS.md'), 'utf8'), /CODE_CONVENTIONS\.md/);
+
+    const rcRoot = join(parent, 'rc-project');
+    mkdirSync(rcRoot, { recursive: true });
+    writeFileSync(join(rcRoot, '.dotdotgodrc.json'), '{}\n');
+    const rcInitialized = json(run(['init', rcRoot, '--force', '--json']));
+    const conflict = rcInitialized.actions.find((item) => item.path.endsWith('/dotdotgod.config.json'));
+    assert.equal(conflict.status, 'conflict');
+    assert.equal(conflict.existing, join(rcRoot, '.dotdotgodrc.json'));
+    assert.equal(existsSync(join(rcRoot, 'dotdotgod.config.json')), false);
+    assert.equal(existsSync(join(rcRoot, 'AGENTS.md')), true);
   });
 
-  it('packages Claude Code and Codex hook documentation', () => {
+  it('keeps the POSIX initializer config aligned with CLI defaults', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'dotdotgod-shell-init-e2e-'));
+    const root = join(parent, 'project');
+    const script = resolve('../shared/initializer/scripts/init_project.sh');
+
+    const initialized = spawnSync('sh', [script, root, '--project-name', 'Shell Fixture'], { encoding: 'utf8' });
+    assert.equal(initialized.status, 0, initialized.stderr || initialized.stdout);
+    assert.match(initialized.stdout, /created\s+.*dotdotgod\.config\.json/);
+    assert.deepEqual(JSON.parse(readFileSync(join(root, 'dotdotgod.config.json'), 'utf8')), defaultDotdotgodConfigData());
+    for (const template of [
+      resolve('../shared/initializer/templates/dotdotgod.config.json'),
+      resolve('../pi/skills/project-initializer/templates/dotdotgod.config.json'),
+      resolve('../claude-code/skills/project-initializer/templates/dotdotgod.config.json'),
+      resolve('../codex/skills/project-initializer/templates/dotdotgod.config.json'),
+    ]) assert.deepEqual(JSON.parse(readFileSync(template, 'utf8')), defaultDotdotgodConfigData());
+
+    const rcRoot = join(parent, 'rc-project');
+    mkdirSync(rcRoot, { recursive: true });
+    writeFileSync(join(rcRoot, '.dotdotgodrc.json'), '{}\n');
+    const conflicted = spawnSync('sh', [script, rcRoot, '--force'], { encoding: 'utf8' });
+    assert.equal(conflicted.status, 0, conflicted.stderr || conflicted.stdout);
+    assert.match(conflicted.stdout, /conflict\s+.*dotdotgod\.config\.json.*existing=.*\.dotdotgodrc\.json/);
+    assert.equal(existsSync(join(rcRoot, 'dotdotgod.config.json')), false);
+    assert.equal(existsSync(join(rcRoot, 'AGENTS.md')), true);
+  });
+
+  it('packages adapter initializer config templates and hook documentation', () => {
     for (const packageName of ['@dotdotgod/claude-code', '@dotdotgod/codex']) {
       const payload = packDryRun(packageName);
       const paths = new Set(payload.files.map((file) => file.path));
       assert(paths.has('hooks/README.md'), `${packageName} package should include hooks/README.md`);
+      assert(paths.has('skills/project-initializer/templates/dotdotgod.config.json'), `${packageName} package should include the initializer config template`);
       assert(paths.has('README.md'), `${packageName} package should include README.md`);
       assert(paths.has('package.json'), `${packageName} package should include package.json`);
     }
+
+    const piPayload = packDryRun('@dotdotgod/pi');
+    const piPaths = new Set(piPayload.files.map((file) => file.path));
+    assert(piPaths.has('skills/project-initializer/templates/dotdotgod.config.json'), '@dotdotgod/pi package should include the initializer config template');
   });
 
   it('shows and initializes project config safely', () => {

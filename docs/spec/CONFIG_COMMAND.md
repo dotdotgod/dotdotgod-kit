@@ -71,10 +71,11 @@ The init command creates `dotdotgod.config.json` with the current built-in defau
 - `validation.markdown`
 - `impactRanking`
 - `referenceExpansion.fuzzy.lowSignal.add/remove`
+- `integrations`
 - `load.documentationSummary.exclude` with `docs/plan` and `docs/archive`, plus empty `load.pinnedPaths` and `load.pinnedBodies` arrays
 - `planMode.writablePaths` with `docs/plan/**` and `docs/archive/**`
 
-The generated file must validate with `dotdotgod validate`. The generated memory areas omit optional `description` and `clarify` metadata so the template stays concise; projects can add those fields when custom document areas need role or clarity guidance. The generated reference-expansion section uses empty `add` and `remove` arrays; the resolved defaults remain visible in `dotdotgod config <root> --json` output.
+The generated file must validate with `dotdotgod validate`. `dotdotgod init` and generated adapter fallback templates use the same serializer, so their config data is structurally identical to `config init`. The generated memory areas omit optional `description` and `clarify` metadata so the template stays concise; projects can add those fields when custom document areas need role or clarity guidance. The generated reference-expansion section uses empty `add` and `remove` arrays; the resolved defaults remain visible in `dotdotgod config <root> --json` output.
 
 Overwrite behavior:
 
@@ -111,12 +112,16 @@ JSON output for init errors includes `ok: false`, `command: "config init"`, `roo
 
 - Implemented by:
   - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
+  - [packages/cli/src/init.mjs](../../packages/cli/src/init.mjs)
   - [packages/cli/src/memory/config.mjs](../../packages/cli/src/memory/config.mjs)
+  - [packages/shared/initializer/templates/dotdotgod.config.json](../../packages/shared/initializer/templates/dotdotgod.config.json)
+  - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
   - [docs/test/CONFIG_COMMAND.md](../test/CONFIG_COMMAND.md)
 - Related docs:
+  - [docs/spec/PROJECT_INITIALIZER.md](PROJECT_INITIALIZER.md)
   - [docs/spec/MEMORY_AREA_CONFIG.md](MEMORY_AREA_CONFIG.md)
   - [docs/spec/TRACEABILITY_CONFIG.md](TRACEABILITY_CONFIG.md)
   - [docs/spec/VALIDATION_CONFIG.md](VALIDATION_CONFIG.md)
@@ -131,5 +136,5 @@ JSON output for init errors includes `ok: false`, `command: "config init"`, `roo
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/memory/config.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_COMMAND.md"],"relatedDocs":["docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/spec/CLI_INTERFACE.md","docs/arch/MEMORY_AREA_CONFIG.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs config . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/init.mjs","packages/cli/src/memory/config.mjs","packages/shared/initializer/templates/dotdotgod.config.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_COMMAND.md"],"relatedDocs":["docs/spec/PROJECT_INITIALIZER.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/spec/CLI_INTERFACE.md","docs/arch/MEMORY_AREA_CONFIG.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs config . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
 ```

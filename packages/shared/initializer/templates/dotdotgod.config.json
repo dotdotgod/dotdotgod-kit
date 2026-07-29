@@ -1,0 +1,269 @@
+{
+  "memory": {
+    "areas": [
+      {
+        "id": "rules",
+        "label": "Agent Rules",
+        "paths": [
+          "AGENTS.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "agent-working-rules",
+        "priority": 100,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "agent-entrypoint",
+        "label": "Agent Entrypoints",
+        "paths": [
+          "CLAUDE.md",
+          "CODEX.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "agent-specific-entrypoint",
+        "priority": 85,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "project-overview",
+        "label": "Project Overview",
+        "paths": [
+          "README.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "project-map",
+        "priority": 85,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "docs-index",
+        "label": "Docs Index",
+        "paths": [
+          "docs/README.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "documentation-routing-map",
+        "priority": 90,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "spec",
+        "label": "Product Specs",
+        "paths": [
+          "docs/spec/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "behavior-truth",
+        "priority": 80,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "architecture",
+        "label": "Architecture",
+        "paths": [
+          "docs/arch/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "architecture-rationale",
+        "priority": 75,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "test",
+        "label": "Tests",
+        "paths": [
+          "docs/test/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "verification-knowledge",
+        "priority": 70,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "active-plan",
+        "label": "Active Plans",
+        "paths": [
+          "docs/plan/**"
+        ],
+        "excludePaths": [],
+        "scope": "local",
+        "freshness": "fresh",
+        "role": "active-task-intent",
+        "priority": 95,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "archive-map",
+        "label": "Archive Map",
+        "paths": [
+          "docs/archive/README.md"
+        ],
+        "excludePaths": [],
+        "scope": "local",
+        "freshness": "stale",
+        "role": "historical-memory-map",
+        "priority": 65,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "archive-body",
+        "label": "Archive Body",
+        "paths": [
+          "docs/archive/**"
+        ],
+        "excludePaths": [
+          "docs/archive/README.md"
+        ],
+        "scope": "local",
+        "freshness": "stale",
+        "role": "historical-memory-body",
+        "priority": 20,
+        "includeBodiesByDefault": false
+      },
+      {
+        "id": "docs",
+        "label": "Project Documentation",
+        "paths": [
+          "docs/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "project-documentation",
+        "priority": 60,
+        "includeBodiesByDefault": true
+      }
+    ]
+  },
+  "traceability": {
+    "required": [
+      "docs/spec/**"
+    ],
+    "exclude": [
+      "**/README.md"
+    ]
+  },
+  "validation": {
+    "markdown": {
+      "maxLines": 200,
+      "maxChars": 10000,
+      "exclude": [],
+      "filename": {
+        "warnNumberedSeries": true,
+        "allow": []
+      }
+    }
+  },
+  "impactRanking": {
+    "preset": "balanced",
+    "weights": {
+      "ppr": 40,
+      "traceability": 30,
+      "memoryPolicy": 10,
+      "verification": 15,
+      "proximity": 10,
+      "semantic": 10,
+      "freshness": 5,
+      "archivePenalty": -25
+    },
+    "ppr": {
+      "enabled": true,
+      "damping": 0.85,
+      "iterations": 20,
+      "tolerance": 0.000001
+    },
+    "relationWeights": {
+      "implemented_by": 4,
+      "verified_by": 4,
+      "related_doc": 3,
+      "verification_command": 3,
+      "links_to": 2,
+      "belongs_to_area": 2,
+      "semantic_similarity": 2,
+      "mentions_package": 1
+    },
+    "traceabilityBoosts": {
+      "implemented_by": 30,
+      "incoming:implemented_by": 30,
+      "verified_by": 25,
+      "incoming:verified_by": 25,
+      "verification_command": 15,
+      "incoming:verification_command": 15,
+      "related_doc": 12,
+      "incoming:related_doc": 12
+    },
+    "verificationBoosts": {
+      "verified_by": 15,
+      "incoming:verified_by": 15,
+      "verification_command": 12,
+      "incoming:verification_command": 12
+    },
+    "semanticBoosts": {
+      "semantic_similarity": 8,
+      "incoming:semantic_similarity": 8,
+      "mentions_package": 4,
+      "incoming:mentions_package": 4
+    },
+    "proximityBoosts": {
+      "links_to": 6,
+      "incoming:links_to": 6,
+      "routes_to": 5,
+      "incoming:routes_to": 5
+    },
+    "semantic": {
+      "enabled": true,
+      "threshold": 0.5,
+      "topKPerFile": 5,
+      "includeArchiveBodies": false,
+      "signals": [
+        "path",
+        "filename",
+        "heading",
+        "package"
+      ]
+    }
+  },
+  "referenceExpansion": {
+    "fuzzy": {
+      "lowSignal": {
+        "add": [],
+        "remove": []
+      }
+    }
+  },
+  "integrations": {
+    "trello": {
+      "syncPaths": []
+    }
+  },
+  "load": {
+    "pinnedPaths": [],
+    "pinnedBodies": [],
+    "documentationSummary": {
+      "exclude": [
+        "docs/plan",
+        "docs/archive"
+      ]
+    }
+  },
+  "planMode": {
+    "writablePaths": [
+      "docs/plan/**",
+      "docs/archive/**"
+    ]
+  }
+}

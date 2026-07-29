@@ -2,6 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { defaultDotdotgodConfigText } from "../packages/cli/src/memory/config.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const check = process.argv.includes("--check");
@@ -48,6 +49,8 @@ const initBody = read("packages/shared/workflows/init.md");
 const impactBody = read("packages/shared/workflows/impact.md");
 const docClarifyBody = read("packages/shared/workflows/doc-clarify.md");
 
+write("packages/shared/initializer/templates/dotdotgod.config.json", defaultDotdotgodConfigText());
+
 const initCommands = {
   pi: "sh scripts/init_project.sh <project-root>",
   claude: 'sh "${CLAUDE_PLUGIN_ROOT}/skills/project-initializer/scripts/init_project.sh" <project-root>',
@@ -71,7 +74,7 @@ function command(frontmatter, title, intro, body) {
 const yaml = {
   load: `interface:\n  display_name: "Project Load"\n  short_description: "Load dotdotgod project memory."\n  default_prompt: "Load this project's dotdotgod memory and summarize rules, docs, commands, active plans, and open questions."\n`,
   plan: `interface:\n  display_name: "Doc-First Planning"\n  short_description: "Plan work from dotdotgod docs first."\n  default_prompt: "Plan this change from AGENTS.md, docs/spec, docs/test, docs/arch, and docs/plan before implementation."\n`,
-  init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize agent docs and local docs folders."\n  default_prompt: "Initialize this project with dotdotgod init when available, otherwise use the bundled fallback; include AGENTS.md, CLAUDE.md, CODEX.md, docs folders, and local memory gitignore entries."\n`,
+  init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize project memory and config."\n  default_prompt: "Initialize this project with dotdotgod init when available, otherwise use the bundled fallback; preserve existing files and create shared agent docs, docs indexes, local memory ignores, and the complete default project config."\n`,
   impact: `interface:\n  display_name: "Impact Review"\n  short_description: "Review changed files with dotdotgod graph impact."\n  default_prompt: "Review current changed source, config, and docs files with dotdotgod graph impact before broad verification or handoff."\n`,
   docClarify: `interface:\n  display_name: "Document Clarify"\n  short_description: "Clarify dotdotgod project documentation."\n  default_prompt: "Clarify the target docs using dotdotgod memory-area metadata, default document roles, and docs-as-code clarity rules while preserving behavior contracts."\n`,
   planGoal: `interface:\n  display_name: "Staged Planning"\n  short_description: "Run dotdotgod 5-stage planning pipeline."\n  default_prompt: "Run plan-goal staged planning: intake, context-load, discovery, plan, workstream-handoff."\n`,
@@ -87,6 +90,7 @@ write(
 );
 write("packages/pi/skills/project-initializer/agents/openai.yaml", yaml.init);
 copyDirectory("packages/shared/initializer/scripts", "packages/pi/skills/project-initializer/scripts");
+copyDirectory("packages/shared/initializer/templates", "packages/pi/skills/project-initializer/templates");
 copyDirectory("packages/shared/initializer/references", "packages/pi/skills/project-initializer/references");
 write(
   "packages/pi/skills/document-clarify/SKILL.md",
@@ -198,6 +202,7 @@ write("packages/claude-code/skills/impact-review/agents/openai.yaml", yaml.impac
 write("packages/claude-code/skills/document-clarify/agents/openai.yaml", yaml.docClarify);
 write("packages/claude-code/skills/plan-goal/agents/openai.yaml", yaml.planGoal);
 copyDirectory("packages/shared/initializer/scripts", "packages/claude-code/skills/project-initializer/scripts");
+copyDirectory("packages/shared/initializer/templates", "packages/claude-code/skills/project-initializer/templates");
 copyDirectory("packages/shared/initializer/references", "packages/claude-code/skills/project-initializer/references");
 
 write(
@@ -255,6 +260,7 @@ write("packages/codex/skills/impact-review/agents/openai.yaml", yaml.impact);
 write("packages/codex/skills/document-clarify/agents/openai.yaml", yaml.docClarify);
 write("packages/codex/skills/plan-goal/agents/openai.yaml", yaml.planGoal);
 copyDirectory("packages/shared/initializer/scripts", "packages/codex/skills/project-initializer/scripts");
+copyDirectory("packages/shared/initializer/templates", "packages/codex/skills/project-initializer/templates");
 copyDirectory("packages/shared/initializer/references", "packages/codex/skills/project-initializer/references");
 
 if (check && changed.length > 0) {

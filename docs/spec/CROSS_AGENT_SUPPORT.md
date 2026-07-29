@@ -76,7 +76,7 @@ Adapters should provide workflow parity across each agent's native capabilities.
 
 Required workflows:
 
-- initialize or normalize project memory scaffold
+- initialize or normalize the project memory scaffold and complete editable default config
 - load project memory in a read-only context
 - plan safely before source/config changes
 - review changed files with graph-impact evidence before broad verification, commits, pushes, publishing, or final handoff when the CLI or an equivalent project-local impact command is available; otherwise preserve the same review intent through targeted specs/tests/docs reads

@@ -15,6 +15,9 @@ These checks cover `dotdotgod config` and `dotdotgod config init` behavior for p
 
 `packages/cli/test/e2e.test.mjs` verifies:
 
+- `dotdotgod init`, `dotdotgod config init`, and the POSIX fallback produce structurally identical config data
+- project init reports config dry-run, skip, force-backup, and `.dotdotgodrc.json` conflict behavior
+- packaged Pi, Claude Code, and Codex adapters include the generated fallback config template
 - `dotdotgod config <root> --json` reports default config without creating `.dotdotgod/`
 - `dotdotgod config init <root> --json` creates `dotdotgod.config.json`
 - generated config contains the default archive-body exclusion, markdown validation budgets, balanced impact ranking preset, and fuzzy low-signal add/remove settings without noisy default `description` or `clarify` fields
@@ -31,7 +34,7 @@ These checks cover `dotdotgod config` and `dotdotgod config init` behavior for p
 ```bash
 node packages/cli/bin/dotdotgod.mjs config .
 node packages/cli/bin/dotdotgod.mjs config . --json
-node packages/cli/bin/dotdotgod.mjs config init /tmp/dotdotgod-fixture --json
+node packages/cli/bin/dotdotgod.mjs init /tmp/dotdotgod-fixture --json
 node packages/cli/bin/dotdotgod.mjs validate /tmp/dotdotgod-fixture --json
 ```
 

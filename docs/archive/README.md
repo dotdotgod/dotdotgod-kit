@@ -19,6 +19,7 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/project-initializer-default-config/`: made CLI and POSIX project initialization create the complete canonical default config, added safe config conflict and backup behavior, generated packaged adapter templates, and distilled the shared initializer prompt.
 - `plan/docs-memory-discovery-policy/`: replaced Pi's fixed docs summary list with bounded dynamic discovery, added the default `docs/**` memory catch-all and configured local-memory discovery, unified automatic load-summary policy, and added fail-closed `planMode.writablePaths`.
 - `plan/load-documentation-summary-exclusions/`: added independent `load.documentationSummary.exclude` policy; defaults and the workspace config omit `docs/plan` and `docs/archive` from Pi load prompt documentation summaries without changing local-memory classification or archive indexing.
 - `plan/plan-mode-low-signal-resume/`: archived paused Plan Mode low-signal continuation plan after the current task refocused on `load-snapshot` prompt-safety and downstream `/dd:load` rendering.

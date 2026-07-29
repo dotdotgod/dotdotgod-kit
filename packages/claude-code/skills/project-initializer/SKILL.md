@@ -10,60 +10,54 @@ version: 1.0.0
 
 ## Overview
 
-Create a conservative dotdotgod project baseline that multiple AI coding agents can share:
+Create a conservative dotdotgod project baseline shared by AI coding agents:
 
 - `AGENTS.md` is the canonical project instruction file.
-- `CLAUDE.md` imports `AGENTS.md` for Claude Code.
-- `CODEX.md` points Codex users to `AGENTS.md`.
-- `docs/` contains `spec`, `test`, `arch`, `plan`, and `archive` areas with concise README files.
-- `docs/arch/` covers architecture decisions, code conventions, module boundaries, data flow, infrastructure/runtime dependencies, integration boundaries, and migration design.
-- Behavior specs can include fenced `json dotdotgod` traceability blocks as the final section; `dotdotgod validate` owns and enforces that machine-readable schema for CLI users.
-- Code conventions can start as `docs/arch/CODE_CONVENTIONS.md`; when they grow across multiple topics, promote them to `docs/arch/conventions/README.md` plus supporting UPPER_SNAKE_CASE files.
-- Under `docs/`, all directories use kebab-case and all markdown file names use UPPER_SNAKE_CASE, including `README.md`.
-- `docs/plan/<task-slug>/README.md` is the default shape for active plan work.
-- Completed plans move to `docs/archive/plan/<task-slug>/`.
-- Temporary reports and investigations move to `docs/archive/report/<report-slug>/`.
-- `.gitignore` includes `docs/plan`, `docs/archive`, and `.dotdotgod` so local memory and the graph cache stay local by default.
+- `CLAUDE.md` and `CODEX.md` are thin agent-specific entrypoints.
+- `docs/` contains concise indexes for specs, tests, architecture, active plans, and archives.
+- `dotdotgod.config.json` materializes the complete editable default project policy.
+- `.gitignore` keeps `docs/plan`, `docs/archive`, and `.dotdotgod` local by default.
 
-Use the dotdotgod CLI initializer when it is already available in the target environment:
+Under `docs/`, directories use kebab-case and markdown file names use UPPER_SNAKE_CASE, including `README.md`.
+
+## CLI and Fallback
+
+Prefer the CLI initializer:
 
 ```bash
 dotdotgod init <project-root>
 ```
 
-Do not require users to install the CLI just to initialize. If `dotdotgod` is unavailable or the command is not executable, use the bundled dependency-free shell fallback:
+Use the bundled fallback when the CLI is unavailable:
 
 ```bash
 sh "${CLAUDE_PLUGIN_ROOT}/skills/project-initializer/scripts/init_project.sh" <project-root>
 ```
 
-The fallback still creates the baseline docs indexes and local-memory `.gitignore` entries, so project loading can work from README indexes until the CLI is added later.
-
-Use `--dry-run` before touching an unfamiliar repository. Use `--dotdot-setting` when the user wants general dotdot documentation structure and code conventions generated under `docs/arch/DOCS_STRUCTURE.md` and `docs/arch/CODE_CONVENTIONS.md`, then referenced from `AGENTS.md`. Use `--force` only when explicitly requested; it creates timestamped backups before replacing files.
+Both paths create the same baseline file set and canonical config while preserving existing files by default. Use `--dry-run` for unfamiliar repositories, `--dotdot-setting` for the optional documentation and code-convention guidance, and `--force` only with explicit user approval.
 
 ## Workflow
 
-1. Inspect the target project root.
-   - Check for existing `AGENTS.md`, `AGENT.md`, `CLAUDE.md`, `CODEX.md`, `README.md`, `.gitignore`, and `docs/`.
-   - Preserve project-specific instructions unless the user asks to replace them.
-   - If both `AGENT.md` and `AGENTS.md` exist, prefer `AGENTS.md` as canonical and leave `AGENT.md` untouched unless asked.
+1. Inspect the project root.
+   - Check `AGENTS.md`, `AGENT.md`, `CLAUDE.md`, `CODEX.md`, `README.md`, `.gitignore`, `docs/`, `dotdotgod.config.json`, and `.dotdotgodrc.json`.
+   - Preserve project-specific instructions and unrelated user work.
+   - Keep `AGENTS.md` canonical when both `AGENT.md` and `AGENTS.md` exist.
 2. Run the initializer.
-   - Try `dotdotgod init` only when the CLI is available; otherwise run the bundled fallback script without blocking initialization.
-   - Default behavior creates missing files only.
-   - Existing files are skipped.
-   - `.gitignore` is created or appended with missing `docs/plan`, `docs/archive`, and `.dotdotgod` entries.
-   - `--dotdot-setting` additionally creates `docs/arch/DOCS_STRUCTURE.md` and `docs/arch/CODE_CONVENTIONS.md`, adds them to the architecture README index, and adds an `AGENTS.md` reference.
-   - `--force` backs up replaced files as `<name>.bak.<timestamp>`.
-3. Review generated files.
-   - Fill project-specific sections in `AGENTS.md` when context is available.
-   - Keep `CLAUDE.md` and `CODEX.md` thin so instructions do not drift.
-   - Treat `docs/plan` and `docs/archive` as local working memory unless the project deliberately changes that policy.
-   - When adding behavior specs, run `dotdotgod validate` when the CLI is available and follow any traceability schema/example shown in validation errors; if the CLI is unavailable, keep README indexes accurate and validate later.
+   - Use the CLI when available; otherwise use the bundled fallback.
+   - Existing files are skipped unless the user approved `--force`.
+   - If `.dotdotgodrc.json` exists, preserve it and skip creation of `dotdotgod.config.json`, including under `--force`.
+3. Review and validate.
+   - Fill project-specific placeholders in `AGENTS.md` when the required context is known.
+   - Keep `CLAUDE.md` and `CODEX.md` thin.
+   - Preserve the generated complete memory-area set; do not replace it with a partial hand-written list.
+   - Run `dotdotgod validate <project-root>` after creating or changing config when the CLI is available.
+   - Inspect `dotdotgod config <project-root> --json` when validation fails or resolved policy needs review.
 4. Report the result.
-   - List created/skipped/backed-up files.
-   - Mention any existing instructions that still need manual consolidation.
+   - List created, skipped, replaced, backed-up, conflicting, and invalid files.
+   - Identify existing instructions that still require manual consolidation.
 
 ## Bundled Resources
 
-- `scripts/init_project.sh`: fallback scaffold generator that mirrors `dotdotgod init` with POSIX shell only.
-- `references/agent-docs.md`: naming rationale and expected content model for shared agent docs.
+- `scripts/init_project.sh`: POSIX fallback initializer.
+- `templates/dotdotgod.config.json`: generated canonical config template used by the fallback.
+- `references/agent-docs.md`: shared agent-document naming and content model.

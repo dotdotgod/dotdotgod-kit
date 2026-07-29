@@ -1,12 +1,16 @@
 #!/bin/sh
 set -eu
 
+SCRIPT_DIR=$(CDPATH= cd -P "$(dirname "$0")" && pwd)
+CONFIG_TEMPLATE="$SCRIPT_DIR/../templates/dotdotgod.config.json"
+
 usage() {
   cat <<'EOF'
 Usage: init_project.sh <project-root> [--project-name NAME] [--dotdot-setting] [--force] [--dry-run]
 
 Initializes:
   AGENTS.md, CLAUDE.md, CODEX.md
+  dotdotgod.config.json
   docs/README.md
   docs/spec/README.md
   docs/test/README.md
@@ -80,6 +84,13 @@ if [ -z "$PROJECT_NAME" ]; then
   PROJECT_NAME=$(basename "$PROJECT_ROOT")
 fi
 
+CONFIG_PATH="$PROJECT_ROOT/dotdotgod.config.json"
+RC_PATH="$PROJECT_ROOT/.dotdotgodrc.json"
+if [ ! -e "$RC_PATH" ] && { [ ! -e "$CONFIG_PATH" ] || [ "$FORCE" -eq 1 ]; } && [ ! -f "$CONFIG_TEMPLATE" ]; then
+  echo "error: missing initializer config template: $CONFIG_TEMPLATE" >&2
+  exit 2
+fi
+
 timestamp() {
   date -u "+%Y%m%d%H%M%S"
 }
@@ -106,7 +117,13 @@ write_file() {
 
   backup=""
   if [ -e "$path" ] && [ "$FORCE" -eq 1 ]; then
-    backup="$path.bak.$(timestamp)"
+    backup_base="$path.bak.$(timestamp)"
+    backup="$backup_base"
+    suffix=1
+    while [ -e "$backup" ]; do
+      backup="$backup_base.$suffix"
+      suffix=$((suffix + 1))
+    done
     if [ "$DRY_RUN" -ne 1 ]; then
       mv "$path" "$backup"
     fi
@@ -404,6 +421,14 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 - Additional archive categories can be added later as focused kebab-case subdirectories when needed.
 
 This directory is local-only and ignored by git by default."
+
+if [ -e "$RC_PATH" ]; then
+  print_result "conflict" "$CONFIG_PATH" "existing=$RC_PATH"
+elif [ -e "$CONFIG_PATH" ] && [ "$FORCE" -ne 1 ]; then
+  print_result "skipped" "$CONFIG_PATH"
+else
+  write_file "$CONFIG_PATH" "$(cat "$CONFIG_TEMPLATE")"
+fi
 
 ensure_gitignore_entry "docs/plan"
 ensure_gitignore_entry "docs/archive"
