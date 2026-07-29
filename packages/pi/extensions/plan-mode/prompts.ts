@@ -59,35 +59,20 @@ Restrictions:
 - Forbidden: source/code/config mutation; configured writable paths remain limited to documentation markdown.
 - Bash is restricted to read-only allowlisted commands.
 
-Project context:
-- Use already-loaded project memory and the documentation map first when available.
-- Read AGENTS.md and docs/README.md when they are missing, stale, or needed for the current task.
-- Treat project docs as the source of truth for stack, commands, conventions, and architecture.
-- Check docs/arch when code conventions, module boundaries, infrastructure/runtime dependencies, or integration constraints may affect the plan.
-
 Workflow:
-- Explore files in bounded passes before planning: start from already-loaded memory, the documentation map, README indexes, and impact or query results; inspect the top related specs/tests/source files first, then expand only with a concrete reason. Ask clarifying questions when requirements are ambiguous, using questionnaire if available.
-- If planning compaction has just occurred, rely on the preserved planning summary plus current project docs before writing or refining the plan.
-- Use web_search, code_search, and fetch_content when library or web evidence is needed.
-- Create or update docs/plan/<task-slug>/README.md only when durable implementation steps are needed: large, risky, multi-file, behavior-changing, architecture-changing, CLI/API-affecting, source/config-heavy, or resumable work.
-- For obvious bounded work such as typos, single-file documentation clarifications, targeted test/validation runs, or one-file fixes with an unambiguous path, use a short in-chat checklist unless the user asks for a saved plan.
-- For long-running durable plans, manage active work under docs/plan/<task-slug>/README.md, with optional UPPER_SNAKE_CASE support files such as PROGRESS.md, DECISIONS.md, or VERIFY.md only when they improve resume quality.
-- When one docs domain grows into multiple files, group it under docs/<area>/<domain>/README.md plus supporting UPPER_SNAKE_CASE files.
-- Include scope, status, target files, impact-informed related files, risks, verification, current resume state when useful, and a final archive step to docs/archive/plan/<task-slug>/.
-- For implementation tasks, the executable Plan: section must include a concrete step to run dotdotgod graph impact for intended changed files, review related specs/tests/docs/commands/files, and update the plan with newly discovered targets, risks, or verification before source changes.
-- When dotdotgod CLI impact summaries are available, use the related specs, tests, docs, commands, scores, and reasons to strengthen target files, verification, and risks before asking for execution. Do not paste large raw impact payloads into durable plans unless explicitly requested.
-- Do not change product/source files in plan mode. Only maintain docs/plan or docs/archive markdown files and produce an executable plan.
+1. Check for a matching active plan.
+2. Reuse loaded memory and the documentation map, then use focused query and README indexes to select maintained docs and verify conclusions in them.
+3. Inspect the source needed to confirm targets and constraints.
+4. Run impact review on likely changed files and refine targets, risks, and verification.
+5. For durable work, write and present docs/plan/<task-slug>/README.md with scope, targets, executable steps, verification, and required completion gates; otherwise use an in-chat checklist.
+6. Resolve blocking decisions and stop until the user approves execution.
 
-When durable implementation task READMEs are needed, write them with scope, target files, impact-informed related files/checks, implementation steps, verification, risks when useful, resume notes for long-running work when useful, an executable graph-impact refinement step before source changes, post-coding dotdotgod validate, and archive housekeeping.
-
-In the final response, use a Plan: section only for concrete executable steps. Avoid generic template labels such as "Target files and rationale", "Implementation steps", or "Verification method" as numbered plan items.
-
-Do not change source/code/config files in Plan Mode. You may create or update only the allowed docs/plan or docs/archive markdown files needed to produce the durable plan.`;
+Use questionnaire for required clarification and web tools only for required external evidence. Use a Plan: section only for concrete executable steps.`;
 }
 
 function buildPlanModeCompactContextPrompt(writablePaths: readonly string[]): string {
 	return `[PLAN MODE ACTIVE]
-Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for valid documentation markdown matching: ${writablePaths.join(", ") || "none"}; active /plan-goal docs/plan/<task-slug>/.dotdotgod-plan/*.md checkpoint files remain a narrow exception. bash remains read-only except safe directory operations inside the same paths. Use AGENTS.md and docs indexes as source of truth when needed. Create or maintain docs/plan/<task-slug>/README.md only when durable implementation steps are needed; otherwise use a short in-chat checklist. Use a Plan: section only for concrete executable steps when ready.`;
+Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for valid documentation markdown matching: ${writablePaths.join(", ") || "none"}; active /plan-goal docs/plan/<task-slug>/.dotdotgod-plan/*.md checkpoint files remain a narrow exception. bash remains read-only except safe directory operations inside the same paths. Reuse loaded memory and the documentation map, route focused requests through query and README indexes, verify selected docs, then use impact review after likely targets are known. Create or maintain docs/plan/<task-slug>/README.md only for durable work; otherwise use a short in-chat checklist. Use a Plan: section only for concrete executable steps when ready.`;
 }
 
 export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS, writablePaths: readonly string[] = ["docs/plan/**", "docs/archive/**"]): string {

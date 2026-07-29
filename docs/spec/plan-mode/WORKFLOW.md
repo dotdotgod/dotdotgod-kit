@@ -8,9 +8,9 @@ After Plan Mode is enabled, the first user planning request triggers one context
 2. Request planning-focused compaction if context is too large or noisy.
 3. If both are needed, compact first, flush the load, then resume the latest request.
 
-Curated loads use compact `/dd:load:compact` semantics over baseline files and a bounded docs map; manual loads stay full. Automatic loads use empty focus and skip query. They use the same root exclusions as explicit Pi loads, with defaults for missing or invalid config. When the CLI is available, impact checks deduplicate paths, run repeated-`--changed` batches of at most 20, and clear unchanged fingerprints only on success.
+Automatic Plan Mode loads use empty focus, the depth-five documentation map, shared exclusions, and no query. Latest-request selection skips synthetic load prompts.
 
-Latest-request selection skips synthetic load prompts, so later human requests are framed by their own content.
+Planning reuses loaded memory and the map. A focused query routes selective doc and source reads. Impact review starts after likely changed files are known and refines plan targets, risks, and verification.
 
 ## Plan Sizing
 

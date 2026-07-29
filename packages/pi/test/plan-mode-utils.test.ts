@@ -1014,10 +1014,11 @@ describe("plan-mode tool settings", () => {
 		const prompt = buildPlanModeContextPrompt(false, ["read", "bash", "ctx_search"], ["docs/proposals/**"]);
 		assert.match(prompt, /Allowed tools: read, bash, ctx_search/);
 		assert.match(prompt, /docs\/proposals\/\*\*/);
-		assert.match(prompt, /using questionnaire if available/);
-		assert.match(prompt, /run dotdotgod graph impact for intended changed files/);
-		assert.match(prompt, /post-coding dotdotgod validate/);
-		assert.match(prompt, /You may create or update only the allowed docs\/plan or docs\/archive markdown files/);
+		assert.match(prompt, /questionnaire/);
+		assert.match(prompt, /focused query and README indexes/);
+		assert.match(prompt, /Run impact review/);
+		assert.match(prompt, /stop until the user approves execution/);
+		assert.match(prompt, /Forbidden: source\/code\/config mutation/);
 		assert.match(prompt, /\.dotdotgod-plan\/\*\.md/);
 		assert.match(prompt, /active \/plan-goal/);
 		assert.doesNotMatch(prompt, /Do NOT attempt to make changes/);
@@ -1040,9 +1041,9 @@ describe("plan-mode compaction helpers", () => {
 		const compactPrompt = buildPlanModeContextPrompt(true);
 
 		assert.match(fullPrompt, /You are in Plan Mode/);
-		assert.match(fullPrompt, /Explore files in bounded passes/);
-		assert.match(fullPrompt, /top related specs\/tests\/source files first/);
-		assert.match(fullPrompt, /Do not paste large raw impact payloads into durable plans/);
+		assert.match(fullPrompt, /1\. Check for a matching active plan/);
+		assert.match(fullPrompt, /2\. Reuse loaded memory and the documentation map/);
+		assert.match(fullPrompt, /4\. Run impact review/);
 		assert.doesNotMatch(fullPrompt, /Explore relevant files thoroughly/);
 		assert.match(compactPrompt, /Compact reminder/);
 		assert.match(compactPrompt, /Do not mutate source\/code\/config files/);

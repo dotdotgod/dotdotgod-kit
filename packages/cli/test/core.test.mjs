@@ -1524,7 +1524,7 @@ describe('CLI index and graph helpers', () => {
     ]) {
       const content = readFileSync(join(repoRoot, file), 'utf8');
       assert.match(content, /dotdotgod query <root>/);
-      assert.match(content, /directory depth 5/);
+      assert.match(content, /depth 5/);
       assert.match(content, /docs\/archive\/README\.md/);
       assert.doesNotMatch(content, /load-snapshot/);
     }

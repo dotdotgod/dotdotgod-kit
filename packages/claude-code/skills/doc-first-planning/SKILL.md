@@ -10,71 +10,20 @@ version: 1.0.0
 
 ## Goal
 
-Create implementation plans from the repository's documented design sources before changing source/config files when the work needs durable coordination. Treat substantial planning as a managed artifact under `docs/plan`.
+Create an implementation plan from maintained repository documentation before substantial source or configuration changes.
 
-Do not start substantial implementation until the plan has a clear evidence trail and the user has asked to execute it. Treat the written plan file as the durable review artifact for large, risky, multi-file, behavior-changing, architecture-changing, CLI/API-affecting, source/config-heavy, or resumable work. For obvious bounded work, a short in-chat checklist is enough unless the user asks for a saved plan.
-
-## Source Order
-
-Prefer live repository docs in this order:
-
-1. `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `README.md`, and `docs/README.md` for working rules and project map.
-2. `docs/spec/` for behavior, domain rules, API contracts, and acceptance criteria.
-3. `docs/test/` for verification strategy, regression cases, fixtures, and manual checks.
-4. `docs/arch/` for architecture decisions, module boundaries, integration constraints, and runtime assumptions.
-5. `docs/plan/README.md` and matching active plans under `docs/plan/`.
-6. Relevant completed plans under `docs/archive/plan/` or reports under `docs/archive/report/` only when directly useful.
+Use `docs/plan/<task-slug>/README.md` for substantial, risky, or resumable work; otherwise use a short in-chat checklist unless the user requests a saved plan.
 
 ## Workflow
 
-1. Establish current state.
-   - Check git status.
-   - Locate relevant docs and active plans.
-   - Preserve user edits and unrelated dirty worktree changes.
-   - If the session is long or noisy, suggest a user-initiated planning-focused compaction before writing or revising the plan; do not compact automatically because compaction is lossy.
-2. Gather evidence before planning.
-   - When the request contains explicit project-memory refs such as `[[PLAN_MODE]]`, run `dotdotgod expand <root> "<request>" --json` before broad `grep` or `find` scans, then read the resolved candidates selectively.
-   - When the request uses high-signal natural refs such as `PLAN_MODE`, `docs/spec/PLAN_MODE.md`, or quoted doc names, run `dotdotgod expand <root> "<request>" --fuzzy --json`; skip fuzzy expansion for generic low-signal words alone and respect configured fuzzy low-signal add/remove terms.
-   - Search docs by domain terms from the user request.
-   - Read nearest README indexes and relevant focused docs.
-   - For behavior changes, prefer specs with CLI-enforced fenced `json dotdotgod` traceability blocks in the final section; use their source, test, related-doc, and verification-command mappings before editing code.
-   - When the dotdotgod CLI is available and likely target files are known, run one bounded multi-seed `dotdotgod graph impact <root> --changed <path-a> --changed <path-b> --yml` command for up to 20 unique files, splitting only larger sets into ordered batches. Use the combined ranking and per-seed top-five related specs, tests, docs, commands, scores, and reasons to strengthen target files, risks, and verification steps. If impact lookup fails or the CLI is unavailable, continue with README-index and traceability fallback evidence.
-   - For Claude Code and Codex, add an explicit post-edit impact-review step to the plan when the task will change source/config files, because those adapters do not have Pi's automatic pending-impact reminder or `/impact-check` enforcement.
-   - During planning, treat these dotdotgod commands as bounded context/status helpers: `status`, `query`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and `index`. Do not run mutating scaffold/config commands such as `init` or `config init` unless the user explicitly asks for initialization or config creation.
-   - Use `grep` or `find` after reference expansion, impact, and targeted reads when the task needs fallback discovery or raw source text search.
-   - Read code only after docs identify likely module boundaries, impact output points to relevant files, or docs are missing/stale.
-3. Create or update an active plan at this path when durable planning is needed:
-
-   ```text
-   docs/plan/<task-slug>/README.md
-   ```
-
-   Skip the saved plan for obvious bounded work such as typos, single-file documentation clarifications, targeted test/validation runs, or one-file fixes with an unambiguous implementation path.
-4. For durable active plans that will be executed, keep the user-facing plan in `docs/plan/<task-slug>/README.md`. If `/plan-goal` staged planning is useful, it may record internal checkpoints under `docs/plan/<task-slug>/.dotdotgod-plan/NN_STAGE_NAME.md`; do not make legacy stage directories such as `01-intake/README.md` the required plan product.
-5. Use UPPER_SNAKE_CASE support files in the task directory only when they improve resume quality, such as `ROLE_AREA_WORKSTREAMS.md`, `ATOMIC_TASKS.md`, `PROGRESS_LOG.md`, or `VERIFICATION_EVIDENCE.md`.
-6. For long-running durable tasks, use concise README sections or optional support files for chronological progress, durable decisions, resume state, and task-specific verification checklists. `.dotdotgod-plan/` checkpoints are `/plan-goal` state, not a general Plan Mode requirement.
-7. When a durable plan is created, include:
-   - scope and current status
-   - target files and rationale
-   - impact-derived related files/checks when available
-   - implementation steps
-   - risks and edge cases when useful
-   - verification method
-   - current resume state when useful
-   - final housekeeping step to move completed work to `docs/archive/plan/<task-slug>/`
-   - for Claude Code/Codex plans, a concrete `dd:impact` or `impact-review` step before broad verification or final handoff when source/config/docs files changed
-8. Before executing a durable active plan, ensure the user has explicitly asked to execute it and resolve any plan-local Discussion Queue items that block execution review. Plan Mode does not require `dotdotgod plan validate` before execution; `/plan-goal` and manual/non-Plan-Mode workflows may still use the CLI plan-validation contract when appropriate.
-9. Update `docs/plan/README.md` if the repository keeps active plan entries there.
-10. Use repository-local package manager evidence for verification commands. In this repository, prefer `pnpm run verify`, `pnpm run pack:dry-run`, and `.husky/pre-push` when applicable.
-11. After creating or updating behavior specs, run project validation when possible. For dotdotgod projects, `dotdotgod validate` enforces machine-readable `json dotdotgod` traceability blocks as the final section in specs. Use `dotdotgod validate --check-index` when you need to confirm markdown fingerprints match the graph index. If validation fails, use the schema, property guidance, and example shown in the validation error to repair the spec.
-12. Stop after presenting the plan unless the user explicitly asks for execution.
-13. During implementation in Claude Code or Codex, use `/dd:impact`, `dd:impact`, or the `impact-review` skill after edits and before broad verification, commits, pushes, publishing, or final handoff.
-14. After implementation and verification, archive completed or superseded plan directories under `docs/archive/plan/<task-slug>/`; remove stale local plan artifacts only when the project policy allows plan/archive housekeeping.
+1. Check for a matching active plan.
+2. Reuse loaded memory and the documentation map, then use focused query and README indexes to select maintained docs and verify conclusions in them.
+3. Inspect the source needed to confirm targets and constraints.
+4. Run impact review on likely changed files and refine targets, risks, and verification.
+5. For durable work, write and present the task README with scope, targets, executable steps, verification, and required completion gates.
+6. Resolve blocking decisions and stop until the user asks to execute the plan.
 
 ## Quality Rules
 
 - Prefer documented facts over inference; label inference explicitly.
-- Keep plans concise and maintainable.
-- Use local repository terminology and existing module names.
-- Validation steps must be executable commands or concrete review checks.
-- Avoid turning explanatory numbered lists into executable implementation plans. Use concrete action-oriented `Plan:` steps only when a real active plan artifact is being created or updated.
+- Keep plans concise, executable, and maintainable.
