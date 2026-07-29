@@ -20,7 +20,7 @@ dotdotgod query <root> <query> [--limit <n>] [--json]
 
 The command indexes Markdown below `docs/` after applying `load.documentationSummary.exclude`. Default exclusions are `docs/plan` and `docs/archive`.
 
-Markdown is split by heading hierarchy and then into bounded passages below the embedding model's 512-token limit. Indexed text includes path, heading hierarchy, and body. Secret-like and excluded paths must not be embedded.
+Markdown is split by heading hierarchy and then into body pieces bounded to 1,600 characters before path and heading metadata are prepended. Indexed text includes path, heading hierarchy, and body. Secret-like, hidden, skipped-directory, and configured excluded paths must not be embedded.
 
 ## Embeddings
 

@@ -13,7 +13,7 @@ node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
 - Confirm custom `traceability.required` arrays can require multiple non-spec paths, such as `docs/product/**` and `docs/requirements/**`.
 - Confirm custom traceability config uses replacement semantics for the default required list.
 - Confirm scalar string path settings fail validation; all path settings must be arrays.
-- Confirm invalid traceability config reports validation errors while runtime snapshot and graph commands fall back to defaults.
+- Confirm invalid traceability config reports validation errors while runtime graph, Load, and query routing fall back to defaults.
 - Confirm `dotdotgod traceability links <root> --check` exits non-zero when generated Markdown link sections are missing or stale.
 - Confirm `dotdotgod validate` reports `TRACEABILITY_LINKS_STALE` when generated Markdown link sections or compact traceability JSON drift from the canonical parsed data, matching the focused `traceability links --check` drift gate.
 - Confirm `dotdotgod traceability links <root> --write` inserts a missing sentinel-bounded link section before the canonical `json dotdotgod` block and rewrites the JSON block as compact single-line JSON.

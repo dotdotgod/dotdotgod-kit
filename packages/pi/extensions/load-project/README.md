@@ -1,50 +1,51 @@
 # Load Project Extension
 
-Pi extension that starts a read-only project memory loading turn for the current working directory.
+Pi extension that starts a project-memory loading turn for the current working directory.
 
-See the workspace behavior contract in `docs/spec/LOAD_PROJECT.md` and the extension boundary notes in `docs/arch/EXTENSION_ARCHITECTURE.md`.
+See `docs/spec/LOAD_PROJECT.md` for behavior and `docs/arch/EXTENSION_ARCHITECTURE.md` for extension boundaries.
 
 ## Commands
 
-- `/load` — load current project memory in full mode; compatibility command for duplicate `/load` conflict handling.
+- `/load` — compatibility full-load command with duplicate-command conflict handling.
 - `/dd:load` — stable namespaced full-load command.
-- `/dd:load:compact` — explicit compact/delta-oriented load for prompt-injected refreshes or already-loaded sessions.
+- `/dd:load:compact` — compact refresh for already-loaded sessions.
 
-Load mode is selected only by the command name. Free-form arguments are focus text and never change the mode.
+The command name selects full or compact reporting. Free-form arguments are query text and never change the mode.
 
-## Behavior
+## Documentation Map And Query
 
-The command checks for the expected dotdotgod scaffold, then sends a read-only loader prompt to the agent. Explicit manual loads default to full mode. Compact mode emphasizes deltas, routing hints, and next reads for prompt-injected refreshes or already-loaded sessions. The documentation directory summary defaults to a README-based table of contents, with targeted subtree listings only when the request identifies a specific docs path.
+Without arguments, Load discovers shared Markdown below `docs/` and renders a prefix-compressed tree through directory depth 5. It does not run semantic query.
 
-When the CLI snapshot reports configured pinned files (`load.pinnedPaths`/`load.pinnedBodies` in `dotdotgod.config.json`), both modes list the pinned paths with per-file statuses; only full mode also embeds the bounded pinned body contents, so compact loads stay compact.
+With arguments, Load:
 
-Baseline files and directories include:
+1. runs `dotdotgod query <root> "<arguments>" --limit 30 --json` when available;
+2. includes the best-ranked chunk from each of at most 30 distinct Markdown files;
+3. renders the documentation tree through directory depth 3;
+4. falls back to README routing and targeted reads if query is unavailable.
+
+At a depth boundary, the map reports exact recursive omitted-directory and Markdown-file counts. `load.documentationSummary.exclude` controls both map and query corpus exclusions; defaults exclude `docs/plan/**` and `docs/archive/**` bodies. Load still treats `docs/plan/README.md` and `docs/archive/README.md` as local routing maps when available.
+
+Focused query can refresh ignored repository cache files under `.dotdotgod/vectors/` and the runtime's user-level model cache. It does not modify source, documentation, or project config.
+
+## Baseline Routing
+
+The loader checks and routes through these maintained entrypoints when available:
 
 - `AGENTS.md`
 - `CLAUDE.md`
 - `CODEX.md`
 - `README.md`
 - `docs/README.md`
-- `docs/spec/`
-- `docs/test/`
-- `docs/arch/`
-- `docs/plan/`
-- `docs/archive/`
+- `docs/spec/README.md`
+- `docs/test/README.md`
+- `docs/arch/README.md`
+- `docs/plan/README.md`
+- `docs/archive/README.md`
 
-The agent is instructed to:
-
-- start with `AGENTS.md`, `README.md`, and `docs/README.md` when available
-- follow local `README.md` indexes
-- follow domain directories such as `docs/<area>/<domain>/README.md`
-- follow expanded convention directories such as `docs/arch/conventions/README.md`
-- list `docs/plan` first, then selectively read relevant active plan files
-- use `docs/archive/README.md` as the archive history map and avoid scanning archive bodies by default
-- distinguish completed plan archives under `docs/archive/plan/` from temporary reports under `docs/archive/report/` when targeted archive lookup is needed
-- summarize project purpose, working rules, commands, docs map, architecture/code conventions, active plans, relevant archives, and TODO/TBD items in default full mode
-- summarize compact project-memory status, relevant docs map entries, active plan hints, and next recommended reads when compact mode is requested
+The agent follows local README indexes, reads spec/test/architecture bodies selectively, inspects relevant active plans, and uses the archive README as a history map without scanning archive bodies by default.
 
 ## Notes
 
-- The command itself does not modify files.
-- `/load` may conflict with other extensions, so `/dd:load` is always registered as the stable dotdotgod alias.
-- Future indexing/search behavior should extend this runtime entrypoint.
+- `/load` may conflict with another extension, so `/dd:load` is always registered as the stable alias.
+- `load.pinnedPaths` and `load.pinnedBodies` remain config compatibility fields but do not affect Load output.
+- Full and compact modes share discovery and query behavior; only report detail differs.

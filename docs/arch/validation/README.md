@@ -6,7 +6,7 @@ This domain defines the validation strategy for the dotdotgod workspace.
 
 ## Packages
 
-`@dotdotgod/cli` owns docs scaffold validation, project memory snapshots, graph indexing, graph queries, and Leiden-style community detection.
+`@dotdotgod/cli` owns docs scaffold validation, local documentation query, graph indexing, graph queries, and Leiden-style community detection.
 
 CLI binary:
 

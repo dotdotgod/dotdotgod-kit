@@ -94,7 +94,7 @@ These names expose scope before the files are opened:
 ```text
 PROJECT_INITIALIZER.md
 CLI_INTERFACE.md
-LOAD_SNAPSHOT.md
+QUERY.md
 VALIDATION_ARCHITECTURE.md
 ```
 

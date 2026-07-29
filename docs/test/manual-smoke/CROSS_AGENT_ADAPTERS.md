@@ -31,7 +31,7 @@ For `/dd:impact`, generated guidance should identify changed source/config/docs 
 
 Install or add `/path/to/dotdotgod/packages/codex` with the current local plugin workflow.
 
-Confirm `project-load`, `doc-first-planning`, `project-initializer`, and `impact-review` skills are discoverable. Trigger phrases `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` should activate the expected workflows. For `dd:init`, verify the same config template and preservation behavior as Claude Code. For `dd:load`, use the same snapshot/archive/fallback expectations as Claude Code. For `dd:impact`, use the same bounded multi-seed changed-file graph-impact and focused-verification expectations as Claude Code.
+Confirm `project-load`, `doc-first-planning`, `project-initializer`, and `impact-review` skills are discoverable. Trigger phrases `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` should activate the expected workflows. For `dd:init`, verify the same config template and preservation behavior as Claude Code. For `dd:load`, use the same depth-bounded documentation-map, focused-query, archive-exclusion, and fallback expectations as Claude Code. For `dd:impact`, use the same bounded multi-seed changed-file graph-impact and focused-verification expectations as Claude Code.
 
 ## Cross-Agent Planning Parity
 

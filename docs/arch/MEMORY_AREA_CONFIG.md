@@ -51,7 +51,7 @@ The first matching area classifies a path after exclusions are applied. The defa
 
 File discovery still respects gitignore and the supported text/source/config file filter.
 
-After generic exclusions for secrets, generated files, dependencies, and build outputs, memory-area policy can exclude matched files when `includeBodiesByDefault` is `false`. This is how archive bodies remain outside the default graph and vector indexes.
+After generic exclusions for secrets, generated files, dependencies, and build outputs, memory-area policy can exclude matched files when `includeBodiesByDefault` is `false`. This keeps archive bodies outside the default graph index. The separate vector corpus follows `load.documentationSummary.exclude` instead.
 
 Ignored local-memory recovery is derived from configured local areas whose bodies are enabled. Exact paths and `/**` subtree roots are walked directly under a hard cap, then every candidate passes the normal index safety and area-inclusion checks. Broad `**/suffix` patterns do not trigger repository-wide local walks. The archive map remains discoverable while the archive-body area's disabled body policy prevents recursive archive indexing.
 
@@ -74,7 +74,7 @@ Impact ranking uses this metadata as a bounded memory-policy score. Curated trac
 
 ## Load Documentation Summary Policy
 
-`load.documentationSummary.exclude` is separate from `memory.areas` on purpose. Memory areas classify retrieval roles and index inclusion, while the documentation-summary policy controls only which discovered docs directories Pi renders in the load prompt's book-like table of contents. Both built-in and materialized workspace defaults exclude `docs/plan` and `docs/archive`, but neither policy is derived from local-memory scope. An explicit empty exclusion list opts both directories into the summary without changing their memory classification or archive-body policy.
+`load.documentationSummary.exclude` is separate from `memory.areas` on purpose. Memory areas classify retrieval roles and graph-index inclusion, while the documentation-summary policy controls both the Markdown tree rendered by Pi and the CLI vector-query corpus. Both built-in and materialized workspace defaults exclude `docs/plan` and `docs/archive`, but neither policy is derived from local-memory scope. An explicit empty exclusion list opts both directories into the tree and query corpus without changing their memory classification or graph archive-body policy.
 
 The CLI owns validation, normalization, fallback defaults, and config display. The Pi adapter reads the root config directly, discovers included Markdown recursively, and renders a prefix-compressed documentation tree. CLI query applies the same exclusion policy before vector indexing.
 

@@ -107,7 +107,7 @@ write(
   command(
     `description: Load dotdotgod project memory for the current repository\nargument-hint: [optional focus]\nallowed-tools: [Read, Glob, Grep, Bash]`,
     "/dd:load - Load Project Memory",
-    "Load the current repository's dotdotgod project memory in a read-only pass.\n\nUser focus, if provided: `$ARGUMENTS`",
+    "Load project memory without modifying source, documentation, or project config; focused query may refresh ignored caches.\n\nUser focus, if provided: `$ARGUMENTS`",
     loadBody,
   ),
 );

@@ -15,12 +15,11 @@ node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
 - Confirm configured fixtures classify shared memory, local memory, fresh memory, stale memory, archive map, and archive body correctly.
 - Confirm configured fixtures preserve optional memory-area `description` and `clarify` metadata in resolved config output.
 - Confirm invalid config, including malformed fuzzy low-signal add/remove arrays and invalid memory-area clarity metadata, produces validation errors without crashing runtime commands.
-- Confirm archive bodies remain excluded from default snapshots unless a config or future command explicitly includes them.
+- Confirm archive bodies remain excluded from the default graph index, Load tree, and vector corpus under their respective default policies.
 - Confirm Load and query apply documentation exclusions while `config` preserves memory-area and reference-expansion metadata.
 - Confirm `load.documentationSummary.exclude` defaults to `docs/plan` and `docs/archive`, remains independent from local-memory areas, accepts an explicit empty list, and rejects invalid objects, non-arrays, absolute paths, traversal paths, and unsupported patterns.
-- Confirm Pi dynamically discovers sorted, bounded direct `docs/` child directories; full and compact prompts omit plan/archive summaries by default and include them when the configured exclusion list is empty.
-- Confirm Plan Mode automatic compact loads use the resolved CLI documentation-summary policy.
+- Confirm Pi recursively discovers sorted shared Markdown; no-argument loads render depth 5, focused loads render depth 3 with unique-file query results, and both omit plan/archive bodies by default.
+- Confirm Plan Mode automatic compact loads use empty focus, skip semantic query, and apply the same root documentation-exclusion array and fallback defaults as explicit Pi loads.
 - Confirm `planMode.writablePaths` preserves plan/archive defaults, supports configured docs subtrees and an empty list, and rejects source, secret, traversal, unsupported-glob, non-Markdown, unsafe-shell, and configured-root deletion attempts.
 - Confirm `load.pinnedPaths`/`load.pinnedBodies` validation rejects non-arrays, invalid patterns, absolute or traversal paths, and secret-like paths without crashing runtime commands.
-- Confirm pinned files come from direct disk reads with pattern expansion, missing statuses, binary skips, secret skips, and bounded path/body/character counts with omitted and truncated metadata.
-- Confirm compact load prompts show pinned paths only while full load prompts also embed bounded pinned body content.
+- Confirm legacy pinned fields remain accepted and serialized for compatibility but do not alter full or compact Load output.

@@ -11,7 +11,7 @@ Use shared source resources with thin generated agent adapters.
 ```text
 dotdotgod
 ├── packages/shared/           # private shared source resources for generated adapters
-├── packages/cli/              # shared CLI for validation, snapshots, and graph indexing
+├── packages/cli/              # shared CLI for validation, local query, and graph indexing
 ├── packages/pi/               # generated Pi skills plus Pi extensions
 ├── packages/claude-code/      # generated Claude Code plugin commands and skills
 ├── packages/codex/            # generated Codex plugin skills
@@ -24,7 +24,7 @@ dotdotgod
 
 `packages/shared` owns agent-neutral assets and contracts:
 
-- `workflows/load.md`: common project memory loading guidance, including snapshot-first CLI guidance with manual README-index fallback.
+- `workflows/load.md`: common project-memory loading guidance using a depth-bounded documentation map, optional focused local query, and README-index fallback.
 - `workflows/plan.md`: common doc-first planning guidance for durable active plans, execution approval, and verification. Plan Mode does not use `dotdotgod plan validate` as an execution gate; staged validation belongs to `/plan-goal` and manual/non-Plan-Mode workflows.
 - `workflows/impact.md`: common graph-impact review guidance for post-edit related-doc/test/source checks before broad verification or handoff.
 - `workflows/doc-clarify.md`: common documentation clarity workflow that uses memory-area metadata and dotdotgod default document roles while preserving behavior contracts.

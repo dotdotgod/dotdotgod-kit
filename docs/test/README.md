@@ -5,7 +5,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 ## Index
 
 - `README.md`: test documentation scope, verification command cheat sheet, and local table of contents.
-- `MEMORY_AREA_CONFIG.md`: memory-area config validation and snapshot smoke checks.
+- `MEMORY_AREA_CONFIG.md`: memory-area config validation and graph/Load-query policy smoke checks.
 - `TRACEABILITY_CONFIG.md`: configurable traceability enforcement validation smoke checks.
 - `VALIDATION_CONFIG.md`: markdown validation budget and size-check exclusion coverage.
 - `CONTEXT_MEASUREMENT.md`: context measurement commands and runtime context debug smoke checks.
@@ -72,7 +72,7 @@ Confirm JSON includes schema/refresh metadata, graph counts, bounded summaries, 
 
 - `@dotdotgod/shared`: private source resources for generated adapter commands, skills, and initializer files.
 - `@dotdotgod/pi`: generated initializer skill, extension syntax smoke checks, TypeScript typecheck, unit tests for pure plan/load helpers, and Pi package tarball dry-run.
-- `@dotdotgod/cli`: CLI syntax check, unit/e2e tests, repository validation, sharded cache/index status smoke checks, stale-index reindex coverage, and Leiden/fallback community output coverage.
+- `@dotdotgod/cli`: CLI syntax check, unit/e2e tests, repository validation, local multilingual query/vector-cache coverage, sharded graph-cache status checks, stale-index reindex coverage, and Leiden/fallback community output coverage.
 - `@dotdotgod/claude-code`: generated plugin commands/skills, plugin manifest/resource checks, and tarball dry-run.
 - `@dotdotgod/codex`: generated plugin skills, plugin manifest/skill checks, and tarball dry-run.
 

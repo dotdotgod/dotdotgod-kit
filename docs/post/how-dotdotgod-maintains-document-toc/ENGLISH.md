@@ -43,7 +43,7 @@ docs/spec/README.md
     ↓
 docs/spec/cli/README.md
     ↓
-docs/spec/cli/LOAD_SNAPSHOT.md
+docs/spec/cli/QUERY.md
 ```
 
 Each README records important documents, child directories, status, and a one-line purpose. Adding, renaming, splitting, or archiving a document also requires updating the nearest README in the same change. A README is therefore not just an introduction; it is an active routing table.

@@ -13,7 +13,7 @@ Repository: <https://github.com/dotdotgod/dotdotgod-kit>
 Every adapter drives the same four-step loop:
 
 1. **init** — create the docs-first project-memory scaffold once.
-2. **load** — start each session from a bounded project-memory snapshot instead of broad file reads.
+2. **load** — start each session from a bounded documentation map and focused local query instead of broad file reads.
 3. **plan** — write durable task intent under `docs/plan/` before source edits.
 4. **impact** — after changes, ask the graph what else must be checked before handoff.
 
@@ -24,7 +24,7 @@ Pick the package that runs this loop in your agent, then initialize your reposit
 | Package | Use it when | First step |
 | --- | --- | --- |
 | [`@dotdotgod/pi`](packages/pi/README.md) | You use Pi and want the full workflow: project initialization, project loading, Plan Mode, staged plan generation, impact checks, and archive handoff. | `pi install npm:@dotdotgod/pi` |
-| [`@dotdotgod/cli`](packages/cli/README.md) | You want command-line validation, graph indexing, load snapshots, reference expansion, Trello sync, or changed-file impact reports. | `npx @dotdotgod/cli validate .` |
+| [`@dotdotgod/cli`](packages/cli/README.md) | You want command-line validation, graph indexing, local documentation query, reference expansion, Trello sync, or changed-file impact reports. | `npx @dotdotgod/cli validate .` |
 | [`@dotdotgod/claude-code`](packages/claude-code/README.md) | You use Claude Code and want `/dd:*` commands plus dotdotgod skills. | Install the Claude Code plugin package. |
 | [`@dotdotgod/codex`](packages/codex/README.md) | You use Codex and want dotdotgod skills plus `dd:*` trigger phrases. | Install the Codex package or plugin resources. |
 | [`@dotdotgod/trello-power-up`](packages/trello-power-up/README.md) | You maintain the Trello docs-sync Power-Up frontend for this repository. | Preview the static frontend locally. |
@@ -111,7 +111,7 @@ files:
 - **Project memory:** durable files and metadata that agents can reuse across sessions.
 - **Memory areas:** configured document roles such as behavior truth, architecture rationale, verification knowledge, active task intent, and archive history.
 - **Traceability:** links from behavior docs to source, tests, related docs, and verification commands.
-- **Load snapshot:** a bounded project map for the first context pass.
+- **Documentation load:** a depth-bounded project map with optional local semantic routing for the first context pass.
 - **Impact graph:** a local cache that ranks likely related files after a change.
 
 The full graph stays local in `.dotdotgod/`. Agent-facing commands return compact summaries with omitted counts and reasons.
@@ -143,7 +143,7 @@ For the detailed model, read [Context curation](docs/concept/CONTEXT_CURATION.md
 - Initialize the shared docs-first project scaffold.
 - Validate docs structure, links, traceability blocks, config, and optional index freshness.
 - Build and inspect the local `.dotdotgod/` graph/cache.
-- Load bounded project-memory snapshots for agents.
+- Load depth-bounded documentation maps and focused local query results for agents.
 - Expand explicit `[[...]]` references and high-signal fuzzy references.
 - Review changed-file impact before broad tests, commits, pushes, or publishing.
 - Use Pi Plan Mode for safe planning, execution tracking, impact reminders, and archive handoff.

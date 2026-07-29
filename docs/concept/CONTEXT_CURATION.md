@@ -50,7 +50,7 @@ Dotdotgod separates memory by both **where it lives** and **how agents should tr
 - **Stable docs** (`docs/spec`, `docs/arch`, `docs/test`) describe product truth, rationale, and verification.
 - **Current plans** (`docs/plan`) describe active intent before and during implementation.
 - **Historical archives** (`docs/archive`) preserve completed work without loading every old body by default.
-- **Cache and snapshot metadata** in `.dotdotgod/` is bounded retrieval metadata derived from files; it is not the source of truth.
+- **Graph and vector cache metadata** in `.dotdotgod/` is bounded retrieval data derived from files; it is not the source of truth.
 
 ### `AGENTS.md`
 
@@ -104,7 +104,7 @@ Effect: project context is portable across tools.
 
 The dotdotgod CLI can build a deterministic graph over curated project scopes. Traceability blocks are one high-confidence source, but they are not the whole graph. The index also records Markdown links, README routing edges, headings and anchors, package/source/test/config metadata, memory-area membership, commands, events, and deterministic lexical/package routing hints where configured.
 
-The graph is an acceleration layer for load snapshots, reference expansion, impact queries, and community summaries. It is not a repo-wide memory dump, a vector database, or the source of truth; it points agents back to bounded files they can inspect. Its quality depends on maintained project links: README indexes, traceability blocks, docs structure, and focused source/test boundaries should stay current as agents complete work.
+The graph is an acceleration layer for reference expansion, impact queries, and community summaries. Load uses a filesystem documentation map, while a separate local E5 vector cache provides focused document routing. Neither derived index is a repo-wide memory dump or source of truth; both point agents back to bounded files they can inspect. Their quality depends on maintained README indexes, traceability blocks, docs structure, and focused source/test boundaries.
 
 Graph precision depends on useful project boundaries. If one source file owns many unrelated behaviors, impact results will correctly reveal that hotspot but still collapse many edges onto the same file. Split large mixed-responsibility files and docs by behavior so graph output can point agents to narrower modules, tests, and specs.
 

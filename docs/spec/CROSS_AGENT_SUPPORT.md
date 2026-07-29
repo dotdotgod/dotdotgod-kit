@@ -77,7 +77,7 @@ Adapters should provide workflow parity across each agent's native capabilities.
 Required workflows:
 
 - initialize or normalize the project memory scaffold and complete editable default config
-- load project memory in a read-only context
+- load project memory without modifying source, documentation, or project config; focused query may refresh ignored vector and model caches
 - plan safely before source/config changes
 - review changed files with graph-impact evidence before broad verification, commits, pushes, publishing, or final handoff when the CLI or an equivalent project-local impact command is available; otherwise preserve the same review intent through targeted specs/tests/docs reads
 - clarify project documentation using configured memory-area roles and dotdotgod default document roles while preserving behavior contracts; Pi may use a fresh-context doc-only subagent for completed `/plan-goal` plan files
@@ -91,7 +91,7 @@ Optional workflows:
 - lifecycle hooks for advisory load/plan/impact reminders, SDLC guardrails, validation, failure logging, and narrowly scoped plan-safety checks
 - packaged default hooks only when they are advisory, safe by default, and supported by the target runtime; otherwise keep examples documented but opt-in
 - project memory indexing/search
-- CLI-backed load snapshots and graph-impact checks where shell or package execution is available
+- CLI-backed focused documentation query and graph-impact checks where shell or package execution is available
 
 Parity is behavioral, not identical runtime mechanics: Pi can enforce pending-impact state, while Claude Code and Codex provide commands, skills, or trusted hook guidance that lead agents to the same review obligation when the runtime permits it.
 
@@ -100,7 +100,7 @@ Parity is behavioral, not identical runtime mechanics: Pi can enforce pending-im
 Cross-agent support is distributed as npm workspace packages:
 
 - `@dotdotgod/pi`: Pi adapter with skills, extensions, package-local `@dotdotgod/cli` dependency, and dependency-provided subagent resources.
-- `@dotdotgod/cli`: validation, project memory snapshot, and graph indexing CLI.
+- `@dotdotgod/cli`: validation, local documentation query, and graph indexing CLI.
 - `@dotdotgod/claude-code`: Claude Code adapter with plugin commands and skills.
 - `@dotdotgod/codex`: Codex adapter with project memory skills.
 

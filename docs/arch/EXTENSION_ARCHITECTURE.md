@@ -86,7 +86,7 @@ The debug path is for measurement and investigation only; normal package behavio
 - lightweight detection of baseline memory files and narrative loader prompt generation
 - command-conflict guidance for `/load`
 
-The shared CLI owns deterministic validation, cache/index management, bounded graph impact reports, community summaries, and environment-aware command guidance. The load extension includes compact CLI snapshot metadata in `/dd:load` without turning project loading into a full graph dump. It preserves `docs/archive/README.md` as the archive map while keeping archive bodies excluded by default.
+The shared CLI owns deterministic validation, graph cache/index management, bounded graph-impact reports, and local multilingual documentation query. The load extension builds its tree directly from the filesystem and invokes CLI query only for focused arguments, without injecting graph statistics into the Load narrative. It preserves `docs/archive/README.md` as the archive routing map while keeping archive bodies excluded by default.
 
 ## Prompt Layer
 
@@ -114,17 +114,10 @@ The `dotdotgod` CLI owns the shared plan-validation contract for `/plan-goal`, m
 - Behavior specs: [`docs/spec/PLAN_MODE.md`](../spec/PLAN_MODE.md), [`docs/spec/plan-mode/README.md`](../spec/plan-mode/README.md), [`docs/spec/LOAD_PROJECT.md`](../spec/LOAD_PROJECT.md), and [`docs/spec/CROSS_AGENT_SUPPORT.md`](../spec/CROSS_AGENT_SUPPORT.md).
 - Verification docs: [`docs/test/README.md`](../test/README.md), [`docs/test/manual-smoke/PI_ADAPTER.md`](../test/manual-smoke/PI_ADAPTER.md), and [`docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md`](../test/manual-smoke/CROSS_AGENT_ADAPTERS.md).
 
-## Future Search Architecture
+## Search Architecture
 
-Future memory search features should extend the runtime `load-project` entrypoint.
+Focused Load arguments route through `dotdotgod query`, which maintains a separate local `Xenova/multilingual-e5-small` vector cache under `.dotdotgod/vectors/`. This flat exact-scan index is derived routing data, not project truth and not part of the deterministic relationship graph.
 
-Potential additions:
-
-- `/dd:index`
-- `/dd:search`
-- `/dd:status`
-- vector index over project docs
-- graph search over entities and relationships
-- LLM-callable `dd_search` tools
+Potential future additions include explicit search/status commands, graph-entity search, or an LLM-callable search tool. They should reuse the current query contract only when the behavior is stable rather than adding speculative provider or index abstractions.
 
 The initializer should remain a conservative scaffold generator.

@@ -1536,6 +1536,7 @@ describe('local documentation vector query', () => {
     const root = fixture();
     writeFileSync(join(root, 'docs/spec/SEARCH.md'), '# Search\n\nSemantic retrieval policy.\n\n## Korean\n\n한국어 문서 검색 정책.\n');
     writeFileSync(join(root, 'docs/spec/LOAD.md'), '# Load\n\n한국어 프로젝트 문서 검색.\n');
+    writeFileSync(join(root, 'docs/secrets.md'), '# Secrets\n\n한국어 비밀 문서 검색.\n');
     const chunks = chunkMarkdown('docs/spec/SEARCH.md', readFileSync(join(root, 'docs/spec/SEARCH.md'), 'utf8'));
     assert(chunks.some((chunk) => chunk.heading === 'Search > Korean'));
     let embeddedTexts = 0;
@@ -1553,7 +1554,7 @@ describe('local documentation vector query', () => {
     assert(first.results.length <= 3);
     assert.equal(new Set(first.results.map((result) => result.path)).size, first.results.length, 'limit counts unique Markdown files');
     assert(first.results.some((result) => result.path === 'docs/spec/LOAD.md'));
-    assert.equal(first.results.some((result) => result.path.startsWith('docs/plan/') || result.path.startsWith('docs/archive/')), false);
+    assert.equal(first.results.some((result) => result.path.startsWith('docs/plan/') || result.path.startsWith('docs/archive/') || result.path === 'docs/secrets.md'), false);
     const firstEmbedded = embeddedTexts;
     await queryDocumentation(root, '한국어', { limit: 3, embed: fakeEmbed });
     assert.equal(embeddedTexts, firstEmbedded + 1, 'the second query should reuse every cached passage vector');

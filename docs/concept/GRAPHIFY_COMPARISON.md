@@ -1,6 +1,6 @@
 # Why dotdotgod Is a Better Default than a Single Graphify-Style Graph
 
-Dotdotgod is not a bigger generated graph. It is a curated project-memory contract that agents can maintain, validate, index, and load through bounded snapshots. That difference matters because production AI-agent work needs repeatable impact analysis: what behavior is affected, which code implements it, which tests verify it, which commands prove it, and which historical notes are safe to ignore unless targeted.
+Dotdotgod is not a bigger generated graph. It is a curated project-memory contract that agents can maintain, validate, index, and load through bounded documentation maps and targeted reads. That difference matters because production AI-agent work needs repeatable impact analysis: what behavior is affected, which code implements it, which tests verify it, which commands prove it, and which historical notes are safe to ignore unless targeted.
 
 Graphify-style graph generation can still be useful for exploration. The stronger default for day-to-day coding-agent work is dotdotgod's model: explicit docs, validated traceability, deterministic graph hints, bounded retrieval, and a quality-control loop that remains predictable under review.
 
@@ -29,7 +29,7 @@ Dotdotgod changes the control point. The durable source of truth is curated proj
 | Traceability blocks with `implementedBy`, `verifiedBy`, `relatedDocs`, and `verificationCommands`. | Relationships are explicit, source-controlled, reviewable, and parsed deterministically. |
 | Validation of naming, links, anchors, traceability placement, config, markdown budgets, and cache/index state. | Memory quality becomes observable; broken contracts fail early before they influence context. |
 | Impact ranking that demotes semantic-only links. | Semantic discovery remains useful, but curated traceability, verification links, proximity, memory policy, freshness, and changed-file PageRank carry stronger signal. |
-| Bounded load snapshots. | Agents receive cache status, indexed counts, memory areas, communities, omitted counts, command guidance, and archive policy without flooding context. |
+| Depth-bounded documentation maps with optional local query. | Agents receive maintained paths and focused file-level routing without flooding context with graph statistics or repeated chunks. |
 | Archive-body exclusion by default. | Historical memory remains discoverable through `docs/archive/README.md` without contaminating current work unless targeted. |
 
 A spec can declare its implementation, verification, related docs, and commands through canonical `json dotdotgod` metadata. See [`docs/spec/TRACEABILITY_CONFIG.md`](../spec/TRACEABILITY_CONFIG.md) for the authoritative syntax, generated-link rules, and validation behavior.
@@ -53,7 +53,7 @@ Dotdotgod is stronger for production coding-agent work because it supports a pre
 1. define behavior in a spec;
 2. connect it to code, tests, docs, and commands;
 3. validate those references;
-4. load a bounded snapshot for the agent;
+4. load a depth-bounded documentation map and targeted routing for the agent;
 5. make a scoped change;
 6. run the declared verification commands;
 7. archive completed plans and keep history out of default context unless targeted.
@@ -68,7 +68,7 @@ Dotdotgod encodes the workflow philosophy already used by production-minded codi
 - **Scoped changes:** agents should read context first, change only what the task requires, and avoid unrelated worktree damage.
 - **Traceable behavior:** behavior specs should connect to implementation, tests, docs, and commands.
 - **Plan/archive lifecycle:** active intent belongs in `docs/plan/`; completed work and historical notes belong in `docs/archive/`.
-- **Bounded context:** agents should receive compact snapshots and routing hints, then read targeted files.
+- **Bounded context:** agents should receive compact documentation maps and routing hints, then read targeted files.
 - **Determinism before semantics:** deterministic checks and curated links should outrank semantic guesses.
 - **Human-reviewable contracts:** memory should be inspectable in normal code review, not hidden in model-generated artifacts.
 - **Verification as part of the loop:** a task is not production-ready until its verification path is known and run or explicitly documented.
@@ -96,4 +96,4 @@ Dotdotgod sources:
 - [`docs/spec/IMPACT_RANKING_CONFIG.md`](../spec/IMPACT_RANKING_CONFIG.md) — ranking signals and output shape.
 - [`docs/arch/IMPACT_RANKING_CONFIG.md`](../arch/IMPACT_RANKING_CONFIG.md) — deterministic semantic edges, score components, semantic-only demotion, and bounded output.
 - [`docs/arch/VALIDATION_ARCHITECTURE.md`](../arch/VALIDATION_ARCHITECTURE.md) — validator boundaries, traceability checks, cache/index safety, and docs structure rules.
-- [`docs/spec/LOAD_PROJECT.md`](../spec/LOAD_PROJECT.md) — bounded load snapshots and archive-body exclusion.
+- [`docs/spec/LOAD_PROJECT.md`](../spec/LOAD_PROJECT.md) — depth-bounded documentation maps, focused query, and archive-body exclusion.
