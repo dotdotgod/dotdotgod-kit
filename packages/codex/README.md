@@ -39,7 +39,7 @@ The bundled skills interpret those phrases as command-like workflow requests.
 | Skill or trigger | Use it for | Result |
 | --- | --- | --- |
 | `dd:init` / `project-initializer` | Start a repository with dotdotgod conventions. | Creates or normalizes shared agent files, docs indexes, local-memory areas, and the complete default project config. |
-| `dd:load` / `project-load` | Load project memory read-only. | Prefers `dotdotgod load-snapshot <root> --json`, then falls back to README-index reads. |
+| `dd:load` / `project-load` | Load project memory read-only. | Renders the shared Markdown tree and uses `dotdotgod query` when focus text is provided. |
 | `dd:plan` / `doc-first-planning` | Plan before implementation. | Captures current intent in `docs/plan/<task-slug>/README.md`. |
 | `dd:impact` / `impact-review` | Review changed files before verification or handoff. | Uses `dotdotgod graph impact` to identify likely related docs, tests, commands, and source files. |
 | `dd:plan-goal` / `plan-goal` | Run 5-stage structured planning before implementation. | Produces durable checkpoint files in `docs/plan/<task>/.dotdotgod-plan/` and a plan README. |

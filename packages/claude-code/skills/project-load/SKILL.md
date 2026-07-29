@@ -10,58 +10,46 @@ version: 1.0.0
 
 ## Goal
 
-Load the current repository's dotdotgod project memory in a read-only pass. Explicit manual loads should build the fuller curated project map. Prompt-injected refreshes and already-loaded sessions should use the explicit compact load command and build a delta-oriented context map from shared agent instructions, README indexes, specs, architecture notes, test docs, active plans, and relevant archive notes. In Pi, `/dd:load` runs a full load and `/dd:load:compact` runs a compact load; free-form arguments are treated as focus text and never change the load mode.
-
-Do not modify files during the load pass unless the user explicitly asks for edits after the summary.
+Load the current repository's dotdotgod project memory without modifying project files. Use a full load for an explicit project overview and a compact load to refresh an already-loaded session. Treat free-form arguments as query text, not as mode switches.
 
 ## Workflow
 
 1. Identify the repository root and current state.
-   - Check current directory, git root, branch, and dirty worktree status.
+   - Check the current directory and, when Git is available, the repository root, branch, and dirty worktree status.
    - Mention user changes and avoid reverting or cleaning them.
-2. Prefer the bounded CLI snapshot when available.
-   - If the user prompt contains explicit project-memory refs such as `[[PLAN_MODE]]`, run `dotdotgod expand <root> "<prompt>" --json` before broad `grep` or `find` scans, then read the resolved candidates selectively.
-   - If the prompt has high-signal natural refs such as `PLAN_MODE`, `docs/spec/PLAN_MODE.md`, or quoted doc names, use `dotdotgod expand <root> "<prompt>" --fuzzy --json` before broad scans; avoid fuzzy expansion for low-signal generic words alone and respect configured fuzzy low-signal add/remove terms.
-   - If `dotdotgod` is installed or available in the repository, run `dotdotgod load-snapshot <root> --json`. This bounded CLI snapshot backs `/dd:load` and `/dd:load:compact`.
-   - If the local environment allows package execution but no `dotdotgod` binary is available, optionally run `npx @dotdotgod/cli load-snapshot <root> --json`.
-   - Treat the snapshot as the first-pass project-memory map for cache trust/freshness status, graph size, memory policy, top memory areas, top related communities, and archive inclusion policy. Avoid expanding command/event-heavy details unless the user asks for a full or diagnostic load.
-   - Treat docs structure as metadata: use README.md paths as a book-like table of contents and expand a specific docs subtree only when the user request, a graph community, a memory area, or a README route identifies it. Respect `load.documentationSummary.exclude`; its default omits `docs/plan` and `docs/archive` independently from local-memory classification.
-   - During load/planning, treat `dotdotgod status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and `index` as bounded context/status helpers. `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, and `index` are project-content safe but may refresh ignored `.dotdotgod/` cache metadata. Avoid mutating scaffold/config commands such as `init` or `config init` unless the user explicitly asks for initialization or config creation.
-   - Use `dotdotgod graph impact <root> --changed <path> --yml` as a task-focused structured impact map when the user identifies a likely source/config/doc file. In Claude Code, `/dd:impact` can run the same review; in Codex, `dd:impact` is the command-like trigger for the `impact-review` skill.
-   - Use `grep` or `find` after `expand`, impact, and targeted reads when the task needs fallback discovery or raw source text search.
-   - Fall back to raw `dotdotgod graph impact <root> --changed <path> --json` only when diagnostics need the full payload.
-   - When graph impact surfaces traceability relations, inspect the related specs, tests, and docs before editing source.
-   - Related behavior docs: `docs/spec/LOAD_PROJECT.md`, `docs/spec/CROSS_AGENT_SUPPORT.md`, and `docs/arch/CROSS_AGENT_ARCHITECTURE.md`.
-   - If the CLI is unavailable, network/package execution is undesirable, or the command fails, continue with the manual README-index fallback below.
-3. Inspect baseline memory files when present:
-   - `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `README.md`
-   - `docs/README.md`
-   - `docs/spec/README.md`
-   - `docs/test/README.md`
-   - `docs/arch/README.md`
-   - `docs/plan/README.md`
-   - `docs/archive/README.md`
-4. Start with `AGENTS.md`, `README.md`, and `docs/README.md` when they are not already clear from the CLI snapshot or loaded context.
-5. Follow README indexes. Read relevant docs under `docs/spec`, `docs/test`, and `docs/arch` selectively unless the task needs a full refresh.
-6. When plans are relevant through the request or snapshot routing, list `docs/plan` entries first, then selectively read only relevant active plans. Do not infer documentation-summary inclusion from local-memory scope.
-7. Use `docs/archive/README.md` as the archive history map when history is relevant. Do not scan archive bodies by default; read targeted completed plans under `docs/archive/plan/` or reports under `docs/archive/report/` only when directly relevant.
-8. Avoid broad reads of generated outputs, dependencies, databases, caches, secrets, and `.env*` contents.
+2. Read baseline memory only when it is not already clear from loaded context.
+   - Start with `AGENTS.md`, the current adapter entrypoint when present, `README.md`, and `docs/README.md`.
+   - Do not run scaffold, config-writing, or source-modifying commands during a load.
+3. Build the shared documentation map.
+   - Discover Markdown files under `docs/` after applying `load.documentationSummary.exclude`, which excludes `docs/plan` and `docs/archive` by default.
+   - Render repository-relative paths as a prefix-compressed tree. Count `docs/` as directory depth 1.
+   - Without arguments, expand through directory depth 5. At the boundary, summarize deeper descendants with exact directory and Markdown-file counts.
+4. Use query routing only when arguments are present.
+   - Run `dotdotgod query <root> "<arguments>" --limit 30 --json` when the command is available.
+   - Show at most the top 30 query results and render the documentation tree through directory depth 3.
+   - If query is unavailable, continue from the tree, README indexes, and targeted reads.
+5. Read document bodies selectively.
+   - Follow README indexes as maintained tables of contents.
+   - Prefer query results, explicit paths, and the current request before broader search.
+   - Use `grep` or `find` only when targeted reads do not provide enough evidence.
+6. Read local memory only when relevant.
+   - For active plans, list `docs/plan` entries first and read only relevant plan files.
+   - Use `docs/archive/README.md` as the history map. Do not scan archive bodies by default.
+7. Avoid broad reads of generated outputs, dependencies, databases, caches, secrets, and `.env*` contents.
 
 ## Output Shape
 
-For explicit manual full loads, respond concisely with:
+For a full load, respond concisely with:
 
-- Project summary
+- Project narrative and purpose
 - Key working rules
-- Available commands and verification methods, including `/dd:impact` or `dd:impact` when available for changed-file review
-- Documentation map
-- Active plans
-- Relevant archive notes
-- Open TODO/TBD items or questions to clarify
+- Relevant documentation and verification routes
+- Relevant active plans or archive history only when needed
+- Questions surfaced by loaded material
 
-For compact loads, respond with compact routing information:
+For a compact load, respond with:
 
-- Project-memory status: available, stale, missing, or newly refreshed memory
-- Relevant docs map: only the docs areas or README indexes likely needed for the current request
-- Active plan hints: active plan paths only when relevant
-- Next recommended reads: a short, bounded list, or a note that no further reads are needed
+- Compact project-memory status
+- Relevant documentation routes
+- Relevant active plan hints only when needed
+- A short bounded list of next reads, or a note that none are needed

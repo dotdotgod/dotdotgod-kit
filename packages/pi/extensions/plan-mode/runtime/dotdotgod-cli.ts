@@ -42,20 +42,13 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 	return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
 }
 
-export function formatPlanCliContextSummary(validate: PlanCliCommandResult, snapshot: PlanCliCommandResult, impacts: Array<{ path: string; result: PlanCliCommandResult }>): string {
+export function formatPlanCliContextSummary(validate: PlanCliCommandResult, impacts: Array<{ path: string; result: PlanCliCommandResult }>): string {
 	const lines = ["dotdotgod CLI planning context:"];
 	if (!validate.ok) return "";
 	const validateData = asRecord(validate.data);
 	const errors = Array.isArray(validateData?.errors) ? validateData.errors.length : 0;
 	lines.push(`- Validate: source=${validate.label ?? "dotdotgod"}; ok=${String(validateData?.ok ?? true)}; errors=${errors}`);
 
-	const snapshotData = asRecord(snapshot.data);
-	const cache = asRecord(snapshotData?.cache);
-	const metadata = asRecord(snapshotData?.metadata);
-	const graph = asRecord(snapshotData?.graph) ?? asRecord(cache?.graph);
-	if (snapshot.ok && snapshotData) {
-		lines.push(`- Index: status=${String(cache?.status ?? "unknown")}; schema=${String(cache?.schemaVersion ?? metadata?.schemaVersion ?? "unknown")}; indexedFiles=${String(cache?.indexedFiles ?? "unknown")}; graph=${String(graph?.nodes ?? "unknown")} nodes/${String(graph?.edges ?? "unknown")} edges; refreshed=${String(metadata?.cacheRefreshed ?? false)}; reason=${String(metadata?.refreshReason ?? "unknown")}`);
-	}
 
 	for (const impact of impacts) {
 		lines.push(impact.result.ok ? formatCompactImpactSummary(impact.path, impact.result.data) : `- Impact: skipped or unavailable for ${impact.path}.`);

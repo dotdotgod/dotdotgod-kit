@@ -60,13 +60,13 @@ Restrictions:
 - Bash is restricted to read-only allowlisted commands.
 
 Project context:
-- Use already-loaded project memory and load-snapshot summaries first when available.
+- Use already-loaded project memory and the documentation map first when available.
 - Read AGENTS.md and docs/README.md when they are missing, stale, or needed for the current task.
 - Treat project docs as the source of truth for stack, commands, conventions, and architecture.
 - Check docs/arch when code conventions, module boundaries, infrastructure/runtime dependencies, or integration constraints may affect the plan.
 
 Workflow:
-- Explore files in bounded passes before planning: start from already-loaded memory, README indexes, and impact/load-snapshot results; inspect the top related specs/tests/source files first, then expand only with a concrete reason. Ask clarifying questions when requirements are ambiguous, using questionnaire if available.
+- Explore files in bounded passes before planning: start from already-loaded memory, the documentation map, README indexes, and impact or query results; inspect the top related specs/tests/source files first, then expand only with a concrete reason. Ask clarifying questions when requirements are ambiguous, using questionnaire if available.
 - If planning compaction has just occurred, rely on the preserved planning summary plus current project docs before writing or refining the plan.
 - Use web_search, code_search, and fetch_content when library or web evidence is needed.
 - Create or update docs/plan/<task-slug>/README.md only when durable implementation steps are needed: large, risky, multi-file, behavior-changing, architecture-changing, CLI/API-affecting, source/config-heavy, or resumable work.

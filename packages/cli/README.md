@@ -27,7 +27,7 @@ Common first commands:
 ```bash
 dotdotgod init .
 dotdotgod validate .
-dotdotgod load-snapshot .
+dotdotgod query . "project documentation"
 dotdotgod graph impact . --changed <path> --compact
 ```
 
@@ -36,7 +36,7 @@ dotdotgod graph impact . --changed <path> --compact
 - `init` creates `AGENTS.md`, thin agent entrypoints, docs indexes, active-plan space, archive map, local cache ignores, and the complete editable default config.
 - `validate` checks the dotdotgod docs/project-memory structure, local links, traceability blocks, config validity, and optional index freshness.
 - `index` builds `.dotdotgod/manifest.json` and compact graph shards from maintained project files.
-- `load-snapshot` returns a bounded first-pass project map for AI agents, including files pinned through the `load.pinnedPaths`/`load.pinnedBodies` config so context such as code conventions stays visible on every load.
+- `query` locally embeds shared Markdown with `Xenova/multilingual-e5-small`, incrementally stores vectors under `.dotdotgod/vectors/`, and returns relevant document chunks.
 - `resolve` and `expand` map explicit or high-signal prompt references to project files.
 - `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five.
 - `traceability links` checks or repairs generated Markdown traceability-link sections.
@@ -56,7 +56,7 @@ dotdotgod config .
 dotdotgod config init .
 dotdotgod status .
 dotdotgod index .
-dotdotgod load-snapshot .
+dotdotgod query . "plan mode tools"
 dotdotgod resolve . PLAN_MODE
 dotdotgod expand . "Update [[PLAN_MODE]] and [[HOOKS]]"
 dotdotgod expand . "PLAN_MODE 수정하자" --fuzzy
@@ -80,7 +80,7 @@ dotdotgod graph communities .
 | Add the dotdotgod scaffold to a repository | `dotdotgod init .` |
 | Check docs, links, config, traceability, and optional index freshness | `dotdotgod validate . --check-index` |
 | Refresh the local graph/cache | `dotdotgod index .` |
-| Give an agent a bounded project map | `dotdotgod load-snapshot .` |
+| Search shared project documentation locally | `dotdotgod query . "project documentation"` |
 | Resolve `[[...]]` references from a prompt | `dotdotgod expand . "Update [[PLAN_MODE]]"` |
 | Repair generated traceability-link sections | `dotdotgod traceability links . --write` |
 | Validate an active plan before execution | `dotdotgod plan validate docs/plan/<task>/README.md` |

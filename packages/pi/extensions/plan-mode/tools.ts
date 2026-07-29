@@ -273,7 +273,7 @@ export function isAutoAllowedDotdotgodPlanModeCommand(command: string): boolean 
 	const commandName = args[0];
 	const subcommand = args[1];
 	if (["--help", "-h", "--version", "-v", "help", "version"].includes(commandName ?? "")) return true;
-	if (["status", "load-snapshot", "resolve", "expand", "index"].includes(commandName ?? "")) return true;
+	if (["status", "query", "resolve", "expand", "index"].includes(commandName ?? "")) return true;
 	if (commandName === "config") return subcommand !== "init";
 	if (commandName === "graph") return subcommand === "impact" || subcommand === "communities";
 	return false;

@@ -1,123 +1,86 @@
-# Load Project
+# Load Project Memory
 
 ## Purpose
 
-`load-project` is a Pi extension that starts a project-content read-only memory loading turn.
-
-It helps the agent inspect the dotdotgod scaffold and summarize the current project context. Explicit manual `/load` and `/dd:load` run a fuller curated project memory load, while `/dd:load:compact` and automatic prompt-injected refreshes use compact mode. Both modes avoid reading every repository file or every archive body.
+The Load workflow gives an agent narrative project context from maintained repository files without modifying source, documentation, or project config.
 
 ## Commands
 
-- `/load`: load project memory for the current working directory in full mode; kept as the compatibility command while duplicate `/load` conflict handling still requires it.
-- `/dd:load`: stable namespaced full-load command.
-- `/dd:load:compact`: explicit compact/delta-oriented load for prompt-injected refreshes or already-loaded sessions.
+Pi provides:
 
-Load mode is selected only by the command name. Free-form arguments are treated as focus text for the load and never change the mode; there is no special handling for `compact`, `--compact`, `brief`, `full`, or localized aliases.
+- `/load`: compatibility full load
+- `/dd:load`: namespaced full load
+- `/dd:load:compact`: compact refresh
 
-`/dd:load` exists because other extensions may also register `/load`. Pi resolves duplicate extension commands with suffixes, so the namespaced command provides a clearer dotdotgod entrypoint.
+Claude Code and Codex provide generated Load commands or skills from `packages/shared/workflows/load.md`.
 
-## Mode Selection
+## Baseline Memory
 
-Use full mode for explicit manual project-memory loads, first-session orientation, or deliberate context resets where the user asks for the complete working map. Do not repeat full mode just because a follow-up task starts in an already-loaded session.
-
-Use `/dd:load:compact` for automatic refreshes, Plan Mode context shaping, resumed sessions that already have stable project background, and follow-up work where only deltas, relevant active plans, or next reads are needed. Plan Mode's automatic project-memory refresh sends the same compact-mode prompt directly.
-
-After either mode, agents should prefer targeted reads over broad scans:
-
-- `docs/spec/` for user-facing behavior and CLI/API contracts.
-- `docs/arch/` for implementation boundaries, architecture rationale, and code conventions.
-- `docs/test/` for verification strategy and regression coverage.
-- `docs/plan/` for active task intent, only after listing available entries.
-- `docs/archive/README.md` as a routing map only when completed work or reports are directly relevant.
-
-## Read-Only Behavior
-
-The command does not modify source, docs, or config files. This is a project-content read-only boundary, not a guarantee that ignored cache files never change.
-
-It first tries to run `dotdotgod load-snapshot <cwd> --json` and include a bounded snapshot summary in the loader prompt. The CLI read can lazily refresh `.dotdotgod/` cache metadata when the cache is missing or stale. If the CLI is unavailable or returns invalid JSON, the command falls back to a lightweight snapshot of expected memory files and docs directories, then sends a read-only loader prompt to the agent.
-
-The documentation directory summary dynamically discovers a sorted, bounded set of direct `docs/` child directories and defaults to a book-like README table of contents: `README.md` paths per included area, including nested domain `README.md` files, instead of full markdown file listings. `load.documentationSummary.exclude` independently controls which docs directories are omitted; its zero-config default is `docs/plan` and `docs/archive`. This summary policy is separate from local-memory classification, graph indexing, and archive-body inclusion. A targeted subtree listing appears only when the load request identifies a specific included docs path. When no README indexes exist and no valid CLI snapshot is available, the bounded fallback lists only a small number of discovered markdown files per included docs area so those repositories remain usable without flooding the prompt.
-
-The agent is instructed to use read-only tools such as:
-
-- `read`
-- `ls`
-- `grep`
-- `find`
-
-## Baseline Files
-
-The loader checks for these baseline files:
+Load detects the repository root, dirty worktree state, and baseline memory files:
 
 - `AGENTS.md`
-- `CLAUDE.md`
-- `CODEX.md`
+- the current agent entrypoint
 - `README.md`
 - `docs/README.md`
-- `docs/spec/README.md`
-- `docs/test/README.md`
-- `docs/arch/README.md`
-- `docs/plan/README.md`
-- `docs/archive/README.md`
 
-## Documentation Loading Rules
+Agents preserve existing user changes and avoid rereading baseline content already clear in the session.
 
-The loader prompt asks the agent to:
+## Documentation Map
 
-- use the `load-snapshot` summary first when present, including cache trust/freshness status, lazy refresh metadata, graph size, memory policy, compact memory-area labels, compact community routing details, and archive inclusion policy
-- treat the documentation directory summary as a README-based table of contents and expand a specific docs subtree only when the request, a community, a memory area, or a README route identifies it
-- start with `AGENTS.md`, `README.md`, and `docs/README.md` when they are not already clear from the loaded context
-- summarize product, architecture, code conventions, infrastructure/runtime dependencies, and verification context at the detail level requested by the load mode
-- inspect docs/spec, docs/arch, and docs/test selectively unless a task needs a full refresh
-- follow `README.md` indexes, including domain directories such as `docs/<area>/<domain>/README.md`
-- follow expanded convention directories such as `docs/arch/conventions/README.md`
-- omit `docs/plan` and `docs/archive` from the documentation directory summary by default, while allowing `load.documentationSummary.exclude` to configure that list independently from memory scope
-- list `docs/plan` first and read only relevant active plan files when the request, snapshot routing, or configured summary inclusion makes plans relevant
-- use `docs/archive/README.md` or targeted archive paths only when the user request or current task makes completed plans/reports relevant
-- distinguish completed plan archives under `docs/archive/plan/` from temporary reports under `docs/archive/report/` when archive lookup is needed
+Load discovers Markdown files below `docs/` and renders repository-relative paths as a prefix-compressed tree. Directory depth counts `docs/` as depth 1, `docs/spec/` as depth 2, and `docs/spec/plan-mode/` as depth 3.
 
-## Debug Measurement
+`load.documentationSummary.exclude` filters complete subtrees from this shared map. Its default values are:
 
-When the Pi adapter is started with `--dd-context-debug`, `/load`, `/dd:load`, and `/dd:load:compact` record local JSONL measurement events before and after sending the load prompt.
+- `docs/plan`
+- `docs/archive`
 
-The event includes prompt character/word/approx-token counts, context usage when available, git state, the docs directories included in the default summary, and whether the CLI load snapshot succeeded. Debug output defaults under `docs/archive/report/context-metrics/` unless `--dd-context-debug-output` is provided.
+Without arguments, Load expands the tree through directory depth 5. At that boundary it replaces deeper descendants with exact recursive directory and Markdown-file counts. It does not silently truncate by directory or item count.
 
-## Response Shape
+Load lists paths but reads bodies selectively through maintained README indexes and current-task evidence.
 
-In compact mode, the agent should summarize:
+## Focused Query
 
-- compact project-memory status: what is available, stale, missing, or newly refreshed
-- relevant docs map: only docs areas or README indexes likely needed for the current request
-- active plan hints: active plan paths only when relevant
-- next recommended reads: a short, bounded list, or a note that no further reads are needed
+Free-form Load arguments are query text, not mode switches. When arguments are present, Load:
 
-In full mode, the agent may include the fuller project summary, key working rules, commands and verification methods, documentation map, active plans, relevant archive notes, and open TODO/TBD items. Full mode is the default for explicit manual `/load` and `/dd:load`; automated prompts and follow-up refreshes use the compact-mode prompt that also backs `/dd:load:compact`.
+1. runs `dotdotgod query <root> "<arguments>" --limit 30 --json` when available
+2. presents the best-ranked chunk from each of at most 30 distinct Markdown files
+3. renders the documentation map through directory depth 3
+4. falls back to README routing and targeted reads when query is unavailable
 
-## Current Snapshot Integration
+The query command searches shared documentation and excludes plan/archive bodies by default. Each result includes a path, heading, score, and bounded excerpt.
 
-`/load`, `/dd:load`, and `/dd:load:compact` use the unified CLI load snapshot as the preferred bounded project-memory map. Compact prompts keep three signal groups:
+## Local Memory
 
-- trust and freshness: cache ok/status, indexed/stale file counts, schema check, cache refresh, changed-file count, and full-rebuild flag
-- routing: graph node/edge counts, memory policy, bounded memory-area labels, and bounded communities with labels, files, docs, commands when present, tests, and omitted counts
-- archive and boundedness: full-graph inclusion, archive-body inclusion, archive-map inclusion, and README-only or targeted docs listings
+Local memory is not part of the shared documentation map:
 
-Configured `load.documentationSummary.exclude` filters docs directories from the Pi prompt's book-like summary; it defaults to `docs/plan` and `docs/archive` and does not alter memory areas or indexing. Configured `load.pinnedPaths` and `load.pinnedBodies` surface as pinned files: both modes list pinned paths with per-file statuses, and only full mode embeds the bounded pinned body contents. Compact prompts omit command guidance, graph type breakdowns, community events, cache paths, schema versions, and index size details. Default full loads may additionally include command guidance, debug metadata, and more detailed area entries. `docs/archive/README.md` remains included as the archive map; other archive bodies remain excluded by default. The raw CLI `load-snapshot` payload is unchanged; field selection happens in the prompt.
+- list and read `docs/plan` only when current work makes an active plan relevant
+- use `docs/archive/README.md` as the history map
+- read an archive body only when necessary historical context is directly relevant
 
-The snapshot includes `commandGuidance` so agents running full loads see environment-aware commands:
+## Output
 
-- `local-source`: use `node packages/cli/bin/dotdotgod.mjs` in the dotdotgod repository.
-- `project-install`: use `npx dotdotgod` when `@dotdotgod/cli` is declared or installed.
-- `missing-install`: recommend `npm install -D @dotdotgod/cli`, then `npx dotdotgod`.
+Full Load reports:
 
-Installing `@dotdotgod/pi` does not provide the `dotdotgod` binary.
+- project narrative and purpose
+- key working rules
+- relevant documentation and verification routes
+- relevant active plans or archive history when needed
+- questions surfaced by loaded material
 
-## Hook Integration
+Compact Load reports:
 
-Claude Code and Codex adapters may document optional start hooks that remind agents to use `dotdotgod load-snapshot <root> --json` or `/dd:load`/`dd:load` when project memory is needed. Those hooks do not replace the explicit load workflow. `load-snapshot` remains a bounded agent-facing map and may lazily refresh `.dotdotgod/` cache metadata when the cache is missing or stale, so hook examples should label automatic snapshot calls as cache-aware opt-ins.
+- compact project-memory status
+- relevant documentation routes
+- relevant active plan hints when needed
+- bounded next reads
+
+Neither mode reports graph size, cache metrics, communities, or index statistics as project narrative.
+
+## Safety
+
+Load and query do not modify source, docs, or project config. Query may create or incrementally refresh ignored `.dotdotgod/vectors/` files and may download the configured local embedding model into the user model cache on first use. Secret-like paths and excluded local-memory bodies must not be embedded.
 
 ## Traceability
-
-
 
 <!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->
 <!-- generated: do not edit manually -->
@@ -126,28 +89,25 @@ Claude Code and Codex adapters may document optional start hooks that remind age
 
 - Implemented by:
   - [packages/pi/extensions/load-project/index.ts](../../packages/pi/extensions/load-project/index.ts)
-  - [packages/pi/extensions/load-project/utils.ts](../../packages/pi/extensions/load-project/utils.ts)
+  - [packages/pi/extensions/load-project/prompt.ts](../../packages/pi/extensions/load-project/prompt.ts)
+  - [packages/pi/extensions/load-project/snapshot.ts](../../packages/pi/extensions/load-project/snapshot.ts)
+  - [packages/cli/src/commands/query.mjs](../../packages/cli/src/commands/query.mjs)
   - [packages/shared/workflows/load.md](../../packages/shared/workflows/load.md)
-  - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
-  - [packages/claude-code/hooks/README.md](../../packages/claude-code/hooks/README.md)
-  - [packages/codex/hooks/README.md](../../packages/codex/hooks/README.md)
 - Verified by:
   - [packages/pi/test/load-project-utils.test.ts](../../packages/pi/test/load-project-utils.test.ts)
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
-  - [docs/test/README.md](../test/README.md)
 - Related docs:
   - [docs/spec/CROSS_AGENT_SUPPORT.md](CROSS_AGENT_SUPPORT.md)
-  - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../arch/CROSS_AGENT_ARCHITECTURE.md)
+  - [docs/spec/cli/QUERY.md](cli/QUERY.md)
   - [docs/arch/EXTENSION_ARCHITECTURE.md](../arch/EXTENSION_ARCHITECTURE.md)
-  - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
 - Verification commands:
   - `pnpm --filter @dotdotgod/pi test`
   - `pnpm --filter @dotdotgod/cli test`
-  - `node packages/cli/bin/dotdotgod.mjs load-snapshot . --json`
+  - `node packages/cli/bin/dotdotgod.mjs query . "Load project memory" --limit 5 --json`
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/pi/extensions/load-project/index.ts","packages/pi/extensions/load-project/utils.ts","packages/shared/workflows/load.md","packages/cli/src/core.mjs","packages/claude-code/hooks/README.md","packages/codex/hooks/README.md"],"verifiedBy":["packages/pi/test/load-project-utils.test.ts","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/README.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/EXTENSION_ARCHITECTURE.md","docs/arch/VALIDATION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/pi test","pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs load-snapshot . --json"]}
+{"kind":"spec","implementedBy":["packages/pi/extensions/load-project/index.ts","packages/pi/extensions/load-project/prompt.ts","packages/pi/extensions/load-project/snapshot.ts","packages/cli/src/commands/query.mjs","packages/shared/workflows/load.md"],"verifiedBy":["packages/pi/test/load-project-utils.test.ts","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/cli/QUERY.md","docs/arch/EXTENSION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/pi test","pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs query . \"Load project memory\" --limit 5 --json"]}
 ```

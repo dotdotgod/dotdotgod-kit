@@ -151,12 +151,11 @@ export class ContextOrchestrationController {
 		}
 
 		this.contextShaping.lastLoadEntryCount = entryCount;
-		const loadSnapshot = runDotdotgodCli(ctx.cwd, ["load-snapshot", ctx.cwd, "--json"]);
 		this.contextShaping.pendingLoadPrompt = buildLoadPrompt(
 			ctx.cwd,
 			"",
 			collectSnapshot(ctx.cwd),
-			loadSnapshot,
+			undefined,
 			{ mode: "compact" },
 		);
 		this.contextShaping.pendingLoadReason = "plan-mode-context-shaping";
@@ -315,11 +314,6 @@ export class ContextOrchestrationController {
 			return;
 		}
 
-		const snapshot = runDotdotgodCli(ctx.cwd, [
-			"load-snapshot",
-			ctx.cwd,
-			"--json",
-		]);
 		let currentPlanContent: string | undefined;
 		if (this.planArtifact.currentPlanPath) {
 			try {
@@ -350,7 +344,7 @@ export class ContextOrchestrationController {
 				"--json",
 			]),
 		}));
-		const contextParts = [formatPlanCliContextSummary(validate, snapshot, impacts)];
+		const contextParts = [formatPlanCliContextSummary(validate, impacts)];
 		let referenceExpansionSummary = "";
 		const hasExplicitReferences = hasExplicitBracketReferences(
 			this.planArtifact.lastPlanningRequest,

@@ -21,7 +21,7 @@ Future tasks reuse archived memory
 ```
 
 1. **Initialize the memory surface.** `dotdotgod init` or an adapter initializer creates `AGENTS.md`, thin agent entrypoints, docs indexes, and the `docs/spec`, `docs/arch`, `docs/test`, `docs/plan`, and `docs/archive` areas. Those files are the source of truth; the graph cache is derived from them.
-2. **Load curated project memory when needed.** `/dd:load`, `dd:load`, or `dotdotgod load-snapshot` gives the agent bounded metadata: cache freshness, memory areas, graph size, communities, and archive policy. The agent then reads only relevant rules, indexes, specs, architecture docs, tests, or active plans.
+2. **Load curated project memory when needed.** `/dd:load` or `dd:load` gives the agent a prefix-compressed shared Markdown tree; focused arguments can use local `dotdotgod query` results. The agent then reads only relevant rules, indexes, specs, architecture docs, tests, or active plans.
 3. **Resolve references and inspect impact.** `dotdotgod expand` resolves explicit `[[...]]` references, `expand --fuzzy` can resolve high-signal natural prompts, and `graph impact --changed <path>` uses maintained project links to surface related specs, tests, architecture, and source before broad scanning.
 4. **Plan in a durable file.** Current task intent is written to `docs/plan/<task-slug>/README.md` with scope, target files, risks, verification, and executable steps.
 5. **Keep planning separate from mutation.** In Pi, Plan Mode allows exploration and plan-file edits while blocking source/config changes until execution mode.

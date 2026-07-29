@@ -107,7 +107,7 @@ describe('dotdotgod CLI e2e', () => {
       [['config', 'init', '--help'], /dotdotgod config init <root> \[--json\]/],
       [['help', 'config', 'init'], /dotdotgod config init <root> \[--json\]/],
       [['status', 'help'], /dotdotgod status <root>/],
-      [['load-snapshot', '--help'], /dotdotgod load-snapshot <root>/],
+      [['query', '--help'], /dotdotgod query <root> <query>/],
       [['resolve', '--help'], /dotdotgod resolve <root> <ref>/],
       [['expand', '--help'], /--fuzzy/],
       [['traceability', '--help'], /dotdotgod traceability links <root>/],
@@ -455,13 +455,6 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(metadataArea.description, 'Product intent and user-facing acceptance criteria.');
     assert.deepEqual(metadataArea.clarify.audience, ['first-time developers', 'contributors']);
     assert.equal(metadataArea.clarify.documentType, 'explanation');
-    const metadataSnapshot = json(run(['load-snapshot', metadataRoot, '--json']));
-    const snapshotArea = metadataSnapshot.memoryConfig.areas.find((area) => area.id === 'product');
-    assert.equal(snapshotArea.description, metadataArea.description);
-    assert.deepEqual(snapshotArea.clarify, metadataArea.clarify);
-    const boundedArea = metadataSnapshot.memoryAreas.areas.find((area) => area.area === 'product');
-    assert.equal(boundedArea.description, metadataArea.description);
-    assert.deepEqual(boundedArea.clarify, metadataArea.clarify);
   });
 
   it('supports configured markdown size budgets and size-check exclusions', () => {
@@ -543,7 +536,7 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(payload.errors.some((error) => error.file.includes('.dotdotgod-plan')), false);
   });
 
-  it('validates, indexes, reports status, snapshots, and graph impact results', () => {
+  it('validates, indexes, reports status, and graph impact results', () => {
     const root = createFixture();
 
     const validate = run(['validate', root, '--include-local-memory']);
@@ -573,39 +566,6 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(status.ok, true);
     assert.equal(status.schemaOk, true);
     assert.equal(status.reason, 'fresh');
-
-    const snapshot = json(run(['load-snapshot', root, '--json']));
-    assert.equal(snapshot.cache.status, 'fresh');
-    assert.equal(snapshot.metadata.cacheRefreshed, false);
-    assert.equal(snapshot.metadata.refreshReason, 'fresh');
-    assert.equal(typeof snapshot.metadata.elapsedMs, 'number');
-    assert(snapshot.graph.nodes > 0);
-    assert(snapshot.graph.byType.memory_area >= 1);
-    assert(snapshot.graph.byType.package_resource >= 1);
-    assert(snapshot.graph.byType.package >= 1);
-    assert(snapshot.graph.byRelation.routes_to >= 1);
-    assert(snapshot.graph.byRelation.implemented_by >= 1);
-    assert(snapshot.graph.byRelation.verified_by >= 1);
-    assert(snapshot.graph.byRelation.includes_resource >= 1);
-    assert.equal(snapshot.bounds.fullGraphIncluded, false);
-    assert.equal(snapshot.bounds.archiveMapIncluded, true);
-    assert.equal(snapshot.bounds.archiveBodiesIncluded, false);
-    assert(snapshot.quality.snapshotBytes > 0);
-    assert(snapshot.quality.approxSnapshotTokens > 0);
-    assert.equal(typeof snapshot.quality.omittedCommunities, 'number');
-    assert.equal(typeof snapshot.quality.omittedMemoryAreaItems, 'number');
-    assert.equal(snapshot.commandGuidance.source, 'missing-install');
-    assert.equal(snapshot.commandGuidance.install, 'npm install -D @dotdotgod/cli');
-    assert.equal(snapshot.commandGuidance.validate, 'npx dotdotgod validate .');
-    assert.equal(snapshot.memoryConfig.source, 'default');
-    assert.equal(snapshot.memoryConfig.impactRanking.preset, 'balanced');
-    assert(snapshot.memoryPolicy.sharedAreas.includes('spec'));
-    assert(snapshot.memoryPolicy.localAreas.includes('active-plan'));
-    assert(snapshot.memoryPolicy.freshAreas.includes('active-plan'));
-    assert(snapshot.memoryPolicy.staleAreas.includes('archive-body'));
-    assert(snapshot.memoryAreas.areas.some((area) => area.area === 'active-plan' && area.role === 'active-task-intent' && area.scope === 'local' && area.freshness === 'fresh'));
-    assert(snapshot.communities.communities.length > 0);
-    assert(['leiden', 'deterministic-domain-grouping'].includes(snapshot.communities.method));
 
     const communities = json(run(['graph', 'communities', root, '--json']));
     assert.equal(communities.command, 'graph communities');
@@ -765,9 +725,11 @@ describe('dotdotgod CLI e2e', () => {
     assert(payload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_CLARIFY_DOCUMENT_TYPE'));
     assert(payload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_CLARITY_GOAL'));
     assert(payload.errors.some((error) => error.code === 'MEMORY_CONFIG_INVALID_CLARIFY_EDIT_RULES'));
-    const snapshot = json(run(['load-snapshot', root, '--json']));
-    assert.equal(snapshot.memoryConfig.source, 'dotdotgod.config.json');
-    assert(snapshot.memoryPolicy.sharedAreas.includes('spec'));
+    const configResult = run(['config', root, '--json']);
+    assert.notEqual(configResult.status, 0);
+    const fallbackConfig = JSON.parse(configResult.stdout);
+    assert.equal(fallbackConfig.source, 'dotdotgod.config.json');
+    assert(fallbackConfig.config.areas.some((area) => area.id === 'spec'));
   });
 
   it('validates configurable traceability scopes with multiple path arrays', () => {
@@ -858,38 +820,11 @@ describe('dotdotgod CLI e2e', () => {
     const payload = JSON.parse(invalid.stdout);
     assert(payload.errors.some((error) => error.code === 'TRACEABILITY_CONFIG_INVALID_REQUIRED'));
     assert(payload.errors.some((error) => error.code === 'TRACEABILITY_CONFIG_INVALID_EXCLUDE'));
-    const snapshot = json(run(['load-snapshot', root, '--json']));
-    assert.equal(snapshot.memoryConfig.source, 'dotdotgod.config.json');
-    assert.deepEqual(snapshot.memoryConfig.traceability.required, ['docs/spec/**']);
-  });
-
-  it('returns configured pinned load files from direct disk reads', () => {
-    const root = createFixture();
-    writeConfig(root, {
-      load: {
-        pinnedPaths: ['packages/app/helper.mjs', 'docs/arch/PINNED_MISSING.md'],
-        pinnedBodies: ['docs/plan/task/README.md'],
-      },
-    });
-    const snapshot = json(run(['load-snapshot', root, '--json']));
-    assert.deepEqual(snapshot.pinnedFiles.configured, { pinnedPaths: ['packages/app/helper.mjs', 'docs/arch/PINNED_MISSING.md'], pinnedBodies: ['docs/plan/task/README.md'] });
-    const helper = snapshot.pinnedFiles.paths.find((entry) => entry.path === 'packages/app/helper.mjs');
-    assert.equal(helper.status, 'present');
-    assert(snapshot.memoryAreas.areas.every((area) => !area.files.includes('packages/app/helper.mjs')));
-    assert.equal(snapshot.pinnedFiles.paths.find((entry) => entry.path === 'docs/arch/PINNED_MISSING.md').status, 'missing');
-    const planBody = snapshot.pinnedFiles.bodies.find((entry) => entry.path === 'docs/plan/task/README.md');
-    assert.equal(planBody.status, 'present');
-    assert.match(planBody.content, /# Task/);
-    assert.equal(snapshot.quality.pinnedPaths, 3);
-    assert.equal(snapshot.quality.pinnedBodies, 1);
-    assert.equal(snapshot.bounds.pinnedBodyChars, 10000);
-
-    writeConfig(root, { load: { pinnedBodies: ['.env'] } });
-    const invalid = run(['validate', root, '--include-local-memory', '--json']);
-    assert.notEqual(invalid.status, 0);
-    assert(JSON.parse(invalid.stdout).errors.some((error) => error.code === 'LOAD_CONFIG_SECRET_PINNED_PATH'));
-    const fallbackSnapshot = json(run(['load-snapshot', root, '--json']));
-    assert.deepEqual(fallbackSnapshot.pinnedFiles.configured, { pinnedPaths: [], pinnedBodies: [] });
+    const configResult = run(['config', root, '--json']);
+    assert.notEqual(configResult.status, 0);
+    const fallbackConfig = JSON.parse(configResult.stdout);
+    assert.equal(fallbackConfig.source, 'dotdotgod.config.json');
+    assert.deepEqual(fallbackConfig.config.traceability.required, ['docs/spec/**']);
   });
 
   it('reports validation failures and stale indexes', () => {
@@ -920,14 +855,12 @@ describe('dotdotgod CLI e2e', () => {
     const stalePayload = JSON.parse(stale.stdout);
     assert.equal(stalePayload.status, 'stale');
     assert(stalePayload.examples.includes('docs/spec/README.md'));
-    const snapshot = json(run(['load-snapshot', root, '--json']));
-    assert.equal(snapshot.metadata.cacheRefreshed, true);
-    assert.equal(snapshot.metadata.previousStatus, 'stale');
-    assert.equal(snapshot.metadata.refreshReason, 'content-changed');
-    assert.equal(snapshot.metadata.fullRebuild, false);
-    assert.equal(snapshot.metadata.changedFiles, 1);
-    assert.equal(typeof snapshot.metadata.elapsedMs, 'number');
-    assert.equal(snapshot.cache.status, 'fresh');
+    const refreshed = json(run(['graph', 'communities', root, '--json']));
+    assert.equal(refreshed.metadata.cacheRefreshed, true);
+    assert.equal(refreshed.metadata.previousStatus, 'stale');
+    assert.equal(refreshed.metadata.refreshReason, 'content-changed');
+    assert.equal(refreshed.metadata.fullRebuild, false);
+    assert.equal(refreshed.metadata.changedFiles, 1);
   });
 
   it('rebuilds incompatible cache schemas during lazy refresh', () => {
@@ -947,11 +880,10 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(stalePayload.reason, 'schema-mismatch');
     assert.equal(stalePayload.schemaOk, false);
 
-    const snapshot = json(run(['load-snapshot', root, '--json']));
-    assert.equal(snapshot.metadata.cacheRefreshed, true);
-    assert.equal(snapshot.metadata.refreshReason, 'schema-mismatch');
-    assert.equal(snapshot.metadata.fullRebuild, true);
-    assert.equal(snapshot.cache.schemaOk, true);
+    const refreshed = json(run(['graph', 'communities', root, '--json']));
+    assert.equal(refreshed.metadata.cacheRefreshed, true);
+    assert.equal(refreshed.metadata.refreshReason, 'schema-mismatch');
+    assert.equal(refreshed.metadata.fullRebuild, true);
   });
 
   it('checks only indexable markdown files for index freshness', () => {

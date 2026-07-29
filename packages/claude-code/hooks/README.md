@@ -43,7 +43,7 @@ This SDLC framing maps common Claude Code guidance about a project brain to dotd
 - Use `/dd:load` or the `project-load` skill when you intentionally want a curated project-memory load.
 - Use `/dd:plan` or the `doc-first-planning` skill before implementation, refactors, migrations, or multi-step work.
 - Use `/dd:impact` or the `impact-review` skill after source/config/docs edits and before broad verification, commits, pushes, publishing, or final handoff.
-- During planning, prefer bounded dotdotgod context/status helpers: `status`, `load-snapshot`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and intentional `index` refreshes. Do not run mutating scaffold/config commands such as `init` or `config init` from hooks unless the user explicitly requested that setup.
+- During planning, prefer bounded dotdotgod context/status helpers: `status`, `query`, `resolve`, `expand`, `graph impact`, `graph communities`, read-only `config`, and intentional `index` refreshes. Do not run mutating scaffold/config commands such as `init` or `config init` from hooks unless the user explicitly requested that setup.
 - Use hooks for small reminders at session start, prompt submission, tool boundaries, or stop time.
 
 ## Opt-In Levels
@@ -67,7 +67,7 @@ This example reminds Claude to use dotdotgod intentionally and checks cache stat
         "hooks": [
           {
             "type": "command",
-            "command": "printf '%s\\n' 'dotdotgod: use /dd:load or dotdotgod load-snapshot when project memory is needed.'",
+            "command": "printf '%s\\n' 'dotdotgod: use /dd:load for project memory or dotdotgod query for focused documentation search.'",
             "timeout": 10
           }
         ]
@@ -167,4 +167,4 @@ A strict script must read hook JSON from stdin, confirm the session is explicitl
 - Do not run `dotdotgod init` or `dotdotgod config init` automatically.
 - Do not move active plans to `docs/archive/` automatically.
 - Do not block all source writes without an explicit plan-only state signal.
-- Do not treat `dotdotgod load-snapshot` as side-effect-free in strict hooks; it may lazily refresh the ignored `.dotdotgod/` cache.
+- Treat `dotdotgod query` as a cache-writing command in strict hooks; it may refresh `.dotdotgod/vectors/` and download the local model on first use.

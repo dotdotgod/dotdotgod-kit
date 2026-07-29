@@ -169,7 +169,7 @@ export function runValidate(argv) {
   }
   if (options.checkIndex) {
     const index = readIndex(root);
-    if (!index) addError(cacheFile(root), 'INDEX_MISSING', 'Expected .dotdotgod index cache.', null, 'run `dotdotgod index <root>` or a lazy-refreshing command such as `dotdotgod load-snapshot <root> --json`.');
+    if (!index) addError(cacheFile(root), 'INDEX_MISSING', 'Expected .dotdotgod index cache.', null, 'run `dotdotgod index <root>` to build the graph index.');
     else {
       const schemaVersion = index.schemaVersion ?? index.version ?? null;
       if (schemaVersion !== CACHE_VERSION) addError(cacheFile(root), 'INDEX_SCHEMA_MISMATCH', `Index schema is ${String(schemaVersion)}; expected ${CACHE_VERSION}.`, null, 'run `dotdotgod index <root>` to rebuild the cache with the current schema.');
@@ -181,7 +181,7 @@ export function runValidate(argv) {
         const indexedHash = indexed.get(path);
         const currentHash = fingerprint(file);
         if (!indexedHash) addError(file, 'INDEX_MISSING_FILE', 'Markdown file is not present in the current graph index.', null, 'run `dotdotgod index <root>` to refresh the graph index.');
-        else if (indexedHash !== currentHash) addError(file, 'INDEX_STALE', 'Markdown fingerprint differs from the current graph index.', null, 'run `dotdotgod index <root>` or a lazy-refreshing command such as `dotdotgod load-snapshot <root> --json`.');
+        else if (indexedHash !== currentHash) addError(file, 'INDEX_STALE', 'Markdown fingerprint differs from the current graph index.', null, 'run `dotdotgod index <root>` to refresh the graph index.');
       }
     }
   }

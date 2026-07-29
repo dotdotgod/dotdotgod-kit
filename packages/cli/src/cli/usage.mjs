@@ -31,9 +31,11 @@ Create dotdotgod.config.json with the built-in default memory, traceability, val
     case 'status':
       return `Usage:
   dotdotgod status <root> [--json]`;
-    case 'load-snapshot':
+    case 'query':
       return `Usage:
-  dotdotgod load-snapshot <root> [--json]`;
+  dotdotgod query <root> <query> [--limit n] [--json]
+
+Search shared project documentation with the local multilingual E5 vector index.`;
     case 'plan':
       return `Usage:
   dotdotgod plan validate docs/plan/<task-slug>/README.md [--stage stage] [--json]
@@ -102,7 +104,7 @@ Ranks nodes related to one or more changed files. <root> is the project root; re
   dotdotgod config <root> [--json]
   dotdotgod config init <root> [--json]
   dotdotgod status <root> [--json]
-  dotdotgod load-snapshot <root> [--json]
+  dotdotgod query <root> <query> [--limit n] [--json]
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]
   dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]
   dotdotgod traceability links <root> [--check|--write] [--json]

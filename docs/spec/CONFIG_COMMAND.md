@@ -50,7 +50,7 @@ The config command surfaces the same policy families that validation, snapshots,
 - `impactRanking`: presets, weights, PPR, relation boosts, routing hints, and compact impact behavior.
 - `referenceExpansion.fuzzy.lowSignal`: `add`/`remove` term lists that tune low-signal fuzzy prompt matching without replacing built-in defaults.
 - `load.documentationSummary.exclude`: docs directories omitted from the Pi load prompt's documentation summary, independently from memory-area scope.
-- `load.pinnedPaths` and `load.pinnedBodies`: file lists that always surface pinned paths, and bounded pinned file contents, in `load-snapshot` output and full load prompts.
+- `load.pinnedPaths` and `load.pinnedBodies`: legacy validated compatibility fields that no longer alter Load output.
 - `planMode.writablePaths`: fail-closed documentation subtrees where Plan Mode may create or modify valid Markdown and perform constrained directory operations.
 
 ## Init Command

@@ -42,7 +42,7 @@ Both commands MUST expose help through `--help`, `-h`, and `help` without refres
 
 ## Index Reuse
 
-The commands MUST use the shared dotdotgod index through the lazy-refresh path used by `load-snapshot` and `graph` commands.
+The commands MUST use the shared dotdotgod index through the lazy-refresh path used by `resolve`, `expand`, and `graph` commands.
 
 When the index is missing, stale, or schema-mismatched, the command MAY refresh `.dotdotgod/` before returning output. JSON output MUST include refresh metadata so callers can see whether the cache changed.
 

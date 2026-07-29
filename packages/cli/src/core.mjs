@@ -3,7 +3,7 @@ import { commandUsage, hasHelpToken, helpCommandFromArgs, isHelpToken, isVersion
 import { runValidate } from './validate/run.mjs';
 import { runIndex, runStatus } from './index/cache.mjs';
 import { runConfig } from './commands/config.mjs';
-import { runLoadSnapshot } from './commands/load-snapshot.mjs';
+import { runQuery } from './commands/query.mjs';
 import { runResolve, runExpand } from './reference/resolve.mjs';
 import { runTraceability } from './commands/traceability.mjs';
 import { runGraph } from './commands/graph.mjs';
@@ -19,7 +19,7 @@ export { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_INTEGRATIONS_POLICY, DEFAULT_LOA
 export { buildCommunities, relationWeight } from './graph/communities.mjs';
 export { addEdge, addNode, compactGraph, expandGraph, graphStats, jsonSize, shardFile, writeJson } from './graph/store.mjs';
 export { cacheFile, collectIndexFiles, fingerprint, shouldIndexPath } from './index/files.mjs';
-export { buildMemoryAreas, buildPinnedFiles, detectCommandGuidance, detectPackageManager } from './load-snapshot/summary.mjs';
+export { buildMemoryAreas, buildPinnedFiles, detectCommandGuidance, detectPackageManager } from './memory/summary.mjs';
 export { isReadmeIndexPath, retrievalMetadataForPath } from './graph/metadata.mjs';
 export { buildGraph } from './graph/extract.mjs';
 export { addDeterministicSemanticEdges } from './graph/semantic.mjs';
@@ -28,7 +28,9 @@ export { runValidate } from './validate/run.mjs';
 export { buildImpactReport, buildCompactImpactReport } from './impact/report.mjs';
 export { formatCompactImpactOutput, formatYmlGraphImpactError, formatYmlImpactOutput } from './impact/format.mjs';
 export { runConfig } from './commands/config.mjs';
-export { runLoadSnapshot } from './commands/load-snapshot.mjs';
+export { buildVectorIndex, parseQueryOptions, queryDocumentation, runQuery } from './commands/query.mjs';
+export { chunkMarkdown, collectDocumentationChunks, collectDocumentationMarkdown, textFingerprint } from './query/chunks.mjs';
+export { readVectorCache, VECTOR_DIMENSIONS, VECTOR_MODEL, VECTOR_SCHEMA_VERSION, vectorCachePaths, writeVectorCache } from './query/store.mjs';
 export { extractBracketReferences, extractFuzzyReferences, normalizeReferenceAlias } from './reference/extract.mjs';
 export { resolveReferenceCandidates, runResolve, runExpand } from './reference/resolve.mjs';
 export { parseTraceabilityOptions, runTraceability } from './commands/traceability.mjs';
@@ -53,7 +55,7 @@ export async function runCli(argv = process.argv.slice(2)) {
   else if (command === 'index') runIndex(args);
   else if (command === 'config') runConfig(args);
   else if (command === 'status') runStatus(args);
-  else if (command === 'load-snapshot') runLoadSnapshot(args);
+  else if (command === 'query') await runQuery(args);
   else if (command === 'resolve') runResolve(args);
   else if (command === 'expand') runExpand(args);
   else if (command === 'traceability') runTraceability(args);

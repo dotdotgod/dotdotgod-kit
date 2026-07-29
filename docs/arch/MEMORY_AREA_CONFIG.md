@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Memory-area config turns the docs-first memory model into an explicit project policy. The CLI uses the policy to classify files, attach graph retrieval metadata, decide which historical bodies are indexed by default, and expose bounded load-snapshot summaries.
+Memory-area config turns the docs-first memory model into an explicit project policy. The CLI uses the policy to classify files, attach graph retrieval metadata, and decide which historical bodies are indexed or searched by default.
 
 ## Vocabulary
 
@@ -51,7 +51,7 @@ The first matching area classifies a path after exclusions are applied. The defa
 
 File discovery still respects gitignore and the supported text/source/config file filter.
 
-After generic exclusions for secrets, generated files, dependencies, and build outputs, memory-area policy can exclude matched files when `includeBodiesByDefault` is `false`. This is how archive bodies remain outside the default index and load snapshot.
+After generic exclusions for secrets, generated files, dependencies, and build outputs, memory-area policy can exclude matched files when `includeBodiesByDefault` is `false`. This is how archive bodies remain outside the default graph and vector indexes.
 
 Ignored local-memory recovery is derived from configured local areas whose bodies are enabled. Exact paths and `/**` subtree roots are walked directly under a hard cap, then every candidate passes the normal index safety and area-inclusion checks. Broad `**/suffix` patterns do not trigger repository-wide local walks. The archive map remains discoverable while the archive-body area's disabled body policy prevents recursive archive indexing.
 
@@ -68,33 +68,19 @@ Each file node receives retrieval metadata derived from the resolved memory area
 - `retrieval.freshness`
 - retrieval signals such as `scope:shared`, `scope:local`, `freshness:fresh`, and `freshness:stale`
 
-The graph also creates `memory_area:*` nodes with area label, role, scope, freshness, priority, and inclusion policy. `belongs_to_area` edges carry the same scope and freshness metadata. Optional document-clarity metadata is preserved in resolved config and load-snapshot area summaries rather than changing graph ranking semantics.
+The graph also creates `memory_area:*` nodes with area label, role, scope, freshness, priority, and inclusion policy. `belongs_to_area` edges carry the same scope and freshness metadata. Optional document-clarity metadata is preserved in resolved config output rather than changing graph ranking semantics.
 
 Impact ranking uses this metadata as a bounded memory-policy score. Curated traceability remains higher-confidence than deterministic semantic edges, while memory priority only adjusts retrieval order without replacing explicit docs/code/test links.
-
-## Snapshot Policy
-
-`load-snapshot` exposes config policy in bounded form:
-
-- `memoryConfig`: the resolved config source and area definitions, including optional `description` and `clarify` metadata when configured
-- `memoryPolicy`: area ids grouped by shared/local and fresh/stale
-- `memoryAreas`: bounded files by configured area, including optional area clarity metadata when configured
-- `pinnedFiles`: configured pinned paths and bounded pinned bodies from the `load` policy family
-- `bounds.archiveBodiesIncluded`: whether stale archive bodies were indexed
-
-The snapshot remains a navigation layer. It does not embed the full graph or archive bodies by default.
 
 ## Load Documentation Summary Policy
 
 `load.documentationSummary.exclude` is separate from `memory.areas` on purpose. Memory areas classify retrieval roles and index inclusion, while the documentation-summary policy controls only which discovered docs directories Pi renders in the load prompt's book-like table of contents. Both built-in and materialized workspace defaults exclude `docs/plan` and `docs/archive`, but neither policy is derived from local-memory scope. An explicit empty exclusion list opts both directories into the summary without changing their memory classification or archive-body policy.
 
-The CLI owns validation, normalization, fallback defaults, config display, and snapshot serialization. The Pi adapter dynamically discovers a sorted, bounded set of direct `docs/` child directories, reads the resolved policy from `load-snapshot.memoryConfig`, and applies the built-in exclusion list when the CLI snapshot is unavailable. Plan Mode automatic compact loads obtain the same CLI snapshot instead of silently using fallback exclusions.
+The CLI owns validation, normalization, fallback defaults, and config display. The Pi adapter reads the root config directly, discovers included Markdown recursively, and renders a prefix-compressed documentation tree. CLI query applies the same exclusion policy before vector indexing.
 
-## Load Pinned Files Policy
+## Legacy Load Pinned Fields
 
-The pinned-file portion of the `load` policy family is also separate from `memory.areas`: `load.pinnedPaths`/`load.pinnedBodies` express "always show this file during project loading" regardless of classification.
-
-Pinned files are read directly from disk at snapshot time instead of through the graph index, so stale caches or non-indexed paths cannot hide them. Direct reads therefore carry stronger safety checks: repository-relative path validation, secret-like path rejection in both validation and runtime expansion, binary detection via null-byte sniffing, a bounded directory walk for patterns, and hard caps on pinned path counts, body counts, and body characters with omitted/truncated reporting. Archive-body defaults are unchanged; a broad archive pattern in `pinnedBodies` is explicit configured intent and still runs inside the same bounds and secret checks.
+`load.pinnedPaths` and `load.pinnedBodies` remain validated and serialized for config compatibility, but no longer affect Load after removal of the snapshot command. New projects should use the maintained documentation map, README routing, and focused query instead of pinned Load bodies. Secret-like values remain invalid so legacy config cannot silently preserve unsafe paths.
 
 ## Validation Policy
 
