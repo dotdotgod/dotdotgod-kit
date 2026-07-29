@@ -8,10 +8,7 @@ This config controls only the size-budget checks. Exempted files remain subject 
 
 ## Config File
 
-Validation policy lives in the same optional root config file as memory, traceability, and impact ranking policy. Use `dotdotgod config <root>` to inspect the resolved policy or `dotdotgod config init <root>` to create an editable default config.
-
-1. `dotdotgod.config.json`
-2. `.dotdotgodrc.json`
+Validation policy lives in the optional root `dotdotgod.config.json` file alongside memory, traceability, and impact ranking policy. Use `dotdotgod config <root>` to inspect the resolved policy or `dotdotgod config init <root>` to create an editable default config.
 
 ## Config Shape
 

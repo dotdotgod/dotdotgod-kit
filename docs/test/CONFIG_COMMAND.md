@@ -16,15 +16,14 @@ These checks cover `dotdotgod config` and `dotdotgod config init` behavior for p
 `packages/cli/test/e2e.test.mjs` verifies:
 
 - `dotdotgod init`, `dotdotgod config init`, and the POSIX fallback produce structurally identical config data
-- project init reports config dry-run, skip, force-backup, and `.dotdotgodrc.json` conflict behavior
+- project init reports config dry-run and existing-file skip behavior
 - packaged Pi, Claude Code, and Codex adapters include the generated fallback config template
 - `dotdotgod config <root> --json` reports default config without creating `.dotdotgod/`
 - `dotdotgod config init <root> --json` creates `dotdotgod.config.json`
 - generated config contains the default archive-body exclusion, markdown validation budgets, balanced impact ranking preset, and fuzzy low-signal add/remove settings without noisy default `description` or `clarify` fields
 - show output reports `dotdotgod.config.json` after initialization
-- init refuses to overwrite an existing config without `--force`
-- init with `--force` overwrites `dotdotgod.config.json`
-- init refuses when `.dotdotgodrc.json` exists, even with `--force`
+- init refuses to overwrite an existing `dotdotgod.config.json`
+- `.dotdotgodrc.json` is not recognized as a project config source
 - `dotdotgod config <root> --json` preserves configured memory-area `description` and `clarify` metadata
 - invalid config show output reports validation errors and does not refresh the graph cache
 - command-specific help works for `config` and `config init`

@@ -14,7 +14,7 @@ const INDEX_TEXT_EXTENSIONS = new Set([
 ]);
 const INDEX_TEXT_FILENAMES = new Set([
   'AGENTS.md', 'CLAUDE.md', 'CODEX.md', 'README', 'README.md', 'LICENSE', 'NOTICE', 'CHANGELOG', 'CHANGELOG.md', 'CONTRIBUTING.md', 'SECURITY.md', 'AUTHORS', 'CODEOWNERS', '.gitignore', '.editorconfig',
-  'dotdotgod.config.json', '.dotdotgodrc.json', 'package.json', 'pnpm-workspace.yaml', 'tsconfig.json', 'jsconfig.json',
+  'dotdotgod.config.json', 'package.json', 'pnpm-workspace.yaml', 'tsconfig.json', 'jsconfig.json',
   'Dockerfile', 'Containerfile', 'Makefile', 'Justfile', 'Procfile', 'Rakefile', 'Gemfile', 'go.mod', 'go.sum', 'Cargo.toml', 'Cargo.lock', 'pyproject.toml', 'requirements.txt', 'Pipfile', 'Pipfile.lock', 'poetry.lock', 'deno.json', 'deno.jsonc', 'bunfig.toml',
   '.env.example', '.env.sample', '.env.template',
 ]);

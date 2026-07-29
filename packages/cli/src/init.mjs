@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { defaultDotdotgodConfigText } from './memory/config.mjs';
 
@@ -7,20 +7,16 @@ function action(status, path, extra = {}) {
 }
 
 function formatAction(item) {
-  const extras = [];
-  if (item.backup) extras.push(`backup=${item.backup}`);
-  if (item.add) extras.push(`add=${item.add}`);
-  if (item.existing) extras.push(`existing=${item.existing}`);
-  return `${item.status.padEnd(13)} ${item.path}${extras.length > 0 ? ` ${extras.join(' ')}` : ''}`;
+  const extra = item.add ? ` add=${item.add}` : '';
+  return `${item.status.padEnd(13)} ${item.path}${extra}`;
 }
 
 function parseInitOptions(argv) {
-  const options = { root: null, projectName: '', dotdotSetting: false, force: false, dryRun: false, json: false };
+  const options = { root: null, projectName: '', dotdotSetting: false, dryRun: false, json: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--json') options.json = true;
     else if (arg === '--dotdot-setting') options.dotdotSetting = true;
-    else if (arg === '--force') options.force = true;
     else if (arg === '--dry-run') options.dryRun = true;
     else if (arg === '--project-name') {
       const value = argv[i + 1];
@@ -50,35 +46,21 @@ function initError(options, code, message) {
   process.exit(2);
 }
 
-function backupPathFor(target) {
-  const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-  const base = `${target}.bak.${timestamp}`;
-  let candidate = base;
-  for (let suffix = 1; existsSync(candidate); suffix += 1) candidate = `${base}.${suffix}`;
-  return candidate;
-}
-
 function writeInitFile(options, relativePath, content, actions) {
   const target = join(options.root, relativePath);
-  if (existsSync(target) && !options.force) {
+  if (existsSync(target)) {
     actions.push(action('skipped', target));
     return;
   }
 
-  let backup = '';
-  if (existsSync(target) && options.force) {
-    backup = backupPathFor(target);
-    if (!options.dryRun) renameSync(target, backup);
-  }
-
   if (options.dryRun) {
-    actions.push(action(backup ? 'would_replace' : 'would_create', target, backup ? { backup } : {}));
+    actions.push(action('would_create', target));
     return;
   }
 
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, content.endsWith('\n') ? content : `${content}\n`);
-  actions.push(action(backup ? 'replaced' : 'created', target, backup ? { backup } : {}));
+  actions.push(action('created', target));
 }
 
 function ensureGitignoreEntry(options, entry, actions) {
@@ -309,14 +291,11 @@ export function runInit(argv, usage) {
   const actions = [];
   for (const [relativePath, content] of initFiles(options)) writeInitFile(options, relativePath, content, actions);
 
-  const configPath = join(options.root, 'dotdotgod.config.json');
-  const rcPath = join(options.root, '.dotdotgodrc.json');
-  if (existsSync(rcPath)) actions.push(action('conflict', configPath, { existing: rcPath }));
-  else writeInitFile(options, 'dotdotgod.config.json', defaultDotdotgodConfigText(), actions);
+  writeInitFile(options, 'dotdotgod.config.json', defaultDotdotgodConfigText(), actions);
 
   for (const entry of ['docs/plan', 'docs/archive', '.dotdotgod']) ensureGitignoreEntry(options, entry, actions);
 
-  const payload = { ok: true, command: 'init', root: options.root, projectName: options.projectName, dryRun: options.dryRun, force: options.force, dotdotSetting: options.dotdotSetting, actions };
+  const payload = { ok: true, command: 'init', root: options.root, projectName: options.projectName, dryRun: options.dryRun, dotdotSetting: options.dotdotSetting, actions };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else for (const item of actions) console.log(formatAction(item));
 }

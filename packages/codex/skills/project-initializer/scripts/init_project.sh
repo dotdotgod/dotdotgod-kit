@@ -6,7 +6,7 @@ CONFIG_TEMPLATE="$SCRIPT_DIR/../templates/dotdotgod.config.json"
 
 usage() {
   cat <<'EOF'
-Usage: init_project.sh <project-root> [--project-name NAME] [--dotdot-setting] [--force] [--dry-run]
+Usage: init_project.sh <project-root> [--project-name NAME] [--dotdot-setting] [--dry-run]
 
 Initializes:
   AGENTS.md, CLAUDE.md, CODEX.md
@@ -23,7 +23,6 @@ EOF
 
 PROJECT_ROOT=""
 PROJECT_NAME=""
-FORCE=0
 DRY_RUN=0
 DOTDOT_SETTING=0
 
@@ -39,10 +38,6 @@ while [ "$#" -gt 0 ]; do
       ;;
     --dotdot-setting)
       DOTDOT_SETTING=1
-      shift
-      ;;
-    --force)
-      FORCE=1
       shift
       ;;
     --dry-run)
@@ -85,15 +80,10 @@ if [ -z "$PROJECT_NAME" ]; then
 fi
 
 CONFIG_PATH="$PROJECT_ROOT/dotdotgod.config.json"
-RC_PATH="$PROJECT_ROOT/.dotdotgodrc.json"
-if [ ! -e "$RC_PATH" ] && { [ ! -e "$CONFIG_PATH" ] || [ "$FORCE" -eq 1 ]; } && [ ! -f "$CONFIG_TEMPLATE" ]; then
+if [ ! -e "$CONFIG_PATH" ] && [ ! -f "$CONFIG_TEMPLATE" ]; then
   echo "error: missing initializer config template: $CONFIG_TEMPLATE" >&2
   exit 2
 fi
-
-timestamp() {
-  date -u "+%Y%m%d%H%M%S"
-}
 
 print_result() {
   status=$1
@@ -110,41 +100,19 @@ write_file() {
   path=$1
   content=$2
 
-  if [ -e "$path" ] && [ "$FORCE" -ne 1 ]; then
+  if [ -e "$path" ]; then
     print_result "skipped" "$path"
     return
   fi
 
-  backup=""
-  if [ -e "$path" ] && [ "$FORCE" -eq 1 ]; then
-    backup_base="$path.bak.$(timestamp)"
-    backup="$backup_base"
-    suffix=1
-    while [ -e "$backup" ]; do
-      backup="$backup_base.$suffix"
-      suffix=$((suffix + 1))
-    done
-    if [ "$DRY_RUN" -ne 1 ]; then
-      mv "$path" "$backup"
-    fi
-  fi
-
   if [ "$DRY_RUN" -eq 1 ]; then
-    if [ -n "$backup" ]; then
-      print_result "would_replace" "$path" "backup=$backup"
-    else
-      print_result "would_create" "$path"
-    fi
+    print_result "would_create" "$path"
     return
   fi
 
   mkdir -p "$(dirname "$path")"
   printf '%s\n' "$content" > "$path"
-  if [ -n "$backup" ]; then
-    print_result "replaced" "$path" "backup=$backup"
-  else
-    print_result "created" "$path"
-  fi
+  print_result "created" "$path"
 }
 
 ensure_gitignore_entry() {
@@ -422,9 +390,7 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 This directory is local-only and ignored by git by default."
 
-if [ -e "$RC_PATH" ]; then
-  print_result "conflict" "$CONFIG_PATH" "existing=$RC_PATH"
-elif [ -e "$CONFIG_PATH" ] && [ "$FORCE" -ne 1 ]; then
+if [ -e "$CONFIG_PATH" ]; then
   print_result "skipped" "$CONFIG_PATH"
 else
   write_file "$CONFIG_PATH" "$(cat "$CONFIG_TEMPLATE")"

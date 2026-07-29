@@ -9,13 +9,13 @@ The `dotdotgod init` CLI command and bundled POSIX fallback produce the same bas
 ## CLI Contract
 
 ```bash
-dotdotgod init <project-root> [--project-name NAME] [--dotdot-setting] [--force] [--dry-run] [--json]
+dotdotgod init <project-root> [--project-name NAME] [--dotdot-setting] [--dry-run] [--json]
 ```
 
 Fallback script contract, used when `dotdotgod` is unavailable or not executable:
 
 ```bash
-sh skills/project-initializer/scripts/init_project.sh <project-root> [--project-name NAME] [--dotdot-setting] [--force] [--dry-run]
+sh skills/project-initializer/scripts/init_project.sh <project-root> [--project-name NAME] [--dotdot-setting] [--dry-run]
 ```
 
 ## Default Generated Files
@@ -45,18 +45,17 @@ It also ensures `.gitignore` contains:
 - Both paths MUST create the same baseline file set, local-memory `.gitignore` entries, and structurally identical `dotdotgod.config.json` data.
 - The fallback MUST copy a generated config template derived from the CLI's canonical default serializer.
 
-## Overwrite Policy
+## Existing-File Policy
 
-- Files already present are skipped by default.
-- `--force` replaces generated files only after moving the current file to `<name>.bak.<timestamp>`.
-- `--dry-run` reports intended create/update/replace actions without writing files.
+- Files already present are always preserved and skipped.
+- `--dry-run` reports intended create and update actions without writing files.
 - `--json` is supported by `dotdotgod init` for structured action reporting.
 
 ## Config Policy
 
 - New projects receive the complete public editable defaults rendered by `defaultDotdotgodConfigText()`.
-- Existing `dotdotgod.config.json` files follow the normal skip, dry-run, and force-backup rules.
-- If `.dotdotgodrc.json` exists, initialization preserves it, reports a config conflict, and skips `dotdotgod.config.json` even under `--force`; unrelated scaffold work continues.
+- `dotdotgod.config.json` is the only supported project config filename.
+- Existing `dotdotgod.config.json` files follow the normal skip and dry-run rules.
 - The fallback template is generated and packaged with each adapter rather than maintained separately in shell.
 
 ## Project Name
@@ -84,7 +83,7 @@ Generated docs follow these conventions:
 
 ## Non-Goals
 
-- The initializer does not merge into files already present unless `--force` is explicitly used.
+- The initializer does not merge into or replace files already present.
 - The initializer does not infer project stack beyond the project name.
 - `docs/plan`, `docs/archive`, and `.dotdotgod` are local working/cache areas by default and are ignored by git unless a project deliberately changes that policy.
 

@@ -104,8 +104,8 @@ describe('dotdotgod CLI e2e', () => {
       [['help', 'init'], /dotdotgod init <root>/],
       [['index', '-h'], /dotdotgod index <root>/],
       [['config', '--help'], /dotdotgod config init <root>/],
-      [['config', 'init', '--help'], /dotdotgod config init <root> \[--force\]/],
-      [['help', 'config', 'init'], /dotdotgod config init <root> \[--force\]/],
+      [['config', 'init', '--help'], /dotdotgod config init <root> \[--json\]/],
+      [['help', 'config', 'init'], /dotdotgod config init <root> \[--json\]/],
       [['status', 'help'], /dotdotgod status <root>/],
       [['load-snapshot', '--help'], /dotdotgod load-snapshot <root>/],
       [['resolve', '--help'], /dotdotgod resolve <root> <ref>/],
@@ -294,21 +294,13 @@ describe('dotdotgod CLI e2e', () => {
     assert(skipped.actions.some((item) => item.status === 'skipped' && item.path.endsWith('/dotdotgod.config.json')));
 
     writeFileSync(join(root, 'dotdotgod.config.json'), '{"custom":true}\n');
-    const forced = json(run(['init', root, '--force', '--json']));
-    const replacedAgents = forced.actions.find((item) => item.path.endsWith('/AGENTS.md'));
-    assert.equal(replacedAgents.status, 'replaced');
-    assert.match(replacedAgents.backup, /AGENTS\.md\.bak\./);
-    assert.equal(existsSync(replacedAgents.backup), true);
-    const replacedConfig = forced.actions.find((item) => item.path.endsWith('/dotdotgod.config.json'));
-    assert.equal(replacedConfig.status, 'replaced');
-    assert.match(replacedConfig.backup, /dotdotgod\.config\.json\.bak\./);
-    assert.equal(readFileSync(replacedConfig.backup, 'utf8'), '{"custom":true}\n');
-    assert.deepEqual(JSON.parse(readFileSync(join(root, 'dotdotgod.config.json'), 'utf8')), defaultDotdotgodConfigData());
-    const forcedAgain = json(run(['init', root, '--force', '--json']));
-    const replacedConfigAgain = forcedAgain.actions.find((item) => item.path.endsWith('/dotdotgod.config.json'));
-    assert.notEqual(replacedConfigAgain.backup, replacedConfig.backup);
-    assert.equal(existsSync(replacedConfig.backup), true);
-    assert.equal(existsSync(replacedConfigAgain.backup), true);
+    const preserved = json(run(['init', root, '--json']));
+    assert.equal(preserved.actions.find((item) => item.path.endsWith('/AGENTS.md')).status, 'skipped');
+    assert.equal(preserved.actions.find((item) => item.path.endsWith('/dotdotgod.config.json')).status, 'skipped');
+    assert.equal(readFileSync(join(root, 'dotdotgod.config.json'), 'utf8'), '{"custom":true}\n');
+    const forceRejected = run(['init', root, '--force', '--json']);
+    assert.equal(forceRejected.status, 2);
+    assert.match(forceRejected.stderr, /Unknown option: --force/);
 
     const dotdotRoot = mkdtempSync(join(tmpdir(), 'dotdotgod-init-dotdot-'));
     json(run(['init', dotdotRoot, '--dotdot-setting', '--json']));
@@ -320,12 +312,10 @@ describe('dotdotgod CLI e2e', () => {
     const rcRoot = join(parent, 'rc-project');
     mkdirSync(rcRoot, { recursive: true });
     writeFileSync(join(rcRoot, '.dotdotgodrc.json'), '{}\n');
-    const rcInitialized = json(run(['init', rcRoot, '--force', '--json']));
-    const conflict = rcInitialized.actions.find((item) => item.path.endsWith('/dotdotgod.config.json'));
-    assert.equal(conflict.status, 'conflict');
-    assert.equal(conflict.existing, join(rcRoot, '.dotdotgodrc.json'));
-    assert.equal(existsSync(join(rcRoot, 'dotdotgod.config.json')), false);
-    assert.equal(existsSync(join(rcRoot, 'AGENTS.md')), true);
+    const rcInitialized = json(run(['init', rcRoot, '--json']));
+    assert.equal(rcInitialized.actions.find((item) => item.path.endsWith('/dotdotgod.config.json')).status, 'created');
+    assert.equal(existsSync(join(rcRoot, 'dotdotgod.config.json')), true);
+    assert.equal(existsSync(join(rcRoot, '.dotdotgodrc.json')), true);
   });
 
   it('keeps the POSIX initializer config aligned with CLI defaults', () => {
@@ -347,11 +337,11 @@ describe('dotdotgod CLI e2e', () => {
     const rcRoot = join(parent, 'rc-project');
     mkdirSync(rcRoot, { recursive: true });
     writeFileSync(join(rcRoot, '.dotdotgodrc.json'), '{}\n');
-    const conflicted = spawnSync('sh', [script, rcRoot, '--force'], { encoding: 'utf8' });
-    assert.equal(conflicted.status, 0, conflicted.stderr || conflicted.stdout);
-    assert.match(conflicted.stdout, /conflict\s+.*dotdotgod\.config\.json.*existing=.*\.dotdotgodrc\.json/);
-    assert.equal(existsSync(join(rcRoot, 'dotdotgod.config.json')), false);
-    assert.equal(existsSync(join(rcRoot, 'AGENTS.md')), true);
+    const rcInitialized = spawnSync('sh', [script, rcRoot], { encoding: 'utf8' });
+    assert.equal(rcInitialized.status, 0, rcInitialized.stderr || rcInitialized.stdout);
+    assert.match(rcInitialized.stdout, /created\s+.*dotdotgod\.config\.json/);
+    assert.equal(existsSync(join(rcRoot, 'dotdotgod.config.json')), true);
+    assert.equal(existsSync(join(rcRoot, '.dotdotgodrc.json')), true);
   });
 
   it('packages adapter initializer config templates and hook documentation', () => {
@@ -384,7 +374,7 @@ describe('dotdotgod CLI e2e', () => {
     const init = json(run(['config', 'init', root, '--json']));
     assert.equal(init.command, 'config init');
     assert.equal(init.created, true);
-    assert.equal(init.overwritten, false);
+    assert.equal('overwritten' in init, false);
     assert.equal(existsSync(join(root, 'dotdotgod.config.json')), true);
     const initialized = JSON.parse(readFileSync(join(root, 'dotdotgod.config.json'), 'utf8'));
     assert.equal(initialized.impactRanking.preset, 'balanced');
@@ -405,15 +395,22 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(refused.stderr, '');
     assert.equal(JSON.parse(refused.stdout).error.code, 'CONFIG_EXISTS');
 
-    const forced = json(run(['config', 'init', root, '--force', '--json']));
-    assert.equal(forced.created, false);
-    assert.equal(forced.overwritten, true);
+    const forceRejected = run(['config', 'init', root, '--force', '--json']);
+    assert.equal(forceRejected.status, 2);
+    assert.match(forceRejected.stderr, /Unknown option: --force/);
 
     const rcRoot = createFixture();
-    writeFileSync(join(rcRoot, '.dotdotgodrc.json'), '{}\n');
-    const rcRefused = run(['config', 'init', rcRoot, '--force', '--json']);
-    assert.equal(rcRefused.status, 2);
-    assert.equal(JSON.parse(rcRefused.stdout).error.code, 'CONFIG_RC_EXISTS');
+    writeFileSync(join(rcRoot, '.dotdotgodrc.json'), '{"memory":{"areas":[]}}\n');
+    const rcShow = json(run(['config', rcRoot, '--json']));
+    assert.equal(rcShow.source, 'default');
+    const rcInitialized = json(run(['config', 'init', rcRoot, '--json']));
+    assert.equal(rcInitialized.created, true);
+    assert.equal(existsSync(join(rcRoot, 'dotdotgod.config.json')), true);
+
+    const humanRoot = createFixture();
+    const humanInit = run(['config', 'init', humanRoot]);
+    assert.equal(humanInit.status, 0, humanInit.stderr || humanInit.stdout);
+    assert.match(humanInit.stdout, /dotdotgod config init: created .*dotdotgod\.config\.json/);
 
     const invalidRoot = createFixture();
     writeFileSync(join(invalidRoot, 'dotdotgod.config.json'), '{"memory":{"areas":"bad"},"validation":{"markdown":{"maxLines":0}}}\n');

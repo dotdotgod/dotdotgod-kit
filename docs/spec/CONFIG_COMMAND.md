@@ -4,12 +4,7 @@
 
 The `dotdotgod config` command makes project-level config policy discoverable from the CLI.
 
-It does not introduce global config, user config, or monorepo cascading config. The CLI resolves one optional config file from the project root:
-
-1. `dotdotgod.config.json`
-2. `.dotdotgodrc.json`
-
-When neither file exists, commands use built-in defaults.
+It does not introduce global config, user config, or monorepo cascading config. The CLI resolves the optional `dotdotgod.config.json` file from the project root. When the file does not exist, commands use built-in defaults.
 
 ## Show Command
 
@@ -61,7 +56,7 @@ The config command surfaces the same policy families that validation, snapshots,
 ## Init Command
 
 ```bash
-dotdotgod config init <root> [--force] [--json]
+dotdotgod config init <root> [--json]
 ```
 
 The init command creates `dotdotgod.config.json` with the current built-in defaults for:
@@ -77,11 +72,10 @@ The init command creates `dotdotgod.config.json` with the current built-in defau
 
 The generated file must validate with `dotdotgod validate`. `dotdotgod init` and generated adapter fallback templates use the same serializer, so their config data is structurally identical to `config init`. The generated memory areas omit optional `description` and `clarify` metadata so the template stays concise; projects can add those fields when custom document areas need role or clarity guidance. The generated reference-expansion section uses empty `add` and `remove` arrays; the resolved defaults remain visible in `dotdotgod config <root> --json` output.
 
-Overwrite behavior:
+Existing-file behavior:
 
-- If `dotdotgod.config.json` already exists, init refuses to overwrite it unless `--force` is passed.
-- If `.dotdotgodrc.json` exists, init refuses with a clear error so users can intentionally choose which config file to keep.
-- `--force` may overwrite only `dotdotgod.config.json`.
+- If `dotdotgod.config.json` already exists, init refuses to overwrite it.
+- Replacing an existing config requires the user to remove or rename it first.
 
 JSON output for successful init includes:
 
@@ -90,9 +84,8 @@ JSON output for successful init includes:
 - `root`
 - `path`
 - `created`
-- `overwritten`
 
-JSON output for init errors includes `ok: false`, `command: "config init"`, `root`, `path` when known, `created: false`, `overwritten: false`, and `error.code`.
+JSON output for init errors includes `ok: false`, `command: "config init"`, `root`, `path` when known, `created: false`, and `error.code`.
 
 ## Non-Goals
 

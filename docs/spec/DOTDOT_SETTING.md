@@ -18,7 +18,7 @@ If the CLI is unavailable, adapter initializer workflows use the bundled fallbac
 sh skills/project-initializer/scripts/init_project.sh --dotdot-setting <project-root>
 ```
 
-`--dotdot-setting` may be combined with initializer options such as `--project-name`, `--dry-run`, and `--force`.
+`--dotdot-setting` may be combined with initializer options such as `--project-name` and `--dry-run`.
 
 ## Generated Files and Changes
 
@@ -31,10 +31,9 @@ When `--dotdot-setting` is enabled, the initializer adds the following behavior 
 
 If the conventions grow across multiple topics, projects may promote the structure to `docs/arch/conventions/README.md` plus supporting UPPER_SNAKE_CASE markdown files. In that case, keep `docs/arch/README.md` linked to the conventions directory.
 
-Overwrite behavior:
+Existing-file behavior:
 
-- Files already present are skipped by default.
-- `--force` backs up replaced files as `<name>.bak.<timestamp>` before writing replacements.
+- Files already present are always preserved and skipped.
 - `--dry-run` reports intended actions without writing files.
 
 ## Generated Docs Structure Content
@@ -64,7 +63,7 @@ Overwrite behavior:
 
 - Do not include the full dotdot docs-structure or code-convention bodies directly in `AGENTS.md`.
 - Do not enable dotdot conventions by default.
-- Do not automatically merge dotdot conventions into files already present unless the user explicitly uses `--force` or asks for manual edits.
+- Do not automatically merge dotdot conventions into files already present; report files that require manual edits.
 
 ## Traceability
 

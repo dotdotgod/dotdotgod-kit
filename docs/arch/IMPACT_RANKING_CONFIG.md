@@ -6,7 +6,7 @@ Impact ranking turns `dotdotgod graph impact` into an explainable retrieval laye
 
 ## Config Resolution
 
-The CLI reads `impactRanking` from `dotdotgod.config.json` or `.dotdotgodrc.json` alongside memory and traceability policy.
+The CLI reads `impactRanking` from `dotdotgod.config.json` alongside memory and traceability policy.
 
 Invalid config is reported by `validate`, but runtime graph commands use defaults so impact reports remain available.
 

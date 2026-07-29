@@ -3,13 +3,12 @@ import { join, resolve } from 'node:path';
 import { usage } from '../cli/usage.mjs';
 import { defaultDotdotgodConfigText, memoryConfigSummary, readMemoryConfig } from '../memory/config.mjs';
 
-function parseConfigOptions(argv, allowForce = false, usageKey = 'config') {
-  const options = { root: '.', json: false, force: false };
+function parseConfigOptions(argv, usageKey = 'config') {
+  const options = { root: '.', json: false };
   let rootSet = false;
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--json') options.json = true;
-    else if (allowForce && arg === '--force') options.force = true;
     else if (!arg.startsWith('-') && !rootSet) {
       options.root = arg;
       rootSet = true;
@@ -20,12 +19,8 @@ function parseConfigOptions(argv, allowForce = false, usageKey = 'config') {
   return options;
 }
 
-function configSourcePath(root, source) {
-  return source && source !== 'default' ? join(root, source) : null;
-}
-
 function configInitError(options, code, message, path = null) {
-  const payload = { ok: false, command: 'config init', root: options.root, path, created: false, overwritten: false, error: { code, message } };
+  const payload = { ok: false, command: 'config init', root: options.root, path, created: false, error: { code, message } };
   if (options.json) {
     console.log(JSON.stringify(payload, null, 2));
     process.exit(2);
@@ -60,7 +55,7 @@ function formatConfigOutput(payload) {
 
 export function runConfig(argv) {
   const isInit = argv[0] === 'init';
-  const options = parseConfigOptions(isInit ? argv.slice(1) : argv, isInit, isInit ? 'config init' : 'config');
+  const options = parseConfigOptions(isInit ? argv.slice(1) : argv, isInit ? 'config init' : 'config');
   if (isInit) {
     if (!existsSync(options.root)) configInitError(options, 'ROOT_NOT_FOUND', `Project root not found: ${options.root}`);
     try {
@@ -69,20 +64,17 @@ export function runConfig(argv) {
       configInitError(options, 'ROOT_NOT_FOUND', `Project root not found: ${options.root}`);
     }
     const target = join(options.root, 'dotdotgod.config.json');
-    const rcPath = join(options.root, '.dotdotgodrc.json');
-    if (existsSync(rcPath)) configInitError(options, 'CONFIG_RC_EXISTS', `.dotdotgodrc.json already exists; remove or migrate it before initializing dotdotgod.config.json.`, rcPath);
-    const existed = existsSync(target);
-    if (existed && !options.force) configInitError(options, 'CONFIG_EXISTS', `dotdotgod.config.json already exists. Re-run with --force to overwrite it.`, target);
+    if (existsSync(target)) configInitError(options, 'CONFIG_EXISTS', 'dotdotgod.config.json already exists.', target);
     writeFileSync(target, defaultDotdotgodConfigText());
-    const payload = { ok: true, command: 'config init', root: options.root, path: target, created: !existed, overwritten: existed };
+    const payload = { ok: true, command: 'config init', root: options.root, path: target, created: true };
     if (options.json) console.log(JSON.stringify(payload, null, 2));
-    else console.log(`dotdotgod config init: ${existed ? 'overwrote' : 'created'} ${target}`);
+    else console.log(`dotdotgod config init: created ${target}`);
     return;
   }
 
   const config = readMemoryConfig(options.root);
   const errors = config.errors ?? [];
-  const payload = { ok: errors.length === 0, command: 'config', root: options.root, source: config.source ?? 'default', path: configSourcePath(options.root, config.source), config: memoryConfigSummary(config), errors };
+  const payload = { ok: errors.length === 0, command: 'config', root: options.root, source: config.source ?? 'default', path: config.source && config.source !== 'default' ? join(options.root, config.source) : null, config: memoryConfigSummary(config), errors };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else console.log(formatConfigOutput(payload));
   if (errors.length > 0) process.exit(1);

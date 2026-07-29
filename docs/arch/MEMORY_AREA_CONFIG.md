@@ -15,10 +15,7 @@ Memory-area config turns the docs-first memory model into an explicit project po
 
 ## Config Discovery
 
-The CLI checks the project root in order:
-
-1. `dotdotgod.config.json`
-2. `.dotdotgodrc.json`
+The CLI checks the project root for `dotdotgod.config.json`.
 
 If no config exists, or if runtime parsing finds invalid config, the CLI falls back to built-in defaults. Validation still reports config errors so agents can repair them.
 

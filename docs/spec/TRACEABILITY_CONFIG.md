@@ -8,10 +8,7 @@ Projects without config require traceability for markdown files under `docs/spec
 
 ## Config File
 
-Traceability policy lives in the optional root config file used by project-level CLI policy. Use `dotdotgod config <root>` to inspect the resolved policy or `dotdotgod config init <root>` to create an editable default config.
-
-1. `dotdotgod.config.json`
-2. `.dotdotgodrc.json`
+Traceability policy lives in the optional root `dotdotgod.config.json` file used by project-level CLI policy. Use `dotdotgod config <root>` to inspect the resolved policy or `dotdotgod config init <root>` to create an editable default config.
 
 ## Config Shape
 

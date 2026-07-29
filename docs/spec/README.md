@@ -10,7 +10,7 @@ For traceability, treat the `json dotdotgod` block as the source of truth. Gener
 
 ## Config Overview
 
-Project-level config is optional and lives in `dotdotgod.config.json` or `.dotdotgodrc.json`. Use `dotdotgod config <root>` to inspect the resolved policy and `dotdotgod config init <root>` to create an editable default file. Focused config specs:
+Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotdotgod config <root>` to inspect the resolved policy and `dotdotgod config init <root>` to create an editable default file. Focused config specs:
 
 - `MEMORY_AREA_CONFIG.md`: `memory.areas`, including shared/local scope, fresh/stale freshness, priorities, and archive-body inclusion.
 - `TRACEABILITY_CONFIG.md`: `traceability.required` and `traceability.exclude` paths for validation enforcement.
