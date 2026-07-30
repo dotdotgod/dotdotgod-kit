@@ -14,17 +14,13 @@ import { keyHint } from "@earendil-works/pi-coding-agent";
 import { Key, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { recordContextMetric } from "../context-metrics/utils.js";
-import {
-  isPlanGoalWorkflowActive,
-  restoreDotdotgodWorkflowState,
-} from "../shared/workflow-coordination.ts";
 import { ContextOrchestrationController } from "./controllers/context-orchestration.js";
 import { ContextShapingController, type ContextShapingSnapshot } from "./controllers/context-shaping.js";
 import { ExecutionFlowController } from "./controllers/execution-flow.js";
 import { ExecutionProgressController, type ExecutionProgressSnapshot } from "./controllers/execution-progress.js";
 import { GateController, type GateSnapshot } from "./controllers/gates.js";
 import { ModeLifecycleController, type ModeLifecycleSnapshot } from "./controllers/mode-lifecycle.js";
-import { PlanArtifactController, shouldSuppressPlanGoalReview, type PlanArtifactSnapshot } from "./controllers/plan-artifact.js";
+import { PlanArtifactController, type PlanArtifactSnapshot } from "./controllers/plan-artifact.js";
 import { ReviewGateController } from "./controllers/review-gates.js";
 import { NORMAL_MODE_TOOLS } from "./runtime/constants.js";
 import {
@@ -43,7 +39,6 @@ import {
   getToolPath,
   isActivePlanMarkdownPath,
   isManagedPlanMarkdownPath,
-  isPlanGoalCheckpointMarkdownPath,
   normalizeToolPath,
   PLAN_DIRECTORY,
   planPathExists,
@@ -209,7 +204,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   });
 
   function updateStatus(ctx: ExtensionContext): void {
-    if (isPlanGoalWorkflowActive()) return;
     if (modeLifecycle.executing && executionProgress.todos.length > 0) {
       const completed = executionProgress.todos.filter((t) => t.completed).length;
       ctx.ui.setStatus(
@@ -453,14 +447,14 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       if (!path || !isManagedPlanMarkdownPath(ctx.cwd, path, writablePaths)) {
         return {
           block: true,
-          reason: `Plan mode: ${event.toolName} is only allowed for documentation markdown matching ${writablePaths.join(", ") || "no configured paths"}. Active /plan-goal checkpoint files remain a narrow exception. Directories must be kebab-case and markdown file names must be UPPER_SNAKE_CASE.md. Use execution mode for source changes.`,
+          reason: `Plan mode: ${event.toolName} is only allowed for documentation markdown matching ${writablePaths.join(", ") || "no configured paths"}. Directories must be kebab-case and markdown file names must be UPPER_SNAKE_CASE.md. Use execution mode for source changes.`,
         };
       }
       const normalizedPath = normalizeToolPath(path).replace(/\\/g, "/");
       if (!planArtifact.touchedPlanPaths.includes(normalizedPath)) {
         planArtifact.markTouched(normalizedPath);
       }
-      if (isActivePlanMarkdownPath(ctx.cwd, path) && !isPlanGoalCheckpointMarkdownPath(ctx.cwd, path)) {
+      if (isActivePlanMarkdownPath(ctx.cwd, path)) {
         planArtifact.setActivePlanFromMarkdownPath(path);
       }
     }
@@ -510,7 +504,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   });
 
   pi.on("before_agent_start", async (_event, ctx) => {
-    if (isPlanGoalWorkflowActive()) return;
     if (modeLifecycle.planningEnabled && !modeLifecycle.executing) {
       const latestUserEntry = [...ctx.sessionManager.getEntries()]
         .reverse()
@@ -660,10 +653,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
   });
 
   pi.on("agent_end", async (event, ctx) => {
-    if (isPlanGoalWorkflowActive()) {
-      persistState();
-      return;
-    }
     if (executionFlow.completeExecutionIfDone(ctx)) return;
 
     if (!modeLifecycle.planningEnabled) return;
@@ -681,7 +670,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
       executionMode: modeLifecycle.executing,
       hasUI: ctx.hasUI,
       pendingPlanChoicePath: planArtifact.pendingReviewPath,
-      suppressPlanChoice: planArtifact.suppressChoiceForInlineRequest || shouldSuppressPlanGoalReview(ctx.cwd, planArtifact.pendingReviewPath),
+      suppressPlanChoice: planArtifact.suppressChoiceForInlineRequest,
     });
     if (!shouldShowChoice) {
       if (!planArtifact.pendingReviewPath && contextOrchestration.flushPendingPlanningLoad(ctx))
@@ -730,7 +719,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
     }
 
     const entries = ctx.sessionManager.getEntries();
-    restoreDotdotgodWorkflowState(ctx.sessionManager.getBranch());
 
     const planModeEntry = entries
       .filter(

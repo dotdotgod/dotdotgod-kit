@@ -54,8 +54,7 @@ You are in Plan Mode. This is a read-only exploration and design phase before co
 Restrictions:
 - Allowed tools: ${allowedTools.join(", ")}
 - edit/write are allowed only for valid markdown files matching the configured documentation paths: ${writablePaths.join(", ") || "none"}.
-- Exception: while active /plan-goal workflows are authoring a plan, edit/write may also update checkpoint files under docs/plan/<task-slug>/.dotdotgod-plan/*.md.
-- Under docs/, directories must use kebab-case and markdown file names must use UPPER_SNAKE_CASE.md, including README.md; the only non-kebab-case directory exception is the active generator .dotdotgod-plan checkpoint directory.
+- Under docs/, directories must use kebab-case and markdown file names must use UPPER_SNAKE_CASE.md, including README.md.
 - Forbidden: source/code/config mutation; configured writable paths remain limited to documentation markdown.
 - Bash is restricted to read-only allowlisted commands.
 
@@ -72,7 +71,7 @@ Use questionnaire for required clarification and web tools only for required ext
 
 function buildPlanModeCompactContextPrompt(writablePaths: readonly string[]): string {
 	return `[PLAN MODE ACTIVE]
-Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for valid documentation markdown matching: ${writablePaths.join(", ") || "none"}; active /plan-goal docs/plan/<task-slug>/.dotdotgod-plan/*.md checkpoint files remain a narrow exception. bash remains read-only except safe directory operations inside the same paths. Reuse loaded memory and the documentation map, route focused requests through query and README indexes, verify selected docs, then use impact review after likely targets are known. Create or maintain docs/plan/<task-slug>/README.md only for durable work; otherwise use a short in-chat checklist. Use a Plan: section only for concrete executable steps when ready.`;
+Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for valid documentation markdown matching: ${writablePaths.join(", ") || "none"}. bash remains read-only except safe directory operations inside the same paths. Reuse loaded memory and the documentation map, route focused requests through query and README indexes, verify selected docs, then use impact review after likely targets are known. Create or maintain docs/plan/<task-slug>/README.md only for durable work; otherwise use a short in-chat checklist. Use a Plan: section only for concrete executable steps when ready.`;
 }
 
 export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS, writablePaths: readonly string[] = ["docs/plan/**", "docs/archive/**"]): string {

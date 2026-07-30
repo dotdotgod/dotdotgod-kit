@@ -7,7 +7,6 @@ import { runQuery } from './commands/query.mjs';
 import { runResolve, runExpand } from './reference/resolve.mjs';
 import { runTraceability } from './commands/traceability.mjs';
 import { runGraph } from './commands/graph.mjs';
-import { runPlan } from './commands/plan.mjs';
 import { runTrelloSync } from './trello/sync.mjs';
 
 export { CACHE_VERSION } from './index/constants.mjs';
@@ -35,7 +34,6 @@ export { extractBracketReferences, extractFuzzyReferences, normalizeReferenceAli
 export { resolveReferenceCandidates, runResolve, runExpand } from './reference/resolve.mjs';
 export { parseTraceabilityOptions, runTraceability } from './commands/traceability.mjs';
 export { parseGraphOptions, runGraph } from './commands/graph.mjs';
-export { buildPlanValidationRepairPrompt, createPlanStageCheckpoint, formatPlanValidationText, PLAN_REQUIRED_HEADERS, PLAN_STAGE_DIRECTORIES, resolvePlanValidationStage, runPlan, validatePlanArtifact } from './commands/plan.mjs';
 export { planTrelloDryRun, runTrelloSync } from './trello/sync.mjs';
 export { parseTrelloMetadata, extractTrelloShortLink } from './trello/metadata.mjs';
 export { normalizeGitHubRemote, resolveGitHubFileUrl, resolveGitHubRepositoryIdentity } from './trello/github-url.mjs';
@@ -60,7 +58,6 @@ export async function runCli(argv = process.argv.slice(2)) {
   else if (command === 'expand') runExpand(args);
   else if (command === 'traceability') runTraceability(args);
   else if (command === 'graph') await runGraph(args);
-  else if (command === 'plan') runPlan(args);
   else if (command === 'trello') {
     const result = await Promise.resolve(runTrelloSync(args));
     if (result.stdout) process.stdout.write(result.stdout);

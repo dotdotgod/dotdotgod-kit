@@ -8,6 +8,5 @@ Use these files instead of the legacy monolithic `docs/spec/CLI_INTERFACE.md` wh
 - `GRAPH_IMPACT.md`: `dotdotgod graph impact` required arguments, output modes, structured failures, and unsupported graph subcommands.
 - `QUERY.md`: local multilingual E5 documentation indexing, vector cache, ranking, output, and failure behavior.
 - `TRACEABILITY_LINKS.md`: `dotdotgod traceability links` help, check, write, JSON output, and generated-region repair behavior.
-- `PLAN_COMMANDS.md`: `dotdotgod plan validate` and `dotdotgod plan stage create` behavior for simplified Plan Generator stages.
 
 `../CLI_INTERFACE.md` remains as a compatibility route for older references and points to this domain directory.

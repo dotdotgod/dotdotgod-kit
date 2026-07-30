@@ -23,7 +23,6 @@ Then use the bundled `/dd:*` commands in your repository:
 /dd:init
 /dd:load
 /dd:plan Update the API migration plan.
-/dd:plan-goal Add the new export API to the auth module.
 /dd:impact
 ```
 
@@ -40,11 +39,8 @@ claude --plugin-dir /path/to/dotdotgod/packages/claude-code
 | `/dd:init` | Start a repository with dotdotgod conventions. | Creates or normalizes shared agent files, docs indexes, local-memory areas, and the complete default project config. |
 | `/dd:load` | Load project memory without changing maintained project files. | Renders the shared Markdown tree and uses `dotdotgod query` when focus text is provided; query may refresh ignored caches. |
 | `/dd:plan` | Plan before implementation. | Writes or updates durable task intent in `docs/plan/<task-slug>/README.md`. |
-| `/dd:plan-goal` | Run 5-stage structured planning before implementation. | Produces durable checkpoint files in `docs/plan/<task>/.dotdotgod-plan/` and a plan README. |
 | `/dd:impact` | Review changed files before verification or handoff. | Uses `dotdotgod graph impact` to identify likely related docs, tests, commands, and source files. |
 | `document-clarify` | Improve docs wording without changing behavior contracts. | Clarifies README/spec/test/arch/plan/archive docs using memory-area roles. |
-
-The package also includes matching skills for init, load, planning, plan-goal, and impact-review workflows.
 
 ## Shared Project-Memory Contract
 
