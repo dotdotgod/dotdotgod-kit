@@ -1,53 +1,10 @@
-## Overview
+## Goal
 
-Create a conservative dotdotgod project baseline shared by AI coding agents:
-
-- `AGENTS.md` is the canonical project instruction file.
-- `CLAUDE.md` and `CODEX.md` are thin agent-specific entrypoints.
-- `docs/` contains concise indexes for specs, tests, architecture, active plans, and archives.
-- `dotdotgod.config.json` materializes the complete editable default project policy.
-- `.gitignore` keeps `docs/plan`, `docs/archive`, and `.dotdotgod` local by default.
-
-Under `docs/`, directories use kebab-case and markdown file names use UPPER_SNAKE_CASE, including `README.md`.
-
-## CLI and Fallback
-
-Prefer the CLI initializer:
-
-```bash
-dotdotgod init <project-root>
-```
-
-Use the bundled fallback when the CLI is unavailable:
-
-```bash
-{{INIT_SCRIPT_COMMAND}}
-```
-
-Both paths create the same baseline file set and canonical config while preserving existing files. Use `--dry-run` for unfamiliar repositories and `--dotdot-setting` for the optional documentation and code-convention guidance.
+Create a non-destructive dotdotgod baseline with canonical agent instructions, thin agent entrypoints, documentation indexes, project config, and local-memory ignore rules.
 
 ## Workflow
 
-1. Inspect the project root.
-   - Check `AGENTS.md`, `AGENT.md`, `CLAUDE.md`, `CODEX.md`, `README.md`, `.gitignore`, `docs/`, and `dotdotgod.config.json`.
-   - Preserve project-specific instructions and unrelated user work.
-   - Keep `AGENTS.md` canonical when both `AGENT.md` and `AGENTS.md` exist.
-2. Run the initializer.
-   - Use the CLI when available; otherwise use the bundled fallback.
-   - Existing files are always preserved and skipped.
-3. Review and validate.
-   - Fill project-specific placeholders in `AGENTS.md` when the required context is known.
-   - Keep `CLAUDE.md` and `CODEX.md` thin.
-   - Preserve the generated complete memory-area set; do not replace it with a partial hand-written list.
-   - Run `dotdotgod validate <project-root>` after creating or changing config when the CLI is available.
-   - Inspect `dotdotgod config <project-root> --json` when validation fails or resolved policy needs review.
-4. Report the result.
-   - List created, updated, and skipped files, plus validation failures.
-   - Report when CLI validation was unavailable.
-   - Identify existing instructions that still require manual consolidation.
-
-## Bundled Resources
-
-- `scripts/init_project.sh`: POSIX fallback initializer.
-- `templates/dotdotgod.config.json`: generated canonical config template used by the fallback.
-- `references/agent-docs.md`: shared agent-document naming and content model.
+1. Inspect existing agent instructions, documentation, config, and ignore rules; preserve existing files and unrelated user work.
+2. Run `dotdotgod init <project-root>` when available; otherwise run `{{INIT_SCRIPT_COMMAND}}`. Existing files must be skipped, not replaced.
+3. Validate the initialized project with `dotdotgod validate <project-root>` when available.
+4. Report created and skipped files, validation failures, and unresolved instruction conflicts.

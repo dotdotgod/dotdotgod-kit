@@ -10,46 +10,16 @@ version: 1.0.0
 
 ## Goal
 
-Load the current repository's dotdotgod project memory without modifying source, documentation, or project config. A focused query may refresh ignored `.dotdotgod/vectors/` data and the runtime's user-level model cache. Use a full load for an explicit project overview and a compact load to refresh an already-loaded session. Treat free-form arguments as query text, not as mode switches.
+Load the repository's dotdotgod project memory without modifying maintained files. Treat free-form arguments as query text, not mode switches.
 
 ## Workflow
 
-1. Identify the repository root and current state.
-   - Check the current directory and, when Git is available, the repository root, branch, and dirty worktree status.
-   - Mention user changes and avoid reverting or cleaning them.
-2. Read baseline memory only when it is not already clear from loaded context.
-   - Start with `AGENTS.md`, the current adapter entrypoint when present, `README.md`, and `docs/README.md`.
-   - Do not run scaffold, config-writing, or source-modifying commands during a load.
-3. Build the shared documentation map.
-   - Discover Markdown files under `docs/` after applying `load.documentationSummary.exclude`, which excludes `docs/plan` and `docs/archive` by default.
-   - Render repository-relative paths as a prefix-compressed tree. Count `docs/` as directory depth 1.
-   - Without arguments, expand through directory depth 5. At the boundary, summarize deeper descendants with exact directory and Markdown-file counts.
-4. Use query routing only when arguments are present.
-   - Run `dotdotgod query <root> "<arguments>" --limit 30 --json` when the command is available.
-   - Show the best-ranked chunk from each of at most 30 distinct Markdown files and render the documentation tree through directory depth 3.
-   - If query is unavailable, continue from the tree, README indexes, and targeted reads.
-5. Read document bodies selectively.
-   - Follow README indexes as maintained tables of contents.
-   - Prefer query results, explicit paths, and the current request before broader search.
-   - Use `grep` or `find` only when targeted reads do not provide enough evidence.
-6. Read local memory only when relevant.
-   - For active plans, list `docs/plan` entries first and read only relevant plan files.
-   - Use `docs/archive/README.md` as the history map. Do not scan archive bodies by default.
-7. Avoid broad reads of generated outputs, dependencies, databases, caches, secrets, and `.env*` contents.
+1. Identify the repository root.
+2. When baseline context is missing, read `AGENTS.md`, the adapter entrypoint, `README.md`, and `docs/README.md` when present.
+3. Build a prefix-compressed tree of `docs/**/*.md` after `load.documentationSummary.exclude`. Count `docs/` as depth 1; without arguments, expand through depth 5 and summarize deeper descendants with exact directory and Markdown-file counts.
+4. With arguments, run `dotdotgod query <root> "<arguments>" --limit 30 --json` when available, return at most 30 distinct Markdown files, and render the tree through depth 3. Fall back to the tree and README indexes when query is unavailable.
+5. Read bodies selectively from query results, explicit paths, and README indexes. Read relevant active plans only when needed, use `docs/archive/README.md` as the history map, and avoid broad generated, dependency, cache, or secret reads.
 
-## Output Shape
+## Output
 
-For a full load, respond concisely with:
-
-- Project narrative and purpose
-- Key working rules
-- Relevant documentation and verification routes
-- Relevant active plans or archive history only when needed
-- Questions surfaced by loaded material
-
-For a compact load, respond with:
-
-- Compact project-memory status
-- Relevant documentation routes
-- Relevant active plan hints only when needed
-- A short bounded list of next reads, or a note that none are needed
+Report the project purpose, key rules, relevant documentation routes, and only the active-plan or next-read hints needed for the request. Keep compact loads to a brief refresh.

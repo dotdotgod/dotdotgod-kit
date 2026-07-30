@@ -5,4 +5,7 @@ docs/archive
 # dotdotgod local index/cache
 .dotdotgod
 
+# Local subagent workspace
+.pi-subagents/
+
 .DS_Store
