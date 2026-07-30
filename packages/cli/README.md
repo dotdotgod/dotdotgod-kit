@@ -6,7 +6,7 @@ Command-line tools for dotdotgod project memory.
 
 Use this package when you want to initialize a docs-first project scaffold, validate project-memory docs, build a local graph/cache, search shared documentation locally, expand project references, or ask what should be checked after a file changes.
 
-These commands implement dotdotgod's project-memory loop — init, load, plan, impact — for shells, scripts, CI, and any agent without a dedicated adapter.
+These commands support dotdotgod's project-memory loop with initialization, documentation query, validation, and impact analysis for shells, scripts, CI, and agents without a dedicated adapter.
 
 ## Start Here
 
@@ -40,8 +40,6 @@ dotdotgod graph impact . --changed <path> --compact
 - `resolve` and `expand` map explicit or high-signal prompt references to project files.
 - `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five.
 - `traceability links` checks or repairs generated Markdown traceability-link sections.
-- `plan validate` validates active plan artifacts and simplified Plan Generator checkpoints before execution.
-- `plan stage create` creates an internal `.dotdotgod-plan/NN_STAGE_NAME.md` checkpoint for a simplified Plan Generator stage.
 - `trello sync` plans or writes Trello linked-doc metadata from configured docs paths.
 
 ## Commands
@@ -62,16 +60,11 @@ dotdotgod expand . "Update [[PLAN_MODE]] and [[HOOKS]]"
 dotdotgod expand . "PLAN_MODE 수정하자" --fuzzy
 dotdotgod traceability links . --check
 dotdotgod traceability links . --write
-dotdotgod plan validate docs/plan/<task-slug>/README.md
-dotdotgod plan validate docs/plan/<task-slug>/README.md --stage 04
-dotdotgod plan stage create 02 docs/plan/<task-slug>/README.md
 dotdotgod graph impact . --changed <path>
 dotdotgod graph impact . --changed <path> --changed <another-path> --compact
 dotdotgod graph impact . --changed <path> --changed <another-path> --yml
 dotdotgod graph communities .
 ```
-
-`--help`, `-h`, and `help` print usage to stdout. Command-specific help is available with `dotdotgod <command> --help`, including nested commands such as `dotdotgod graph impact --help`, `dotdotgod config init --help`, `dotdotgod plan stage create --help`, and `dotdotgod traceability links --help`.
 
 ## Which Command Should I Use?
 
@@ -83,8 +76,6 @@ dotdotgod graph communities .
 | Search shared project documentation locally | `dotdotgod query . "project documentation"` |
 | Resolve `[[...]]` references from a prompt | `dotdotgod expand . "Update [[PLAN_MODE]]"` |
 | Repair generated traceability-link sections | `dotdotgod traceability links . --write` |
-| Validate an active plan before execution | `dotdotgod plan validate docs/plan/<task>/README.md` |
-| Create an internal Plan Generator stage checkpoint | `dotdotgod plan stage create 03 docs/plan/<task>/README.md` |
 | See what else to inspect after a change | `dotdotgod graph impact . --changed <path> --compact` |
 | Preview Trello linked-doc updates | `dotdotgod trello sync . --dry-run` |
 
@@ -115,7 +106,6 @@ The graph is built from maintained project files: Markdown links, README routes,
 | `dotdotgod validate <root>` | Checks dotdotgod docs/project-memory structure, local links, traceability blocks, generated traceability-link drift, config validity, and optional index freshness. |
 | `dotdotgod traceability links <root> --check` | Runs only the generated traceability-link and compact JSON drift check. |
 | `dotdotgod traceability links <root> --write` | Repairs generated traceability-link sections and rewrites canonical `json dotdotgod` blocks as compact JSON. |
-| `dotdotgod plan validate <plan-readme>` | Checks active-plan structure, required Markdown sections, decision/assumption blockers, atomic-task verification, and simplified Plan Generator checkpoints when present. |
 | `pnpm run verify` | Runs this repository's quality gate: generated-resource checks, package verify contracts, tests, typecheck, and docs validation where each package defines it. |
 
 Most users start with `validate`. Use `traceability links --write` only when generated traceability output needs repair, and use `verify` before release-style handoff in this repository.

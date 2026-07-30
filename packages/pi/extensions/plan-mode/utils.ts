@@ -19,18 +19,6 @@ export {
 	shouldAllowPlanModeBashCommand,
 } from './tools.ts';
 
-export { getPlanGoalReviewEligibility, shouldSuppressPlanGoalReview } from "./controllers/plan-artifact.ts";
-
-export type { DotdotgodWorkflowState } from "../shared/workflow-coordination.ts";
-export {
-	DOTDOTGOD_WORKFLOW_CUSTOM_TYPE,
-	activatePlanGoalWorkflow,
-	clearDotdotgodWorkflowState,
-	isPlanGoalWorkflowActive,
-	restoreDotdotgodWorkflowState,
-	restorePlanGoalWorkflowActive,
-} from "../shared/workflow-coordination.ts";
-
 export type { PendingImpactItem } from "./impact.ts";
 export {
 	formatReferenceExpansionSummary,

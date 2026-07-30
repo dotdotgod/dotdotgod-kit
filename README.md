@@ -23,7 +23,7 @@ Pick the package that runs this loop in your agent, then initialize your reposit
 
 | Package | Use it when | First step |
 | --- | --- | --- |
-| [`@dotdotgod/pi`](packages/pi/README.md) | You use Pi and want the full workflow: project initialization, project loading, Plan Mode, staged plan generation, impact checks, and archive handoff. | `pi install npm:@dotdotgod/pi` |
+| [`@dotdotgod/pi`](packages/pi/README.md) | You use Pi and want the full workflow: project initialization, project loading, Plan Mode, impact checks, and archive handoff. | `pi install npm:@dotdotgod/pi` |
 | [`@dotdotgod/cli`](packages/cli/README.md) | You want command-line validation, graph indexing, local documentation query, reference expansion, Trello sync, or changed-file impact reports. | `npx @dotdotgod/cli validate .` |
 | [`@dotdotgod/claude-code`](packages/claude-code/README.md) | You use Claude Code and want `/dd:*` commands plus dotdotgod skills. | Install the Claude Code plugin package. |
 | [`@dotdotgod/codex`](packages/codex/README.md) | You use Codex and want dotdotgod skills plus `dd:*` trigger phrases. | Install the Codex package or plugin resources. |
@@ -147,8 +147,6 @@ For the detailed model, read [Context curation](docs/concept/CONTEXT_CURATION.md
 - Expand explicit `[[...]]` references and high-signal fuzzy references.
 - Review changed-file impact before broad tests, commits, pushes, or publishing.
 - Use Pi Plan Mode for safe planning, execution tracking, impact reminders, and archive handoff.
-- Generate staged Pi plans with `/plan-goal`, the single staged durable plan generator command.
-- Run the same 5-stage planning pipeline in Claude Code with `/dd:plan-goal` and in Codex with the `plan-goal` skill.
 - Package the same conventions for Pi, Claude Code, Codex, and CLI-only workflows.
 
 ## Develop This Repository

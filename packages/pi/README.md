@@ -4,9 +4,9 @@
 
 Pi adapter for dotdotgod's docs-first project-memory workflow.
 
-Use this package when you want Pi to initialize project memory, load bounded repository context, plan before source edits, generate staged durable plans, run impact-aware checks, and archive completed work for future sessions.
+Use this package when you want Pi to initialize project memory, load bounded repository context, plan before source edits, run impact-aware checks, and archive completed work for future sessions.
 
-Pi is the fullest dotdotgod experience: it is the only adapter that enforces Plan Mode before source edits, generates staged durable plans, and can gate commit, push, and publish on pending impact checks. Throughout, the maintained graph stays a compact map for targeted reads, not a giant report to consume in full.
+Pi is the fullest dotdotgod experience: it is the only adapter that enforces Plan Mode before source edits and can gate commit, push, and publish on pending impact checks. Throughout, the maintained graph stays a compact map for targeted reads, not a giant report to consume in full.
 
 ## Start Here
 
@@ -38,11 +38,9 @@ A good first run:
 | Create the docs-first project scaffold | `project-initializer` skill |
 | Load project memory without broad file reads | `/dd:load` (full), `/dd:load:compact` (compact), or `/load` |
 | Plan safely before source/config edits | `/plan` and `/plan <request>` |
-| Generate a staged durable plan | `/plan-goal` |
 | Show execution progress | `/todos` |
 | Review changed-file impact | `/impact-check` or `dotdotgod_graph_impact` |
 | Improve docs clarity | `document-clarify` skill |
-| Clarify completed `/plan-goal` plans without inherited context | `dotdotgod.plan-doc-clarifier` subagent |
 | Delegate analysis or implementation work | bundled `pi-subagents` resources |
 
 ## Project Initializer
@@ -79,33 +77,6 @@ Plan Mode helps Pi:
 - remind agents to run impact checks after source/config edits,
 - archive completed plans under `docs/archive/plan/`.
 
-### `/plan-goal`
-
-Use `/plan-goal` when you want Pi to author a plan through explicit stages instead of writing a one-pass plan.
-
-The simplified stages are:
-
-1. `01-intake`
-2. `02-context-load`
-3. `03-discovery`
-4. `04-plan`
-5. optional `05-workstream-handoff`
-
-The generator creates or resumes `docs/plan/<task-slug>/README.md` and stores internal checkpoint context in `docs/plan/<task-slug>/.dotdotgod-plan/`. Those checkpoint files are workflow state, not final user-facing plan content.
-
-Useful controls:
-
-- `/plan-goal <request>` starts a new staged plan.
-- `/plan-goal docs/plan/<task-slug>/README.md` resumes or starts staged work for that managed plan path.
-- `/plan-goal` with no argument pauses an active or waiting generator so it can resume from later input.
-- `/plan-goal --stop` stops the active generator and clears the shared workflow flag.
-
-`/plan-goal` does not execute implementation work automatically. Plan Mode still requires user approval before source/config edits.
-
-After the final stage passes, `/plan-goal` queues one documentation-clarity follow-up. The follow-up prefers the packaged `dotdotgod.plan-doc-clarifier` subagent with `context: "fresh"` and explicit `reads` limited to the durable plan README plus named task-local support or workstream markdown. If the subagent tool or packaged agent is unavailable, agents should fall back to the `document-clarify` skill with the same explicit-file-only boundaries.
-
-While `/plan-goal` is active or waiting, Plan Mode suppresses normal execution review so the staged authoring loop can finish first.
-
 ## Loading and Impact Checks
 
 `/dd:load` renders shared Markdown paths as a prefix-compressed documentation tree, excluding plan/archive local memory by default. Without arguments it expands through directory depth 5; with arguments it runs `dotdotgod query` for up to 30 local multilingual E5 results and renders the tree through depth 3.
@@ -116,9 +87,7 @@ While `/plan-goal` is active or waiting, Plan Mode suppresses normal execution r
 
 - `project-initializer` skill
 - `document-clarify` skill
-- `dotdotgod.plan-doc-clarifier` packaged subagent
 - `plan-mode` extension
-- `plan-goal` extension, providing the `/plan-goal` command
 - `load-project` extension
 - `pi-subagents` wrapper resources
 - package-local `@dotdotgod/cli` dependency

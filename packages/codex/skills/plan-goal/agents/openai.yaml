@@ -1,4 +1,0 @@
-interface:
-  display_name: "Staged Planning"
-  short_description: "Run dotdotgod 5-stage planning pipeline."
-  default_prompt: "Run plan-goal staged planning: intake, context-load, discovery, plan, workstream-handoff."

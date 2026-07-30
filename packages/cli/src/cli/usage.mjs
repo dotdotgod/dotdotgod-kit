@@ -36,23 +36,6 @@ Create dotdotgod.config.json with the built-in default memory, traceability, val
   dotdotgod query <root> <query> [--limit n] [--json]
 
 Search shared project documentation with the local multilingual E5 vector index.`;
-    case 'plan':
-      return `Usage:
-  dotdotgod plan validate docs/plan/<task-slug>/README.md [--stage stage] [--json]
-  dotdotgod plan stage create <stage> [docs/plan/<task-slug>/README.md] [--json]`;
-    case 'plan validate':
-      return `Usage:
-  dotdotgod plan validate docs/plan/<task-slug>/README.md [--stage stage] [--json]
-
-Validates an active plan artifact before execution. Supports simplified Plan Generator stages and optional .dotdotgod-plan/NN_STAGE_NAME.md workspaces. Use --stage with a stage name or numeric prefix such as 04 or 05 to validate only that stage.`;
-    case 'plan stage':
-      return `Usage:
-  dotdotgod plan stage create <stage> [docs/plan/<task-slug>/README.md] [--json]`;
-    case 'plan stage create':
-      return `Usage:
-  dotdotgod plan stage create <stage> [docs/plan/<task-slug>/README.md] [--json]
-
-Creates the matching .dotdotgod-plan/NN_STAGE_NAME.md internal stage checkpoint for a simplified Plan Generator stage. <stage> accepts a numeric prefix such as 02 or a canonical stage name such as 02-context-load. If the plan path is omitted, exactly one active docs/plan/<task-slug>/README.md candidate must exist.`;
     case 'resolve':
       return `Usage:
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]`;
@@ -108,8 +91,6 @@ Ranks nodes related to one or more changed files. <root> is the project root; re
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]
   dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]
   dotdotgod traceability links <root> [--check|--write] [--json]
-  dotdotgod plan validate docs/plan/<task-slug>/README.md [--stage stage] [--json]
-  dotdotgod plan stage create <stage> [docs/plan/<task-slug>/README.md] [--json]
   dotdotgod trello sync <root> [--dry-run]
   dotdotgod graph impact <root> --changed <path> [--changed <path> ...] [--compact|--json|--yml|--yaml]
   dotdotgod graph communities <root> [--json]`;
@@ -156,9 +137,6 @@ export function helpCommandFromArgs(args) {
   if (nonHelp[0] === 'graph' && nonHelp[1]) return `graph ${nonHelp[1]}`;
   if (nonHelp[0] === 'trello' && nonHelp[1]) return `trello ${nonHelp[1]}`;
   if (nonHelp[0] === 'traceability' && nonHelp[1]) return `traceability ${nonHelp[1]}`;
-  if (nonHelp[0] === 'plan' && nonHelp[1] === 'stage' && nonHelp[2] === 'create') return 'plan stage create';
-  if (nonHelp[0] === 'plan' && nonHelp[1] === 'stage') return 'plan stage';
-  if (nonHelp[0] === 'plan' && nonHelp[1]) return `plan ${nonHelp[1]}`;
   if (nonHelp[0] === 'config' && nonHelp[1] === 'init') return 'config init';
   return nonHelp[0] ?? 'root';
 }

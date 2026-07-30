@@ -1,7 +1,7 @@
 {
   "name": "dotdotgod",
   "version": "0.1.48",
-  "description": "Dotdotgod project memory workflows for Codex: initialize shared docs, load project memory, plan implementation work doc-first, review graph impact, clarify documentation, and run staged 5-stage planning.",
+  "description": "Dotdotgod project memory workflows for Codex: initialize shared docs, load project memory, plan implementation work doc-first, review graph impact, and clarify documentation.",
   "author": {
     "name": "dotdotgod"
   },
@@ -17,7 +17,7 @@
   "interface": {
     "displayName": "Dotdotgod Project Memory",
     "shortDescription": "Initialize, load, plan, review impact, and clarify docs from shared project memory.",
-    "longDescription": "Reusable Codex skills for shared AGENTS.md instructions, docs/spec docs/test docs/arch docs/plan docs/archive workflows, staged planning pipeline, doc-first implementation planning, graph-impact review, and config-aware documentation clarity.",
+    "longDescription": "Reusable Codex skills for shared AGENTS.md instructions, docs/spec docs/test docs/arch docs/plan docs/archive workflows, doc-first implementation planning, graph-impact review, and config-aware documentation clarity.",
     "developerName": "dotdotgod",
     "category": "Productivity",
     "capabilities": [
@@ -29,8 +29,7 @@
       "Plan this change using docs/spec, docs/test, and docs/arch first.",
       "Initialize this project with dotdotgod shared agent docs.",
       "Review changed files with dotdotgod graph impact before handoff.",
-      "Clarify project docs using dotdotgod memory-area metadata.",
-      "Run plan-goal staged planning for this change: intake, context-load, discovery, plan, workstream-handoff."
+      "Clarify project docs using dotdotgod memory-area metadata."
     ]
   }
 }

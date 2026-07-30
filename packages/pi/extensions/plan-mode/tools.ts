@@ -227,49 +227,9 @@ export function isDotdotgodCliCommand(command: string): boolean {
 	return getDotdotgodCliArgs(command) !== undefined;
 }
 
-const PLAN_GOAL_STAGE_IDS = new Set([
-	"01-intake",
-	"02-context-load",
-	"03-discovery",
-	"04-plan",
-	"05-workstream-handoff",
-]);
-
-function isPlanGoalStageToken(value: string | undefined): boolean {
-	return PLAN_GOAL_STAGE_IDS.has(value ?? "") || /^0[1-5]$/.test(value ?? "");
-}
-
-function isAutoAllowedPlanGoalStageValidation(args: string[]): boolean {
-	const [commandName, subcommand, planPath, stageFlag, stageId, jsonFlag] = args;
-	return (
-		args.length === 6 &&
-		commandName === "plan" &&
-		subcommand === "validate" &&
-		/^docs\/plan\/[a-z0-9]+(?:-[a-z0-9]+)*\/README\.md$/.test(planPath ?? "") &&
-		stageFlag === "--stage" &&
-		isPlanGoalStageToken(stageId) &&
-		jsonFlag === "--json"
-	);
-}
-
-function isAutoAllowedPlanGoalStageCreate(args: string[]): boolean {
-	const [commandName, group, subcommand, stageId, planPath, jsonFlag] = args;
-	return (
-		args.length === 6 &&
-		commandName === "plan" &&
-		group === "stage" &&
-		subcommand === "create" &&
-		isPlanGoalStageToken(stageId) &&
-		/^docs\/plan\/[a-z0-9]+(?:-[a-z0-9]+)*\/README\.md$/.test(planPath ?? "") &&
-		jsonFlag === "--json"
-	);
-}
-
 export function isAutoAllowedDotdotgodPlanModeCommand(command: string): boolean {
 	const args = getDotdotgodCliArgs(command);
 	if (!args || args.length === 0) return false;
-	if (isAutoAllowedPlanGoalStageValidation(args)) return true;
-	if (isAutoAllowedPlanGoalStageCreate(args)) return true;
 	const commandName = args[0];
 	const subcommand = args[1];
 	if (["--help", "-h", "--version", "-v", "help", "version"].includes(commandName ?? "")) return true;

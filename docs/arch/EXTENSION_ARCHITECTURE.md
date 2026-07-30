@@ -47,14 +47,12 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 
 ### `document-clarify` Skill and Plan Clarifier Subagent
 
-The document clarity skill improves project docs using configured metadata while preserving behavior contracts and traceability. `dotdotgod.plan-doc-clarifier` is the fresh, explicit-file-only `/plan-goal` fallback-aware subagent.
 
 ### `plan-mode` Extension
 
 `plan-mode` owns runtime planning behavior:
 
 - Entry points: `/plan`, `/plan <request>`, `/todos`, and `Ctrl+Alt+P`.
-- Tool/write policy: planning/execution tool switching, optional `--plan-extra-tools`, plan/archive markdown filters, active `/plan-goal` checkpoint exceptions, read-only bash allowlist, bounded dotdotgod context/status commands, `dotdotgod_graph_impact`, `/impact-check`, and one-command approval for other dotdotgod CLI commands.
 - Runtime state: mode flags, todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/plan <request>` delivery, request-framing classification, and pending source/config impact-check records.
 - Context shaping: first-request context checks, queued planning-load delivery, queued post-compaction request resume, compaction debounce, CLI planning-context summary, baseline-doc coverage checks, single-area-only context detection, optional validation, documentation-tree refresh, and bounded multi-file advisory graph impact checks when the CLI is available.
 - Impact-check integration: structured `graph impact --yml` runtime summaries, short pending-impact reminders after source/config edits, pending-path plus git source/config union checks, and stale pending-record cleanup after successful checks.
@@ -107,7 +105,6 @@ Prompt content should:
 
 `plan-mode` persists custom session entries for mode state, todos, review-prompt eligibility, prompt tier, active plan path, touched plan/archive paths, latest planning request, pending inline planning request delivery, queued load state, queued post-compaction resume state, compaction measurements, one-time CLI context-check state, pending impact-check files, and recent completed impact-check records. Discussion-queue state is read from the active plan artifact instead of a sidecar or opaque session object; the custom UI returns structured choices and the agent follow-up updates the plan markdown as the durable source.
 
-The `dotdotgod` CLI owns the shared plan-validation contract for `/plan-goal`, manual checks, and non-Plan-Mode adapter workflows. Plan Mode does not call `dotdotgod plan validate` or treat plan-quality blockers as execution gates; its execution gates are target resolution, unresolved Discussion Queue items, explicit saved-plan review approval, permission boundaries, and impact-check expectations. Plan Mode's bash policy can narrowly auto-allow `/plan-goal` stage-validation command shapes while the mode is active, but that exception only avoids repeated command approvals and does not transfer stage validation ownership to Plan Mode.
 
 ## Related Behavior and Verification
 

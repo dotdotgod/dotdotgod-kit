@@ -75,5 +75,3 @@ When editing existing validators or runtime gates:
 3. Replace them with documented fields, checkboxes, or enum values.
 4. Update prompts so the LLM writes the required structured state.
 5. Add tests that prove harmless prose trigger words do not block execution.
-
-This decision applies especially to Plan Generator checkpoints, Plan Mode request handling, plan validation, and any future documentation quality gates.

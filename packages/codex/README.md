@@ -28,10 +28,6 @@ dd:plan Update the API migration plan.
 dd:impact
 ```
 
-```text
-dd:plan-goal Add the new export API to the auth module.
-```
-
 The bundled skills interpret those phrases as command-like workflow requests.
 
 ## What It Adds to Codex
@@ -42,7 +38,6 @@ The bundled skills interpret those phrases as command-like workflow requests.
 | `dd:load` / `project-load` | Load project memory without changing maintained project files. | Renders the shared Markdown tree and uses `dotdotgod query` when focus text is provided; query may refresh ignored caches. |
 | `dd:plan` / `doc-first-planning` | Plan before implementation. | Captures current intent in `docs/plan/<task-slug>/README.md`. |
 | `dd:impact` / `impact-review` | Review changed files before verification or handoff. | Uses `dotdotgod graph impact` to identify likely related docs, tests, commands, and source files. |
-| `dd:plan-goal` / `plan-goal` | Run 5-stage structured planning before implementation. | Produces durable checkpoint files in `docs/plan/<task>/.dotdotgod-plan/` and a plan README. |
 | `document-clarify` | Improve docs wording without changing behavior contracts. | Clarifies README/spec/test/arch/plan/archive docs using memory-area roles. |
 
 ## Included
@@ -54,7 +49,6 @@ The bundled skills interpret those phrases as command-like workflow requests.
   - `project-initializer`
   - `impact-review`
   - `document-clarify`
-  - `plan-goal`
 
 ## Shared Project-Memory Contract
 

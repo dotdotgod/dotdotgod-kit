@@ -36,18 +36,6 @@ function isMarkdownPathInside(cwd: string, path: string, directory: string): boo
 	return segments.slice(0, -1).every(isKebabCaseDirectory);
 }
 
-export function isPlanGoalCheckpointMarkdownPath(cwd: string, path: string): boolean {
-	const relativePath = relativePathInside(cwd, path, PLAN_DIRECTORY);
-	if (!relativePath) return false;
-	const segments = relativePath.split(/[\\/]+/);
-	return (
-		segments.length === 3 &&
-		isKebabCaseDirectory(segments[0] ?? "") &&
-		segments[1] === ".dotdotgod-plan" &&
-		isPlanMarkdownFile(segments[2] ?? "")
-	);
-}
-
 function writableDirectory(pattern: string): string | undefined {
 	const normalized = pattern.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
 	if (!normalized.startsWith("docs/") || normalized.includes("..") || normalized.startsWith("docs/.")) return undefined;
@@ -65,7 +53,7 @@ export function isManagedPlanMarkdownPath(cwd: string, path: string, writablePat
 		const segments = directory.split("/");
 		const fileName = segments.pop();
 		return Boolean(fileName && isPlanMarkdownFile(fileName) && segments.slice(1).every(isKebabCaseDirectory));
-	}) || isPlanGoalCheckpointMarkdownPath(cwd, path);
+	});
 }
 
 export function isActivePlanMarkdownPath(cwd: string, path: string): boolean {

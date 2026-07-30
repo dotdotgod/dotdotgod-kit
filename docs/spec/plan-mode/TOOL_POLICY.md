@@ -26,9 +26,7 @@ Bounded dotdotgod context/status commands are auto-allowed when invoked directly
 
 `index`, `query`, `resolve`, `expand`, `graph impact`, and `graph communities` are project-content safe but may create or refresh ignored `.dotdotgod/` cache metadata. They must not modify source, docs, or config files.
 
-Plan Mode also auto-allows the narrow `/plan-goal` stage-validation shape `dotdotgod plan validate docs/plan/<task-slug>/README.md --stage <stage-id> --json`, including the source-checkout `node packages/cli/bin/dotdotgod.mjs` form. This exception supports staged authoring while Plan Mode is active; it does not make arbitrary `dotdotgod plan validate` calls a Plan Mode execution gate.
 
-Other CLI commands, including `init`, `config init`, unknown commands, shell chaining, redirects, pipes, command substitution, package-runner wrappers, and broader `dotdotgod plan validate` forms, require explicit one-command user approval or remain blocked.
 
 ## Pending Impact Checks
 

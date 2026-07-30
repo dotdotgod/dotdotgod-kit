@@ -1,34 +1,11 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
 import { PLAN_DIRECTORY, planPathExists } from "../runtime/paths.ts";
 import {
 	getCurrentPlanReadmePath,
 	resolvePlanExecutionTarget,
 	type PlanExecutionTargetResolution,
 } from "../plans.ts";
-
-export type PlanGoalReviewEligibility = "normal-plan" | "plan-goal-incomplete" | "plan-goal-complete";
-
-export function getPlanGoalReviewEligibility(cwd: string, planPath: string | undefined): PlanGoalReviewEligibility {
-	if (!planPath) return "normal-plan";
-	const normalized = planPath.replace(/^@/, "").replace(/\\/g, "/");
-	if (!/^docs\/plan\/[a-z0-9]+(?:-[a-z0-9]+)*\/README\.md$/.test(normalized)) return "normal-plan";
-	const planDir = resolve(cwd, dirname(normalized));
-	const stateDir = resolve(planDir, ".dotdotgod-plan");
-	if (!existsSync(stateDir)) return "normal-plan";
-	const finalStagePath = resolve(stateDir, "05_WORKSTREAM_HANDOFF.md");
-	if (!existsSync(finalStagePath)) return "plan-goal-incomplete";
-	try {
-		const markdown = readFileSync(finalStagePath, "utf8");
-		return /^Status:\s*completed\s*$/m.test(markdown) ? "plan-goal-complete" : "plan-goal-incomplete";
-	} catch {
-		return "plan-goal-incomplete";
-	}
-}
-
-export function shouldSuppressPlanGoalReview(cwd: string, planPath: string | undefined): boolean {
-	return getPlanGoalReviewEligibility(cwd, planPath) === "plan-goal-incomplete";
-}
 
 export interface PlanArtifactSnapshot {
 	currentPlanPath?: string;
