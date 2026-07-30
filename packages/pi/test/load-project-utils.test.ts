@@ -97,6 +97,8 @@ describe("documentation tree", () => {
 		assert.match(prompt, /30\. docs\/spec\/29\.md/);
 		assert.doesNotMatch(prompt, /31\. docs\/spec\/30\.md/);
 		assert.match(prompt, /User query: Plan Mode tools/);
+		assert.match(prompt, /^Help: dotdotgod --help$/m);
+		assert.doesNotMatch(prompt, /CLI status:/);
 	});
 
 	it("uses depth five without arguments and does not run a query", () => {
@@ -104,6 +106,8 @@ describe("documentation tree", () => {
 		assert.match(prompt, /Documentation map \(directory depth 5\)/);
 		assert.doesNotMatch(prompt, /Query results:/);
 		assert.match(prompt, /Project narrative and purpose/);
+		assert.match(prompt, /^Help: dotdotgod --help$/m);
+		assert.doesNotMatch(prompt, /CLI status:/);
 	});
 });
 

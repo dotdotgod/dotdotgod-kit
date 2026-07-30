@@ -14,6 +14,16 @@ Pi provides:
 
 Claude Code and Codex provide generated Load commands or skills from `packages/shared/workflows/load.md`.
 
+## CLI Discovery
+
+Full and compact Load expose exactly this optional discovery hint:
+
+```text
+Help: dotdotgod --help
+```
+
+Load does not report CLI installation status, probe installation solely for this hint, or require Help execution. If the CLI or shell execution is unavailable, documentation-map and README routing continue normally.
+
 ## Baseline Memory
 
 Load detects the repository root, dirty worktree state, and baseline memory files:
@@ -78,7 +88,7 @@ Neither mode reports graph size, cache metrics, communities, or index statistics
 
 ## Safety
 
-Load and query do not modify source, docs, or project config. Query may create or incrementally refresh ignored `.dotdotgod/vectors/` files and may download the configured local embedding model into the user model cache on first use. Secret-like paths and excluded local-memory bodies must not be embedded.
+Load and query do not modify source, docs, or project config. Query may create or incrementally refresh ignored `.dotdotgod/vectors/` files and may download the configured local embedding model into the user model cache on first use. Secret-like paths and excluded local-memory bodies must not be embedded. The Help hint is guidance only, so unavailable CLI or shell execution does not block Load.
 
 ## Traceability
 

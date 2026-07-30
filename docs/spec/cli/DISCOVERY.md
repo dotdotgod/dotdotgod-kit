@@ -6,13 +6,16 @@ The `dotdotgod` CLI provides predictable discovery commands for users and script
 
 ## Top-Level Help and Version
 
-- Top-level `dotdotgod --help`, `dotdotgod -h`, `dotdotgod help`, and bare `dotdotgod` MUST print usage to stdout and exit `0`.
+- Top-level `dotdotgod --help`, `dotdotgod -h`, `dotdotgod help`, and bare `dotdotgod` MUST print Help to stdout and exit `0`.
+- Top-level Help MUST begin with `dotdotgod is a project memory CLI for AI agents.`, list every supported command with a concise one-line description, and route detailed discovery to `dotdotgod help <command>` or `dotdotgod <command> --help`.
+- Top-level Help MUST NOT prescribe a universal agent workflow, repeat promotional narrative, or make a global side-effect claim; effects and safety notes belong in focused command Help when relevant.
 - Top-level `dotdotgod --version`, `dotdotgod -v`, and `dotdotgod version` MUST print the `@dotdotgod/cli` package version to stdout and exit `0`.
 - Unknown commands and invalid options MUST print diagnostics and usage to stderr and exit `2`.
 
 ## Subcommand Help
 
-- Subcommand help MUST be available through `--help`, `-h`, or `help` without validating docs, reading caches, refreshing graph indexes, or initializing files.
+- Subcommand Help MUST be available through `--help`, `-h`, or `help` without validating docs, reading caches, refreshing graph indexes, or initializing files.
+- Focused Help MUST provide an exact usage form and concise option descriptions. Effects, safety notes, arguments, and examples are included only when needed to explain non-obvious syntax, maintained-file writes, ignored-cache updates, or external calls.
 - `dotdotgod resolve <root> <ref>` and `dotdotgod expand <root> <prompt>` MUST expose help without cache side effects and MUST support `--json`, `--max-results <n>`, and `--include-archive`.
 - `expand` MUST also support `--with-impact` and opt-in `--fuzzy` natural-reference extraction.
 - Nested subcommand help MUST be available for `graph impact`, `graph communities`, `config init`, and `traceability links`.

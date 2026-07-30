@@ -186,6 +186,12 @@ Canonical instructions for AI coding agents working in this repository.
 - Update docs when behavior, architecture, or test strategy changes.
 - When using the dotdotgod CLI, run \`dotdotgod validate\` after docs changes and follow its traceability guidance for behavior specs.$DOTDOT_AGENT_RULE
 
+## dotdotgod
+
+dotdotgod is a project memory CLI for AI agents.
+
+Use \`dotdotgod --help\` to discover available project-memory commands and their usage.
+
 ## Commands
 
 Document the project-specific commands here:

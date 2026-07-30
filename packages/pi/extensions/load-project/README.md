@@ -10,7 +10,7 @@ See `docs/spec/LOAD_PROJECT.md` for behavior and `docs/arch/EXTENSION_ARCHITECTU
 - `/dd:load` — stable namespaced full-load command.
 - `/dd:load:compact` — compact refresh for already-loaded sessions.
 
-The command name selects full or compact reporting. Free-form arguments are query text and never change the mode.
+The command name selects full or compact reporting. Free-form arguments are query text and never change the mode. Both modes expose `Help: dotdotgod --help` as optional discovery guidance without reporting CLI installation status or requiring Help execution.
 
 ## Documentation Map And Query
 
@@ -21,7 +21,7 @@ With arguments, Load:
 1. runs `dotdotgod query <root> "<arguments>" --limit 30 --json` when available;
 2. includes the best-ranked chunk from each of at most 30 distinct Markdown files;
 3. renders the documentation tree through directory depth 3;
-4. falls back to README routing and targeted reads if query is unavailable.
+4. falls back to README routing and targeted reads if query or shell execution is unavailable.
 
 At a depth boundary, the map reports exact recursive omitted-directory and Markdown-file counts. `load.documentationSummary.exclude` controls both map and query corpus exclusions; defaults exclude `docs/plan/**` and `docs/archive/**` bodies. Load still treats `docs/plan/README.md` and `docs/archive/README.md` as local routing maps when available.
 
