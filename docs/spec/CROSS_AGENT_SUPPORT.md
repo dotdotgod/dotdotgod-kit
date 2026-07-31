@@ -46,8 +46,8 @@ Current adapter support.
 
 All supported agents should share these conventions:
 
-- `AGENTS.md` is the canonical long-lived project instruction file.
-- `CLAUDE.md` and `CODEX.md` stay thin and point to `AGENTS.md`.
+- `AGENTS.md` is the canonical long-lived project instruction file and provides the stable dotdotgod purpose plus `dotdotgod --help` discovery route.
+- `CLAUDE.md` and `CODEX.md` stay thin and point to `AGENTS.md` without duplicating CLI guidance.
 - `docs/spec/`, `docs/test/`, `docs/arch/`, `docs/plan/`, and `docs/archive/` keep the same meanings.
 - Active task plans use `docs/plan/<task-slug>/README.md`.
 - Completed plans move to `docs/archive/plan/<task-slug>/`.
@@ -77,6 +77,7 @@ Required workflows:
 
 - initialize or normalize the project memory scaffold and complete editable default config
 - load project memory without modifying source, documentation, or project config; focused query may refresh ignored vector and model caches
+- expose `Help: dotdotgod --help` as optional Load guidance across native adapter mechanics without reporting installation status or blocking fallback when CLI or shell execution is unavailable
 - plan safely before source/config changes
 - review changed files with graph-impact evidence before broad verification, commits, pushes, publishing, or final handoff when the CLI or an equivalent project-local impact command is available; otherwise preserve the same review intent through targeted specs/tests/docs reads
 - preserve completed plans and temporary reports in the archive structure

@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/trello-power-up",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "private": true,
   "description": "Static Trello Power-Up UI for dotdotgod linked docs custom field data.",
   "type": "module",

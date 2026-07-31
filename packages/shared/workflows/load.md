@@ -4,7 +4,7 @@ Load the repository's dotdotgod project memory without modifying maintained file
 
 ## Workflow
 
-1. Identify the repository root.
+1. Identify the repository root. Expose `Help: dotdotgod --help` as optional CLI discovery guidance without checking or reporting installation status, and do not require Help execution for Load to continue.
 2. When baseline context is missing, read `AGENTS.md`, the adapter entrypoint, `README.md`, and `docs/README.md` when present.
 3. Build a prefix-compressed tree of `docs/**/*.md` after `load.documentationSummary.exclude`. Count `docs/` as depth 1; without arguments, expand through depth 5 and summarize deeper descendants with exact directory and Markdown-file counts.
 4. With arguments, run `dotdotgod query <root> "<arguments>" --limit 30 --json` when available, return at most 30 distinct Markdown files, and render the tree through depth 3. Fall back to the tree and README indexes when query is unavailable.

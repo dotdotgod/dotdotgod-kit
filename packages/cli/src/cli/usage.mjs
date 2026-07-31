@@ -77,23 +77,32 @@ Ranks nodes related to one or more changed files. <root> is the project root; re
       return `Usage:
   dotdotgod graph communities <root> [--json]`;
     default:
-      return `Usage:
-  dotdotgod [--help|-h]
-  dotdotgod [--version|-v]
-  dotdotgod help [command]
-  dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]
-  dotdotgod init <root> [--project-name NAME] [--dotdot-setting] [--dry-run] [--json]
-  dotdotgod index <root> [--json]
-  dotdotgod config <root> [--json]
-  dotdotgod config init <root> [--json]
-  dotdotgod status <root> [--json]
-  dotdotgod query <root> <query> [--limit n] [--json]
-  dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]
-  dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]
-  dotdotgod traceability links <root> [--check|--write] [--json]
-  dotdotgod trello sync <root> [--dry-run]
-  dotdotgod graph impact <root> --changed <path> [--changed <path> ...] [--compact|--json|--yml|--yaml]
-  dotdotgod graph communities <root> [--json]`;
+      return `dotdotgod is a project memory CLI for AI agents.
+
+Usage:
+  dotdotgod <command> [options]
+  dotdotgod help <command>
+
+Commands:
+  init                  Initialize project memory files.
+  config                Inspect or initialize project configuration.
+  query                 Search project documentation.
+  resolve               Resolve a project reference.
+  expand                Expand references in a prompt.
+  validate              Validate project memory and documentation.
+  index                 Build or refresh the local index.
+  status                Show local index status.
+  traceability links    Check or write generated traceability links.
+  graph impact          Find files related to changed files.
+  graph communities     Find groups of related project-memory nodes.
+  trello sync           Synchronize Trello cards and documentation.
+
+Options:
+  -h, --help            Show help.
+  -v, --version         Show the version.
+
+Run \`dotdotgod help <command>\` or \`dotdotgod <command> --help\`
+for command usage and options.`;
   }
 }
 

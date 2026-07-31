@@ -45,6 +45,20 @@ It also ensures `.gitignore` contains:
 - Both paths MUST create the same baseline file set, local-memory `.gitignore` entries, and structurally identical `dotdotgod.config.json` data.
 - The fallback MUST copy a generated config template derived from the CLI's canonical default serializer.
 
+## Default Agent Guidance
+
+Generated `AGENTS.md` includes this stable CLI discovery section:
+
+```md
+## dotdotgod
+
+dotdotgod is a project memory CLI for AI agents.
+
+Use `dotdotgod --help` to discover available project-memory commands and their usage.
+```
+
+The full command catalog remains owned by CLI Help. `CLAUDE.md` and `CODEX.md` stay thin entrypoints and do not duplicate this section.
+
 ## Existing-File Policy
 
 - Files already present are always preserved and skipped.

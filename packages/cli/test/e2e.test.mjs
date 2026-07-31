@@ -86,9 +86,24 @@ describe('dotdotgod CLI e2e', () => {
     for (const args of [[], ['--help'], ['-h'], ['help']]) {
       const result = run(args);
       assert.equal(result.status, 0, result.stdout + result.stderr);
-      assert.match(result.stdout, /Usage:/);
-      assert.match(result.stdout, /dotdotgod init <root>/);
-      assert.match(result.stdout, /dotdotgod graph impact <root> --changed <path>/);
+      assert.match(result.stdout, /^dotdotgod is a project memory CLI for AI agents\./);
+      assert.match(result.stdout, /Usage:\n  dotdotgod <command> \[options\]/);
+      for (const pattern of [
+        /init\s+Initialize project memory files\./,
+        /config\s+Inspect or initialize project configuration\./,
+        /query\s+Search project documentation\./,
+        /resolve\s+Resolve a project reference\./,
+        /expand\s+Expand references in a prompt\./,
+        /validate\s+Validate project memory and documentation\./,
+        /index\s+Build or refresh the local index\./,
+        /status\s+Show local index status\./,
+        /traceability links\s+Check or write generated traceability links\./,
+        /graph impact\s+Find files related to changed files\./,
+        /graph communities\s+Find groups of related project-memory nodes\./,
+        /trello sync\s+Synchronize Trello cards and documentation\./,
+      ]) assert.match(result.stdout, pattern);
+      assert.match(result.stdout, /dotdotgod help <command>/);
+      assert.doesNotMatch(result.stdout, /Agent workflow:|CLI status:/);
       assert.equal(result.stderr, '');
     }
 
@@ -260,7 +275,12 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(existsSync(join(root, 'docs/plan/README.md')), true);
     assert.equal(existsSync(join(root, 'docs/archive/README.md')), true);
     assert.deepEqual(JSON.parse(readFileSync(join(root, 'dotdotgod.config.json'), 'utf8')), defaultDotdotgodConfigData());
-    assert.match(readFileSync(join(root, 'AGENTS.md'), 'utf8'), /Name: Fixture App/);
+    const agents = readFileSync(join(root, 'AGENTS.md'), 'utf8');
+    assert.match(agents, /Name: Fixture App/);
+    assert.match(agents, /## dotdotgod\n\ndotdotgod is a project memory CLI for AI agents\./);
+    assert.match(agents, /Use `dotdotgod --help` to discover available project-memory commands and their usage\./);
+    assert.doesNotMatch(readFileSync(join(root, 'CLAUDE.md'), 'utf8'), /dotdotgod --help/);
+    assert.doesNotMatch(readFileSync(join(root, 'CODEX.md'), 'utf8'), /dotdotgod --help/);
     const gitignoreEntries = readFileSync(join(root, '.gitignore'), 'utf8').trim().split(/\r?\n/);
     assert(gitignoreEntries.includes('docs/plan'));
     assert(gitignoreEntries.includes('docs/archive'));
@@ -305,6 +325,7 @@ describe('dotdotgod CLI e2e', () => {
     const initialized = spawnSync('sh', [script, root, '--project-name', 'Shell Fixture'], { encoding: 'utf8' });
     assert.equal(initialized.status, 0, initialized.stderr || initialized.stdout);
     assert.match(initialized.stdout, /created\s+.*dotdotgod\.config\.json/);
+    assert.match(readFileSync(join(root, 'AGENTS.md'), 'utf8'), /Use `dotdotgod --help` to discover available project-memory commands and their usage\./);
     assert.deepEqual(JSON.parse(readFileSync(join(root, 'dotdotgod.config.json'), 'utf8')), defaultDotdotgodConfigData());
     for (const template of [
       resolve('../shared/initializer/templates/dotdotgod.config.json'),

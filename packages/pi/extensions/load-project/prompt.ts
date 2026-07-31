@@ -115,6 +115,7 @@ export function buildLoadPrompt(
 		: "- Compact project-memory status\n- Relevant documentation routes\n- Relevant active plan hints only when needed\n- Short bounded next reads";
 	return `Load the dotdotgod project memory in ${full ? "full" : "compact"} mode.
 Current working directory: ${cwd}
+Help: dotdotgod --help
 ${focus ? `User query: ${focus}\n` : ""}${query}
 Detected baseline memory:
 ${present}

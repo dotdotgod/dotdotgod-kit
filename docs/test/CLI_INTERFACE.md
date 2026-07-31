@@ -8,7 +8,8 @@ Verify baseline `dotdotgod` command discovery, version reporting, init/config co
 
 `packages/cli/test/e2e.test.mjs` covers:
 
-- Bare `dotdotgod`, `--help`, `-h`, and `help` print usage to stdout with exit `0`.
+- Bare `dotdotgod`, `--help`, `-h`, and `help` print Help to stdout with exit `0`.
+- Root Help starts with the AI-agent project-memory purpose, lists every supported command with a concise description, and routes to focused command Help without prescribing a workflow or making a global side-effect claim.
 - `--version`, `-v`, and `version` print the package version to stdout with exit `0`.
 - Unknown commands, removed graph subcommands such as `graph query`, and invalid options print diagnostics to stderr and exit `2`.
 - `graph impact` requires `--changed <path>` and does not create `.dotdotgod/` when the argument is missing.

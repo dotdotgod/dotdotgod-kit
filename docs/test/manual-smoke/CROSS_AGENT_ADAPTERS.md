@@ -23,7 +23,7 @@ Confirm these commands are discoverable or invokable:
 
 For `/dd:init`, generated guidance should preserve existing files, use the CLI or bundled fallback, and create the same complete default project config. Confirm the packaged initializer contains both `scripts/init_project.sh` and `templates/dotdotgod.config.json`.
 
-For `/dd:load`, generated guidance should render the shared Markdown tree through depth 5 without arguments, use `dotdotgod query` for up to 30 focused results plus a depth-3 map with arguments, keep `docs/archive/README.md` as the separate history map, and fall back to README-index reads when query is unavailable.
+For `/dd:load`, generated command and skill guidance should expose `Help: dotdotgod --help` without installation status or mandatory Help execution, render the shared Markdown tree through depth 5 without arguments, use `dotdotgod query` for up to 30 focused results plus a depth-3 map with arguments, keep `docs/archive/README.md` as the separate history map, and fall back to README-index reads when query or shell execution is unavailable.
 
 For `/dd:impact`, generated guidance should identify changed source/config/docs files, run one repeated-`--changed` multi-seed `dotdotgod graph impact` command for up to 20 unique paths (and ordered batches only above that bound), inspect the combined ranking and per-seed results selectively, and choose focused verification before handoff.
 
@@ -31,7 +31,11 @@ For `/dd:impact`, generated guidance should identify changed source/config/docs 
 
 Install or add `/path/to/dotdotgod/packages/codex` with the current local plugin workflow.
 
-Confirm `project-load`, `doc-first-planning`, `project-initializer`, and `impact-review` skills are discoverable. Trigger phrases `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` should activate the expected workflows. For `dd:init`, verify the same config template and preservation behavior as Claude Code. For `dd:load`, use the same depth-bounded documentation-map, focused-query, archive-exclusion, and fallback expectations as Claude Code. For `dd:impact`, use the same bounded multi-seed changed-file graph-impact and focused-verification expectations as Claude Code.
+Confirm `project-load`, `doc-first-planning`, `project-initializer`, and `impact-review` skills are discoverable. Trigger phrases `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` should activate the expected workflows. For `dd:init`, verify the same config template and preservation behavior as Claude Code. For `dd:load`, expose the same `Help: dotdotgod --help` hint without installation status or mandatory execution, and use the same depth-bounded documentation-map, focused-query, archive-exclusion, and unavailable-CLI/shell fallback expectations as Claude Code. For `dd:impact`, use the same bounded multi-seed changed-file graph-impact and focused-verification expectations as Claude Code.
+
+## Pi Load Guidance
+
+Confirm `/load`, `/dd:load`, and `/dd:load:compact` prompts expose exactly `Help: dotdotgod --help`, omit `CLI status:`, and continue through the documentation map when Help or query execution is unavailable.
 
 ## Cross-Agent Planning Parity
 
