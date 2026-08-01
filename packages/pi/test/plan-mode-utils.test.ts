@@ -251,7 +251,7 @@ describe("plan-mode domain controllers", () => {
 });
 
 describe("plan-mode command safety", () => {
-	it("normalizes inline /plan request arguments", () => {
+	it("normalizes inline /dd:plan request arguments", () => {
 		assert.equal(normalizePlanCommandRequest("add inline request support"), "add inline request support");
 		assert.equal(normalizePlanCommandRequest("  add inline request support  "), "add inline request support");
 		assert.equal(normalizePlanCommandRequest("\n\t"), undefined);
@@ -1029,7 +1029,7 @@ describe("plan-mode compaction helpers", () => {
 		assert.match(buildPlanCompactionResumePrompt(), /Continue the latest Plan Mode request after planning-focused compaction/);
 	});
 
-	it("keeps inline /plan requests authoritative until their synthetic user message arrives", () => {
+	it("keeps inline /dd:plan requests authoritative until their synthetic user message arrives", () => {
 		const waiting = selectLatestPlanningRequest({
 			currentRequest: "플랜",
 			pendingInlineRequest: "플랜",

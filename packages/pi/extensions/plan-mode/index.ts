@@ -338,9 +338,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     },
   });
 
-  pi.registerCommand("plan", {
+  pi.registerCommand("dd:plan", {
     description:
-      "Toggle plan mode, or enable it and send a planning request with /plan <request>",
+      "Toggle plan mode, or enable it and send a planning request with /dd:plan <request>",
     handler: async (args, ctx) => {
       const request = normalizePlanCommandRequest(args);
       if (!request) {
@@ -375,22 +375,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
         ctx.ui.notify("Plan request queued for the next turn.", "info");
       }
       persistState();
-    },
-  });
-
-  pi.registerCommand("todos", {
-    description: "Show current plan progress",
-    handler: async (_args, ctx) => {
-      if (executionProgress.todos.length === 0) {
-        ctx.ui.notify("No active plan. Create one with /plan first.", "info");
-        return;
-      }
-      const list = executionProgress.todos
-        .map(
-          (item, i) => `${i + 1}. ${item.completed ? "✓" : "○"} ${item.text}`,
-        )
-        .join("\n");
-      ctx.ui.notify(`Plan Progress:\n${list}`, "info");
     },
   });
 

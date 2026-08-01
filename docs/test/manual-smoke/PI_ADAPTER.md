@@ -31,11 +31,11 @@ Run `/dd:load` without arguments and confirm the prompt contains a prefix-compre
 
 ## Plan Mode
 
-1. Run `/plan`.
+1. Run `/dd:plan`.
 2. Ask the agent to write or update `docs/plan/<task-slug>/README.md`.
-3. From normal mode, run `/plan add inline request support` and confirm Plan Mode is enabled before the request is handled.
-4. While still in Plan Mode, run `/plan refine this plan` and confirm it sends a planning request without disabling Plan Mode and without opening `Which active plan should be executed?`, even when active plans already exist or the turn updates `docs/plan/` markdown.
-5. Run `/plan` without args and confirm it still toggles Plan Mode off.
+3. From normal mode, run `/dd:plan add inline request support` and confirm Plan Mode is enabled before the request is handled.
+4. While still in Plan Mode, run `/dd:plan refine this plan` and confirm it sends a planning request without disabling Plan Mode and without opening `Which active plan should be executed?`, even when active plans already exist or the turn updates `docs/plan/` markdown.
+5. Run `/dd:plan` without args and confirm it still toggles Plan Mode off. Confirm `/plan` and `/todos` are absent from command discovery and are not compatibility aliases.
 6. Confirm Pi opens a full-page custom saved-plan review UI before execution can be selected when the plan has no unresolved `Discussion Queue`; test keyboard scrolling, action-bar navigation with `←`/`→`, `Tab`, and `Enter`, shortcut keys for execute/stay/refine/cancel, and in iTerm2 with wheel-to-terminal-scroll enabled observe whether the wheel scrolls review content, terminal scrollback, or neither.
 7. Add a `## Discussion Queue` section with at least two unresolved items and confirm Pi opens the Discussion Queue Console before the saved-plan review UI. Confirm items appear FIFO, `←`/`→` or `Tab` changes options, `Enter` returns an answer, `a` opens custom answer entry, `d` opens a defer-rationale entry, `r` sends a bounded research follow-up, `p` requests plan revision, and `q`/Esc cancels back to planning.
 8. Confirm unresolved queue items suppress execute/stay/refine/cancel until the plan queue is updated to resolved states, and then the normal saved-plan review UI appears unchanged.
@@ -44,10 +44,10 @@ Run `/dd:load` without arguments and confirm the prompt contains a prefix-compre
 15. Trigger explicit execution review and choose stay/refine/cancel; confirm the same plan execution UI does not appear a second time at agent end.
 16. In a narrow terminal, confirm the saved-plan review UI and queue console remain usable with truncated text, no rendered line wider than the terminal, and visible footer controls.
 17. Confirm explanatory replies that do not touch `docs/plan/` do not show the action prompt or extract todos.
-18. Confirm no persistent `[plan-todo-list]` widget appears; `/todos` shows progress on demand.
+18. Confirm no persistent `[plan-todo-list]` widget or dedicated todo command appears; extracted todo state remains available to review, execution, and compaction flows.
 19. Confirm constrained housekeeping is allowed only under local memory.
 20. Confirm source/config mutation remains blocked.
-21. Confirm high-context compaction is checked after the first planning request, not immediately when `/plan` is enabled.
+21. Confirm high-context compaction is checked after the first planning request, not immediately when `/dd:plan` is enabled.
 22. Confirm planning compaction preserves current work, active/touched plan paths, todos, verification, pending load state, and `[DONE:n]` markers.
 23. With the CLI available, confirm first-turn context shaping adds validation, documentation query, and graph impact; without the CLI, Plan Mode continues.
 24. Confirm bounded dotdotgod context/status commands are allowed while `init`, `config init`, shell chaining, redirects, pipes, command substitution, and package-runner wrappers remain blocked or require approval.
@@ -55,7 +55,7 @@ Run `/dd:load` without arguments and confirm the prompt contains a prefix-compre
 26. Confirm later planning turns do not automatically repeat load/compaction decisions.
 27. Confirm first-turn and later-turn hidden prompts use full and compact forms respectively while source/config mutation stays blocked.
 28. Confirm `--plan-extra-tools ctx_search,ctx_execute_file` adds only installed tools and renders the resolved tool list.
-29. In `/plan`, create a plan, choose execute, and confirm the explicitly queued follow-up names the active plan path and does not raise an already-processing runtime error.
+29. In `/dd:plan`, create a plan, choose execute, and confirm the explicitly queued follow-up names the active plan path and does not raise an already-processing runtime error.
 30. With extracted todos, confirm execution context includes the active plan path and compaction preserves it.
 31. Ask to execute an existing active plan path and confirm the queue-first review flow opens even if the plan was not edited in that turn; choose execute after the queue is clear and confirm execution starts through an explicitly queued follow-up.
 32. While multiple active plans exist and no current plan is selected, send a planning/proceed phrase such as `진행하자`, an advisory selector-policy request, and a non-plan command such as `run tests`; confirm Pi does not ask which active plan to execute. Then send an explicit plan execution request such as `실행하자` or mention a specific existing plan and confirm Pi asks or resolves the target before review.

@@ -52,8 +52,8 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 
 `plan-mode` owns runtime planning behavior:
 
-- Entry points: `/plan`, `/plan <request>`, `/todos`, and `Ctrl+Alt+P`.
-- Runtime state: mode flags, todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/plan <request>` delivery, request-framing classification, and pending source/config impact-check records.
+- Entry points: `/dd:plan`, `/dd:plan <request>`, and `Ctrl+Alt+P`.
+- Runtime state: mode flags, internal todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/dd:plan <request>` delivery, request-framing classification, and pending source/config impact-check records.
 - Context shaping: first-request context checks, queued planning-load delivery, queued post-compaction request resume, compaction debounce, CLI planning-context summary, baseline-doc coverage checks, single-area-only context detection, optional validation, documentation-tree refresh, and bounded multi-file advisory graph impact checks when the CLI is available.
 - Impact-check integration: structured `graph impact --yml` runtime summaries, short pending-impact reminders after source/config edits, pending-path plus git source/config union checks, and stale pending-record cleanup after successful checks.
 - UX: queue-first Discussion Queue Console, then saved-plan execute/stay/refine/cancel review only after queue clearance. Explicit execution requests use the same queue-first review flow. Plan Mode suppresses review for generator-authored or actively generating plans, but it does not run generator stage validation. Generator status overlays restore the underlying Plan Mode status when cleared.

@@ -13,7 +13,7 @@ This file provides a stable route for links to the Plan Mode behavior contract w
 
 ## Compatibility Summary
 
-`plan-mode` is a Pi extension that provides safe planning before source changes. It allows read-only project inspection, local plan/archive markdown updates, conservative local-memory housekeeping, bounded dotdotgod context/status commands, `/plan <request>` one-command planning entry, and user-approved execution with todo tracking.
+`plan-mode` is a Pi extension that provides safe planning before source changes. It allows read-only project inspection, local plan/archive markdown updates, conservative local-memory housekeeping, bounded dotdotgod context/status commands, `/dd:plan <request>` one-command planning entry, and user-approved execution with internal todo tracking.
 
 ## Traceability
 

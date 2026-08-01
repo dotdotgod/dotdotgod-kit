@@ -29,7 +29,7 @@ A good first run:
 3. Ask Pi to initialize the project with dotdotgod.
 4. Review the files the initializer will create or skip.
 5. Run `/dd:load` to load bounded project memory.
-6. Use `/plan <request>` before implementation work.
+6. Use `/dd:plan <request>` before implementation work.
 
 ## What It Adds to Pi
 
@@ -37,8 +37,7 @@ A good first run:
 | --- | --- |
 | Create the docs-first project scaffold | `project-initializer` skill |
 | Load project memory without broad file reads | `/dd:load` (full), `/dd:load:compact` (compact), or `/load` |
-| Plan safely before source/config edits | `/plan` and `/plan <request>` |
-| Show execution progress | `/todos` |
+| Plan safely before source/config edits | `/dd:plan` and `/dd:plan <request>` |
 | Review changed-file impact | `/impact-check` or `dotdotgod_graph_impact` |
 | Improve docs clarity | `document-clarify` skill |
 | Delegate analysis or implementation work | bundled `pi-subagents` resources |
@@ -65,9 +64,9 @@ The package includes `@dotdotgod/cli` as a runtime dependency. Pi extensions pre
 
 ## Planning Workflow
 
-### `/plan`
+### `/dd:plan`
 
-Use `/plan` when a request may lead to source or config changes. Plan Mode keeps implementation mutations blocked until there is a durable plan under `docs/plan/<task-slug>/README.md` and the user chooses to execute it.
+Use `/dd:plan` when a request may lead to source or config changes. Plan Mode keeps implementation mutations blocked until there is a durable plan under `docs/plan/<task-slug>/README.md` and the user chooses to execute it.
 
 Plan Mode helps Pi:
 

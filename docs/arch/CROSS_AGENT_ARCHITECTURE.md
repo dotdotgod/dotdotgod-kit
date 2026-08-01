@@ -58,8 +58,7 @@ Pi-specific behavior remains here:
 
 Commands:
 
-- `/plan`
-- `/todos`
+- `/dd:plan`
 - `/load`
 - `/dd:load`
 - `/impact-check`

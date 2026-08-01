@@ -4,8 +4,7 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 
 ## Changes
 
-- Plan progress uses the `/todos` command.
-- `/plan <request>` enables Plan Mode if needed and queues the request as the first or next planning turn with explicit follow-up delivery; `/plan <docs/plan/<task>/README.md>` loads an existing plan and its todos; `/plan` without args still toggles.
+- `/dd:plan <request>` enables Plan Mode if needed and queues the request as the first or next planning turn with explicit follow-up delivery; `/dd:plan <docs/plan/<task>/README.md>` loads an existing plan and its internal todo state; `/dd:plan` without args still toggles.
 - Plan Mode runtime state and orchestration are split into domain controllers for lifecycle, plan artifacts, context shaping, review gates, impact gates, execution flow, and execution progress.
 - Only the `Plan:` heading is parsed for step extraction.
 - Plan mode can use `pi-web-access` tools when installed:
@@ -31,16 +30,15 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 
 ## Commands
 
-- `/plan` - Toggle plan mode
-- `/plan <request>` - Enable Plan Mode if needed and send `<request>` as a planning request without toggling off an active Plan Mode session
-- `/plan <path>` - Load an existing `docs/plan/<task>/README.md` or `docs/plan/<task>` as the active plan and populate `/todos`
-- `/todos` - Show current plan progress
+- `/dd:plan` - Toggle plan mode
+- `/dd:plan <request>` - Enable Plan Mode if needed and send `<request>` as a planning request without toggling off an active Plan Mode session
+- `/dd:plan <path>` - Load an existing `docs/plan/<task>/README.md` or `docs/plan/<task>` as the active plan and restore its internal todo state
 - `/impact-check` - Run `dotdotgod graph impact --yml` for pending source/config files plus current git unstaged, staged, and untracked source/config files
 - `Ctrl+Alt+P` - Toggle plan mode
 
 ## Usage
 
-1. Enable plan mode with `/plan`, run `/plan <request>` to enable Plan Mode and send the first planning request in one command, or run `/plan docs/plan/<task>/README.md` to load an existing plan.
+1. Enable plan mode with `/dd:plan`, run `/dd:plan <request>` to enable Plan Mode and send the first planning request in one command, or run `/dd:plan docs/plan/<task>/README.md` to load an existing plan.
 2. Ask the agent to analyze the task and create a plan.
 3. The agent should create or update a focused kebab-case task directory under `docs/plan/<task-slug>/`.
 4. The task overview, index, scope, and status belong in `docs/plan/<task-slug>/README.md`.
@@ -54,7 +52,6 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 13. After source/config edits, run `/impact-check` or the `dotdotgod_graph_impact` tool and review related docs/tests/files before broad verification or commit.
 14. After modification or coding work, run `dotdotgod validate` for the project before final completion.
 15. After implementation and verification, the agent moves the completed task directory to `docs/archive/plan/<task-slug>/` and includes that step's `[DONE:n]` tag.
-16. Use `/todos` to inspect progress.
 
 ## Plan Mode Restrictions
 
