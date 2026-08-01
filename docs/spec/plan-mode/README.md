@@ -8,6 +8,7 @@
 
 This README is a navigation summary. Detailed behavior contracts live in the traced non-README files listed in the domain map below.
 
+- `pi --dd-plan`: start Pi with dotdotgod Plan Mode enabled. The extension does not register the generic `--plan` flag.
 - `/dd:plan`: toggle plan mode when no request text is provided.
 - `/dd:plan <request>`: enable Plan Mode if needed and send `<request>` as the first or next planning request without toggling Plan Mode off.
 - `/dd:plan <path>`: when `<path>` resolves to `docs/plan/<task>/README.md` or `docs/plan/<task>`, load that existing plan as the active plan and restore its internal todo state.

@@ -52,7 +52,7 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 
 `plan-mode` owns runtime planning behavior:
 
-- Entry points: `/dd:plan`, `/dd:plan <request>`, and `Ctrl+Alt+P`.
+- Entry points: `pi --dd-plan` at startup, `/dd:plan`, `/dd:plan <request>`, and `Ctrl+Alt+P`; the namespaced startup flag avoids collisions with extensions that own `--plan`.
 - Runtime state: mode flags, internal todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/dd:plan <request>` delivery, request-framing classification, and pending source/config impact-check records.
 - Context shaping: first-request context checks, queued planning-load delivery, queued post-compaction request resume, compaction debounce, CLI planning-context summary, baseline-doc coverage checks, single-area-only context detection, optional validation, documentation-tree refresh, and bounded multi-file advisory graph impact checks when the CLI is available.
 - Impact-check integration: structured `graph impact --yml` runtime summaries, short pending-impact reminders after source/config edits, pending-path plus git source/config union checks, and stale pending-record cleanup after successful checks.

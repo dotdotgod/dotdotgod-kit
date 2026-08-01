@@ -31,6 +31,8 @@ Run `/dd:load` without arguments and confirm the prompt contains a prefix-compre
 
 ## Plan Mode
 
+Run `pi --help` and confirm dotdotgod contributes `--dd-plan` without contributing `--plan`. Run `pi --dd-plan` and confirm the session starts with dotdotgod Plan Mode enabled. With `@plannotator/pi-extension` also installed, confirm Pi lists plannotator's `--plan` and dotdotgod's `--dd-plan`, starts without a flag-conflict diagnostic, and preserves each extension's documented startup behavior.
+
 1. Run `/dd:plan`.
 2. Ask the agent to write or update `docs/plan/<task-slug>/README.md`.
 3. From normal mode, run `/dd:plan add inline request support` and confirm Plan Mode is enabled before the request is handled.
@@ -54,7 +56,7 @@ Run `/dd:load` without arguments and confirm the prompt contains a prefix-compre
 25. Confirm a queued project-memory load flushes after the active prompt without `Agent is already processing a prompt` or `Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.` errors.
 26. Confirm later planning turns do not automatically repeat load/compaction decisions.
 27. Confirm first-turn and later-turn hidden prompts use full and compact forms respectively while source/config mutation stays blocked.
-28. Confirm `--plan-extra-tools ctx_search,ctx_execute_file` adds only installed tools and renders the resolved tool list.
+28. Confirm `pi --dd-plan --plan-extra-tools ctx_search,ctx_execute_file` adds only installed tools and renders the resolved tool list.
 29. In `/dd:plan`, create a plan, choose execute, and confirm the explicitly queued follow-up names the active plan path and does not raise an already-processing runtime error.
 30. With extracted todos, confirm execution context includes the active plan path and compaction preserves it.
 31. Ask to execute an existing active plan path and confirm the queue-first review flow opens even if the plan was not edited in that turn; choose execute after the queue is clear and confirm execution starts through an explicitly queued follow-up.
