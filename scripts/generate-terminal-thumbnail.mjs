@@ -59,23 +59,24 @@ const PRESETS = {
   },
   load: {
     output: 'docs/post/how-load-keeps-ai-context-fresh/thumbnail.png',
-    title: '모든 문서를|읽히지 않고도|최신 컨텍스트',
-    subtitle: '최신성·범위·탐색 순서를 함께 관리한다',
+    title: '문서 목차에서|짧은 읽기 경로로',
+    subtitle: '질문에 필요한 원문까지 탐색 범위를 줄인다',
     label: 'PROJECT MEMORY / LOAD',
-    command: '$ dotdotgod query . "project memory"',
+    command: '$ /load command routing',
     lines: [
-      [202, 0, '', 'current docs', '#f7faf8', 700],
-      [252, 1, '└─', 'fresh index', '#56d986', 700],
-      [302, 2, '└─', 'bounded snapshot', '#63a9ff', 700],
-      [352, 3, '└─', 'README routing', '#f5c451', 700],
-      [402, 4, '└─', 'task context', '#b995ff', 700],
-      [482, 0, '', 'archive bodies: excluded', '#7f8b84'],
-      [520, 0, '', 'cache status: fresh', '#56d986'],
+      [190, 0, '', 'project entry points', '#f7faf8', 700],
+      [234, 1, '├─', 'AGENTS.md', '#56d986', 700],
+      [278, 1, '└─', 'docs/README.md', '#63a9ff', 700],
+      [342, 0, '', 'reading route', '#f7faf8', 700],
+      [386, 1, '├─', 'depth-bounded docs map', '#56d986', 700],
+      [430, 1, '├─', 'focused query routes', '#63a9ff', 700],
+      [474, 1, '└─', 'selected source sections', '#f5c451', 700],
+      [528, 0, '', 'plan + archive: on demand', '#aab4ae'],
     ],
     footer: [
-      ['Fresh', '#56d986'],
-      ['Bounded', '#63a9ff'],
-      ['Relevant', '#f5c451'],
+      ['Map', '#56d986'],
+      ['Route', '#63a9ff'],
+      ['Read', '#f5c451'],
     ],
   },
   'maintain-toc': {
@@ -99,10 +100,31 @@ const PRESETS = {
       ['Maintain', '#f5c451'],
     ],
   },
+  query: {
+    output: 'docs/post/how-query-finds-related-docs/thumbnail.png',
+    title: '자연어 질문에서|관련 문서까지',
+    subtitle: '표현과 언어가 달라도 관리 원문을 찾는다',
+    label: 'PROJECT MEMORY / QUERY',
+    command: '$ dotdotgod query . "context routing"',
+    lines: [
+      [190, 0, '', 'natural-language question', '#f7faf8', 700],
+      [234, 1, '└─', 'multilingual E5', '#56d986', 700],
+      [300, 0, '', 'semantic comparison', '#f7faf8', 700],
+      [344, 1, '├─', 'matching heading + path', '#63a9ff', 700],
+      [388, 1, '├─', 'one result per document', '#b995ff', 700],
+      [432, 1, '└─', 'maintained source path', '#f5c451', 700],
+      [506, 0, '', 'embed: changed passages only', '#aab4ae'],
+    ],
+    footer: [
+      ['Ask', '#56d986'],
+      ['Compare', '#63a9ff'],
+      ['Read', '#f5c451'],
+    ],
+  },
   impact: {
     output: 'docs/post/how-graph-impact-finds-related-docs/thumbnail.png',
     title: '변경 파일은|역방향 목차의|시작점이다',
-    subtitle: '함께 확인할 스펙과 테스트를 찾는다',
+    subtitle: '관리되는 관계에서 다음 검토 경로를 찾는다',
     label: 'PROJECT MEMORY / IMPACT',
     command: '$ dotdotgod graph impact . --changed ...',
     lines: [
@@ -189,7 +211,7 @@ function buildSvg({ title, subtitle, label, preset }) {
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--help')) {
-    console.log(`Usage: node scripts/generate-terminal-thumbnail.mjs [options]\n\nOptions:\n  --preset <name>   Visual preset: toc, docs-first, maintain-toc, load, impact\n  --output <path>   PNG output path\n  --svg <path>      Also save the source SVG\n  --title <text>    Use | to split title lines\n  --subtitle <text> Supporting copy\n  --label <text>    Small terminal-style label`);
+    console.log(`Usage: node scripts/generate-terminal-thumbnail.mjs [options]\n\nOptions:\n  --preset <name>   Visual preset: toc, docs-first, maintain-toc, load, query, impact\n  --output <path>   PNG output path\n  --svg <path>      Also save the source SVG\n  --title <text>    Use | to split title lines\n  --subtitle <text> Supporting copy\n  --label <text>    Small terminal-style label`);
     return;
   }
 
