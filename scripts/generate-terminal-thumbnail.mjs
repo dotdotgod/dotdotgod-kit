@@ -35,6 +35,28 @@ const PRESETS = {
       ['Document', '#f5c451'],
     ],
   },
+  'docs-first': {
+    output: 'docs/post/docs-first-project-memory/thumbnail.png',
+    title: 'Docs-first|프로젝트 메모리',
+    subtitle: '문서는 지식을 보존하고 검색은 읽을 경로를 찾는다',
+    label: 'PROJECT MEMORY / DOCS-FIRST',
+    command: '$ find docs -name "*.md"',
+    lines: [
+      [194, 0, '', 'maintained sources', '#f7faf8', 700],
+      [238, 1, '├─', 'docs/spec/', '#56d986', 700],
+      [282, 1, '├─', 'docs/arch/', '#63a9ff', 700],
+      [326, 1, '└─', 'docs/test/', '#f5c451', 700],
+      [390, 0, '', 'derived routes', '#f7faf8', 700],
+      [434, 1, '├─', 'graph index', '#b995ff', 700],
+      [478, 1, '├─', 'vector cache', '#ff817a', 700],
+      [522, 1, '└─', 'session context', '#aab4ae'],
+    ],
+    footer: [
+      ['Source', '#56d986'],
+      ['Route', '#63a9ff'],
+      ['Read', '#f5c451'],
+    ],
+  },
   load: {
     output: 'docs/post/how-load-keeps-ai-context-fresh/thumbnail.png',
     title: '모든 문서를|읽히지 않고도|최신 컨텍스트',
@@ -167,7 +189,7 @@ function buildSvg({ title, subtitle, label, preset }) {
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--help')) {
-    console.log(`Usage: node scripts/generate-terminal-thumbnail.mjs [options]\n\nOptions:\n  --preset <name>   Visual preset: toc, maintain-toc, load, impact\n  --output <path>   PNG output path\n  --svg <path>      Also save the source SVG\n  --title <text>    Use | to split title lines\n  --subtitle <text> Supporting copy\n  --label <text>    Small terminal-style label`);
+    console.log(`Usage: node scripts/generate-terminal-thumbnail.mjs [options]\n\nOptions:\n  --preset <name>   Visual preset: toc, docs-first, maintain-toc, load, impact\n  --output <path>   PNG output path\n  --svg <path>      Also save the source SVG\n  --title <text>    Use | to split title lines\n  --subtitle <text> Supporting copy\n  --label <text>    Small terminal-style label`);
     return;
   }
 

@@ -23,7 +23,9 @@ Follow [`docs/arch/post/WRITING_GUIDE.md`](../arch/post/WRITING_GUIDE.md) when d
 
 ## Posts
 
-- `document-directory-as-table-of-contents/` — draft: Korean post, English edition, and terminal thumbnails explaining how directories, filenames, README indexes, and headings form a book-like table of contents for AI agent memory.
-- `how-dotdotgod-maintains-document-toc/` — draft: Korean and English editions with terminal thumbnails explaining how dotdotgod initializes, validates, traces, loads, and archives the documentation table of contents.
-- `how-load-keeps-ai-context-fresh/` — draft: explains how Load builds depth-bounded documentation maps, uses focused local multilingual query, excludes local-memory bodies by default, and routes AI agents to selective reads.
+- `document-directory-as-table-of-contents/` — published on Velog and DEV Community: Korean and English editions explaining how directories, filenames, README indexes, and headings form a book-like table of contents for AI agent memory.
+- `how-dotdotgod-maintains-document-toc/` — published on Velog and DEV Community: Korean and English editions explaining how dotdotgod initializes, validates, traces, loads, and archives the documentation table of contents.
+- `docs-first-project-memory/` — published on Velog and DEV Community: Korean and English editions explaining why maintained documents remain the source of project memory while vector caches, graphs, and Load outputs act as derived routing layers.
+- `how-load-keeps-ai-context-fresh/` — draft: explains how full and compact Load turn maintained documentation maps, focused query routes, and selected local memory into bounded next reads.
+- `how-query-finds-related-docs/` — draft: explains how local multilingual E5 embeddings route natural-language questions to distinct maintained Markdown documents without replacing their source text.
 - `how-graph-impact-finds-related-docs/` — draft: explains how graph impact turns changed files into an explainable, bounded review list of related specs, architecture, tests, commands, and source files.

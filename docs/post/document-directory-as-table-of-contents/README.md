@@ -4,6 +4,8 @@ AI 에이전트를 위한 좋은 프로젝트 메모리는 문서를 많이 제�
 
 **Language:** [English edition](ENGLISH.md)
 
+**Published:** [Velog](https://velog.io/@vgb3766/AI-%EC%97%90%EC%9D%B4%EC%A0%84%ED%8A%B8%EC%9D%98-%EB%A9%94%EB%AA%A8%EB%A6%AC%EB%8A%94-%EB%AC%B8%EC%84%9C-%EB%AA%A9%EC%B0%A8%EC%97%90%EC%84%9C-%EC%8B%9C%EC%9E%91%EB%90%9C%EB%8B%A4)
+
 ## 문서가 많다고 좋은 메모리는 아니다
 
 문서가 한 디렉터리에 섞여 있거나 `NOTES.md`, `FINAL.md`처럼 역할을 알 수 없는 이름으로 저장되면 에이전트는 파일을 열기 전까지 무엇이 현재 스펙이고, 아키텍처이며, 테스트 방법인지 판단할 수 없다. 반면 같은 주제라도 `docs/spec/CLI_INTERFACE.md`, `docs/arch/CLI_ARCHITECTURE.md`, `docs/test/CLI_INTERFACE.md`처럼 경로가 역할을 드러내면 스펙, 아키텍처, 테스트를 목차만으로 구분할 수 있다.
