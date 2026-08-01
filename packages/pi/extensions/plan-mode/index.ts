@@ -125,7 +125,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     },
   );
 
-  pi.registerFlag("plan", {
+  pi.registerFlag("dd-plan", {
     description: "Start in plan mode (safe exploration plus docs/plan updates)",
     type: "boolean",
     default: false,
@@ -697,7 +697,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
 
   pi.on("session_start", async (_event, ctx) => {
     refreshPlanModePolicy(ctx.cwd);
-    if (pi.getFlag("plan") === true) {
+    if (pi.getFlag("dd-plan") === true) {
       modeLifecycle.enablePlanning(getPlanModeTools());
       contextShaping.shapePending = true;
     }
