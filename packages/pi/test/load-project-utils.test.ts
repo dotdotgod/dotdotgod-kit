@@ -75,16 +75,22 @@ describe("documentation tree", () => {
 				"docs/spec/plan-mode/README.md",
 				"docs/spec/plan-mode/runtime/README.md",
 				"docs/spec/plan-mode/runtime/api/README.md",
-				"docs/spec/plan-mode/runtime/api/deeper/DETAIL.md",
+				"docs/spec/plan-mode/runtime/api/SECOND.md",
+				"docs/spec/plan-mode/runtime/api/alpha/DETAIL.md",
+				"docs/spec/plan-mode/runtime/api/zeta/nested/DETAIL.md",
 			],
 			readmeFiles: [],
 		}],
 	};
 
-	it("expands through depth five and summarizes deeper descendants", () => {
+	it("shows every boundary file and names each summarized child directory", () => {
 		const tree = formatDocumentationTree(snapshot, 5);
 		assert.match(tree, /api\//);
-		assert.match(tree, /… 1 directory, 1 Markdown file/);
+		assert.match(tree, /README\.md/);
+		assert.match(tree, /SECOND\.md/);
+		assert.match(tree, /alpha\/\n\s+- … 0 directories, 1 Markdown file/);
+		assert.match(tree, /zeta\/\n\s+- … 1 directory, 1 Markdown file/);
+		assert.ok(tree.indexOf("alpha/") < tree.indexOf("zeta/"));
 		assert.doesNotMatch(tree, /DETAIL\.md/);
 	});
 

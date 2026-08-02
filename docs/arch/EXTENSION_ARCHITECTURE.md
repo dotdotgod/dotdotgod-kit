@@ -79,7 +79,7 @@ The debug path is for measurement and investigation only; normal package behavio
 - `/load` compatibility command
 - `/dd:load` namespaced full-load command and `/dd:load:compact` compact-load command
 - complete shared Markdown discovery with configured plan/archive exclusions
-- prefix-compressed tree rendering through depth 5 without focus or depth 3 with focus
+- prefix-compressed tree rendering through depth 5 without focus or depth 3 with focus, with all direct boundary files and named per-child summaries below the boundary
 - local `dotdotgod query` invocation for up to 30 focused multilingual E5 results
 - lightweight detection of baseline memory files and narrative loader prompt generation
 - command-conflict guidance for `/load`
