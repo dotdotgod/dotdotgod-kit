@@ -4,11 +4,11 @@
 
 After Plan Mode is enabled, the first user planning request triggers one context-shaping pass. Inline `/dd:plan <request>` arguments use the same path, and synthetic planning requests use explicit follow-up delivery.
 
-1. Queue curated project-memory load when baseline docs are missing or recent memory load is absent. Plan Mode MUST NOT infer cross-area load needs from free-form keywords.
+1. Mark curated project-memory load as pending when baseline docs are missing or recent memory load is absent. Plan Mode MUST NOT infer cross-area load needs from free-form keywords.
 2. Request planning-focused compaction if context is too large or noisy.
-3. If both are needed, compact first, flush the load, then resume the latest request.
+3. If both are needed, compact first, preserve the pending load, then resume the latest request.
 
-Automatic Plan Mode loads use empty focus, the depth-five documentation map, shared exclusions, and no query. Latest-request selection skips synthetic load prompts.
+For a pending automatic load, Plan Mode activates the read-only `dotdotgod_project_load` tool and requires the agent to call it before substantive planning. The extension decides whether loading is needed; the agent generates a concise semantic `focus` from the current task's behavior, architecture, likely source areas, and verification needs. The focus MUST NOT be a verbatim copy of the planning request or deterministic keyword extraction. A non-empty focus uses the existing query results and depth-three documentation map; an intentionally empty focus uses the depth-five map without a query. The tool result returns curated memory in the same turn, after which the agent continues the original request. Latest-request selection skips synthetic load and compaction prompts.
 
 Planning reuses loaded memory and the map. A focused query routes selective doc and source reads. Impact review starts after likely changed files are known and refines plan targets, risks, and verification.
 

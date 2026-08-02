@@ -20,4 +20,12 @@ describe("plan-mode command registration", () => {
 		assert.doesNotMatch(extensionSource, /registerFlag\("plan"/);
 		assert.doesNotMatch(extensionSource, /getFlag\("plan"\)/);
 	});
+
+	it("registers a pending-only agent-focused project-memory load tool", () => {
+		assert.match(extensionSource, /PLAN_MODE_PROJECT_LOAD_TOOL = "dotdotgod_project_load"/);
+		assert.match(extensionSource, /!contextShaping\.pendingAgentLoad/);
+		assert.match(extensionSource, /runDotdotgodQuery\(ctx\.cwd, focus\)/);
+		assert.match(extensionSource, /completeAgentPlanningLoad/);
+		assert.match(extensionSource, /contextShaping\.pendingAgentLoad && availableTools\.includes/);
+	});
 });

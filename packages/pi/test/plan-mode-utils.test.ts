@@ -26,6 +26,7 @@ import {
 	collectProjectMemoryContextCoverage,
 	detectPlanExecutionIntent,
 	buildPlanModeContextPrompt,
+	buildPendingAgentLoadPrompt,
 	extractTodoItems,
 	extractDiscussionQueueItems,
 	formatCompactImpactSummary,
@@ -1020,6 +1021,31 @@ describe("plan-mode compaction helpers", () => {
 		assert.match(instructions, /Reason: because/);
 		assert.match(instructions, /Current work focus/);
 		assert.match(instructions, /Do the current task/);
+	});
+
+	it("requires an agent-generated focused load while automatic loading is pending", () => {
+		assert.equal(buildPendingAgentLoadPrompt(false), undefined);
+		const prompt = buildPendingAgentLoadPrompt(true) ?? "";
+		assert.match(prompt, /call dotdotgod_project_load exactly once/);
+		assert.match(prompt, /concise semantic focus/);
+		assert.match(prompt, /Do not copy the full user request verbatim/);
+		assert.match(prompt, /continue the original planning request/);
+	});
+
+	it("restores legacy queued load prompts as pending agent-selected loads", () => {
+		const context = new ContextShapingController();
+		context.restore({
+			compactionInFlight: false,
+			loadInFlight: false,
+			pendingLoadAfterCompaction: false,
+			pendingLoadPrompt: "Load the dotdotgod project memory in compact mode.",
+			shapePending: false,
+			fullPromptInjected: true,
+			cliContextStatus: "not_loaded",
+		});
+		assert.equal(context.pendingAgentLoad, true);
+		assert.equal(context.pendingLoadPrompt, undefined);
+		assert.equal(context.snapshot().pendingAgentLoad, true);
 	});
 
 	it("builds a post-compaction resume prompt for the latest request", () => {

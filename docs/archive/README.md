@@ -19,6 +19,7 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/plan-mode-auto-load-focus/`: changed automatic Plan Mode memory loading so deterministic runtime logic decides when loading is needed, the agent generates a concise semantic focus, and the pending-only read-only tool returns bounded Load/query context before planning continues.
 - `plan/project-initializer-default-config/`: made CLI and POSIX project initialization create the complete canonical default config, added safe config conflict and backup behavior, generated packaged adapter templates, and distilled the shared initializer prompt.
 - `plan/docs-memory-discovery-policy/`: replaced Pi's fixed docs summary list with bounded dynamic discovery, added the default `docs/**` memory catch-all and configured local-memory discovery, unified automatic load-summary policy, and added fail-closed `planMode.writablePaths`.
 - `plan/load-documentation-summary-exclusions/`: added independent `load.documentationSummary.exclude` policy; defaults and the workspace config omit `docs/plan` and `docs/archive` from Pi load prompt documentation summaries without changing local-memory classification or archive indexing.

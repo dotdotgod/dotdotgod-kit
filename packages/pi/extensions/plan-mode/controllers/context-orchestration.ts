@@ -2,7 +2,6 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { recordContextMetric } from "../../context-metrics/utils.js";
-import { buildLoadPrompt, collectSnapshot } from "../../load-project/utils.js";
 import {
 	shouldLoadProjectMemoryForPlanning,
 } from "../context.ts";
@@ -36,6 +35,7 @@ interface ContextOrchestrationOptions {
 		options?: ReturnType<typeof planModeFollowUpDeliveryOptions>,
 	) => void;
 	persistState: () => void;
+	onPendingLoadChange: () => void;
 }
 
 export class ContextOrchestrationController {
@@ -92,7 +92,6 @@ export class ContextOrchestrationController {
 				);
 				ctx.ui.notify("Planning compaction completed.", "info");
 				this.refreshPlanCliContextIfAvailable(ctx);
-				let resumeAfterLoad = false;
 				if (this.contextShaping.pendingLoadAfterCompaction) {
 					this.contextShaping.pendingLoadAfterCompaction = false;
 					recordContextMetric(
@@ -102,9 +101,8 @@ export class ContextOrchestrationController {
 						{ reason },
 					);
 					this.requestPlanningLoadIfNeeded(ctx);
-					resumeAfterLoad = this.flushPendingPlanningLoad(ctx);
 				}
-				if (!resumeAfterLoad) this.flushPendingPlanningResume(ctx);
+				this.flushPendingPlanningResume(ctx);
 				this.options.persistState();
 			},
 			onError: (error) => {
@@ -127,7 +125,7 @@ export class ContextOrchestrationController {
 			this.modeLifecycle.executing ||
 			this.contextShaping.loadInFlight ||
 			this.contextShaping.compactionInFlight ||
-			this.contextShaping.pendingLoadPrompt
+			this.contextShaping.pendingAgentLoad
 		)
 			return;
 
@@ -151,70 +149,40 @@ export class ContextOrchestrationController {
 		}
 
 		this.contextShaping.lastLoadEntryCount = entryCount;
-		this.contextShaping.pendingLoadPrompt = buildLoadPrompt(
-			ctx.cwd,
-			"",
-			collectSnapshot(ctx.cwd),
-			undefined,
-			{ mode: "compact" },
-		);
+		this.contextShaping.pendingAgentLoad = true;
 		this.contextShaping.pendingLoadReason = "plan-mode-context-shaping";
 		recordContextMetric(ctx, this.options.getFlag, "plan-mode:load-queued", {
 			entryCount,
 			reason: this.contextShaping.pendingLoadReason,
 		});
-		this.options.appendEntry("project-memory-load", {
-			reason: this.contextShaping.pendingLoadReason,
-			entryCount,
-			queued: true,
-		});
 		if (ctx.hasUI) {
 			ctx.ui.notify(
-				"Project memory looks missing or stale; queued curated project memory load for planning.",
+				"Project memory looks missing or stale; the agent will choose a focused Load query before continuing planning.",
 				"info",
 			);
 		}
+		this.options.onPendingLoadChange();
 		this.options.persistState();
 	}
 
-	flushPendingPlanningLoad(ctx: ExtensionContext): boolean {
-		if (
-			!this.contextShaping.pendingLoadPrompt ||
-			this.contextShaping.loadInFlight ||
-			this.modeLifecycle.executing
-		)
-			return false;
-		this.contextShaping.loadInFlight = true;
-		const prompt = this.contextShaping.pendingLoadPrompt;
-		const reason =
-			this.contextShaping.pendingLoadReason ?? "plan-mode-context-shaping";
-		try {
-			this.options.sendUserMessage(prompt, planModeFollowUpDeliveryOptions());
-			this.contextShaping.pendingLoadPrompt = undefined;
-			this.contextShaping.pendingLoadReason = undefined;
-			recordContextMetric(ctx, this.options.getFlag, "plan-mode:load-flushed", {
-				reason,
-				entryCount: ctx.sessionManager.getEntries().length,
-			});
-			return true;
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			recordContextMetric(
-				ctx,
-				this.options.getFlag,
-				"plan-mode:load-flush-error",
-				{ reason, error: message },
-			);
-			if (ctx.hasUI)
-				ctx.ui.notify(
-					`Planning project-memory load is still queued: ${message}`,
-					"warning",
-				);
-			return false;
-		} finally {
-			this.contextShaping.loadInFlight = false;
-			this.options.persistState();
-		}
+	completeAgentPlanningLoad(ctx: ExtensionContext, focus: string, queryOk?: boolean): void {
+		const reason = this.contextShaping.pendingLoadReason ?? "plan-mode-context-shaping";
+		this.contextShaping.pendingAgentLoad = false;
+		this.contextShaping.pendingLoadReason = undefined;
+		this.contextShaping.lastLoadEntryCount = ctx.sessionManager.getEntries().length;
+		this.options.appendEntry("project-memory-load", {
+			reason,
+			entryCount: this.contextShaping.lastLoadEntryCount,
+			focus,
+			queryOk,
+		});
+		recordContextMetric(ctx, this.options.getFlag, "plan-mode:agent-load-complete", {
+			reason,
+			focus,
+			queryOk,
+		});
+		this.options.onPendingLoadChange();
+		this.options.persistState();
 	}
 
 	flushPendingPlanningResume(ctx: ExtensionContext): boolean {
@@ -267,7 +235,7 @@ export class ContextOrchestrationController {
 			!this.modeLifecycle.planningEnabled ||
 			this.modeLifecycle.executing ||
 			this.contextShaping.loadInFlight ||
-			this.contextShaping.pendingLoadPrompt
+			this.contextShaping.pendingAgentLoad
 		)
 			return false;
 		const entryCount = ctx.sessionManager.getEntries().length;

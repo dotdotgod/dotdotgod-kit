@@ -44,6 +44,7 @@ export {
 	parsePlanModeExtraTools,
 	resolvePlanModeTools,
 	buildPlanModeContextPrompt,
+	buildPendingAgentLoadPrompt,
 	shouldShapePlanningContextOnAgentStart,
 	shouldPromptForPlanChoice,
 	formatPlanCompactionFocus,

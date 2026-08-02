@@ -12,6 +12,7 @@ export interface ContextShapingSnapshot {
 	loadInFlight: boolean;
 	lastLoadEntryCount?: number;
 	pendingLoadAfterCompaction: boolean;
+	pendingAgentLoad?: boolean;
 	pendingLoadPrompt?: string;
 	pendingLoadReason?: string;
 	pendingResumePrompt?: string;
@@ -28,6 +29,7 @@ export class ContextShapingController {
 	loadInFlight = false;
 	lastLoadEntryCount: number | undefined;
 	pendingLoadAfterCompaction = false;
+	pendingAgentLoad = false;
 	pendingLoadPrompt: string | undefined;
 	pendingLoadReason: string | undefined;
 	pendingResumePrompt: string | undefined;
@@ -47,6 +49,7 @@ export class ContextShapingController {
 	clearQueuedWork(): void {
 		this.shapePending = false;
 		this.pendingLoadAfterCompaction = false;
+		this.pendingAgentLoad = false;
 		this.pendingLoadPrompt = undefined;
 		this.pendingLoadReason = undefined;
 		this.pendingResumePrompt = undefined;
@@ -70,6 +73,7 @@ export class ContextShapingController {
 			loadInFlight: this.loadInFlight,
 			...(this.lastLoadEntryCount !== undefined ? { lastLoadEntryCount: this.lastLoadEntryCount } : {}),
 			pendingLoadAfterCompaction: this.pendingLoadAfterCompaction,
+			...(this.pendingAgentLoad ? { pendingAgentLoad: true } : {}),
 			...(this.pendingLoadPrompt ? { pendingLoadPrompt: this.pendingLoadPrompt } : {}),
 			...(this.pendingLoadReason ? { pendingLoadReason: this.pendingLoadReason } : {}),
 			...(this.pendingResumePrompt ? { pendingResumePrompt: this.pendingResumePrompt } : {}),
@@ -88,7 +92,10 @@ export class ContextShapingController {
 		this.loadInFlight = snapshot.loadInFlight;
 		this.lastLoadEntryCount = snapshot.lastLoadEntryCount;
 		this.pendingLoadAfterCompaction = snapshot.pendingLoadAfterCompaction;
-		this.pendingLoadPrompt = snapshot.pendingLoadPrompt;
+		// Older version-2 sessions persisted a prebuilt synthetic prompt. Resume
+		// those as an agent-selected load instead of replaying the stale prompt.
+		this.pendingAgentLoad = snapshot.pendingAgentLoad ?? Boolean(snapshot.pendingLoadPrompt);
+		this.pendingLoadPrompt = undefined;
 		this.pendingLoadReason = snapshot.pendingLoadReason;
 		this.pendingResumePrompt = snapshot.pendingResumePrompt;
 		this.pendingResumeReason = snapshot.pendingResumeReason;
@@ -113,7 +120,7 @@ export class ContextShapingController {
 			activePlanPaths,
 			touchedMemoryPaths: [...input.touchedPlanPaths],
 			pendingLoadAfterCompaction:
-				this.pendingLoadAfterCompaction || Boolean(this.pendingLoadPrompt),
+				this.pendingLoadAfterCompaction || this.pendingAgentLoad,
 			constraints: [
 				"Use pnpm for workspace commands",
 				"Plan Mode blocks source/config mutation until execution mode",

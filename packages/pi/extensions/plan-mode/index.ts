@@ -14,6 +14,7 @@ import { keyHint } from "@earendil-works/pi-coding-agent";
 import { Key, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { recordContextMetric } from "../context-metrics/utils.js";
+import { buildLoadPrompt, collectSnapshot, runDotdotgodQuery } from "../load-project/utils.js";
 import { ContextOrchestrationController } from "./controllers/context-orchestration.js";
 import { ContextShapingController, type ContextShapingSnapshot } from "./controllers/context-shaping.js";
 import { ExecutionFlowController } from "./controllers/execution-flow.js";
@@ -58,6 +59,7 @@ import {
   planModeFollowUpDeliveryOptions,
 } from "./plans.js";
 import {
+  buildPendingAgentLoadPrompt,
   buildPlanModeContextPrompt,
   resolvePlanModeTools,
   shouldPromptForPlanChoice,
@@ -67,6 +69,16 @@ import {
   normalizePlanCommandRequest,
   shouldAllowPlanModeBashCommand,
 } from "./tools.js";
+
+const PLAN_MODE_PROJECT_LOAD_TOOL = "dotdotgod_project_load";
+
+const DotdotgodProjectLoadParams = Type.Object({
+  focus: Type.String({
+    maxLength: 500,
+    description:
+      "A concise semantic retrieval query generated from the current planning task. Use an empty string only when broad baseline loading is more appropriate.",
+  }),
+});
 
 const DotdotgodGraphImpactParams = Type.Object({
   changed: Type.Optional(
@@ -107,6 +119,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       appendEntry: (customType, data) => pi.appendEntry(customType, data),
       sendUserMessage: (message, options) => pi.sendUserMessage(message, options),
       persistState: () => persistState(),
+      onPendingLoadChange: () => syncPlanModeTools(),
     },
   );
   const reviewGates = new ReviewGateController();
@@ -135,6 +148,61 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       "Comma-separated extra tool names to allow in Plan Mode when those tools are installed",
     type: "string",
     default: "",
+  });
+
+  pi.registerTool({
+    name: PLAN_MODE_PROJECT_LOAD_TOOL,
+    label: "dotdotgod project load",
+    description:
+      "Load curated project memory for a pending Plan Mode context request using an agent-generated semantic focus.",
+    promptSnippet:
+      "Load curated project memory with a concise task-specific semantic focus when Plan Mode marks memory loading as pending.",
+    promptGuidelines: [
+      "When Plan Mode says project-memory loading is pending, call dotdotgod_project_load before substantive planning. Generate a short semantic focus from the behavior, architecture, source areas, and verification knowledge needed for the current task; do not copy the full user request verbatim.",
+    ],
+    parameters: DotdotgodProjectLoadParams,
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      if (
+        !modeLifecycle.planningEnabled ||
+        modeLifecycle.executing ||
+        !contextShaping.pendingAgentLoad
+      ) {
+        throw new Error("No automatic Plan Mode project-memory load is pending.");
+      }
+
+      const focus = params.focus.replace(/\s+/g, " ").trim();
+      contextShaping.loadInFlight = true;
+      persistState();
+      try {
+        const snapshot = collectSnapshot(ctx.cwd);
+        const queryResult = focus ? runDotdotgodQuery(ctx.cwd, focus) : undefined;
+        const prompt = buildLoadPrompt(
+          ctx.cwd,
+          focus,
+          snapshot,
+          queryResult,
+          { mode: "compact" },
+        );
+        contextOrchestration.completeAgentPlanningLoad(
+          ctx,
+          focus,
+          queryResult?.ok,
+        );
+        return {
+          content: [{ type: "text", text: prompt }],
+          details: {
+            ok: queryResult?.ok ?? true,
+            focus,
+            query: queryResult
+              ? { ok: queryResult.ok, command: queryResult.command, error: queryResult.error }
+              : undefined,
+          },
+        };
+      } finally {
+        contextShaping.loadInFlight = false;
+        persistState();
+      }
+    },
   });
 
   pi.registerTool({
@@ -305,7 +373,17 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
   function getPlanModeTools(): string[] {
     const availableTools = pi.getAllTools().map((tool) => tool.name);
-    return resolvePlanModeTools(pi.getFlag("plan-extra-tools"), availableTools);
+    const tools = resolvePlanModeTools(pi.getFlag("plan-extra-tools"), availableTools);
+    if (contextShaping.pendingAgentLoad && availableTools.includes(PLAN_MODE_PROJECT_LOAD_TOOL)) {
+      tools.push(PLAN_MODE_PROJECT_LOAD_TOOL);
+    }
+    return [...new Set(tools)];
+  }
+
+  function syncPlanModeTools(): void {
+    if (!modeLifecycle.planningEnabled || modeLifecycle.executing) return;
+    modeLifecycle.activeTools = getPlanModeTools();
+    pi.setActiveTools(modeLifecycle.activeTools);
   }
 
   function persistState(): void {
@@ -563,6 +641,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       const content = [
         baseContent,
         requestFraming,
+        buildPendingAgentLoadPrompt(contextShaping.pendingAgentLoad),
         contextShaping.cliSummary,
         impactReminder,
       ]
@@ -644,7 +723,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
       planArtifact.suppressChoiceForInlineRequest = false;
       planArtifact.pendingReviewPath = undefined;
       persistState();
-      if (contextOrchestration.flushPendingPlanningLoad(ctx)) return;
       if (contextOrchestration.flushPendingPlanningResume(ctx)) return;
       return;
     }
@@ -657,8 +735,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
       suppressPlanChoice: planArtifact.suppressChoiceForInlineRequest,
     });
     if (!shouldShowChoice) {
-      if (!planArtifact.pendingReviewPath && contextOrchestration.flushPendingPlanningLoad(ctx))
-        return;
       if (!planArtifact.pendingReviewPath && contextOrchestration.flushPendingPlanningResume(ctx))
         return;
       return;

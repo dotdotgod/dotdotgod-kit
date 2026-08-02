@@ -78,6 +78,12 @@ export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAU
 	return compact ? buildPlanModeCompactContextPrompt(writablePaths) : buildPlanModeFullContextPrompt(allowedTools, writablePaths);
 }
 
+export function buildPendingAgentLoadPrompt(pending: boolean): string | undefined {
+	if (!pending) return undefined;
+	return `[PROJECT MEMORY LOAD REQUIRED]
+Before substantive planning, call dotdotgod_project_load exactly once. Generate a concise semantic focus for the documentation, behavior, architecture, source areas, and verification knowledge needed by the current task. Do not copy the full user request verbatim and do not use deterministic keyword extraction. Use an empty focus only when a broad baseline map is genuinely more useful. After the tool result arrives, continue the original planning request without asking the user to repeat it.`;
+}
+
 export interface PlanCompactionFocus {
 	task?: string;
 	activePlanPaths?: string[];

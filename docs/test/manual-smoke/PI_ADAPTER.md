@@ -53,7 +53,7 @@ Run `pi --help` and confirm dotdotgod contributes `--dd-plan` without contributi
 22. Confirm planning compaction preserves current work, active/touched plan paths, todos, verification, pending load state, and `[DONE:n]` markers.
 23. With the CLI available, confirm first-turn context shaping adds validation, documentation query, and graph impact; without the CLI, Plan Mode continues.
 24. Confirm bounded dotdotgod context/status commands are allowed while `init`, `config init`, shell chaining, redirects, pipes, command substitution, and package-runner wrappers remain blocked or require approval.
-25. Confirm a queued project-memory load flushes after the active prompt without `Agent is already processing a prompt` or `Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.` errors.
+25. When automatic project-memory loading is needed, confirm Plan Mode activates `dotdotgod_project_load`, the agent generates a concise task-specific semantic `focus` rather than copying the full request, the tool returns focused query/map context in the same turn, and planning continues without asking the user to repeat the request. Confirm an empty focus still provides the broad depth-five fallback.
 26. Confirm later planning turns do not automatically repeat load/compaction decisions.
 27. Confirm first-turn and later-turn hidden prompts use full and compact forms respectively while source/config mutation stays blocked.
 28. Confirm `pi --dd-plan --plan-extra-tools ctx_search,ctx_execute_file` adds only installed tools and renders the resolved tool list.
@@ -62,7 +62,7 @@ Run `pi --help` and confirm dotdotgod contributes `--dd-plan` without contributi
 31. Ask to execute an existing active plan path and confirm the queue-first review flow opens even if the plan was not edited in that turn; choose execute after the queue is clear and confirm execution starts through an explicitly queued follow-up.
 32. While multiple active plans exist and no current plan is selected, send a planning/proceed phrase such as `진행하자`, an advisory selector-policy request, and a non-plan command such as `run tests`; confirm Pi does not ask which active plan to execute. Then send an explicit plan execution request such as `실행하자` or mention a specific existing plan and confirm Pi asks or resolves the target before review.
 33. Confirm advisory questions remain lightweight and implementation-looking requests become durable plans first.
-34. Start without baseline docs or with only one docs area preserved, then confirm curated project-memory load is queued.
+34. Start without baseline docs or with only one docs area preserved, then confirm curated project-memory load becomes pending and the agent calls the focused read-only Load tool before substantive planning.
 35. Confirm implementation plans include a step to run `dotdotgod graph impact` for intended changed files before source changes.
 
 ## Pending Impact Checks
