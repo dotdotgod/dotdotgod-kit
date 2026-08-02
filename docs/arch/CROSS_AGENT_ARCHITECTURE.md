@@ -56,6 +56,8 @@ Pi-specific behavior remains here:
 - active plan-file touch tracking and concise execute/stay/refine review prompts
 - pending changed-file impact reminders and `/impact-check` enforcement before commit, push, or publish commands
 
+Plan Mode startup flag: `--dd-plan`. Its namespace allows other Pi extensions to own the generic `--plan` flag.
+
 Commands:
 
 - `/dd:plan`

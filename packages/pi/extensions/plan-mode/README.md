@@ -4,6 +4,7 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 
 ## Changes
 
+- `pi --dd-plan` starts Pi with dotdotgod Plan Mode enabled without claiming the generic `--plan` flag.
 - `/dd:plan <request>` enables Plan Mode if needed and queues the request as the first or next planning turn with explicit follow-up delivery; `/dd:plan <docs/plan/<task>/README.md>` loads an existing plan and its internal todo state; `/dd:plan` without args still toggles.
 - Plan Mode runtime state and orchestration are split into domain controllers for lifecycle, plan artifacts, context shaping, review gates, impact gates, execution flow, and execution progress.
 - Only the `Plan:` heading is parsed for step extraction.
@@ -30,6 +31,7 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 
 ## Commands
 
+- `pi --dd-plan` - Start Pi with dotdotgod Plan Mode enabled
 - `/dd:plan` - Toggle plan mode
 - `/dd:plan <request>` - Enable Plan Mode if needed and send `<request>` as a planning request without toggling off an active Plan Mode session
 - `/dd:plan <path>` - Load an existing `docs/plan/<task>/README.md` or `docs/plan/<task>` as the active plan and restore its internal todo state

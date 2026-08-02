@@ -9,7 +9,7 @@ Plan Mode keeps a conservative default tool surface, but users can opt into addi
 `--plan-extra-tools` accepts a comma-separated list of extra tool names:
 
 ```bash
-pi --plan --plan-extra-tools ctx_search,ctx_execute_file
+pi --dd-plan --plan-extra-tools ctx_search,ctx_execute_file
 ```
 
 Behavior:
@@ -49,6 +49,7 @@ The prompt should prefer already-loaded project memory and documentation maps be
   - [packages/pi/extensions/plan-mode/index.ts](../../packages/pi/extensions/plan-mode/index.ts)
   - [packages/pi/extensions/plan-mode/utils.ts](../../packages/pi/extensions/plan-mode/utils.ts)
 - Verified by:
+  - [packages/pi/test/plan-mode-extension.test.ts](../../packages/pi/test/plan-mode-extension.test.ts)
   - [packages/pi/test/plan-mode-utils.test.ts](../../packages/pi/test/plan-mode-utils.test.ts)
   - [docs/test/README.md](../test/README.md)
 - Related docs:
@@ -61,5 +62,5 @@ The prompt should prefer already-loaded project memory and documentation maps be
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts"],"verifiedBy":["packages/pi/test/plan-mode-utils.test.ts","docs/test/README.md"],"relatedDocs":["docs/spec/PLAN_MODE.md","docs/arch/EXTENSION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/pi test","pnpm --filter @dotdotgod/pi run typecheck"]}
+{"kind":"spec","implementedBy":["packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts"],"verifiedBy":["packages/pi/test/plan-mode-extension.test.ts","packages/pi/test/plan-mode-utils.test.ts","docs/test/README.md"],"relatedDocs":["docs/spec/PLAN_MODE.md","docs/arch/EXTENSION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/pi test","pnpm --filter @dotdotgod/pi run typecheck"]}
 ```
