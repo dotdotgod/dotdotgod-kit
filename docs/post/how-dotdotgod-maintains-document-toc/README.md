@@ -4,6 +4,8 @@
 
 **Language:** [English edition](ENGLISH.md)
 
+**Published:** [Velog](https://velog.io/@vgb3766/%EB%8B%B7%EB%8B%B7%EA%B0%93-%ED%82%B7%EC%9D%80-%EB%AC%B8%EC%84%9C-%EB%AA%A9%EC%B0%A8%EB%A5%BC-%EC%96%B4%EB%96%BB%EA%B2%8C-%EC%9C%A0%EC%A7%80%ED%95%98%EB%8A%94%EA%B0%80)
+
 앞선 글에서는 프로젝트의 하위 디렉터리와 파일명이 AI 에이전트를 위한 책의 목차라고 설명했다. 그러나 프로젝트가 성장하면 새 문서가 README에서 누락되고, 이동한 문서의 링크가 이전 경로에 남으며, 완료된 계획이 활성 작업과 섞일 수 있다.
 
 닷닷갓 킷은 문서 구조를 권장사항으로만 두지 않는다. 문서가 만들어지고 변경되고 완료되는 모든 단계에 목차를 갱신하는 장치를 둔다.
@@ -131,7 +133,7 @@ dotdotgod validate . \
 dotdotgod graph impact . --changed <path>
 ```
 
-그래프와 인덱스는 원본 문서를 대신하지 않는다. 변경 파일에서 관련 문서를 찾는 방법과 결과의 우선순위를 정하는 과정은 후속 글 [변경 파일에서 함께 확인할 문서를 찾는 방법](../how-graph-impact-finds-related-docs/README.md)에서 자세히 다룬다.
+그래프와 인덱스는 원본 문서를 대신하지 않는다. 변경 파일에서 관련 문서를 찾는 방법과 결과의 우선순위를 정하는 과정은 후속 글 [graph impact는 변경 파일에서 함께 검토할 항목을 어떻게 찾는가](../how-graph-impact-finds-related-docs/README.md)에서 자세히 다룬다.
 
 ## 현재 계획과 과거 기록을 분리한다
 
@@ -165,7 +167,7 @@ docs/archive/plan/<task-slug>/
 
 - [AI 에이전트의 메모리는 문서 목차에서 시작된다](../document-directory-as-table-of-contents/README.md)
 - [AI에게 모든 문서를 읽히지 않고 최신 프로젝트 컨텍스트를 유지하는 방법](../how-load-keeps-ai-context-fresh/README.md)
-- [변경 파일에서 함께 확인할 문서를 찾는 방법](../how-graph-impact-finds-related-docs/README.md)
+- [graph impact는 변경 파일에서 함께 검토할 항목을 어떻게 찾는가](../how-graph-impact-finds-related-docs/README.md)
 - [Load 프로젝트 스펙](../../spec/LOAD_PROJECT.md)
 - [Markdown 검증 설정](../../spec/VALIDATION_CONFIG.md)
 - [graph impact 명령 스펙](../../spec/cli/GRAPH_IMPACT.md)

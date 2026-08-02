@@ -4,6 +4,8 @@ Good project memory for AI agents is not a larger pile of documents. It is a **h
 
 **Language:** [한국어 원문](README.md)
 
+**Published:** [DEV Community](https://dev.to/dotdotgod/ai-agent-memory-starts-with-a-documentation-table-of-contents-4h3)
+
 ## More Documentation Does Not Mean Better Memory
 
 When documents are mixed in one directory or stored under names such as `NOTES.md` and `FINAL.md`, an agent cannot tell which file contains the current spec, architecture, or test strategy without opening it. When the path exposes the role, as in `docs/spec/CLI_INTERFACE.md`, `docs/arch/CLI_ARCHITECTURE.md`, and `docs/test/CLI_INTERFACE.md`, the table of contents distinguishes the spec, architecture, and tests before any body is loaded.

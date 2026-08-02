@@ -4,6 +4,8 @@ dotdotgod does not create a documentation table of contents once and leave it be
 
 **Language:** [한국어 원문](README.md)
 
+**Published:** [DEV Community](https://dev.to/dotdotgod/how-dotdotgod-keeps-a-documentation-table-of-contents-current-l0i)
+
 The previous article described project directories and filenames as a book-like table of contents for AI agents. That structure can still decay as a project grows: new documents disappear from README indexes, links keep pointing to old paths, and completed plans remain mixed with active work.
 
 dotdotgod treats documentation structure as more than a recommendation. It puts a maintenance mechanism at every stage where a document is created, changed, or completed.
