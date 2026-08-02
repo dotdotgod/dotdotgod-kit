@@ -8,10 +8,9 @@
 
 This README is a navigation summary. Detailed behavior contracts live in the traced non-README files listed in the domain map below.
 
-- `/plan`: toggle plan mode when no request text is provided.
-- `/plan <request>`: enable Plan Mode if needed and send `<request>` as the first or next planning request without toggling Plan Mode off.
-- `/plan <path>`: when `<path>` resolves to `docs/plan/<task>/README.md` or `docs/plan/<task>`, load that existing plan as the active plan and populate `/todos`.
-- `/todos`: show current plan progress.
+- `/dd:plan`: toggle plan mode when no request text is provided.
+- `/dd:plan <request>`: enable Plan Mode if needed and send `<request>` as the first or next planning request without toggling Plan Mode off.
+- `/dd:plan <path>`: when `<path>` resolves to `docs/plan/<task>/README.md` or `docs/plan/<task>`, load that existing plan as the active plan and restore its internal todo state.
 - `/impact-check`: run `dotdotgod graph impact --yml` for pending source/config edits and current git source/config changes.
 - `dotdotgod_graph_impact`: LLM-callable impact tool for changed-file impact review.
 - `Ctrl+Alt+P`: toggle plan mode.

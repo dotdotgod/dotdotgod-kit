@@ -25,7 +25,7 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 - `PROJECT_INITIALIZER.md`: project initializer scaffold, CLI options, overwrite policy, and docs contract.
 - `DOTDOT_SETTING.md`: optional project-initializer dotdot setting behavior and generated code convention contract.
 - `PLAN_MODE.md`: compatibility route for Plan Mode behavior docs.
-- `plan-mode/README.md`: `/plan`, `/todos`, safe planning restrictions, context shaping, concise plan review choice, and execution tracking.
+- `plan-mode/README.md`: `/dd:plan`, safe planning restrictions, context shaping, concise plan review choice, and execution tracking.
 - `PLAN_MODE_TOOL_SETTINGS.md`: optional Plan Mode extra tool allowlist settings and prompt requirements.
 - `LOAD_PROJECT.md`: `/load`, `/dd:load`, and `/dd:load:compact` documentation-map and focused-query behavior.
 - `MEMORY_AREA_CONFIG.md`: optional config for shared/local and fresh/stale memory-area policy.

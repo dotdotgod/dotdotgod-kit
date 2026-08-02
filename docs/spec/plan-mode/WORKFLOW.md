@@ -2,7 +2,7 @@
 
 ## Planning Context Shaping
 
-After Plan Mode is enabled, the first user planning request triggers one context-shaping pass. Inline `/plan <request>` arguments use the same path, and synthetic planning requests use explicit follow-up delivery.
+After Plan Mode is enabled, the first user planning request triggers one context-shaping pass. Inline `/dd:plan <request>` arguments use the same path, and synthetic planning requests use explicit follow-up delivery.
 
 1. Queue curated project-memory load when baseline docs are missing or recent memory load is absent. Plan Mode MUST NOT infer cross-area load needs from free-form keywords.
 2. Request planning-focused compaction if context is too large or noisy.
@@ -34,13 +34,13 @@ Moderately proactive thresholds are:
 - context tokens within 32,000 tokens of the context window when window size is available
 - 100,000 context tokens as a fallback when only token count is available
 
-After successful automatic compaction, the extension queues a concise resume follow-up for the latest planning request. Inline `/plan <request>` arguments are authoritative even before their synthetic user message reaches the transcript. If project-memory load was deferred until after compaction, the load follow-up is delivered first and resume follows after that load turn. Queued load and resume prompts use explicit follow-up delivery and are cleared after one delivery.
+After successful automatic compaction, the extension queues a concise resume follow-up for the latest planning request. Inline `/dd:plan <request>` arguments are authoritative even before their synthetic user message reaches the transcript. If project-memory load was deferred until after compaction, the load follow-up is delivered first and resume follows after that load turn. Queued load and resume prompts use explicit follow-up delivery and are cleared after one delivery.
 
 The extension skips compaction during execution and continues if compaction fails. Toggle Plan Mode off/on for a fresh context-shaping pass.
 
 ## Plan Review Choice
 
-Plan Mode uses tiered hidden runtime instructions: full prompt on the first active planning turn, compact reminder later. Free-form prose is advisory/planning context for the LLM, not keyword-classified implementation intent. Explicit load commands or missing baseline context trigger load flow. Structured execution handoff text such as `Execute the plan in docs/plan/<task-slug>/README.md` triggers execution flow. `/plan <request>` sends a planning follow-up and suppresses the execution chooser for that turn. `/plan <path>` loads an active-plan README or task directory and fills `/todos` from its `Plan:` section.
+Plan Mode uses tiered hidden runtime instructions: full prompt on the first active planning turn, compact reminder later. Free-form prose is advisory/planning context for the LLM, not keyword-classified implementation intent. Explicit load commands or missing baseline context trigger load flow. Structured execution handoff text such as `Execute the plan in docs/plan/<task-slug>/README.md` triggers execution flow. `/dd:plan <request>` sends a planning follow-up and suppresses the execution chooser for that turn. `/dd:plan <path>` loads an active-plan README or task directory and restores internal todo state from its `Plan:` section.
 
 When the agent creates or updates an active plan markdown file under `docs/plan/`, interactive Plan Mode first checks the README for `Discussion Queue`. Queue items use rows such as `- [ ] Q1 scope blocks-execute-review: <question>` plus fields (`Why`, `Affects`, `Options`, `Recommended`, `Verification impact`, `Status`). `Recommended:` names option labels structurally; option prose is not scanned for recommendation words. Checked items and answered, deferred, or accepted-risk items are resolved; others display in file order.
 
@@ -65,7 +65,7 @@ Long-running tasks may add optional support files in the same task directory:
 - `DECISIONS.md` for local decisions, rejected alternatives, constraints, and follow-up questions that should survive compaction.
 - `VERIFY.md` for task-specific command results, manual checks, fixtures, or release-readiness checklists.
 
-Support files should be short, indexed from the task README, and used only when they make the task easier to resume. They do not replace the executable `Plan:` section or `/todos` tracking.
+Support files should be short, indexed from the task README, and used only when they make the task easier to resume. They do not replace the executable `Plan:` section or internal todo tracking.
 
 ## Todo Extraction and Execution
 
@@ -83,7 +83,6 @@ When execution starts:
 - If optional `PROGRESS.md`, `DECISIONS.md`, or `VERIFY.md` files exist, the agent uses them as resume context before continuing work.
 - The agent marks completed steps by including `[DONE:n]` in the same response that reports completion.
 - After modification or coding work, execution guidance requires `dotdotgod validate` before final completion.
-- `/todos` displays completion progress.
 
 When all tracked steps are complete, plan execution state is cleared without an additional preview/message. Plan completion does not auto-index by default; cache-refresh hooks are opt-in and run only after all steps have `[DONE:n]` markers.
 
