@@ -58,14 +58,11 @@ export function formatDocumentationTree(snapshot: ProjectMemorySnapshot, maxDept
 	const render = (node: TreeNode, depth: number, indent: string): void => {
 		for (const file of node.files.sort()) lines.push(`${indent}- ${file}`);
 		if (depth >= maxDepth && node.directories.size > 0) {
-			let directories = 0;
-			let files = 0;
-			for (const child of node.directories.values()) {
+			for (const [name, child] of [...node.directories.entries()].sort(([left], [right]) => left.localeCompare(right))) {
 				const counts = descendantCounts(child);
-				directories += 1 + counts.directories;
-				files += counts.files;
+				lines.push(`${indent}- ${name}/`);
+				lines.push(`${indent}  - … ${plural(counts.directories, "directory", "directories")}, ${plural(counts.files, "Markdown file")}`);
 			}
-			lines.push(`${indent}- … ${plural(directories, "directory", "directories")}, ${plural(files, "Markdown file")}`);
 			return;
 		}
 		for (const [name, child] of [...node.directories.entries()].sort(([left], [right]) => left.localeCompare(right))) {

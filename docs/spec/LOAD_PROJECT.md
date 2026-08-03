@@ -44,7 +44,7 @@ Load discovers Markdown files below `docs/` and renders repository-relative path
 - `docs/plan`
 - `docs/archive`
 
-Without arguments, Load expands the tree through directory depth 5. At that boundary it replaces deeper descendants with exact recursive directory and Markdown-file counts. It does not silently truncate by directory or item count.
+Without arguments, Load expands the tree through directory depth 5. At that boundary it lists every directly contained Markdown file and every immediate child directory, regardless of item count. Each child directory gets its own exact recursive directory and Markdown-file count for content hidden below the boundary; Load does not combine multiple children into one anonymous summary or recursively print their contents. It does not silently truncate by directory or item count.
 
 Load lists paths but reads bodies selectively through maintained README indexes and current-task evidence.
 
@@ -54,7 +54,7 @@ Free-form Load arguments are query text, not mode switches. When arguments are p
 
 1. runs `dotdotgod query <root> "<arguments>" --limit 30 --json` when available
 2. presents the best-ranked chunk from each of at most 30 distinct Markdown files
-3. renders the documentation map through directory depth 3
+3. renders the documentation map through directory depth 3 with the same named boundary-child summaries
 4. falls back to README routing and targeted reads when query is unavailable
 
 The query command searches shared documentation and excludes plan/archive bodies by default. Each result includes a path, heading, score, and bounded excerpt.
