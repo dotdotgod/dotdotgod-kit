@@ -34,7 +34,7 @@ Moderately proactive thresholds are:
 - context tokens within 32,000 tokens of the context window when window size is available
 - 100,000 context tokens as a fallback when only token count is available
 
-After successful automatic compaction, the extension queues a concise resume follow-up for the latest planning request. Inline `/dd:plan <request>` arguments are authoritative even before their synthetic user message reaches the transcript. If project-memory load was deferred until after compaction, the load follow-up is delivered first and resume follows after that load turn. Queued load and resume prompts use explicit follow-up delivery and are cleared after one delivery.
+After successful automatic compaction, the extension queues a concise resume follow-up for the latest planning request. The current `before_agent_start` prompt is authoritative even when persisted session entries still end at the preceding request. Inline `/dd:plan <request>` arguments are authoritative even before their synthetic user message reaches the transcript. If project-memory load was deferred until after compaction, the load follow-up is delivered first and resume follows after that load turn. Queued load and resume prompts use explicit follow-up delivery and are cleared after one delivery.
 
 The extension skips compaction during execution and continues if compaction fails. Toggle Plan Mode off/on for a fresh context-shaping pass.
 

@@ -1055,6 +1055,23 @@ describe("plan-mode compaction helpers", () => {
 		assert.match(buildPlanCompactionResumePrompt(), /Continue the latest Plan Mode request after planning-focused compaction/);
 	});
 
+	it("uses the current hook prompt instead of a stale preceding transcript request", () => {
+		const selection = selectLatestPlanningRequest({
+			currentRequest: "직전 사용자 요청 A",
+			latestUserText: "현재 제출한 요청 B",
+		});
+
+		assert.deepEqual(selection, {
+			request: "현재 제출한 요청 B",
+			pendingInlineRequest: undefined,
+			changed: true,
+		});
+		assert.match(
+			buildPlanCompactionResumePrompt(selection.request),
+			/Latest request:\n현재 제출한 요청 B/,
+		);
+	});
+
 	it("keeps inline /dd:plan requests authoritative until their synthetic user message arrives", () => {
 		const waiting = selectLatestPlanningRequest({
 			currentRequest: "플랜",

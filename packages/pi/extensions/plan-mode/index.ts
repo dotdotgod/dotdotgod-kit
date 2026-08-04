@@ -565,22 +565,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     };
   });
 
-  pi.on("before_agent_start", async (_event, ctx) => {
+  pi.on("before_agent_start", async (event, ctx) => {
     if (modeLifecycle.planningEnabled && !modeLifecycle.executing) {
-      const latestUserEntry = [...ctx.sessionManager.getEntries()]
-        .reverse()
-        .find((entry) => {
-          const candidate = entry as { type?: string; message?: AgentMessage };
-          return (
-            candidate.type === "message" && candidate.message?.role === "user"
-          );
-        }) as { message?: AgentMessage } | undefined;
-      const latestText = latestUserEntry?.message
-        ? truncateText(getMessageText(latestUserEntry.message))
-        : "";
       const selection = selectLatestPlanningRequest({
         currentRequest: planArtifact.lastPlanningRequest,
-        latestUserText: latestText,
+        latestUserText: truncateText(event.prompt),
         pendingInlineRequest: planArtifact.pendingInlinePlanningRequest,
       });
       if (selection.changed) {

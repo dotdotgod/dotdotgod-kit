@@ -50,7 +50,7 @@ Run `pi --help` and confirm dotdotgod contributes `--dd-plan` without contributi
 19. Confirm constrained housekeeping is allowed only under local memory.
 20. Confirm source/config mutation remains blocked.
 21. Confirm high-context compaction is checked after the first planning request, not immediately when `/dd:plan` is enabled.
-22. Confirm planning compaction preserves current work, active/touched plan paths, todos, verification, pending load state, and `[DONE:n]` markers.
+22. Confirm planning compaction preserves current work, active/touched plan paths, todos, verification, pending load state, and `[DONE:n]` markers. Submit request B immediately after request A and force first-request compaction; confirm the resume follow-up continues B rather than replaying A.
 23. With the CLI available, confirm first-turn context shaping adds validation, documentation query, and graph impact; without the CLI, Plan Mode continues.
 24. Confirm bounded dotdotgod context/status commands are allowed while `init`, `config init`, shell chaining, redirects, pipes, command substitution, and package-runner wrappers remain blocked or require approval.
 25. When automatic project-memory loading is needed, confirm Plan Mode activates `dotdotgod_project_load`, the agent generates a concise task-specific semantic `focus` rather than copying the full request, the tool returns focused query/map context in the same turn, and planning continues without asking the user to repeat the request. Confirm an empty focus still provides the broad depth-five fallback.
