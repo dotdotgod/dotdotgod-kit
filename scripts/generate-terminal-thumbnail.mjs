@@ -141,6 +141,26 @@ const PRESETS = {
       ['Review', '#f5c451'],
     ],
   },
+  practice: {
+    output: 'docs/post/what-to-practice-when-ai-writes-code/thumbnail.png',
+    title: 'AI가 코드를 쓸 때|무엇을 훈련할까',
+    subtitle: '타이핑은 줄이고 판단은 더 깊게',
+    label: 'AI PRACTICE / CODE',
+    command: '$ ai code --review',
+    lines: [
+      [198, 0, '', 'generated code', '#f7faf8', 700],
+      [252, 1, '├─', 'problem framing', '#56d986', 700],
+      [306, 1, '├─', 'code evaluation', '#63a9ff', 700],
+      [360, 1, '├─', 'design judgment', '#b995ff', 700],
+      [414, 1, '└─', 'complexity management', '#f5c451', 700],
+      [500, 0, '', 'type less → judge more deeply', '#aab4ae'],
+    ],
+    footer: [
+      ['Frame', '#56d986'],
+      ['Review', '#63a9ff'],
+      ['Design', '#f5c451'],
+    ],
+  },
 };
 
 function readOption(args, name, fallback) {
@@ -211,7 +231,7 @@ function buildSvg({ title, subtitle, label, preset }) {
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--help')) {
-    console.log(`Usage: node scripts/generate-terminal-thumbnail.mjs [options]\n\nOptions:\n  --preset <name>   Visual preset: toc, docs-first, maintain-toc, load, query, impact\n  --output <path>   PNG output path\n  --svg <path>      Also save the source SVG\n  --title <text>    Use | to split title lines\n  --subtitle <text> Supporting copy\n  --label <text>    Small terminal-style label`);
+    console.log(`Usage: node scripts/generate-terminal-thumbnail.mjs [options]\n\nOptions:\n  --preset <name>   Visual preset: toc, docs-first, maintain-toc, load, query, impact, practice\n  --output <path>   PNG output path\n  --svg <path>      Also save the source SVG\n  --title <text>    Use | to split title lines\n  --subtitle <text> Supporting copy\n  --label <text>    Small terminal-style label`);
     return;
   }
 

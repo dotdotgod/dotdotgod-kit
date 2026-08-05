@@ -1,0 +1,19 @@
+Title: What developers should practice when AI writes the code
+
+URL: <published English article URL>
+
+Suggested first comment:
+
+I wrote this after noticing that AI coding tools do more than make implementation faster: they change which skills deserve the most practice.
+
+My central argument is that some mechanical barriers are getting cheaper—typing boilerplate, recalling every API, producing a first implementation draft—while other skills become more valuable: framing the problem, selecting context, evaluating generated code, making design decisions, and managing complexity.
+
+The typing example is intentionally simple. Typing speed matters less when an agent can generate several files in seconds, but someone still needs to decide whether those files solve the right problem, preserve the existing contracts, and remain maintainable. Faster generation can amplify good design, but it can also amplify complexity.
+
+Writing code by hand still has value because writing and debugging experience builds the judgment needed to review generated code. The shift is in the purpose and proportion of practice.
+
+I would be interested in how this is changing training on other teams:
+
+- Which skills have you deliberately stopped optimizing?
+- Which review or design skills are you practicing more?
+- Have junior developers gained a faster path to judgment, or only a faster path to output?

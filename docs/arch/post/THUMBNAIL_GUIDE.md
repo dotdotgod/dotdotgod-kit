@@ -57,6 +57,7 @@ pnpm run thumbnail:terminal -- --preset maintain-toc
 pnpm run thumbnail:terminal -- --preset load
 pnpm run thumbnail:terminal -- --preset query
 pnpm run thumbnail:terminal -- --preset impact
+pnpm run thumbnail:terminal -- --preset practice
 ```
 
 Each preset provides article-specific terminal content, Korean copy, and an output path in the corresponding post directory.
@@ -77,7 +78,7 @@ Use `|` to split a title into at most three lines. Keep each line short enough f
 
 | Option | Purpose |
 |---|---|
-| `--preset <name>` | Visual and copy preset: `toc`, `docs-first`, `maintain-toc`, `load`, `query`, or `impact` |
+| `--preset <name>` | Visual and copy preset: `toc`, `docs-first`, `maintain-toc`, `load`, `query`, `impact`, or `practice` |
 | `--output <path>` | PNG destination; defaults to the preset's post directory |
 | `--svg <path>` | Optional SVG source destination |
 | `--title <text>` | Headline with `|` line separators |
@@ -93,7 +94,7 @@ pnpm run thumbnail:terminal -- --svg /tmp/post-thumbnail.svg
 
 ## Adapt the Visual to the Article
 
-The generator provides focused terminal visuals for the table-of-contents concept, Docs-first project memory, table-of-contents maintenance, Load, Query, and graph-impact posts. Reuse a preset only when its terminal content supports the article's claim. For another post, use a real path, command, state transition, or bounded diagram from that article.
+The generator provides focused terminal visuals for the table-of-contents concept, Docs-first project memory, table-of-contents maintenance, Load, Query, graph-impact, and AI coding-practice posts. Reuse a preset only when its terminal content supports the article's claim. For another post, use a real path, command, state transition, or bounded diagram from that article.
 
 Do not make the template generic by adding many incidental command-line flags. Add a focused preset when the shared composition still fits, or a separate generator when the visual structure changes substantially.
 
