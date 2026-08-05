@@ -13,7 +13,6 @@ import {
 } from "../plans.ts";
 import {
 	buildPlanCompactionInstructions,
-	buildPlanCompactionResumePrompt,
 	getPlanCompactionReason,
 } from "../prompts.ts";
 import {
@@ -21,7 +20,6 @@ import {
 	runDotdotgodCli,
 } from "../runtime/dotdotgod-cli.js";
 import { planPathExists } from "../runtime/paths.js";
-import { planModeFollowUpDeliveryOptions } from "../plan-review.ts";
 import type { ContextShapingController } from "./context-shaping.js";
 import type { ExecutionProgressController } from "./execution-progress.js";
 import type { ModeLifecycleController } from "./mode-lifecycle.js";
@@ -30,22 +28,30 @@ import type { PlanArtifactController } from "./plan-artifact.js";
 interface ContextOrchestrationOptions {
 	getFlag: (name: string) => unknown;
 	appendEntry: (customType: string, data: unknown) => void;
-	sendUserMessage: (
-		message: string,
-		options?: ReturnType<typeof planModeFollowUpDeliveryOptions>,
-	) => void;
 	persistState: () => void;
 	onPendingLoadChange: () => void;
 }
 
 export class ContextOrchestrationController {
+	private readonly modeLifecycle: ModeLifecycleController;
+	private readonly planArtifact: PlanArtifactController;
+	private readonly contextShaping: ContextShapingController;
+	private readonly executionProgress: ExecutionProgressController;
+	private readonly options: ContextOrchestrationOptions;
+
 	constructor(
-		private readonly modeLifecycle: ModeLifecycleController,
-		private readonly planArtifact: PlanArtifactController,
-		private readonly contextShaping: ContextShapingController,
-		private readonly executionProgress: ExecutionProgressController,
-		private readonly options: ContextOrchestrationOptions,
-	) {}
+		modeLifecycle: ModeLifecycleController,
+		planArtifact: PlanArtifactController,
+		contextShaping: ContextShapingController,
+		executionProgress: ExecutionProgressController,
+		options: ContextOrchestrationOptions,
+	) {
+		this.modeLifecycle = modeLifecycle;
+		this.planArtifact = planArtifact;
+		this.contextShaping = contextShaping;
+		this.executionProgress = executionProgress;
+		this.options = options;
+	}
 
 	requestPlanningCompaction(ctx: ExtensionContext, reason: string): void {
 		if (this.contextShaping.compactionInFlight) return;
@@ -65,9 +71,6 @@ export class ContextOrchestrationController {
 			todos: this.executionProgress.todos,
 		});
 		this.contextShaping.compactionInFlight = true;
-		this.contextShaping.pendingResumePrompt =
-			buildPlanCompactionResumePrompt(this.planArtifact.lastPlanningRequest);
-		this.contextShaping.pendingResumeReason = "plan-mode-compaction-resume";
 		recordContextMetric(
 			ctx,
 			this.options.getFlag,
@@ -92,17 +95,7 @@ export class ContextOrchestrationController {
 				);
 				ctx.ui.notify("Planning compaction completed.", "info");
 				this.refreshPlanCliContextIfAvailable(ctx);
-				if (this.contextShaping.pendingLoadAfterCompaction) {
-					this.contextShaping.pendingLoadAfterCompaction = false;
-					recordContextMetric(
-						ctx,
-						this.options.getFlag,
-						"plan-mode:load-after-compaction",
-						{ reason },
-					);
-					this.requestPlanningLoadIfNeeded(ctx);
-				}
-				this.flushPendingPlanningResume(ctx);
+				this.contextShaping.pendingLoadAfterCompaction = false;
 				this.options.persistState();
 			},
 			onError: (error) => {
@@ -183,51 +176,6 @@ export class ContextOrchestrationController {
 		});
 		this.options.onPendingLoadChange();
 		this.options.persistState();
-	}
-
-	flushPendingPlanningResume(ctx: ExtensionContext): boolean {
-		if (
-			!this.contextShaping.pendingResumePrompt ||
-			this.contextShaping.loadInFlight ||
-			this.contextShaping.compactionInFlight ||
-			this.modeLifecycle.executing ||
-			!this.modeLifecycle.planningEnabled
-		)
-			return false;
-		const prompt = this.contextShaping.pendingResumePrompt;
-		const reason =
-			this.contextShaping.pendingResumeReason ?? "plan-mode-compaction-resume";
-		this.contextShaping.pendingResumePrompt = undefined;
-		this.contextShaping.pendingResumeReason = undefined;
-		recordContextMetric(
-			ctx,
-			this.options.getFlag,
-			"plan-mode:resume-after-compaction",
-			{ reason, entryCount: ctx.sessionManager.getEntries().length },
-		);
-		this.options.persistState();
-		setTimeout(() => {
-			try {
-				this.options.sendUserMessage(prompt, planModeFollowUpDeliveryOptions());
-			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error);
-				recordContextMetric(
-					ctx,
-					this.options.getFlag,
-					"plan-mode:resume-after-compaction-error",
-					{ reason, error: message },
-				);
-				this.contextShaping.pendingResumePrompt = prompt;
-				this.contextShaping.pendingResumeReason = reason;
-				if (ctx.hasUI)
-					ctx.ui.notify(
-						`Planning request resume is still queued: ${message}`,
-						"warning",
-					);
-				this.options.persistState();
-			}
-		}, 0);
-		return true;
 	}
 
 	shouldLoadForPlanning(ctx: ExtensionContext): boolean {

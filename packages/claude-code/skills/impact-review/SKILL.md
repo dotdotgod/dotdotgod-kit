@@ -10,34 +10,21 @@ version: 1.0.0
 
 ## Goal
 
-Review source/config/documentation changes with dotdotgod impact data before broad verification, commits, pushes, publishing, or final handoff.
-
-This workflow is the Claude Code and Codex counterpart to Pi's `/impact-check` reminder. It is advisory unless the active agent runtime or a project-local trusted hook adds stricter enforcement.
+Review task-relevant source, config, and documentation changes with dotdotgod impact evidence before broad verification, commits, pushes, publishing, or final handoff. Claude Code and Codex use this advisory workflow; trusted runtime or project hooks may enforce a stricter boundary.
 
 ## Workflow
 
-1. Establish the changed-file set.
-   - Check git status and preserve unrelated user edits.
-   - Include unstaged, staged, and untracked source/config/docs files that are relevant to the current task.
-   - Exclude dependencies, generated caches, build artifacts, secrets, and unrelated local-memory files unless the user explicitly asks about them.
-2. Prefer bounded multi-seed graph impact.
-   - Collect the complete relevant changed-file set, preserve first-seen order, and run one command with repeated `--changed <path>` options for up to 20 unique paths: `dotdotgod graph impact <root> --changed <path-a> --changed <path-b> --compact` or `--yml`.
-   - If more than 20 unique paths remain, split them into ordered batches of at most 20. Do not run one command per file unless only one relevant path exists.
-   - If the local repository uses the source checkout CLI, use `node packages/cli/bin/dotdotgod.mjs graph impact <root> --changed <path-a> --changed <path-b> --compact` or `--yml`.
-   - If the CLI is unavailable, continue with README indexes, traceability blocks, package metadata, and targeted grep/find fallback.
-3. Inspect impact output selectively.
-   - Review the deduplicated combined ranking and each seed's non-seed top-five results, prioritizing related specs, tests, architecture docs, and source files with the highest scores and clearest reasons.
-   - When behavior specs appear through `implemented_by`, `verified_by`, or `related_doc`, read those docs before broad verification.
-   - Do not paste large raw impact JSON into the response unless the user asks for diagnostics.
-4. Repair or update related docs/tests when the impact output shows stale, missing, or contradictory project memory.
-5. Choose verification from evidence.
-   - Prefer focused package tests, docs validation, generated-resource checks, and package dry-runs that match the changed files.
-   - For docs changes in dotdotgod projects, run `dotdotgod validate . --include-local-memory` and use `--check-index` when index freshness matters.
-6. Summarize the result.
-   - List changed files reviewed.
-   - List the most relevant impacted docs/tests/files and any follow-up action.
-   - List verification commands run or explain why verification was skipped.
+1. Build the changed-file set from Git status. Preserve unrelated user work and exclude dependencies, caches, build output, secrets, and unrelated local memory.
+2. Run one bounded multi-seed impact command for up to 20 unique paths in first-seen order:
 
-## Hook Boundary
+   ```bash
+   dotdotgod graph impact <root> --changed <path-a> --changed <path-b> --compact
+   ```
 
-Optional hooks may remind agents to run this workflow after edits or before stop time, but default package resources must not auto-run full workspace verification, rebuild indexes, initialize scaffolds, move plans to archives, or block every write without a tested plan-only state signal.
+   Use `--yml` when structured detail helps. Split larger sets into ordered batches of 20. In a source checkout, use `node packages/cli/bin/dotdotgod.mjs graph impact`; when the CLI is unavailable, follow README indexes, traceability, package metadata, and focused file search.
+3. Review the combined ranking and each seed's non-seed top results. Prioritize high-signal specs, tests, architecture, and source links, especially `implemented_by`, `verified_by`, and `related_doc` relationships.
+4. Resolve stale or contradictory related docs and tests that belong to the current task.
+5. Select focused tests, documentation validation, generated-resource checks, and package dry-runs from the evidence. For dotdotgod documentation changes, run `dotdotgod validate . --include-local-memory` and add `--check-index` when index freshness matters.
+6. Report the changed files reviewed, the strongest related findings and follow-up actions, and verification completed or skipped.
+
+Keep raw impact payloads out of normal summaries. Optional hooks may remind agents about this workflow; default package resources leave full verification, index rebuilds, initialization, archive moves, and write blocking under explicit workflow control.

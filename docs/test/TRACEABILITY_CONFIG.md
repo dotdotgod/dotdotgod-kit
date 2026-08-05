@@ -26,7 +26,6 @@ node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
 - Confirm generated traceability links include concise contract ID/title/count summaries, detect stale contract summaries, and omit contract details for `contracts: []`.
 - Confirm graph extraction creates stable file-scoped `contract:<spec-path>#<contract-id>` nodes and curated contract edges while preserving top-level file traceability edges.
 - Confirm graph impact JSON/YML includes contract identity and compact output remains bounded.
-- Confirm Trello/docs-sync traceability consumers still treat valid blocks with optional contracts as present.
 
 ## Focused Contract Checks
 

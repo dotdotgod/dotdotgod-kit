@@ -1,4 +1,4 @@
 interface:
   display_name: "Project Initializer"
   short_description: "Initialize project memory and config."
-  default_prompt: "Initialize shared project memory and the complete default config with dotdotgod init or the bundled fallback, preserving existing files."
+  default_prompt: "Initialize shared project memory and the complete default config with dotdotgod init or the bundled fallback while preserving existing files."

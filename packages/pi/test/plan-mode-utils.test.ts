@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
@@ -13,7 +13,6 @@ import {
 	PLAN_COMPACTION_PERCENT_THRESHOLD,
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
 	buildPlanCompactionInstructions,
-	buildPlanCompactionResumePrompt,
 	buildDiscussionQueueFollowUp,
 	buildPlanExecutionDecision,
 	buildPlanExecutionHandoff,
@@ -149,8 +148,8 @@ describe("plan-mode domain controllers", () => {
 		const gates = new GateController();
 		for (const path of sourcePaths) assert.equal(gates.trackPendingImpact(root, path, "edit"), true);
 		assert.match(gates.buildPendingImpactReminder() ?? "", /packages\/pi\/extensions\/plan-mode\/index\.ts/);
-		assert.match(gates.buildCommitBlockReason("git commit -m test") ?? "", /impact not checked/);
-		assert.match(gates.buildBroadVerificationPrompt("pnpm run verify") ?? "", /Pending dotdotgod graph impact checks/);
+		assert.match(gates.buildCommitBlockReason("git commit -m test") ?? "", /graph impact is pending for task-relevant changed files/);
+		assert.match(gates.buildBroadVerificationPrompt("pnpm run verify") ?? "", /graph impact remains pending for these task-relevant changed files/);
 
 		const batches: string[][] = [];
 		const result = gates.runImpactChecks(root, [...sourcePaths, sourcePaths[0]!], (batch) => {
@@ -696,7 +695,7 @@ describe("plan-mode discussion queue helpers", () => {
 		assert.match(answer ?? "", /Record the user's answer/);
 		assert.match(answer ?? "", /Q1/);
 		assert.match(answer ?? "", /docs\/plan\/example\/README\.md/);
-		assert.match(answer ?? "", /do not start execution yet/);
+		assert.match(answer ?? "", /keep Plan Mode active until execution approval/);
 		assert.equal(buildDiscussionQueueFollowUp("docs/plan/example/README.md", { action: "cancel" }), undefined);
 	});
 });
@@ -711,7 +710,7 @@ describe("plan-mode review refinement helpers", () => {
 		assert.match(prompt, /Refine docs\/plan\/example\/README\.md before execution/);
 		assert.match(prompt, /Current plan context/);
 		assert.match(prompt, /Split verification into its own step/);
-		assert.match(prompt, /do not start execution yet/);
+		assert.match(prompt, /keep Plan Mode active until execution approval/);
 	});
 });
 
@@ -982,10 +981,10 @@ describe("plan-mode compaction helpers", () => {
 	it("builds planning-focused custom instructions with the reason", () => {
 		const instructions = buildPlanCompactionInstructions(`Plan Mode context exceeded ${PLAN_COMPACTION_PERCENT_THRESHOLD}% of the context window.`);
 		assert.match(instructions, new RegExp(`^Reason: Plan Mode context exceeded ${PLAN_COMPACTION_PERCENT_THRESHOLD}%`));
-		assert.match(instructions, /Preserve only planning-critical context/);
-		assert.match(instructions, /active plan task slug\/path\/status/);
+		assert.match(instructions, /Preserve planning-critical context in this priority order/);
+		assert.match(instructions, /active plan path and status/);
 		assert.match(instructions, /\[DONE:n\]/);
-		assert.match(instructions, /Demote or omit old completed plans/);
+		assert.match(instructions, /Summarize older completed plans/);
 		assert.equal(buildPlanCompactionInstructions(), PLAN_MODE_COMPACTION_INSTRUCTIONS);
 	});
 
@@ -999,7 +998,7 @@ describe("plan-mode compaction helpers", () => {
 		assert.match(fullPrompt, /4\. Run impact review/);
 		assert.doesNotMatch(fullPrompt, /Explore relevant files thoroughly/);
 		assert.match(compactPrompt, /Compact reminder/);
-		assert.match(compactPrompt, /Do not mutate source\/code\/config files/);
+		assert.match(compactPrompt, /Keep source, code, and config unchanged/);
 		assert.doesNotMatch(compactPrompt, /checkpoint files/);
 		assert.ok(compactPrompt.length < fullPrompt.length / 2);
 	});
@@ -1028,8 +1027,8 @@ describe("plan-mode compaction helpers", () => {
 		const prompt = buildPendingAgentLoadPrompt(true) ?? "";
 		assert.match(prompt, /call dotdotgod_project_load exactly once/);
 		assert.match(prompt, /concise semantic focus/);
-		assert.match(prompt, /Do not copy the full user request verbatim/);
-		assert.match(prompt, /continue the original planning request/);
+		assert.match(prompt, /task-specific synthesis rather than copied request text/);
+		assert.match(prompt, /Continue the original planning request/);
 	});
 
 	it("restores legacy queued load prompts as pending agent-selected loads", () => {
@@ -1048,11 +1047,26 @@ describe("plan-mode compaction helpers", () => {
 		assert.equal(context.snapshot().pendingAgentLoad, true);
 	});
 
-	it("builds a post-compaction resume prompt for the latest request", () => {
-		const prompt = buildPlanCompactionResumePrompt("노션 API 연동 방법 조사해줘");
-		assert.match(prompt, /Continue the following Plan Mode request after planning-focused compaction/);
-		assert.match(prompt, /노션 API 연동 방법 조사해줘/);
-		assert.match(buildPlanCompactionResumePrompt(), /Continue the latest Plan Mode request after planning-focused compaction/);
+	it("does not queue a synthetic user turn after hook-triggered compaction", () => {
+		const source = readFileSync(new URL("../extensions/plan-mode/controllers/context-orchestration.ts", import.meta.url), "utf8");
+		assert.doesNotMatch(source, /sendUserMessage|flushPendingPlanningResume|resume-after-compaction/);
+		assert.match(source, /onComplete:/);
+	});
+
+	it("drops legacy persisted compaction resume prompts instead of replaying them", () => {
+		const context = new ContextShapingController();
+		context.restore({
+			compactionInFlight: false,
+			loadInFlight: false,
+			pendingLoadAfterCompaction: false,
+			pendingResumePrompt: "Continue the following Plan Mode request after planning-focused compaction.",
+			pendingResumeReason: "plan-mode-compaction-resume",
+			shapePending: false,
+			fullPromptInjected: true,
+			cliContextStatus: "not_loaded",
+		});
+		assert.equal(context.snapshot().pendingResumePrompt, undefined);
+		assert.equal(context.snapshot().pendingResumeReason, undefined);
 	});
 
 	it("uses the current hook prompt instead of a stale preceding transcript request", () => {
@@ -1066,10 +1080,6 @@ describe("plan-mode compaction helpers", () => {
 			pendingInlineRequest: undefined,
 			changed: true,
 		});
-		assert.match(
-			buildPlanCompactionResumePrompt(selection.request),
-			/Latest request:\n현재 제출한 요청 B/,
-		);
 	});
 
 	it("keeps inline /dd:plan requests authoritative until their synthetic user message arrives", () => {
@@ -1086,7 +1096,6 @@ describe("plan-mode compaction helpers", () => {
 			latestUserText: "플랜",
 		});
 		assert.deepEqual(delivered, { request: "플랜", pendingInlineRequest: undefined, changed: true });
-		assert.match(buildPlanCompactionResumePrompt(waiting.request), /Latest request:\n플랜/);
 	});
 
 	it("ignores Plan Mode runtime follow-up messages when selecting the latest request", () => {

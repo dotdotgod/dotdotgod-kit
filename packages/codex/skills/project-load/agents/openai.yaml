@@ -1,4 +1,4 @@
 interface:
   display_name: "Project Load"
   short_description: "Load dotdotgod project memory."
-  default_prompt: "Load this project's dotdotgod memory and summarize rules, docs, commands, relevant active plans, and questions surfaced by the loaded material."
+  default_prompt: "Load the resolved dotdotgod project context and summarize the maintained evidence and routes relevant to the current request."

@@ -61,8 +61,6 @@ importers:
 
   packages/shared: {}
 
-  packages/trello-power-up: {}
-
 packages:
 
   '@anthropic-ai/sdk@0.91.1':

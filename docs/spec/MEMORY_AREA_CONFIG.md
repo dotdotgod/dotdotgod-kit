@@ -51,7 +51,7 @@ Without config, the CLI behaves as if these areas were configured:
 - `docs/archive/**`: local stale archive body excluded by default.
 - all remaining `docs/**`: shared fresh project documentation through a final low-priority catch-all area.
 
-The built-in default areas intentionally omit `description` and `clarify` metadata so `dotdotgod config init` stays concise. The `document-clarify` workflow carries the default dotdotgod document-role fallback for zero-config projects.
+The built-in default areas intentionally omit `description` and `clarify` metadata so `dotdotgod config init` stays concise. The `document-clarify` workflow uses resolved area metadata when present and otherwise derives the target document's purpose from its content, nearest README, and direct links.
 
 Configured local areas with body inclusion enabled are also direct-disk discovery roots, so ignored local files are not limited to the built-in plan directory. Exact paths and `/**` subtrees are expanded under the normal secret, generated-file, supported-file, and bounded traversal checks; broad `**/suffix` patterns are classification-only.
 

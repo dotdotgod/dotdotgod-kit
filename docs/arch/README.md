@@ -16,4 +16,3 @@ Use this area for architecture decisions, code conventions, module boundaries, d
 - `post/README.md`: tracked project-post structure, editorial conventions, publishing assets, and load-summary boundaries.
 - `MEMORY_AREA_CONFIG.md`: config discovery, path matching, graph metadata, and separate graph/Load-query policies for shared/local and fresh/stale memory areas.
 - `IMPACT_RANKING_CONFIG.md`: graph impact ranking architecture, score components, PPR policy, and deterministic semantic edge generation.
-- `TRELLO_DOCS_SYNC.md`: Trello card to markdown sync architecture for offline dry-run, trusted GitHub Actions writes, `dotdotgod-view` custom field data, and Power-Up UI boundaries.

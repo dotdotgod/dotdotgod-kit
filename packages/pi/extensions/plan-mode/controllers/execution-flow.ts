@@ -67,8 +67,6 @@ export class ExecutionFlowController {
 		);
 		if (decision.shouldExecute && decision.handoff) {
 			this.contextShaping.shapePending = false;
-			this.contextShaping.pendingResumePrompt = undefined;
-			this.contextShaping.pendingResumeReason = undefined;
 			this.startOrDisableExecution();
 			recordContextMetric(ctx, this.options.getFlag, "plan-mode:execution-start", {
 				todoCount: this.executionProgress.todos.length,

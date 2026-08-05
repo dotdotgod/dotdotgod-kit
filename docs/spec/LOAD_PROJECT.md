@@ -12,7 +12,7 @@ Pi provides:
 - `/dd:load`: namespaced full load
 - `/dd:load:compact`: compact refresh
 
-Claude Code and Codex provide generated Load commands or skills from `packages/shared/workflows/load.md`.
+Claude Code and Codex provide generated Load commands or skills from `packages/shared/workflows/load.md`. Their generated workflow runs `dotdotgod config <root> --json` to resolve documentation exclusions and uses `dotdotgod query` for focused routing, with README and tree fallback when CLI execution is unavailable.
 
 ## CLI Discovery
 

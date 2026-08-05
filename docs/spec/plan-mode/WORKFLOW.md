@@ -6,7 +6,7 @@ After Plan Mode is enabled, the first user planning request triggers one context
 
 1. Mark curated project-memory load as pending when baseline docs are missing or recent memory load is absent. Plan Mode MUST NOT infer cross-area load needs from free-form keywords.
 2. Request planning-focused compaction if context is too large or noisy.
-3. If both are needed, compact first, preserve the pending load, then resume the latest request.
+3. If both are needed, mark focused load as required on the current planning turn, then compact before substantive planning continues.
 
 For a pending automatic load, Plan Mode activates the read-only `dotdotgod_project_load` tool and requires the agent to call it before substantive planning. The extension decides whether loading is needed; the agent generates a concise semantic `focus` from the current task's behavior, architecture, likely source areas, and verification needs. The focus MUST NOT be a verbatim copy of the planning request or deterministic keyword extraction. A non-empty focus uses the existing query results and depth-three documentation map; an intentionally empty focus uses the depth-five map without a query. The tool result returns curated memory in the same turn, after which the agent continues the original request. Latest-request selection skips synthetic load and compaction prompts.
 
@@ -34,7 +34,7 @@ Moderately proactive thresholds are:
 - context tokens within 32,000 tokens of the context window when window size is available
 - 100,000 context tokens as a fallback when only token count is available
 
-After successful automatic compaction, the extension queues a concise resume follow-up for the latest planning request. The current `before_agent_start` prompt is authoritative even when persisted session entries still end at the preceding request. Inline `/dd:plan <request>` arguments are authoritative even before their synthetic user message reaches the transcript. If project-memory load was deferred until after compaction, the load follow-up is delivered first and resume follows after that load turn. Queued load and resume prompts use explicit follow-up delivery and are cleared after one delivery.
+After successful automatic compaction, the already-active planning run continues from the compacted context. The extension does not create a synthetic user-role resume message or duplicate the latest request. When focused project-memory load is also needed, the current turn receives the pending load requirement before compaction starts and calls the tool before substantive planning. Inline `/dd:plan <request>` arguments remain authoritative before their synthetic command-delivery message reaches the transcript. Legacy persisted resume prompts are recognized as runtime messages but are not replayed.
 
 The extension skips compaction during execution and continues if compaction fails. Toggle Plan Mode off/on for a fresh context-shaping pass.
 
@@ -78,7 +78,7 @@ When execution starts:
 - Full tool access is restored.
 - Execution state is persisted only after the plan-review UI returns an execute choice; preview rendering never triggers execution by itself.
 - The execute follow-up names the active plan path when known.
-- Extension-generated execute, refine, discussion, load, and resume follow-ups use explicit follow-up delivery.
+- Extension-generated execute, refine, and discussion follow-ups use explicit follow-up delivery; project-memory load runs through the pending tool requirement, and compaction continues the active run without a resume follow-up.
 - Remaining steps are loaded from the selected README when needed.
 - If optional `PROGRESS.md`, `DECISIONS.md`, or `VERIFY.md` files exist, the agent uses them as resume context before continuing work.
 - The agent marks completed steps by including `[DONE:n]` in the same response that reports completion.

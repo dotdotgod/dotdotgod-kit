@@ -188,14 +188,14 @@ export function summarizeDiscussionQueue(markdown: string): DiscussionQueueSumma
 export function buildDiscussionQueueFollowUp(planPath: string | undefined, result: DiscussionQueueResult): string | undefined {
 	if (result.action === "cancel" || !result.itemId) return undefined;
 	const target = planPath ? ` in ${planPath}` : " in the active plan";
-	const suffix = "Update the Discussion Queue item, preserve the durable plan markdown, and do not start execution yet.";
+	const suffix = "Update the durable plan's Discussion Queue and keep Plan Mode active until execution approval.";
 	if (result.action === "answer") {
 		const selected = [result.optionLabel, result.optionText].filter(Boolean).join(": ");
 		return `Record the user's answer for Discussion Queue item ${result.itemId}${target}: ${selected}. ${suffix}`;
 	}
 	if (result.action === "custom_answer") return `Record the user's custom answer for Discussion Queue item ${result.itemId}${target}: ${result.answer ?? ""}. ${suffix}`;
 	if (result.action === "defer") return `Mark Discussion Queue item ${result.itemId}${target} as deferred${result.rationale ? ` with rationale: ${result.rationale}` : ""}. ${suffix}`;
-	if (result.action === "research") return `Research the bounded question for Discussion Queue item ${result.itemId}${target}, update the item with findings or next options, and stay in Plan Mode. ${suffix}`;
+	if (result.action === "research") return `Research the bounded question for Discussion Queue item ${result.itemId}${target} and record findings or next options. ${suffix}`;
 	if (result.action === "revise") return `Revise the plan for Discussion Queue item ${result.itemId}${target}${result.rationale ? `: ${result.rationale}` : "."} ${suffix}`;
 	return undefined;
 }
@@ -209,7 +209,7 @@ export function buildPlanReviewRefinePrompt(options: PlanRefinementPromptOptions
 		`Refine ${target} before execution.`,
 		context ? `Current plan context:\n${context}` : undefined,
 		`User refinement feedback:\n${feedback}`,
-		"Update the durable plan markdown, keep Plan Mode active, and do not start execution yet.",
+		"Update the durable plan markdown and keep Plan Mode active until execution approval.",
 	].filter((section): section is string => Boolean(section)).join("\n\n");
 }
 

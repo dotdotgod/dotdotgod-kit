@@ -119,17 +119,17 @@ export class GateController {
 
 	buildPendingImpactReminder(): string | undefined {
 		if (this.pendingImpactItems.length === 0) return undefined;
-		return `[DOTDOTGOD IMPACT CHECK PENDING]\nYou changed these files but have not run dotdotgod graph impact:\n${pendingImpactSummary(this.pendingImpactItems)}\nBefore broad tests, more edits, commit, push, or publish, run dotdotgod_graph_impact or /impact-check and review related docs/tests/files.`;
+		return `[DOTDOTGOD IMPACT CHECK PENDING]\nRun dotdotgod graph impact for these task-relevant changed files:\n${pendingImpactSummary(this.pendingImpactItems)}\nBefore broad tests, further edits, commit, push, or publish, use dotdotgod_graph_impact or /impact-check and review related specs, tests, docs, and source.`;
 	}
 
 	buildCommitBlockReason(command: string): string | undefined {
 		if (this.pendingImpactItems.length === 0 || !isCommitLikeCommand(command)) return undefined;
-		return `Blocked: impact not checked for changed files.\nRun /impact-check or dotdotgod_graph_impact first.\nPending:\n${pendingImpactSummary(this.pendingImpactItems)}`;
+		return `Blocked: graph impact is pending for task-relevant changed files.\nRun /impact-check or dotdotgod_graph_impact first, then review related specs, tests, docs, and source.\nPending:\n${pendingImpactSummary(this.pendingImpactItems)}`;
 	}
 
 	buildBroadVerificationPrompt(command: string): string | undefined {
 		if (this.pendingImpactItems.length === 0 || !isBroadVerificationCommand(command)) return undefined;
-		return `Pending dotdotgod graph impact checks:\n${pendingImpactSummary(this.pendingImpactItems)}\n\nContinue with this verification command anyway?`;
+		return `Dotdotgod graph impact remains pending for these task-relevant changed files:\n${pendingImpactSummary(this.pendingImpactItems)}\n\nRun this broad verification command without the impact review?`;
 	}
 
 	clearFromImpactCommandResult(cwd: string, command: string, output: string): boolean {

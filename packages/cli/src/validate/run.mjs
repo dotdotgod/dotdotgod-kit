@@ -61,9 +61,17 @@ export function runValidate(argv) {
   const maxChars = options.maxChars ?? validationPolicy.markdown.maxChars;
   const markdownSizePrompt = (path) => {
     const area = resolveMemoryArea(path, memoryConfig);
-    const areaText = area ? `${area.label ?? area.id} (${area.id})` : 'the matching documentation area';
-    const roleText = area?.role ?? 'the document role';
-    return `Split ${path} into focused documents by documentation area and role. Keep the current ${areaText} area semantics and ${roleText} role intact, move role-specific detail into smaller UPPER_SNAKE_CASE markdown files, and update the nearest README.md index with each new file's purpose.`;
+    const clarify = area?.clarify;
+    const guidance = [
+      clarify?.documentType ? `document type: ${clarify.documentType}` : null,
+      clarify?.audience?.length ? `audience: ${clarify.audience.join(', ')}` : null,
+      clarify?.clarityGoal ? `clarity goal: ${clarify.clarityGoal}` : null,
+      clarify?.editRules?.length ? `edit rules: ${clarify.editRules.join('; ')}` : null,
+    ].filter(Boolean);
+    const evidence = guidance.length > 0
+      ? ` Follow this resolved clarification guidance: ${guidance.join('; ')}.`
+      : ' Preserve the document\'s current purpose and established meaning, using its content, links, and nearest README.md as evidence.';
+    return `Split ${path} into focused UPPER_SNAKE_CASE markdown files.${evidence} Keep each file focused and update the nearest README.md index with every new file's purpose.`;
   };
   for (const error of memoryConfig.errors ?? []) errors.push(error);
   const FILENAME_QUALITY_AREAS = new Set(
@@ -73,18 +81,14 @@ export function runValidate(argv) {
       .map(p => { const m = p.match(/^docs\/([^/*]+)\/\*\*$/); return m ? m[1] : null; })
       .filter(Boolean)
   );
+  const filenameQualityScope = [...FILENAME_QUALITY_AREAS].sort().map(area => `docs/${area}`).join(', ') || 'configured shared documentation areas';
   const FILENAME_QUALITY_PROMPT =
-    'Background: Filenames and paths are LLM/agent context signals used for impact ranking, search, and retrieval. ' +
-    'Abstract or sequentially numbered filenames carry low information signal.\n' +
-    'Naming principles:\n' +
-    '1. Filenames in docs/spec, docs/arch, docs/test should be meaning-based wherever possible.\n' +
-    '2. The filename alone should let you infer the primary subject: endpoint, screen, policy, state, or response type.\n' +
-    '3. When splitting documents, derive names from headings, API paths, or domain terms rather than sequence numbers or abstract words.\n' +
-    'Avoid - numbered splits: API_1.md, API_2.md, API_3_1_*.md, 01_*.md, *_01.md\n' +
-    'Avoid - overly abstract: COMMON.md, OVERVIEW.md, DETAILS.md, NOTES.md, MISC.md, PART_1.md, SECTION_1.md\n' +
-    'Acceptable exceptions: README.md (directory index), files with clear HTTP status code semantics (e.g. RESPONSE_200_OK.md), ' +
-    'files in the project validation.markdown.filename.allow allowlist.\n' +
-    'Good renames: API_1.md → BIZ_RESERVATIONS_SCHEDULE.md, COMMON.md → BIZ_AUTH_ERROR_CONVENTIONS.md, OVERVIEW.md → REGISTRATION_HANDOFF_SUMMARY.md';
+    'Filenames and paths are LLM/agent context signals used for impact ranking, search, and retrieval.\n' +
+    `Use meaning-based filenames in ${filenameQualityScope}. A filename should identify its primary endpoint, screen, policy, state, response type, or domain subject. ` +
+    'Derive split-document names from headings, API paths, and established domain terms.\n' +
+    'Rename numbered or abstract series such as API_1.md, PART_1.md, COMMON.md, or DETAILS.md to subject-specific names. ' +
+    'Examples: API_1.md → BIZ_RESERVATIONS_SCHEDULE.md; COMMON.md → BIZ_AUTH_ERROR_CONVENTIONS.md.\n' +
+    'README.md directory indexes, clear HTTP-status filenames such as RESPONSE_200_OK.md, and configured filename allowlist entries remain valid.';
   walk(docs);
   const dirSiblingMap = new Map();
   for (const f of markdownFiles) {

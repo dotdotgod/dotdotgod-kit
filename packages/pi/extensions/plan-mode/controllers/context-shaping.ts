@@ -32,8 +32,6 @@ export class ContextShapingController {
 	pendingAgentLoad = false;
 	pendingLoadPrompt: string | undefined;
 	pendingLoadReason: string | undefined;
-	pendingResumePrompt: string | undefined;
-	pendingResumeReason: string | undefined;
 	shapePending = false;
 	fullPromptInjected = false;
 	cliContextStatus: PlanCliContextStatus = "not_loaded";
@@ -52,8 +50,6 @@ export class ContextShapingController {
 		this.pendingAgentLoad = false;
 		this.pendingLoadPrompt = undefined;
 		this.pendingLoadReason = undefined;
-		this.pendingResumePrompt = undefined;
-		this.pendingResumeReason = undefined;
 	}
 
 	markCliUnavailable(): void {
@@ -76,8 +72,6 @@ export class ContextShapingController {
 			...(this.pendingAgentLoad ? { pendingAgentLoad: true } : {}),
 			...(this.pendingLoadPrompt ? { pendingLoadPrompt: this.pendingLoadPrompt } : {}),
 			...(this.pendingLoadReason ? { pendingLoadReason: this.pendingLoadReason } : {}),
-			...(this.pendingResumePrompt ? { pendingResumePrompt: this.pendingResumePrompt } : {}),
-			...(this.pendingResumeReason ? { pendingResumeReason: this.pendingResumeReason } : {}),
 			shapePending: this.shapePending,
 			fullPromptInjected: this.fullPromptInjected,
 			cliContextStatus: this.cliContextStatus,
@@ -97,8 +91,6 @@ export class ContextShapingController {
 		this.pendingAgentLoad = snapshot.pendingAgentLoad ?? Boolean(snapshot.pendingLoadPrompt);
 		this.pendingLoadPrompt = undefined;
 		this.pendingLoadReason = snapshot.pendingLoadReason;
-		this.pendingResumePrompt = snapshot.pendingResumePrompt;
-		this.pendingResumeReason = snapshot.pendingResumeReason;
 		this.shapePending = snapshot.shapePending;
 		this.fullPromptInjected = snapshot.fullPromptInjected;
 		this.cliContextStatus = snapshot.cliContextStatus;

@@ -62,6 +62,25 @@ function renderInitBody(platform) {
   return initBody.replace("{{INIT_SCRIPT_COMMAND}}", initCommands[platform]);
 }
 
+function renderLoadBody(platform) {
+  if (platform === "pi") return loadBody;
+  const configGuidance = `## CLI Context\n\nRun \`dotdotgod config <root> --json\` and apply \`config.load.documentationSummary.exclude\` before building the documentation tree. With focus text, run \`dotdotgod query <root> "<focus>" --limit 30 --json\`. If the CLI is unavailable, continue from the documentation tree and README indexes.`;
+  return `${configGuidance}\n\n${loadBody}`;
+}
+
+function renderPlanBody(platform) {
+  if (platform === "pi") return planBody;
+  const queryGuidance = `## CLI Context\n\nFor focused documentation routing, run \`dotdotgod query <root> "<focus>" --limit 30 --json\`. Run \`dotdotgod config <root> --json\` when memory-area policy, documentation exclusions, or Plan Mode writable paths affect the plan. If the CLI is unavailable, continue from README indexes and focused file reads.`;
+  return `${queryGuidance}\n\n${planBody}`;
+}
+
+function renderDocClarifyBody(platform) {
+  const contextGuidance = platform === "pi"
+    ? `## Memory-Area Context\n\nBefore evaluating the target document, run \`dotdotgod config <root> --json\` (or the source-checkout CLI equivalent) and include the resolved \`config.areas\` in the active working context. Match the target path against the ordered areas and use the first match.`
+    : `## Memory-Area Context\n\nRun \`dotdotgod config <root> --json\` and use the resolved \`config.areas\`. Match the target path against the ordered areas and use the first match. If the CLI is unavailable, continue from the target document, nearest README, and direct links.`;
+  return `${contextGuidance}\n\n${docClarifyBody}`;
+}
+
 function skill(frontmatter, title, body) {
   return `---\n${frontmatter.trim()}\n---\n\n${generatedNotice}\n\n# ${title}\n\n${body.trim()}\n`;
 }
@@ -71,11 +90,11 @@ function command(frontmatter, title, intro, body) {
 }
 
 const yaml = {
-  load: `interface:\n  display_name: "Project Load"\n  short_description: "Load dotdotgod project memory."\n  default_prompt: "Load this project's dotdotgod memory and summarize rules, docs, commands, relevant active plans, and questions surfaced by the loaded material."\n`,
-  plan: `interface:\n  display_name: "Doc-First Planning"\n  short_description: "Plan work from dotdotgod docs first."\n  default_prompt: "Plan this change from AGENTS.md, docs/spec, docs/test, docs/arch, and docs/plan before implementation."\n`,
-  init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize project memory and config."\n  default_prompt: "Initialize shared project memory and the complete default config with dotdotgod init or the bundled fallback, preserving existing files."\n`,
-  impact: `interface:\n  display_name: "Impact Review"\n  short_description: "Review changed files with dotdotgod graph impact."\n  default_prompt: "Review current changed source, config, and docs files with dotdotgod graph impact before broad verification or handoff."\n`,
-  docClarify: `interface:\n  display_name: "Document Clarify"\n  short_description: "Clarify dotdotgod project documentation."\n  default_prompt: "Clarify the target docs using dotdotgod memory-area metadata, default document roles, and docs-as-code clarity rules while preserving behavior contracts."\n`,
+  load: `interface:\n  display_name: "Project Load"\n  short_description: "Load dotdotgod project memory."\n  default_prompt: "Load the resolved dotdotgod project context and summarize the maintained evidence and routes relevant to the current request."\n`,
+  plan: `interface:\n  display_name: "Doc-First Planning"\n  short_description: "Plan work from dotdotgod docs first."\n  default_prompt: "Plan this change from maintained project evidence and create a durable task plan when the work warrants one."\n`,
+  init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize project memory and config."\n  default_prompt: "Initialize shared project memory and the complete default config with dotdotgod init or the bundled fallback while preserving existing files."\n`,
+  impact: `interface:\n  display_name: "Impact Review"\n  short_description: "Review changed files with dotdotgod graph impact."\n  default_prompt: "Review task-relevant changed files with dotdotgod graph impact and use the evidence to select verification and related updates."\n`,
+  docClarify: `interface:\n  display_name: "Document Clarify"\n  short_description: "Clarify dotdotgod project documentation."\n  default_prompt: "Clarify the target docs using resolved dotdotgod memory-area guidance and direct affirmative prose while preserving established meaning and traceability."\n`,
 };
 
 write(
@@ -93,9 +112,9 @@ copyDirectory("packages/shared/initializer/references", "packages/pi/skills/proj
 write(
   "packages/pi/skills/document-clarify/SKILL.md",
   skill(
-    `name: document-clarify\ndescription: Clarify project documentation using dotdotgod memory-area metadata, default document roles, and docs-as-code clarity rules. Use when asked to improve README indexes, specs, tests, architecture docs, plans, archives, or project-specific docs without changing behavior contracts.`,
+    `name: document-clarify\ndescription: Clarify project documentation using resolved dotdotgod memory-area guidance and direct, concise prose. Use when asked to improve README indexes, specs, tests, architecture docs, plans, archives, or project-specific docs while preserving established meaning and traceability.`,
     "Document Clarify",
-    docClarifyBody,
+    renderDocClarifyBody("pi"),
   ),
 );
 write("packages/pi/skills/document-clarify/agents/openai.yaml", yaml.docClarify);
@@ -106,7 +125,7 @@ write(
     `description: Load dotdotgod project memory for the current repository\nargument-hint: [optional focus]\nallowed-tools: [Read, Glob, Grep, Bash]`,
     "/dd:load - Load Project Memory",
     "Load project memory without modifying source, documentation, or project config; focused query may refresh ignored caches.\n\nUser focus, if provided: `$ARGUMENTS`",
-    loadBody,
+    renderLoadBody("claude"),
   ),
 );
 write(
@@ -115,7 +134,7 @@ write(
     `description: Plan a change using dotdotgod doc-first planning conventions\nargument-hint: <task or change request>\nallowed-tools: [Read, Glob, Grep, Bash, Write, Edit]`,
     "/dd:plan - Doc-First Planning",
     "Create or update a dotdotgod implementation plan before changing source/config files.\n\nTask request: `$ARGUMENTS`",
-    `${planBody.trim()}\n\n## Execution Rule\n\nDo not implement source/config changes until the plan is clear and the user asks to proceed.`,
+    `${renderPlanBody("claude").trim()}\n\n## Execution Rule\n\nBegin source/config implementation after the plan is clear and the user asks to proceed.`,
   ),
 );
 write(
@@ -141,7 +160,7 @@ write(
   skill(
     `name: project-load\ndescription: Use this skill when the user asks Claude Code to load, refresh, inspect, summarize, or resume a repository's dotdotgod project memory; when starting unfamiliar work; or when a dd:load style project context pass is requested.\nversion: 1.0.0`,
     "Project Load",
-    loadBody,
+    renderLoadBody("claude"),
   ),
 );
 write(
@@ -149,7 +168,7 @@ write(
   skill(
     `name: doc-first-planning\ndescription: Use this skill when the user asks Claude Code to plan a feature, refactor, migration, architecture change, test strategy, or multi-step task using dotdotgod docs before implementation; when docs/spec, docs/test, docs/arch, docs/plan, or dd:plan are mentioned.\nversion: 1.0.0`,
     "Doc-First Planning",
-    planBody,
+    renderPlanBody("claude"),
   ),
 );
 write(
@@ -171,9 +190,9 @@ write(
 write(
   "packages/claude-code/skills/document-clarify/SKILL.md",
   skill(
-    `name: document-clarify\ndescription: Use this skill when Claude Code should clarify project documentation using dotdotgod memory-area metadata, default document roles, and docs-as-code clarity rules; when README indexes, docs/spec, docs/test, docs/arch, docs/plan, docs/archive, or project-specific docs need clearer wording without changing behavior contracts.\nversion: 1.0.0`,
+    `name: document-clarify\ndescription: Use this skill when Claude Code should clarify project documentation using resolved dotdotgod memory-area guidance and direct, concise prose; when README indexes or project-specific docs need clearer wording while preserving established meaning and traceability.\nversion: 1.0.0`,
     "Document Clarify",
-    docClarifyBody,
+    renderDocClarifyBody("claude"),
   ),
 );
 write("packages/claude-code/skills/project-load/agents/openai.yaml", yaml.load);
@@ -190,7 +209,7 @@ write(
   skill(
     `name: project-load\ndescription: Load and summarize the current repository's dotdotgod project memory. Use when the user asks Codex to load, refresh, inspect, summarize, or resume project context; when switching repositories; when starting unfamiliar work; or when a dd:load style project memory pass is requested.`,
     "Project Load",
-    loadBody,
+    renderLoadBody("codex"),
   ),
 );
 write(
@@ -198,7 +217,7 @@ write(
   skill(
     `name: doc-first-planning\ndescription: Plan implementation work from dotdotgod project docs before source changes. Use when starting a feature, refactor, migration, architecture change, test strategy, or multi-step task; when docs/spec, docs/test, docs/arch, docs/plan, or dd:plan are mentioned; or when implementation should wait for a written plan.`,
     "Doc-First Planning",
-    planBody,
+    renderPlanBody("codex"),
   ),
 );
 write(
@@ -220,9 +239,9 @@ write(
 write(
   "packages/codex/skills/document-clarify/SKILL.md",
   skill(
-    `name: document-clarify\ndescription: Clarify project documentation using dotdotgod memory-area metadata and default document roles. Use when Codex is asked to improve README indexes, specs, tests, architecture docs, plans, archives, or project-specific docs while preserving behavior contracts.`,
+    `name: document-clarify\ndescription: Clarify project documentation using resolved dotdotgod memory-area guidance and direct, concise prose. Use when Codex is asked to improve README indexes or project-specific docs while preserving established meaning and traceability.`,
     "Document Clarify",
-    docClarifyBody,
+    renderDocClarifyBody("codex"),
   ),
 );
 write("packages/codex/skills/project-load/agents/openai.yaml", yaml.load);

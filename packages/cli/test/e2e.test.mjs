@@ -100,7 +100,6 @@ describe('dotdotgod CLI e2e', () => {
         /traceability links\s+Check or write generated traceability links\./,
         /graph impact\s+Find files related to changed files\./,
         /graph communities\s+Find groups of related project-memory nodes\./,
-        /trello sync\s+Synchronize Trello cards and documentation\./,
       ]) assert.match(result.stdout, pattern);
       assert.match(result.stdout, /dotdotgod help <command>/);
       assert.doesNotMatch(result.stdout, /Agent workflow:|CLI status:/);
@@ -148,6 +147,11 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(unknown.stdout, '');
     assert.match(unknown.stderr, /Unknown command: unknown/);
     assert.match(unknown.stderr, /Usage:/);
+
+    const removedTrello = run(['trello', 'sync', '.', '--dry-run']);
+    assert.equal(removedTrello.status, 2);
+    assert.equal(removedTrello.stdout, '');
+    assert.match(removedTrello.stderr, /Unknown command: trello/);
 
     const badOption = run(['validate', '--unknown']);
     assert.equal(badOption.status, 2);
@@ -467,9 +471,9 @@ describe('dotdotgod CLI e2e', () => {
     const defaultErrors = JSON.parse(defaultFailure.stdout).errors;
     const sizeError = defaultErrors.find((error) => error.code === 'FILE_TOO_LARGE' && error.file === 'docs/archive/README.md');
     assert(sizeError);
-    assert.match(sizeError.prompt, /Split docs\/archive\/README\.md into focused documents by documentation area and role/);
-    assert.match(sizeError.prompt, /Archive Map \(archive-map\)/);
-    assert.match(sizeError.prompt, /historical-memory-map/);
+    assert.match(sizeError.prompt, /Split docs\/archive\/README\.md into focused UPPER_SNAKE_CASE markdown files/);
+    assert.match(sizeError.prompt, /Preserve the document's current purpose and established meaning/);
+    assert.doesNotMatch(sizeError.prompt, /documentation area and role|historical-memory-map/);
 
     writeConfig(root, { validation: { markdown: { exclude: ['docs/archive/README.md'] } } });
     assert.equal(json(run(['validate', root, '--include-local-memory', '--json'])).ok, true);

@@ -49,7 +49,6 @@ export {
 	shouldPromptForPlanChoice,
 	formatPlanCompactionFocus,
 	buildPlanCompactionInstructions,
-	buildPlanCompactionResumePrompt,
 	getPlanCompactionReason,
 } from "./prompts.ts";
 

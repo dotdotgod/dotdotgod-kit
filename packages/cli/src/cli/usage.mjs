@@ -42,20 +42,6 @@ Search shared project documentation with the local multilingual E5 vector index.
     case 'expand':
       return `Usage:
   dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]`;
-    case 'trello':
-      return `Usage:
-  dotdotgod trello sync <root> [--dry-run]`;
-    case 'trello sync':
-      return `Usage:
-  dotdotgod trello sync <root> [--dry-run]
-
-Options:
-  --dry-run  Preview planned Trello updates without calling Trello APIs.
-
-Write mode:
-  Omit --dry-run only in the trusted GitHub Actions default-branch push workflow.
-  Requires TRELLO_API_KEY and TRELLO_TOKEN in the trusted workflow environment.
-  Local/manual and pull request usage should run --dry-run.`;
     case 'traceability':
       return `Usage:
   dotdotgod traceability links <root> [--check|--write] [--json]`;
@@ -95,7 +81,6 @@ Commands:
   traceability links    Check or write generated traceability links.
   graph impact          Find files related to changed files.
   graph communities     Find groups of related project-memory nodes.
-  trello sync           Synchronize Trello cards and documentation.
 
 Options:
   -h, --help            Show help.
@@ -144,7 +129,6 @@ export function printVersion() {
 export function helpCommandFromArgs(args) {
   const nonHelp = args.filter((arg) => !isHelpToken(arg));
   if (nonHelp[0] === 'graph' && nonHelp[1]) return `graph ${nonHelp[1]}`;
-  if (nonHelp[0] === 'trello' && nonHelp[1]) return `trello ${nonHelp[1]}`;
   if (nonHelp[0] === 'traceability' && nonHelp[1]) return `traceability ${nonHelp[1]}`;
   if (nonHelp[0] === 'config' && nonHelp[1] === 'init') return 'config init';
   return nonHelp[0] ?? 'root';

@@ -13,7 +13,6 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `IMPACT_RANKING_CONFIG.md`: configurable graph impact ranking, compact output, semantic-edge, and selection-noise checks.
 - `GRAPH_IMPACT_QUALITY.md`: graph impact quality scoring script, metrics, and baseline comparison checks.
 - `CONFIG_COMMAND.md`: project-level config show/init command checks.
-- `TRELLO_DOCS_SYNC.md`: Trello card to markdown sync verification for local/PR dry-run, CI-only custom field writes, Power-Up UI rendering, workflow safety, and mocked Trello API behavior.
 - `HOOKS.md`: optional Claude Code and Codex hook documentation and package-resource smoke checks.
 - `CLI_INTERFACE.md`: baseline CLI help/version and invalid invocation checks.
 - `REFERENCE_EXPANSION.md`: reference resolution and prompt-time expansion regression and smoke checks.

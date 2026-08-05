@@ -21,9 +21,6 @@ export const DEFAULT_VALIDATION_POLICY = {
     },
   },
 };
-export const DEFAULT_INTEGRATIONS_POLICY = {
-  trello: { syncPaths: [] },
-};
 export const DEFAULT_LOAD_POLICY = {
   pinnedPaths: [],
   pinnedBodies: [],
@@ -177,10 +174,6 @@ function normalizeImpactRankingPolicy(raw) {
   return cloneImpactRankingPolicy({ ...preset, ...raw, preset: presetName, weights: { ...(preset.weights ?? {}), ...(raw?.weights ?? {}) }, ppr: { ...(preset.ppr ?? {}), ...(raw?.ppr ?? {}) }, semantic: { ...(preset.semantic ?? {}), ...(raw?.semantic ?? {}) } });
 }
 
-export function cloneIntegrationsPolicy(policy = DEFAULT_INTEGRATIONS_POLICY) {
-  return { trello: { syncPaths: [...(policy.trello?.syncPaths ?? [])] } };
-}
-
 export function cloneLoadPolicy(policy = DEFAULT_LOAD_POLICY) {
   return {
     pinnedPaths: [...(policy.pinnedPaths ?? [])],
@@ -196,7 +189,7 @@ export function clonePlanModePolicy(policy = DEFAULT_PLAN_MODE_POLICY) {
 }
 
 export function defaultMemoryConfig() {
-  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), integrations: cloneIntegrationsPolicy(), load: cloneLoadPolicy(), planMode: clonePlanModePolicy() };
+  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), load: cloneLoadPolicy(), planMode: clonePlanModePolicy() };
 }
 
 export function normalizePathPattern(value = '') {
@@ -264,12 +257,6 @@ function normalizeValidationPolicy(raw) {
   });
 }
 
-function normalizeIntegrationsPolicy(raw) {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return cloneIntegrationsPolicy();
-  const syncPaths = Array.isArray(raw.trello?.syncPaths) ? raw.trello.syncPaths.map(normalizePathPattern) : [];
-  return cloneIntegrationsPolicy({ trello: { syncPaths: [...new Set(syncPaths)] } });
-}
-
 export function isSecretLikePathPattern(value = '') {
   const normalized = normalizePathPattern(value);
   return /(^|\/)(\.env|\.npmrc|\.pypirc|id_rsa|id_dsa|id_ed25519|credentials?|secrets?)(\.|\/|$)/i.test(normalized);
@@ -295,10 +282,6 @@ function normalizeLoadPolicy(raw) {
         : normalize(raw.documentationSummary.exclude),
     },
   });
-}
-
-export function trelloSyncPaths(config = defaultMemoryConfig()) {
-  return [...new Set(['docs/trello/**', ...((config.integrations ?? DEFAULT_INTEGRATIONS_POLICY).trello?.syncPaths ?? [])])];
 }
 
 export function isMarkdownSizeExcluded(path = '', config = defaultMemoryConfig()) {
@@ -379,23 +362,6 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
             if (fn.allow !== undefined && !Array.isArray(fn.allow)) add('VALIDATION_CONFIG_INVALID_FILENAME_ALLOW', 'validation.markdown.filename.allow', 'Expected an array of path strings.');
             else if (Array.isArray(fn.allow) && fn.allow.some((value) => !isValidPathPattern(value))) add('VALIDATION_CONFIG_INVALID_FILENAME_ALLOW', 'validation.markdown.filename.allow', 'Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
           }
-        }
-      }
-    }
-  }
-  const integrations = data.integrations;
-  if (integrations !== undefined) {
-    if (!integrations || typeof integrations !== 'object' || Array.isArray(integrations)) {
-      add('INTEGRATIONS_CONFIG_INVALID', 'integrations', 'Expected an object.');
-    } else if (integrations.trello !== undefined) {
-      const trello = integrations.trello;
-      if (!trello || typeof trello !== 'object' || Array.isArray(trello)) {
-        add('INTEGRATIONS_TRELLO_CONFIG_INVALID', 'integrations.trello', 'Expected an object.');
-      } else if (trello.syncPaths !== undefined) {
-        if (!Array.isArray(trello.syncPaths)) add('INTEGRATIONS_TRELLO_INVALID_SYNC_PATHS', 'integrations.trello.syncPaths', 'Expected an array of path strings.');
-        else {
-          if (trello.syncPaths.some((value) => !isValidPathPattern(value) || (typeof value === 'string' && value.trim().startsWith('/')))) add('INTEGRATIONS_TRELLO_INVALID_SYNC_PATHS', 'integrations.trello.syncPaths', 'Expected repository-relative path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
-          if (trello.syncPaths.some((value) => typeof value === 'string' && isSecretLikePathPattern(value))) add('INTEGRATIONS_TRELLO_SECRET_SYNC_PATH', 'integrations.trello.syncPaths', 'Sync paths must not target secrets, credentials, environment files, or private keys.');
         }
       }
     }
@@ -544,10 +510,9 @@ export function readMemoryConfig(root = '.') {
     const validation = data.validation === undefined ? cloneValidationPolicy() : normalizeValidationPolicy(data.validation);
     const impactRanking = normalizeImpactRankingPolicy(data.impactRanking);
     const referenceExpansion = normalizeReferenceExpansionPolicy(data.referenceExpansion);
-    const integrations = normalizeIntegrationsPolicy(data.integrations);
     const load = normalizeLoadPolicy(data.load);
     const planMode = normalizePlanModePolicy(data.planMode);
-    return configuredAreas.length > 0 ? { source: MEMORY_CONFIG_FILE, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, integrations, load, planMode, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, referenceExpansion, integrations, load, planMode, source: MEMORY_CONFIG_FILE, errors: [] };
+    return configuredAreas.length > 0 ? { source: MEMORY_CONFIG_FILE, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, load, planMode, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, referenceExpansion, load, planMode, source: MEMORY_CONFIG_FILE, errors: [] };
   } catch (error) {
     return { ...defaultMemoryConfig(), source: MEMORY_CONFIG_FILE, errors: [{ file: MEMORY_CONFIG_FILE, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}\nFix: repair ${MEMORY_CONFIG_FILE} so it is valid JSON, or remove it before regenerating the default config with \`dotdotgod config init <root>\`.` }] };
   }
@@ -577,7 +542,6 @@ export function defaultDotdotgodConfigData() {
     validation: cloneValidationPolicy(config.validation),
     impactRanking: cloneImpactRankingPolicy(config.impactRanking),
     referenceExpansion: { fuzzy: { lowSignal: { add: [], remove: [] } } },
-    integrations: cloneIntegrationsPolicy(config.integrations),
     load: cloneLoadPolicy(config.load),
     planMode: clonePlanModePolicy(config.planMode),
   };
@@ -605,7 +569,6 @@ export function memoryConfigSummary(config) {
     validation: cloneValidationPolicy(config.validation ?? DEFAULT_VALIDATION_POLICY),
     impactRanking: cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY),
     referenceExpansion: cloneReferenceExpansionPolicy(config.referenceExpansion),
-    integrations: cloneIntegrationsPolicy(config.integrations),
     load: cloneLoadPolicy(config.load),
     planMode: clonePlanModePolicy(config.planMode),
   };

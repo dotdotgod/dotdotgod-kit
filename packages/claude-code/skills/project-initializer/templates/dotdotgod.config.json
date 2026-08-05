@@ -245,11 +245,6 @@
       }
     }
   },
-  "integrations": {
-    "trello": {
-      "syncPaths": []
-    }
-  },
   "load": {
     "pinnedPaths": [],
     "pinnedBodies": [],

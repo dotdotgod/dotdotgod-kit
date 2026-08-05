@@ -27,7 +27,7 @@ Current adapter support.
 - Project loading: `project-load` skill and `/dd:load` command.
 - Planning workflow: `doc-first-planning` skill and `/dd:plan` command.
 - Impact review workflow: `impact-review` skill and `/dd:impact` command for post-edit graph-impact checks before broad verification or handoff.
-- Documentation clarity workflow: `document-clarify` skill for README/spec/test/arch/plan/archive wording improvements that preserve behavior contracts and use memory-area metadata.
+- Documentation clarity workflow: `document-clarify` skill loads resolved memory-area guidance with `dotdotgod config <root> --json`, then improves project documentation with direct prose while preserving established meaning and traceability.
 - Optional lifecycle hook guidance for advisory project-memory reminders, SDLC guardrails, validation, failure logging, and narrowly scoped plan-safety patterns using documented Claude Code hook events.
 - `CLAUDE.md` remains a thin project entrypoint that imports or points to `AGENTS.md`.
 
@@ -76,9 +76,9 @@ Adapters should provide workflow parity across each agent's native capabilities.
 Required workflows:
 
 - initialize or normalize the project memory scaffold and complete editable default config
-- load project memory without modifying source, documentation, or project config; focused query may refresh ignored vector and model caches
+- load project memory without modifying source, documentation, or project config; Claude Code and Codex resolve documentation exclusions with `dotdotgod config <root> --json` and use `dotdotgod query` for focused routing, while focused query may refresh ignored vector and model caches
 - expose `Help: dotdotgod --help` as optional Load guidance across native adapter mechanics without reporting installation status or blocking fallback when CLI or shell execution is unavailable
-- plan safely before source/config changes
+- plan safely before source/config changes; Claude Code and Codex use explicit `dotdotgod query` guidance and resolve config when planning policy affects the task
 - review changed files with graph-impact evidence before broad verification, commits, pushes, publishing, or final handoff when the CLI or an equivalent project-local impact command is available; otherwise preserve the same review intent through targeted specs/tests/docs reads
 - preserve completed plans and temporary reports in the archive structure
 

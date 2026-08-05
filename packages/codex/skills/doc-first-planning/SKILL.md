@@ -7,6 +7,10 @@ description: Plan implementation work from dotdotgod project docs before source 
 
 # Doc-First Planning
 
+## CLI Context
+
+For focused documentation routing, run `dotdotgod query <root> "<focus>" --limit 30 --json`. Run `dotdotgod config <root> --json` when memory-area policy, documentation exclusions, or Plan Mode writable paths affect the plan. If the CLI is unavailable, continue from README indexes and focused file reads.
+
 ## Goal
 
 Create an implementation plan from maintained repository documentation before substantial source or configuration changes.

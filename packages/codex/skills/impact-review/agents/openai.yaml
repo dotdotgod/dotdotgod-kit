@@ -1,4 +1,4 @@
 interface:
   display_name: "Impact Review"
   short_description: "Review changed files with dotdotgod graph impact."
-  default_prompt: "Review current changed source, config, and docs files with dotdotgod graph impact before broad verification or handoff."
+  default_prompt: "Review task-relevant changed files with dotdotgod graph impact and use the evidence to select verification and related updates."

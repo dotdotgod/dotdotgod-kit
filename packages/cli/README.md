@@ -40,7 +40,6 @@ dotdotgod graph impact . --changed <path> --compact
 - `resolve` and `expand` map explicit or high-signal prompt references to project files.
 - `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five.
 - `traceability links` checks or repairs generated Markdown traceability-link sections.
-- `trello sync` plans or writes Trello linked-doc metadata from configured docs paths.
 
 ## Commands
 
@@ -77,7 +76,6 @@ dotdotgod graph communities .
 | Resolve `[[...]]` references from a prompt | `dotdotgod expand . "Update [[PLAN_MODE]]"` |
 | Repair generated traceability-link sections | `dotdotgod traceability links . --write` |
 | See what else to inspect after a change | `dotdotgod graph impact . --changed <path> --compact` |
-| Preview Trello linked-doc updates | `dotdotgod trello sync . --dry-run` |
 
 ## Changed-File Impact
 

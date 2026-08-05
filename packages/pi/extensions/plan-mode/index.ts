@@ -117,7 +117,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     {
       getFlag: (name) => pi.getFlag(name),
       appendEntry: (customType, data) => pi.appendEntry(customType, data),
-      sendUserMessage: (message, options) => pi.sendUserMessage(message, options),
       persistState: () => persistState(),
       onPendingLoadChange: () => syncPlanModeTools(),
     },
@@ -597,12 +596,12 @@ export default function planModeExtension(pi: ExtensionAPI): void {
         const reason = contextOrchestration.getPlanCompactionReason(ctx);
         const loadNeeded = contextOrchestration.shouldLoadForPlanning(ctx);
         if (reason) {
-          contextShaping.pendingLoadAfterCompaction = loadNeeded;
           if (loadNeeded) {
+            contextOrchestration.requestPlanningLoadIfNeeded(ctx);
             recordContextMetric(
               ctx,
               (name) => pi.getFlag(name),
-              "plan-mode:load-deferred-until-after-compaction",
+              "plan-mode:load-required-during-compaction",
               { reason },
             );
           }
@@ -712,7 +711,6 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
       planArtifact.suppressChoiceForInlineRequest = false;
       planArtifact.pendingReviewPath = undefined;
       persistState();
-      if (contextOrchestration.flushPendingPlanningResume(ctx)) return;
       return;
     }
 
@@ -723,11 +721,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
       pendingPlanChoicePath: planArtifact.pendingReviewPath,
       suppressPlanChoice: planArtifact.suppressChoiceForInlineRequest,
     });
-    if (!shouldShowChoice) {
-      if (!planArtifact.pendingReviewPath && contextOrchestration.flushPendingPlanningResume(ctx))
-        return;
-      return;
-    }
+    if (!shouldShowChoice) return;
 
     const inferredPlanPath = planArtifact.inferPlanPath();
     const lastAssistant = [...event.messages].reverse().find(isAssistantMessage);

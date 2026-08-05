@@ -19,7 +19,7 @@ const PLAN_COMPACTION_TOKEN_FALLBACK = 100_000;
 const PLAN_COMPACTION_CONTEXT_RESERVE = 32_000;
 
 export const PLAN_MODE_COMPACTION_INSTRUCTIONS =
-	"Preserve only planning-critical context for dotdotgod Plan Mode. Prioritize the latest user request, active plan task slug/path/status, current target files, concrete user decisions and constraints, implementation decisions, verification commands/results, unresolved risks/questions, next steps, and completed [DONE:n] markers if present. Demote or omit old completed plans unless directly relevant, repeated project-load summaries, package publish history unless task-related, generic Plan Mode boilerplate recoverable from runtime prompts, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail. Summarize in a compact structure that lets the next assistant continue the current plan or execution without asking the user to repeat context.";
+	"Preserve planning-critical context in this priority order: latest user request; active plan path and status; current targets; user decisions and constraints; implementation decisions; verification commands and results; unresolved risks and questions; next steps; completed [DONE:n] markers. Summarize older completed plans, repeated project loads, recoverable Plan Mode guidance, repeated tool output, stale alternatives, and unrelated history only when they affect current work. Produce a compact continuation-ready summary.";
 
 export function parsePlanModeExtraTools(value: unknown): string[] {
 	if (typeof value !== "string") return [];
@@ -49,7 +49,7 @@ export function resolvePlanModeTools(extraTools: unknown, availableTools?: reado
 
 function buildPlanModeFullContextPrompt(allowedTools = DEFAULT_PLAN_MODE_TOOLS, writablePaths: readonly string[] = ["docs/plan/**", "docs/archive/**"]): string {
 	return `[PLAN MODE ACTIVE]
-You are in Plan Mode. This is a read-only exploration and design phase before code changes.
+You are in Plan Mode. This is a planning-only exploration and design phase before code changes.
 
 Restrictions:
 - Allowed tools: ${allowedTools.join(", ")}
@@ -71,7 +71,7 @@ Use questionnaire for required clarification and web tools only for required ext
 
 function buildPlanModeCompactContextPrompt(writablePaths: readonly string[]): string {
 	return `[PLAN MODE ACTIVE]
-Compact reminder: stay in read-only planning until execution mode. Do not mutate source/code/config files. edit/write are allowed only for valid documentation markdown matching: ${writablePaths.join(", ") || "none"}. bash remains read-only except safe directory operations inside the same paths. Reuse loaded memory and the documentation map, route focused requests through query and README indexes, verify selected docs, then use impact review after likely targets are known. Create or maintain docs/plan/<task-slug>/README.md only for durable work; otherwise use a short in-chat checklist. Use a Plan: section only for concrete executable steps when ready.`;
+Compact reminder: remain in planning-only mode until execution approval. Keep source, code, and config unchanged. edit/write are limited to valid documentation markdown matching: ${writablePaths.join(", ") || "none"}; bash remains read-only apart from safe directory operations there. Reuse loaded memory and the documentation map, route focused requests through query and README indexes, verify selected docs, and run impact review after likely targets are known. Maintain docs/plan/<task-slug>/README.md for durable work or use a short in-chat checklist for bounded work. Reserve the Plan: section for concrete executable steps.`;
 }
 
 export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS, writablePaths: readonly string[] = ["docs/plan/**", "docs/archive/**"]): string {
@@ -81,7 +81,7 @@ export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAU
 export function buildPendingAgentLoadPrompt(pending: boolean): string | undefined {
 	if (!pending) return undefined;
 	return `[PROJECT MEMORY LOAD REQUIRED]
-Before substantive planning, call dotdotgod_project_load exactly once. Generate a concise semantic focus for the documentation, behavior, architecture, source areas, and verification knowledge needed by the current task. Do not copy the full user request verbatim and do not use deterministic keyword extraction. Use an empty focus only when a broad baseline map is genuinely more useful. After the tool result arrives, continue the original planning request without asking the user to repeat it.`;
+Before substantive planning, call dotdotgod_project_load exactly once. Generate a concise semantic focus covering the task's relevant behavior, architecture, source areas, documentation, and verification needs. Express the focus as a task-specific synthesis rather than copied request text or extracted keywords; use an empty focus when a broad baseline map is more useful. Continue the original planning request after the tool result arrives.`;
 }
 
 export interface PlanCompactionFocus {
@@ -149,14 +149,6 @@ export function buildPlanCompactionInstructions(reason?: string, focus?: PlanCom
 	if (formattedFocus) sections.push(formattedFocus);
 	sections.push(PLAN_MODE_COMPACTION_INSTRUCTIONS);
 	return sections.join("\n\n");
-}
-
-export function buildPlanCompactionResumePrompt(request?: string): string {
-	const normalizedRequest = request?.trim();
-	if (!normalizedRequest) {
-		return "Continue the latest Plan Mode request after planning-focused compaction. Use the preserved summary and current project docs; do not ask the user to repeat the request unless a required detail is missing.";
-	}
-	return `Continue the following Plan Mode request after planning-focused compaction. Use the preserved summary and current project docs; do not ask the user to repeat the request unless a required detail is missing.\n\nLatest request:\n${normalizedRequest}`;
 }
 
 export function getPlanCompactionReason(usage: PlanContextUsage | null | undefined): string | undefined {

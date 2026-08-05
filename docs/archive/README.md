@@ -19,6 +19,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/remove-all-trello-functionality/`: removed the remaining Trello CLI command, configuration, API implementation, workflow, tests, generated initializer settings, and maintained behavior documentation.
+- `plan/remove-trello-power-up/`: removed the private Trello Power-Up workspace package and GitHub Pages deployment while preserving CLI Trello docs sync, custom-field behavior, and workflow safety boundaries.
 - `plan/plan-mode-auto-load-focus/`: changed automatic Plan Mode memory loading so deterministic runtime logic decides when loading is needed, the agent generates a concise semantic focus, and the pending-only read-only tool returns bounded Load/query context before planning continues.
 - `plan/project-initializer-default-config/`: made CLI and POSIX project initialization create the complete canonical default config, added safe config conflict and backup behavior, generated packaged adapter templates, and distilled the shared initializer prompt.
 - `plan/docs-memory-discovery-policy/`: replaced Pi's fixed docs summary list with bounded dynamic discovery, added the default `docs/**` memory catch-all and configured local-memory discovery, unified automatic load-summary policy, and added fail-closed `planMode.writablePaths`.
