@@ -36,9 +36,12 @@ function formatConfigOutput(payload) {
   lines.push(`- memory areas: ${payload.config.areas.length}`);
   lines.push(`- traceability required: ${(payload.config.traceability.required ?? []).join(', ') || 'none'}`);
   lines.push(`- traceability exclude: ${(payload.config.traceability.exclude ?? []).join(', ') || 'none'}`);
+  lines.push('- traceability keys:');
+  for (const definition of payload.config.traceability.keys ?? []) lines.push(`  - ${definition.key}: ${definition.target} -> ${definition.relation} (weight=${definition.weight}; label=${definition.label})`);
   lines.push(`- validation markdown: maxLines=${payload.config.validation.markdown.maxLines}, maxChars=${payload.config.validation.markdown.maxChars}`);
   lines.push(`- validation markdown exclude: ${(payload.config.validation.markdown.exclude ?? []).join(', ') || 'none'}`);
-  lines.push(`- impact ranking preset: ${payload.config.impactRanking.preset}`);
+  const fixedImpact = payload.config.impactRanking.fixed;
+  lines.push(`- impact ranking: fixed PPR=${fixedImpact.connectionCap}, memory=${fixedImpact.memoryCap}, reference=${fixedImpact.ppr.reference}`);
   lines.push(`- load pinned paths: ${(payload.config.load?.pinnedPaths ?? []).join(', ') || 'none'}`);
   lines.push(`- load pinned bodies: ${(payload.config.load?.pinnedBodies ?? []).join(', ') || 'none'}`);
   lines.push(`- load documentation summary exclude: ${(payload.config.load?.documentationSummary?.exclude ?? []).join(', ') || 'none'}`);

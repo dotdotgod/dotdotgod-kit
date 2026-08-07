@@ -123,11 +123,11 @@ When all tracked steps are complete, plan execution state is cleared without an 
   - `pnpm --filter @dotdotgod/pi run typecheck`
   - `node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --yml`
 - Contracts:
-  - `PLAN-MODE-CONTEXT-001` — Planning context shaping queues memory load, compaction, and advisory impact checks (sections: 1, impl: 3, verify: 1, docs: 2)
-  - `PLAN-MODE-COMPACTION-001` — Planning-focused compaction preserves active planning state and resumes safely (sections: 1, impl: 3, verify: 1, docs: 1)
-  - `PLAN-MODE-REVIEW-001` — Plan review prioritizes discussion queue decisions before execution choices (sections: 1, impl: 3, verify: 1, docs: 1)
-  - `PLAN-MODE-RESUME-001` — Durable plans provide resume context, optional support files, and checklist state (sections: 1, impl: 3, verify: 1, docs: 1)
-  - `PLAN-MODE-EXECUTION-001` — Execution starts only after review, restores tool access, and tracks todo completion (sections: 1, impl: 3, verify: 1, docs: 1)
+  - `PLAN-MODE-CONTEXT-001` — Planning context shaping queues memory load, compaction, and advisory impact checks (sections: 1, implementedBy: 3, verifiedBy: 1, relatedDocs: 2)
+  - `PLAN-MODE-COMPACTION-001` — Planning-focused compaction preserves active planning state and resumes safely (sections: 1, implementedBy: 3, verifiedBy: 1, relatedDocs: 1)
+  - `PLAN-MODE-REVIEW-001` — Plan review prioritizes discussion queue decisions before execution choices (sections: 1, implementedBy: 3, verifiedBy: 1, relatedDocs: 1)
+  - `PLAN-MODE-RESUME-001` — Durable plans provide resume context, optional support files, and checklist state (sections: 1, implementedBy: 3, verifiedBy: 1, relatedDocs: 1)
+  - `PLAN-MODE-EXECUTION-001` — Execution starts only after review, restores tool access, and tracks todo completion (sections: 1, implementedBy: 3, verifiedBy: 1, relatedDocs: 1)
 
 <!-- dotdotgod:traceability-links:end -->
 

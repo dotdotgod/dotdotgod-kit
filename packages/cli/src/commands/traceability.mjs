@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path';
 import { usage } from '../cli/usage.mjs';
 import { rel } from '../common/paths.mjs';
 import { extractDotdotgodTraceabilityBlocks, syncTraceabilityLinksInContent, validateTraceabilityLinksRegion } from '../docs/traceability.mjs';
+import { readMemoryConfig } from '../memory/config.mjs';
 
 function collectDocsMarkdownFiles(root) {
   const docs = join(root, 'docs');
@@ -43,15 +44,17 @@ export function parseTraceabilityOptions(argv) {
 
 export function runTraceability(argv) {
   const options = parseTraceabilityOptions(argv);
+  const config = readMemoryConfig(options.root);
   const files = collectDocsMarkdownFiles(options.root);
   const results = [];
-  const errors = [];
+  const errors = [...(config.errors ?? [])];
   for (const file of files) {
+    if (options.write && errors.length > 0) break;
     const content = readFileSync(file, 'utf8');
     for (const error of validateTraceabilityLinksRegion(content, options.root, file)) errors.push(error);
     const blocks = extractDotdotgodTraceabilityBlocks(content).filter((block) => !block.error);
     if (blocks.length === 0) continue;
-    const result = syncTraceabilityLinksInContent(content, blocks.at(-1).data, options.root, file);
+    const result = syncTraceabilityLinksInContent(content, blocks.at(-1).data, options.root, file, config);
     if (!result.ok) {
       for (const error of result.errors ?? []) errors.push(error);
       continue;

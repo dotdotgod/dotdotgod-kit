@@ -155,6 +155,40 @@
     ],
     "exclude": [
       "**/README.md"
+    ],
+    "keys": [
+      {
+        "key": "implementedBy",
+        "label": "Implemented by",
+        "description": "Files that implement the behavior.",
+        "target": "path",
+        "relation": "implemented_by",
+        "weight": 4
+      },
+      {
+        "key": "verifiedBy",
+        "label": "Verified by",
+        "description": "Tests or maintained verification documents.",
+        "target": "path",
+        "relation": "verified_by",
+        "weight": 4
+      },
+      {
+        "key": "relatedDocs",
+        "label": "Related docs",
+        "description": "Documents needed to interpret the behavior.",
+        "target": "path",
+        "relation": "related_doc",
+        "weight": 3
+      },
+      {
+        "key": "verificationCommands",
+        "label": "Verification commands",
+        "description": "Project-local verification commands.",
+        "target": "command",
+        "relation": "verification_command",
+        "weight": 3
+      }
     ]
   },
   "validation": {
@@ -169,72 +203,10 @@
     }
   },
   "impactRanking": {
-    "preset": "balanced",
-    "weights": {
-      "ppr": 40,
-      "traceability": 30,
-      "memoryPolicy": 10,
-      "verification": 15,
-      "proximity": 10,
-      "semantic": 10,
-      "freshness": 5,
-      "archivePenalty": -25
-    },
-    "ppr": {
-      "enabled": true,
-      "damping": 0.85,
-      "iterations": 20,
-      "tolerance": 0.000001
-    },
-    "relationWeights": {
-      "implemented_by": 4,
-      "verified_by": 4,
-      "related_doc": 3,
-      "verification_command": 3,
-      "links_to": 2,
-      "belongs_to_area": 2,
-      "semantic_similarity": 2,
-      "mentions_package": 1
-    },
-    "traceabilityBoosts": {
-      "implemented_by": 30,
-      "incoming:implemented_by": 30,
-      "verified_by": 25,
-      "incoming:verified_by": 25,
-      "verification_command": 15,
-      "incoming:verification_command": 15,
-      "related_doc": 12,
-      "incoming:related_doc": 12
-    },
-    "verificationBoosts": {
-      "verified_by": 15,
-      "incoming:verified_by": 15,
-      "verification_command": 12,
-      "incoming:verification_command": 12
-    },
-    "semanticBoosts": {
-      "semantic_similarity": 8,
-      "incoming:semantic_similarity": 8,
-      "mentions_package": 4,
-      "incoming:mentions_package": 4
-    },
-    "proximityBoosts": {
-      "links_to": 6,
-      "incoming:links_to": 6,
-      "routes_to": 5,
-      "incoming:routes_to": 5
-    },
     "semantic": {
       "enabled": true,
       "threshold": 0.5,
-      "topKPerFile": 5,
-      "includeArchiveBodies": false,
-      "signals": [
-        "path",
-        "filename",
-        "heading",
-        "package"
-      ]
+      "topKPerFile": 5
     }
   },
   "referenceExpansion": {

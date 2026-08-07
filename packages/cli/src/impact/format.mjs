@@ -69,8 +69,10 @@ export function formatYmlImpactOutput(payload, impact) {
     `  omitted_related: ${impact.omittedRelated ?? 0}`,
     '  ranking:',
     `    method: ${ymlScalar(impact.ranking?.method)}`,
-    `    preset: ${ymlScalar(impact.ranking?.preset)}`,
     `    config_source: ${ymlScalar(impact.ranking?.configSource)}`,
+    `    connection_cap: ${impact.ranking?.connectionCap ?? 80}`,
+    `    memory_cap: ${impact.ranking?.memoryCap ?? 20}`,
+    `    ppr_reference: ${impact.ranking?.pprReference ?? 0.4}`,
     '  per_seed:',
   ];
   for (const entry of impact.perSeed ?? []) {

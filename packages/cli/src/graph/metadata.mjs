@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { basename, extname, resolve } from 'node:path';
 import { rel } from '../common/paths.mjs';
@@ -72,12 +73,21 @@ function contractNodeId(filePath, contractId) {
   return `contract:${filePath}#${contractId}`;
 }
 
-function addTraceabilityCommands(graph, sourceId, filePath, commands, idPrefix) {
-  for (const [index, command] of (Array.isArray(commands) ? commands : []).entries()) {
-    if (typeof command !== 'string' || command.trim().length === 0) continue;
-    const id = `verification_command:${idPrefix}#${index}`;
-    addNode(graph, id, 'verification_command', { command, path: filePath });
-    addEdge(graph, sourceId, id, 'verification_command', { confidence: 'CURATED_TRACEABILITY' });
+function traceabilityCommandId(sourceId, key, command) {
+  const digest = createHash('sha256').update(`${sourceId}\0${key}\0${command}`).digest('hex').slice(0, 16);
+  return `command:${key}:${digest}`;
+}
+
+function addTraceabilityValues(graph, sourceId, root, filePath, definition, values, config) {
+  for (const value of Array.isArray(values) ? values : []) {
+    if (definition.target === 'path') {
+      addTraceabilityTarget(graph, sourceId, root, definition.relation, value, { traceabilityKey: definition.key, relationWeight: definition.weight }, config);
+      continue;
+    }
+    if (typeof value !== 'string' || value.trim().length === 0) continue;
+    const id = traceabilityCommandId(sourceId, definition.key, value);
+    addNode(graph, id, 'command', { command: value, path: filePath, traceabilityKey: definition.key, relation: definition.relation });
+    addEdge(graph, sourceId, id, definition.relation, { confidence: 'CURATED_TRACEABILITY', traceabilityKey: definition.key, relationWeight: definition.weight });
   }
 }
 
@@ -91,10 +101,7 @@ function addTraceabilityContracts(graph, root, fileId, filePath, contracts, conf
     const sections = Array.isArray(contract.sections) ? contract.sections.filter((section) => typeof section === 'string' && section.trim().length > 0) : undefined;
     addNode(graph, id, 'contract', { path: filePath, contractId: contract.id, title: contract.title, sections });
     addEdge(graph, fileId, id, 'defines_contract', { confidence: 'CURATED_TRACEABILITY' });
-    for (const target of Array.isArray(contract.implementedBy) ? contract.implementedBy : []) addTraceabilityTarget(graph, id, root, 'implemented_by', target, {}, config);
-    for (const target of Array.isArray(contract.verifiedBy) ? contract.verifiedBy : []) addTraceabilityTarget(graph, id, root, 'verified_by', target, {}, config);
-    for (const target of Array.isArray(contract.relatedDocs) ? contract.relatedDocs : []) addTraceabilityTarget(graph, id, root, 'related_doc', target, {}, config);
-    addTraceabilityCommands(graph, id, filePath, Array.isArray(contract.verificationCommands) ? contract.verificationCommands : [], id);
+    for (const definition of config.traceability?.keys ?? []) addTraceabilityValues(graph, id, root, filePath, definition, contract[definition.key], config);
   }
 }
 
@@ -102,10 +109,7 @@ export function addTraceabilityGraph(root, fileId, content, graph, config = defa
   const filePath = fileId.replace(/^file:/, '');
   for (const block of extractDotdotgodTraceabilityBlocks(content)) {
     if (block.error || !block.data || block.data.kind !== 'spec') continue;
-    for (const target of block.data.implementedBy ?? []) addTraceabilityTarget(graph, fileId, root, 'implemented_by', target, {}, config);
-    for (const target of block.data.verifiedBy ?? []) addTraceabilityTarget(graph, fileId, root, 'verified_by', target, {}, config);
-    for (const target of block.data.relatedDocs ?? []) addTraceabilityTarget(graph, fileId, root, 'related_doc', target, {}, config);
-    addTraceabilityCommands(graph, fileId, filePath, block.data.verificationCommands, fileId);
+    for (const definition of config.traceability?.keys ?? []) addTraceabilityValues(graph, fileId, root, filePath, definition, block.data[definition.key], config);
     addTraceabilityContracts(graph, root, fileId, filePath, block.data.contracts, config);
   }
 }

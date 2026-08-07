@@ -19,6 +19,7 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/project-memory-lifecycle-hardening/`: hardened Pi automatic memory loading with active-branch state restoration, baseline/transcript separation, callback-order-safe owned-tool composition, and focused lifecycle regression coverage.
 - `plan/remove-all-trello-functionality/`: removed the remaining Trello CLI command, configuration, API implementation, workflow, tests, generated initializer settings, and maintained behavior documentation.
 - `plan/remove-trello-power-up/`: removed the private Trello Power-Up workspace package and GitHub Pages deployment while preserving CLI Trello docs sync, custom-field behavior, and workflow safety boundaries.
 - `plan/plan-mode-auto-load-focus/`: changed automatic Plan Mode memory loading so deterministic runtime logic decides when loading is needed, the agent generates a concise semantic focus, and the pending-only read-only tool returns bounded Load/query context before planning continues.
@@ -74,6 +75,7 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 - `plan/commit-split/`: historical commit-splitting plan for earlier repository restructuring.
 - `plan/configurable-doc-size-limits/`: added project-level markdown validation budgets and explicit size-check exclusions.
 - `plan/configurable-traceability-scope/`: added configurable traceability enforcement paths using array-based required/exclude policy.
+- `plan/configurable-traceability-keys/`: added ordered configurable traceability keys, dynamic path/command graph relations, fixed PPR 80 plus memory 20 scoring, internal reference calibration, and retired legacy ranking configuration.
 - `plan/context-curation-mechanics-metrics/`: aligned context mechanics and measurement concept docs around curated project-memory and graph impact signals.
 - `plan/context-curation-readme-concept/`: refreshed README and concept positioning for context curation and docs-first project memory.
 - `plan/context-metrics-and-cache-safety/`: added cache schema/timing metadata, bounded load-snapshot quality metrics, graph/guidance assertions, and snapshot sample context measurement.

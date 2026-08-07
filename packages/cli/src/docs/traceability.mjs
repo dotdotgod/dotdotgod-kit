@@ -1,20 +1,26 @@
 import { existsSync } from 'node:fs';
 import { basename, dirname, extname, relative, resolve } from 'node:path';
 import { rel } from '../common/paths.mjs';
-import { defaultMemoryConfig, resolveMemoryArea } from '../memory/config.mjs';
+import { DEFAULT_TRACEABILITY_KEYS, defaultMemoryConfig, resolveMemoryArea } from '../memory/config.mjs';
 
 function isSecretIndexPath(path) {
   return /(^|\/)(\.env|\.npmrc|\.pypirc|id_rsa|id_dsa|id_ed25519|credentials|secrets?)(\.|\/|$)/i.test(path);
 }
 
-const TRACEABILITY_PATH_FIELDS = ['implementedBy', 'verifiedBy', 'relatedDocs'];
-const TRACEABILITY_COMMAND_FIELDS = ['verificationCommands'];
-const CONTRACT_ALLOWED_FIELDS = new Set(['id', 'title', 'sections', ...TRACEABILITY_PATH_FIELDS, ...TRACEABILITY_COMMAND_FIELDS]);
+function traceabilityKeys(config = defaultMemoryConfig()) {
+  return config.traceability?.keys ?? DEFAULT_TRACEABILITY_KEYS;
+}
+
+function traceabilityDefinitionMap(config = defaultMemoryConfig()) {
+  return new Map(traceabilityKeys(config).map((definition) => [definition.key, definition]));
+}
 export const TRACEABILITY_LINKS_START = '<!-- dotdotgod:traceability-links:start version=1 source=json-dotdotgod -->';
 export const TRACEABILITY_LINKS_END = '<!-- dotdotgod:traceability-links:end -->';
 
-export function traceabilityExample() {
-  return 'Expected dotdotgod traceability block:\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/..."],\n  "verifiedBy": ["packages/..."],\n  "relatedDocs": ["docs/..."],\n  "verificationCommands": ["pnpm ..."],\n  "contracts": [{\n    "id": "FEATURE-BEHAVIOR-001",\n    "title": "Focused behavior contract",\n    "sections": ["Focused Behavior"],\n    "implementedBy": ["packages/..."],\n    "verifiedBy": ["packages/..."],\n    "relatedDocs": ["docs/..."],\n    "verificationCommands": ["pnpm ..."]\n  }]\n}\n```\n\nProperty guidance:\n- kind: use "spec" for behavior specs.\n- implementedBy: source/config/script files that implement this spec\'s behavior.\n- verifiedBy: test files or verification docs that check this behavior.\n- relatedDocs: docs with relevant architecture, test strategy, or product context.\n- verificationCommands: commands an agent can run to verify this behavior.\n- contracts: optional focused behavior contracts; each contract requires non-empty id and title, may include sections as navigation hints, and may include the same path and command fields. Unknown contract fields are validation errors.';
+export function traceabilityExample(config = defaultMemoryConfig()) {
+  const fields = traceabilityKeys(config).map((definition) => `  "${definition.key}": [${definition.target === 'command' ? '"pnpm ..."' : '"packages/..."'}]`).join(',\n');
+  const guidance = traceabilityKeys(config).map((definition) => `- ${definition.key}: ${definition.description}`).join('\n');
+  return `Expected dotdotgod traceability block:\n\n\`\`\`json dotdotgod\n{\n  "kind": "spec"${fields ? `,\n${fields}` : ''}\n}\n\`\`\`\n\nProperty guidance:\n- kind: use "spec" for behavior specs.\n${guidance}${guidance ? '\n' : ''}- contracts: optional focused behavior contracts; each contract requires non-empty id and title, may include sections, and may include configured traceability fields. Unknown contract fields are validation errors.`;
 }
 
 function lineForOffset(content, offset) {
@@ -46,8 +52,8 @@ export function isLocalRelativeTraceabilityPath(value) {
   return !isSecretIndexPath(value);
 }
 
-function traceabilityFieldError(file, code, field, message, line = null) {
-  return { file, line, code, message: `${field ? `Field "${field}": ` : ''}${message}\nFix: update the traceability block so it matches the expected schema and points to existing project files or commands.\n\n${traceabilityExample()}` };
+function traceabilityFieldError(file, code, field, message, line = null, config = defaultMemoryConfig()) {
+  return { file, line, code, message: `${field ? `Field "${field}": ` : ''}${message}\nFix: update the traceability block so it matches the expected schema and points to existing project files or commands.\n\n${traceabilityExample(config)}` };
 }
 
 export function validateTraceabilityPlacement(content, root, file) {
@@ -124,12 +130,13 @@ function renderPathList(title, paths, root, file) {
   return lines;
 }
 
-function renderCommandList(commands) {
-  if (!Array.isArray(commands) || commands.length === 0) return [];
-  return ['- Verification commands:', ...commands.map((command) => `  - \`${escapeCodeSpan(command)}\``)];
+function renderDefinitionList(definition, values, root, file) {
+  if (!Array.isArray(values) || values.length === 0) return [];
+  if (definition.target === 'command') return [`- ${definition.label}:`, ...values.map((command) => `  - \`${escapeCodeSpan(command)}\``)];
+  return renderPathList(definition.label, values, root, file);
 }
 
-function renderContractList(contracts) {
+function renderContractList(contracts, definitions) {
   if (!Array.isArray(contracts) || contracts.length === 0) return [];
   const lines = ['- Contracts:'];
   for (const contract of contracts) {
@@ -138,23 +145,19 @@ function renderContractList(contracts) {
     const title = typeof contract.title === 'string' ? contract.title : '<missing-title>';
     const details = [];
     if (Array.isArray(contract.sections) && contract.sections.length > 0) details.push(`sections: ${contract.sections.length}`);
-    for (const [field, label] of [['implementedBy', 'impl'], ['verifiedBy', 'verify'], ['relatedDocs', 'docs'], ['verificationCommands', 'commands']]) {
-      if (Array.isArray(contract[field]) && contract[field].length > 0) details.push(`${label}: ${contract[field].length}`);
-    }
+    for (const definition of definitions) if (Array.isArray(contract[definition.key]) && contract[definition.key].length > 0) details.push(`${definition.key}: ${contract[definition.key].length}`);
     lines.push(`  - \`${escapeCodeSpan(id)}\` — ${escapeMarkdownText(title)}${details.length > 0 ? ` (${details.join(', ')})` : ''}`);
   }
   return lines;
 }
 
-export function renderTraceabilityLinks(data, root, file) {
+export function renderTraceabilityLinks(data, root, file, config = defaultMemoryConfig()) {
+  const definitions = traceabilityKeys(config);
   const body = [
     '### Traceability Links',
     '',
-    ...renderPathList('Implemented by', data?.implementedBy, root, file),
-    ...renderPathList('Verified by', data?.verifiedBy, root, file),
-    ...renderPathList('Related docs', data?.relatedDocs, root, file),
-    ...renderCommandList(data?.verificationCommands),
-    ...renderContractList(data?.contracts),
+    ...definitions.flatMap((definition) => renderDefinitionList(definition, data?.[definition.key], root, file)),
+    ...renderContractList(data?.contracts, definitions),
   ];
   return `${TRACEABILITY_LINKS_START}\n<!-- generated: do not edit manually -->\n\n${body.join('\n')}\n\n${TRACEABILITY_LINKS_END}`;
 }
@@ -163,10 +166,10 @@ export function renderCompactTraceabilityBlock(data) {
   return `\`\`\`json dotdotgod\n${JSON.stringify(data)}\n\`\`\``;
 }
 
-export function syncTraceabilityLinksInContent(content, data, root, file) {
+export function syncTraceabilityLinksInContent(content, data, root, file, config = defaultMemoryConfig()) {
   const region = findTraceabilityLinksRegion(content);
   if (region.status === 'invalid') return { ok: false, changed: false, errors: validateTraceabilityLinksRegion(content, root, file) };
-  const generated = renderTraceabilityLinks(data, root, file);
+  const generated = renderTraceabilityLinks(data, root, file, config);
   const blocks = extractDotdotgodTraceabilityBlocks(content).filter((block) => !block.error);
   if (blocks.length === 0) return { ok: false, changed: false, errors: [traceabilityFieldError(rel(root, file), 'TRACEABILITY_LINKS_MISSING_BLOCK', null, 'Cannot generate traceability links without a valid `json dotdotgod` block.')] };
   const block = blocks.at(-1);
@@ -216,12 +219,19 @@ function validateTraceabilityCommandArray(data, field, add, { required = true, d
   for (const value of data[field]) if (typeof value !== 'string' || value.trim().length === 0) add('TRACEABILITY_INVALID_COMMAND', displayField, `invalid command: ${JSON.stringify(value)}.`);
 }
 
+function validateConfiguredArray(data, definition, add, root, config, options) {
+  if (definition.target === 'command') validateTraceabilityCommandArray(data, definition.key, add, options);
+  else validateTraceabilityPathArray(data, definition.key, add, root, config, options);
+}
+
 function validateTraceabilityContracts(data, root, add, config) {
   if (data.contracts === undefined) return;
   if (!Array.isArray(data.contracts)) {
     add('TRACEABILITY_INVALID_FIELD', 'contracts', 'must be an array of focused contract objects.');
     return;
   }
+  const definitions = traceabilityKeys(config);
+  const allowedFields = new Set(['id', 'title', 'sections', ...definitions.map((definition) => definition.key)]);
   const ids = new Set();
   for (const [index, contract] of data.contracts.entries()) {
     const base = `contracts[${index}]`;
@@ -230,7 +240,7 @@ function validateTraceabilityContracts(data, root, add, config) {
       continue;
     }
     for (const field of Object.keys(contract)) {
-      if (!CONTRACT_ALLOWED_FIELDS.has(field)) add('TRACEABILITY_INVALID_FIELD', `${base}.${field}`, 'is not a supported contract field.');
+      if (!allowedFields.has(field)) add('TRACEABILITY_INVALID_FIELD', `${base}.${field}`, 'is not a supported contract field.');
     }
     if (typeof contract.id !== 'string' || contract.id.trim().length === 0) {
       add('TRACEABILITY_INVALID_FIELD', `${base}.id`, 'must be a non-empty stable contract ID string.');
@@ -246,21 +256,22 @@ function validateTraceabilityContracts(data, root, add, config) {
         if (typeof section !== 'string' || section.trim().length === 0) add('TRACEABILITY_INVALID_FIELD', `${base}.sections[${sectionIndex}]`, 'must be a non-empty heading title string.');
       }
     }
-    for (const field of TRACEABILITY_PATH_FIELDS) validateTraceabilityPathArray(contract, field, add, root, config, { required: false, displayField: `${base}.${field}` });
-    for (const field of TRACEABILITY_COMMAND_FIELDS) validateTraceabilityCommandArray(contract, field, add, { required: false, displayField: `${base}.${field}` });
+    for (const definition of definitions) validateConfiguredArray(contract, definition, add, root, config, { required: false, displayField: `${base}.${definition.key}` });
   }
 }
 
 export function validateTraceabilityBlock(data, root, file, line = null, config = defaultMemoryConfig()) {
   const errors = [];
-  const add = (code, field, message) => errors.push(traceabilityFieldError(rel(root, file), code, field, message, line));
+  const add = (code, field, message) => errors.push(traceabilityFieldError(rel(root, file), code, field, message, line, config));
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     add('TRACEABILITY_INVALID_JSON', null, 'Traceability block must be a JSON object.');
     return errors;
   }
   if (data.kind !== 'spec') add('TRACEABILITY_INVALID_KIND', 'kind', 'must be "spec" for behavior specs.');
-  for (const field of TRACEABILITY_PATH_FIELDS) validateTraceabilityPathArray(data, field, add, root, config);
-  for (const field of TRACEABILITY_COMMAND_FIELDS) validateTraceabilityCommandArray(data, field, add);
+  const definitions = traceabilityKeys(config);
+  const allowedFields = new Set(['kind', 'contracts', ...definitions.map((definition) => definition.key)]);
+  for (const field of Object.keys(data)) if (!allowedFields.has(field)) add('TRACEABILITY_INVALID_FIELD', field, 'is not configured as a traceability field.');
+  for (const definition of definitions) validateConfiguredArray(data, definition, add, root, config, { required: true, displayField: definition.key });
   validateTraceabilityContracts(data, root, add, config);
   return errors;
 }

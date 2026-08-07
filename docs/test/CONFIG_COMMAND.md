@@ -9,7 +9,7 @@ These checks cover `dotdotgod config` and `dotdotgod config init` behavior for p
 `packages/cli/test/core.test.mjs` verifies that the generated default config template:
 
 - is valid according to the shared config validator
-- includes default memory areas, traceability policy, markdown validation policy, impact ranking policy, and fuzzy reference expansion low-signal add/remove policy
+- includes default memory areas, the four ordered traceability-key definitions, markdown validation policy, retained semantic candidate policy, and fuzzy reference expansion low-signal add/remove policy
 - can be written as `dotdotgod.config.json` and read back by the CLI config loader
 - accepts valid optional memory-area `description` and `clarify` metadata while rejecting invalid metadata with repairable errors
 
@@ -20,12 +20,14 @@ These checks cover `dotdotgod config` and `dotdotgod config init` behavior for p
 - packaged Pi, Claude Code, and Codex adapters include the generated fallback config template
 - `dotdotgod config <root> --json` reports default config without creating `.dotdotgod/`
 - `dotdotgod config init <root> --json` creates `dotdotgod.config.json`
-- generated config contains the default archive-body exclusion, markdown validation budgets, balanced impact ranking preset, and fuzzy low-signal add/remove settings without noisy default `description` or `clarify` fields
+- generated config contains archive-body exclusion, markdown budgets, four editable traceability keys, retained semantic candidate settings, and fuzzy low-signal add/remove settings without ranking presets/PPR tuning or noisy memory-area metadata
 - show output reports `dotdotgod.config.json` after initialization
 - init refuses to overwrite an existing `dotdotgod.config.json`
 - `.dotdotgodrc.json` is not recognized as a project config source
 - `dotdotgod config <root> --json` preserves configured memory-area `description` and `clarify` metadata
 - invalid config show output reports validation errors and does not refresh the graph cache
+- retired preset/weights/PPR/relation-weight fields fail validation, while four legacy boost maps are ignored and omitted from show/init output
+- resolved impact diagnostics expose fixed caps and internal reference `0.4` without serializing them into initialized config
 - command-specific help works for `config` and `config init`
 
 ## Manual Smoke

@@ -153,13 +153,13 @@ New package, command, and tool names should use dotdotgod and `dd` prefixes.
   - `pnpm run verify:generated`
   - `pnpm run verify`
 - Contracts:
-  - `CROSS-AGENT-SHARED-001` — Shared docs scaffold and workflow contract stays agent-neutral (sections: 1, impl: 6, verify: 1, docs: 2)
-  - `CROSS-AGENT-PI-001` — Pi adapter provides first-class package, skills, extensions, commands, and tools (sections: 1, impl: 3, verify: 1, docs: 1)
-  - `CROSS-AGENT-CLAUDE-001` — Claude Code adapter provides plugin commands, skills, hooks guidance, and thin CLAUDE.md routing (sections: 1, impl: 6, verify: 1, docs: 1)
-  - `CROSS-AGENT-CODEX-001` — Codex adapter provides skills, trigger phrases, hooks guidance, and CODEX.md routing (sections: 1, impl: 7, verify: 1, docs: 1)
-  - `CROSS-AGENT-INSTRUCTIONS-001` — Agent-specific instruction surfaces route to the shared project-memory contract (sections: 1, impl: 2, verify: 1, docs: 1)
-  - `CROSS-AGENT-PARITY-001` — Adapters preserve behavior parity across native runtime mechanics (sections: 1, impl: 5, verify: 1, docs: 1)
-  - `CROSS-AGENT-PACKAGING-001` — Cross-agent support ships as aligned npm workspace packages and manifests (sections: 1, impl: 3, verify: 1, docs: 1)
+  - `CROSS-AGENT-SHARED-001` — Shared docs scaffold and workflow contract stays agent-neutral (sections: 1, implementedBy: 6, verifiedBy: 1, relatedDocs: 2)
+  - `CROSS-AGENT-PI-001` — Pi adapter provides first-class package, skills, extensions, commands, and tools (sections: 1, implementedBy: 3, verifiedBy: 1, relatedDocs: 1)
+  - `CROSS-AGENT-CLAUDE-001` — Claude Code adapter provides plugin commands, skills, hooks guidance, and thin CLAUDE.md routing (sections: 1, implementedBy: 6, verifiedBy: 1, relatedDocs: 1)
+  - `CROSS-AGENT-CODEX-001` — Codex adapter provides skills, trigger phrases, hooks guidance, and CODEX.md routing (sections: 1, implementedBy: 7, verifiedBy: 1, relatedDocs: 1)
+  - `CROSS-AGENT-INSTRUCTIONS-001` — Agent-specific instruction surfaces route to the shared project-memory contract (sections: 1, implementedBy: 2, verifiedBy: 1, relatedDocs: 1)
+  - `CROSS-AGENT-PARITY-001` — Adapters preserve behavior parity across native runtime mechanics (sections: 1, implementedBy: 5, verifiedBy: 1, relatedDocs: 1)
+  - `CROSS-AGENT-PACKAGING-001` — Cross-agent support ships as aligned npm workspace packages and manifests (sections: 1, implementedBy: 3, verifiedBy: 1, relatedDocs: 1)
 
 <!-- dotdotgod:traceability-links:end -->
 

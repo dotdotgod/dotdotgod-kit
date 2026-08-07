@@ -1,4 +1,4 @@
-import { DEFAULT_IMPACT_RANKING_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, defaultMemoryConfig } from '../memory/config.mjs';
+import { DEFAULT_IMPACT_RANKING_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, defaultMemoryConfig, traceabilityRelationWeights } from '../memory/config.mjs';
 import { retrievalMetadataForPath } from '../graph/metadata.mjs';
 import { buildPersonalizedPageRank, compareImpactItems, docsArea, hasCuratedImpactReason, isLowActionabilityImpactItem, isSemanticOnlyImpactItem, isTestPath, scoreImpactItem } from './scoring.mjs';
 
@@ -51,6 +51,9 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
   const graph = index?.graph ?? { nodes: [], edges: [] };
   const config = index?.memoryConfig ? { ...defaultMemoryConfig(), ...index.memoryConfig } : defaultMemoryConfig();
   const policy = cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY);
+  const traceabilityWeights = traceabilityRelationWeights(config.traceability);
+  policy.relationWeights = { ...policy.relationWeights, ...traceabilityWeights };
+  const curatedRelations = new Set(Object.keys(traceabilityWeights));
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
   const seeds = changedPaths.map((path) => `file:${path}`);
   const seedSet = new Set(seeds);
@@ -68,22 +71,22 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
     if (seedSet.has(edge.source)) addReason(edge.target, edge.relation);
     if (seedSet.has(edge.target)) addReason(edge.source, `incoming:${edge.relation}`);
   }
-  const expansionRelations = new Set(['implemented_by', 'verified_by', 'related_doc', 'verification_command', ...SEMANTIC_RELATIONS]);
+  const expansionRelations = new Set([...curatedRelations, ...SEMANTIC_RELATIONS]);
   for (const edge of graph.edges) {
     if (!expansionRelations.has(edge.relation)) continue;
     if (relatedIds.has(edge.source) && !seedSet.has(edge.target)) addReason(edge.target, edge.relation);
   }
 
   const pprScores = buildPersonalizedPageRank(graph, seeds, policy);
-  const candidatePprMax = Math.max(0, ...[...relatedIds].filter((id) => !seedSet.has(id)).map((id) => pprScores.get(id) ?? 0));
   const relatedAll = [...relatedIds].map((id) => {
     const node = nodeById.get(id) ?? { id };
     const path = node.path ?? id.replace(/^file:/, '').replace(/^test:/, '');
     const reasonList = [...(reasons.get(id) ?? [])];
     const retrieval = node.retrieval ?? retrievalMetadataForPath(path);
     const reasonSignals = reasonList.map((reason) => `reason:${reason}`);
-    const scored = scoreImpactItem({ ...node, reasons: reasonList, retrieval }, seedSet, changedPaths, policy, pprScores, candidatePprMax);
-    return { ...node, reasons: reasonList, retrieval: { ...retrieval, signals: [...new Set([...(retrieval.signals ?? []), ...reasonSignals])] }, ...scored };
+    const hasCuratedEvidence = reasonList.some((reason) => curatedRelations.has(reason.replace(/^incoming:/, '')));
+    const scored = scoreImpactItem({ ...node, reasons: reasonList, retrieval }, seedSet, changedPaths, policy, pprScores);
+    return { ...node, reasons: reasonList, hasCuratedEvidence, retrieval: { ...retrieval, signals: [...new Set([...(retrieval.signals ?? []), ...reasonSignals])] }, ...scored };
   }).sort(compareImpactItems(seeds));
   const related = selectImpactItems(relatedAll, maxRelated, seeds);
   for (const item of related) {
@@ -98,7 +101,7 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
     else if (item.type === 'event') addImpactItem(groups.events, item, limits.events ?? 10);
     else if (item.type === 'package_resource') addImpactItem(groups.packageResources, item, limits.packageResources ?? 10);
   }
-  return { changed: changedPaths[0], changedFiles: changedPaths, ranking: { method: policy.ppr.enabled === false ? 'policy-score' : 'personalized-pagerank+policy', preset: policy.preset, configSource: index?.memoryConfig?.source ?? 'default', weights: policy.weights, ppr: policy.ppr }, related, groups, omittedRelated: Math.max(0, relatedAll.length - related.length) };
+  return { changed: changedPaths[0], changedFiles: changedPaths, ranking: { method: 'weighted-personalized-pagerank+memory', configSource: index?.memoryConfig?.source ?? 'default', connectionCap: policy.connectionCap, memoryCap: policy.memoryCap, pprReference: policy.ppr.reference }, related, groups, omittedRelated: Math.max(0, relatedAll.length - related.length) };
 }
 
 export function buildImpactReport(index, changedPaths, limits = {}) {
@@ -141,5 +144,5 @@ export function buildCompactImpactReport(impact, limits = {}) {
   const groups = Object.fromEntries(groupNames.map((name) => [name, compactImpactGroup(impact.groups?.[name], groupLimit)]));
   const perSeed = (impact.perSeed ?? []).map((entry) => ({ changed: entry.changed, related: (entry.related ?? []).slice(0, limits.perSeed ?? 5).map(compactImpactItem), omittedRelated: entry.omittedRelated ?? 0 }));
   const top10 = (impact.related ?? []).filter((item) => !seedIds.has(item.id)).slice(0, 10);
-  return { changed: impact.changed, changedFiles, perSeed, compact: true, ranking: { method: impact.ranking?.method, preset: impact.ranking?.preset, configSource: impact.ranking?.configSource }, related, groups, omittedRelated: (impact.omittedRelated ?? 0) + Math.max(0, (impact.related?.length ?? 0) - related.length), quality: { rawRelated: impact.related?.length ?? 0, compactRelated: related.length, semanticOnlyTop10: top10.filter((item) => isSemanticOnlyImpactItem(item)).length, curatedTop10: top10.filter((item) => hasCuratedImpactReason(item)).length, lowActionabilityTop10: top10.filter((item) => isLowActionabilityImpactItem(item)).length } };
+  return { changed: impact.changed, changedFiles, perSeed, compact: true, ranking: { method: impact.ranking?.method, configSource: impact.ranking?.configSource, connectionCap: impact.ranking?.connectionCap, memoryCap: impact.ranking?.memoryCap, pprReference: impact.ranking?.pprReference }, related, groups, omittedRelated: (impact.omittedRelated ?? 0) + Math.max(0, (impact.related?.length ?? 0) - related.length), quality: { rawRelated: impact.related?.length ?? 0, compactRelated: related.length, semanticOnlyTop10: top10.filter((item) => isSemanticOnlyImpactItem(item)).length, curatedTop10: top10.filter((item) => hasCuratedImpactReason(item)).length, lowActionabilityTop10: top10.filter((item) => isLowActionabilityImpactItem(item)).length } };
 }

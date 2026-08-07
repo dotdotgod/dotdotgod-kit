@@ -1,77 +1,63 @@
-# Impact Ranking Config Architecture
+# Impact Ranking Architecture
 
 ## Purpose
 
-Impact ranking turns `dotdotgod graph impact` into an explainable retrieval layer for changed-file work. It combines curated docs traceability, docs-area routing, package/resource routing, and memory policy metadata.
+Impact ranking is a fixed, explainable retrieval layer for changed-file review. Configurable traceability definitions supply graph relations and weights; scoring combines weighted Personalized PageRank with memory-area policy.
 
-## Config Resolution
+## Pipeline
 
-The CLI reads `impactRanking` from `dotdotgod.config.json` alongside memory and traceability policy.
+1. Build or refresh the indexed graph.
+2. Collect direct and bounded expanded candidates from traceability, links, routing, package/resource, semantic-candidate, and memory relations.
+3. Merge configured traceability relation weights with maintained built-in non-traceability weights.
+4. Run equal-restart PPR from one or more changed-file seeds over bidirectional weighted edges.
+5. Convert raw probability with fixed reference `0.4` into an `0..80` connection score.
+6. Add an `0..20` memory score and clamp the result to `0..100`.
+7. Preserve seed order, grouped output, omitted counts, and bounded per-seed results.
 
-Invalid config is reported by `validate`, but runtime graph commands use defaults so impact reports remain available.
+## Score Boundary
 
-## Ranking Pipeline
+```text
+connection = clamp(probability / 0.4 × 80, 0, 80)
+memory = clamp(priority / 100 × 15 + freshness/body-policy adjustments, 0, 20)
+```
 
-1. Build or refresh the indexed project graph.
-2. Collect direct neighbors and limited expanded neighbors from traceability, README routing, docs-area, package/resource, and memory-policy relations.
-3. Compute changed-file Personalized PageRank over weighted graph edges.
-4. Score each related item with `scoreBreakdown`.
-5. Sort by selection score, keeping the changed file first while preserving each item's explainable `impactScore`.
-6. Cap low-actionability metadata nodes on the first page when actionable files/docs/tests exist.
-7. Preserve bounded grouped output and omitted counts.
+Fresh memory adds `5`, stale memory subtracts `5`, and default-body exclusion subtracts `5`. Archive-seeded requests skip only the body-exclusion adjustment.
 
-## Score Components
+The fixed reference is graph-policy state, not a runtime result maximum. Adding a disconnected or unrelated candidate therefore cannot rescale an existing score.
 
-- `ppr`: normalized changed-file Personalized PageRank.
-- `traceability`: curated docs links such as `implemented_by` and `verified_by`.
-- `memoryPolicy`: normalized memory-area retrieval priority.
-- `verification`: tests and verification commands.
-- `proximity`: markdown links, README routes, and package/resource relationships.
-- `routing`: deterministic docs/package/memory-policy hints from configured memory areas, headings, README indexes, and package metadata.
-- `freshness`: fresh memory boost or stale memory penalty.
-- `archivePenalty`: protects historical archive bodies from default over-retrieval.
+## Relation Ownership
 
-## Deterministic Routing Hints
+Traceability keys are an ordered complete-list registry. Their definitions own key, target type, relation, and `0..20` PPR weight. Graph edges retain traceability key/relation evidence; command-node IDs derive from stable source/key/command content rather than list position.
 
-Routing hints are generated without embeddings. They derive from:
+Non-traceability relations use built-in weights. Public `relationWeights` overrides are retired to prevent duplicate ownership.
 
-- path and filename tokens
-- markdown headings and anchors
-- package names, binaries, dependencies, and package resources
-- configured memory areas and README indexes
+## No Secondary Rank Buckets
 
-Routing metadata records confidence, score, matched terms, and contributing signals. These hints are lower-confidence than curated traceability and have lower relation weights.
+There are no direct traceability, curated, test, verification, proximity, semantic-only, freshness, archive, or node-type ranking bonuses outside the connection/memory formula. Reasons and strongest direct relation remain explanation metadata only. This intentionally accepts legacy quality-metric regression in exchange for one generalized graph traversal model.
 
-Archive bodies are excluded from default routing-hint generation unless the project explicitly opts in.
+Low-actionability and semantic-only counters remain diagnostics. Bounded output grouping may limit repeated metadata nodes, but it does not add hidden score points.
 
-## PPR Policy
+## Configuration Boundary
 
-Personalized PageRank is seeded by the changed file and runs with bounded iterations. The impact graph treats weighted edges as bidirectional for retrieval so incoming traceability can guide changed-file-to-doc impact queries.
+Public presets, score weights, PPR settings, and relation-weight overrides are retired and invalid. Four legacy boost maps are inert for compatibility. Existing deterministic `impactRanking.semantic` candidate controls remain until the vector follow-up and do not contribute a separate semantic score.
 
-PPR is normalized against candidate results, not the entire graph, then capped by the configured `ppr` score weight.
+Read-only graph diagnostics expose method, caps, and internal reference. `config init` does not serialize internal ranking constants.
 
-## Compact Output
+## Calibration
 
-`--compact` builds an agent-facing view from the same ranked report. It keeps status/cache metadata and short grouped items, but omits raw ranking weights, long retrieval signal lists, and verbose node metadata.
-
-Raw `graph impact --json` remains the diagnostic compatibility shape.
+`scripts/evaluate-graph-impact.mjs` records raw fixture PPR for curated, deterministic, one-hop, multi-hop, unrelated, and multi-seed cases; connection saturation; candidate independence; and seed-order invariance. Precision/recall/MRR/nDCG deltas against the legacy model are migration evidence, not blockers after explicit removal of specialized bonuses.
 
 ## Compatibility
 
-The feature is additive:
-
-- existing raw `related` and `impact.groups` remain by default
-- `ranking`, `impactScore`, and `scoreBreakdown` stay available on raw items
-- `--compact` is opt-in and returns compact top-level `related` plus grouped compact items
-- removed aliases such as `graph query` are rejected as unknown graph commands
-- projects without config keep the built-in `balanced` preset
-
-## Traceability Discipline
-
-Embedding similarity is intentionally absent from defaults. If embeddings are added later, they should be opt-in and should surface terminology inconsistencies for repair.
+- changed seeds remain first at score `100`
+- combined and `perSeed` multi-file shapes remain bounded
+- raw JSON retains `related`, groups, scores, and breakdowns
+- compact/YML output remains agent-facing and bounded
+- exact legacy scores, presets, and preset behavior are not preserved
 
 ## Related Behavior and Verification
 
-- Behavior spec: [`docs/spec/IMPACT_RANKING_CONFIG.md`](../spec/IMPACT_RANKING_CONFIG.md).
-- Verification doc: [`docs/test/IMPACT_RANKING_CONFIG.md`](../test/IMPACT_RANKING_CONFIG.md).
-- Related validation architecture: [`validation/README.md`](validation/README.md).
+- Behavior: [`docs/spec/IMPACT_RANKING_CONFIG.md`](../spec/IMPACT_RANKING_CONFIG.md)
+- CLI contract: [`docs/spec/cli/GRAPH_IMPACT.md`](../spec/cli/GRAPH_IMPACT.md)
+- Verification: [`docs/test/IMPACT_RANKING_CONFIG.md`](../test/IMPACT_RANKING_CONFIG.md)
+- Quality evaluation: [`docs/test/GRAPH_IMPACT_QUALITY.md`](../test/GRAPH_IMPACT_QUALITY.md)

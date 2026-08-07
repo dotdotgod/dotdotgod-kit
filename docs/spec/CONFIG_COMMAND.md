@@ -19,10 +19,10 @@ Human output summarizes:
 - config source
 - config path when a file is present
 - memory-area count
-- traceability required/exclude patterns
+- traceability required/exclude patterns and ordered key definitions
 - markdown validation line and character budgets
 - markdown validation size-check exclude patterns
-- impact ranking preset
+- fixed impact ranking diagnostics, including the internal PPR reference
 - load documentation-summary exclusions and pinned path/body lists
 - Plan Mode writable documentation paths
 - fuzzy reference expansion low-signal policy
@@ -45,9 +45,9 @@ If the project config is invalid, `ok` is `false`, errors use the same validatio
 The config command surfaces the same policy families that validation, Load/query routing, reference expansion, and graph impact use:
 
 - `memory.areas`: ordered path classifiers for shared/local and fresh/stale project memory, including optional `description` and `clarify` metadata when a project defines document-area guidance.
-- `traceability.required` and `traceability.exclude`: path rules that decide which markdown files must end with a valid `json dotdotgod` block.
+- `traceability.required`, `traceability.exclude`, and `traceability.keys`: enforcement paths plus the ordered complete-list definition of traceability string arrays, targets, graph relations, and PPR weights.
 - `validation.markdown`: line/character budgets and narrow size-check exclusions.
-- `impactRanking`: presets, weights, PPR, relation boosts, routing hints, and compact impact behavior.
+- `impactRanking.semantic`: the existing deterministic semantic-candidate controls retained until the vector follow-up. Presets, score weights, PPR tuning, and public relation-weight overrides are retired and invalid; fixed PPR 80/memory 20 policy and internal reference `0.4` appear only in read-only diagnostics.
 - `referenceExpansion.fuzzy.lowSignal`: `add`/`remove` term lists that tune low-signal fuzzy prompt matching without replacing built-in defaults.
 - `load.documentationSummary.exclude`: docs directories omitted from the Pi load prompt's documentation summary, independently from memory-area scope.
 - `load.pinnedPaths` and `load.pinnedBodies`: legacy validated compatibility fields that no longer alter Load output.
@@ -64,13 +64,13 @@ The init command creates `dotdotgod.config.json` with the current built-in defau
 - `memory.areas`
 - `traceability`
 - `validation.markdown`
-- `impactRanking`
+- `impactRanking.semantic` only; fixed scoring policy is not serialized
 - `referenceExpansion.fuzzy.lowSignal.add/remove`
 - `integrations`
 - `load.documentationSummary.exclude` with `docs/plan` and `docs/archive`, plus empty `load.pinnedPaths` and `load.pinnedBodies` arrays
 - `planMode.writablePaths` with `docs/plan/**` and `docs/archive/**`
 
-The generated file must validate with `dotdotgod validate`. `dotdotgod init` and generated adapter fallback templates use the same serializer, so their config data is structurally identical to `config init`. The generated memory areas omit optional `description` and `clarify` metadata so the template stays concise; projects can add those fields when custom document areas need role or clarity guidance. The generated reference-expansion section uses empty `add` and `remove` arrays; the resolved defaults remain visible in `dotdotgod config <root> --json` output.
+The generated file must validate with `dotdotgod validate`. It includes the four default `traceability.keys` definitions. Retired `impactRanking.preset`, `weights`, `ppr`, and `relationWeights` fields fail validation; legacy `traceabilityBoosts`, `verificationBoosts`, `proximityBoosts`, and `semanticBoosts` are accepted but ignored and omitted from show/init serialization. `dotdotgod init` and generated adapter fallback templates use the same serializer, so their config data is structurally identical to `config init`. The generated memory areas omit optional `description` and `clarify` metadata so the template stays concise; projects can add those fields when custom document areas need role or clarity guidance. The generated reference-expansion section uses empty `add` and `remove` arrays; the resolved defaults remain visible in `dotdotgod config <root> --json` output.
 
 Existing-file behavior:
 

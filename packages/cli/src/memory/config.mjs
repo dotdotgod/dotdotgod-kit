@@ -6,9 +6,16 @@ import { isKebabCase } from '../docs/markdown.mjs';
 const MEMORY_CONFIG_FILE = 'dotdotgod.config.json';
 const MEMORY_SCOPES = new Set(['shared', 'local']);
 const MEMORY_FRESHNESS = new Set(['fresh', 'stale']);
+export const DEFAULT_TRACEABILITY_KEYS = [
+  { key: 'implementedBy', label: 'Implemented by', description: 'Files that implement the behavior.', target: 'path', relation: 'implemented_by', weight: 4 },
+  { key: 'verifiedBy', label: 'Verified by', description: 'Tests or maintained verification documents.', target: 'path', relation: 'verified_by', weight: 4 },
+  { key: 'relatedDocs', label: 'Related docs', description: 'Documents needed to interpret the behavior.', target: 'path', relation: 'related_doc', weight: 3 },
+  { key: 'verificationCommands', label: 'Verification commands', description: 'Project-local verification commands.', target: 'command', relation: 'verification_command', weight: 3 },
+];
 export const DEFAULT_TRACEABILITY_POLICY = {
   required: ['docs/spec/**'],
   exclude: ['**/README.md'],
+  keys: DEFAULT_TRACEABILITY_KEYS,
 };
 export const DEFAULT_VALIDATION_POLICY = {
   markdown: {
@@ -32,37 +39,29 @@ export const DEFAULT_PLAN_MODE_POLICY = {
   writablePaths: ['docs/plan/**', 'docs/archive/**'],
 };
 export const DEFAULT_IMPACT_RANKING_POLICY = {
-  preset: 'balanced',
-  weights: { ppr: 40, traceability: 30, memoryPolicy: 10, verification: 15, proximity: 10, semantic: 10, freshness: 5, archivePenalty: -25 },
-  ppr: { enabled: true, damping: 0.85, iterations: 20, tolerance: 0.000001 },
+  connectionCap: 80,
+  memoryCap: 20,
+  ppr: { damping: 0.85, iterations: 20, tolerance: 0.000001, reference: 0.4 },
   relationWeights: {
-    implemented_by: 4,
-    verified_by: 4,
-    related_doc: 3,
-    verification_command: 3,
     links_to: 2,
+    routes_to: 2,
     belongs_to_area: 2,
-    semantic_similarity: 2,
-    mentions_package: 1,
+    vector_similarity: 2,
+    includes_resource: 1,
+    defines_contract: 2,
   },
-  traceabilityBoosts: { implemented_by: 30, 'incoming:implemented_by': 30, verified_by: 25, 'incoming:verified_by': 25, verification_command: 15, 'incoming:verification_command': 15, related_doc: 12, 'incoming:related_doc': 12 },
-  verificationBoosts: { verified_by: 15, 'incoming:verified_by': 15, verification_command: 12, 'incoming:verification_command': 12 },
-  semanticBoosts: { semantic_similarity: 8, 'incoming:semantic_similarity': 8, mentions_package: 4, 'incoming:mentions_package': 4 },
-  proximityBoosts: { links_to: 6, 'incoming:links_to': 6, routes_to: 5, 'incoming:routes_to': 5 },
-  semantic: { enabled: true, threshold: 0.5, topKPerFile: 5, includeArchiveBodies: false, signals: ['path', 'filename', 'heading', 'package'] },
+  semantic: { enabled: true, threshold: 0.5, topKPerFile: 5 },
 };
-const IMPACT_RANKING_PRESETS = {
-  balanced: {},
-  'docs-first': { weights: { ppr: 35, traceability: 35, memoryPolicy: 15, verification: 15, proximity: 5, semantic: 8, freshness: 5, archivePenalty: -30 } },
-  'code-proximity': { weights: { ppr: 45, traceability: 20, memoryPolicy: 8, verification: 12, proximity: 20, semantic: 8, freshness: 3, archivePenalty: -25 } },
-  'test-focused': { weights: { ppr: 35, traceability: 25, memoryPolicy: 8, verification: 25, proximity: 10, semantic: 7, freshness: 5, archivePenalty: -25 } },
-  'archive-aware': { weights: { ppr: 35, traceability: 25, memoryPolicy: 10, verification: 15, proximity: 10, semantic: 8, freshness: 3, archivePenalty: -10 } },
-};
-export const SEMANTIC_RELATIONS = new Set(['semantic_similarity', 'mentions_package']);
-const IMPACT_RANKING_WEIGHT_KEYS = new Set(['ppr', 'traceability', 'memoryPolicy', 'verification', 'proximity', 'semantic', 'freshness', 'archivePenalty']);
-const IMPACT_RANKING_RELATION_KEYS = new Set(['implemented_by', 'verified_by', 'related_doc', 'verification_command', 'links_to', 'belongs_to_area', 'semantic_similarity', 'mentions_package']);
-const IMPACT_RANKING_REASON_KEYS = new Set(['implemented_by', 'incoming:implemented_by', 'verified_by', 'incoming:verified_by', 'verification_command', 'incoming:verification_command', 'related_doc', 'incoming:related_doc', 'semantic_similarity', 'incoming:semantic_similarity', 'mentions_package', 'incoming:mentions_package', 'links_to', 'incoming:links_to', 'routes_to', 'incoming:routes_to']);
-const SEMANTIC_SIGNAL_KEYS = new Set(['path', 'filename', 'heading', 'package']);
+export const SEMANTIC_RELATIONS = new Set(['vector_similarity']);
+const TRACEABILITY_TARGETS = new Set(['path', 'command']);
+const TRACEABILITY_RESERVED_KEYS = new Set(['kind', 'contracts', 'id', 'title', 'sections']);
+export const BUILT_IN_GRAPH_RELATIONS = new Set([
+  'belongs_to_area', 'includes_resource', 'defines_contract', 'contains_heading', 'links_to', 'routes_to',
+  'declares_package', 'declares_script', 'declares_bin', 'depends_on', 'vector_similarity',
+]);
+const TRACEABILITY_RESERVED_RELATIONS = BUILT_IN_GRAPH_RELATIONS;
+const INERT_IMPACT_RANKING_FIELDS = new Set(['traceabilityBoosts', 'verificationBoosts', 'semanticBoosts', 'proximityBoosts']);
+const RETIRED_IMPACT_RANKING_FIELDS = new Set(['preset', 'weights', 'ppr', 'relationWeights']);
 const DEFAULT_FUZZY_LOW_SIGNAL_TERMS = [
   'a', 'an', 'and', 'are', 'as', 'by', 'docs', 'document', 'for', 'from', 'it', 'of', 'on', 'plan', 'test', 'the', 'to', 'update', 'version', 'with',
   '계획', '문서', '수정', '업데이트', '버전', '정보', '확인', '테스트',
@@ -109,11 +108,20 @@ function cloneArea(area) {
   }, area);
 }
 
+function cloneTraceabilityKey(definition) {
+  return { key: definition.key, label: definition.label, description: definition.description, target: definition.target, relation: definition.relation, weight: definition.weight };
+}
+
 export function cloneTraceabilityPolicy(policy = DEFAULT_TRACEABILITY_POLICY) {
   return {
     required: [...(policy.required ?? [])],
     exclude: [...(policy.exclude ?? [])],
+    keys: (policy.keys ?? DEFAULT_TRACEABILITY_KEYS).map(cloneTraceabilityKey),
   };
+}
+
+export function traceabilityRelationWeights(policy = DEFAULT_TRACEABILITY_POLICY) {
+  return Object.fromEntries((policy.keys ?? DEFAULT_TRACEABILITY_KEYS).map((definition) => [definition.relation, definition.weight]));
 }
 
 export function cloneValidationPolicy(policy = DEFAULT_VALIDATION_POLICY) {
@@ -132,15 +140,11 @@ export function cloneValidationPolicy(policy = DEFAULT_VALIDATION_POLICY) {
 
 export function cloneImpactRankingPolicy(policy = DEFAULT_IMPACT_RANKING_POLICY) {
   return {
-    preset: policy.preset ?? 'balanced',
-    weights: { ...DEFAULT_IMPACT_RANKING_POLICY.weights, ...(policy.weights ?? {}) },
-    ppr: { ...DEFAULT_IMPACT_RANKING_POLICY.ppr, ...(policy.ppr ?? {}) },
-    relationWeights: { ...DEFAULT_IMPACT_RANKING_POLICY.relationWeights, ...(policy.relationWeights ?? {}) },
-    traceabilityBoosts: { ...DEFAULT_IMPACT_RANKING_POLICY.traceabilityBoosts, ...(policy.traceabilityBoosts ?? {}) },
-    verificationBoosts: { ...DEFAULT_IMPACT_RANKING_POLICY.verificationBoosts, ...(policy.verificationBoosts ?? {}) },
-    semanticBoosts: { ...DEFAULT_IMPACT_RANKING_POLICY.semanticBoosts, ...(policy.semanticBoosts ?? {}) },
-    proximityBoosts: { ...DEFAULT_IMPACT_RANKING_POLICY.proximityBoosts, ...(policy.proximityBoosts ?? {}) },
-    semantic: { ...DEFAULT_IMPACT_RANKING_POLICY.semantic, ...(policy.semantic ?? {}), signals: [...(policy.semantic?.signals ?? DEFAULT_IMPACT_RANKING_POLICY.semantic.signals)] },
+    connectionCap: DEFAULT_IMPACT_RANKING_POLICY.connectionCap,
+    memoryCap: DEFAULT_IMPACT_RANKING_POLICY.memoryCap,
+    ppr: { ...DEFAULT_IMPACT_RANKING_POLICY.ppr },
+    relationWeights: { ...DEFAULT_IMPACT_RANKING_POLICY.relationWeights },
+    semantic: { ...DEFAULT_IMPACT_RANKING_POLICY.semantic, ...(policy.semantic ?? {}) },
   };
 }
 
@@ -169,9 +173,7 @@ function normalizeReferenceExpansionPolicy(raw) {
 }
 
 function normalizeImpactRankingPolicy(raw) {
-  const presetName = typeof raw?.preset === 'string' ? raw.preset : 'balanced';
-  const preset = IMPACT_RANKING_PRESETS[presetName] ?? IMPACT_RANKING_PRESETS.balanced;
-  return cloneImpactRankingPolicy({ ...preset, ...raw, preset: presetName, weights: { ...(preset.weights ?? {}), ...(raw?.weights ?? {}) }, ppr: { ...(preset.ppr ?? {}), ...(raw?.ppr ?? {}) }, semantic: { ...(preset.semantic ?? {}), ...(raw?.semantic ?? {}) } });
+  return cloneImpactRankingPolicy({ semantic: raw?.semantic });
 }
 
 export function cloneLoadPolicy(policy = DEFAULT_LOAD_POLICY) {
@@ -237,6 +239,7 @@ function normalizeTraceabilityPolicy(raw) {
   return {
     required: Array.isArray(raw.required) ? raw.required.map(normalizePathPattern) : [],
     exclude: Array.isArray(raw.exclude) ? raw.exclude.map(normalizePathPattern) : [],
+    keys: (raw.keys === undefined ? DEFAULT_TRACEABILITY_KEYS : raw.keys).map(cloneTraceabilityKey),
   };
 }
 
@@ -314,10 +317,6 @@ function isFiniteNumberInRange(value, min, max) {
   return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 }
 
-function validateNumberMap(map, keys, min, max) {
-  return map && typeof map === 'object' && !Array.isArray(map) && Object.entries(map).every(([key, value]) => keys.has(key) && isFiniteNumberInRange(value, min, max));
-}
-
 export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.config.json') {
   const errors = [];
   const add = (code, field, message, fix = null) => errors.push({
@@ -338,6 +337,26 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
       else if (traceability.required.some((value) => !isValidPathPattern(value))) add('TRACEABILITY_CONFIG_INVALID_REQUIRED', 'traceability.required', 'Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
       if (traceability.exclude !== undefined && !Array.isArray(traceability.exclude)) add('TRACEABILITY_CONFIG_INVALID_EXCLUDE', 'traceability.exclude', 'Expected an array of path strings.');
       else if (Array.isArray(traceability.exclude) && traceability.exclude.some((value) => !isValidPathPattern(value))) add('TRACEABILITY_CONFIG_INVALID_EXCLUDE', 'traceability.exclude', 'Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
+      if (traceability.keys !== undefined && !Array.isArray(traceability.keys)) add('TRACEABILITY_CONFIG_INVALID_KEYS', 'traceability.keys', 'Expected an array of traceability key definitions.');
+      else if (Array.isArray(traceability.keys)) {
+        const keys = new Set();
+        const labels = new Set();
+        const relations = new Set();
+        for (const [index, definition] of traceability.keys.entries()) {
+          const prefix = `traceability.keys[${index}]`;
+          if (!definition || typeof definition !== 'object' || Array.isArray(definition)) { add('TRACEABILITY_CONFIG_INVALID_KEY', prefix, 'Expected an object.'); continue; }
+          const allowed = new Set(['key', 'label', 'description', 'target', 'relation', 'weight']);
+          if (Object.keys(definition).some((key) => !allowed.has(key))) add('TRACEABILITY_CONFIG_INVALID_KEY', prefix, 'Contains unsupported fields.');
+          if (typeof definition.key !== 'string' || !/^[A-Za-z][A-Za-z0-9]*$/.test(definition.key) || TRACEABILITY_RESERVED_KEYS.has(definition.key) || keys.has(definition.key)) add('TRACEABILITY_CONFIG_INVALID_KEY', `${prefix}.key`, 'Expected a unique non-reserved identifier.'); else keys.add(definition.key);
+          const trimmedLabel = typeof definition.label === 'string' ? definition.label.trim() : '';
+          const normalizedLabel = trimmedLabel.toLocaleLowerCase();
+          if (!normalizedLabel || /[\u0000-\u001f\u007f]/.test(trimmedLabel) || labels.has(normalizedLabel)) add('TRACEABILITY_CONFIG_INVALID_LABEL', `${prefix}.label`, 'Expected a unique single-line non-empty label after trimming and case normalization.'); else labels.add(normalizedLabel);
+          if (typeof definition.description !== 'string' || !definition.description.trim()) add('TRACEABILITY_CONFIG_INVALID_DESCRIPTION', `${prefix}.description`, 'Expected a non-empty description.');
+          if (!TRACEABILITY_TARGETS.has(definition.target)) add('TRACEABILITY_CONFIG_INVALID_TARGET', `${prefix}.target`, 'Expected "path" or "command".');
+          if (typeof definition.relation !== 'string' || !/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/.test(definition.relation) || TRACEABILITY_RESERVED_RELATIONS.has(definition.relation) || relations.has(definition.relation)) add('TRACEABILITY_CONFIG_INVALID_RELATION', `${prefix}.relation`, 'Expected a unique canonical snake_case relation not reserved by the graph.'); else relations.add(definition.relation);
+          if (!isFiniteNumberInRange(definition.weight, 0, 20)) add('TRACEABILITY_CONFIG_INVALID_WEIGHT', `${prefix}.weight`, 'Expected a finite number from 0 to 20.');
+        }
+      }
     }
   }
   const validation = data.validation;
@@ -426,21 +445,10 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
     if (!impactRanking || typeof impactRanking !== 'object' || Array.isArray(impactRanking)) {
       add('IMPACT_RANKING_CONFIG_INVALID', 'impactRanking', 'Expected an object.');
     } else {
-      if (impactRanking.preset !== undefined && !Object.hasOwn(IMPACT_RANKING_PRESETS, impactRanking.preset)) add('IMPACT_RANKING_CONFIG_INVALID_PRESET', 'impactRanking.preset', 'Expected one of balanced, docs-first, code-proximity, test-focused, or archive-aware.');
-      if (impactRanking.weights !== undefined && !validateNumberMap(impactRanking.weights, IMPACT_RANKING_WEIGHT_KEYS, -100, 100)) add('IMPACT_RANKING_CONFIG_INVALID_WEIGHTS', 'impactRanking.weights', 'Expected known numeric weight keys with finite values from -100 to 100.');
-      if (impactRanking.relationWeights !== undefined && !validateNumberMap(impactRanking.relationWeights, IMPACT_RANKING_RELATION_KEYS, 0, 20)) add('IMPACT_RANKING_CONFIG_INVALID_RELATION_WEIGHTS', 'impactRanking.relationWeights', 'Expected known relation keys with finite values from 0 to 20.');
-      for (const key of ['traceabilityBoosts', 'verificationBoosts', 'semanticBoosts', 'proximityBoosts']) {
-        if (impactRanking[key] !== undefined && !validateNumberMap(impactRanking[key], IMPACT_RANKING_REASON_KEYS, 0, 100)) add('IMPACT_RANKING_CONFIG_INVALID_BOOSTS', `impactRanking.${key}`, 'Expected known reason keys with finite values from 0 to 100.');
-      }
-      if (impactRanking.ppr !== undefined) {
-        const ppr = impactRanking.ppr;
-        if (!ppr || typeof ppr !== 'object' || Array.isArray(ppr)) add('IMPACT_RANKING_CONFIG_INVALID_PPR', 'impactRanking.ppr', 'Expected an object.');
-        else {
-          if (ppr.enabled !== undefined && typeof ppr.enabled !== 'boolean') add('IMPACT_RANKING_CONFIG_INVALID_PPR', 'impactRanking.ppr.enabled', 'Expected a boolean.');
-          if (ppr.damping !== undefined && !isFiniteNumberInRange(ppr.damping, 0.01, 0.99)) add('IMPACT_RANKING_CONFIG_INVALID_PPR', 'impactRanking.ppr.damping', 'Expected a number greater than 0 and less than 1.');
-          if (ppr.iterations !== undefined && (!Number.isInteger(ppr.iterations) || ppr.iterations < 1 || ppr.iterations > 100)) add('IMPACT_RANKING_CONFIG_INVALID_PPR', 'impactRanking.ppr.iterations', 'Expected an integer from 1 to 100.');
-          if (ppr.tolerance !== undefined && !isFiniteNumberInRange(ppr.tolerance, 0, 1)) add('IMPACT_RANKING_CONFIG_INVALID_PPR', 'impactRanking.ppr.tolerance', 'Expected a number from 0 to 1.');
-        }
+      for (const key of Object.keys(impactRanking)) {
+        if (key === 'semantic' || INERT_IMPACT_RANKING_FIELDS.has(key)) continue;
+        if (RETIRED_IMPACT_RANKING_FIELDS.has(key)) add('IMPACT_RANKING_CONFIG_RETIRED_FIELD', `impactRanking.${key}`, 'This ranking tuning field was retired; remove it.');
+        else add('IMPACT_RANKING_CONFIG_INVALID_FIELD', `impactRanking.${key}`, 'Unsupported impact ranking field.');
       }
       if (impactRanking.semantic !== undefined) {
         const semantic = impactRanking.semantic;
@@ -449,8 +457,11 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
           if (semantic.enabled !== undefined && typeof semantic.enabled !== 'boolean') add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic.enabled', 'Expected a boolean.');
           if (semantic.threshold !== undefined && !isFiniteNumberInRange(semantic.threshold, 0, 1)) add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic.threshold', 'Expected a number from 0 to 1.');
           if (semantic.topKPerFile !== undefined && (!Number.isInteger(semantic.topKPerFile) || semantic.topKPerFile < 0 || semantic.topKPerFile > 20)) add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic.topKPerFile', 'Expected an integer from 0 to 20.');
-          if (semantic.includeArchiveBodies !== undefined && typeof semantic.includeArchiveBodies !== 'boolean') add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic.includeArchiveBodies', 'Expected a boolean.');
-          if (semantic.signals !== undefined && (!Array.isArray(semantic.signals) || semantic.signals.some((value) => !SEMANTIC_SIGNAL_KEYS.has(value)))) add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic.signals', 'Expected an array of known deterministic signal names.');
+          for (const key of Object.keys(semantic)) {
+            if (['enabled', 'threshold', 'topKPerFile'].includes(key)) continue;
+            if (['signals', 'includeArchiveBodies'].includes(key)) add('IMPACT_RANKING_CONFIG_RETIRED_SEMANTIC_FIELD', `impactRanking.semantic.${key}`, 'This lexical semantic field was retired by vector semantic impact; remove it.');
+            else add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', `impactRanking.semantic.${key}`, 'Unsupported vector semantic field.');
+          }
         }
       }
     }
@@ -540,7 +551,7 @@ export function defaultDotdotgodConfigData() {
     },
     traceability: cloneTraceabilityPolicy(config.traceability),
     validation: cloneValidationPolicy(config.validation),
-    impactRanking: cloneImpactRankingPolicy(config.impactRanking),
+    impactRanking: { semantic: { ...config.impactRanking.semantic } },
     referenceExpansion: { fuzzy: { lowSignal: { add: [], remove: [] } } },
     load: cloneLoadPolicy(config.load),
     planMode: clonePlanModePolicy(config.planMode),
@@ -567,7 +578,15 @@ export function memoryConfigSummary(config) {
     }, area)),
     traceability: cloneTraceabilityPolicy(config.traceability ?? DEFAULT_TRACEABILITY_POLICY),
     validation: cloneValidationPolicy(config.validation ?? DEFAULT_VALIDATION_POLICY),
-    impactRanking: cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY),
+    impactRanking: {
+      fixed: {
+        connectionCap: DEFAULT_IMPACT_RANKING_POLICY.connectionCap,
+        memoryCap: DEFAULT_IMPACT_RANKING_POLICY.memoryCap,
+        ppr: { ...DEFAULT_IMPACT_RANKING_POLICY.ppr },
+        relationWeights: { ...DEFAULT_IMPACT_RANKING_POLICY.relationWeights },
+      },
+      semantic: { ...cloneImpactRankingPolicy(config.impactRanking ?? DEFAULT_IMPACT_RANKING_POLICY).semantic },
+    },
     referenceExpansion: cloneReferenceExpansionPolicy(config.referenceExpansion),
     load: cloneLoadPolicy(config.load),
     planMode: clonePlanModePolicy(config.planMode),

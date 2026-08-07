@@ -47,4 +47,6 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 - `plan-generator-resume-progress/` — paused: earlier resume-semantics plan paused after the stage-flow review; resume after the simplified generator stage model lands.
 - `restore-plan-generator-llm-slug/` — active: plan to restore LLM-generated task slugs for `/plan-generator` while keeping deterministic fallback, collision handling, and regression tests.
 
+- `vector-semantic-impact/` — ready: minimal docs-cache-backed multilingual vector overlay for graph impact; prerequisite scoring work is complete and execution awaits approval.
+
 This directory is local-only and ignored by git by default.

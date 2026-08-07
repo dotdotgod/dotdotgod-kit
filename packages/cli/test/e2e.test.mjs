@@ -370,7 +370,11 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(showDefault.command, 'config');
     assert.equal(showDefault.source, 'default');
     assert.equal(showDefault.path, null);
-    assert.equal(showDefault.config.impactRanking.preset, 'balanced');
+    assert.equal(showDefault.config.impactRanking.preset, undefined);
+    assert.equal(showDefault.config.traceability.keys.length, 4);
+    assert.equal(showDefault.config.impactRanking.fixed.connectionCap, 80);
+    assert.equal(showDefault.config.impactRanking.fixed.memoryCap, 20);
+    assert.equal(showDefault.config.impactRanking.fixed.ppr.reference, 0.4);
     assert(showDefault.config.referenceExpansion.fuzzy.lowSignal.terms.includes('version'));
     assert(showDefault.config.areas.some((area) => area.id === 'active-plan'));
     assert.equal(existsSync(join(root, '.dotdotgod/manifest.json')), false);
@@ -381,7 +385,8 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal('overwritten' in init, false);
     assert.equal(existsSync(join(root, 'dotdotgod.config.json')), true);
     const initialized = JSON.parse(readFileSync(join(root, 'dotdotgod.config.json'), 'utf8'));
-    assert.equal(initialized.impactRanking.preset, 'balanced');
+    assert.equal(initialized.impactRanking.preset, undefined);
+    assert.equal(initialized.traceability.keys.length, 4);
     assert.equal(initialized.validation.markdown.maxLines, 200);
     assert.equal(initialized.validation.markdown.maxChars, 10000);
     assert.deepEqual(initialized.validation.markdown.exclude, []);
@@ -415,6 +420,11 @@ describe('dotdotgod CLI e2e', () => {
     const humanInit = run(['config', 'init', humanRoot]);
     assert.equal(humanInit.status, 0, humanInit.stderr || humanInit.stdout);
     assert.match(humanInit.stdout, /dotdotgod config init: created .*dotdotgod\.config\.json/);
+    const humanShow = run(['config', humanRoot]);
+    assert.equal(humanShow.status, 0, humanShow.stderr || humanShow.stdout);
+    assert.match(humanShow.stdout, /traceability keys:/);
+    assert.match(humanShow.stdout, /implementedBy: path -> implemented_by \(weight=4/);
+    assert.match(humanShow.stdout, /impact ranking: fixed PPR=80, memory=20, reference=0\.4/);
 
     const invalidRoot = createFixture();
     writeFileSync(join(invalidRoot, 'dotdotgod.config.json'), '{"memory":{"areas":"bad"},"validation":{"markdown":{"maxLines":0}}}\n');
@@ -499,8 +509,19 @@ describe('dotdotgod CLI e2e', () => {
     const spec = readFileSync(join(root, 'docs/spec/APP.md'), 'utf8');
     assert.match(spec, /dotdotgod:traceability-links:start/);
     assert.match(spec, /\.\.\/\.\.\/packages\/app\/index\.mjs/);
-    assert.match(spec, /- Contracts:\n  - `APP-ROUTING-001` — Routing policy contract \(sections: 1, impl: 1, verify: 1, docs: 1, commands: 1\)/);
+    assert.match(spec, /- Contracts:\n  - `APP-ROUTING-001` — Routing policy contract \(sections: 1, implementedBy: 1, verifiedBy: 1, relatedDocs: 1, verificationCommands: 1\)/);
     assert.equal(json(run(['traceability', 'links', root, '--check', '--json'])).ok, true);
+
+    const invalidConfigRoot = createFixture();
+    const invalidConfigSpec = join(invalidConfigRoot, 'docs/spec/APP.md');
+    const beforeInvalidWrite = readFileSync(invalidConfigSpec, 'utf8');
+    writeConfig(invalidConfigRoot, { traceability: { required: ['docs/spec/**'], exclude: [], keys: [{ key: 'bad', label: 'Bad', description: 'Bad.', target: 'path', relation: 'links_to', weight: 1 }] } });
+    const invalidCheck = run(['traceability', 'links', invalidConfigRoot, '--check', '--json']);
+    assert.equal(invalidCheck.status, 1);
+    assert(JSON.parse(invalidCheck.stdout).errors.some((error) => error.code === 'TRACEABILITY_CONFIG_INVALID_RELATION'));
+    const invalidWrite = run(['traceability', 'links', invalidConfigRoot, '--write', '--json']);
+    assert.equal(invalidWrite.status, 1);
+    assert.equal(readFileSync(invalidConfigSpec, 'utf8'), beforeInvalidWrite);
 
     const bloated = spec.replace('"verificationCommands":["node --test packages/app/index.test.mjs"]', `"verificationCommands":[${JSON.stringify('node --test packages/app/index.test.mjs ' + 'x'.repeat(5000))}]`);
     writeFileSync(join(root, 'docs/spec/APP.md'), bloated);
@@ -568,8 +589,8 @@ describe('dotdotgod CLI e2e', () => {
     const impact = json(rawImpactResult);
     assert.equal(impact.command, 'graph impact');
     assert.equal(impact.compact, undefined);
-    assert.equal(impact.impact.ranking.method, 'personalized-pagerank+policy');
-    assert(impact.impact.ranking.weights);
+    assert.equal(impact.impact.ranking.method, 'weighted-personalized-pagerank+memory');
+    assert.equal(impact.impact.ranking.pprReference, 0.4);
     assert.deepEqual(impact.related, impact.impact.related);
     assert.equal(impact.related.every((node) => typeof node.impactScore === 'number' && node.scoreBreakdown), true);
     const changed = itemById(impact, 'file:packages/app/index.mjs');
@@ -581,9 +602,9 @@ describe('dotdotgod CLI e2e', () => {
     assert(spec);
     assert(semanticOnly);
     assert(rankOf(impact, spec.id) < rankOf(impact, semanticOnly.id));
-    assert(spec.scoreBreakdown.traceability > 0);
+    assert(spec.scoreBreakdown.connection.ppr > 0);
     assert(hasSemanticReason(semanticOnly));
-    assert(semanticOnly.scoreBreakdown.semantic > 0);
+    assert(semanticOnly.scoreBreakdown.connection.ppr > 0);
     assert(impact.impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/APP.md'));
     assert(impact.impact.groups.tests.items.some((item) => item.id === 'file:packages/app/index.test.mjs'));
     const contract = itemById(impact, 'contract:docs/spec/APP.md#APP-ROUTING-001');
@@ -641,25 +662,13 @@ describe('dotdotgod CLI e2e', () => {
     assert.match(removedQuery.stderr, /Unknown graph command: query/);
   });
 
-  it('applies impact ranking presets, semantic thresholds, archive safety, and measurement output', () => {
-    const docsFirst = impactWithConfig({ impactRanking: { preset: 'docs-first' } });
-    const codeProximity = impactWithConfig({ impactRanking: { preset: 'code-proximity' } });
-    const testFocused = impactWithConfig({ impactRanking: { preset: 'test-focused' } });
-
-    assert.equal(docsFirst.impact.ranking.preset, 'docs-first');
-    assert.equal(codeProximity.impact.ranking.preset, 'code-proximity');
-    assert.equal(testFocused.impact.ranking.preset, 'test-focused');
-    assert(itemById(docsFirst, 'file:docs/spec/APP.md').scoreBreakdown.traceability > itemById(codeProximity, 'file:docs/spec/APP.md').scoreBreakdown.traceability);
-    assert(itemById(testFocused, 'file:packages/app/index.test.mjs').scoreBreakdown.verification > itemById(codeProximity, 'file:packages/app/index.test.mjs').scoreBreakdown.verification);
-
-    const archiveConfig = (preset) => ({ memory: { areas: archiveBodyMemoryAreas() }, impactRanking: { preset, semantic: { includeArchiveBodies: true } } });
-    const balancedArchive = impactWithConfig(archiveConfig('balanced'));
-    const archiveAware = impactWithConfig(archiveConfig('archive-aware'));
-    const archiveId = 'file:docs/archive/plan/routing-policy-old/README.md';
-    assert(itemById(balancedArchive, archiveId));
-    assert(itemById(archiveAware, archiveId));
-    assert(itemById(archiveAware, archiveId).scoreBreakdown.archivePenalty > itemById(balancedArchive, archiveId).scoreBreakdown.archivePenalty);
-    assert(rankOf(archiveAware, 'file:docs/spec/APP.md') < rankOf(archiveAware, archiveId));
+  it('applies fixed impact scoring, semantic thresholds, and measurement output', () => {
+    const fixed = impactWithConfig({});
+    assert.equal(fixed.impact.ranking.method, 'weighted-personalized-pagerank+memory');
+    assert.equal(fixed.impact.ranking.connectionCap, 80);
+    assert.equal(fixed.impact.ranking.memoryCap, 20);
+    assert.equal(fixed.impact.ranking.pprReference, 0.4);
+    assert(itemById(fixed, 'file:docs/spec/APP.md').scoreBreakdown.connection.ppr > 0);
 
     const semanticDefault = json(run(['graph', 'impact', createFixture(), '--changed', 'packages/app/index.mjs', '--json']));
     assert(hasSemanticReason(itemById(semanticDefault, 'file:docs/arch/ROUTING_POLICY_NOTES.md')));
@@ -672,27 +681,14 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(measured.status, 0, measured.stderr || measured.stdout);
     const measurement = readFileSync(output, 'utf8');
     assert.match(measurement, /Graph impact sample/);
-    if (/Graph impact unavailable/.test(measurement)) {
-      assert.match(measurement, /Graph impact unavailable for packages\/cli\/src\/core\.mjs/);
-    } else {
-      assert.match(measurement, /ranking=(personalized-pagerank\+policy|policy-score)/);
-      assert.match(measurement, /scored=\d+/);
-      assert.match(measurement, /semantic=\d+/);
-      assert.match(measurement, /related=\d+/);
-      assert.match(measurement, /omitted=\d+/);
-    }
+    if (!/Graph impact unavailable/.test(measurement)) assert.match(measurement, /ranking=weighted-personalized-pagerank\+memory/);
 
     const quality = spawnSync(process.execPath, [join(repoRoot, 'scripts/evaluate-graph-impact.mjs'), repoRoot, '--json'], { cwd: repoRoot, encoding: 'utf8' });
-    if (quality.status !== 0 && /EPERM: operation not permitted/.test(quality.stderr)) {
-      assert.match(quality.stderr, /\.dotdotgod\/graph\/nodes\/docs\.json/);
-      return;
-    }
     assert.equal(quality.status, 0, quality.stderr || quality.stdout);
     const qualityPayload = JSON.parse(quality.stdout);
     assert.equal(qualityPayload.ok, true);
     assert(qualityPayload.seedCount >= 5);
     assert.equal(typeof qualityPayload.averages.graphPrecisionAt10, 'number');
-    assert.equal(typeof qualityPayload.averages.graphRecallMustAt10, 'number');
   });
 
   it('reports memory config validation failures without crashing runtime commands', () => {
@@ -783,16 +779,13 @@ describe('dotdotgod CLI e2e', () => {
     const invalid = run(['validate', root, '--include-local-memory', '--json']);
     assert.notEqual(invalid.status, 0);
     const payload = JSON.parse(invalid.stdout);
-    assert(payload.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_PRESET'));
-    assert(payload.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_WEIGHTS'));
-    assert(payload.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_RELATION_WEIGHTS'));
-    assert(payload.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_BOOSTS'));
-    assert(payload.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_PPR'));
+    assert.equal(payload.errors.filter((error) => error.code === 'IMPACT_RANKING_CONFIG_RETIRED_FIELD').length, 4);
     assert(payload.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_SEMANTIC'));
+    assert(!payload.errors.some((error) => /Boost/.test(error.code)));
 
     const impact = json(run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--json']));
-    assert.equal(impact.impact.ranking.preset, 'balanced');
-    assert.equal(impact.impact.ranking.method, 'personalized-pagerank+policy');
+    assert.equal(impact.impact.ranking.preset, undefined);
+    assert.equal(impact.impact.ranking.method, 'weighted-personalized-pagerank+memory');
     assert(impact.related.some((item) => typeof item.impactScore === 'number' && item.scoreBreakdown));
   });
 

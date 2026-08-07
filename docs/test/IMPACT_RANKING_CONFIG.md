@@ -1,76 +1,54 @@
-# Impact Ranking Config Verification
+# Impact Ranking Verification
 
 ## Scope
 
-Verify configurable `graph impact` ranking, score breakdown output, deterministic traceability/docs/package/memory-policy routing, changed-file Personalized PageRank (PPR), archive safeguards, and runtime fallback on invalid config.
+Verify fixed PPR-only connection scoring, memory policy, dynamic traceability relation weights, migration of retired ranking config, explainable output, and calibration invariants.
 
-## Automated Unit Coverage
+## Automated Coverage
 
 | Area | Expected coverage |
 | --- | --- |
-| Config defaults | `readMemoryConfig()` exposes default `impactRanking` with `balanced` preset. |
-| Presets | `docs-first`, `code-proximity`, `test-focused`, and `archive-aware` resolve distinguishing weights. |
-| Partial overrides | Custom weights, relation weights, boost maps, PPR, and routing settings merge without deleting defaults. |
-| Invalid config | Validation reports preset, weight, relation-weight, boost-map, PPR, and routing error families. |
-| Runtime fallback | Invalid impact-ranking config falls back to balanced defaults for runtime graph commands. |
-| Routing hints | Path/name, heading, README index, memory-area, and package metadata links create deterministic routing candidates. |
-| Routing metadata | Generated routing hints include confidence, numeric score, matched terms, and signal names. |
-| Routing controls | Thresholds suppress weak hints, `topKPerFile` caps outgoing routing hints, and archive-body hints are excluded unless opted in. |
-| Score breakdown | Seed, traceability, verification, proximity, routing, memory priority/freshness, archive penalty, and `0..100` score cap are asserted separately. |
-| PPR | Stronger weighted paths get higher PPR contribution; disabled PPR reports `policy-score`; relation-weight overrides affect PPR contribution predictably. |
-| Multi-seed ranking | Repeated `--changed` inputs are ordered and deduplicated, all changed files lead the combined ranking with seed score `100`, restart weight is shared equally, each changed file returns at most five non-seed results, and more than 20 unique paths fails before index refresh. |
-| Compatibility | Single-string engine calls and one-`--changed` CLI calls retain their existing ranking; grouped impact buckets and `omittedRelated` remain present; removed aliases such as `graph query` fail as unknown graph commands. |
-| Structured output | `graph impact --yml` returns compact grouped items with scores, reasons, omitted counts, and recommended actions, while `--json` keeps the full payload. |
-| Planning integration | Plan Mode formats bounded likely target files with group counts, top related paths, scores, and reasons, and runtime impact tools return YML summaries. |
-| Selection noise control | First-page results cap low-actionability metadata nodes and prefer curated/test/proximity candidates over routing-only matches. |
-| Quality tooling | `scripts/evaluate-graph-impact.mjs` reports P@5, P@10, must Recall@10, MRR, nDCG@10, runtime context, and lexical/snapshot baselines. |
+| Fixed policy | Connection cap `80`, memory cap `20`, damping/iterations/tolerance, and internal reference `0.4` are deterministic and read-only. |
+| Retired config | `preset`, `weights`, `ppr`, and `relationWeights` report `IMPACT_RANKING_CONFIG_RETIRED_FIELD`. |
+| Inert maps | Four legacy boost maps behave exactly like absence and are omitted from resolved/init output. |
+| Semantic boundary | Existing deterministic semantic candidate controls still validate; they add no semantic score bucket. |
+| Dynamic weights | Configured traceability relations exclusively supply their PPR weights; zero weight disables traversal. |
+| Score breakdown | Seeds score `100`; non-seeds expose connection probability/reference/PPR, memory priority/adjustment, and optional direct evidence. |
+| Removed bonuses | Curated, test, verification, proximity, semantic-only, and node-type evidence receive no separate score or comparator bonus. |
+| Memory | Priority, fresh/stale, body exclusion, archive-seed exception, and `0..20` cap are asserted. |
+| Fixed normalization | Strong/weak weighted paths separate without runtime candidate-maximum normalization. |
+| Multi-seed | Inputs are ordered/deduplicated, restart is equal, seeds lead, per-seed results are bounded, and seed order does not alter probabilities. |
+| Candidate stability | Adding disconnected nodes leaves existing probabilities/scores unchanged. |
+| Output compatibility | JSON/YML/compact keep changed files, groups, reasons, omitted counts, ranking method, and reference diagnostics. |
+| Quality evidence | Evaluator reports legacy deltas, saturation, raw calibration fixture values, candidate independence, and seed-order invariance. |
 
-## Automated E2E Coverage
+## Traceability-Key Cases
 
-| Scenario | Expected coverage |
-| --- | --- |
-| Balanced default | `graph impact --json` reports `personalized-pagerank+policy`; changed files lead in normalized input order with seed scores; traceability spec outranks routing-only docs; all related items have `impactScore` and `scoreBreakdown`. |
-| Multi-seed output | JSON, YML, and compact output expose all changed files, a deduplicated combined ranking, and bounded top-five `perSeed` results; shared candidates may occur in more than one per-seed list. |
-| Preset overrides | `docs-first` raises traceability scoring; `code-proximity` raises nearby package/docs rank; `test-focused` raises verification scoring. |
-| Archive-aware | With archive bodies explicitly indexed and archive routing hints opted in, archive penalty is less severe than balanced but fresh curated specs still outrank archive bodies. |
-| Invalid config fallback | `validate --json` reports impact config errors while `graph impact --json` exits successfully with balanced fallback scoring. |
-| Routing threshold/disable | Routing-only docs appear with routing reasons by default and disappear or lose routing reasons when routing hints are disabled. |
-| Archive safety | Default impact results exclude archive body files; opt-in archive fixtures carry stale/archive penalties. |
-| Measurement smoke | `measure-context` graph impact row includes ranking method, scored count, routing count, related count, omitted count, and approximate token size. |
+- Default relations retain weights `4`, `4`, `3`, and `3`.
+- Custom path and command relations create weighted graph edges with traceability-key metadata.
+- Complete-list removal means omitted fields are invalid in top-level and contract blocks.
+- Stable command IDs do not change when sibling commands are reordered.
+- Reserved relation collisions and duplicate key/relation definitions fail validation.
 
-## Assertion Guidelines
+## Migration Assertions
 
-- Prefer rank order, reason presence, and score-category presence over exact PPR totals.
-- Use exact numeric assertions only for deterministic invariants: seed score, disabled-PPR `0`, configured weight values, and final `0..100` cap.
-- Use specific fixture terms such as `route-planner`, `policy-auditor`, and `routing-policy`; avoid generic-only matches such as `config`, `index`, `docs`, or `test`.
-- Assert negative cases explicitly: no archive bodies by default, no routing reasons when routing hints are disabled, and invalid config does not crash runtime commands.
+Legacy Precision@5/10, Recall@10, MRR, and nDCG@10 regression is accepted because specialized direct/type bonuses were explicitly removed. Tests must not recover those metrics with hidden selection tiers. Blocking calibration assertions are score separation, no unnecessary fixture saturation, disconnected-candidate stability, and multi-seed order invariance.
 
-## Smoke Commands
+## Commands
 
 ```bash
 pnpm --filter @dotdotgod/cli test
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml
-node scripts/measure-context.mjs --markdown --impact-changed packages/cli/src/core.mjs
 node scripts/evaluate-graph-impact.mjs . --json
-node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
+node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index
 ```
 
-## Expected JSON Checks
+## Expected JSON
 
-For `graph impact --json`, confirm:
-
-- `impact.ranking.method` and `impact.ranking.weights` are present.
+- `impact.ranking.method` is `weighted-personalized-pagerank+memory`.
+- `connectionCap`, `memoryCap`, and `pprReference` are `80`, `20`, and `0.4`.
 - Top-level `related` mirrors `impact.related`.
-- Related items include numeric `impactScore` and structured `scoreBreakdown`.
-- Every changed file appears first in normalized input order with `impactScore: 100` and `scoreBreakdown.seed: 100`.
-- `changedFiles` contains ordered unique paths, and each `perSeed` entry contains no more than five non-seed related nodes.
-- Curated traceability reasons outrank comparable routing-only hints.
-- Compact JSON omits raw `ranking.weights` and keeps `related.length <= 10` by default.
-- Low-actionability package/dependency metadata does not dominate the first page when actionable files/docs/tests exist.
-- Routing reasons appear only when deterministic matches pass the configured controls.
-- Archive body items are absent by default and carry stale/archive penalties when explicitly indexed.
-
-## Context Measurement
-
-`measure-context` should include a `Graph impact sample` row that reports ranking method, scored item count, routing item count, related count, omitted count, and approximate token size.
+- Changed seeds lead with `impactScore: 100` and `scoreBreakdown.seed: 100`.
+- Non-seed breakdown has `connection` and `memory`, not legacy buckets.
+- Compact JSON retains the method/reference but omits verbose diagnostics.

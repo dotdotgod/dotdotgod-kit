@@ -2,137 +2,68 @@
 
 ## Purpose
 
-The dotdotgod CLI supports configurable `graph impact` ranking so projects can tune changed-file impact results while preserving deterministic defaults.
+`graph impact` ranks changed-file review candidates with one explainable weighted-graph score plus memory-area policy. Scoring is intentionally fixed rather than a public tuning surface.
 
-The ranking must remain explainable: every ranked item should expose an `impactScore` and `scoreBreakdown` that shows why it was included.
+## Fixed Policy
 
-## Config File
+```text
+impactScore = clamp(connection + memory, 0, 100)
+connection = clamp(pprProbability / 0.4 × 80, 0, 80)
+priority = memoryArea.priority / 100 × 15
+policyAdjustments = fresh ? 5 : stale ? -5 : 0
+policyAdjustments += includeBodiesByDefault === false ? -5 : 0
+memory = clamp(priority + policyAdjustments, 0, 20)
+```
 
-Impact ranking policy lives in the optional root `dotdotgod.config.json` file alongside memory and traceability policy. Use `dotdotgod config <root>` to inspect the resolved policy or `dotdotgod config init <root>` to create an editable default config.
+For an archive-seeded request, stale `-5` remains but the `includeBodiesByDefault: false` adjustment is skipped. Changed seeds always score `100`.
 
-## Config Shape
+PPR uses damping `0.85`, at most 20 iterations, tolerance `0.000001`, and fixed reference `0.4`. The reference is independent of the returned candidate set, so unrelated candidate additions do not rescale existing scores.
+
+Traceability relation weights come only from `traceability.keys[]`; maintained non-traceability relations use built-in weights. Weight `0` disables traversal for that relation.
+
+## Removed Ranking Tuning
+
+The following `impactRanking` fields are retired and validation errors:
+
+- `preset`
+- `weights`
+- `ppr`
+- `relationWeights`
+
+The four legacy boost maps are inert: `traceabilityBoosts`, `verificationBoosts`, `proximityBoosts`, and `semanticBoosts` are not read, validated, warned about, summarized, serialized, or scored.
+
+`impactRanking.semantic` remains the existing deterministic semantic-candidate configuration until the separate vector semantic migration. It does not restore semantic score bonuses.
+
+## Ranking And Selection
+
+Relation weights affect candidates only through PPR. There are no separate direct, curated, verification/test, proximity, semantic-only, or node-type score or ordering bonuses. Direct reasons remain explanatory evidence. Low-actionability and semantic-only counts remain bounded output-quality metadata, not hidden score additions.
+
+The score breakdown is:
 
 ```json
 {
-  "impactRanking": {
-    "preset": "balanced",
-    "weights": {
-      "ppr": 40,
-      "traceability": 30,
-      "memoryPolicy": 10,
-      "verification": 15,
-      "proximity": 10,
-      "routing": 10,
-      "freshness": 5,
-      "archivePenalty": -25
-    },
-    "ppr": {
-      "enabled": true,
-      "damping": 0.85,
-      "iterations": 20,
-      "tolerance": 0.000001
-    },
-    "routing": {
-      "enabled": true,
-      "threshold": 0.5,
-      "topKPerFile": 5,
-      "includeArchiveBodies": false,
-      "signals": ["path", "filename", "heading", "readme", "memoryArea", "package"]
-    }
-  }
+  "connection": { "ppr": 24.7, "probability": 0.123456, "reference": 0.4 },
+  "memory": { "priority": 12, "policyAdjustments": 5 },
+  "strongestDirectRelation": "implemented_by"
 }
 ```
 
-## Behavior
+`strongestDirectRelation` is optional and contributes no points. Ranking diagnostics report method `weighted-personalized-pagerank+memory`, connection cap `80`, memory cap `20`, and PPR reference `0.4`.
 
-- If `impactRanking` is absent, the CLI uses the built-in `balanced` preset.
-- Presets can be partially overridden by numeric weights, relation weights, boost maps, PPR settings, and routing settings.
-- Runtime graph commands fall back to defaults when config is invalid; `dotdotgod validate` reports the config errors.
-- `graph impact` preserves its raw `related` and grouped output while adding ranking metadata.
-- `--compact` is opt-in short text output; `--yml`/`--yaml` is opt-in structured compact output for agents.
+## Calibration And Migration
 
-## Ranking Signals
+The quality evaluator reports Precision@5/10, Recall@10, MRR, nDCG@10, semantic-only/curated counts, saturation, raw synthetic PPR, candidate independence, and multi-seed order invariance.
 
-The default score combines:
+Legacy metric regression is accepted because all direct and type-specific bonuses were intentionally removed. Blocking invariants are:
 
-- changed-file Personalized PageRank (`ppr`)
-- curated traceability (`implemented_by`, `verified_by`, `related_doc`, `verification_command`)
-- memory policy priority
-- verification/test signals
-- direct proximity signals such as markdown links, README routes, package/resource links
-- deterministic routing hints from path, filename, heading, README, memory-area, and package metadata matches
-- freshness boost or stale penalty
-- archive-body penalty
+- unrelated disconnected candidates do not rescale scores
+- multi-seed order does not change probabilities
+- curated, deterministic, one-hop, multi-hop, and unrelated fixture scores remain separated
+- saturation and the selected reference remain visible for later versioned calibration
 
-Curated traceability remains higher confidence than deterministic routing hints.
+## Output Compatibility
 
-## Routing Hints
-
-Default routing hints are deterministic and lexical. They use explicit project artifacts such as file paths, markdown headings, README indexes, memory-area policy, package names, binaries, and package resources.
-
-Embedding-based similarity is not part of the default ranking path. Any embedding-based ranking extension must be opt-in and used for audit or repair suggestions, not as a substitute for consistent terminology, glossary aliases, or traceability blocks.
-
-## Output Shape
-
-`graph impact --json` includes ranking metadata and per-item scores:
-
-```json
-{
-  "impact": {
-    "ranking": {
-      "method": "personalized-pagerank+policy",
-      "preset": "balanced",
-      "configSource": "default"
-    },
-    "related": [
-      {
-        "id": "file:docs/spec/LOAD_PROJECT.md",
-        "impactScore": 65.4,
-        "scoreBreakdown": {
-          "ppr": 22.4,
-          "traceability": 30,
-          "memoryPolicy": 8,
-          "verification": 0,
-          "proximity": 0,
-          "routing": 6,
-          "freshness": 5,
-          "archivePenalty": 0
-        }
-      }
-    ]
-  }
-}
-```
-
-The top-level `related` array mirrors `impact.related` for compatibility.
-
-`graph impact --yml` returns compact structured agent-facing groups, while `--json` keeps the full machine-readable payload:
-
-```yaml
-impact:
-  ok: true
-  output: "yml"
-  groups:
-    docs:
-      items:
-        - path: "docs/spec/LOAD_PROJECT.md"
-          score: 65.4
-          reasons: ["implemented_by", "routes_to"]
-  recommended_actions:
-    - "review_related_docs"
-    - "run_related_tests"
-    - "run_dotdotgod_validate"
-```
-
-Compact text and YML output omit full ranking weights, long retrieval signal lists, and unbounded raw node metadata. Use raw JSON for diagnostics.
-
-When traceability metadata defines focused contracts, impact output may include a bounded `contracts` group. JSON/YML contract items include the defining `path`, `contractId`, `title`, and optional `sections`; compact text labels them as `<path>#<contractId> — <title>` so agents can identify the precise behavior without expanding verbose target lists.
-
-## Candidate Selection
-
-Ranking computes explainable `impactScore` values for every candidate. Before returning the bounded first page, the CLI prefers curated/test/proximity candidates over low-confidence routing-only matches and caps low-actionability metadata nodes such as dependencies when actionable files or docs are available.
-
-Routing reasons remain visible in `reasons` and `scoreBreakdown`; they are demoted only for top-result selection.
+JSON keeps top-level and nested `related`, grouped output, `impactScore`, and `scoreBreakdown`. YML and compact output keep bounded scores/reasons while diagnostics expose the fixed reference. Multi-seed input remains equal-weight, ordered, deduplicated, and bounded to five non-seed `perSeed` results.
 
 ## Traceability
 
@@ -144,7 +75,11 @@ Routing reasons remain visible in `reasons` and `scoreBreakdown`; they are demot
 ### Traceability Links
 
 - Implemented by:
-  - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
+  - [packages/cli/src/memory/config.mjs](../../packages/cli/src/memory/config.mjs)
+  - [packages/cli/src/impact/scoring.mjs](../../packages/cli/src/impact/scoring.mjs)
+  - [packages/cli/src/impact/report.mjs](../../packages/cli/src/impact/report.mjs)
+  - [packages/cli/src/impact/format.mjs](../../packages/cli/src/impact/format.mjs)
+  - [scripts/evaluate-graph-impact.mjs](../../scripts/evaluate-graph-impact.mjs)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
@@ -165,5 +100,5 @@ Routing reasons remain visible in `reasons` and `scoreBreakdown`; they are demot
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/arch/IMPACT_RANKING_CONFIG.md","docs/arch/VALIDATION_ARCHITECTURE.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/CONFIG_COMMAND.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml","node scripts/evaluate-graph-impact.mjs . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
+{"kind":"spec","implementedBy":["packages/cli/src/memory/config.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/format.mjs","scripts/evaluate-graph-impact.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/arch/IMPACT_RANKING_CONFIG.md","docs/arch/VALIDATION_ARCHITECTURE.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/CONFIG_COMMAND.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml","node scripts/evaluate-graph-impact.mjs . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
 ```

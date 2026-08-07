@@ -9,6 +9,9 @@
 - `dotdotgod graph impact <root>` MUST require at least one `--changed <path>` and MUST accept repeated `--changed` options.
 - Repeated changed paths MUST be deduplicated by first occurrence while preserving input order, and more than 20 unique changed paths MUST fail with `TOO_MANY_CHANGED` before index refresh.
 - Multi-file impact MUST use an equal-weight multi-seed Personalized PageRank and MUST place every changed file first in input order with seed score `100`.
+- Non-seed scores MUST use fixed weighted PPR connection `80` plus memory policy `20`, with candidate-independent internal PPR reference `0.4` exposed in ranking diagnostics.
+- Direct, curated, verification/test, semantic-only, and node-type evidence MUST NOT receive separate score or ordering bonuses; relation weights influence rank only through PPR and direct reasons remain explanation-only.
+- The score breakdown MUST expose `connection.ppr`, raw probability/reference, `memory.priority`, memory policy adjustments, and optional strongest direct relation evidence.
 - Structured results MUST preserve legacy `changed` as the first changed path, expose all normalized paths as `changedFiles`, keep `related` as the bounded combined ranking, and include at most five non-seed related nodes per changed file in `perSeed`.
 - Shared related nodes MAY repeat across `perSeed` lists, while the combined `related` ranking MUST deduplicate nodes.
 - The command MAY include one output mode: `--compact`, `--json`, or `--yml`/`--yaml`.
@@ -32,6 +35,7 @@
   - [packages/cli/src/core.mjs](../../../packages/cli/src/core.mjs)
   - [packages/cli/src/commands/graph.mjs](../../../packages/cli/src/commands/graph.mjs)
   - [packages/cli/src/impact/report.mjs](../../../packages/cli/src/impact/report.mjs)
+  - [packages/cli/src/impact/scoring.mjs](../../../packages/cli/src/impact/scoring.mjs)
   - [packages/cli/src/impact/format.mjs](../../../packages/cli/src/impact/format.mjs)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../../packages/cli/test/core.test.mjs)
@@ -51,5 +55,5 @@
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/commands/graph.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/format.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CLI_INTERFACE.md","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/spec/IMPACT_RANKING_CONFIG.md","docs/test/README.md","packages/cli/README.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --json","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --yml","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --compact"]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/commands/graph.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/format.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CLI_INTERFACE.md","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/spec/IMPACT_RANKING_CONFIG.md","docs/test/README.md","packages/cli/README.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --json","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --yml","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --compact"]}
 ```
