@@ -540,7 +540,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
           contextOrchestration.requestPlanningCompaction(ctx, reason);
           persistState();
         } else {
-          contextOrchestration.refreshPlanCliContextIfAvailable(ctx);
+          contextOrchestration.refreshPlanningAdvisoryContext(ctx);
         }
       }
       persistState();
@@ -560,7 +560,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       const content = [
         baseContent,
         requestFraming,
-        contextShaping.cliSummary,
+        contextShaping.advisorySummary,
         impactReminder,
       ]
         .filter(Boolean)

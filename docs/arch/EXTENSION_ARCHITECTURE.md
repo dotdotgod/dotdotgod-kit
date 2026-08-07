@@ -53,8 +53,8 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 `plan-mode` owns runtime planning behavior:
 
 - Entry points: `pi --dd-plan` at startup, `/dd:plan`, `/dd:plan <request>`, and `Ctrl+Alt+P`; the namespaced startup flag avoids collisions with extensions that own `--plan`.
-- Runtime state: mode flags, internal todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/dd:plan <request>` delivery, request-framing classification, and pending source/config impact-check records.
-- Context shaping: first-request planning compaction without a synthetic resume turn, compaction debounce, CLI planning-context summary, optional validation, documentation-tree refresh, and bounded multi-file advisory graph impact checks when the CLI is available. Mode-neutral automatic project-memory loading is owned separately and applies equally to Plan Mode and ordinary mode.
+- Runtime state: mode flags, internal todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/dd:plan <request>` delivery, advisory/execution request framing, and pending source/config impact-check records. It contains no automatic project-memory load state or load-prompt classification.
+- Context shaping: first-request planning compaction without a synthetic resume turn, compaction debounce, advisory CLI summary, optional validation, documentation-tree refresh, and bounded multi-file advisory graph impact checks when the CLI is available. Mode-neutral automatic project-memory prompt scheduling and loading are owned separately and apply equally to Plan Mode and ordinary mode.
 - Impact-check integration: structured `graph impact --yml` runtime summaries, short pending-impact reminders after source/config edits, pending-path plus git source/config union checks, and stale pending-record cleanup after successful checks.
 - UX: queue-first Discussion Queue Console, then saved-plan execute/stay/refine/cancel review only after queue clearance. Explicit execution requests use the same queue-first review flow. Plan Mode suppresses review for generator-authored or actively generating plans, but it does not run generator stage validation. Generator status overlays restore the underlying Plan Mode status when cleared.
 - Prompt ownership: first-turn safety/workflow prompt, compact reminder, per-request framing, active tool list, impact-plan refinement and project validation guidance, discussion-queue follow-ups that update durable plan markdown, and compaction instructions that demote stale history.
@@ -79,8 +79,10 @@ The mode-neutral `project-memory` extension owns automatic project-memory assess
 - one assessment per reachable active-branch state in ordinary mode or Plan Mode
 - active-branch restoration, recent-load lookup, and bounded transcript traversal so abandoned siblings cannot affect the current branch
 - baseline-marker detection from bounded active-branch transcript evidence, so startup `contextFiles` alone do not suppress the focused Load that earlier Plan Mode sessions requested
-- pending-only activation and execution of `dotdotgod_project_load`
-- compact focused Load/query output, completion recording, and duplicate prevention
+- active-branch persistence of the original request plus generated-prompt state
+- one-shot `input` transformation that turns the original request itself into a generated user-role load prompt while preserving the original task text first
+- pending-only availability of `dotdotgod_project_load` in the current agent loop, with execution of that owned tool rejected until the generated message is reachable
+- compact focused Load/query output, completion recording, retryable delivery failure, and duplicate prevention
 
 A small pure active-tool composition helper is the boundary between project-memory ownership and Plan Mode transitions. Each owner replaces only its own tools, preserving the pending load tool and third-party active tools without a shared mutable registry or callback-order dependency.
 
@@ -90,6 +92,7 @@ A small pure active-tool composition helper is the boundary between project-memo
 
 - `/load` compatibility full-load command
 - `/dd:load` namespaced full-load command
+- structural explicit-load input marking, stripped by the global project-memory handler to bypass automatic transformation
 - complete shared Markdown discovery with configured plan/archive exclusions
 - prefix-compressed tree rendering through depth 5 without focus or depth 3 with focus, with all direct boundary files and named per-child summaries below the boundary
 - local `dotdotgod query` invocation for up to 30 focused multilingual E5 results
@@ -115,7 +118,7 @@ Prompt content should:
 
 ## State and Persistence
 
-`plan-mode` persists custom session entries for mode state, todos, review-prompt eligibility, prompt tier, active plan path, touched plan/archive paths, latest planning request, pending inline planning request delivery, compaction measurements, one-time CLI context-check state, pending impact-check files, and recent completed impact-check records. The global project-memory extension separately persists automatic assessment and pending-load state and restores only the latest state reachable from `ctx.sessionManager.getBranch()`. Discussion-queue state is read from the active plan artifact instead of a sidecar or opaque session object; the custom UI returns structured choices and the agent follow-up updates the plan markdown as the durable source.
+`plan-mode` persists custom session entries for mode state, todos, review-prompt eligibility, prompt tier, active plan path, touched plan/archive paths, latest planning request, pending inline planning request delivery, compaction measurements, one-time advisory-context state, pending impact-check files, and recent completed impact-check records. The global project-memory extension separately persists automatic assessment, original-request, synthetic-prompt delivery, and pending-load state and restores only the latest state reachable from `ctx.sessionManager.getBranch()`. Discussion-queue state is read from the active plan artifact instead of a sidecar or opaque session object; the custom UI returns structured choices and the agent follow-up updates the plan markdown as the durable source.
 
 
 ## Related Behavior and Verification

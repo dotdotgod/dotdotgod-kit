@@ -4,7 +4,7 @@
 
 After Plan Mode is enabled, the first user planning request triggers one planning-specific context-shaping pass. Inline `/dd:plan <request>` arguments use the same path, and synthetic planning requests use explicit follow-up delivery. Plan Mode requests planning-focused compaction when context is too large or noisy, refreshes its CLI planning summary, and otherwise does not own automatic project-memory decisions or execution.
 
-The mode-neutral global project-memory extension independently assesses baseline coverage at the beginning of session work. When loading is needed, it temporarily activates the read-only `dotdotgod_project_load` tool and requires one call before substantive work in either ordinary mode or Plan Mode. Plan Mode restore, enable/disable, policy refresh, and execution handoff preserve that pending tool regardless of extension callback order; tool composition also preserves active tools not owned by Plan Mode. The agent generates a concise semantic `focus` from the current task's behavior, architecture, likely source areas, and verification needs. A non-empty focus uses query results and the depth-three documentation map; an intentionally empty focus uses the depth-five map without a query. Plan Mode reuses the resulting memory and does not queue a duplicate load during compaction.
+The mode-neutral global project-memory extension independently assesses baseline coverage from the `input` event. When loading is needed, it transforms that original input once into a generated user-role load prompt whose leading text preserves the request, and makes the read-only `dotdotgod_project_load` tool available for the same agent run. The global extension owns transformation state, branch restoration, exactly-once completion, and continuation in ordinary and Plan Mode sessions. Generic active-tool composition preserves its pending tool regardless of extension callback order. Plan Mode does not classify load requests, inspect generated load prose, or queue automatic loads. The agent generates a concise semantic `focus` from the current task's behavior, architecture, likely source areas, and verification needs. A non-empty focus uses query results and the depth-three documentation map; an intentionally empty focus uses the depth-five map without a query.
 
 Planning reuses loaded memory and the map. A focused query routes selective doc and source reads. Impact review starts after likely changed files are known and refines plan targets, risks, and verification.
 
@@ -30,7 +30,7 @@ Moderately proactive thresholds are:
 - context tokens within 32,000 tokens of the context window when window size is available
 - 100,000 context tokens as a fallback when only token count is available
 
-After successful automatic compaction, the already-active planning run continues from the compacted context. The extension does not create a synthetic user-role resume message or duplicate the latest request. When the global project-memory extension also requires a load, its pending requirement remains authoritative across compaction and mode changes. Inline `/dd:plan <request>` arguments remain authoritative before their synthetic command-delivery message reaches the transcript. Legacy persisted resume prompts are recognized as runtime messages but are not replayed.
+After successful automatic compaction, the already-active planning run continues from the compacted context. Plan Mode does not create a synthetic user-role compaction-resume message or duplicate the latest request. Global project-memory input transformation is independently owned; its original-request prefix keeps Plan Mode's latest request, compaction focus, and advisory impact selection task-directed without load-specific parsing. Inline `/dd:plan <request>` arguments remain authoritative before their synthetic command-delivery message reaches the transcript. Legacy persisted compaction resume prompts are recognized as Plan Mode runtime messages but are not replayed.
 
 The extension skips compaction during execution and continues if compaction fails. Toggle Plan Mode off/on for a fresh context-shaping pass.
 
@@ -74,7 +74,7 @@ When execution starts:
 - Full tool access is restored.
 - Execution state is persisted only after the plan-review UI returns an execute choice; preview rendering never triggers execution by itself.
 - The execute follow-up names the active plan path when known.
-- Extension-generated execute, refine, and discussion follow-ups use explicit follow-up delivery; global project-memory load runs through its pending tool requirement, and compaction continues the active run without a resume follow-up.
+- Extension-generated execute, refine, and discussion follow-ups use explicit follow-up delivery; global project-memory prompt scheduling and loading remain independent, and compaction continues the active run without a Plan Mode resume follow-up.
 - Remaining steps are loaded from the selected README when needed.
 - If optional `PROGRESS.md`, `DECISIONS.md`, or `VERIFY.md` files exist, the agent uses them as resume context before continuing work.
 - The agent marks completed steps by including `[DONE:n]` in the same response that reports completion.

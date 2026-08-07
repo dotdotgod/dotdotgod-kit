@@ -3,10 +3,15 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
 	buildPendingProjectMemoryLoadPrompt,
+	buildProjectMemorySyntheticUserPrompt,
+	collectProjectMemoryContextCoverage,
 	formatProjectMemoryToolOutput,
 	getProjectMemoryContextText,
+	hasReachableProjectMemorySyntheticPrompt,
 	hasRecentProjectMemoryLoad,
+	isExplicitProjectMemoryLoadInput,
 	shouldLoadProjectMemory,
+	stripExplicitProjectMemoryLoadMarker,
 } from "../extensions/project-memory/context.ts";
 import {
 	findLatestProjectMemoryAutoState,
@@ -53,6 +58,12 @@ describe("global project-memory orchestration", () => {
 	it("registers one pending-only focused load tool and keeps explicit full-load commands", () => {
 		assert.match(globalSource, /name: PROJECT_MEMORY_LOAD_TOOL/);
 		assert.match(globalSource, /pi\.on\("before_agent_start"/);
+		assert.match(globalSource, /pi\.on\("input"/);
+		assert.match(globalSource, /action: "transform"/);
+		assert.match(globalSource, /buildProjectMemorySyntheticUserPrompt/);
+		assert.match(globalSource, /pi\.on\("tool_call"/);
+		assert.match(globalSource, /event\.toolName !== PROJECT_MEMORY_LOAD_TOOL\) return/);
+		assert.doesNotMatch(globalSource, /pi\.on\("turn_end"|pi\.on\("agent_end"|sendUserMessage/);
 		assert.match(globalSource, /pi\.on\("session_tree"/);
 		assert.match(globalSource, /mode: "compact"/);
 		assert.match(globalSource, /promptSnippet:/);
@@ -69,8 +80,18 @@ describe("global project-memory orchestration", () => {
 		const activeBranch = [
 			{ type: "custom", customType: "project-memory-auto-state", data: { assessed: true, pending: true } },
 		] as FakeEntry[];
-		assert.deepEqual(findLatestProjectMemoryAutoState(activeBranch), { assessed: true, pending: true });
-		assert.deepEqual(findLatestProjectMemoryAutoState([...activeBranch, abandonedSibling]), { assessed: true, pending: false });
+		assert.deepEqual(findLatestProjectMemoryAutoState(activeBranch), {
+			assessed: true,
+			pending: true,
+			promptDelivered: false,
+			originalRequest: undefined,
+		});
+		assert.deepEqual(findLatestProjectMemoryAutoState([...activeBranch, abandonedSibling]), {
+			assessed: true,
+			pending: false,
+			promptDelivered: false,
+			originalRequest: undefined,
+		});
 
 		const beforeAssessmentFork = new ProjectMemoryLifecycle();
 		beforeAssessmentFork.restore([]);
@@ -84,13 +105,26 @@ describe("global project-memory orchestration", () => {
 
 	it("keeps pending and third-party tools across either composition order", async () => {
 		const lifecycle = new ProjectMemoryLifecycle();
-		lifecycle.restore([
-			{ type: "custom", customType: "project-memory-auto-state", data: { assessed: true, pending: true } },
-		]);
+		lifecycle.restore(
+			[
+				{
+					type: "custom",
+					customType: "project-memory-auto-state",
+					data: {
+						assessed: true,
+						pending: true,
+						promptDelivered: true,
+					},
+				},
+			],
+			true,
+		);
 		const pendingTools = composeActiveTools(
 			["read", "third_party"],
 			["dotdotgod_project_load"],
-			lifecycle.state.pending ? ["dotdotgod_project_load"] : [],
+			lifecycle.state.pending && lifecycle.state.promptDelivered
+				? ["dotdotgod_project_load"]
+				: [],
 		);
 		assert.deepEqual(pendingTools, ["read", "third_party", "dotdotgod_project_load"]);
 
@@ -131,10 +165,17 @@ describe("global project-memory orchestration", () => {
 		lifecycle.restore([
 			{ type: "custom", customType: "project-memory-auto-state", data: { assessed: true, pending: true } },
 		]);
+		lifecycle.confirmPromptDelivered();
 		lifecycle.beginLoad();
 		lifecycle.completeLoad();
 		lifecycle.finishLoad();
-		assert.deepEqual(lifecycle.state, { assessed: true, pending: false, inFlight: false });
+		assert.deepEqual(lifecycle.state, {
+			assessed: true,
+			pending: false,
+			inFlight: false,
+			promptDelivered: false,
+			originalRequest: undefined,
+		});
 		assert.throws(() => lifecycle.beginLoad(), /No automatic project-memory load is pending/);
 		assert.deepEqual(
 			composeActiveTools(
@@ -148,7 +189,9 @@ describe("global project-memory orchestration", () => {
 
 	it("blocks duplicate in-flight scheduling and leaves an interrupted load retryable", () => {
 		const lifecycle = new ProjectMemoryLifecycle();
-		lifecycle.assess(true);
+		lifecycle.assess(true, "Original task");
+		assert.throws(() => lifecycle.beginLoad(), /No automatic project-memory load is pending/);
+		lifecycle.confirmPromptDelivered();
 		lifecycle.beginLoad();
 		assert.throws(() => lifecycle.beginLoad(), /No automatic project-memory load is pending/);
 		lifecycle.finishLoad();
@@ -166,11 +209,90 @@ describe("global project-memory orchestration", () => {
 		assert.equal(formatProjectMemoryToolOutput("one\ntwo\nthree", false, "Ctrl+O to expand"), "one\ntwo\nthree");
 	});
 
-	it("requires exactly one agent-selected load only while pending", () => {
+	it("confirms transformed prompt delivery only when the generated message is reachable", () => {
+		const stateEntry = {
+			type: "custom",
+			customType: "project-memory-auto-state",
+			data: {
+				assessed: true,
+				pending: true,
+				promptDelivered: false,
+				originalRequest: "Review the plan",
+			},
+		};
+		const missing = new ProjectMemoryLifecycle();
+		missing.restore([stateEntry], false);
+		assert.equal(missing.state.promptDelivered, false);
+
+		const generatedMessage = {
+			type: "message",
+			message: { role: "user", content: "Review the plan\n\n[PROJECT MEMORY AUTO LOAD]" },
+		};
+		assert.equal(
+			hasReachableProjectMemorySyntheticPrompt([stateEntry, generatedMessage] as any),
+			true,
+		);
+		const delivered = new ProjectMemoryLifecycle();
+		delivered.restore([stateEntry, generatedMessage], true);
+		assert.equal(delivered.state.promptDelivered, true);
+
+		const confirmedState = {
+			...stateEntry,
+			data: { ...stateEntry.data, promptDelivered: true },
+		};
+		assert.equal(
+			hasReachableProjectMemorySyntheticPrompt(
+				[generatedMessage, confirmedState] as any,
+			),
+			false,
+		);
+		const restoredAfterConfirmation = new ProjectMemoryLifecycle();
+		restoredAfterConfirmation.restore([generatedMessage, confirmedState], false);
+		assert.equal(restoredAfterConfirmation.state.promptDelivered, true);
+	});
+
+	it("builds the required context and transformed synthetic user prompt", () => {
 		assert.equal(buildPendingProjectMemoryLoadPrompt(false), undefined);
-		const prompt = buildPendingProjectMemoryLoadPrompt(true) ?? "";
-		assert.match(prompt, /call dotdotgod_project_load exactly once/);
-		assert.match(prompt, /Continue the original request/);
+		const delivered = buildPendingProjectMemoryLoadPrompt(true) ?? "";
+		assert.match(delivered, /call dotdotgod_project_load exactly once/);
+		assert.match(delivered, /Continue the original request/);
+
+		const synthetic = buildProjectMemorySyntheticUserPrompt("Implement graph impact routing");
+		assert.match(synthetic, /^Implement graph impact routing/);
+		assert.match(synthetic, /\[PROJECT MEMORY AUTO LOAD\]/);
+		assert.match(synthetic, /continue the original request above/i);
+	});
+
+	it("strips the structural explicit-load marker and cancels pending automatic state", () => {
+		const lifecycle = new ProjectMemoryLifecycle();
+		lifecycle.assess(true, "Original task");
+		lifecycle.confirmPromptDelivered();
+		lifecycle.assess(false);
+		assert.deepEqual(lifecycle.state, {
+			assessed: true,
+			pending: false,
+			inFlight: false,
+			promptDelivered: false,
+			originalRequest: undefined,
+		});
+
+		const explicit = "[PROJECT MEMORY EXPLICIT LOAD]\nLoad the dotdotgod project memory in full mode.";
+		assert.equal(isExplicitProjectMemoryLoadInput(explicit), true);
+		assert.equal(
+			stripExplicitProjectMemoryLoadMarker(explicit),
+			"Load the dotdotgod project memory in full mode.",
+		);
+		assert.match(loadCommandSource, /PROJECT_MEMORY_EXPLICIT_LOAD_MARKER/);
+	});
+
+	it("keeps automatic-load decision coverage in the global extension", () => {
+		const coverage = collectProjectMemoryContextCoverage(baselineTranscript);
+		assert.equal(coverage.markers.includes("AGENTS.md"), true);
+		assert.equal(shouldLoadProjectMemory({ contextText: "docs/spec/PLAN_MODE.md" }).reason, "missing-baseline");
+		assert.deepEqual(
+			shouldLoadProjectMemory({ latestRequest: "/no-load", contextText: "" }),
+			{ loadNeeded: false, reason: "user-opt-out" },
+		);
 	});
 
 	it("skips automatic loading for recent loads, sufficient transcript coverage, and opt-out", () => {

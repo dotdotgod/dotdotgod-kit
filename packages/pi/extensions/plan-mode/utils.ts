@@ -57,7 +57,6 @@ export {
 	classifyPlanModeRequest,
 	buildPlanModeRequestFraming,
 	isPlanModeRuntimeRequest,
-	isSyntheticProjectMemoryLoadPrompt,
 	selectLatestPlanningRequest,
 } from "./context.ts";
 

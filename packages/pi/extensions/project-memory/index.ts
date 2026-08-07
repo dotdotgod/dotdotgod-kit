@@ -7,11 +7,16 @@ import { buildLoadPrompt, collectSnapshot, runDotdotgodQuery } from "../load-pro
 import { composeActiveTools } from "../shared/active-tools.js";
 import {
 	buildPendingProjectMemoryLoadPrompt,
+	buildProjectMemorySyntheticUserPrompt,
 	formatProjectMemoryToolOutput,
 	getProjectMemoryContextText,
+	hasReachableProjectMemorySyntheticPrompt,
 	hasRecentProjectMemoryLoad,
+	isExplicitProjectMemoryLoadInput,
+	isProjectMemorySyntheticUserPrompt,
 	PROJECT_MEMORY_LOAD_TOOL,
 	shouldLoadProjectMemory,
+	stripExplicitProjectMemoryLoadMarker,
 } from "./context.js";
 import { ProjectMemoryLifecycle } from "./lifecycle.js";
 
@@ -39,9 +44,13 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 
 	function persistState(): void {
 		pi.appendEntry("project-memory-auto-state", {
-			version: 1,
+			version: 2,
 			assessed: state.assessed,
 			pending: state.pending,
+			promptDelivered: state.promptDelivered,
+			...(state.originalRequest
+				? { originalRequest: state.originalRequest }
+				: {}),
 		});
 	}
 
@@ -118,8 +127,12 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 	});
 
 	function restoreBranchState(ctx: ExtensionContext): void {
-		lifecycle.restore(ctx.sessionManager.getBranch());
-		setToolActive(state.pending);
+		const branch = ctx.sessionManager.getBranch();
+		lifecycle.restore(
+			branch,
+			hasReachableProjectMemorySyntheticPrompt(branch),
+		);
+		setToolActive(!state.assessed || state.pending);
 	}
 
 	pi.on("session_start", async (_event, ctx) => {
@@ -130,15 +143,26 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 		restoreBranchState(ctx);
 	});
 
-	pi.on("before_agent_start", async (event, ctx) => {
+	pi.on("input", async (event, ctx) => {
+		if (isExplicitProjectMemoryLoadInput(event.text)) {
+			lifecycle.assess(false);
+			persistState();
+			setToolActive(false);
+			return {
+				action: "transform",
+				text: stripExplicitProjectMemoryLoadMarker(event.text),
+				...(event.images ? { images: event.images } : {}),
+			};
+		}
+
 		if (lifecycle.needsAssessment) {
 			const entryCount = ctx.sessionManager.getBranch().length;
 			const decision = shouldLoadProjectMemory({
-				latestRequest: event.prompt,
+				latestRequest: event.text,
 				contextText: getProjectMemoryContextText(ctx),
 				hasRecentProjectMemoryLoad: hasRecentProjectMemoryLoad(ctx, entryCount),
 			});
-			lifecycle.assess(decision.loadNeeded);
+			lifecycle.assess(decision.loadNeeded, event.text);
 			pi.appendEntry("project-memory-assessment", {
 				entryCount,
 				loadNeeded: decision.loadNeeded,
@@ -150,6 +174,61 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 				entryCount,
 				loadNeeded: decision.loadNeeded,
 				reason: decision.reason,
+			});
+			persistState();
+		}
+
+		if (!state.pending) {
+			setToolActive(false);
+			return { action: "continue" };
+		}
+		if (isProjectMemorySyntheticUserPrompt(event.text)) {
+			if (!state.promptDelivered) lifecycle.confirmPromptDelivered();
+			persistState();
+			setToolActive(true);
+			return { action: "continue" };
+		}
+		if (!state.promptDelivered) {
+			lifecycle.confirmPromptDelivered();
+			persistState();
+			setToolActive(true);
+			return {
+				action: "transform",
+				text: buildProjectMemorySyntheticUserPrompt(
+					state.originalRequest ?? event.text,
+				),
+				...(event.images ? { images: event.images } : {}),
+			};
+		}
+		setToolActive(true);
+		return { action: "continue" };
+	});
+
+	pi.on("tool_call", async (event, ctx) => {
+		if (!state.pending || event.toolName !== PROJECT_MEMORY_LOAD_TOOL) return;
+		if (
+			!state.promptDelivered &&
+			hasReachableProjectMemorySyntheticPrompt(ctx.sessionManager.getBranch())
+		) {
+			lifecycle.confirmPromptDelivered();
+			persistState();
+		}
+		if (!state.promptDelivered) {
+			return {
+				block: true,
+				reason:
+					"Wait for the generated automatic-load turn before calling dotdotgod_project_load.",
+			};
+		}
+	});
+
+	pi.on("before_agent_start", async (event, ctx) => {
+		if (
+			state.pending &&
+			isProjectMemorySyntheticUserPrompt(event.prompt)
+		) {
+			pi.appendEntry("project-memory-auto-prompt", {
+				entryCount: ctx.sessionManager.getBranch().length,
 			});
 			persistState();
 		}

@@ -6,6 +6,7 @@
 
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { recordContextMetric } from "../context-metrics/utils.js";
+import { PROJECT_MEMORY_EXPLICIT_LOAD_MARKER } from "../project-memory/context.js";
 import { buildLoadPrompt, collectSnapshot, documentationSummaryDirectories, estimateTextMetrics, hasOtherLoadCommand, runDotdotgodQuery } from "./utils.js";
 
 async function runLoadCommand(
@@ -35,7 +36,10 @@ async function runLoadCommand(
 		query: queryResult ? { ok: queryResult.ok, command: queryResult.command, error: queryResult.error } : undefined,
 	});
 	const deliverAs = ctx.isIdle() ? undefined : "followUp";
-	pi.sendUserMessage(prompt, deliverAs ? { deliverAs } : undefined);
+	pi.sendUserMessage(
+		`${PROJECT_MEMORY_EXPLICIT_LOAD_MARKER}\n${prompt}`,
+		deliverAs ? { deliverAs } : undefined,
+	);
 	pi.appendEntry("project-memory-load", {
 		commandName,
 		entryCount: ctx.sessionManager.getEntries().length,

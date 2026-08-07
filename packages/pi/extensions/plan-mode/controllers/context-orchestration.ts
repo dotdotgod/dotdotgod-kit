@@ -89,7 +89,7 @@ export class ContextOrchestrationController {
 					{ reason, entryCount: this.contextShaping.lastCompactionEntryCount },
 				);
 				ctx.ui.notify("Planning compaction completed.", "info");
-				this.refreshPlanCliContextIfAvailable(ctx);
+				this.refreshPlanningAdvisoryContext(ctx);
 				this.options.persistState();
 			},
 			onError: (error) => {
@@ -106,9 +106,9 @@ export class ContextOrchestrationController {
 		});
 	}
 
-	refreshPlanCliContextIfAvailable(ctx: ExtensionContext): void {
+	refreshPlanningAdvisoryContext(ctx: ExtensionContext): void {
 		if (
-			this.contextShaping.cliContextStatus !== "not_loaded" ||
+			this.contextShaping.advisoryContextStatus !== "pending" ||
 			!this.modeLifecycle.planningEnabled ||
 			this.modeLifecycle.executing
 		)
@@ -127,7 +127,7 @@ export class ContextOrchestrationController {
 				"plan-mode:cli-context-unavailable",
 				{ error: validate.error },
 			);
-			this.contextShaping.markCliUnavailable();
+			this.contextShaping.markAdvisoryContextUnavailable();
 			this.options.persistState();
 			return;
 		}
@@ -199,9 +199,9 @@ export class ContextOrchestrationController {
 				);
 			}
 		}
-		this.contextShaping.setCliSummary(contextParts.filter(Boolean).join("\n\n"));
+		this.contextShaping.setAdvisorySummary(contextParts.filter(Boolean).join("\n\n"));
 		recordContextMetric(ctx, this.options.getFlag, "plan-mode:cli-context", {
-			hasSummary: Boolean(this.contextShaping.cliSummary),
+			hasSummary: Boolean(this.contextShaping.advisorySummary),
 			impactPaths,
 			referenceExpansion: Boolean(referenceExpansionSummary),
 		});

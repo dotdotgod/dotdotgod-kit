@@ -3,6 +3,8 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { TextContent } from "@earendil-works/pi-ai";
 
 export const PROJECT_MEMORY_LOAD_TOOL = "dotdotgod_project_load";
+export const PROJECT_MEMORY_AUTO_LOAD_MARKER = "[PROJECT MEMORY AUTO LOAD]";
+export const PROJECT_MEMORY_EXPLICIT_LOAD_MARKER = "[PROJECT MEMORY EXPLICIT LOAD]";
 
 export const REQUIRED_PROJECT_MEMORY_MARKERS = [
 	"AGENTS.md",
@@ -94,10 +96,56 @@ export function formatProjectMemoryToolOutput(
 	return [...lines.slice(0, contentLines), `... (${omitted} more lines, ${expandHint})`].join("\n");
 }
 
-export function buildPendingProjectMemoryLoadPrompt(pending: boolean): string | undefined {
+export function buildPendingProjectMemoryLoadPrompt(
+	pending: boolean,
+): string | undefined {
 	if (!pending) return undefined;
 	return `[PROJECT MEMORY LOAD REQUIRED]
-Before substantive work, call dotdotgod_project_load exactly once. Generate a concise semantic focus covering the task's relevant behavior, architecture, source areas, documentation, and verification needs. Express the focus as a task-specific synthesis rather than copied request text or extracted keywords; use an empty focus when a broad baseline map is more useful. Continue the original request after the tool result arrives.`;
+This is the globally generated automatic-load turn. Before substantive work, call dotdotgod_project_load exactly once. Generate a concise semantic focus covering the task's relevant behavior, architecture, source areas, documentation, and verification needs. Express the focus as a task-specific synthesis rather than copied request text or extracted keywords; use an empty focus when a broad baseline map is more useful. Continue the original request after the tool result arrives.`;
+}
+
+export function buildProjectMemorySyntheticUserPrompt(
+	originalRequest: string | undefined,
+): string {
+	const request = originalRequest?.trim();
+	const loadInstruction = `${PROJECT_MEMORY_AUTO_LOAD_MARKER}
+Before substantive work, call dotdotgod_project_load exactly once with a concise task-specific semantic focus. After the tool result arrives, continue the original request above without asking for it again.`;
+	return request ? `${request}\n\n${loadInstruction}` : loadInstruction;
+}
+
+export function isProjectMemorySyntheticUserPrompt(text: string | undefined): boolean {
+	return (text ?? "").includes(PROJECT_MEMORY_AUTO_LOAD_MARKER);
+}
+
+export function isExplicitProjectMemoryLoadInput(text: string | undefined): boolean {
+	return (text ?? "").startsWith(`${PROJECT_MEMORY_EXPLICIT_LOAD_MARKER}\n`);
+}
+
+export function stripExplicitProjectMemoryLoadMarker(text: string): string {
+	return isExplicitProjectMemoryLoadInput(text)
+		? text.slice(PROJECT_MEMORY_EXPLICIT_LOAD_MARKER.length + 1)
+		: text;
+}
+
+export function hasReachableProjectMemorySyntheticPrompt(
+	entries: readonly ProjectMemoryEntry[],
+): boolean {
+	let latestStateIndex = -1;
+	for (let i = entries.length - 1; i >= 0; i -= 1) {
+		const entry = entries[i];
+		if (
+			entry?.type === "custom" &&
+			entry.customType === "project-memory-auto-state"
+		) {
+			latestStateIndex = i;
+			break;
+		}
+	}
+	return entries.slice(latestStateIndex + 1).some((entry) =>
+		entry?.type === "message" && entry.message
+			? isProjectMemorySyntheticUserPrompt(getMessageText(entry.message))
+			: false,
+	);
 }
 
 export function hasRecentProjectMemoryLoad(ctx: ExtensionContext, currentEntryCount: number): boolean {

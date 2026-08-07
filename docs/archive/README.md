@@ -19,6 +19,7 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/simplify-plan-mode-project-memory-boundary/`: moved automatic project-memory user-prompt transformation and lifecycle ownership into the global extension, removed Plan Mode load classification/string framing, and preserved advisory graph impact plus automatic compaction.
 - `plan/readme-and-docs-current-state-refresh/`: aligned root/package landing pages, documentation indexes, config guidance, architecture summaries, tests, and current explanatory posts with fixed weighted-PPR/vector impact, non-blocking legacy config, configurable traceability keys, and Pi automatic project memory.
 - `plan/vector-semantic-impact/`: replaced persisted lexical impact edges with a bounded request-local multilingual vector overlay that reuses the documentation query cache, preserves synchronous structural ranking, and degrades safely when vectors are unavailable.
 - `plan/project-memory-lifecycle-hardening/`: hardened Pi automatic memory loading with active-branch state restoration, baseline/transcript separation, callback-order-safe owned-tool composition, and focused lifecycle regression coverage.

@@ -15,7 +15,7 @@ Load aliases:
 /dd:load
 ```
 
-Run `/dd:load` without arguments and confirm the prompt contains a prefix-compressed documentation map through directory depth 5 without query results. Run `/dd:load project memory` and confirm it contains a depth-3 map plus at most 30 distinct Markdown-file results. `docs/plan/**` and `docs/archive/**` bodies should remain excluded by default while their README maps remain targeted routing entrypoints. Temporarily remove the global CLI from `PATH` to verify the package-local `@dotdotgod/cli` dependency is tried before README-only fallback.
+Run `/dd:load` without arguments and confirm it is not wrapped in an automatic compact load and the prompt contains a prefix-compressed documentation map through directory depth 5 without query results. Run `/dd:load project memory` and confirm it contains a depth-3 map plus at most 30 distinct Markdown-file results. `docs/plan/**` and `docs/archive/**` bodies should remain excluded by default while their README maps remain targeted routing entrypoints. Temporarily remove the global CLI from `PATH` to verify the package-local `@dotdotgod/cli` dependency is tried before README-only fallback.
 
 ## Packaged CLI And Subagents
 
@@ -50,10 +50,10 @@ Run `pi --help` and confirm dotdotgod contributes `--dd-plan` without contributi
 19. Confirm constrained housekeeping is allowed only under local memory.
 20. Confirm source/config mutation remains blocked.
 21. Confirm high-context compaction is checked after the first planning request, not immediately when `/dd:plan` is enabled.
-22. Confirm planning compaction preserves current work, active/touched plan paths, todos, verification, pending load state, and `[DONE:n]` markers. Submit request B immediately after request A and force first-request compaction; confirm the active run continues B exactly once without a synthetic user-role resume message or replay of A.
+22. Confirm planning compaction preserves current work, active/touched plan paths, todos, verification, advisory impact context, and `[DONE:n]` markers. Submit request B immediately after request A and force first-request compaction; confirm the active run continues B exactly once without a Plan Mode synthetic resume message or replay of A.
 23. With the CLI available, confirm first-turn context shaping adds validation, documentation query, and graph impact; without the CLI, Plan Mode continues.
 24. Confirm bounded dotdotgod context/status commands are allowed while `init`, `config init`, shell chaining, redirects, pipes, command substitution, and package-runner wrappers remain blocked or require approval.
-25. When automatic project-memory loading is needed, confirm Plan Mode activates `dotdotgod_project_load`, the agent generates a concise task-specific semantic `focus` rather than copying the full request, the tool returns focused query/map context in the same turn, and planning continues without asking the user to repeat the request. Confirm an empty focus still provides the broad depth-five fallback.
+25. When automatic loading is needed, confirm the global extension transforms the initial input once into a generated user-role prompt beginning with the unchanged original request. Confirm `dotdotgod_project_load` is available in that run and succeeds after the generated message is reachable. Confirm focused context returns, planning resumes without repetition, empty focus uses the depth-five fallback, and Plan Mode has no load framing or string classification.
 26. Confirm later planning turns do not automatically repeat load/compaction decisions.
 27. Confirm first-turn and later-turn hidden prompts use full and compact forms respectively while source/config mutation stays blocked.
 28. Confirm `pi --dd-plan --plan-extra-tools ctx_search,ctx_execute_file` adds only installed tools and renders the resolved tool list.
@@ -62,7 +62,7 @@ Run `pi --help` and confirm dotdotgod contributes `--dd-plan` without contributi
 31. Ask to execute an existing active plan path and confirm the queue-first review flow opens even if the plan was not edited in that turn; choose execute after the queue is clear and confirm execution starts through an explicitly queued follow-up.
 32. While multiple active plans exist and no current plan is selected, send a planning/proceed phrase such as `진행하자`, an advisory selector-policy request, and a non-plan command such as `run tests`; confirm Pi does not ask which active plan to execute. Then send an explicit plan execution request such as `실행하자` or mention a specific existing plan and confirm Pi asks or resolves the target before review.
 33. Confirm advisory questions remain lightweight and implementation-looking requests become durable plans first.
-34. Start without baseline docs or with only one docs area preserved, then confirm curated project-memory load becomes pending and the agent calls the focused read-only Load tool before substantive planning.
+34. Start without baseline docs in ordinary mode and `pi --dd-plan`. Confirm global state persists, the initial input is transformed once, the read-only load tool is lifecycle-gated to that generated request, and the original task resumes once.
 35. Confirm implementation plans include a step to run `dotdotgod graph impact` for intended changed files before source changes.
 
 ## Pending Impact Checks

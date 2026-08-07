@@ -6,6 +6,10 @@ const extensionSource = readFileSync(
 	new URL("../extensions/plan-mode/index.ts", import.meta.url),
 	"utf8",
 );
+const contextSource = readFileSync(
+	new URL("../extensions/plan-mode/context.ts", import.meta.url),
+	"utf8",
+);
 
 describe("plan-mode command registration", () => {
 	it("registers only the namespaced plan command", () => {
@@ -25,6 +29,7 @@ describe("plan-mode command registration", () => {
 		assert.doesNotMatch(extensionSource, /dotdotgod_project_load/);
 		assert.doesNotMatch(extensionSource, /pendingAgentLoad/);
 		assert.doesNotMatch(extensionSource, /requestPlanningLoadIfNeeded/);
+		assert.doesNotMatch(contextSource, /memory_load|SyntheticProjectMemoryLoad|project-memory load request/);
 	});
 
 	it("routes Plan Mode transitions through owned-tool composition", () => {
