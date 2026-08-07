@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
 	buildPendingProjectMemoryLoadPrompt,
+	formatProjectMemoryToolOutput,
 	getProjectMemoryContextText,
 	hasRecentProjectMemoryLoad,
 	shouldLoadProjectMemory,
@@ -56,6 +57,8 @@ describe("global project-memory orchestration", () => {
 		assert.match(globalSource, /mode: "compact"/);
 		assert.match(globalSource, /promptSnippet:/);
 		assert.match(globalSource, /promptGuidelines:/);
+		assert.match(globalSource, /renderResult\(result, \{ expanded, isPartial \}, theme\)/);
+		assert.match(globalSource, /keyHint\("app\.tools\.expand"/);
 		assert.match(loadCommandSource, /registerCommand\("load"/);
 		assert.match(loadCommandSource, /registerCommand\("dd:load"/);
 		assert.doesNotMatch(loadCommandSource, /dd:load:compact/);
@@ -151,6 +154,16 @@ describe("global project-memory orchestration", () => {
 		lifecycle.finishLoad();
 		assert.equal(lifecycle.state.pending, true);
 		lifecycle.beginLoad();
+	});
+
+	it("renders three collapsed lines and expands to the complete Load output", () => {
+		const output = ["one", "two", "three", "four", "five"].join("\n");
+		assert.equal(
+			formatProjectMemoryToolOutput(output, false, "Ctrl+O to expand"),
+			["one", "two", "... (3 more lines, Ctrl+O to expand)"].join("\n"),
+		);
+		assert.equal(formatProjectMemoryToolOutput(output, true, "Ctrl+O to collapse"), output);
+		assert.equal(formatProjectMemoryToolOutput("one\ntwo\nthree", false, "Ctrl+O to expand"), "one\ntwo\nthree");
 	});
 
 	it("requires exactly one agent-selected load only while pending", () => {

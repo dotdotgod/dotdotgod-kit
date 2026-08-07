@@ -80,6 +80,20 @@ export function shouldLoadProjectMemory(input: ProjectMemoryLoadDecisionInput): 
 	return { loadNeeded: false, areas };
 }
 
+export function formatProjectMemoryToolOutput(
+	text: string,
+	expanded: boolean,
+	expandHint: string,
+	maxVisibleLines = 3,
+): string {
+	if (expanded) return text;
+	const lines = text.split(/\r?\n/);
+	if (lines.length <= maxVisibleLines) return text;
+	const contentLines = Math.max(1, maxVisibleLines - 1);
+	const omitted = lines.length - contentLines;
+	return [...lines.slice(0, contentLines), `... (${omitted} more lines, ${expandHint})`].join("\n");
+}
+
 export function buildPendingProjectMemoryLoadPrompt(pending: boolean): string | undefined {
 	if (!pending) return undefined;
 	return `[PROJECT MEMORY LOAD REQUIRED]

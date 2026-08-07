@@ -9,6 +9,7 @@ Use these checks when changing Pi's mode-neutral automatic project-memory assess
 3. Confirm startup context files alone do not suppress loading: `dotdotgod_project_load` becomes pending even when Pi has already injected project README files.
 4. Confirm the agent generates a concise task-specific focus, calls the tool exactly once before substantive work, consumes the compact Load result, and continues the original request.
 5. Confirm the pending tool disappears after successful completion.
+6. Confirm the completed tool result shows at most three lines in the Pi TUI, includes the configured expansion hint, expands to the complete result with `Ctrl+O` by default, and collapses again with the same keybinding.
 
 ## Duplicate And Branch Boundaries
 

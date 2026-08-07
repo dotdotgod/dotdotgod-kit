@@ -81,6 +81,8 @@ The mode-neutral `project-memory` extension owns automatic assessment in both or
 
 At the beginning of session work, the mode-neutral project-memory extension assesses whether the active branch transcript or a recent reachable Load already covers project memory. Startup context files alone do not suppress the focused Load. When loading is needed, it temporarily exposes `dotdotgod_project_load`, records completion once for the active branch lineage, and continues the original request. Forks reuse only reachable completed state; abandoned sibling work does not suppress reassessment. Use `/dd:no-load`, `dd:no-load`, or `/no-load` to opt out for one request.
 
+The automatic `dotdotgod_project_load` result keeps its complete content for the agent but shows only three lines in the Pi TUI by default. Use Pi's configured tool-output expansion keybinding (`Ctrl+O` by default) to open or collapse the full result.
+
 `/dd:load` renders shared Markdown paths as a prefix-compressed documentation tree, excluding plan/archive local memory by default. Without arguments it expands through directory depth 5; with arguments it runs `dotdotgod query` for up to 30 local multilingual E5 results and renders the tree through depth 3.
 
 `/impact-check` and the `dotdotgod_graph_impact` tool use the maintained graph to surface related specs, tests, docs, commands, source, and config after a change. Pi can remind the agent to run impact checks and can block commit, push, or publish commands until pending impact checks pass.

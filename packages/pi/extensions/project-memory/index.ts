@@ -1,10 +1,13 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { keyHint } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { recordContextMetric } from "../context-metrics/utils.js";
 import { buildLoadPrompt, collectSnapshot, runDotdotgodQuery } from "../load-project/utils.js";
 import { composeActiveTools } from "../shared/active-tools.js";
 import {
 	buildPendingProjectMemoryLoadPrompt,
+	formatProjectMemoryToolOutput,
 	getProjectMemoryContextText,
 	hasRecentProjectMemoryLoad,
 	PROJECT_MEMORY_LOAD_TOOL,
@@ -81,6 +84,7 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 					details: {
 						ok: queryResult?.ok ?? true,
 						focus,
+						output: prompt,
 						query: queryResult
 							? { ok: queryResult.ok, command: queryResult.command, error: queryResult.error }
 							: undefined,
@@ -89,6 +93,27 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 			} finally {
 				lifecycle.finishLoad();
 			}
+		},
+		renderResult(result, { expanded, isPartial }, theme) {
+			if (isPartial) {
+				return new Text(theme.fg("warning", "Loading dotdotgod project memory..."), 0, 0);
+			}
+			const details =
+				result.details && typeof result.details === "object"
+					? (result.details as { output?: unknown; error?: unknown })
+					: undefined;
+			const output =
+				typeof details?.output === "string"
+					? details.output
+					: typeof details?.error === "string"
+						? `Error: ${details.error}`
+						: "dotdotgod project memory loaded.";
+			const text = formatProjectMemoryToolOutput(
+				output,
+				expanded,
+				keyHint("app.tools.expand", expanded ? "to collapse" : "to expand"),
+			);
+			return new Text(text, 0, 0);
 		},
 	});
 

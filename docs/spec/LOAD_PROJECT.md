@@ -85,6 +85,8 @@ Internal automatic compact Load reports:
 - relevant active plan hints when needed
 - bounded next reads
 
+The automatic tool result retains the complete Load content for model consumption. In the interactive Pi TUI, the collapsed result MUST occupy at most three lines including its remaining-line count and configured `app.tools.expand` hint. The same keybinding (`Ctrl+O` by default) MUST reveal or collapse the complete output.
+
 Neither output form reports graph size, cache metrics, communities, or index statistics as project narrative. Compact rendering is an internal automatic-load behavior and has no public slash command.
 
 ## Safety

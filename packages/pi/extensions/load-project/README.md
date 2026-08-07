@@ -9,7 +9,7 @@ See `docs/spec/LOAD_PROJECT.md` for behavior and `docs/arch/EXTENSION_ARCHITECTU
 - `/load` — compatibility full-load command with duplicate-command conflict handling.
 - `/dd:load` — stable namespaced full-load command.
 
-Both commands produce full reporting. Free-form arguments are query text and never change the mode. Compact rendering remains an internal detail of the separate global automatic project-memory loader; there is no public compact slash command. Explicit and automatic loads expose `Help: dotdotgod --help` as optional discovery guidance without reporting CLI installation status or requiring Help execution.
+Both commands produce full reporting. Free-form arguments are query text and never change the mode. Compact rendering remains an internal detail of the separate global automatic project-memory loader; there is no public compact slash command. Automatic tool results retain complete content for the agent while the Pi TUI shows three lines by default and expands or collapses through the configured `app.tools.expand` keybinding (`Ctrl+O` by default). Explicit and automatic loads expose `Help: dotdotgod --help` as optional discovery guidance without reporting CLI installation status or requiring Help execution.
 
 ## Documentation Map And Query
 
