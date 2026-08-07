@@ -759,7 +759,7 @@ describe('dotdotgod CLI e2e', () => {
     assert(localErrors.some((error) => /docs\/archive\/README\.md/.test(error.message)));
   });
 
-  it('reports impact ranking config validation failures without crashing runtime commands', () => {
+  it('accepts arbitrary impact ranking compatibility config without changing fixed scoring', () => {
     const root = createFixture();
     writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({
       impactRanking: {
@@ -768,16 +768,14 @@ describe('dotdotgod CLI e2e', () => {
         relationWeights: { unknown: 1 },
         traceabilityBoosts: { unknown: 1 },
         ppr: { damping: 2, iterations: 200 },
-        semantic: { threshold: 2, topKPerFile: 100, signals: ['embedding'] },
+        unknown: true,
+        semantic: { enabled: 'yes', threshold: 2, topKPerFile: 100, signals: ['embedding'], includeArchiveBodies: true, unknown: true },
       },
     }, null, 2));
 
-    const invalid = run(['validate', root, '--include-local-memory', '--json']);
-    assert.notEqual(invalid.status, 0);
-    const payload = JSON.parse(invalid.stdout);
-    assert.equal(payload.errors.filter((error) => error.code === 'IMPACT_RANKING_CONFIG_RETIRED_FIELD').length, 4);
-    assert(payload.errors.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_SEMANTIC'));
-    assert(!payload.errors.some((error) => /Boost/.test(error.code)));
+    const valid = run(['validate', root, '--include-local-memory', '--json']);
+    assert.equal(valid.status, 0, valid.stdout + valid.stderr);
+    assert.equal(JSON.parse(valid.stdout).ok, true);
 
     const impact = json(run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--json']));
     assert.equal(impact.impact.ranking.preset, undefined);

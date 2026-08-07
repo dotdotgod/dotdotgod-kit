@@ -26,7 +26,8 @@ These checks cover `dotdotgod config` and `dotdotgod config init` behavior for p
 - `.dotdotgodrc.json` is not recognized as a project config source
 - `dotdotgod config <root> --json` preserves configured memory-area `description` and `clarify` metadata
 - invalid config show output reports validation errors and does not refresh the graph cache
-- retired preset/weights/PPR/relation-weight fields fail validation, while four legacy boost maps are ignored and omitted from show/init output
+- arbitrary retired, unknown, malformed, or unsupported `impactRanking` values remain non-blocking; valid semantic candidate controls apply while invalid values fall back to defaults and retired fields remain omitted from show/init output
+- legacy `load.pinnedPaths` and `load.pinnedBodies` values remain non-blocking, normalize to empty arrays, and do not alter Load output
 - resolved impact diagnostics expose fixed caps and internal reference `0.4` without serializing them into initialized config
 - command-specific help works for `config` and `config init`
 

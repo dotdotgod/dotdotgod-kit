@@ -21,5 +21,4 @@ node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
 - Confirm Pi recursively discovers sorted shared Markdown; no-argument loads render depth 5, focused loads render depth 3 with unique-file query results, and both omit plan/archive bodies by default.
 - Confirm Plan Mode automatic compact loads use empty focus, skip semantic query, and apply the same root documentation-exclusion array and fallback defaults as explicit Pi loads.
 - Confirm `planMode.writablePaths` preserves plan/archive defaults, supports configured docs subtrees and an empty list, and rejects source, secret, traversal, unsupported-glob, non-Markdown, unsafe-shell, and configured-root deletion attempts.
-- Confirm `load.pinnedPaths`/`load.pinnedBodies` validation rejects non-arrays, invalid patterns, absolute or traversal paths, and secret-like paths without crashing runtime commands.
-- Confirm legacy pinned fields remain accepted and serialized for compatibility but do not alter full or compact Load output.
+- Confirm arbitrary legacy `load.pinnedPaths`/`load.pinnedBodies` values are non-blocking, normalize to empty arrays, and do not alter full or compact Load output.

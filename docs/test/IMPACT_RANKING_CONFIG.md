@@ -9,9 +9,8 @@ Verify fixed PPR-only connection scoring, memory policy, dynamic traceability re
 | Area | Expected coverage |
 | --- | --- |
 | Fixed policy | Connection cap `80`, memory cap `20`, damping/iterations/tolerance, and internal reference `0.4` are deterministic and read-only. |
-| Retired config | `preset`, `weights`, `ppr`, and `relationWeights` report `IMPACT_RANKING_CONFIG_RETIRED_FIELD`. |
-| Inert maps | Four legacy boost maps behave exactly like absence and are omitted from resolved/init output. |
-| Vector semantic boundary | Enabled/threshold/top-K validate; lexical-only fields fail; request-local edges add no semantic score bucket and failures retain structural results. |
+| Compatibility config | Any `impactRanking` value, shape, retired field, or unknown nested field is non-blocking; retired fields behave like absence and remain omitted from resolved/init output. |
+| Vector semantic boundary | Valid enabled/threshold/top-K values apply; malformed values fall back to defaults, lexical-only fields are ignored, request-local edges add no semantic score bucket, and failures retain structural results. |
 | Dynamic weights | Configured traceability relations exclusively supply their PPR weights; zero weight disables traversal. |
 | Score breakdown | Seeds score `100`; non-seeds expose connection probability/reference/PPR, memory priority/adjustment, and optional direct evidence. |
 | Removed bonuses | Curated, test, verification, proximity, semantic-only, and node-type evidence receive no separate score or comparator bonus. |

@@ -15,7 +15,7 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 - `MEMORY_AREA_CONFIG.md`: `memory.areas`, including shared/local scope, fresh/stale freshness, priorities, and archive-body inclusion.
 - `TRACEABILITY_CONFIG.md`: `traceability.required` and `traceability.exclude` paths for validation enforcement.
 - `VALIDATION_CONFIG.md`: `validation.markdown` line/character budgets and size-check excludes.
-- `IMPACT_RANKING_CONFIG.md`: `impactRanking` presets, weights, PPR, routing hints, compact text output, and structured YML output.
+- `IMPACT_RANKING_CONFIG.md`: fixed weighted-PPR plus memory scoring, non-blocking `impactRanking` compatibility input, request-local vector candidates, score diagnostics, and compact text/YML output.
 - `REFERENCE_EXPANSION.md`: `referenceExpansion.fuzzy.lowSignal.add/remove` for fuzzy prompt matching.
 - `CONFIG_COMMAND.md`: config discovery, JSON output, initialization, invalid-config fallback, and user-facing repair behavior.
 
@@ -31,7 +31,7 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 - `MEMORY_AREA_CONFIG.md`: optional config for shared/local and fresh/stale memory-area policy.
 - `TRACEABILITY_CONFIG.md`: optional config for traceability enforcement paths, generated-link drift checks, and repair flow.
 - `VALIDATION_CONFIG.md`: optional config for markdown validation size budgets and explicit size-check exclusions.
-- `IMPACT_RANKING_CONFIG.md`: optional config for `graph impact` ranking presets, score breakdowns, compact text/YML output, PPR, and deterministic semantic links.
+- `IMPACT_RANKING_CONFIG.md`: fixed `graph impact` PPR/memory policy, request-local vector overlay controls, non-blocking compatibility behavior, score breakdowns, and compact text/YML output.
 - `CONFIG_COMMAND.md`: CLI behavior for inspecting and initializing project-level dotdotgod config files.
 - `cli/README.md`: focused CLI specs for discovery/help, local multilingual query and vector cache, graph impact, traceability links, and plan commands.
 - `CLI_INTERFACE.md`: compatibility route for the legacy monolithic CLI interface spec; new behavior belongs under `cli/`.

@@ -13,7 +13,6 @@ import {
   buildChangedFileProfile,
   buildVectorImpactOverlay,
   buildMemoryAreas,
-  buildPinnedFiles,
   buildIndex,
   buildCompactImpactReport,
   collectIndexFiles,
@@ -556,7 +555,7 @@ describe('CLI docs helpers', () => {
     assert.equal(guidance.query, 'npx dotdotgod query . "<focus>" --json');
   });
 
-  it('keeps semantic candidate settings while retiring public ranking tuning', () => {
+  it('keeps impact ranking config non-blocking while applying valid semantic settings', () => {
     const root = fixture();
     writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({ impactRanking: { semantic: { threshold: 0.4, topKPerFile: 3 } } }, null, 2));
     const config = readMemoryConfig(root);
@@ -565,9 +564,10 @@ describe('CLI docs helpers', () => {
     assert.equal(config.impactRanking.memoryCap, 20);
     assert.equal(config.impactRanking.ppr.reference, 0.4);
     assert.equal(config.impactRanking.semantic.threshold, 0.4);
-    const retired = validateMemoryConfigData({ impactRanking: { preset: 'docs-first', weights: {}, ppr: {}, relationWeights: {} } }, root);
-    assert(retired.every((error) => error.code === 'IMPACT_RANKING_CONFIG_RETIRED_FIELD'));
-    assert.deepEqual(validateMemoryConfigData({ impactRanking: { traceabilityBoosts: { anything: 'ignored' } } }, root), []);
+    for (const impactRanking of [null, 'legacy', [], {
+      preset: 'docs-first', weights: {}, ppr: {}, relationWeights: {}, unknown: true,
+      semantic: { enabled: 'yes', threshold: 2, topKPerFile: 99, signals: ['path'], includeArchiveBodies: true, unknown: true },
+    }]) assert.deepEqual(validateMemoryConfigData({ impactRanking }, root), []);
   });
 
   it('loads configurable markdown validation budgets and exclusions', () => {
@@ -677,7 +677,7 @@ describe('CLI docs helpers', () => {
     }
   });
 
-  it('loads configurable pinned files and documentation-summary exclusions', () => {
+  it('ignores legacy pinned-file config and loads documentation-summary exclusions', () => {
     const defaultLoad = {
       pinnedPaths: [],
       pinnedBodies: [],
@@ -696,8 +696,8 @@ describe('CLI docs helpers', () => {
     });
     const config = readMemoryConfig(root);
     assert.equal(config.source, 'dotdotgod.config.json');
-    assert.deepEqual(config.load.pinnedPaths, ['docs/arch/CODE_CONVENTIONS.md']);
-    assert.deepEqual(config.load.pinnedBodies, ['docs/arch/**']);
+    assert.deepEqual(config.load.pinnedPaths, []);
+    assert.deepEqual(config.load.pinnedBodies, []);
     assert.deepEqual(config.load.documentationSummary.exclude, ['docs/private']);
     assert.deepEqual(memoryConfigSummary(config).load, config.load);
 
@@ -709,17 +709,14 @@ describe('CLI docs helpers', () => {
       },
     }, root);
     const codes = new Set(invalid.map((error) => error.code));
-    assert(codes.has('LOAD_CONFIG_INVALID_PINNED_PATHS'));
-    assert(codes.has('LOAD_CONFIG_INVALID_PINNED_BODIES'));
-    assert(codes.has('LOAD_CONFIG_SECRET_PINNED_PATH'));
-    assert(codes.has('LOAD_CONFIG_INVALID_DOCUMENTATION_SUMMARY_EXCLUDE'));
+    assert.deepEqual([...codes], ['LOAD_CONFIG_INVALID_DOCUMENTATION_SUMMARY_EXCLUDE']);
+    assert.deepEqual(validateMemoryConfigData({ load: { pinnedPaths: 'anything', pinnedBodies: { legacy: true } } }, root), []);
     assert(validateMemoryConfigData({ load: [] }, root).some((error) => error.code === 'LOAD_CONFIG_INVALID'));
     assert(validateMemoryConfigData({ load: { documentationSummary: [] } }, root).some((error) => error.code === 'LOAD_CONFIG_INVALID_DOCUMENTATION_SUMMARY'));
-    assert(validateMemoryConfigData({ load: { pinnedPaths: 'docs/arch/CODE_CONVENTIONS.md' } }, root).some((error) => error.code === 'LOAD_CONFIG_INVALID_PINNED_PATHS'));
 
-    writeFixtureJson(root, 'dotdotgod.config.json', { load: { pinnedPaths: ['../escape.md'] } });
+    writeFixtureJson(root, 'dotdotgod.config.json', { load: { pinnedPaths: ['../escape.md'], pinnedBodies: '.env' } });
     const fallback = readMemoryConfig(root);
-    assert(fallback.errors.some((error) => error.code === 'LOAD_CONFIG_INVALID_PINNED_PATHS'));
+    assert.deepEqual(fallback.errors, []);
     assert.deepEqual(fallback.load, defaultLoad);
   });
 
@@ -732,56 +729,6 @@ describe('CLI docs helpers', () => {
     assert(validateMemoryConfigData({ planMode: { writablePaths: [] } }, root).length === 0);
     assert(validateMemoryConfigData({ planMode: { writablePaths: ['src/**'] } }, root).some((error) => error.code === 'PLAN_MODE_CONFIG_INVALID_WRITABLE_PATHS'));
     assert(validateMemoryConfigData({ planMode: { writablePaths: '../docs/**' } }, root).some((error) => error.code === 'PLAN_MODE_CONFIG_INVALID_WRITABLE_PATHS'));
-  });
-
-  it('builds pinned load files from direct disk reads with bounds and safety checks', () => {
-    const root = fixture();
-    writeFixtureFile(root, 'docs/arch/CODE_CONVENTIONS.md', '# Conventions\nUse project idioms.\n');
-    writeFixtureFile(root, 'docs/arch/EXTRA.md', '# Extra\n');
-    writeFixtureFile(root, 'docs/arch/image.png', Buffer.from([0x89, 0x50, 0x00, 0x47]));
-    writeFixtureFile(root, 'docs/arch/secrets.md', '# Do not pin\n');
-    writeFixtureJson(root, 'dotdotgod.config.json', {
-      load: {
-        pinnedPaths: ['docs/arch/CODE_CONVENTIONS.md', 'docs/arch/MISSING.md'],
-        pinnedBodies: ['docs/arch/**'],
-      },
-    });
-    const config = readMemoryConfig(root);
-    const pinned = buildPinnedFiles(root, config);
-    assert.equal(pinned.source, 'dotdotgod.config.json');
-    const conventions = pinned.paths.find((entry) => entry.path === 'docs/arch/CODE_CONVENTIONS.md');
-    assert.equal(conventions.status, 'present');
-    assert.deepEqual(conventions.pinnedBy, ['pinnedBodies', 'pinnedPaths']);
-    const missing = pinned.paths.find((entry) => entry.path === 'docs/arch/MISSING.md');
-    assert.equal(missing.status, 'missing');
-    const extra = pinned.paths.find((entry) => entry.path === 'docs/arch/EXTRA.md');
-    assert.deepEqual(extra.pinnedBy, ['pinnedBodies']);
-    const body = pinned.bodies.find((entry) => entry.path === 'docs/arch/CODE_CONVENTIONS.md');
-    assert.equal(body.status, 'present');
-    assert.equal(body.truncated, false);
-    assert.match(body.content, /Use project idioms/);
-    const binary = pinned.bodies.find((entry) => entry.path === 'docs/arch/image.png');
-    assert.equal(binary.status, 'skipped');
-    assert.equal(binary.reason, 'binary');
-    assert.equal(pinned.bodies.some((entry) => entry.path === 'docs/arch/MISSING.md'), false);
-    assert.equal(pinned.paths.some((entry) => entry.path === 'docs/arch/secrets.md'), false);
-    assert.equal(pinned.bodies.some((entry) => entry.path === 'docs/arch/secrets.md'), false);
-
-    const bounded = buildPinnedFiles(root, config, { paths: 1, bodies: 1, bodyChars: 10 });
-    assert.equal(bounded.paths.length, 1);
-    assert(bounded.omittedPaths > 0);
-    assert.equal(bounded.bodies.length, 1);
-    assert(bounded.omittedBodies > 0);
-    const truncated = bounded.bodies[0];
-    assert.equal(truncated.status, 'truncated');
-    assert.equal(truncated.truncated, true);
-    assert.equal(truncated.content.length, 10);
-    assert(truncated.chars > 10);
-
-    writeFixtureJson(root, 'dotdotgod.config.json', { load: { pinnedBodies: ['docs/arch/CODE_CONVENTIONS.md'] } });
-    const bodyOnly = buildPinnedFiles(root, readMemoryConfig(root));
-    assert.equal(bodyOnly.paths.some((entry) => entry.path === 'docs/arch/CODE_CONVENTIONS.md'), true);
-    assert.deepEqual(buildPinnedFiles(root, defaultMemoryConfig()).paths, []);
   });
 
   it('keeps Claude Code and Codex hook JSON examples parseable with supported events', () => {
@@ -871,25 +818,23 @@ function writePlanStage(root, slug, stage, content, extraFiles = {}) {
 }
 
 describe('impact ranking unit coverage', () => {
-  it('uses fixed impact policy and validates retired fields while ignoring boost maps', () => {
+  it('uses fixed impact policy and treats the complete impact ranking namespace as non-blocking', () => {
     const defaults = readMemoryConfig(fixture()).impactRanking;
     assert.equal(defaults.connectionCap, 80);
     assert.equal(defaults.memoryCap, 20);
     assert.equal(defaults.ppr.reference, 0.4);
 
-    const retiredData = { impactRanking: { preset: 'docs-first', weights: { ppr: 20 }, relationWeights: { related_doc: 9 }, ppr: { enabled: false } } };
-    const errors = validateMemoryConfigData(retiredData, fixture());
-    assert.equal(errors.length, 4);
-    assert(errors.every((error) => error.code === 'IMPACT_RANKING_CONFIG_RETIRED_FIELD'));
-
-    const inert = { impactRanking: { traceabilityBoosts: { unknown: 'ignored' }, verificationBoosts: null, semanticBoosts: 42, proximityBoosts: [] } };
-    assert.deepEqual(validateMemoryConfigData(inert, fixture()), []);
+    const compatibilityData = { impactRanking: {
+      preset: 'docs-first', weights: { ppr: 20 }, relationWeights: { related_doc: 9 }, ppr: { enabled: false },
+      traceabilityBoosts: { unknown: 'ignored' }, verificationBoosts: null, semanticBoosts: 42, proximityBoosts: [], unknown: true,
+      semantic: { enabled: 'yes', threshold: 2, topKPerFile: 21, includeArchiveBodies: 'yes', signals: ['embedding'], unknown: true },
+    } };
+    assert.deepEqual(validateMemoryConfigData(compatibilityData, fixture()), []);
     const root = fixture();
-    writeFixtureJson(root, 'dotdotgod.config.json', inert);
-    assert.equal(readMemoryConfig(root).impactRanking.connectionCap, 80);
-
-    const invalidSemantic = validateMemoryConfigData({ impactRanking: { semantic: { enabled: 'yes', threshold: 2, topKPerFile: 21, includeArchiveBodies: 'yes', signals: ['embedding'] } } }, fixture());
-    assert(invalidSemantic.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_SEMANTIC'));
+    writeFixtureJson(root, 'dotdotgod.config.json', compatibilityData);
+    const resolved = readMemoryConfig(root).impactRanking;
+    assert.equal(resolved.connectionCap, 80);
+    assert.deepEqual(resolved.semantic, defaults.semantic);
   });
 
   it('keeps lexical semantic edges out of the indexed graph', () => {
@@ -898,8 +843,7 @@ describe('impact ranking unit coverage', () => {
     const graph = buildIndex(root).graph;
     assert.equal(graph.edges.some((edge) => edge.confidence === 'INFERRED_LEXICAL_SEMANTIC'), false);
     assert.equal(graph.edges.some((edge) => ['semantic_similarity', 'mentions_package'].includes(edge.relation)), false);
-    const retired = validateMemoryConfigData({ impactRanking: { semantic: { signals: ['path'], includeArchiveBodies: true } } }, root);
-    assert.equal(retired.filter((error) => error.code === 'IMPACT_RANKING_CONFIG_RETIRED_SEMANTIC_FIELD').length, 2);
+    assert.deepEqual(validateMemoryConfigData({ impactRanking: { semantic: { signals: ['path'], includeArchiveBodies: true } } }, root), []);
   });
 
   it('scores fixed weighted PPR and memory with explanation-only direct evidence', () => {

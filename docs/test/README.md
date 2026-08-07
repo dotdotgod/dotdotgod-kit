@@ -10,7 +10,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `VALIDATION_CONFIG.md`: markdown validation budget and size-check exclusion coverage.
 - `CONTEXT_MEASUREMENT.md`: context measurement commands and runtime context debug smoke checks.
 - `COMMAND_GUIDANCE.md`: environment-aware query and project command guidance checks.
-- `IMPACT_RANKING_CONFIG.md`: configurable graph impact ranking, compact output, semantic-edge, and selection-noise checks.
+- `IMPACT_RANKING_CONFIG.md`: fixed graph-impact scoring, non-blocking compatibility config, request-local vector overlay, compact output, and selection-noise checks.
 - `GRAPH_IMPACT_QUALITY.md`: graph impact quality scoring script, metrics, and baseline comparison checks.
 - `CONFIG_COMMAND.md`: project-level config show/init command checks.
 - `HOOKS.md`: optional Claude Code and Codex hook documentation and package-resource smoke checks.

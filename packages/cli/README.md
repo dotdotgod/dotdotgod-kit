@@ -38,7 +38,7 @@ dotdotgod graph impact . --changed <path> --compact
 - `index` builds `.dotdotgod/manifest.json` and compact graph shards from maintained project files.
 - `query` locally embeds shared Markdown with `Xenova/multilingual-e5-small`, incrementally stores vectors under `.dotdotgod/vectors/`, and returns the best-ranked chunk from each relevant Markdown file.
 - `resolve` and `expand` map explicit or high-signal prompt references to project files.
-- `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five. It adds a bounded request-local multilingual vector overlay from the query cache when available and degrades to structural-only results when vector preparation fails.
+- `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five. Non-seed scores use fixed weighted PPR connection `80` plus memory policy `20`. A bounded request-local multilingual vector overlay participates in PPR when the query cache is available; vector preparation failures degrade to structural-only results.
 - `traceability links` checks or repairs generated Markdown traceability-link sections.
 
 ## Commands
@@ -85,17 +85,19 @@ $ dotdotgod graph impact . --changed packages/cli/src/core.mjs --compact
 
 ```text
 docs:
-- docs/spec/REFERENCE_EXPANSION.md (91; incoming:implemented_by, semantic_similarity)
-- docs/test/REFERENCE_EXPANSION.md (65.3; verified_by, semantic_similarity)
+- docs/spec/CONFIG_COMMAND.md (56.8; incoming:links_to, incoming:implemented_by)
+- docs/spec/cli/TRACEABILITY_LINKS.md (26.3; vector_similarity)
+
+tests:
+- packages/cli/test/core.test.mjs (6.5; verified_by)
 
 files:
 - packages/cli/src/core.mjs (100; changed-file)
-- packages/pi/extensions/plan-mode/index.ts (45; implemented_by, semantic_similarity)
 ```
 
 `graph impact` needs at least one `--changed <path>` and accepts repeated options. Multi-file output preserves input order, deduplicates repeated paths, returns a bounded combined ranking, and includes the top five non-seed results for each changed file. Use `--compact` for short text, `--yml` or `--yaml` for compact structured agent-facing output, and `--json` for machine-readable detail.
 
-The graph is built from maintained project files: Markdown links, README routes, headings, traceability blocks, package metadata, memory areas, imports, exports, commands, tests, and deterministic routing hints.
+The indexed graph is built from maintained project files: Markdown links, README routes, headings, configured traceability relations, package metadata, scripts and packaged resources, dependencies, and memory-area membership. Impact analysis can add request-local vector edges for candidate discovery and PPR without mutating that indexed graph.
 
 ## Validation and Verification Boundaries
 
@@ -119,7 +121,7 @@ The default scaffold gives docs explicit roles:
 - `docs/archive/README.md`: local archive map included by default.
 - `docs/archive/**`: local archive bodies excluded by default unless targeted.
 
-Use `memory.areas` to customize memory classification and retrieval priority. Use `traceability.required` and `traceability.exclude` to customize which Markdown paths need `json dotdotgod` traceability blocks. Use `validation.markdown`, `impactRanking`, and `referenceExpansion` to tune size budgets, impact scoring, and fuzzy prompt matching.
+Use `memory.areas` to customize memory classification and retrieval priority. Use `traceability.required` and `traceability.exclude` to select which Markdown paths need `json dotdotgod` blocks, and use ordered `traceability.keys` definitions to configure string-array labels, path or command targets, graph relations, and PPR weights. Use `validation.markdown` for size budgets and `referenceExpansion` for fuzzy prompt matching. The complete `impactRanking` namespace is non-blocking compatibility input: valid semantic candidate controls apply, malformed values fall back to defaults, and retired or unknown fields are ignored without changing fixed scoring. Legacy `load.pinnedPaths` and `load.pinnedBodies` values are also ignored.
 
 ## Indexing Scope
 

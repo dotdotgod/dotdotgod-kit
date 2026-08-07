@@ -60,8 +60,6 @@ export const BUILT_IN_GRAPH_RELATIONS = new Set([
   'declares_package', 'declares_script', 'declares_bin', 'depends_on', 'vector_similarity',
 ]);
 const TRACEABILITY_RESERVED_RELATIONS = BUILT_IN_GRAPH_RELATIONS;
-const INERT_IMPACT_RANKING_FIELDS = new Set(['traceabilityBoosts', 'verificationBoosts', 'semanticBoosts', 'proximityBoosts']);
-const RETIRED_IMPACT_RANKING_FIELDS = new Set(['preset', 'weights', 'ppr', 'relationWeights']);
 const DEFAULT_FUZZY_LOW_SIGNAL_TERMS = [
   'a', 'an', 'and', 'are', 'as', 'by', 'docs', 'document', 'for', 'from', 'it', 'of', 'on', 'plan', 'test', 'the', 'to', 'update', 'version', 'with',
   '계획', '문서', '수정', '업데이트', '버전', '정보', '확인', '테스트',
@@ -173,7 +171,16 @@ function normalizeReferenceExpansionPolicy(raw) {
 }
 
 function normalizeImpactRankingPolicy(raw) {
-  return cloneImpactRankingPolicy({ semantic: raw?.semantic });
+  const candidate = raw && typeof raw === 'object' && !Array.isArray(raw)
+    && raw.semantic && typeof raw.semantic === 'object' && !Array.isArray(raw.semantic)
+    ? raw.semantic
+    : {};
+  const semantic = {
+    ...(typeof candidate.enabled === 'boolean' ? { enabled: candidate.enabled } : {}),
+    ...(isFiniteNumberInRange(candidate.threshold, 0, 1) ? { threshold: candidate.threshold } : {}),
+    ...(Number.isInteger(candidate.topKPerFile) && candidate.topKPerFile >= 0 && candidate.topKPerFile <= 20 ? { topKPerFile: candidate.topKPerFile } : {}),
+  };
+  return cloneImpactRankingPolicy({ semantic });
 }
 
 export function cloneLoadPolicy(policy = DEFAULT_LOAD_POLICY) {
@@ -277,8 +284,8 @@ function normalizeLoadPolicy(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return cloneLoadPolicy();
   const normalize = (values) => (Array.isArray(values) ? [...new Set(values.map(normalizePathPattern))] : []);
   return cloneLoadPolicy({
-    pinnedPaths: normalize(raw.pinnedPaths),
-    pinnedBodies: normalize(raw.pinnedBodies),
+    pinnedPaths: [],
+    pinnedBodies: [],
     documentationSummary: {
       exclude: raw.documentationSummary?.exclude === undefined
         ? DEFAULT_LOAD_POLICY.documentationSummary.exclude
@@ -390,15 +397,6 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
     if (!load || typeof load !== 'object' || Array.isArray(load)) {
       add('LOAD_CONFIG_INVALID', 'load', 'Expected an object.');
     } else {
-      for (const [key, code] of [['pinnedPaths', 'LOAD_CONFIG_INVALID_PINNED_PATHS'], ['pinnedBodies', 'LOAD_CONFIG_INVALID_PINNED_BODIES']]) {
-        const values = load[key];
-        if (values === undefined) continue;
-        if (!Array.isArray(values)) add(code, `load.${key}`, 'Expected an array of path strings.');
-        else {
-          if (values.some((value) => !isValidPathPattern(value) || (typeof value === 'string' && value.trim().startsWith('/')))) add(code, `load.${key}`, 'Expected repository-relative path strings using exact paths, /** subtree patterns, or **/suffix patterns.');
-          if (values.some((value) => typeof value === 'string' && isSecretLikePathPattern(value))) add('LOAD_CONFIG_SECRET_PINNED_PATH', `load.${key}`, 'Pinned load paths must not target secrets, credentials, environment files, or private keys.');
-        }
-      }
       if (load.documentationSummary !== undefined) {
         const summary = load.documentationSummary;
         if (!summary || typeof summary !== 'object' || Array.isArray(summary)) {
@@ -435,32 +433,6 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
         } else {
           for (const key of ['add', 'remove']) {
             if (lowSignal[key] !== undefined && (!Array.isArray(lowSignal[key]) || lowSignal[key].some((value) => typeof value !== 'string' || !value.trim()))) add('REFERENCE_EXPANSION_CONFIG_INVALID_LOW_SIGNAL_TERMS', `referenceExpansion.fuzzy.lowSignal.${key}`, 'Expected an array of non-empty strings.');
-          }
-        }
-      }
-    }
-  }
-  const impactRanking = data.impactRanking;
-  if (impactRanking !== undefined) {
-    if (!impactRanking || typeof impactRanking !== 'object' || Array.isArray(impactRanking)) {
-      add('IMPACT_RANKING_CONFIG_INVALID', 'impactRanking', 'Expected an object.');
-    } else {
-      for (const key of Object.keys(impactRanking)) {
-        if (key === 'semantic' || INERT_IMPACT_RANKING_FIELDS.has(key)) continue;
-        if (RETIRED_IMPACT_RANKING_FIELDS.has(key)) add('IMPACT_RANKING_CONFIG_RETIRED_FIELD', `impactRanking.${key}`, 'This ranking tuning field was retired; remove it.');
-        else add('IMPACT_RANKING_CONFIG_INVALID_FIELD', `impactRanking.${key}`, 'Unsupported impact ranking field.');
-      }
-      if (impactRanking.semantic !== undefined) {
-        const semantic = impactRanking.semantic;
-        if (!semantic || typeof semantic !== 'object' || Array.isArray(semantic)) add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic', 'Expected an object.');
-        else {
-          if (semantic.enabled !== undefined && typeof semantic.enabled !== 'boolean') add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic.enabled', 'Expected a boolean.');
-          if (semantic.threshold !== undefined && !isFiniteNumberInRange(semantic.threshold, 0, 1)) add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic.threshold', 'Expected a number from 0 to 1.');
-          if (semantic.topKPerFile !== undefined && (!Number.isInteger(semantic.topKPerFile) || semantic.topKPerFile < 0 || semantic.topKPerFile > 20)) add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', 'impactRanking.semantic.topKPerFile', 'Expected an integer from 0 to 20.');
-          for (const key of Object.keys(semantic)) {
-            if (['enabled', 'threshold', 'topKPerFile'].includes(key)) continue;
-            if (['signals', 'includeArchiveBodies'].includes(key)) add('IMPACT_RANKING_CONFIG_RETIRED_SEMANTIC_FIELD', `impactRanking.semantic.${key}`, 'This lexical semantic field was retired by vector semantic impact; remove it.');
-            else add('IMPACT_RANKING_CONFIG_INVALID_SEMANTIC', `impactRanking.semantic.${key}`, 'Unsupported vector semantic field.');
           }
         }
       }

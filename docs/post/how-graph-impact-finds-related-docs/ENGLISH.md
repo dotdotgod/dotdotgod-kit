@@ -49,21 +49,20 @@ Graph impact quality therefore depends on both the graph algorithm and the condi
 
 ## Rank by Review Value
 
-Returning every related node would turn impact analysis into another repository-wide search. The default `balanced` policy combines Personalized PageRank seeded by changed files with project review policy.
+Returning every related node would turn impact analysis into another repository-wide search. The fixed policy combines equal-weight multi-seed Personalized PageRank with bounded memory-area policy.
 
 ```text
 changed files
-  → bound the candidate scope
-  → multi-seed Personalized PageRank
-  → apply traceability and verification policy
-  → build a bounded result ranked by review value
+  → add structural and configured traceability relations
+  → add request-local vector relations when available
+  → run weighted multi-seed Personalized PageRank
+  → add bounded memory policy
+  → return a bounded review list with explanation reasons
 ```
 
-The base score begins with PPR calculated from the changed files. Explicit traceability, test and verification signals, and direct proximity through Markdown links and README files add weight. Deterministic routing hints act as secondary signals when paths, headings, memory areas, or package names match.
+Non-seed scores allocate up to `80` points to PPR connection strength and up to `20` points to memory policy. Structural links, configured traceability and verification relations, and request-local vector relations influence the result through weighted PPR. Direct, curated, test, semantic, and node-type evidence add no separate score or ordering bonus; their reasons explain why an item is connected.
 
-Memory policy applies the current area's priority and its `fresh` or `stale` classification, then penalizes archive bodies. The first screen favors traceability, tests, and direct proximity over lower-confidence routing-only items. When enough actionable files exist, low-actionability metadata such as dependencies is kept out of the result.
-
-The default policy favors current specifications and verification routes over archive bodies. Here, `fresh` and `stale` are memory-area classifications unrelated to file modification time.
+Memory policy applies the current area's priority and its `fresh` or `stale` classification, then penalizes archive bodies within its bounded component. Here, `fresh` and `stale` are memory-area classifications unrelated to file modification time. When local vectors are unavailable, impact analysis returns structural-only results rather than rebuilding lexical semantic edges.
 
 ## The Result Is a Review List with Reasons
 

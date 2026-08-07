@@ -40,7 +40,7 @@ That turns impact analysis from semantic guessing into curated traversal:
 changed file -> behavior spec -> implementation -> tests -> architecture docs -> verification command
 ```
 
-If traceability is wrong, the error is visible in a document and can be reviewed, validated, and repaired. If a generated semantic edge is wrong, the error can hide inside graph artifacts and ranking side effects.
+If traceability is wrong, the error is visible in a document and can be reviewed, validated, and repaired. If an inferred relationship is persisted opaquely, the error can hide inside graph artifacts and ranking side effects. Dotdotgod keeps optional vector relations request-local and exposes them as explanation reasons rather than storing them in the indexed graph.
 
 ## Production quality is about predictability
 
@@ -94,6 +94,6 @@ Dotdotgod sources:
 - [`README.md`](../../README.md) — context curation, memory areas, deterministic first pass, bounded graph output, and less context noise.
 - [`docs/spec/TRACEABILITY_CONFIG.md`](../spec/TRACEABILITY_CONFIG.md) — configurable required traceability blocks and validation behavior.
 - [`docs/spec/IMPACT_RANKING_CONFIG.md`](../spec/IMPACT_RANKING_CONFIG.md) — ranking signals and output shape.
-- [`docs/arch/IMPACT_RANKING_CONFIG.md`](../arch/IMPACT_RANKING_CONFIG.md) — deterministic semantic edges, score components, semantic-only demotion, and bounded output.
+- [`docs/arch/IMPACT_RANKING_CONFIG.md`](../arch/IMPACT_RANKING_CONFIG.md) — fixed weighted-PPR and memory score components, configurable traceability relations, request-local vector overlay boundaries, and bounded output.
 - [`docs/arch/VALIDATION_ARCHITECTURE.md`](../arch/VALIDATION_ARCHITECTURE.md) — validator boundaries, traceability checks, cache/index safety, and docs structure rules.
 - [`docs/spec/LOAD_PROJECT.md`](../spec/LOAD_PROJECT.md) — depth-bounded documentation maps, focused query, and archive-body exclusion.

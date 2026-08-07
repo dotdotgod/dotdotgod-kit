@@ -70,7 +70,7 @@ Each file node receives retrieval metadata derived from the resolved memory area
 
 The graph also creates `memory_area:*` nodes with area label, role, scope, freshness, priority, and inclusion policy. `belongs_to_area` edges carry the same scope and freshness metadata. Optional document-clarity metadata is preserved in resolved config output rather than changing graph ranking semantics.
 
-Impact ranking uses this metadata as a bounded memory-policy score. Curated traceability remains higher-confidence than deterministic semantic edges, while memory priority only adjusts retrieval order without replacing explicit docs/code/test links.
+Impact ranking uses this metadata as the bounded memory-policy component capped at `20`. Structural, configured traceability, and request-local vector relations affect ranking only through weighted PPR; direct, curated, test, semantic, and node-type evidence receive no separate score or ordering bonus. Memory policy complements rather than replaces graph connectivity, while reasons preserve the strongest direct relation as explanation evidence.
 
 ## Load Documentation Summary Policy
 
@@ -80,7 +80,7 @@ The CLI owns validation, normalization, fallback defaults, and config display. T
 
 ## Legacy Load Pinned Fields
 
-`load.pinnedPaths` and `load.pinnedBodies` remain validated and serialized for config compatibility, but no longer affect Load after removal of the snapshot command. New projects should use the maintained documentation map, README routing, and focused query instead of pinned Load bodies. Secret-like values remain invalid so legacy config cannot silently preserve unsafe paths.
+`load.pinnedPaths` and `load.pinnedBodies` remain accepted as non-blocking compatibility input after removal of the snapshot command. Their values are ignored and normalize to empty arrays, so stale or malformed legacy values cannot affect Load or block unrelated validation. New projects should use the maintained documentation map, README routing, and focused query instead of pinned Load bodies.
 
 ## Validation Policy
 

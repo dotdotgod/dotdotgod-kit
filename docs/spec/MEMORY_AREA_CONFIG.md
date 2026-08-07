@@ -76,7 +76,7 @@ Behavior contract:
 
 ## Legacy Load Pinned Fields
 
-`load.pinnedPaths` and `load.pinnedBodies` remain accepted, validated, and serialized for config compatibility, but they no longer alter Load output. Secret-like values remain invalid. New projects should rely on the complete documentation tree and focused local query instead of pinned bodies.
+`load.pinnedPaths` and `load.pinnedBodies` remain accepted as non-blocking compatibility input, but their values are ignored and resolve to empty arrays because they no longer alter Load output. New projects should rely on the complete documentation tree and focused local query instead of pinned bodies.
 
 ## Validation Behavior
 
@@ -95,7 +95,7 @@ Behavior contract:
 - invalid `clarify` values when present; `clarify` must be an object, `documentType` and `clarityGoal` must be non-empty strings, and `audience` and `editRules` must be arrays of non-empty strings
 - exact duplicate path patterns that are not excluded by the subsequent area
 - malformed `referenceExpansion.fuzzy.lowSignal.add` or `remove` arrays
-- non-object `load`; invalid `load.documentationSummary` objects; non-array or invalid `load.documentationSummary.exclude` patterns; non-array or invalid `load.pinnedPaths`/`load.pinnedBodies` patterns; absolute or traversal paths; and secret-like pinned paths
+- non-object `load`; invalid `load.documentationSummary` objects; and non-array or invalid `load.documentationSummary.exclude` patterns
 - invalid `planMode.writablePaths`; entries must be safe repository-relative exact or `/**` documentation paths under `docs/`
 
 Invalid memory config does not make the CLI crash. Runtime commands fall back to the default memory config while validation reports repairable errors.

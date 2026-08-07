@@ -15,4 +15,4 @@ Use this area for architecture decisions, code conventions, module boundaries, d
 - `validation/README.md`: CLI validation, graph/cache policy, dependency policy, and workspace verification strategy.
 - `post/README.md`: tracked project-post structure, editorial conventions, publishing assets, and load-summary boundaries.
 - `MEMORY_AREA_CONFIG.md`: config discovery, path matching, graph metadata, and separate graph/Load-query policies for shared/local and fresh/stale memory areas.
-- `IMPACT_RANKING_CONFIG.md`: graph impact ranking architecture, score components, PPR policy, and deterministic semantic edge generation.
+- `IMPACT_RANKING_CONFIG.md`: fixed graph-impact score architecture, weighted PPR, memory policy, configurable traceability relations, and request-local vector overlay boundaries.

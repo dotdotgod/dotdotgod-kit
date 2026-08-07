@@ -13,7 +13,7 @@ Repository: <https://github.com/dotdotgod/dotdotgod-kit>
 Every adapter follows the same loop:
 
 1. **init** — create the docs-first project-memory scaffold.
-2. **load** — start from a bounded documentation map and focused local query.
+2. **load** — start from a bounded documentation map and focused local query; Pi performs one mode-neutral automatic assessment when baseline context is missing.
 3. **plan** — record durable task intent under `docs/plan/` before source edits when the work warrants a saved plan.
 4. **impact** — identify related specs, tests, docs, commands, and source before broad verification or handoff.
 
@@ -70,7 +70,7 @@ The structure provides:
 
 - **Low-noise loading:** agents follow the documentation map and read targeted bodies instead of broad file lists.
 - **Durable intent:** active plans and archived outcomes survive compaction, handoff, and new sessions.
-- **Traceable behavior:** behavior specs connect to implementation, tests, related docs, and verification commands.
+- **Traceable behavior:** ordered traceability-key definitions connect behavior specs to configured path or command targets with explicit graph relations and weights.
 - **Bounded history:** `docs/archive/README.md` remains the history map; archive bodies are read only when targeted.
 - **Local processing:** graph and query caches stay under `.dotdotgod/`; agent-facing commands return bounded summaries.
 
@@ -82,28 +82,28 @@ $ dotdotgod graph impact . --changed packages/cli/src/core.mjs --compact
 
 ```text
 docs:
-- docs/spec/REFERENCE_EXPANSION.md (91; incoming:implemented_by, semantic_similarity)
-- docs/test/REFERENCE_EXPANSION.md (65.3; verified_by, semantic_similarity)
-- docs/spec/LOAD_PROJECT.md (35.8; related_doc, semantic_similarity)
+- docs/spec/CONFIG_COMMAND.md (56.8; incoming:links_to, incoming:implemented_by)
+- docs/spec/cli/TRACEABILITY_LINKS.md (26.3; vector_similarity)
 
 tests:
-- packages/cli/test/core.test.mjs (78.6; semantic_similarity, incoming:semantic_similarity, verified_by)
-- packages/cli/test/e2e.test.mjs (51.4; verified_by)
+- packages/cli/test/core.test.mjs (6.5; verified_by)
 
 files:
 - packages/cli/src/core.mjs (100; changed-file)
-- packages/pi/extensions/plan-mode/index.ts (45; implemented_by, semantic_similarity)
+- packages/cli/src/memory/config.mjs (6.5; implemented_by)
 ```
 
-Each result includes ranking reasons so agents can inspect relevant evidence instead of scanning broadly. Keep results useful through focused README indexes, current traceability blocks, meaningful package metadata, and single-responsibility documents.
+Non-seed scores use a fixed weighted Personalized PageRank connection component capped at `80` plus memory policy capped at `20`. Direct, curated, test, type, and semantic evidence add no separate score or ordering bonus; relation weights participate through PPR and reasons remain explanation evidence. When the local query cache is available, impact analysis can add a bounded request-local multilingual `vector_similarity` overlay without changing the indexed graph or persisting changed-file vectors. Vector failures degrade to structural-only results.
+
+Each result includes ranking reasons so agents can inspect relevant evidence instead of scanning broadly. Exact scores vary with the project graph and memory policy. Keep results useful through focused README indexes, current traceability blocks, meaningful package metadata, and single-responsibility documents.
 
 ## Core Concepts
 
 - **Project memory:** durable files and metadata reused across sessions.
 - **Memory areas:** configured scopes for stable project knowledge, local active plans, and historical archives.
 - **Documentation load:** a depth-bounded project map with optional focused local query.
-- **Traceability:** links from behavior docs to source, tests, related docs, and verification commands.
-- **Impact graph:** a local ranking of files likely to require review after a change.
+- **Traceability:** an ordered registry of string-array keys with labels, path or command targets, graph relations, and PPR weights.
+- **Impact graph:** fixed weighted-PPR plus memory-policy ranking, optionally enriched by a request-local multilingual vector overlay.
 
 For the detailed model, read [Context curation](docs/concept/CONTEXT_CURATION.md), [Context mechanics](docs/concept/CONTEXT_MECHANICS.md), and [Measurement design](docs/concept/MEASUREMENT_DESIGN.md).
 

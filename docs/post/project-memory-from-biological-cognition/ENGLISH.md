@@ -43,7 +43,7 @@ dotdotgod graph impact . \
 
 Repeat `--changed` when several files make up one change. Each changed file becomes a graph seed, and specifications or tests shared by several seeds are merged into one overall review ranking.
 
-The graph uses relationships that people maintain or that the repository can derive deterministically: structured traceability, Markdown links, README routes, and package and test structure. The default ranking combines Personalized PageRank seeded by changed files with traceability, verification signals, memory-area policy, and direct proximity. The `semantic_similarity` relationship is also computed deterministically from paths, filenames, headings, and package names. `query` uses a separate natural-language embedding search.
+The indexed graph uses relationships that people maintain or that the repository can derive deterministically: configured traceability, Markdown links, README routes, headings, package metadata, scripts, resources, dependencies, and memory-area membership. Impact ranking gives up to `80` points to weighted Personalized PageRank seeded by changed files and up to `20` points to memory policy; direct, verification, semantic, and node-type evidence receive no separate score or ordering bonus. When the local query cache is available, impact analysis adds a bounded request-local multilingual `vector_similarity` overlay for candidate discovery and PPR without mutating the indexed graph or persisting changed-file vectors. Vector failure degrades to structural-only results.
 
 The following abbreviated example shows the essential output shape. Actual paths, scores, and reasons depend on repository state and configuration.
 

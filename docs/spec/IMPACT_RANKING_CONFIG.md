@@ -21,18 +21,11 @@ PPR uses damping `0.85`, at most 20 iterations, tolerance `0.000001`, and fixed 
 
 Traceability relation weights come only from `traceability.keys[]`; maintained non-traceability relations use built-in weights. Weight `0` disables traversal for that relation.
 
-## Removed Ranking Tuning
+## Impact Ranking Compatibility
 
-The following `impactRanking` fields are retired and validation errors:
+The complete `impactRanking` namespace is non-blocking. Its presence, shape, retired fields, and unknown nested fields never produce validation errors or warnings. Retired tuning and boost fields are ignored, omitted from resolved/init output, and contribute no score.
 
-- `preset`
-- `weights`
-- `ppr`
-- `relationWeights`
-
-The four legacy boost maps are inert: `traceabilityBoosts`, `verificationBoosts`, `proximityBoosts`, and `semanticBoosts` are not read, validated, warned about, summarized, serialized, or scored.
-
-`impactRanking.semantic` controls the request-local vector overlay with `enabled`, cosine `threshold`, and `topKPerFile`. The lexical-only `signals` and `includeArchiveBodies` fields are retired validation errors. Model, dimensions, provider, profile strategy, and vector relation weight are fixed policy rather than public configuration. Semantic evidence does not restore a separate score bonus.
+`impactRanking.semantic` may control the request-local vector overlay with a valid boolean `enabled`, cosine `threshold` from `0` to `1`, and integer `topKPerFile` from `0` to `20`. Invalid values silently fall back to defaults. Lexical-only `signals` and `includeArchiveBodies` fields are ignored. Model, dimensions, provider, profile strategy, and vector relation weight are fixed policy rather than public configuration. Semantic evidence does not restore a separate score bonus.
 
 ## Ranking And Selection
 

@@ -28,7 +28,7 @@ A good first run:
 2. Start Pi in the target repository.
 3. Ask Pi to initialize the project with dotdotgod.
 4. Review the files the initializer will create or skip.
-5. Run `/dd:load` to load bounded project memory.
+5. Let Pi's automatic project-memory assessment load focused context when baseline coverage is missing, or run `/dd:load` for an explicit full load.
 6. Use `/dd:plan <request>` before implementation work.
 
 ## What It Adds to Pi
@@ -70,15 +70,16 @@ Use `/dd:plan` when a request may lead to source or config changes. Plan Mode ke
 
 To start Pi with dotdotgod Plan Mode already enabled, run `pi --dd-plan`. The namespaced flag allows other extensions to register the generic `--plan` flag without an extension-loader conflict.
 
-Plan Mode helps Pi:
+The mode-neutral `project-memory` extension owns automatic assessment in both ordinary mode and Plan Mode. Plan Mode consumes that loaded context, then helps Pi:
 
-- load relevant project memory,
 - write or update active plan docs,
 - track execution steps with `[DONE:n]` markers,
 - remind agents to run impact checks after source/config edits,
 - archive completed plans under `docs/archive/plan/`.
 
 ## Loading and Impact Checks
+
+At the beginning of session work, the mode-neutral project-memory extension assesses whether baseline context or a recent reachable load already covers the request. When focused loading is needed, it temporarily exposes `dotdotgod_project_load`, records completion once for the active branch lineage, and continues the original request. Forks reuse only reachable completed state; abandoned sibling work does not suppress reassessment. Use `/dd:no-load`, `dd:no-load`, or `/no-load` to opt out for one request.
 
 `/dd:load` renders shared Markdown paths as a prefix-compressed documentation tree, excluding plan/archive local memory by default. Without arguments it expands through directory depth 5; with arguments it runs `dotdotgod query` for up to 30 local multilingual E5 results and renders the tree through depth 3.
 
@@ -88,8 +89,9 @@ Plan Mode helps Pi:
 
 - `project-initializer` skill
 - `document-clarify` skill
+- mode-neutral `project-memory` extension
 - `plan-mode` extension
-- `load-project` extension
+- explicit `load-project` extension
 - `pi-subagents` wrapper resources
 - package-local `@dotdotgod/cli` dependency
 

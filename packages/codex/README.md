@@ -69,7 +69,7 @@ By default, `docs/spec/**` has two separate roles:
 - It is stable shared project memory for product behavior and requirements.
 - It is the traceability-enforced path for behavior specs.
 
-Projects can customize memory roles with `memory.areas`, and can customize traceability requirements with `traceability.required` and `traceability.exclude`.
+Projects can customize memory roles with `memory.areas`, select traceability-enforced Markdown with `traceability.required` and `traceability.exclude`, and define the ordered complete list of traceability string arrays with `traceability.keys`. Each key owns its label, path or command target, graph relation, and PPR weight.
 
 ## Optional Hooks
 

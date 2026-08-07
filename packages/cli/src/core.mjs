@@ -17,7 +17,7 @@ export { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_LOAD_POLICY, DEFAULT_VALIDATION_
 export { buildCommunities, relationWeight } from './graph/communities.mjs';
 export { addEdge, addNode, compactGraph, expandGraph, graphStats, jsonSize, shardFile, writeJson } from './graph/store.mjs';
 export { cacheFile, collectIndexFiles, fingerprint, shouldIndexPath } from './index/files.mjs';
-export { buildMemoryAreas, buildPinnedFiles, detectCommandGuidance, detectPackageManager } from './memory/summary.mjs';
+export { buildMemoryAreas, detectCommandGuidance, detectPackageManager } from './memory/summary.mjs';
 export { isReadmeIndexPath, retrievalMetadataForPath } from './graph/metadata.mjs';
 export { buildGraph } from './graph/extract.mjs';
 export { addDeterministicSemanticEdges } from './graph/semantic.mjs';
