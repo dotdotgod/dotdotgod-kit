@@ -11,6 +11,9 @@
 - Multi-file impact MUST use an equal-weight multi-seed Personalized PageRank and MUST place every changed file first in input order with seed score `100`.
 - Non-seed scores MUST use fixed weighted PPR connection `80` plus memory policy `20`, with candidate-independent internal PPR reference `0.4` exposed in ranking diagnostics.
 - Direct, curated, verification/test, semantic-only, and node-type evidence MUST NOT receive separate score or ordering bonuses; relation weights influence rank only through PPR and direct reasons remain explanation-only.
+- When semantic candidates are enabled, the command MUST prepare a request-local multilingual vector overlay from bounded changed-file profiles and the existing documentation-query cache.
+- Vector edges MUST use built-in relation weight multiplied by cosine similarity, MUST NOT persist changed-file text or vectors, and MUST participate in candidate discovery and PPR without mutating the indexed graph.
+- Model, cache, filesystem, offline, or inference failure MUST degrade to structural-only impact with semantic status `unavailable`; it MUST NOT fail the command solely because vectors are unavailable or fall back to lexical semantic edges.
 - The score breakdown MUST expose `connection.ppr`, raw probability/reference, `memory.priority`, memory policy adjustments, and optional strongest direct relation evidence.
 - Structured results MUST preserve legacy `changed` as the first changed path, expose all normalized paths as `changedFiles`, keep `related` as the bounded combined ranking, and include at most five non-seed related nodes per changed file in `perSeed`.
 - Shared related nodes MAY repeat across `perSeed` lists, while the combined `related` ranking MUST deduplicate nodes.
@@ -37,6 +40,8 @@
   - [packages/cli/src/impact/report.mjs](../../../packages/cli/src/impact/report.mjs)
   - [packages/cli/src/impact/scoring.mjs](../../../packages/cli/src/impact/scoring.mjs)
   - [packages/cli/src/impact/format.mjs](../../../packages/cli/src/impact/format.mjs)
+  - [packages/cli/src/impact/vector-overlay.mjs](../../../packages/cli/src/impact/vector-overlay.mjs)
+  - [packages/cli/src/impact/vector-profile.mjs](../../../packages/cli/src/impact/vector-profile.mjs)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../../packages/cli/test/e2e.test.mjs)
@@ -55,5 +60,5 @@
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/commands/graph.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/format.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CLI_INTERFACE.md","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/spec/IMPACT_RANKING_CONFIG.md","docs/test/README.md","packages/cli/README.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --json","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --yml","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --compact"]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/commands/graph.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/format.mjs","packages/cli/src/impact/vector-overlay.mjs","packages/cli/src/impact/vector-profile.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CLI_INTERFACE.md","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/spec/IMPACT_RANKING_CONFIG.md","docs/test/README.md","packages/cli/README.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --json","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --yml","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --compact"]}
 ```

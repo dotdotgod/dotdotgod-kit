@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -10,6 +10,8 @@ import {
   buildCommunities,
   buildGraph,
   buildImpactReport,
+  buildChangedFileProfile,
+  buildVectorImpactOverlay,
   buildMemoryAreas,
   buildPinnedFiles,
   buildIndex,
@@ -663,7 +665,7 @@ describe('CLI docs helpers', () => {
       { key: 'second', label: ' owned BY ', description: 'Second.', target: 'path', relation: 'second_relation', weight: 1 },
     ] } }, root);
     assert(duplicateLabels.some((error) => error.code === 'TRACEABILITY_CONFIG_INVALID_LABEL'));
-    for (const relation of ['contains_heading', 'declares_package', 'declares_script', 'declares_bin', 'depends_on', 'belongs_to_area', 'includes_resource', 'defines_contract', 'routes_to', 'semantic_similarity', 'mentions_package']) {
+    for (const relation of ['contains_heading', 'declares_package', 'declares_script', 'declares_bin', 'depends_on', 'belongs_to_area', 'includes_resource', 'defines_contract', 'routes_to', 'vector_similarity']) {
       const errors = validateMemoryConfigData({ traceability: { required: [], keys: [{ key: 'custom', label: 'Custom', description: 'Custom.', target: 'path', relation, weight: 0 }] } }, root);
       assert(errors.some((error) => error.code === 'TRACEABILITY_CONFIG_INVALID_RELATION'), relation);
     }
@@ -890,49 +892,20 @@ describe('impact ranking unit coverage', () => {
     assert(invalidSemantic.some((error) => error.code === 'IMPACT_RANKING_CONFIG_INVALID_SEMANTIC'));
   });
 
-  it('creates deterministic semantic edges for lexical, package, threshold, top-k, and archive rules', () => {
+  it('keeps lexical semantic edges out of the indexed graph', () => {
     const root = fixture();
     writeImpactRankingFixture(root);
-    const index = buildIndex(root);
-    const graph = index.graph;
-
-    const pathEdge = semanticEdges(graph, 'file:packages/policy-auditor/notes.mjs', 'semantic_similarity').find((edge) => edge.target === 'file:docs/arch/POLICY_AUDITOR_OVERVIEW.md');
-    assert(pathEdge);
-    assert.equal(pathEdge.confidence, 'INFERRED_LEXICAL_SEMANTIC');
-    assert.equal(typeof pathEdge.score, 'number');
-    assert(pathEdge.matchedTerms.includes('policy'));
-    assert(pathEdge.signals.includes('path') || pathEdge.signals.includes('filename'));
-
-    const packageEdge = semanticEdges(graph, 'file:packages/route-planner/package.json', 'mentions_package').find((edge) => edge.target === 'file:docs/arch/ROUTE_PLANNER_PACKAGE.md');
-    assert(packageEdge);
-    assert(packageEdge.signals.includes('package'));
-
-    const thresholdRoot = fixture();
-    writeImpactRankingFixture(thresholdRoot);
-    writeFixtureJson(thresholdRoot, 'dotdotgod.config.json', { impactRanking: { semantic: { threshold: 0.75 } } });
-    const thresholdIndex = buildIndex(thresholdRoot);
-    assert(!semanticEdges(thresholdIndex.graph, 'file:packages/policy-auditor/notes.mjs').some((edge) => edge.target === 'file:docs/arch/POLICY_AUDITOR_OVERVIEW.md'));
-
-    const topKRoot = fixture();
-    writeImpactRankingFixture(topKRoot);
-    writeFixtureJson(topKRoot, 'dotdotgod.config.json', { impactRanking: { semantic: { topKPerFile: 1 } } });
-    const topKIndex = buildIndex(topKRoot);
-    assert.equal(semanticEdges(topKIndex.graph, 'file:packages/policy-auditor/notes.mjs').length, 1);
-
-    const archiveSource = join(root, 'packages/route-planner/index.mjs');
-    const archiveDoc = join(root, 'docs/archive/plan/route-planner-old/README.md');
-    const archiveExcluded = addDeterministicSemanticEdges(buildGraph(root, [archiveSource, archiveDoc], defaultMemoryConfig()), defaultMemoryConfig());
-    assert(!semanticEdges(archiveExcluded, 'file:packages/route-planner/index.mjs').some((edge) => edge.target === 'file:docs/archive/plan/route-planner-old/README.md'));
-
-    const includeArchive = cloneConfigWithImpactRanking({ semantic: { includeArchiveBodies: true } });
-    const archiveIncluded = addDeterministicSemanticEdges(buildGraph(root, [archiveSource, archiveDoc], includeArchive), includeArchive);
-    assert(semanticEdges(archiveIncluded, 'file:packages/route-planner/index.mjs').some((edge) => edge.target === 'file:docs/archive/plan/route-planner-old/README.md'));
+    const graph = buildIndex(root).graph;
+    assert.equal(graph.edges.some((edge) => edge.confidence === 'INFERRED_LEXICAL_SEMANTIC'), false);
+    assert.equal(graph.edges.some((edge) => ['semantic_similarity', 'mentions_package'].includes(edge.relation)), false);
+    const retired = validateMemoryConfigData({ impactRanking: { semantic: { signals: ['path'], includeArchiveBodies: true } } }, root);
+    assert.equal(retired.filter((error) => error.code === 'IMPACT_RANKING_CONFIG_RETIRED_SEMANTIC_FIELD').length, 2);
   });
 
   it('scores fixed weighted PPR and memory with explanation-only direct evidence', () => {
     const root = fixture();
     writeImpactRankingFixture(root);
-    const report = buildImpactReport(buildIndex(root), 'packages/route-planner/index.mjs', { related: 50 });
+    const report = buildImpactReport(buildIndex(root), 'packages/route-planner/index.mjs', { related: 50, overlay: { status: 'available', edges: [{ source: 'file:packages/route-planner/index.mjs', target: 'file:docs/arch/ROUTE_PLANNER_SEMANTIC.md', relation: 'vector_similarity', weight: 1.8, score: 0.9, confidence: 'INFERRED_VECTOR_SEMANTIC', heading: 'Route Planner Semantic' }] } });
 
     const seed = itemById(report, 'file:packages/route-planner/index.mjs');
     assert.equal(rankOf(report, seed.id), 0);
@@ -1127,7 +1100,7 @@ describe('CLI index and graph helpers', () => {
     assert.equal(shouldIndexPath('Dockerfile'), true);
   });
 
-  it('builds graph nodes, semantic edges, scores, and bounded neighborhoods', () => {
+  it('builds structural graph nodes, scores, and bounded neighborhoods', () => {
     const root = fixture();
     mkdirSync(join(root, 'packages/pi/extensions/plan-mode'), { recursive: true });
     writeFileSync(join(root, 'docs/spec/PLAN_MODE.md'), '# Plan Mode Tool Settings\n\n## Plan Mode Tools\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/pi/extensions/plan-mode/utils.ts"],\n  "verifiedBy": ["packages/pi/test/plan-mode-utils.test.ts"],\n  "relatedDocs": ["docs/spec/FEATURE.md"],\n  "verificationCommands": ["pnpm --filter @dotdotgod/pi test"],\n  "contracts": [{\n    "id": "PLAN-MODE-TOOLS-001",\n    "title": "Plan mode tool access stays traceable",\n    "sections": ["Plan Mode Tools"],\n    "implementedBy": ["packages/tool/index.mjs"],\n    "verifiedBy": ["packages/tool/index.test.mjs"],\n    "relatedDocs": ["docs/spec/FEATURE.md"],\n    "verificationCommands": ["node --test packages/tool/index.test.mjs"]\n  }]\n}\n```\n');
@@ -1146,7 +1119,6 @@ describe('CLI index and graph helpers', () => {
     assert.equal(summary.byRelation.includes_resource >= 1, true);
     assert.equal(summary.byRelation.routes_to >= 1, true);
     assert.equal(summary.byRelation.belongs_to_area >= 1, true);
-    assert.equal(summary.byRelation.semantic_similarity >= 1 || summary.byRelation.mentions_package >= 1, true);
     assert.equal(summary.byType.package_resource >= 1, true);
     assert(index.graph.nodes.some((node) => node.id === 'memory_area:spec' && node.role === 'behavior-truth'));
     assert(index.graph.nodes.some((node) => node.id === 'file:docs/spec/README.md' && node.memoryArea === 'spec' && node.retrieval?.role === 'behavior-truth'));
@@ -1222,6 +1194,58 @@ describe('CLI index and graph helpers', () => {
 });
 
 describe('local documentation vector query', () => {
+  it('builds bounded safe profiles and deterministic multilingual vector overlays', async () => {
+    const root = fixture();
+    mkdirSync(join(root, 'packages/app'), { recursive: true });
+    writeFileSync(join(root, 'packages/app/search.mjs'), "// 한국어 문서 검색 정책\nexport const search = true;\n");
+    writeFileSync(join(root, 'docs/spec/SEARCH.md'), '# Search\n\nMultilingual document retrieval policy.\n');
+    const index = buildIndex(root);
+    index.memoryConfig.impactRanking.semantic = { enabled: true, threshold: 0, topKPerFile: 20 };
+    const profile = buildChangedFileProfile(root, 'packages/app/search.mjs', index.graph);
+    assert(profile.text.startsWith('Path: packages/app/search.mjs'));
+    assert(profile.text.length <= 4000);
+    let calls = 0;
+    const fakeEmbed = async (texts) => {
+      calls += 1;
+      return texts.map((text) => {
+        const vector = Array(384).fill(0);
+        vector[/SEARCH.md|한국어 문서 검색 정책/i.test(text) ? 0 : 1] = 1;
+        return vector;
+      });
+    };
+    const overlay = await buildVectorImpactOverlay(root, index, ['./packages/app/search.mjs'], { embed: fakeEmbed });
+    assert.equal(overlay.status, 'available');
+    assert(overlay.edges.some((edge) => edge.source === 'file:packages/app/search.mjs' && edge.target === 'file:docs/spec/SEARCH.md' && edge.relation === 'vector_similarity'));
+    const report = buildImpactReport(index, './packages/app/search.mjs', { overlay });
+    assert.equal(report.changed, 'packages/app/search.mjs');
+    assert.equal(report.related.filter((item) => item.id === 'file:packages/app/search.mjs').length, 1);
+    const result = itemById(report, 'file:docs/spec/SEARCH.md');
+    assert(result.reasons.includes('vector_similarity'));
+    assert.equal(result.vectorEvidence.confidence, 'INFERRED_VECTOR_SEMANTIC');
+    assert(result.vectorEvidence.heading.length <= 160);
+    assert(result.vectorEvidence.chunkId.length <= 200);
+    const boundedReport = buildImpactReport(index, 'packages/app/search.mjs', { overlay: { status: 'available', edges: [{ source: 'file:packages/app/search.mjs', target: 'file:docs/spec/SEARCH.md', relation: 'vector_similarity', weight: 1, score: 0.5, heading: 'h'.repeat(500), chunkId: 'c'.repeat(500), confidence: 'INFERRED_VECTOR_SEMANTIC' }] } });
+    const boundedEvidence = itemById(boundedReport, 'file:docs/spec/SEARCH.md').vectorEvidence;
+    assert.equal(boundedEvidence.heading.length, 160);
+    assert.equal(boundedEvidence.chunkId.length, 200);
+    assert(calls >= 2);
+
+    mkdirSync(join(root, 'dist/private'), { recursive: true });
+    writeFileSync(join(root, 'dist/private/secret.mjs'), 'do not embed');
+    symlinkSync(join(root, 'dist/private'), join(root, 'packages/alias'), 'dir');
+    assert.equal(buildChangedFileProfile(root, 'packages/alias/secret.mjs', index.graph), null, 'canonical generated paths cannot bypass profile policy through a symlink parent');
+
+    const unavailable = await buildVectorImpactOverlay(root, index, ['packages/app/search.mjs'], { buildIndex: async () => { throw new Error('offline'); } });
+    assert.equal(unavailable.status, 'unavailable');
+    assert.equal(buildImpactReport(index, 'packages/app/search.mjs', { overlay: unavailable }).semantic.status, 'unavailable');
+    const invalid = await buildVectorImpactOverlay(root, index, ['packages/app/search.mjs'], {
+      embed: async () => [Array(384).fill(0).map((value, position) => position === 0 ? 1 : value)],
+      buildIndex: async () => ({ chunks: [{ id: 'bad', path: 'docs/spec/SEARCH.md', heading: 'x'.repeat(500) }], vectors: Float32Array.from([Number.NaN, ...Array(383).fill(0)]), manifest: {} }),
+    });
+    assert.equal(invalid.status, 'unavailable', 'invalid cached vectors degrade graph impact');
+    await assert.rejects(() => queryDocumentation(root, 'invalid', { embed: async () => [Array(384).fill(Number.NaN)] }), /finite normalized/, 'query keeps fatal invalid-vector semantics');
+  });
+
   it('chunks Markdown by heading and searches shared docs with an incremental fake embedder', async () => {
     const root = fixture();
     writeFileSync(join(root, 'docs/spec/SEARCH.md'), '# Search\n\nSemantic retrieval policy.\n\n## Korean\n\n한국어 문서 검색 정책.\n');

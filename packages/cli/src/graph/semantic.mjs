@@ -68,7 +68,7 @@ export function addDeterministicSemanticEdges(graph, config = defaultMemoryConfi
   const threshold = policy.semantic.threshold ?? 0.5;
   const topK = policy.semantic.topKPerFile ?? 5;
   const includeArchiveBodies = policy.semantic.includeArchiveBodies === true;
-  const enabledSignals = new Set(policy.semantic.signals ?? DEFAULT_IMPACT_RANKING_POLICY.semantic.signals);
+  const enabledSignals = new Set(policy.semantic.signals ?? ['path', 'filename', 'heading', 'package']);
   const baseGraph = { nodes: graph.nodes.map((node) => ({ ...node })), edges: graph.edges.filter((edge) => !SEMANTIC_RELATIONS.has(edge.relation)).map((edge) => ({ ...edge })) };
   const files = baseGraph.nodes.filter((node) => node.type === 'file' && node.path);
   const profiles = files.map((node) => semanticProfileForFile(node, baseGraph));

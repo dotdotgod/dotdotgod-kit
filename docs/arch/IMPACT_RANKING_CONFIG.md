@@ -39,7 +39,7 @@ Low-actionability and semantic-only counters remain diagnostics. Bounded output 
 
 ## Configuration Boundary
 
-Public presets, score weights, PPR settings, and relation-weight overrides are retired and invalid. Four legacy boost maps are inert for compatibility. Existing deterministic `impactRanking.semantic` candidate controls remain until the vector follow-up and do not contribute a separate semantic score.
+Public presets, score weights, PPR settings, and relation-weight overrides are retired and invalid. Four legacy boost maps are inert for compatibility. `impactRanking.semantic` controls request-local vector candidates through `enabled`, cosine threshold, and top-K. Vector preparation reuses the documentation query cache asynchronously, then supplies an ephemeral overlay to the synchronous report/PPR core. Each traversal edge uses built-in vector relation weight multiplied by cosine similarity. The indexed graph and changed-file text/vectors remain unmodified; failures produce structural-only results. Lexical semantic edges and lexical-only configuration fields are retired.
 
 Read-only graph diagnostics expose method, caps, and internal reference. `config init` does not serialize internal ranking constants.
 

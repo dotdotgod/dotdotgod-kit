@@ -19,6 +19,7 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/vector-semantic-impact/`: replaced persisted lexical impact edges with a bounded request-local multilingual vector overlay that reuses the documentation query cache, preserves synchronous structural ranking, and degrades safely when vectors are unavailable.
 - `plan/project-memory-lifecycle-hardening/`: hardened Pi automatic memory loading with active-branch state restoration, baseline/transcript separation, callback-order-safe owned-tool composition, and focused lifecycle regression coverage.
 - `plan/remove-all-trello-functionality/`: removed the remaining Trello CLI command, configuration, API implementation, workflow, tests, generated initializer settings, and maintained behavior documentation.
 - `plan/remove-trello-power-up/`: removed the private Trello Power-Up workspace package and GitHub Pages deployment while preserving CLI Trello docs sync, custom-field behavior, and workflow safety boundaries.

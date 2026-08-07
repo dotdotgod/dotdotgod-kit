@@ -3,7 +3,7 @@ import { usage } from '../cli/usage.mjs';
 import { readMemoryConfig } from '../memory/config.mjs';
 import { collectDocumentationChunks } from '../query/chunks.mjs';
 import { embedTexts } from '../query/embedder.mjs';
-import { readVectorCache, VECTOR_DIMENSIONS, VECTOR_MODEL, writeVectorCache } from '../query/store.mjs';
+import { isValidNormalizedVectorValues, readVectorCache, VECTOR_DIMENSIONS, VECTOR_MODEL, writeVectorCache } from '../query/store.mjs';
 
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 100;
@@ -31,10 +31,33 @@ export function parseQueryOptions(argv) {
   return options;
 }
 
-function cosine(left, vectors, offset) {
+function assertNormalizedVector(vector, label) {
+  if (!vector || vector.length !== VECTOR_DIMENSIONS || !isValidNormalizedVectorValues(vector)) throw new Error(`${label} must be a finite normalized ${VECTOR_DIMENSIONS}-dimensional vector.`);
+}
+
+export function cosineScore(left, vectors, offset = 0) {
+  assertNormalizedVector(left, 'Query vector');
+  const right = vectors?.subarray ? vectors.subarray(offset, offset + VECTOR_DIMENSIONS) : vectors?.slice(offset, offset + VECTOR_DIMENSIONS);
+  assertNormalizedVector(right, 'Passage vector');
   let score = 0;
-  for (let index = 0; index < VECTOR_DIMENSIONS; index += 1) score += left[index] * vectors[offset + index];
-  return score;
+  for (let index = 0; index < VECTOR_DIMENSIONS; index += 1) score += left[index] * right[index];
+  if (!Number.isFinite(score) || score < -1.000001 || score > 1.000001) throw new Error('Cosine similarity was outside the finite normalized range.');
+  return Math.max(-1, Math.min(1, score));
+}
+
+export function rankVectorFiles(queryVector, index) {
+  assertNormalizedVector(queryVector, 'Query vector');
+  if (!index || !Array.isArray(index.chunks) || index.vectors?.length !== index.chunks.length * VECTOR_DIMENSIONS || !isValidNormalizedVectorValues(index.vectors)) throw new Error('Vector index contains invalid passage vectors.');
+  const ranked = index.chunks.map((chunk, position) => ({ ...chunk, vectorScore: cosineScore(queryVector, index.vectors, position * VECTOR_DIMENSIONS) }))
+    .sort((left, right) => right.vectorScore - left.vectorScore || left.path.localeCompare(right.path) || left.id.localeCompare(right.id));
+  const results = [];
+  const seen = new Set();
+  for (const chunk of ranked) {
+    if (seen.has(chunk.path)) continue;
+    seen.add(chunk.path);
+    results.push(chunk);
+  }
+  return results;
 }
 
 function lexicalBoost(query, chunk) {
@@ -66,7 +89,11 @@ export async function buildVectorIndex(root, embed = embedTexts) {
   for (let offset = 0; offset < missing.length; offset += EMBED_BATCH_SIZE) {
     const batch = missing.slice(offset, offset + EMBED_BATCH_SIZE);
     const embedded = await embed(batch.map(({ chunk }) => `passage: ${chunk.passage}`));
-    embedded.forEach((vector, index) => vectors.set(vector, batch[index].index * VECTOR_DIMENSIONS));
+    if (!Array.isArray(embedded) || embedded.length !== batch.length) throw new Error('Embedder returned an unexpected passage-vector count.');
+    embedded.forEach((vector, index) => {
+      assertNormalizedVector(vector, 'Passage vector');
+      vectors.set(vector, batch[index].index * VECTOR_DIMENSIONS);
+    });
   }
   const storedChunks = chunks.map(({ passage, ...chunk }) => chunk);
   const manifest = writeVectorCache(root, storedChunks, vectors, {
@@ -81,9 +108,12 @@ export async function queryDocumentation(root, query, options = {}) {
   const embed = options.embed ?? embedTexts;
   const limit = options.limit ?? DEFAULT_LIMIT;
   const index = await buildVectorIndex(root, embed);
-  const [queryVector] = await embed([`query: ${query}`]);
+  const embeddedQuery = await embed([`query: ${query}`]);
+  if (!Array.isArray(embeddedQuery) || embeddedQuery.length !== 1) throw new Error('Embedder returned an unexpected query-vector count.');
+  const [queryVector] = embeddedQuery;
+  assertNormalizedVector(queryVector, 'Query vector');
   const rankedChunks = index.chunks.map((chunk, position) => {
-    const vectorScore = cosine(queryVector, index.vectors, position * VECTOR_DIMENSIONS);
+    const vectorScore = cosineScore(queryVector, index.vectors, position * VECTOR_DIMENSIONS);
     return { ...chunk, score: Number((vectorScore + lexicalBoost(query, chunk)).toFixed(6)), vectorScore: Number(vectorScore.toFixed(6)) };
   }).sort((left, right) => right.score - left.score || left.path.localeCompare(right.path));
   const results = [];

@@ -2,6 +2,8 @@ import { commandUsage, parseCommon, usage } from '../cli/usage.mjs';
 import { buildCommunities } from '../graph/communities.mjs';
 import { graphSummary, readFreshIndex } from '../index/cache.mjs';
 import { buildCompactImpactReport, buildImpactReport } from '../impact/report.mjs';
+import { buildVectorImpactOverlay } from '../impact/vector-overlay.mjs';
+import { canonicalizeChangedPath } from '../impact/vector-profile.mjs';
 import { formatCompactImpactOutput, formatYmlGraphImpactError, formatYmlImpactOutput } from '../impact/format.mjs';
 
 const MAX_CHANGED_FILES = 20;
@@ -65,8 +67,10 @@ export async function runGraph(argv) {
     }
     usage(message, 'graph impact');
   }
+  if (isImpact) options.changed = [...new Set(options.changed.map((path) => canonicalizeChangedPath(options.root, path)).filter(Boolean))];
   const { status, index, metadata } = readFreshIndex(options.root);
-  const rawImpact = isImpact ? buildImpactReport(index, options.changed) : undefined;
+  const overlay = isImpact ? await buildVectorImpactOverlay(options.root, index, options.changed) : undefined;
+  const rawImpact = isImpact ? buildImpactReport(index, options.changed, { overlay, verboseSemantic: options.json }) : undefined;
   const impact = isImpact && (options.compact || options.yml) ? buildCompactImpactReport(rawImpact) : rawImpact;
   const payload = isImpact
     ? { ok: status.ok, command: 'graph impact', compact: options.compact || undefined, root: options.root, status, metadata, changed: options.changed[0], changedFiles: options.changed, related: impact.related, impact }

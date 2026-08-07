@@ -70,6 +70,8 @@ The command may write only ignored `.dotdotgod/vectors/` cache files and the use
 
 Model download, offline, inference, invalid-shape, filesystem, and cache-write failures produce an actionable error and non-zero status. Tests inject a deterministic embedder and must not download the model.
 
+The index preparation, exact-cosine, and unique-file aggregation primitives are also reused by `graph impact`. This does not change query behavior: query failures remain fatal, while graph impact catches vector failures and returns structural-only results.
+
 ## Traceability
 
 

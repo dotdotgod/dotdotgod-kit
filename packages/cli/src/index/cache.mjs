@@ -7,7 +7,6 @@ import { addEdge, addNode, compactGraph, expandGraph, graphStats, jsonSize, shar
 import { cacheFile, collectIndexFiles, fingerprint } from './files.mjs';
 import { CACHE_VERSION } from './constants.mjs';
 import { buildGraph } from '../graph/extract.mjs';
-import { addDeterministicSemanticEdges } from '../graph/semantic.mjs';
 
 function collectFingerprints(root, config = readMemoryConfig(root)) {
   return collectIndexFiles(root, config).map((file) => {
@@ -45,7 +44,7 @@ export function buildIndex(root, previous = readIndex(root)) {
   const fullRebuild = !previous?.graph || previous.version !== CACHE_VERSION;
   const refreshReason = !previous ? 'missing' : previous.version !== CACHE_VERSION ? 'schema-mismatch' : removedPaths.length > 0 ? 'content-removed' : changedPaths.length > 0 ? 'content-changed' : 'fresh';
   const rawGraph = fullRebuild ? buildGraph(root, files.map((file) => join(root, file.path)), memoryConfig) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles, memoryConfig), changedPaths);
-  const graph = addDeterministicSemanticEdges(rawGraph, memoryConfig);
+  const graph = rawGraph;
   const archiveBodiesIncluded = (memoryConfig.areas ?? []).some((area) => area.id === 'archive-body' && area.includeBodiesByDefault !== false);
   return { version: CACHE_VERSION, schemaVersion: CACHE_VERSION, generatedAt: new Date().toISOString(), archiveBodiesIncluded, memoryConfig: memoryConfigSummary(memoryConfig), files, graph, stats: graphStats(graph), incremental: { enabled: true, fullRebuild, changedFiles: changedPaths.length, refreshReason, elapsedMs: Date.now() - startedAt } };
 }

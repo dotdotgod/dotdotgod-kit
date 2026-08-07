@@ -598,13 +598,9 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(changed.impactScore, 100);
     assert.equal(changed.scoreBreakdown.seed, 100);
     const spec = itemById(impact, 'file:docs/spec/APP.md');
-    const semanticOnly = itemById(impact, 'file:docs/arch/ROUTING_POLICY_NOTES.md');
     assert(spec);
-    assert(semanticOnly);
-    assert(rankOf(impact, spec.id) < rankOf(impact, semanticOnly.id));
     assert(spec.scoreBreakdown.connection.ppr > 0);
-    assert(hasSemanticReason(semanticOnly));
-    assert(semanticOnly.scoreBreakdown.connection.ppr > 0);
+    assert(['available', 'unavailable'].includes(impact.impact.semantic.status));
     assert(impact.impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/APP.md'));
     assert(impact.impact.groups.tests.items.some((item) => item.id === 'file:packages/app/index.test.mjs'));
     const contract = itemById(impact, 'contract:docs/spec/APP.md#APP-ROUTING-001');
@@ -671,9 +667,9 @@ describe('dotdotgod CLI e2e', () => {
     assert(itemById(fixed, 'file:docs/spec/APP.md').scoreBreakdown.connection.ppr > 0);
 
     const semanticDefault = json(run(['graph', 'impact', createFixture(), '--changed', 'packages/app/index.mjs', '--json']));
-    assert(hasSemanticReason(itemById(semanticDefault, 'file:docs/arch/ROUTING_POLICY_NOTES.md')));
+    assert(['available', 'unavailable'].includes(semanticDefault.impact.semantic.status));
     const semanticDisabled = impactWithConfig({ impactRanking: { semantic: { enabled: false } } });
-    assert(!hasSemanticReason(itemById(semanticDisabled, 'file:docs/arch/ROUTING_POLICY_NOTES.md')));
+    assert.equal(semanticDisabled.impact.semantic.status, 'disabled');
 
     const repoRoot = resolve('../..');
     const output = join(createFixture(), 'impact-measure.md');

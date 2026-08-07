@@ -38,7 +38,7 @@ dotdotgod graph impact . --changed <path> --compact
 - `index` builds `.dotdotgod/manifest.json` and compact graph shards from maintained project files.
 - `query` locally embeds shared Markdown with `Xenova/multilingual-e5-small`, incrementally stores vectors under `.dotdotgod/vectors/`, and returns the best-ranked chunk from each relevant Markdown file.
 - `resolve` and `expand` map explicit or high-signal prompt references to project files.
-- `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five.
+- `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five. It adds a bounded request-local multilingual vector overlay from the query cache when available and degrades to structural-only results when vector preparation fails.
 - `traceability links` checks or repairs generated Markdown traceability-link sections.
 
 ## Commands

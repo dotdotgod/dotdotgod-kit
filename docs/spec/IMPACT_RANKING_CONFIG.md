@@ -32,7 +32,7 @@ The following `impactRanking` fields are retired and validation errors:
 
 The four legacy boost maps are inert: `traceabilityBoosts`, `verificationBoosts`, `proximityBoosts`, and `semanticBoosts` are not read, validated, warned about, summarized, serialized, or scored.
 
-`impactRanking.semantic` remains the existing deterministic semantic-candidate configuration until the separate vector semantic migration. It does not restore semantic score bonuses.
+`impactRanking.semantic` controls the request-local vector overlay with `enabled`, cosine `threshold`, and `topKPerFile`. The lexical-only `signals` and `includeArchiveBodies` fields are retired validation errors. Model, dimensions, provider, profile strategy, and vector relation weight are fixed policy rather than public configuration. Semantic evidence does not restore a separate score bonus.
 
 ## Ranking And Selection
 
@@ -79,6 +79,8 @@ JSON keeps top-level and nested `related`, grouped output, `impactScore`, and `s
   - [packages/cli/src/impact/scoring.mjs](../../packages/cli/src/impact/scoring.mjs)
   - [packages/cli/src/impact/report.mjs](../../packages/cli/src/impact/report.mjs)
   - [packages/cli/src/impact/format.mjs](../../packages/cli/src/impact/format.mjs)
+  - [packages/cli/src/impact/vector-overlay.mjs](../../packages/cli/src/impact/vector-overlay.mjs)
+  - [packages/cli/src/impact/vector-profile.mjs](../../packages/cli/src/impact/vector-profile.mjs)
   - [scripts/evaluate-graph-impact.mjs](../../scripts/evaluate-graph-impact.mjs)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
@@ -100,5 +102,5 @@ JSON keeps top-level and nested `related`, grouped output, `impactScore`, and `s
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/memory/config.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/format.mjs","scripts/evaluate-graph-impact.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/arch/IMPACT_RANKING_CONFIG.md","docs/arch/VALIDATION_ARCHITECTURE.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/CONFIG_COMMAND.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml","node scripts/evaluate-graph-impact.mjs . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
+{"kind":"spec","implementedBy":["packages/cli/src/memory/config.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/format.mjs","packages/cli/src/impact/vector-overlay.mjs","packages/cli/src/impact/vector-profile.mjs","scripts/evaluate-graph-impact.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/arch/IMPACT_RANKING_CONFIG.md","docs/arch/VALIDATION_ARCHITECTURE.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/CONFIG_COMMAND.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml","node scripts/evaluate-graph-impact.mjs . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
 ```

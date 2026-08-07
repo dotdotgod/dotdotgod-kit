@@ -35,7 +35,9 @@ The evaluator also reports a synthetic graph with curated, explicit, determinist
 - stability after adding a disconnected candidate
 - invariance when multi-seed input order changes
 
-Candidate independence and seed-order invariance are blocking. Saturation and legacy metric deltas remain explicit measurement evidence for later versioned calibration; there is no evidence-free hard percentage threshold.
+Candidate independence and seed-order invariance are blocking. The evaluator also executes a deterministic request-local vector overlay fixture and requires its document candidate, reason, cosine evidence, and PPR connection to remain visible. Saturation and legacy metric deltas remain explicit measurement evidence for later versioned calibration; there is no evidence-free hard percentage threshold.
+
+Real model download and wall-clock latency are non-blocking manual evidence. Automated coverage instead bounds profile length, embedding calls, aggregation, deterministic ordering, and top-K.
 
 Selected-reference evidence:
 

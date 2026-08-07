@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { buildImpactReport, buildMemoryAreas, readFreshIndex } from '../packages/cli/src/core.mjs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { buildImpactReport, buildMemoryAreas, buildVectorImpactOverlay, readFreshIndex } from '../packages/cli/src/core.mjs';
 import { buildPersonalizedPageRank } from '../packages/cli/src/impact/scoring.mjs';
 import { DEFAULT_IMPACT_RANKING_POLICY } from '../packages/cli/src/memory/config.mjs';
 
@@ -270,6 +271,45 @@ function markdownReport(summary) {
   ].join('\n');
 }
 
+async function vectorOverlayEvidence() {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-vector-eval-'));
+  try {
+    mkdirSync(join(root, 'packages/app'), { recursive: true });
+    writeFileSync(join(root, 'packages/app/search.mjs'), '// 한국어 검색 변경 내용\nexport const search = true;\n');
+    const semantic = { ...DEFAULT_IMPACT_RANKING_POLICY.semantic, enabled: true, threshold: 0, topKPerFile: 1 };
+    const index = {
+      memoryConfig: { source: 'evaluation', impactRanking: { ...DEFAULT_IMPACT_RANKING_POLICY, semantic } },
+      graph: {
+        nodes: [
+          { id: 'file:packages/app/search.mjs', type: 'file', path: 'packages/app/search.mjs' },
+          { id: 'file:docs/spec/SEARCH.md', type: 'file', path: 'docs/spec/SEARCH.md' },
+          { id: 'file:docs/spec/SECOND.md', type: 'file', path: 'docs/spec/SECOND.md' },
+        ],
+        edges: [],
+      },
+    };
+    const unit = Float32Array.from([1, ...Array(383).fill(0)]);
+    const vectorIndex = {
+      chunks: [
+        { id: 'search-chunk', path: 'docs/spec/SEARCH.md', heading: 'Search' },
+        { id: 'second-chunk', path: 'docs/spec/SECOND.md', heading: 'Second' },
+      ],
+      vectors: Float32Array.from([...unit, ...unit]),
+      manifest: { embedded: 0, reused: 2 },
+    };
+    const options = { buildIndex: async () => vectorIndex, embed: async () => [Array.from(unit)] };
+    const first = await buildVectorImpactOverlay(root, index, ['./packages/app/search.mjs'], options);
+    const second = await buildVectorImpactOverlay(root, index, ['packages/app/search.mjs'], options);
+    const report = buildImpactReport(index, './packages/app/search.mjs', { overlay: first });
+    const candidate = report.related.find((item) => item.id === 'file:docs/spec/SEARCH.md');
+    const deterministicTopK = first.edges.length === 1 && JSON.stringify(first.edges) === JSON.stringify(second.edges) && first.edges[0]?.target === 'file:docs/spec/SEARCH.md';
+    const changedSourcePersisted = existsSync(join(root, '.dotdotgod'));
+    return { candidateFound: Boolean(candidate), reason: candidate?.reasons?.includes('vector_similarity') === true, cosine: candidate?.vectorEvidence?.score, connection: candidate?.scoreBreakdown?.connection?.ppr, deterministicTopK, changedSourcePersisted };
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
 function calibrationEvidence() {
   const graph = {
     nodes: ['seed-a', 'seed-b', 'curated', 'explicit', 'deterministic', 'one-hop', 'multi-hop', 'unrelated'].map((id) => ({ id })),
@@ -304,7 +344,7 @@ function calibrationEvidence() {
   return { reference, rawPpr: { singleSeed: classes, multiSeed }, candidateReferences, connectionScores, saturated: Object.values(connectionScores).filter((score) => score >= 80).length, candidateIndependent, seedOrderInvariant };
 }
 
-function main() {
+async function main() {
   const options = parseArgs(process.argv.slice(2));
   const { status, index, metadata } = readFreshIndex(options.root);
   const rows = SEEDS.map((gold) => {
@@ -345,6 +385,7 @@ function main() {
       saturatedConnectionTop10: average(rows, (row) => row.graph.saturatedConnectionTop10),
     },
     calibration: calibrationEvidence(),
+    vectorOverlay: await vectorOverlayEvidence(),
     legacyBaseline: LEGACY_QUALITY_BASELINE,
   };
   summary.legacyComparison = {
@@ -354,7 +395,7 @@ function main() {
     mrr: summary.averages.graphMrr - LEGACY_QUALITY_BASELINE.mrr,
     ndcgAt10: summary.averages.graphNdcgAt10 - LEGACY_QUALITY_BASELINE.ndcgAt10,
   };
-  summary.ok = summary.calibration.candidateIndependent && summary.calibration.seedOrderInvariant;
+  summary.ok = summary.calibration.candidateIndependent && summary.calibration.seedOrderInvariant && summary.vectorOverlay.candidateFound && summary.vectorOverlay.reason && summary.vectorOverlay.deterministicTopK && !summary.vectorOverlay.changedSourcePersisted;
   summary.verdict = summary.ok
     ? 'Graph impact records the intentional PPR-only migration and passes fixed-reference stability invariants.'
     : 'Graph impact fails a fixed-reference stability invariant; inspect the calibration evidence.';
@@ -366,4 +407,7 @@ function main() {
   } else process.stdout.write(output);
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
