@@ -78,7 +78,7 @@ The mode-neutral `project-memory` extension owns automatic project-memory assess
 
 - one assessment per reachable active-branch state in ordinary mode or Plan Mode
 - active-branch restoration, recent-load lookup, and bounded transcript traversal so abandoned siblings cannot affect the current branch
-- baseline-marker detection from `contextFiles` independently of bounded transcript evidence
+- baseline-marker detection from bounded active-branch transcript evidence, so startup `contextFiles` alone do not suppress the focused Load that earlier Plan Mode sessions requested
 - pending-only activation and execution of `dotdotgod_project_load`
 - compact focused Load/query output, completion recording, and duplicate prevention
 

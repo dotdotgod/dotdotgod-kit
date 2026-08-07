@@ -23,7 +23,6 @@ export interface ProjectMemoryContextCoverage {
 export interface ProjectMemoryLoadDecisionInput {
 	latestRequest?: string;
 	contextText?: string;
-	baselineContextText?: string;
 	hasRecentProjectMemoryLoad?: boolean;
 }
 
@@ -67,13 +66,10 @@ export function shouldLoadProjectMemory(input: ProjectMemoryLoadDecisionInput): 
 	}
 	if (input.hasRecentProjectMemoryLoad) return { loadNeeded: false, reason: "recent-load" };
 
-	const baselineCoverage = collectProjectMemoryContextCoverage(
-		input.baselineContextText ?? input.contextText,
-	);
 	const transcriptCoverage = collectProjectMemoryContextCoverage(input.contextText);
-	const areas = [...new Set([...baselineCoverage.areas, ...transcriptCoverage.areas])];
+	const areas = transcriptCoverage.areas;
 	const missingMarkers = REQUIRED_PROJECT_MEMORY_MARKERS.filter(
-		(marker) => !baselineCoverage.markers.includes(marker),
+		(marker) => !transcriptCoverage.markers.includes(marker),
 	);
 	if (missingMarkers.length > 0) {
 		return { loadNeeded: true, reason: "missing-baseline", missingMarkers, areas };
@@ -110,14 +106,6 @@ function getMessageText(message: AgentMessage): string {
 	return content
 		.filter((block): block is TextContent => block.type === "text")
 		.map((block) => block.text)
-		.join("\n");
-}
-
-export function getProjectMemoryContextFileText(
-	contextFiles: readonly { path?: string; content?: string }[] = [],
-): string {
-	return contextFiles
-		.map((file) => `${file.path ?? ""}\n${file.content ?? ""}`)
 		.join("\n");
 }
 

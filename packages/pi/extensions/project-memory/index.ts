@@ -5,7 +5,6 @@ import { buildLoadPrompt, collectSnapshot, runDotdotgodQuery } from "../load-pro
 import { composeActiveTools } from "../shared/active-tools.js";
 import {
 	buildPendingProjectMemoryLoadPrompt,
-	getProjectMemoryContextFileText,
 	getProjectMemoryContextText,
 	hasRecentProjectMemoryLoad,
 	PROJECT_MEMORY_LOAD_TOOL,
@@ -48,6 +47,11 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 		label: "dotdotgod project load",
 		description:
 			"Load curated project memory for a pending automatic context request using an agent-generated semantic focus.",
+		promptSnippet:
+			"Load curated project memory with a concise task-specific semantic focus when automatic project-memory loading is pending.",
+		promptGuidelines: [
+			"When automatic project-memory loading is pending, call dotdotgod_project_load before substantive work. Generate a short semantic focus from the behavior, architecture, source areas, and verification knowledge needed for the current task; do not copy the full user request verbatim.",
+		],
 		parameters: ProjectMemoryLoadParams,
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			lifecycle.beginLoad();
@@ -104,13 +108,8 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 	pi.on("before_agent_start", async (event, ctx) => {
 		if (lifecycle.needsAssessment) {
 			const entryCount = ctx.sessionManager.getBranch().length;
-			const contextFiles = (event.systemPromptOptions.contextFiles ?? []) as readonly {
-				path?: string;
-				content?: string;
-			}[];
 			const decision = shouldLoadProjectMemory({
 				latestRequest: event.prompt,
-				baselineContextText: getProjectMemoryContextFileText(contextFiles),
 				contextText: getProjectMemoryContextText(ctx),
 				hasRecentProjectMemoryLoad: hasRecentProjectMemoryLoad(ctx, entryCount),
 			});

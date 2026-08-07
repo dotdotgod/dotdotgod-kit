@@ -79,7 +79,7 @@ The mode-neutral `project-memory` extension owns automatic assessment in both or
 
 ## Loading and Impact Checks
 
-At the beginning of session work, the mode-neutral project-memory extension assesses whether baseline context or a recent reachable load already covers the request. When focused loading is needed, it temporarily exposes `dotdotgod_project_load`, records completion once for the active branch lineage, and continues the original request. Forks reuse only reachable completed state; abandoned sibling work does not suppress reassessment. Use `/dd:no-load`, `dd:no-load`, or `/no-load` to opt out for one request.
+At the beginning of session work, the mode-neutral project-memory extension assesses whether the active branch transcript or a recent reachable Load already covers project memory. Startup context files alone do not suppress the focused Load. When loading is needed, it temporarily exposes `dotdotgod_project_load`, records completion once for the active branch lineage, and continues the original request. Forks reuse only reachable completed state; abandoned sibling work does not suppress reassessment. Use `/dd:no-load`, `dd:no-load`, or `/no-load` to opt out for one request.
 
 `/dd:load` renders shared Markdown paths as a prefix-compressed documentation tree, excluding plan/archive local memory by default. Without arguments it expands through directory depth 5; with arguments it runs `dotdotgod query` for up to 30 local multilingual E5 results and renders the tree through depth 3.
 

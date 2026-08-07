@@ -34,7 +34,7 @@ Load detects the repository root, dirty worktree state, and baseline memory file
 - `README.md`
 - `docs/README.md`
 
-Agents preserve existing user changes and avoid rereading baseline content already clear in the session. Automatic assessment detects baseline markers directly from Pi `contextFiles`; transcript-derived evidence is bounded separately so a long session cannot truncate baseline-file coverage and cause a false `missing-baseline` decision.
+Agents preserve existing user changes and avoid rereading baseline content already clear in the active branch transcript. Automatic assessment intentionally uses bounded active-branch transcript evidence, matching the earlier Plan Mode trigger level: startup `contextFiles` alone do not suppress a focused Load. A recent reachable Load or transcript-visible baseline map prevents duplicate loading.
 
 ## Documentation Map
 

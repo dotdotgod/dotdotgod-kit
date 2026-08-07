@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
 	buildPendingProjectMemoryLoadPrompt,
-	getProjectMemoryContextFileText,
 	getProjectMemoryContextText,
 	hasRecentProjectMemoryLoad,
 	shouldLoadProjectMemory,
@@ -39,7 +38,7 @@ function createContext(branch: FakeEntry[]): any {
 	};
 }
 
-const baselineFiles = [
+const baselineTranscript = [
 	"AGENTS.md",
 	"README.md",
 	"docs/README.md",
@@ -47,7 +46,7 @@ const baselineFiles = [
 	"docs/arch/README.md",
 	"docs/test/README.md",
 	"docs/plan/README.md",
-].map((path) => ({ path, content: `baseline ${path}` }));
+].join("\n");
 
 describe("global project-memory orchestration", () => {
 	it("registers one pending-only focused load tool and keeps explicit full-load commands", () => {
@@ -55,6 +54,8 @@ describe("global project-memory orchestration", () => {
 		assert.match(globalSource, /pi\.on\("before_agent_start"/);
 		assert.match(globalSource, /pi\.on\("session_tree"/);
 		assert.match(globalSource, /mode: "compact"/);
+		assert.match(globalSource, /promptSnippet:/);
+		assert.match(globalSource, /promptGuidelines:/);
 		assert.match(loadCommandSource, /registerCommand\("load"/);
 		assert.match(loadCommandSource, /registerCommand\("dd:load"/);
 		assert.doesNotMatch(loadCommandSource, /dd:load:compact/);
@@ -106,11 +107,10 @@ describe("global project-memory orchestration", () => {
 		);
 	});
 
-	it("detects baseline files independently from a bounded long transcript", () => {
-		const baselineContextText = getProjectMemoryContextFileText(baselineFiles);
-		const transcript = "x".repeat(40_000);
-		const decision = shouldLoadProjectMemory({ baselineContextText, contextText: transcript });
-		assert.equal(decision.loadNeeded, false);
+	it("uses active-branch transcript coverage instead of startup context files", () => {
+		const decision = shouldLoadProjectMemory({ contextText: "x".repeat(40_000) });
+		assert.equal(decision.loadNeeded, true);
+		assert.equal(decision.reason, "missing-baseline");
 	});
 
 	it("uses the active branch for transcript and recent-completion decisions", () => {
@@ -160,12 +160,9 @@ describe("global project-memory orchestration", () => {
 		assert.match(prompt, /Continue the original request/);
 	});
 
-	it("skips automatic loading for recent loads, sufficient coverage, and opt-out", () => {
+	it("skips automatic loading for recent loads, sufficient transcript coverage, and opt-out", () => {
 		assert.equal(shouldLoadProjectMemory({ hasRecentProjectMemoryLoad: true }).loadNeeded, false);
 		assert.equal(shouldLoadProjectMemory({ latestRequest: "/dd:no-load" }).loadNeeded, false);
-		assert.equal(
-			shouldLoadProjectMemory({ baselineContextText: getProjectMemoryContextFileText(baselineFiles) }).loadNeeded,
-			false,
-		);
+		assert.equal(shouldLoadProjectMemory({ contextText: baselineTranscript }).loadNeeded, false);
 	});
 });
