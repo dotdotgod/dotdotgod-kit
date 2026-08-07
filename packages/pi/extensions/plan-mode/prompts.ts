@@ -78,18 +78,11 @@ export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAU
 	return compact ? buildPlanModeCompactContextPrompt(writablePaths) : buildPlanModeFullContextPrompt(allowedTools, writablePaths);
 }
 
-export function buildPendingAgentLoadPrompt(pending: boolean): string | undefined {
-	if (!pending) return undefined;
-	return `[PROJECT MEMORY LOAD REQUIRED]
-Before substantive planning, call dotdotgod_project_load exactly once. Generate a concise semantic focus covering the task's relevant behavior, architecture, source areas, documentation, and verification needs. Express the focus as a task-specific synthesis rather than copied request text or extracted keywords; use an empty focus when a broad baseline map is more useful. Continue the original planning request after the tool result arrives.`;
-}
-
 export interface PlanCompactionFocus {
 	task?: string;
 	activePlanPaths?: string[];
 	touchedMemoryPaths?: string[];
 	todoSummary?: string;
-	pendingLoadAfterCompaction?: boolean;
 	constraints?: string[];
 }
 
@@ -134,7 +127,6 @@ export function formatPlanCompactionFocus(focus?: PlanCompactionFocus): string |
 		formatFocusList("Active plan", focus.activePlanPaths),
 		formatFocusList("Touched plan/archive memory", focus.touchedMemoryPaths),
 		focus.todoSummary?.trim() ? `- Todo state: ${focus.todoSummary.trim()}` : undefined,
-		focus.pendingLoadAfterCompaction ? "- Pending: load curated project memory after compaction" : undefined,
 		formatFocusList("Preserve constraints", focus.constraints),
 	].filter((line): line is string => Boolean(line));
 	if (lines.length === 0) return undefined;

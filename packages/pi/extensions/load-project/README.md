@@ -8,9 +8,8 @@ See `docs/spec/LOAD_PROJECT.md` for behavior and `docs/arch/EXTENSION_ARCHITECTU
 
 - `/load` — compatibility full-load command with duplicate-command conflict handling.
 - `/dd:load` — stable namespaced full-load command.
-- `/dd:load:compact` — compact refresh for already-loaded sessions.
 
-The command name selects full or compact reporting. Free-form arguments are query text and never change the mode. Both modes expose `Help: dotdotgod --help` as optional discovery guidance without reporting CLI installation status or requiring Help execution.
+Both commands produce full reporting. Free-form arguments are query text and never change the mode. Compact rendering remains an internal detail of the separate global automatic project-memory loader; there is no public compact slash command. Explicit and automatic loads expose `Help: dotdotgod --help` as optional discovery guidance without reporting CLI installation status or requiring Help execution.
 
 ## Documentation Map And Query
 
@@ -48,4 +47,4 @@ The agent follows local README indexes, reads spec/test/architecture bodies sele
 
 - `/load` may conflict with another extension, so `/dd:load` is always registered as the stable alias.
 - `load.pinnedPaths` and `load.pinnedBodies` remain config compatibility fields but do not affect Load output.
-- Full and compact modes share discovery and query behavior; only report detail differs.
+- Explicit full loads and internal automatic compact loads share discovery and query behavior; only report detail differs.

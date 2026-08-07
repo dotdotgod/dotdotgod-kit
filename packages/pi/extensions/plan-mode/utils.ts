@@ -44,7 +44,6 @@ export {
 	parsePlanModeExtraTools,
 	resolvePlanModeTools,
 	buildPlanModeContextPrompt,
-	buildPendingAgentLoadPrompt,
 	shouldShapePlanningContextOnAgentStart,
 	shouldPromptForPlanChoice,
 	formatPlanCompactionFocus,
@@ -52,17 +51,14 @@ export {
 	getPlanCompactionReason,
 } from "./prompts.ts";
 
-export type { LatestPlanningRequestSelection, LatestPlanningRequestSelectionInput, PlanModeRequestKind, ProjectMemoryContextCoverage, ProjectMemoryLoadDecision, ProjectMemoryLoadDecisionInput } from "./context.ts";
+export type { LatestPlanningRequestSelection, LatestPlanningRequestSelectionInput, PlanModeRequestKind } from "./context.ts";
 export {
-	REQUIRED_PROJECT_MEMORY_MARKERS,
 	detectPlanExecutionIntent,
 	classifyPlanModeRequest,
 	buildPlanModeRequestFraming,
-	collectProjectMemoryContextCoverage,
 	isPlanModeRuntimeRequest,
 	isSyntheticProjectMemoryLoadPrompt,
 	selectLatestPlanningRequest,
-	shouldLoadProjectMemoryForPlanning,
 } from "./context.ts";
 
 export type { DiscussionQueueAction, DiscussionQueueItem, DiscussionQueueItemState, DiscussionQueueOption, DiscussionQueueResult, DiscussionQueueSummary, PlanExecutionDecision, PlanExecutionTargetInput, PlanExecutionTargetResolution, PlanModeUserMessageDeliveryOptions, PlanRefinementPromptOptions, PlanReviewAction, PlanReviewChoice, PlanReviewDisplayMarkdownOptions, PlanReviewFileReader, PlanReviewMarkdown, PlanReviewScrollState } from "./plans.ts";

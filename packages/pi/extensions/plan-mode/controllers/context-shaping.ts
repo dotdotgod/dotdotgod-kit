@@ -1,6 +1,3 @@
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { getMessageText } from "../runtime/messages.ts";
 import type { PlanCompactionFocus } from "../prompts.ts";
 import type { TodoItem } from "../todos.ts";
 
@@ -9,12 +6,6 @@ export type PlanCliContextStatus = "not_loaded" | "loaded" | "unavailable";
 export interface ContextShapingSnapshot {
 	compactionInFlight: boolean;
 	lastCompactionEntryCount?: number;
-	loadInFlight: boolean;
-	lastLoadEntryCount?: number;
-	pendingLoadAfterCompaction: boolean;
-	pendingAgentLoad?: boolean;
-	pendingLoadPrompt?: string;
-	pendingLoadReason?: string;
 	pendingResumePrompt?: string;
 	pendingResumeReason?: string;
 	shapePending: boolean;
@@ -26,12 +17,6 @@ export interface ContextShapingSnapshot {
 export class ContextShapingController {
 	compactionInFlight = false;
 	lastCompactionEntryCount: number | undefined;
-	loadInFlight = false;
-	lastLoadEntryCount: number | undefined;
-	pendingLoadAfterCompaction = false;
-	pendingAgentLoad = false;
-	pendingLoadPrompt: string | undefined;
-	pendingLoadReason: string | undefined;
 	shapePending = false;
 	fullPromptInjected = false;
 	cliContextStatus: PlanCliContextStatus = "not_loaded";
@@ -46,10 +31,6 @@ export class ContextShapingController {
 
 	clearQueuedWork(): void {
 		this.shapePending = false;
-		this.pendingLoadAfterCompaction = false;
-		this.pendingAgentLoad = false;
-		this.pendingLoadPrompt = undefined;
-		this.pendingLoadReason = undefined;
 	}
 
 	markCliUnavailable(): void {
@@ -66,12 +47,6 @@ export class ContextShapingController {
 		return {
 			compactionInFlight: this.compactionInFlight,
 			...(this.lastCompactionEntryCount !== undefined ? { lastCompactionEntryCount: this.lastCompactionEntryCount } : {}),
-			loadInFlight: this.loadInFlight,
-			...(this.lastLoadEntryCount !== undefined ? { lastLoadEntryCount: this.lastLoadEntryCount } : {}),
-			pendingLoadAfterCompaction: this.pendingLoadAfterCompaction,
-			...(this.pendingAgentLoad ? { pendingAgentLoad: true } : {}),
-			...(this.pendingLoadPrompt ? { pendingLoadPrompt: this.pendingLoadPrompt } : {}),
-			...(this.pendingLoadReason ? { pendingLoadReason: this.pendingLoadReason } : {}),
 			shapePending: this.shapePending,
 			fullPromptInjected: this.fullPromptInjected,
 			cliContextStatus: this.cliContextStatus,
@@ -83,14 +58,6 @@ export class ContextShapingController {
 		if (!snapshot) return;
 		this.compactionInFlight = snapshot.compactionInFlight;
 		this.lastCompactionEntryCount = snapshot.lastCompactionEntryCount;
-		this.loadInFlight = snapshot.loadInFlight;
-		this.lastLoadEntryCount = snapshot.lastLoadEntryCount;
-		this.pendingLoadAfterCompaction = snapshot.pendingLoadAfterCompaction;
-		// Older version-2 sessions persisted a prebuilt synthetic prompt. Resume
-		// those as an agent-selected load instead of replaying the stale prompt.
-		this.pendingAgentLoad = snapshot.pendingAgentLoad ?? Boolean(snapshot.pendingLoadPrompt);
-		this.pendingLoadPrompt = undefined;
-		this.pendingLoadReason = snapshot.pendingLoadReason;
 		this.shapePending = snapshot.shapePending;
 		this.fullPromptInjected = snapshot.fullPromptInjected;
 		this.cliContextStatus = snapshot.cliContextStatus;
@@ -111,8 +78,6 @@ export class ContextShapingController {
 		const focus: PlanCompactionFocus = {
 			activePlanPaths,
 			touchedMemoryPaths: [...input.touchedPlanPaths],
-			pendingLoadAfterCompaction:
-				this.pendingLoadAfterCompaction || this.pendingAgentLoad,
 			constraints: [
 				"Use pnpm for workspace commands",
 				"Plan Mode blocks source/config mutation until execution mode",
@@ -124,46 +89,5 @@ export class ContextShapingController {
 		if (input.todos.length > 0)
 			focus.todoSummary = `${completed}/${input.todos.length} completed`;
 		return focus;
-	}
-
-	hasRecentProjectMemoryLoad(ctx: ExtensionContext, currentEntryCount: number): boolean {
-		const entries = ctx.sessionManager.getEntries();
-		for (let i = entries.length - 1; i >= 0; i -= 1) {
-			const entry = entries[i] as {
-				type?: string;
-				customType?: string;
-				data?: { entryCount?: number };
-			};
-			if (
-				entry.type === "custom" &&
-				entry.customType === "project-memory-load"
-			) {
-				const loadEntryCount = entry.data?.entryCount ?? i;
-				return currentEntryCount - loadEntryCount < 25;
-			}
-		}
-		return false;
-	}
-
-	getProjectMemoryContextText(ctx: ExtensionContext): string {
-		return ctx.sessionManager
-			.getEntries()
-			.slice(-60)
-			.map((entry) => {
-				const candidate = entry as {
-					type?: string;
-					customType?: string;
-					message?: AgentMessage;
-					data?: unknown;
-				};
-				if (candidate.type === "message" && candidate.message)
-					return getMessageText(candidate.message);
-				if (candidate.type === "custom")
-					return `${candidate.customType ?? "custom"}\n${JSON.stringify(candidate.data ?? {})}`;
-				return "";
-			})
-			.filter(Boolean)
-			.join("\n")
-			.slice(-20_000);
 	}
 }

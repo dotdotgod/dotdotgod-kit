@@ -21,11 +21,15 @@ describe("plan-mode command registration", () => {
 		assert.doesNotMatch(extensionSource, /getFlag\("plan"\)/);
 	});
 
-	it("registers a pending-only agent-focused project-memory load tool", () => {
-		assert.match(extensionSource, /PLAN_MODE_PROJECT_LOAD_TOOL = "dotdotgod_project_load"/);
-		assert.match(extensionSource, /!contextShaping\.pendingAgentLoad/);
-		assert.match(extensionSource, /runDotdotgodQuery\(ctx\.cwd, focus\)/);
-		assert.match(extensionSource, /completeAgentPlanningLoad/);
-		assert.match(extensionSource, /contextShaping\.pendingAgentLoad && availableTools\.includes/);
+	it("does not own automatic project-memory loading", () => {
+		assert.doesNotMatch(extensionSource, /dotdotgod_project_load/);
+		assert.doesNotMatch(extensionSource, /pendingAgentLoad/);
+		assert.doesNotMatch(extensionSource, /requestPlanningLoadIfNeeded/);
+	});
+
+	it("routes Plan Mode transitions through owned-tool composition", () => {
+		assert.match(extensionSource, /composeActiveTools\([\s\S]*pi\.getActiveTools\(\),[\s\S]*getPlanModeOwnedTools\(\),[\s\S]*desiredOwned/);
+		assert.match(extensionSource, /setNormalTools: \(\) => setOwnedActiveTools\(NORMAL_MODE_TOOLS\)/);
+		assert.match(extensionSource, /setOwnedActiveTools\(modeLifecycle\.activeTools\)/);
 	});
 });

@@ -22,10 +22,8 @@ import {
 	buildPlanReviewTitle,
 	buildPlanModeRequestFraming,
 	classifyPlanModeRequest,
-	collectProjectMemoryContextCoverage,
 	detectPlanExecutionIntent,
 	buildPlanModeContextPrompt,
-	buildPendingAgentLoadPrompt,
 	extractTodoItems,
 	extractDiscussionQueueItems,
 	formatCompactImpactSummary,
@@ -63,7 +61,6 @@ import {
 	resolvePlanModeTools,
 	selectPlanImpactPaths,
 	shouldAllowPlanModeBashCommand,
-	shouldLoadProjectMemoryForPlanning,
 	shouldPromptForPlanChoice,
 	summarizeDiscussionQueue,
 	shouldTrackImpactPath,
@@ -77,6 +74,11 @@ import {
 	type TodoItem,
 } from "../extensions/plan-mode/utils.ts";
 import { buildLoadPrompt } from "../extensions/load-project/utils.ts";
+import {
+	buildPendingProjectMemoryLoadPrompt,
+	collectProjectMemoryContextCoverage,
+	shouldLoadProjectMemory,
+} from "../extensions/project-memory/context.ts";
 
 describe("plan-mode user-message delivery", () => {
 	it("uses explicit follow-up delivery for synthetic user messages", () => {
@@ -485,7 +487,7 @@ describe("plan-mode request framing", () => {
 	});
 });
 
-describe("plan-mode project-memory load conditions", () => {
+describe("global project-memory load conditions", () => {
 	const fullContext = [
 		"AGENTS.md",
 		"README.md",
@@ -507,15 +509,15 @@ describe("plan-mode project-memory load conditions", () => {
 	});
 
 	it("requests load when baseline docs are missing", () => {
-		const decision = shouldLoadProjectMemoryForPlanning({ latestRequest: "implement Plan Mode framing", contextText: "docs/spec/PLAN_MODE.md" });
+		const decision = shouldLoadProjectMemory({ latestRequest: "implement Plan Mode framing", contextText: "docs/spec/PLAN_MODE.md" });
 		assert.equal(decision.loadNeeded, true);
 		assert.equal(decision.reason, "missing-baseline");
 		assert.equal(decision.missingMarkers?.includes("AGENTS.md"), true);
 	});
 
 	it("does not request load after a recent load or user opt-out", () => {
-		assert.deepEqual(shouldLoadProjectMemoryForPlanning({ latestRequest: "implement framing", hasRecentProjectMemoryLoad: true }), { loadNeeded: false, reason: "recent-load" });
-		assert.deepEqual(shouldLoadProjectMemoryForPlanning({ latestRequest: "/no-load", contextText: "" }), { loadNeeded: false, reason: "user-opt-out" });
+		assert.deepEqual(shouldLoadProjectMemory({ latestRequest: "implement framing", hasRecentProjectMemoryLoad: true }), { loadNeeded: false, reason: "recent-load" });
+		assert.deepEqual(shouldLoadProjectMemory({ latestRequest: "/no-load", contextText: "" }), { loadNeeded: false, reason: "user-opt-out" });
 	});
 
 	it("does not infer cross-area load requirements from free-form request wording", () => {
@@ -529,13 +531,13 @@ describe("plan-mode project-memory load conditions", () => {
 			"docs/plan/README.md",
 			"docs/spec/PLAN_MODE.md",
 		].join("\n");
-		const decision = shouldLoadProjectMemoryForPlanning({ latestRequest: "implement runtime validation behavior", contextText });
+		const decision = shouldLoadProjectMemory({ latestRequest: "implement runtime validation behavior", contextText });
 		assert.equal(decision.loadNeeded, false);
 		assert.deepEqual(decision.areas, ["spec"]);
 	});
 
 	it("keeps simple advisory work local when project memory coverage is sufficient", () => {
-		const decision = shouldLoadProjectMemoryForPlanning({ latestRequest: "이 방식이 좋을까?", contextText: fullContext });
+		const decision = shouldLoadProjectMemory({ latestRequest: "이 방식이 좋을까?", contextText: fullContext });
 		assert.equal(decision.loadNeeded, false);
 	});
 });
@@ -1009,7 +1011,6 @@ describe("plan-mode compaction helpers", () => {
 			activePlanPaths: ["docs/plan/documentation-query-integration/README.md"],
 			touchedMemoryPaths: ["docs/plan/documentation-query-integration/README.md"],
 			todoSummary: "1/3 completed",
-			pendingLoadAfterCompaction: true,
 			constraints: ["Use pnpm", "Exclude archive bodies"],
 		});
 		assert.match(focus ?? "", /Current work focus/);
@@ -1022,29 +1023,13 @@ describe("plan-mode compaction helpers", () => {
 		assert.match(instructions, /Do the current task/);
 	});
 
-	it("requires an agent-generated focused load while automatic loading is pending", () => {
-		assert.equal(buildPendingAgentLoadPrompt(false), undefined);
-		const prompt = buildPendingAgentLoadPrompt(true) ?? "";
+	it("builds the global agent-focused load requirement while pending", () => {
+		assert.equal(buildPendingProjectMemoryLoadPrompt(false), undefined);
+		const prompt = buildPendingProjectMemoryLoadPrompt(true) ?? "";
 		assert.match(prompt, /call dotdotgod_project_load exactly once/);
 		assert.match(prompt, /concise semantic focus/);
 		assert.match(prompt, /task-specific synthesis rather than copied request text/);
-		assert.match(prompt, /Continue the original planning request/);
-	});
-
-	it("restores legacy queued load prompts as pending agent-selected loads", () => {
-		const context = new ContextShapingController();
-		context.restore({
-			compactionInFlight: false,
-			loadInFlight: false,
-			pendingLoadAfterCompaction: false,
-			pendingLoadPrompt: "Load the dotdotgod project memory in compact mode.",
-			shapePending: false,
-			fullPromptInjected: true,
-			cliContextStatus: "not_loaded",
-		});
-		assert.equal(context.pendingAgentLoad, true);
-		assert.equal(context.pendingLoadPrompt, undefined);
-		assert.equal(context.snapshot().pendingAgentLoad, true);
+		assert.match(prompt, /Continue the original request/);
 	});
 
 	it("does not queue a synthetic user turn after hook-triggered compaction", () => {
@@ -1057,8 +1042,6 @@ describe("plan-mode compaction helpers", () => {
 		const context = new ContextShapingController();
 		context.restore({
 			compactionInFlight: false,
-			loadInFlight: false,
-			pendingLoadAfterCompaction: false,
 			pendingResumePrompt: "Continue the following Plan Mode request after planning-focused compaction.",
 			pendingResumeReason: "plan-mode-compaction-resume",
 			shapePending: false,

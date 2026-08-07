@@ -2,9 +2,6 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { recordContextMetric } from "../../context-metrics/utils.js";
-import {
-	shouldLoadProjectMemoryForPlanning,
-} from "../context.ts";
 import { formatReferenceExpansionSummary } from "../impact.ts";
 import {
 	hasExplicitBracketReferences,
@@ -27,9 +24,7 @@ import type { PlanArtifactController } from "./plan-artifact.js";
 
 interface ContextOrchestrationOptions {
 	getFlag: (name: string) => unknown;
-	appendEntry: (customType: string, data: unknown) => void;
 	persistState: () => void;
-	onPendingLoadChange: () => void;
 }
 
 export class ContextOrchestrationController {
@@ -95,7 +90,6 @@ export class ContextOrchestrationController {
 				);
 				ctx.ui.notify("Planning compaction completed.", "info");
 				this.refreshPlanCliContextIfAvailable(ctx);
-				this.contextShaping.pendingLoadAfterCompaction = false;
 				this.options.persistState();
 			},
 			onError: (error) => {
@@ -110,98 +104,6 @@ export class ContextOrchestrationController {
 				this.options.persistState();
 			},
 		});
-	}
-
-	requestPlanningLoadIfNeeded(ctx: ExtensionContext): void {
-		if (
-			!this.modeLifecycle.planningEnabled ||
-			this.modeLifecycle.executing ||
-			this.contextShaping.loadInFlight ||
-			this.contextShaping.compactionInFlight ||
-			this.contextShaping.pendingAgentLoad
-		)
-			return;
-
-		const entryCount = ctx.sessionManager.getEntries().length;
-		if (
-			this.contextShaping.lastLoadEntryCount !== undefined &&
-			entryCount - this.contextShaping.lastLoadEntryCount < 10
-		) {
-			recordContextMetric(ctx, this.options.getFlag, "plan-mode:load-skipped", {
-				reason: "debounced",
-				entryCount,
-			});
-			return;
-		}
-		if (this.contextShaping.hasRecentProjectMemoryLoad(ctx, entryCount)) {
-			recordContextMetric(ctx, this.options.getFlag, "plan-mode:load-skipped", {
-				reason: "recent-project-memory-load",
-				entryCount,
-			});
-			return;
-		}
-
-		this.contextShaping.lastLoadEntryCount = entryCount;
-		this.contextShaping.pendingAgentLoad = true;
-		this.contextShaping.pendingLoadReason = "plan-mode-context-shaping";
-		recordContextMetric(ctx, this.options.getFlag, "plan-mode:load-queued", {
-			entryCount,
-			reason: this.contextShaping.pendingLoadReason,
-		});
-		if (ctx.hasUI) {
-			ctx.ui.notify(
-				"Project memory looks missing or stale; the agent will choose a focused Load query before continuing planning.",
-				"info",
-			);
-		}
-		this.options.onPendingLoadChange();
-		this.options.persistState();
-	}
-
-	completeAgentPlanningLoad(ctx: ExtensionContext, focus: string, queryOk?: boolean): void {
-		const reason = this.contextShaping.pendingLoadReason ?? "plan-mode-context-shaping";
-		this.contextShaping.pendingAgentLoad = false;
-		this.contextShaping.pendingLoadReason = undefined;
-		this.contextShaping.lastLoadEntryCount = ctx.sessionManager.getEntries().length;
-		this.options.appendEntry("project-memory-load", {
-			reason,
-			entryCount: this.contextShaping.lastLoadEntryCount,
-			focus,
-			queryOk,
-		});
-		recordContextMetric(ctx, this.options.getFlag, "plan-mode:agent-load-complete", {
-			reason,
-			focus,
-			queryOk,
-		});
-		this.options.onPendingLoadChange();
-		this.options.persistState();
-	}
-
-	shouldLoadForPlanning(ctx: ExtensionContext): boolean {
-		if (
-			!this.modeLifecycle.planningEnabled ||
-			this.modeLifecycle.executing ||
-			this.contextShaping.loadInFlight ||
-			this.contextShaping.pendingAgentLoad
-		)
-			return false;
-		const entryCount = ctx.sessionManager.getEntries().length;
-		if (
-			this.contextShaping.lastLoadEntryCount !== undefined &&
-			entryCount - this.contextShaping.lastLoadEntryCount < 10
-		)
-			return false;
-		const hasRecentLoad = this.contextShaping.hasRecentProjectMemoryLoad(
-			ctx,
-			entryCount,
-		);
-		const decision = shouldLoadProjectMemoryForPlanning({
-			latestRequest: this.planArtifact.lastPlanningRequest,
-			contextText: this.contextShaping.getProjectMemoryContextText(ctx),
-			hasRecentProjectMemoryLoad: hasRecentLoad,
-		});
-		return decision.loadNeeded;
 	}
 
 	refreshPlanCliContextIfAvailable(ctx: ExtensionContext): void {

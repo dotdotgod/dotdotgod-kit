@@ -16,7 +16,7 @@ Current first-class support.
 - Initialization: `project-initializer` skill.
 - Documentation clarity: `document-clarify` skill.
 - Runtime workflow: `plan-mode`, `load-project`, and dependency-provided `pi-subagents` extensions.
-- Commands and tools: `/dd:plan`, `/load`, `/dd:load`, `/dd:load:compact`, `/impact-check`, and the `subagent` delegation tool when the dependency resources load.
+- Commands and tools: `/dd:plan`, `/load`, `/dd:load`, global pending-only `dotdotgod_project_load`, `/impact-check`, and the `subagent` delegation tool when the dependency resources load.
 
 ### Claude Code
 

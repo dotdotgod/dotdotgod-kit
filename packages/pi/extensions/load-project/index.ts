@@ -12,9 +12,9 @@ async function runLoadCommand(
 	pi: ExtensionAPI,
 	ctx: ExtensionCommandContext,
 	args: string,
-	commandName: "load" | "dd:load" | "dd:load:compact",
+	commandName: "load" | "dd:load",
 ) {
-	const mode = commandName === "dd:load:compact" ? "compact" : "full";
+	const mode = "full";
 	const snapshot = collectSnapshot(ctx.cwd);
 	const queryResult = args.trim() ? runDotdotgodQuery(ctx.cwd, args.trim()) : undefined;
 	const conflict = hasOtherLoadCommand(pi.getCommands());
@@ -72,8 +72,4 @@ export default function loadProjectExtension(pi: ExtensionAPI): void {
 		handler: async (args, ctx) => runLoadCommand(pi, ctx, args, "dd:load"),
 	});
 
-	pi.registerCommand("dd:load:compact", {
-		description: "Load dotdotgod docs for the current project in compact mode",
-		handler: async (args, ctx) => runLoadCommand(pi, ctx, args, "dd:load:compact"),
-	});
 }

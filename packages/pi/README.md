@@ -36,7 +36,7 @@ A good first run:
 | Need | Pi command or feature |
 | --- | --- |
 | Create the docs-first project scaffold | `project-initializer` skill |
-| Load project memory without broad file reads | `/dd:load` (full), `/dd:load:compact` (compact), or `/load` |
+| Load project memory without broad file reads | Automatic mode-neutral load when needed, or explicit `/dd:load` and `/load` |
 | Plan safely before source/config edits | `/dd:plan`, `/dd:plan <request>`, or startup flag `--dd-plan` |
 | Review changed-file impact | `/impact-check` or `dotdotgod_graph_impact` |
 | Improve docs clarity | `document-clarify` skill |

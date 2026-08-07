@@ -6,17 +6,18 @@ The Load workflow gives an agent narrative project context from maintained repos
 
 ## Commands
 
-Pi provides:
+Pi provides explicit full-load commands:
 
 - `/load`: compatibility full load
 - `/dd:load`: namespaced full load
-- `/dd:load:compact`: compact refresh
+
+Pi also performs one mode-neutral automatic project-memory assessment at the beginning of session work. Automatic state, recent-load lookup, and transcript inspection use only entries reachable from the active session branch. A fork before assessment reassesses; a fork before completion cannot inherit an abandoned sibling's completion; a fork after reachable completion reuses it. When baseline coverage is missing and no recent load exists, Pi temporarily activates `dotdotgod_project_load`, requires one agent-selected focused load, returns compact Load output, records completion exactly once for that reachable branch state, and continues the original request. This automatic flow applies in ordinary mode and Plan Mode. `/dd:no-load`, `dd:no-load`, or `/no-load` opts out of the automatic assessment for that request.
 
 Claude Code and Codex provide generated Load commands or skills from `packages/shared/workflows/load.md`. Their generated workflow runs `dotdotgod config <root> --json` to resolve documentation exclusions and uses `dotdotgod query` for focused routing, with README and tree fallback when CLI execution is unavailable.
 
 ## CLI Discovery
 
-Full and compact Load expose exactly this optional discovery hint:
+Explicit full Load and internal automatic compact Load expose exactly this optional discovery hint:
 
 ```text
 Help: dotdotgod --help
@@ -33,7 +34,7 @@ Load detects the repository root, dirty worktree state, and baseline memory file
 - `README.md`
 - `docs/README.md`
 
-Agents preserve existing user changes and avoid rereading baseline content already clear in the session.
+Agents preserve existing user changes and avoid rereading baseline content already clear in the session. Automatic assessment detects baseline markers directly from Pi `contextFiles`; transcript-derived evidence is bounded separately so a long session cannot truncate baseline-file coverage and cause a false `missing-baseline` decision.
 
 ## Documentation Map
 
@@ -69,7 +70,7 @@ Local memory is not part of the shared documentation map:
 
 ## Output
 
-Full Load reports:
+Explicit full Load reports:
 
 - project narrative and purpose
 - key working rules
@@ -77,14 +78,14 @@ Full Load reports:
 - relevant active plans or archive history when needed
 - questions surfaced by loaded material
 
-Compact Load reports:
+Internal automatic compact Load reports:
 
 - compact project-memory status
 - relevant documentation routes
 - relevant active plan hints when needed
 - bounded next reads
 
-Neither mode reports graph size, cache metrics, communities, or index statistics as project narrative.
+Neither output form reports graph size, cache metrics, communities, or index statistics as project narrative. Compact rendering is an internal automatic-load behavior and has no public slash command.
 
 ## Safety
 
@@ -98,12 +99,15 @@ Load and query do not modify source, docs, or project config. Query may create o
 ### Traceability Links
 
 - Implemented by:
+  - [packages/pi/extensions/project-memory/index.ts](../../packages/pi/extensions/project-memory/index.ts)
+  - [packages/pi/extensions/project-memory/context.ts](../../packages/pi/extensions/project-memory/context.ts)
   - [packages/pi/extensions/load-project/index.ts](../../packages/pi/extensions/load-project/index.ts)
   - [packages/pi/extensions/load-project/prompt.ts](../../packages/pi/extensions/load-project/prompt.ts)
   - [packages/pi/extensions/load-project/snapshot.ts](../../packages/pi/extensions/load-project/snapshot.ts)
   - [packages/cli/src/commands/query.mjs](../../packages/cli/src/commands/query.mjs)
   - [packages/shared/workflows/load.md](../../packages/shared/workflows/load.md)
 - Verified by:
+  - [packages/pi/test/project-memory-extension.test.ts](../../packages/pi/test/project-memory-extension.test.ts)
   - [packages/pi/test/load-project-utils.test.ts](../../packages/pi/test/load-project-utils.test.ts)
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
@@ -119,5 +123,5 @@ Load and query do not modify source, docs, or project config. Query may create o
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/pi/extensions/load-project/index.ts","packages/pi/extensions/load-project/prompt.ts","packages/pi/extensions/load-project/snapshot.ts","packages/cli/src/commands/query.mjs","packages/shared/workflows/load.md"],"verifiedBy":["packages/pi/test/load-project-utils.test.ts","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/cli/QUERY.md","docs/arch/EXTENSION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/pi test","pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs query . \"Load project memory\" --limit 5 --json"]}
+{"kind":"spec","implementedBy":["packages/pi/extensions/project-memory/index.ts","packages/pi/extensions/project-memory/context.ts","packages/pi/extensions/load-project/index.ts","packages/pi/extensions/load-project/prompt.ts","packages/pi/extensions/load-project/snapshot.ts","packages/cli/src/commands/query.mjs","packages/shared/workflows/load.md"],"verifiedBy":["packages/pi/test/project-memory-extension.test.ts","packages/pi/test/load-project-utils.test.ts","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/cli/QUERY.md","docs/arch/EXTENSION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/pi test","pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs query . \"Load project memory\" --limit 5 --json"]}
 ```

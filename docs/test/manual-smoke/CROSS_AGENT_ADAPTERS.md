@@ -35,7 +35,7 @@ Confirm `project-load`, `doc-first-planning`, `project-initializer`, `impact-rev
 
 ## Pi Load Guidance
 
-Confirm `/load`, `/dd:load`, and `/dd:load:compact` prompts expose exactly `Help: dotdotgod --help`, omit `CLI status:`, and continue through the documentation map when Help or query execution is unavailable.
+Confirm `/load`, `/dd:load`, and the mode-neutral automatic load expose exactly `Help: dotdotgod --help`, omit `CLI status:`, and continue through the documentation map when Help or query execution is unavailable. Confirm `/dd:load:compact` is not registered.
 
 ## Cross-Agent Planning Parity
 

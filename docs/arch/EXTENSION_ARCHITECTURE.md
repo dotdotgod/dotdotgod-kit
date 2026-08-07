@@ -53,8 +53,8 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 `plan-mode` owns runtime planning behavior:
 
 - Entry points: `pi --dd-plan` at startup, `/dd:plan`, `/dd:plan <request>`, and `Ctrl+Alt+P`; the namespaced startup flag avoids collisions with extensions that own `--plan`.
-- Runtime state: mode flags, internal todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/dd:plan <request>` delivery, request-framing classification, pending agent-selected project-memory load state, and pending source/config impact-check records.
-- Context shaping: first-request context checks, pending automatic-load tool activation on the continuing planning turn, compaction without a synthetic resume turn, compaction debounce, CLI planning-context summary, baseline-doc coverage checks, single-area-only context detection, optional validation, documentation-tree refresh, and bounded multi-file advisory graph impact checks when the CLI is available. Deterministic runtime logic decides whether memory is needed; the planning agent supplies a concise semantic focus to the read-only `dotdotgod_project_load` tool, which returns the existing compact Load/query output in the same turn.
+- Runtime state: mode flags, internal todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/dd:plan <request>` delivery, request-framing classification, and pending source/config impact-check records.
+- Context shaping: first-request planning compaction without a synthetic resume turn, compaction debounce, CLI planning-context summary, optional validation, documentation-tree refresh, and bounded multi-file advisory graph impact checks when the CLI is available. Mode-neutral automatic project-memory loading is owned separately and applies equally to Plan Mode and ordinary mode.
 - Impact-check integration: structured `graph impact --yml` runtime summaries, short pending-impact reminders after source/config edits, pending-path plus git source/config union checks, and stale pending-record cleanup after successful checks.
 - UX: queue-first Discussion Queue Console, then saved-plan execute/stay/refine/cancel review only after queue clearance. Explicit execution requests use the same queue-first review flow. Plan Mode suppresses review for generator-authored or actively generating plans, but it does not run generator stage validation. Generator status overlays restore the underlying Plan Mode status when cleared.
 - Prompt ownership: first-turn safety/workflow prompt, compact reminder, per-request framing, active tool list, impact-plan refinement and project validation guidance, discussion-queue follow-ups that update durable plan markdown, and compaction instructions that demote stale history.
@@ -72,19 +72,31 @@ The Pi adapter includes opt-in context metrics debug helpers used by `load-proje
 
 The debug path is for measurement and investigation only; normal package behavior remains unchanged unless the flag is enabled.
 
+### Global Project-Memory Extension
+
+The mode-neutral `project-memory` extension owns automatic project-memory assessment and focused loading:
+
+- one assessment per reachable active-branch state in ordinary mode or Plan Mode
+- active-branch restoration, recent-load lookup, and bounded transcript traversal so abandoned siblings cannot affect the current branch
+- baseline-marker detection from `contextFiles` independently of bounded transcript evidence
+- pending-only activation and execution of `dotdotgod_project_load`
+- compact focused Load/query output, completion recording, and duplicate prevention
+
+A small pure active-tool composition helper is the boundary between project-memory ownership and Plan Mode transitions. Each owner replaces only its own tools, preserving the pending load tool and third-party active tools without a shared mutable registry or callback-order dependency.
+
 ### `load-project` Extension
 
-`load-project` owns runtime project memory loading:
+`load-project` owns explicit runtime project-memory loading:
 
-- `/load` compatibility command
-- `/dd:load` namespaced full-load command and `/dd:load:compact` compact-load command
+- `/load` compatibility full-load command
+- `/dd:load` namespaced full-load command
 - complete shared Markdown discovery with configured plan/archive exclusions
 - prefix-compressed tree rendering through depth 5 without focus or depth 3 with focus, with all direct boundary files and named per-child summaries below the boundary
 - local `dotdotgod query` invocation for up to 30 focused multilingual E5 results
 - lightweight detection of baseline memory files and narrative loader prompt generation
 - command-conflict guidance for `/load`
 
-The shared CLI owns deterministic validation, graph cache/index management, bounded graph-impact reports, and local multilingual documentation query. The load extension builds its tree directly from the filesystem and invokes CLI query only for focused arguments, without injecting graph statistics into the Load narrative. It preserves `docs/archive/README.md` as the archive routing map while keeping archive bodies excluded by default.
+The shared CLI owns deterministic validation, graph cache/index management, bounded graph-impact reports, and local multilingual documentation query. The explicit load extension and global automatic loader reuse the same filesystem snapshot, prompt, and focused query helpers without injecting graph statistics into the Load narrative. It preserves `docs/archive/README.md` as the archive routing map while keeping archive bodies excluded by default.
 
 ## Prompt Layer
 
@@ -103,7 +115,7 @@ Prompt content should:
 
 ## State and Persistence
 
-`plan-mode` persists custom session entries for mode state, todos, review-prompt eligibility, prompt tier, active plan path, touched plan/archive paths, latest planning request, pending inline planning request delivery, queued load state, compaction measurements, one-time CLI context-check state, pending impact-check files, and recent completed impact-check records. Discussion-queue state is read from the active plan artifact instead of a sidecar or opaque session object; the custom UI returns structured choices and the agent follow-up updates the plan markdown as the durable source.
+`plan-mode` persists custom session entries for mode state, todos, review-prompt eligibility, prompt tier, active plan path, touched plan/archive paths, latest planning request, pending inline planning request delivery, compaction measurements, one-time CLI context-check state, pending impact-check files, and recent completed impact-check records. The global project-memory extension separately persists automatic assessment and pending-load state and restores only the latest state reachable from `ctx.sessionManager.getBranch()`. Discussion-queue state is read from the active plan artifact instead of a sidecar or opaque session object; the custom UI returns structured choices and the agent follow-up updates the plan markdown as the durable source.
 
 
 ## Related Behavior and Verification
