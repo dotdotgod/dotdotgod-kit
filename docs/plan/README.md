@@ -31,6 +31,7 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 - `cli-core-module-split/` — active: plan to split `packages/cli/src/core.mjs` into responsibility-focused modules while preserving CLI behavior and public exports.
 - `context-metrics-follow-up/` — paused: follow-up checklist for reviewing context size, lazy refresh behavior, snapshot boundedness, and graph usefulness after more representative usage.
 - `documentation-clarity-program/` — active: phased plan to clarify README, AGENTS.md, spec, test, architecture, and report documentation with role-specific subagent review and writing passes.
+- `hide-automatic-project-memory-instructions/` — ready-to-archive: implemented hidden model-only automatic-load guidance while preserving lifecycle gating, retry, and active-branch behavior; interactive TUI smoke remains optional release verification.
 - `landing-site/` — paused: plan for adding a static React landing and documentation site to the pnpm monorepo; waiting on framework, deployment, and design decisions.
 - `graph-serve/` — ready: local React/Sigma graph explorer for bounded community and impact navigation with explainable relationships, accessible list parity, and purposeful graph morphing.
 - `graph-node-impact-activation/` — active: impact-only graph workspace with file-node re-rooting, code/document emphasis, accessible inspection parity, and interruptible reduced-motion-aware Sigma transitions.

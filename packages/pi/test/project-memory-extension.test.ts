@@ -3,11 +3,10 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
 	buildPendingProjectMemoryLoadPrompt,
-	buildProjectMemorySyntheticUserPrompt,
 	collectProjectMemoryContextCoverage,
 	formatProjectMemoryToolOutput,
 	getProjectMemoryContextText,
-	hasReachableProjectMemorySyntheticPrompt,
+	hasReachableProjectMemoryInstruction,
 	hasRecentProjectMemoryLoad,
 	isExplicitProjectMemoryLoadInput,
 	shouldLoadProjectMemory,
@@ -60,7 +59,9 @@ describe("global project-memory orchestration", () => {
 		assert.match(globalSource, /pi\.on\("before_agent_start"/);
 		assert.match(globalSource, /pi\.on\("input"/);
 		assert.match(globalSource, /action: "transform"/);
-		assert.match(globalSource, /buildProjectMemorySyntheticUserPrompt/);
+		assert.doesNotMatch(globalSource, /buildProjectMemorySyntheticUserPrompt|PROJECT_MEMORY_AUTO_LOAD/);
+		assert.match(globalSource, /customType: PROJECT_MEMORY_CONTEXT_TYPE/);
+		assert.match(globalSource, /display: false/);
 		assert.match(globalSource, /pi\.on\("tool_call"/);
 		assert.match(globalSource, /event\.toolName !== PROJECT_MEMORY_LOAD_TOOL\) return/);
 		assert.doesNotMatch(globalSource, /pi\.on\("turn_end"|pi\.on\("agent_end"|sendUserMessage/);
@@ -84,13 +85,11 @@ describe("global project-memory orchestration", () => {
 			assessed: true,
 			pending: true,
 			promptDelivered: false,
-			originalRequest: undefined,
 		});
 		assert.deepEqual(findLatestProjectMemoryAutoState([...activeBranch, abandonedSibling]), {
 			assessed: true,
 			pending: false,
 			promptDelivered: false,
-			originalRequest: undefined,
 		});
 
 		const beforeAssessmentFork = new ProjectMemoryLifecycle();
@@ -174,7 +173,6 @@ describe("global project-memory orchestration", () => {
 			pending: false,
 			inFlight: false,
 			promptDelivered: false,
-			originalRequest: undefined,
 		});
 		assert.throws(() => lifecycle.beginLoad(), /No automatic project-memory load is pending/);
 		assert.deepEqual(
@@ -189,7 +187,7 @@ describe("global project-memory orchestration", () => {
 
 	it("blocks duplicate in-flight scheduling and leaves an interrupted load retryable", () => {
 		const lifecycle = new ProjectMemoryLifecycle();
-		lifecycle.assess(true, "Original task");
+		lifecycle.assess(true);
 		assert.throws(() => lifecycle.beginLoad(), /No automatic project-memory load is pending/);
 		lifecycle.confirmPromptDelivered();
 		lifecycle.beginLoad();
@@ -209,7 +207,7 @@ describe("global project-memory orchestration", () => {
 		assert.equal(formatProjectMemoryToolOutput("one\ntwo\nthree", false, "Ctrl+O to expand"), "one\ntwo\nthree");
 	});
 
-	it("confirms transformed prompt delivery only when the generated message is reachable", () => {
+	it("confirms hidden instruction delivery only when its message is reachable", () => {
 		const stateEntry = {
 			type: "custom",
 			customType: "project-memory-auto-state",
@@ -217,23 +215,27 @@ describe("global project-memory orchestration", () => {
 				assessed: true,
 				pending: true,
 				promptDelivered: false,
-				originalRequest: "Review the plan",
 			},
 		};
 		const missing = new ProjectMemoryLifecycle();
 		missing.restore([stateEntry], false);
 		assert.equal(missing.state.promptDelivered, false);
 
-		const generatedMessage = {
+		const hiddenInstruction = {
 			type: "message",
-			message: { role: "user", content: "Review the plan\n\n[PROJECT MEMORY AUTO LOAD]" },
+			message: {
+				role: "custom",
+				customType: "project-memory-context",
+				content: "hidden automatic-load guidance",
+				display: false,
+			},
 		};
 		assert.equal(
-			hasReachableProjectMemorySyntheticPrompt([stateEntry, generatedMessage] as any),
+			hasReachableProjectMemoryInstruction([stateEntry, hiddenInstruction] as any),
 			true,
 		);
 		const delivered = new ProjectMemoryLifecycle();
-		delivered.restore([stateEntry, generatedMessage], true);
+		delivered.restore([stateEntry, hiddenInstruction], true);
 		assert.equal(delivered.state.promptDelivered, true);
 
 		const confirmedState = {
@@ -241,31 +243,28 @@ describe("global project-memory orchestration", () => {
 			data: { ...stateEntry.data, promptDelivered: true },
 		};
 		assert.equal(
-			hasReachableProjectMemorySyntheticPrompt(
-				[generatedMessage, confirmedState] as any,
+			hasReachableProjectMemoryInstruction(
+				[hiddenInstruction, confirmedState] as any,
 			),
 			false,
 		);
 		const restoredAfterConfirmation = new ProjectMemoryLifecycle();
-		restoredAfterConfirmation.restore([generatedMessage, confirmedState], false);
+		restoredAfterConfirmation.restore([hiddenInstruction, confirmedState], false);
 		assert.equal(restoredAfterConfirmation.state.promptDelivered, true);
 	});
 
-	it("builds the required context and transformed synthetic user prompt", () => {
+	it("builds hidden automatic-load guidance without synthetic user content", () => {
 		assert.equal(buildPendingProjectMemoryLoadPrompt(false), undefined);
 		const delivered = buildPendingProjectMemoryLoadPrompt(true) ?? "";
 		assert.match(delivered, /call dotdotgod_project_load exactly once/);
 		assert.match(delivered, /Continue the original request/);
-
-		const synthetic = buildProjectMemorySyntheticUserPrompt("Implement graph impact routing");
-		assert.match(synthetic, /^Implement graph impact routing/);
-		assert.match(synthetic, /\[PROJECT MEMORY AUTO LOAD\]/);
-		assert.match(synthetic, /continue the original request above/i);
+		assert.doesNotMatch(delivered, /PROJECT MEMORY AUTO LOAD/);
+		assert.doesNotMatch(globalSource, /originalRequest|buildProjectMemorySyntheticUserPrompt/);
 	});
 
 	it("strips the structural explicit-load marker and cancels pending automatic state", () => {
 		const lifecycle = new ProjectMemoryLifecycle();
-		lifecycle.assess(true, "Original task");
+		lifecycle.assess(true);
 		lifecycle.confirmPromptDelivered();
 		lifecycle.assess(false);
 		assert.deepEqual(lifecycle.state, {
@@ -273,7 +272,6 @@ describe("global project-memory orchestration", () => {
 			pending: false,
 			inFlight: false,
 			promptDelivered: false,
-			originalRequest: undefined,
 		});
 
 		const explicit = "[PROJECT MEMORY EXPLICIT LOAD]\nLoad the dotdotgod project memory in full mode.";

@@ -3,7 +3,6 @@ export interface ProjectMemoryState {
 	pending: boolean;
 	inFlight: boolean;
 	promptDelivered: boolean;
-	originalRequest: string | undefined;
 }
 
 interface ProjectMemoryStateEntry {
@@ -14,7 +13,7 @@ interface ProjectMemoryStateEntry {
 
 export function findLatestProjectMemoryAutoState(
 	entries: readonly unknown[],
-): Pick<ProjectMemoryState, "assessed" | "pending" | "promptDelivered" | "originalRequest"> | undefined {
+): Pick<ProjectMemoryState, "assessed" | "pending" | "promptDelivered"> | undefined {
 	for (let i = entries.length - 1; i >= 0; i -= 1) {
 		const entry = entries[i] as ProjectMemoryStateEntry | undefined;
 		if (entry?.type !== "custom" || entry.customType !== "project-memory-auto-state") continue;
@@ -22,16 +21,11 @@ export function findLatestProjectMemoryAutoState(
 			assessed?: boolean;
 			pending?: boolean;
 			promptDelivered?: boolean;
-			originalRequest?: string;
 		} | undefined;
 		return {
 			assessed: data?.assessed === true,
 			pending: data?.pending === true,
 			promptDelivered: data?.promptDelivered === true,
-			originalRequest:
-				typeof data?.originalRequest === "string"
-					? data.originalRequest
-					: undefined,
 		};
 	}
 	return undefined;
@@ -43,7 +37,6 @@ export class ProjectMemoryLifecycle {
 		pending: false,
 		inFlight: false,
 		promptDelivered: false,
-		originalRequest: undefined,
 	};
 
 	restore(entries: readonly unknown[], deliveredPromptReachable = false): void {
@@ -54,18 +47,16 @@ export class ProjectMemoryLifecycle {
 		this.state.promptDelivered =
 			this.state.pending &&
 			((restored?.promptDelivered ?? false) || deliveredPromptReachable);
-		this.state.originalRequest = restored?.originalRequest;
 	}
 
 	get needsAssessment(): boolean {
 		return !this.state.assessed && !this.state.inFlight;
 	}
 
-	assess(pending: boolean, originalRequest?: string): void {
+	assess(pending: boolean): void {
 		this.state.assessed = true;
 		this.state.pending = pending;
 		this.state.promptDelivered = false;
-		this.state.originalRequest = pending ? originalRequest : undefined;
 	}
 
 	confirmPromptDelivered(): void {
@@ -89,7 +80,6 @@ export class ProjectMemoryLifecycle {
 	completeLoad(): void {
 		this.state.pending = false;
 		this.state.promptDelivered = false;
-		this.state.originalRequest = undefined;
 	}
 
 	finishLoad(): void {

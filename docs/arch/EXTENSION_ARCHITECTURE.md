@@ -79,9 +79,9 @@ The mode-neutral `project-memory` extension owns automatic project-memory assess
 - one assessment per reachable active-branch state in ordinary mode or Plan Mode
 - active-branch restoration, recent-load lookup, and bounded transcript traversal so abandoned siblings cannot affect the current branch
 - baseline-marker detection from bounded active-branch transcript evidence, so startup `contextFiles` alone do not suppress the focused Load that earlier Plan Mode sessions requested
-- active-branch persistence of the original request plus generated-prompt state
-- one-shot `input` transformation that turns the original request itself into a generated user-role load prompt while preserving the original task text first
-- pending-only availability of `dotdotgod_project_load` in the current agent loop, with execution of that owned tool rejected until the generated message is reachable
+- active-branch persistence of automatic assessment, pending-load, and hidden-instruction delivery state without copying the original request into extension state
+- pass-through `input` handling that leaves the user's text and images unchanged, followed by a persistent `before_agent_start` custom instruction with `display: false` for model-only guidance
+- pending-only availability of `dotdotgod_project_load` in the current agent loop, with execution of that owned tool rejected until the hidden instruction message is reachable
 - compact focused Load/query output, completion recording, retryable delivery failure, and duplicate prevention
 
 A small pure active-tool composition helper is the boundary between project-memory ownership and Plan Mode transitions. Each owner replaces only its own tools, preserving the pending load tool and third-party active tools without a shared mutable registry or callback-order dependency.
@@ -118,7 +118,7 @@ Prompt content should:
 
 ## State and Persistence
 
-`plan-mode` persists custom session entries for mode state, todos, review-prompt eligibility, prompt tier, active plan path, touched plan/archive paths, latest planning request, pending inline planning request delivery, compaction measurements, one-time advisory-context state, pending impact-check files, and recent completed impact-check records. The global project-memory extension separately persists automatic assessment, original-request, synthetic-prompt delivery, and pending-load state and restores only the latest state reachable from `ctx.sessionManager.getBranch()`. Discussion-queue state is read from the active plan artifact instead of a sidecar or opaque session object; the custom UI returns structured choices and the agent follow-up updates the plan markdown as the durable source.
+`plan-mode` persists custom session entries for mode state, todos, review-prompt eligibility, prompt tier, active plan path, touched plan/archive paths, latest planning request, pending inline planning request delivery, compaction measurements, one-time advisory-context state, pending impact-check files, and recent completed impact-check records. The global project-memory extension separately persists automatic assessment, hidden-instruction delivery, and pending-load state and restores only the latest state reachable from `ctx.sessionManager.getBranch()`. Discussion-queue state is read from the active plan artifact instead of a sidecar or opaque session object; the custom UI returns structured choices and the agent follow-up updates the plan markdown as the durable source.
 
 
 ## Related Behavior and Verification
