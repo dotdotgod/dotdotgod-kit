@@ -204,6 +204,10 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 		setToolActive(state.pending);
 		const content = buildPendingProjectMemoryLoadPrompt(state.pending);
 		if (!content) return;
+		if (!state.promptDelivered) {
+			lifecycle.confirmPromptDelivered();
+			persistState();
+		}
 		return {
 			message: {
 				customType: PROJECT_MEMORY_CONTEXT_TYPE,

@@ -207,6 +207,22 @@ describe("global project-memory orchestration", () => {
 		assert.equal(formatProjectMemoryToolOutput("one\ntwo\nthree", false, "Ctrl+O to expand"), "one\ntwo\nthree");
 	});
 
+	it("allows the pending tool immediately after scheduling the hidden instruction", () => {
+		const lifecycle = new ProjectMemoryLifecycle();
+		lifecycle.assess(true);
+
+		const instruction = buildPendingProjectMemoryLoadPrompt(lifecycle.state.pending);
+		assert.match(instruction ?? "", /call dotdotgod_project_load exactly once/);
+		lifecycle.confirmPromptDelivered();
+
+		assert.doesNotThrow(() => lifecycle.beginLoad());
+		assert.equal(lifecycle.state.inFlight, true);
+		assert.match(
+			globalSource,
+			/const content = buildPendingProjectMemoryLoadPrompt[\s\S]*lifecycle\.confirmPromptDelivered\(\);[\s\S]*customType: PROJECT_MEMORY_CONTEXT_TYPE/,
+		);
+	});
+
 	it("confirms hidden instruction delivery only when its message is reachable", () => {
 		const stateEntry = {
 			type: "custom",

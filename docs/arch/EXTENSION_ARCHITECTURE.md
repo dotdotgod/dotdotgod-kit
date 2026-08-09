@@ -81,7 +81,7 @@ The mode-neutral `project-memory` extension owns automatic project-memory assess
 - baseline-marker detection from bounded active-branch transcript evidence, so startup `contextFiles` alone do not suppress the focused Load that earlier Plan Mode sessions requested
 - active-branch persistence of automatic assessment, pending-load, and hidden-instruction delivery state without copying the original request into extension state
 - pass-through `input` handling that leaves the user's text and images unchanged, followed by a persistent `before_agent_start` custom instruction with `display: false` for model-only guidance
-- pending-only availability of `dotdotgod_project_load` in the current agent loop, with execution of that owned tool rejected until the hidden instruction message is reachable
+- pending-only availability of `dotdotgod_project_load` in the current agent loop, with hidden-instruction delivery recorded when `before_agent_start` schedules the message so the model's immediate tool call is accepted without a session-branch visibility race
 - compact focused Load/query output, completion recording, retryable delivery failure, and duplicate prevention
 
 A small pure active-tool composition helper is the boundary between project-memory ownership and Plan Mode transitions. Each owner replaces only its own tools, preserving the pending load tool and third-party active tools without a shared mutable registry or callback-order dependency.
