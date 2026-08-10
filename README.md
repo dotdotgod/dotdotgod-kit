@@ -74,6 +74,12 @@ The structure provides:
 - **Bounded history:** `docs/archive/README.md` remains the history map; archive bodies are read only when targeted.
 - **Local processing:** graph and query caches stay under `.dotdotgod/`; agent-facing commands return bounded summaries.
 
+### Beyond Software Projects
+
+Although dotdotgod was designed for software projects, its memory and traceability model is not limited to code. I also use it personally to organize a real-world property dispute: separating confirmed facts from hypotheses, maintaining a timeline and evidence index, and tracing external documents back to their factual and legal grounds.
+
+This makes dotdotgod useful as structured memory for preparing complaints, formal notices, and potential legal proceedings—not as legal advice, but as a way to keep complex evidence and reasoning organized.
+
 ## Changed-File Impact Example
 
 ```bash
