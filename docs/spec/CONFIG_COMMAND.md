@@ -4,7 +4,7 @@
 
 The `dotdotgod config` command makes project-level config policy discoverable from the CLI.
 
-The CLI resolves the optional `dotdotgod.config.json` file from the project root. When the file does not exist, normal commands use built-in defaults. User-level template settings affect initialization; see [`CONFIG_TEMPLATES.md`](CONFIG_TEMPLATES.md). Monorepo cascading config is not supported.
+The CLI resolves the optional `dotdotgod.config.json` file from the project root. When the file does not exist, normal commands use built-in defaults. User-level template settings affect initialization, while user-level `embedding` supplies a runtime default that a complete project embedding profile may replace; see [`CONFIG_TEMPLATES.md`](CONFIG_TEMPLATES.md) and [`EMBEDDING_CONFIG.md`](EMBEDDING_CONFIG.md). Monorepo cascading config is not supported.
 
 ## Show Command
 
@@ -42,7 +42,7 @@ If the project config is invalid, `ok` is `false`, errors use the same validatio
 
 ## Policy Families
 
-The config command surfaces the same policy families that validation, Load/query routing, reference expansion, and graph impact use. Existing project policy output includes:
+The config command surfaces the same policy families that validation, Load/query routing, reference expansion, and graph impact use. It also reports the sanitized effective embedding provider, model, and source. Existing project policy output includes:
 
 - `memory.areas`: ordered path classifiers for shared/local and fresh/stale project memory, including optional `description` and `clarify` metadata when a project defines document-area guidance.
 - `traceability.required`, `traceability.exclude`, and `traceability.keys`: enforcement paths plus the ordered complete-list definition of traceability string arrays, targets, graph relations, and PPR weights.

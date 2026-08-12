@@ -35,7 +35,7 @@ Create dotdotgod.config.json from a bundled or user template. Without --template
       return `Usage:
   dotdotgod query <root> <query> [--limit n] [--json]
 
-Search shared project documentation with the local multilingual E5 vector index.`;
+Search shared project documentation with the resolved local or remote embedding provider.`;
     case 'resolve':
       return `Usage:
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]`;

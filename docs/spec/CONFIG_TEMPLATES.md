@@ -8,7 +8,7 @@ Config templates are initialization sources for creating `dotdotgod.config.json`
 
 - When `dotdotgod.config.json` exists, commands use that project config.
 - When it does not exist, commands use the built-in zero-config policy.
-- Templates do not replace zero-config runtime policy.
+- Templates do not replace zero-config runtime policy. The global file's separate `embedding` field may select the runtime embedding default as defined in [`EMBEDDING_CONFIG.md`](EMBEDDING_CONFIG.md).
 - A generated project config is an independent snapshot; later template changes do not update it.
 
 ## User Files

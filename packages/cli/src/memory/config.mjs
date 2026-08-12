@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { rel } from '../common/paths.mjs';
 import { isKebabCase } from '../docs/markdown.mjs';
+import { validateEmbeddingProfile } from '../query/embedding-config.mjs';
 
 const MEMORY_CONFIG_FILE = 'dotdotgod.config.json';
 const MEMORY_SCOPES = new Set(['shared', 'local']);
@@ -334,6 +335,10 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     add('MEMORY_CONFIG_INVALID', null, 'Config must be a JSON object.');
     return errors;
+  }
+  if (data.embedding !== undefined) {
+    try { validateEmbeddingProfile(data.embedding, 'embedding'); }
+    catch (error) { add('EMBEDDING_CONFIG_INVALID', 'embedding', error instanceof Error ? error.message : String(error)); }
   }
   const traceability = data.traceability;
   if (traceability !== undefined) {

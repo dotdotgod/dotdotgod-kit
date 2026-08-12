@@ -31,7 +31,9 @@ export { formatCompactImpactOutput, formatYmlGraphImpactError, formatYmlImpactOu
 export { runConfig } from './commands/config.mjs';
 export { buildVectorIndex, cosineScore, parseQueryOptions, queryDocumentation, rankVectorFiles, runQuery } from './commands/query.mjs';
 export { chunkMarkdown, collectDocumentationChunks, collectDocumentationMarkdown, textFingerprint } from './query/chunks.mjs';
-export { readVectorCache, VECTOR_DIMENSIONS, VECTOR_MODEL, VECTOR_SCHEMA_VERSION, vectorCachePaths, writeVectorCache } from './query/store.mjs';
+export { readVectorCache, VECTOR_DIMENSIONS, VECTOR_MODEL, VECTOR_SCHEMA_VERSION, profileFingerprint, vectorCachePaths, writeVectorCache } from './query/store.mjs';
+export { DEFAULT_EMBEDDING_PROFILE, EMBEDDING_PROVIDERS, embeddingProfileIdentity, resolveEmbeddingProfile, sanitizeEmbeddingProfile, validateEmbeddingProfile } from './query/embedding-config.mjs';
+export { createEmbedder, resolveEmbedder } from './query/embedder.mjs';
 export { extractBracketReferences, extractFuzzyReferences, normalizeReferenceAlias } from './reference/extract.mjs';
 export { resolveReferenceCandidates, runResolve, runExpand } from './reference/resolve.mjs';
 export { parseTraceabilityOptions, runTraceability } from './commands/traceability.mjs';

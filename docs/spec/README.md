@@ -19,6 +19,7 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 - `REFERENCE_EXPANSION.md`: `referenceExpansion.fuzzy.lowSignal.add/remove` for fuzzy prompt matching.
 - `CONFIG_COMMAND.md`: config discovery, JSON output, initialization, invalid-config fallback, and user-facing repair behavior.
 - `CONFIG_TEMPLATES.md`: initialization-only built-in/custom templates, global default selection, shadowing, and fallback behavior.
+- `EMBEDDING_CONFIG.md`: global/project embedding profiles, local and remote providers, credentials, consent, and cache invalidation.
 
 ## Index
 

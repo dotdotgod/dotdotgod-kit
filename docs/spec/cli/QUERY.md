@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`dotdotgod query` performs local multilingual semantic retrieval over shared project documentation without sending document contents to a remote embedding API.
+`dotdotgod query` performs multilingual semantic retrieval over shared project documentation with the resolved local or explicitly configured remote embedding provider.
 
 ## Interface
 
@@ -24,15 +24,9 @@ Markdown is split by heading hierarchy and then into body pieces bounded to 1,60
 
 ## Embeddings
 
-The only supported model is `Xenova/multilingual-e5-small`, executed locally through `@huggingface/transformers`.
+The zero-config default remains `Xenova/multilingual-e5-small` through local `@huggingface/transformers`. Runtime configuration may select an arbitrary local Hugging Face model, an OpenAI-compatible endpoint, or native Ollama. See [`../EMBEDDING_CONFIG.md`](../EMBEDDING_CONFIG.md).
 
-- query input uses the `query: ` prefix
-- passage input uses the `passage: ` prefix
-- vectors are normalized 384-dimensional float32 values
-- model assets use the runtime's user-level cache
-- the first query may download model assets when unavailable locally
-
-No provider selection, remote embedding API, or alternate model profile is supported.
+Query and passage inputs retain their retrieval prefixes. Provider output determines dimensions and is normalized and validated before use. Local model assets use the runtime's user-level cache. Selecting a remote provider explicitly authorizes sending embedding inputs to that endpoint.
 
 ## Vector Cache
 
@@ -45,7 +39,7 @@ Derived data is stored below ignored `.dotdotgod/vectors/`:
 └── embeddings.f32
 ```
 
-The manifest identifies schema version, model, dimensions, exclusions, chunk count, and refresh statistics. Unchanged chunk fingerprints reuse stored vectors; changed and new chunks are embedded, and deleted chunks are omitted from the rewritten index.
+The manifest identifies schema version, provider, model, dimensions, a secret-free profile fingerprint, exclusions, chunk count, and refresh statistics. Unchanged chunk fingerprints reuse stored vectors; changed and new chunks are embedded, and deleted chunks are omitted from the rewritten index.
 
 A corrupt, incomplete, model-mismatched, or schema-mismatched cache is rebuilt. Cache writes use temporary files and atomic rename per artifact.
 
@@ -62,7 +56,7 @@ Each result includes:
 - final score
 - raw vector score
 
-Human output is concise. JSON output includes command, root, query, model, dimensions, limit, index metadata, and ranked results.
+Human output is concise. JSON output includes command, root, query, provider, model, embedding source, dimensions, limit, index metadata, and ranked results.
 
 ## Safety and Failure
 

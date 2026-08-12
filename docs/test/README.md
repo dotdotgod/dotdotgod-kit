@@ -14,6 +14,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `GRAPH_IMPACT_QUALITY.md`: graph impact quality scoring script, metrics, and baseline comparison checks.
 - `CONFIG_COMMAND.md`: project-level config show/init command checks.
 - `CONFIG_TEMPLATES.md`: initialization template selection, isolation, shadowing, packaging, and fallback checks.
+- `EMBEDDING_CONFIG.md`: provider precedence, transport, credentials, dynamic dimensions, and cache invalidation checks.
 - `HOOKS.md`: optional Claude Code and Codex hook documentation and package-resource smoke checks.
 - `CLI_INTERFACE.md`: baseline CLI help/version and invalid invocation checks.
 - `REFERENCE_EXPANSION.md`: reference resolution and prompt-time expansion regression and smoke checks.

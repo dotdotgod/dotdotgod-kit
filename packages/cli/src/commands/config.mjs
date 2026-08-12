@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path';
 import { usage } from '../cli/usage.mjs';
 import { memoryConfigSummary, readMemoryConfig } from '../memory/config.mjs';
 import { resolveInitializationTemplate } from '../config/templates.mjs';
+import { resolveEmbeddingProfile, sanitizeEmbeddingProfile } from '../query/embedding-config.mjs';
 
 function parseConfigOptions(argv, usageKey = 'config') {
   const options = { root: '.', json: false, template: null };
@@ -40,6 +41,7 @@ function formatConfigOutput(payload) {
   const lines = [`dotdotgod config: ${payload.source}${errors.length > 0 ? ' (invalid; using defaults)' : ''}`];
   lines.push(`- path: ${payload.path ?? 'none'}`);
   lines.push(`- memory areas: ${payload.config.areas.length}`);
+  lines.push(`- embedding: ${payload.embedding.profile.provider}/${payload.embedding.profile.model} (${payload.embedding.source})`);
   lines.push(`- traceability required: ${(payload.config.traceability.required ?? []).join(', ') || 'none'}`);
   lines.push(`- traceability exclude: ${(payload.config.traceability.exclude ?? []).join(', ') || 'none'}`);
   lines.push('- traceability keys:');
@@ -84,7 +86,15 @@ export function runConfig(argv) {
 
   const config = readMemoryConfig(options.root);
   const errors = config.errors ?? [];
-  const payload = { ok: errors.length === 0, command: 'config', root: options.root, source: config.source ?? 'default', path: config.source && config.source !== 'default' ? join(options.root, config.source) : null, config: memoryConfigSummary(config), errors };
+  let embedding;
+  try {
+    const resolved = resolveEmbeddingProfile(options.root);
+    embedding = { source: resolved.source, path: resolved.path, profile: sanitizeEmbeddingProfile(resolved.profile) };
+  } catch (error) {
+    errors.push({ file: 'embedding config', code: 'EMBEDDING_CONFIG_INVALID', message: error instanceof Error ? error.message : String(error) });
+    embedding = { source: 'invalid', path: null, profile: sanitizeEmbeddingProfile({ provider: 'local', model: 'Xenova/multilingual-e5-small' }) };
+  }
+  const payload = { ok: errors.length === 0, command: 'config', root: options.root, source: config.source ?? 'default', path: config.source && config.source !== 'default' ? join(options.root, config.source) : null, embedding, config: memoryConfigSummary(config), errors };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else console.log(formatConfigOutput(payload));
   if (errors.length > 0) process.exit(1);

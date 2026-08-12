@@ -1,4 +1,8 @@
 {
+  "embedding": {
+    "provider": "ollama",
+    "model": "nomic-embed-text"
+  },
   "memory": {
     "areas": [
       { "id": "rules", "label": "Agent Rules", "paths": ["AGENTS.md"], "scope": "shared", "freshness": "fresh", "role": "agent-working-rules", "priority": 100, "includeBodiesByDefault": true },
