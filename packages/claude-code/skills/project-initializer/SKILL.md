@@ -10,11 +10,27 @@ version: 1.0.0
 
 ## Goal
 
-Create a non-destructive dotdotgod baseline with canonical agent instructions, thin agent entrypoints, documentation indexes, project config, and local-memory ignore rules.
+Create a non-destructive dotdotgod baseline with canonical agent instructions, thin agent entrypoints, documentation indexes, a project config selected from an appropriate initialization template, and local-memory ignore rules.
+
+## Template Selection
+
+1. Inspect existing agent instructions, the root README, docs indexes, major top-level directories, config, and ignore rules.
+2. Discover custom templates as individual JSON files under `~/.dotdotgod/templates/`. Built-in templates are `software`, `research`, `case-and-evidence`, `publication`, `portfolio`, and `policy`.
+3. Choose from project evidence:
+   - `software`: application, library, or infrastructure projects organized around specs, architecture, source, and tests.
+   - `research`: research diaries, dated records, reports, artifacts, and evaluation evidence.
+   - `case-and-evidence`: canonical case records, evidence or legal grounds, and case outputs.
+   - `publication`: briefs, outlines, chapters, claims, manuscripts, and research sources.
+   - `portfolio`: strategy, positions, ledgers, journals, and market research.
+   - `policy`: policy sections, integrated proposals, evidence, and submission outputs.
+4. Consider custom templates by filename and config contents. A same-name custom template replaces the built-in template completely.
+5. Ask the user when multiple choices are plausible and materially change memory areas or traceability. With insufficient evidence, use `~/.dotdotgod/config.json` `defaultTemplate`, then `software`.
+6. Report the selected template and a concise reason.
 
 ## Workflow
 
-1. Inspect existing agent instructions, documentation, config, and ignore rules; preserve existing files and unrelated user work.
-2. Run `dotdotgod init <project-root>` when available; otherwise run `sh "${CLAUDE_PLUGIN_ROOT}/skills/project-initializer/scripts/init_project.sh" <project-root>`. Existing files must be skipped, not replaced.
-3. Validate the initialized project with `dotdotgod validate <project-root>` when available.
-4. Report created and skipped files, validation failures, and unresolved instruction conflicts.
+1. Preserve existing files and unrelated user work.
+2. Run `dotdotgod init <project-root> --template <name>` when available; otherwise run `sh "${CLAUDE_PLUGIN_ROOT}/skills/project-initializer/scripts/init_project.sh" <project-root> --template <name>`. Existing files must be skipped, not replaced.
+3. The POSIX fallback supports bundled templates only. If a custom template was selected and the CLI is unavailable, stop and explain that custom templates require the CLI; do not silently substitute another template.
+4. Validate the initialized project with `dotdotgod validate <project-root>` when available.
+5. Report created and skipped files, the selected template, validation failures, and unresolved instruction conflicts.

@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
-import { CACHE_VERSION } from '../src/core.mjs';
+import { CACHE_VERSION, builtInTemplateData } from '../src/core.mjs';
 import { defaultDotdotgodConfigData } from '../src/memory/config.mjs';
 
 const bin = resolve('bin/dotdotgod.mjs');
@@ -118,8 +118,8 @@ describe('dotdotgod CLI e2e', () => {
       [['help', 'init'], /dotdotgod init <root>/],
       [['index', '-h'], /dotdotgod index <root>/],
       [['config', '--help'], /dotdotgod config init <root>/],
-      [['config', 'init', '--help'], /dotdotgod config init <root> \[--json\]/],
-      [['help', 'config', 'init'], /dotdotgod config init <root> \[--json\]/],
+      [['config', 'init', '--help'], /dotdotgod config init <root> \[--template NAME\] \[--json\]/],
+      [['help', 'config', 'init'], /dotdotgod config init <root> \[--template NAME\] \[--json\]/],
       [['status', 'help'], /dotdotgod status <root>/],
       [['query', '--help'], /dotdotgod query <root> <query>/],
       [['resolve', '--help'], /dotdotgod resolve <root> <ref>/],
@@ -305,6 +305,21 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(forceRejected.status, 2);
     assert.match(forceRejected.stderr, /Unknown option: --force/);
 
+    const researchRoot = mkdtempSync(join(tmpdir(), 'dotdotgod-init-research-'));
+    const researchDryRun = json(run(['init', researchRoot, '--template', 'research', '--dry-run', '--json']));
+    for (const path of ['docs/research/README.md', 'docs/record/README.md', 'docs/report/README.md', 'outputs']) {
+      assert(researchDryRun.actions.some((item) => item.status === 'would_create' && item.path.endsWith(`/${path}`)), `research dry-run should include ${path}`);
+    }
+    const researchInit = json(run(['init', researchRoot, '--template', 'research', '--json']));
+    assert.deepEqual(researchInit.template, { name: 'research', source: 'bundled', selectedBy: 'explicit' });
+    for (const path of ['docs/research/README.md', 'docs/record/README.md', 'docs/report/README.md', 'outputs']) assert.equal(existsSync(join(researchRoot, path)), true, `research init should create ${path}`);
+    assert.equal(json(run(['validate', researchRoot, '--include-local-memory', '--json'])).ok, true);
+
+    const policyRoot = mkdtempSync(join(tmpdir(), 'dotdotgod-init-policy-'));
+    const policyInit = json(run(['init', policyRoot, '--template', 'policy', '--json']));
+    assert.deepEqual(policyInit.template, { name: 'policy', source: 'bundled', selectedBy: 'explicit' });
+    assert.deepEqual(JSON.parse(readFileSync(join(policyRoot, 'dotdotgod.config.json'), 'utf8')), builtInTemplateData('policy'));
+
     const dotdotRoot = mkdtempSync(join(tmpdir(), 'dotdotgod-init-dotdot-'));
     json(run(['init', dotdotRoot, '--dotdot-setting', '--json']));
     assert.equal(existsSync(join(dotdotRoot, 'docs/arch/DOCS_STRUCTURE.md')), true);
@@ -331,6 +346,12 @@ describe('dotdotgod CLI e2e', () => {
     assert.match(initialized.stdout, /created\s+.*dotdotgod\.config\.json/);
     assert.match(readFileSync(join(root, 'AGENTS.md'), 'utf8'), /Use `dotdotgod --help` to discover available project-memory commands and their usage\./);
     assert.deepEqual(JSON.parse(readFileSync(join(root, 'dotdotgod.config.json'), 'utf8')), defaultDotdotgodConfigData());
+    const researchRoot = join(parent, 'research-project');
+    const researchInitialized = spawnSync('sh', [script, researchRoot, '--template', 'research'], { encoding: 'utf8' });
+    assert.equal(researchInitialized.status, 0, researchInitialized.stderr || researchInitialized.stdout);
+    assert.deepEqual(JSON.parse(readFileSync(join(researchRoot, 'dotdotgod.config.json'), 'utf8')), builtInTemplateData('research'));
+    for (const path of ['docs/research/README.md', 'docs/record/README.md', 'docs/report/README.md', 'outputs']) assert.equal(existsSync(join(researchRoot, path)), true, `POSIX research init should create ${path}`);
+
     for (const template of [
       resolve('../shared/initializer/templates/dotdotgod.config.json'),
       resolve('../pi/skills/project-initializer/templates/dotdotgod.config.json'),
@@ -354,6 +375,7 @@ describe('dotdotgod CLI e2e', () => {
       const paths = new Set(payload.files.map((file) => file.path));
       assert(paths.has('hooks/README.md'), `${packageName} package should include hooks/README.md`);
       assert(paths.has('skills/project-initializer/templates/dotdotgod.config.json'), `${packageName} package should include the initializer config template`);
+      for (const name of ['software', 'research', 'case-and-evidence', 'publication', 'portfolio', 'policy']) assert(paths.has(`skills/project-initializer/templates/${name}.json`), `${packageName} should include ${name}`);
       assert(paths.has('README.md'), `${packageName} package should include README.md`);
       assert(paths.has('package.json'), `${packageName} package should include package.json`);
     }
@@ -361,6 +383,63 @@ describe('dotdotgod CLI e2e', () => {
     const piPayload = packDryRun('@dotdotgod/pi');
     const piPaths = new Set(piPayload.files.map((file) => file.path));
     assert(piPaths.has('skills/project-initializer/templates/dotdotgod.config.json'), '@dotdotgod/pi package should include the initializer config template');
+    for (const name of ['software', 'research', 'case-and-evidence', 'publication', 'portfolio', 'policy']) assert(piPaths.has(`skills/project-initializer/templates/${name}.json`), `@dotdotgod/pi should include ${name}`);
+  });
+
+  it('uses templates only when creating project config', () => {
+    const home = mkdtempSync(join(tmpdir(), 'dotdotgod-home-'));
+    const globalDir = join(home, '.dotdotgod');
+    mkdirSync(join(globalDir, 'templates'), { recursive: true });
+    writeFileSync(join(globalDir, 'config.json'), '{"defaultTemplate":"research"}\n');
+    const env = { ...process.env, HOME: home };
+
+    const runtimeRoot = createFixture();
+    const runtime = json(run(['config', runtimeRoot, '--json'], { env }));
+    assert.equal(runtime.source, 'default');
+    assert(runtime.config.areas.some((area) => area.id === 'spec'));
+    assert.equal(runtime.config.areas.some((area) => area.id === 'record'), false);
+
+    const initializedRoot = createFixture();
+    const initialized = json(run(['config', 'init', initializedRoot, '--json'], { env }));
+    assert.deepEqual(initialized.template, { name: 'research', source: 'bundled', selectedBy: 'global' });
+    const researchConfig = JSON.parse(readFileSync(join(initializedRoot, 'dotdotgod.config.json'), 'utf8'));
+    assert(researchConfig.memory.areas.some((area) => area.id === 'record'));
+
+    const custom = defaultDotdotgodConfigData();
+    custom.memory.areas[0].label = 'Custom Software Rules';
+    writeFileSync(join(globalDir, 'templates/software.json'), `${JSON.stringify(custom, null, 2)}\n`);
+    const customRoot = createFixture();
+    const customInit = json(run(['config', 'init', customRoot, '--template', 'software', '--json'], { env }));
+    assert.deepEqual(customInit.template, { name: 'software', source: 'custom', selectedBy: 'explicit' });
+    assert.equal(JSON.parse(readFileSync(join(customRoot, 'dotdotgod.config.json'), 'utf8')).memory.areas[0].label, 'Custom Software Rules');
+
+    writeFileSync(join(globalDir, 'templates/policy.json'), '{bad json\n');
+    const invalidRoot = createFixture();
+    const invalid = run(['config', 'init', invalidRoot, '--template', 'policy', '--json'], { env });
+    assert.equal(invalid.status, 2);
+    assert.equal(JSON.parse(invalid.stdout).error.code, 'TEMPLATE_INVALID_JSON');
+    assert.equal(existsSync(join(invalidRoot, 'dotdotgod.config.json')), false);
+
+    writeFileSync(join(globalDir, 'templates/publication.json'), '{"memory":{"areas":"bad"}}\n');
+    const invalidSchemaRoot = createFixture();
+    const invalidSchema = run(['config', 'init', invalidSchemaRoot, '--template', 'publication', '--json'], { env });
+    assert.equal(invalidSchema.status, 2);
+    assert.equal(JSON.parse(invalidSchema.stdout).error.code, 'TEMPLATE_INVALID');
+    assert.equal(existsSync(join(invalidSchemaRoot, 'dotdotgod.config.json')), false);
+
+    const unknown = run(['config', 'init', createFixture(), '--template', 'unknown-template', '--json'], { env });
+    assert.equal(unknown.status, 2);
+    assert.equal(JSON.parse(unknown.stdout).error.code, 'TEMPLATE_NOT_FOUND');
+    const traversal = run(['config', 'init', createFixture(), '--template', '../software', '--json'], { env });
+    assert.equal(traversal.status, 2);
+    assert.equal(JSON.parse(traversal.stdout).error.code, 'TEMPLATE_INVALID_NAME');
+
+    const invalidHome = mkdtempSync(join(tmpdir(), 'dotdotgod-invalid-home-'));
+    mkdirSync(join(invalidHome, '.dotdotgod'), { recursive: true });
+    writeFileSync(join(invalidHome, '.dotdotgod/config.json'), '{bad json\n');
+    const invalidGlobal = run(['config', 'init', createFixture(), '--json'], { env: { ...process.env, HOME: invalidHome } });
+    assert.equal(invalidGlobal.status, 2);
+    assert.equal(JSON.parse(invalidGlobal.stdout).error.code, 'GLOBAL_CONFIG_INVALID_JSON');
   });
 
   it('shows and initializes project config safely', () => {

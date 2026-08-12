@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { defaultDotdotgodConfigText } from './memory/config.mjs';
+import { builtInTemplateScaffold, resolveInitializationTemplate } from './config/templates.mjs';
 
 function action(status, path, extra = {}) {
   return { status, path, ...extra };
@@ -12,16 +12,17 @@ function formatAction(item) {
 }
 
 function parseInitOptions(argv) {
-  const options = { root: null, projectName: '', dotdotSetting: false, dryRun: false, json: false };
+  const options = { root: null, projectName: '', dotdotSetting: false, dryRun: false, json: false, template: null };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--json') options.json = true;
     else if (arg === '--dotdot-setting') options.dotdotSetting = true;
     else if (arg === '--dry-run') options.dryRun = true;
-    else if (arg === '--project-name') {
+    else if (arg === '--project-name' || arg === '--template') {
       const value = argv[i + 1];
-      if (!value || value.startsWith('-')) throw new Error('--project-name requires a value');
-      options.projectName = value;
+      if (!value || value.startsWith('-')) throw new Error(`${arg} requires a value`);
+      if (arg === '--project-name') options.projectName = value;
+      else options.template = value;
       i += 1;
     } else if (!arg.startsWith('-') && !options.root) {
       options.root = arg;
@@ -60,6 +61,20 @@ function writeInitFile(options, relativePath, content, actions) {
 
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, content.endsWith('\n') ? content : `${content}\n`);
+  actions.push(action('created', target));
+}
+
+function ensureInitDirectory(options, relativePath, actions) {
+  const target = join(options.root, relativePath);
+  if (existsSync(target)) {
+    actions.push(action('skipped', target));
+    return;
+  }
+  if (options.dryRun) {
+    actions.push(action('would_create', target));
+    return;
+  }
+  mkdirSync(target, { recursive: true });
   actions.push(action('created', target));
 }
 
@@ -294,14 +309,27 @@ export function runInit(argv, usage) {
 
   if (!options.dryRun) mkdirSync(options.root, { recursive: true });
 
+  const configExists = existsSync(join(options.root, 'dotdotgod.config.json'));
+  const template = configExists ? null : resolveInitializationTemplate(options.template);
+  if (template && !template.ok) initError(options, template.error.code, template.error.message);
+
   const actions = [];
   for (const [relativePath, content] of initFiles(options)) writeInitFile(options, relativePath, content, actions);
+  if (template?.source === 'bundled') {
+    for (const item of builtInTemplateScaffold(template.name) ?? []) {
+      if (item.type === 'directory') ensureInitDirectory(options, item.path, actions);
+      else writeInitFile(options, item.path, item.content, actions);
+    }
+  }
 
-  writeInitFile(options, 'dotdotgod.config.json', defaultDotdotgodConfigText(), actions);
+  writeInitFile(options, 'dotdotgod.config.json', template?.text ?? '', actions);
 
   for (const entry of ['docs/plan', 'docs/archive', '.dotdotgod']) ensureGitignoreEntry(options, entry, actions);
 
-  const payload = { ok: true, command: 'init', root: options.root, projectName: options.projectName, dryRun: options.dryRun, dotdotSetting: options.dotdotSetting, actions };
+  const payload = { ok: true, command: 'init', root: options.root, projectName: options.projectName, dryRun: options.dryRun, dotdotSetting: options.dotdotSetting, template: template ? { name: template.name, source: template.source, selectedBy: template.selectedBy } : null, actions };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
-  else for (const item of actions) console.log(formatAction(item));
+  else {
+    if (template) console.log(`template      ${template.source}:${template.name} (${template.selectedBy})`);
+    for (const item of actions) console.log(formatAction(item));
+  }
 }

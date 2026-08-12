@@ -1,0 +1,257 @@
+{
+  "memory": {
+    "areas": [
+      {
+        "id": "rules",
+        "label": "Agent Rules",
+        "paths": [
+          "AGENTS.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "agent-working-rules",
+        "priority": 100,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "agent-entrypoint",
+        "label": "Agent Entrypoints",
+        "paths": [
+          "CLAUDE.md",
+          "CODEX.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "agent-specific-entrypoint",
+        "priority": 85,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "project-overview",
+        "label": "Project Overview",
+        "paths": [
+          "README.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "project-map",
+        "priority": 85,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "docs-index",
+        "label": "Docs Index",
+        "paths": [
+          "docs/README.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "documentation-routing-map",
+        "priority": 90,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "strategy",
+        "label": "Portfolio Strategy",
+        "paths": [
+          "docs/strategy/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "portfolio-strategy",
+        "priority": 95,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "positions",
+        "label": "Position Theses",
+        "paths": [
+          "docs/positions/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "position-thesis",
+        "priority": 95,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "ledger",
+        "label": "Trading Ledger",
+        "paths": [
+          "data/**"
+        ],
+        "excludePaths": [
+          "data/raw/**"
+        ],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "trading-facts",
+        "priority": 90,
+        "includeBodiesByDefault": false
+      },
+      {
+        "id": "journal",
+        "label": "Decision Journal",
+        "paths": [
+          "docs/journal/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "decision-journal",
+        "priority": 80,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "research",
+        "label": "Research",
+        "paths": [
+          "docs/report/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "stale",
+        "role": "market-research",
+        "priority": 50,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "active-plan",
+        "label": "Active Plans",
+        "paths": [
+          "docs/plan/**"
+        ],
+        "excludePaths": [],
+        "scope": "local",
+        "freshness": "fresh",
+        "role": "active-task-intent",
+        "priority": 95,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "archive-map",
+        "label": "Archive Map",
+        "paths": [
+          "docs/archive/README.md"
+        ],
+        "excludePaths": [],
+        "scope": "local",
+        "freshness": "stale",
+        "role": "historical-memory-map",
+        "priority": 65,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "archive-body",
+        "label": "Archive Body",
+        "paths": [
+          "docs/archive/**"
+        ],
+        "excludePaths": [
+          "docs/archive/README.md"
+        ],
+        "scope": "local",
+        "freshness": "stale",
+        "role": "historical-memory-body",
+        "priority": 20,
+        "includeBodiesByDefault": false
+      },
+      {
+        "id": "docs",
+        "label": "Project Documentation",
+        "paths": [
+          "docs/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "project-documentation",
+        "priority": 60,
+        "includeBodiesByDefault": true
+      }
+    ]
+  },
+  "traceability": {
+    "required": [
+      "docs/strategy/**",
+      "docs/positions/**"
+    ],
+    "exclude": [
+      "**/README.md"
+    ],
+    "keys": [
+      {
+        "key": "supportedBy",
+        "label": "Supported by",
+        "description": "Data or research supporting the investment conclusion.",
+        "target": "path",
+        "relation": "supported_by",
+        "weight": 4
+      },
+      {
+        "key": "recordedIn",
+        "label": "Recorded in",
+        "description": "Ledgers, snapshots, or journals recording the decision.",
+        "target": "path",
+        "relation": "recorded_in",
+        "weight": 4
+      },
+      {
+        "key": "informs",
+        "label": "Informs",
+        "description": "Strategies, theses, or risk rules using this conclusion.",
+        "target": "path",
+        "relation": "informs_decision",
+        "weight": 3
+      }
+    ]
+  },
+  "validation": {
+    "markdown": {
+      "maxLines": 200,
+      "maxChars": 10000,
+      "exclude": [],
+      "filename": {
+        "warnNumberedSeries": true,
+        "allow": []
+      }
+    }
+  },
+  "impactRanking": {
+    "semantic": {
+      "enabled": true,
+      "threshold": 0.5,
+      "topKPerFile": 5
+    }
+  },
+  "referenceExpansion": {
+    "fuzzy": {
+      "lowSignal": {
+        "add": [],
+        "remove": []
+      }
+    }
+  },
+  "load": {
+    "pinnedPaths": [],
+    "pinnedBodies": [],
+    "documentationSummary": {
+      "exclude": [
+        "docs/plan",
+        "docs/archive"
+      ]
+    }
+  },
+  "planMode": {
+    "writablePaths": [
+      "docs/plan/**",
+      "docs/archive/**"
+    ]
+  }
+}

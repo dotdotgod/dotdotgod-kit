@@ -1,0 +1,236 @@
+{
+  "memory": {
+    "areas": [
+      {
+        "id": "rules",
+        "label": "Agent Rules",
+        "paths": [
+          "AGENTS.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "agent-working-rules",
+        "priority": 100,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "agent-entrypoint",
+        "label": "Agent Entrypoints",
+        "paths": [
+          "CLAUDE.md",
+          "CODEX.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "agent-specific-entrypoint",
+        "priority": 85,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "project-overview",
+        "label": "Project Overview",
+        "paths": [
+          "README.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "project-map",
+        "priority": 85,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "docs-index",
+        "label": "Docs Index",
+        "paths": [
+          "docs/README.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "documentation-routing-map",
+        "priority": 90,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "spec",
+        "label": "Product Specs",
+        "paths": [
+          "docs/spec/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "behavior-truth",
+        "priority": 80,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "architecture",
+        "label": "Architecture",
+        "paths": [
+          "docs/arch/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "architecture-rationale",
+        "priority": 75,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "test",
+        "label": "Tests",
+        "paths": [
+          "docs/test/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "verification-knowledge",
+        "priority": 70,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "active-plan",
+        "label": "Active Plans",
+        "paths": [
+          "docs/plan/**"
+        ],
+        "excludePaths": [],
+        "scope": "local",
+        "freshness": "fresh",
+        "role": "active-task-intent",
+        "priority": 95,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "archive-map",
+        "label": "Archive Map",
+        "paths": [
+          "docs/archive/README.md"
+        ],
+        "excludePaths": [],
+        "scope": "local",
+        "freshness": "stale",
+        "role": "historical-memory-map",
+        "priority": 65,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "archive-body",
+        "label": "Archive Body",
+        "paths": [
+          "docs/archive/**"
+        ],
+        "excludePaths": [
+          "docs/archive/README.md"
+        ],
+        "scope": "local",
+        "freshness": "stale",
+        "role": "historical-memory-body",
+        "priority": 20,
+        "includeBodiesByDefault": false
+      },
+      {
+        "id": "docs",
+        "label": "Project Documentation",
+        "paths": [
+          "docs/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "project-documentation",
+        "priority": 60,
+        "includeBodiesByDefault": true
+      }
+    ]
+  },
+  "traceability": {
+    "required": [
+      "docs/spec/**"
+    ],
+    "exclude": [
+      "**/README.md"
+    ],
+    "keys": [
+      {
+        "key": "implementedBy",
+        "label": "Implemented by",
+        "description": "Files that implement the behavior.",
+        "target": "path",
+        "relation": "implemented_by",
+        "weight": 4
+      },
+      {
+        "key": "verifiedBy",
+        "label": "Verified by",
+        "description": "Tests or maintained verification documents.",
+        "target": "path",
+        "relation": "verified_by",
+        "weight": 4
+      },
+      {
+        "key": "relatedDocs",
+        "label": "Related docs",
+        "description": "Documents needed to interpret the behavior.",
+        "target": "path",
+        "relation": "related_doc",
+        "weight": 3
+      },
+      {
+        "key": "verificationCommands",
+        "label": "Verification commands",
+        "description": "Project-local verification commands.",
+        "target": "command",
+        "relation": "verification_command",
+        "weight": 3
+      }
+    ]
+  },
+  "validation": {
+    "markdown": {
+      "maxLines": 200,
+      "maxChars": 10000,
+      "exclude": [],
+      "filename": {
+        "warnNumberedSeries": true,
+        "allow": []
+      }
+    }
+  },
+  "impactRanking": {
+    "semantic": {
+      "enabled": true,
+      "threshold": 0.5,
+      "topKPerFile": 5
+    }
+  },
+  "referenceExpansion": {
+    "fuzzy": {
+      "lowSignal": {
+        "add": [],
+        "remove": []
+      }
+    }
+  },
+  "load": {
+    "pinnedPaths": [],
+    "pinnedBodies": [],
+    "documentationSummary": {
+      "exclude": [
+        "docs/plan",
+        "docs/archive"
+      ]
+    }
+  },
+  "planMode": {
+    "writablePaths": [
+      "docs/plan/**",
+      "docs/archive/**"
+    ]
+  }
+}

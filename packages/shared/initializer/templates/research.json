@@ -1,0 +1,289 @@
+{
+  "memory": {
+    "areas": [
+      {
+        "id": "rules",
+        "label": "Agent Rules",
+        "paths": [
+          "AGENTS.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "agent-working-rules",
+        "priority": 100,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "agent-entrypoint",
+        "label": "Agent Entrypoints",
+        "paths": [
+          "CLAUDE.md",
+          "CODEX.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "agent-specific-entrypoint",
+        "priority": 85,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "project-overview",
+        "label": "Project Overview",
+        "paths": [
+          "README.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "project-map",
+        "priority": 85,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "docs-index",
+        "label": "Docs Index",
+        "paths": [
+          "docs/README.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "documentation-routing-map",
+        "priority": 90,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "spec",
+        "label": "Research Specifications",
+        "paths": [
+          "docs/spec/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "research-contract",
+        "priority": 85,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "architecture",
+        "label": "Architecture",
+        "paths": [
+          "docs/arch/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "architecture-rationale",
+        "priority": 82,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "test",
+        "label": "Verification",
+        "paths": [
+          "docs/test/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "test-strategy",
+        "priority": 78,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "research",
+        "label": "Research Notes",
+        "paths": [
+          "docs/research/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "research-diary",
+        "priority": 70,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "record",
+        "label": "Research Records",
+        "paths": [
+          "docs/record/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "research-record",
+        "priority": 68,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "report",
+        "label": "Reports",
+        "paths": [
+          "docs/report/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "stale",
+        "role": "report-background",
+        "priority": 60,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "artifacts",
+        "label": "Generated Artifacts",
+        "paths": [
+          "outputs/**"
+        ],
+        "excludePaths": [],
+        "scope": "local",
+        "freshness": "stale",
+        "role": "artifact-body",
+        "priority": 10,
+        "includeBodiesByDefault": false
+      },
+      {
+        "id": "active-plan",
+        "label": "Active Plans",
+        "paths": [
+          "docs/plan/**"
+        ],
+        "excludePaths": [],
+        "scope": "local",
+        "freshness": "fresh",
+        "role": "active-task-intent",
+        "priority": 95,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "archive-map",
+        "label": "Archive Map",
+        "paths": [
+          "docs/archive/README.md"
+        ],
+        "excludePaths": [],
+        "scope": "local",
+        "freshness": "stale",
+        "role": "historical-memory-map",
+        "priority": 65,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "archive-body",
+        "label": "Archive Body",
+        "paths": [
+          "docs/archive/**"
+        ],
+        "excludePaths": [
+          "docs/archive/README.md"
+        ],
+        "scope": "local",
+        "freshness": "stale",
+        "role": "historical-memory-body",
+        "priority": 20,
+        "includeBodiesByDefault": false
+      },
+      {
+        "id": "docs",
+        "label": "Project Documentation",
+        "paths": [
+          "docs/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "project-documentation",
+        "priority": 60,
+        "includeBodiesByDefault": true
+      }
+    ]
+  },
+  "traceability": {
+    "required": [
+      "docs/spec/**",
+      "docs/report/**"
+    ],
+    "exclude": [
+      "**/README.md"
+    ],
+    "keys": [
+      {
+        "key": "informedBy",
+        "label": "Informed by",
+        "description": "Research sources or prior findings that justify the direction.",
+        "target": "path",
+        "relation": "informed_by",
+        "weight": 4
+      },
+      {
+        "key": "assumptionsDefinedIn",
+        "label": "Assumptions defined in",
+        "description": "Documents defining assumptions that bound the claim.",
+        "target": "path",
+        "relation": "assumptions_defined_in",
+        "weight": 4
+      },
+      {
+        "key": "evaluatedBy",
+        "label": "Evaluated by",
+        "description": "Evaluation protocols or measurement methods.",
+        "target": "path",
+        "relation": "evaluated_by",
+        "weight": 4
+      },
+      {
+        "key": "evidenceRecordedIn",
+        "label": "Evidence recorded in",
+        "description": "Dated experiment, dataset, or validation records.",
+        "target": "path",
+        "relation": "evidence_recorded_in",
+        "weight": 4
+      }
+    ]
+  },
+  "validation": {
+    "markdown": {
+      "maxLines": 200,
+      "maxChars": 10000,
+      "exclude": [],
+      "filename": {
+        "warnNumberedSeries": true,
+        "allow": []
+      }
+    }
+  },
+  "impactRanking": {
+    "semantic": {
+      "enabled": true,
+      "threshold": 0.5,
+      "topKPerFile": 5
+    }
+  },
+  "referenceExpansion": {
+    "fuzzy": {
+      "lowSignal": {
+        "add": [],
+        "remove": []
+      }
+    }
+  },
+  "load": {
+    "pinnedPaths": [],
+    "pinnedBodies": [],
+    "documentationSummary": {
+      "exclude": [
+        "docs/plan",
+        "docs/archive"
+      ]
+    }
+  },
+  "planMode": {
+    "writablePaths": [
+      "docs/plan/**",
+      "docs/archive/**"
+    ]
+  }
+}

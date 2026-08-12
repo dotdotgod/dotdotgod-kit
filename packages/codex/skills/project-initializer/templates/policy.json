@@ -1,0 +1,243 @@
+{
+  "memory": {
+    "areas": [
+      {
+        "id": "rules",
+        "label": "Agent Rules",
+        "paths": [
+          "AGENTS.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "agent-working-rules",
+        "priority": 100,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "agent-entrypoint",
+        "label": "Agent Entrypoints",
+        "paths": [
+          "CLAUDE.md",
+          "CODEX.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "agent-specific-entrypoint",
+        "priority": 85,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "project-overview",
+        "label": "Project Overview",
+        "paths": [
+          "README.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "project-map",
+        "priority": 85,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "docs-index",
+        "label": "Docs Index",
+        "paths": [
+          "docs/README.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "documentation-routing-map",
+        "priority": 90,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "policy",
+        "label": "Policy Documents",
+        "paths": [
+          "docs/policy/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "policy-output",
+        "priority": 95,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "sections",
+        "label": "Policy Sections",
+        "paths": [
+          "docs/sections/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "policy-source-sections",
+        "priority": 90,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "evidence",
+        "label": "Policy Evidence",
+        "paths": [
+          "docs/evidence/**",
+          "docs/report/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "policy-evidence",
+        "priority": 80,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "outputs",
+        "label": "Submission Outputs",
+        "paths": [
+          "docs/outputs/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "policy-submission-output",
+        "priority": 75,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "active-plan",
+        "label": "Active Plans",
+        "paths": [
+          "docs/plan/**"
+        ],
+        "excludePaths": [],
+        "scope": "local",
+        "freshness": "fresh",
+        "role": "active-task-intent",
+        "priority": 95,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "archive-map",
+        "label": "Archive Map",
+        "paths": [
+          "docs/archive/README.md"
+        ],
+        "excludePaths": [],
+        "scope": "local",
+        "freshness": "stale",
+        "role": "historical-memory-map",
+        "priority": 65,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "archive-body",
+        "label": "Archive Body",
+        "paths": [
+          "docs/archive/**"
+        ],
+        "excludePaths": [
+          "docs/archive/README.md"
+        ],
+        "scope": "local",
+        "freshness": "stale",
+        "role": "historical-memory-body",
+        "priority": 20,
+        "includeBodiesByDefault": false
+      },
+      {
+        "id": "docs",
+        "label": "Project Documentation",
+        "paths": [
+          "docs/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "project-documentation",
+        "priority": 60,
+        "includeBodiesByDefault": true
+      }
+    ]
+  },
+  "traceability": {
+    "required": [
+      "docs/sections/**",
+      "docs/outputs/**"
+    ],
+    "exclude": [
+      "**/README.md"
+    ],
+    "keys": [
+      {
+        "key": "supportedBy",
+        "label": "Supported by",
+        "description": "Evidence, source sections, or research supporting the proposal.",
+        "target": "path",
+        "relation": "supported_by",
+        "weight": 4
+      },
+      {
+        "key": "integratedInto",
+        "label": "Integrated into",
+        "description": "Integrated proposals or briefs that use this policy section.",
+        "target": "path",
+        "relation": "integrated_into",
+        "weight": 4
+      },
+      {
+        "key": "relatedDocs",
+        "label": "Related docs",
+        "description": "Documents needed to interpret the policy.",
+        "target": "path",
+        "relation": "related_doc",
+        "weight": 2
+      }
+    ]
+  },
+  "validation": {
+    "markdown": {
+      "maxLines": 200,
+      "maxChars": 10000,
+      "exclude": [],
+      "filename": {
+        "warnNumberedSeries": true,
+        "allow": []
+      }
+    }
+  },
+  "impactRanking": {
+    "semantic": {
+      "enabled": true,
+      "threshold": 0.5,
+      "topKPerFile": 5
+    }
+  },
+  "referenceExpansion": {
+    "fuzzy": {
+      "lowSignal": {
+        "add": [],
+        "remove": []
+      }
+    }
+  },
+  "load": {
+    "pinnedPaths": [],
+    "pinnedBodies": [],
+    "documentationSummary": {
+      "exclude": [
+        "docs/plan",
+        "docs/archive"
+      ]
+    }
+  },
+  "planMode": {
+    "writablePaths": [
+      "docs/plan/**",
+      "docs/archive/**"
+    ]
+  }
+}

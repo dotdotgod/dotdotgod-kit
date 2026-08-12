@@ -1,0 +1,267 @@
+{
+  "memory": {
+    "areas": [
+      {
+        "id": "rules",
+        "label": "Agent Rules",
+        "paths": [
+          "AGENTS.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "agent-working-rules",
+        "priority": 100,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "agent-entrypoint",
+        "label": "Agent Entrypoints",
+        "paths": [
+          "CLAUDE.md",
+          "CODEX.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "agent-specific-entrypoint",
+        "priority": 85,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "project-overview",
+        "label": "Project Overview",
+        "paths": [
+          "README.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "project-map",
+        "priority": 85,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "docs-index",
+        "label": "Docs Index",
+        "paths": [
+          "docs/README.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "documentation-routing-map",
+        "priority": 90,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "brief",
+        "label": "Publication Brief",
+        "paths": [
+          "docs/BOOK_BRIEF.md"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "publication-direction",
+        "priority": 100,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "outline",
+        "label": "Publication Outline",
+        "paths": [
+          "docs/outline/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "narrative-structure",
+        "priority": 95,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "chapters",
+        "label": "Chapter Plans",
+        "paths": [
+          "docs/chapters/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "chapter-direction",
+        "priority": 90,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "claims",
+        "label": "Claims",
+        "paths": [
+          "docs/claims/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "claim-registry",
+        "priority": 90,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "manuscript",
+        "label": "Manuscript",
+        "paths": [
+          "book/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "manuscript",
+        "priority": 95,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "research",
+        "label": "Research Sources",
+        "paths": [
+          "docs/research/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "evidence-library",
+        "priority": 80,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "active-plan",
+        "label": "Active Plans",
+        "paths": [
+          "docs/plan/**"
+        ],
+        "excludePaths": [],
+        "scope": "local",
+        "freshness": "fresh",
+        "role": "active-task-intent",
+        "priority": 95,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "archive-map",
+        "label": "Archive Map",
+        "paths": [
+          "docs/archive/README.md"
+        ],
+        "excludePaths": [],
+        "scope": "local",
+        "freshness": "stale",
+        "role": "historical-memory-map",
+        "priority": 65,
+        "includeBodiesByDefault": true
+      },
+      {
+        "id": "archive-body",
+        "label": "Archive Body",
+        "paths": [
+          "docs/archive/**"
+        ],
+        "excludePaths": [
+          "docs/archive/README.md"
+        ],
+        "scope": "local",
+        "freshness": "stale",
+        "role": "historical-memory-body",
+        "priority": 20,
+        "includeBodiesByDefault": false
+      },
+      {
+        "id": "docs",
+        "label": "Project Documentation",
+        "paths": [
+          "docs/**"
+        ],
+        "excludePaths": [],
+        "scope": "shared",
+        "freshness": "fresh",
+        "role": "project-documentation",
+        "priority": 60,
+        "includeBodiesByDefault": true
+      }
+    ]
+  },
+  "traceability": {
+    "required": [
+      "docs/chapters/**"
+    ],
+    "exclude": [
+      "**/README.md"
+    ],
+    "keys": [
+      {
+        "key": "developedIn",
+        "label": "Developed in",
+        "description": "Outlines or manuscript drafts that develop this design.",
+        "target": "path",
+        "relation": "developed_in",
+        "weight": 4
+      },
+      {
+        "key": "supportedBy",
+        "label": "Supported by",
+        "description": "Research notes and sources supporting the claims.",
+        "target": "path",
+        "relation": "supported_by",
+        "weight": 4
+      },
+      {
+        "key": "framedBy",
+        "label": "Framed by",
+        "description": "Documents defining purpose, scope, or conceptual boundaries.",
+        "target": "path",
+        "relation": "framed_by",
+        "weight": 3
+      }
+    ]
+  },
+  "validation": {
+    "markdown": {
+      "maxLines": 200,
+      "maxChars": 10000,
+      "exclude": [],
+      "filename": {
+        "warnNumberedSeries": true,
+        "allow": []
+      }
+    }
+  },
+  "impactRanking": {
+    "semantic": {
+      "enabled": true,
+      "threshold": 0.5,
+      "topKPerFile": 5
+    }
+  },
+  "referenceExpansion": {
+    "fuzzy": {
+      "lowSignal": {
+        "add": [],
+        "remove": []
+      }
+    }
+  },
+  "load": {
+    "pinnedPaths": [],
+    "pinnedBodies": [],
+    "documentationSummary": {
+      "exclude": [
+        "docs/plan",
+        "docs/archive"
+      ]
+    }
+  },
+  "planMode": {
+    "writablePaths": [
+      "docs/plan/**",
+      "docs/archive/**"
+    ]
+  }
+}

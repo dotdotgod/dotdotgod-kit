@@ -2,11 +2,11 @@
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -P "$(dirname "$0")" && pwd)
-CONFIG_TEMPLATE="$SCRIPT_DIR/../templates/dotdotgod.config.json"
+TEMPLATES_DIR="$SCRIPT_DIR/../templates"
 
 usage() {
   cat <<'EOF'
-Usage: init_project.sh <project-root> [--project-name NAME] [--dotdot-setting] [--dry-run]
+Usage: init_project.sh <project-root> [--project-name NAME] [--template NAME] [--dotdot-setting] [--dry-run]
 
 Initializes:
   AGENTS.md, CLAUDE.md, CODEX.md
@@ -25,6 +25,7 @@ PROJECT_ROOT=""
 PROJECT_NAME=""
 DRY_RUN=0
 DOTDOT_SETTING=0
+TEMPLATE_NAME="software"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -34,6 +35,14 @@ while [ "$#" -gt 0 ]; do
         exit 2
       }
       PROJECT_NAME=$2
+      shift 2
+      ;;
+    --template)
+      [ "$#" -ge 2 ] || {
+        echo "error: --template requires a value" >&2
+        exit 2
+      }
+      TEMPLATE_NAME=$2
       shift 2
       ;;
     --dotdot-setting)
@@ -80,8 +89,15 @@ if [ -z "$PROJECT_NAME" ]; then
 fi
 
 CONFIG_PATH="$PROJECT_ROOT/dotdotgod.config.json"
+case "$TEMPLATE_NAME" in
+  *[!a-z0-9-]*|'')
+    echo "error: template name must be kebab-case: $TEMPLATE_NAME" >&2
+    exit 2
+    ;;
+esac
+CONFIG_TEMPLATE="$TEMPLATES_DIR/$TEMPLATE_NAME.json"
 if [ ! -e "$CONFIG_PATH" ] && [ ! -f "$CONFIG_TEMPLATE" ]; then
-  echo "error: missing initializer config template: $CONFIG_TEMPLATE" >&2
+  echo "error: bundled template not found: $TEMPLATE_NAME; custom templates require the dotdotgod CLI" >&2
   exit 2
 fi
 
@@ -112,6 +128,20 @@ write_file() {
 
   mkdir -p "$(dirname "$path")"
   printf '%s\n' "$content" > "$path"
+  print_result "created" "$path"
+}
+
+ensure_directory() {
+  path=$1
+  if [ -e "$path" ]; then
+    print_result "skipped" "$path"
+    return
+  fi
+  if [ "$DRY_RUN" -eq 1 ]; then
+    print_result "would_create" "$path"
+    return
+  fi
+  mkdir -p "$path"
   print_result "created" "$path"
 }
 
@@ -395,6 +425,80 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 - Additional archive categories can be added later as focused kebab-case subdirectories when needed.
 
 This directory is local-only and ignored by git by default."
+
+if [ ! -e "$CONFIG_PATH" ]; then
+case "$TEMPLATE_NAME" in
+  software)
+    ;;
+  research)
+    write_file "$PROJECT_ROOT/docs/research/README.md" "# Research
+
+Use this area for research notes, sources, and findings."
+    write_file "$PROJECT_ROOT/docs/record/README.md" "# Research Records
+
+Use this area for dated measurements, experiments, and execution records."
+    write_file "$PROJECT_ROOT/docs/report/README.md" "# Reports
+
+Use this area for research diagnoses, analyses, results, and performance reports."
+    ensure_directory "$PROJECT_ROOT/outputs"
+    ;;
+  case-and-evidence)
+    write_file "$PROJECT_ROOT/docs/case/README.md" "# Case Records
+
+Use this area for canonical case facts, questions, and decisions."
+    write_file "$PROJECT_ROOT/docs/evidence/README.md" "# Evidence
+
+Use this area for factual, legal, and other supporting evidence."
+    write_file "$PROJECT_ROOT/docs/outputs/README.md" "# Case Outputs
+
+Use this area for maintained case outputs."
+    ;;
+  publication)
+    write_file "$PROJECT_ROOT/docs/outline/README.md" "# Publication Outline
+
+Use this area for publication structure and outlines."
+    write_file "$PROJECT_ROOT/docs/chapters/README.md" "# Chapter Plans
+
+Use this area for chapter plans and direction."
+    write_file "$PROJECT_ROOT/docs/claims/README.md" "# Claims
+
+Use this area for maintained claims and their support."
+    write_file "$PROJECT_ROOT/docs/research/README.md" "# Research Sources
+
+Use this area for research sources and supporting notes."
+    ensure_directory "$PROJECT_ROOT/book"
+    ;;
+  portfolio)
+    write_file "$PROJECT_ROOT/docs/strategy/README.md" "# Portfolio Strategy
+
+Use this area for portfolio strategy and risk rules."
+    write_file "$PROJECT_ROOT/docs/positions/README.md" "# Position Theses
+
+Use this area for position theses and investment conclusions."
+    write_file "$PROJECT_ROOT/docs/journal/README.md" "# Decision Journal
+
+Use this area for dated investment decisions and reviews."
+    write_file "$PROJECT_ROOT/docs/report/README.md" "# Market Research
+
+Use this area for maintained market research and analysis."
+    ensure_directory "$PROJECT_ROOT/data"
+    ;;
+  policy)
+    write_file "$PROJECT_ROOT/docs/policy/README.md" "# Policy Documents
+
+Use this area for integrated policy proposals and outputs."
+    write_file "$PROJECT_ROOT/docs/sections/README.md" "# Policy Sections
+
+Use this area for source policy sections."
+    write_file "$PROJECT_ROOT/docs/evidence/README.md" "# Policy Evidence
+
+Use this area for evidence supporting policy proposals."
+    write_file "$PROJECT_ROOT/docs/outputs/README.md" "# Submission Outputs
+
+Use this area for maintained policy submission outputs."
+    ;;
+esac
+fi
 
 if [ -e "$CONFIG_PATH" ]; then
   print_result "skipped" "$CONFIG_PATH"

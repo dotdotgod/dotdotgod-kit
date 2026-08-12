@@ -4,7 +4,7 @@
 
 The `dotdotgod config` command makes project-level config policy discoverable from the CLI.
 
-It does not introduce global config, user config, or monorepo cascading config. The CLI resolves the optional `dotdotgod.config.json` file from the project root. When the file does not exist, commands use built-in defaults.
+The CLI resolves the optional `dotdotgod.config.json` file from the project root. When the file does not exist, normal commands use built-in defaults. User-level template settings affect initialization; see [`CONFIG_TEMPLATES.md`](CONFIG_TEMPLATES.md). Monorepo cascading config is not supported.
 
 ## Show Command
 
@@ -42,7 +42,7 @@ If the project config is invalid, `ok` is `false`, errors use the same validatio
 
 ## Policy Families
 
-The config command surfaces the same policy families that validation, Load/query routing, reference expansion, and graph impact use:
+The config command surfaces the same policy families that validation, Load/query routing, reference expansion, and graph impact use. Existing project policy output includes:
 
 - `memory.areas`: ordered path classifiers for shared/local and fresh/stale project memory, including optional `description` and `clarify` metadata when a project defines document-area guidance.
 - `traceability.required`, `traceability.exclude`, and `traceability.keys`: enforcement paths plus the ordered complete-list definition of traceability string arrays, targets, graph relations, and PPR weights.
@@ -56,10 +56,10 @@ The config command surfaces the same policy families that validation, Load/query
 ## Init Command
 
 ```bash
-dotdotgod config init <root> [--json]
+dotdotgod config init <root> [--template NAME] [--json]
 ```
 
-The init command creates `dotdotgod.config.json` with the current built-in defaults for:
+The init command creates `dotdotgod.config.json` from the explicitly selected template, the global `defaultTemplate`, or bundled `software`, in that order. The `software` template contains the current built-in defaults for:
 
 - `memory.areas`
 - `traceability`
@@ -89,8 +89,9 @@ JSON output for init errors includes `ok: false`, `command: "config init"`, `roo
 ## Non-Goals
 
 - Do not require a config file for zero-config projects.
-- Do not change runtime fallback behavior for invalid config.
-- Do not add interactive prompts.
+- Do not use initialization templates as runtime fallback policy.
+- Do not change runtime fallback behavior for invalid project config.
+- Do not add interactive prompts or template-management commands.
 - Do not infer package-level configs in workspaces.
 
 ## Traceability
@@ -106,13 +107,16 @@ JSON output for init errors includes `ok: false`, `command: "config init"`, `roo
   - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
   - [packages/cli/src/init.mjs](../../packages/cli/src/init.mjs)
   - [packages/cli/src/memory/config.mjs](../../packages/cli/src/memory/config.mjs)
+  - [packages/cli/src/config/templates.mjs](../../packages/cli/src/config/templates.mjs)
   - [packages/shared/initializer/templates/dotdotgod.config.json](../../packages/shared/initializer/templates/dotdotgod.config.json)
   - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
   - [docs/test/CONFIG_COMMAND.md](../test/CONFIG_COMMAND.md)
+  - [docs/test/CONFIG_TEMPLATES.md](../test/CONFIG_TEMPLATES.md)
 - Related docs:
+  - [docs/spec/CONFIG_TEMPLATES.md](CONFIG_TEMPLATES.md)
   - [docs/spec/PROJECT_INITIALIZER.md](PROJECT_INITIALIZER.md)
   - [docs/spec/MEMORY_AREA_CONFIG.md](MEMORY_AREA_CONFIG.md)
   - [docs/spec/TRACEABILITY_CONFIG.md](TRACEABILITY_CONFIG.md)
@@ -128,5 +132,5 @@ JSON output for init errors includes `ok: false`, `command: "config init"`, `roo
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/init.mjs","packages/cli/src/memory/config.mjs","packages/shared/initializer/templates/dotdotgod.config.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_COMMAND.md"],"relatedDocs":["docs/spec/PROJECT_INITIALIZER.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/spec/CLI_INTERFACE.md","docs/arch/MEMORY_AREA_CONFIG.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs config . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/init.mjs","packages/cli/src/memory/config.mjs","packages/cli/src/config/templates.mjs","packages/shared/initializer/templates/dotdotgod.config.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_COMMAND.md","docs/test/CONFIG_TEMPLATES.md"],"relatedDocs":["docs/spec/CONFIG_TEMPLATES.md","docs/spec/PROJECT_INITIALIZER.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/spec/CLI_INTERFACE.md","docs/arch/MEMORY_AREA_CONFIG.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs config . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
 ```

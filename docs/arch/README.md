@@ -6,6 +6,7 @@ Use this area for architecture decisions, code conventions, module boundaries, d
 
 - `README.md`: architecture documentation scope and local table of contents.
 - `CODE_CONVENTIONS.md`: dotdot code conventions, including abstraction boundaries, package `verify` contracts, and when to split long code. If conventions grow across multiple topics, promote them to `conventions/README.md` with supporting UPPER_SNAKE_CASE files.
+- `CONFIG_TEMPLATE_ARCHITECTURE.md`: initialization template registry, global/custom resolution boundary, skill selection, and POSIX fallback.
 - `DEVELOPMENT_PRINCIPLES.md`: Code Complete-inspired development philosophy for construction, trade-offs, complexity management, defect prevention, diagnostics, integration, and practical quality.
 - `DOCS_STRUCTURE.md`: documentation layout, naming, README index, size guideline, spec current-state writing contract, and domain directory promotion rules.
 - `NATURAL_LANGUAGE_BOUNDARIES.md`: architecture decision that code validates structured markers and safety rules while LLMs own qualitative prose interpretation.

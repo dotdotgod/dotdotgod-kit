@@ -51,6 +51,7 @@ dotdotgod validate .
 dotdotgod validate . --check-index
 dotdotgod config .
 dotdotgod config init .
+dotdotgod config init . --template research
 dotdotgod status .
 dotdotgod index .
 dotdotgod query . "plan mode tools"

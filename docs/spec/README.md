@@ -18,6 +18,7 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 - `IMPACT_RANKING_CONFIG.md`: fixed weighted-PPR plus memory scoring, non-blocking `impactRanking` compatibility input, request-local vector candidates, score diagnostics, and compact text/YML output.
 - `REFERENCE_EXPANSION.md`: `referenceExpansion.fuzzy.lowSignal.add/remove` for fuzzy prompt matching.
 - `CONFIG_COMMAND.md`: config discovery, JSON output, initialization, invalid-config fallback, and user-facing repair behavior.
+- `CONFIG_TEMPLATES.md`: initialization-only built-in/custom templates, global default selection, shadowing, and fallback behavior.
 
 ## Index
 

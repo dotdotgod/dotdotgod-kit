@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { defaultDotdotgodConfigText } from "../packages/cli/src/memory/config.mjs";
+import { BUILT_IN_TEMPLATE_NAMES, builtInTemplateText } from "../packages/cli/src/config/templates.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const check = process.argv.includes("--check");
@@ -48,7 +48,8 @@ const initBody = read("packages/shared/workflows/init.md");
 const impactBody = read("packages/shared/workflows/impact.md");
 const docClarifyBody = read("packages/shared/workflows/doc-clarify.md");
 
-write("packages/shared/initializer/templates/dotdotgod.config.json", defaultDotdotgodConfigText());
+for (const name of BUILT_IN_TEMPLATE_NAMES) write(`packages/shared/initializer/templates/${name}.json`, builtInTemplateText(name));
+write("packages/shared/initializer/templates/dotdotgod.config.json", builtInTemplateText("software"));
 
 const initCommands = {
   pi: "sh scripts/init_project.sh <project-root>",
@@ -92,7 +93,7 @@ function command(frontmatter, title, intro, body) {
 const yaml = {
   load: `interface:\n  display_name: "Project Load"\n  short_description: "Load dotdotgod project memory."\n  default_prompt: "Load the resolved dotdotgod project context and summarize the maintained evidence and routes relevant to the current request."\n`,
   plan: `interface:\n  display_name: "Doc-First Planning"\n  short_description: "Plan work from dotdotgod docs first."\n  default_prompt: "Plan this change from maintained project evidence and create a durable task plan when the work warrants one."\n`,
-  init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize project memory and config."\n  default_prompt: "Initialize shared project memory and the complete default config with dotdotgod init or the bundled fallback while preserving existing files."\n`,
+  init: `interface:\n  display_name: "Project Initializer"\n  short_description: "Initialize project memory and config."\n  default_prompt: "Inspect the project, select the most appropriate available dotdotgod config template, and initialize shared project memory without replacing existing files."\n`,
   impact: `interface:\n  display_name: "Impact Review"\n  short_description: "Review changed files with dotdotgod graph impact."\n  default_prompt: "Review task-relevant changed files with dotdotgod graph impact and use the evidence to select verification and related updates."\n`,
   docClarify: `interface:\n  display_name: "Document Clarify"\n  short_description: "Clarify dotdotgod project documentation."\n  default_prompt: "Clarify the target docs using resolved dotdotgod memory-area guidance and direct affirmative prose while preserving established meaning and traceability."\n`,
 };

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import {
+  BUILT_IN_TEMPLATE_NAMES,
   CACHE_VERSION,
   addDeterministicSemanticEdges,
   buildCommunities,
@@ -13,6 +14,8 @@ import {
   buildChangedFileProfile,
   buildVectorImpactOverlay,
   buildMemoryAreas,
+  builtInTemplateData,
+  builtInTemplateScaffold,
   buildIndex,
   buildCompactImpactReport,
   collectIndexFiles,
@@ -414,6 +417,15 @@ describe('CLI docs helpers', () => {
     assert.deepEqual(data.referenceExpansion.fuzzy.lowSignal, { add: [], remove: [] });
     assert(JSON.parse(defaultDotdotgodConfigText()).referenceExpansion.fuzzy.lowSignal);
     assert(data.memory.areas.every((area) => area.description === undefined && area.clarify === undefined));
+    assert.deepEqual(BUILT_IN_TEMPLATE_NAMES, ['software', 'research', 'case-and-evidence', 'publication', 'portfolio', 'policy']);
+    for (const name of BUILT_IN_TEMPLATE_NAMES) {
+      assert.deepEqual(validateMemoryConfigData(builtInTemplateData(name)), [], `${name} template should validate`);
+      const scaffold = builtInTemplateScaffold(name);
+      assert(Array.isArray(scaffold), `${name} template should define a scaffold`);
+      assert.equal(new Set(scaffold.map((item) => item.path)).size, scaffold.length, `${name} scaffold paths should be unique`);
+    }
+    assert(builtInTemplateScaffold('research').some((item) => item.path === 'docs/report/README.md'));
+    assert.equal(builtInTemplateScaffold('unknown'), null);
 
     const root = fixture();
     writeFixtureFile(root, 'dotdotgod.config.json', defaultDotdotgodConfigText());

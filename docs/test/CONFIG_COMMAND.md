@@ -15,6 +15,9 @@ These checks cover `dotdotgod config` and `dotdotgod config init` behavior for p
 
 `packages/cli/test/e2e.test.mjs` verifies:
 
+- initialization accepts explicit, global-default, bundled, and custom templates without changing zero-config runtime behavior
+- same-name custom templates replace bundled templates and invalid overrides fail closed
+
 - `dotdotgod init`, `dotdotgod config init`, and the POSIX fallback produce structurally identical config data
 - project init reports config dry-run and existing-file skip behavior
 - packaged Pi, Claude Code, and Codex adapters include the generated fallback config template

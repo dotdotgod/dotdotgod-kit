@@ -11,23 +11,23 @@ export function commandUsage(command = 'root') {
   dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]`;
     case 'init':
       return `Usage:
-  dotdotgod init <root> [--project-name NAME] [--dotdot-setting] [--dry-run] [--json]
+  dotdotgod init <root> [--project-name NAME] [--template NAME] [--dotdot-setting] [--dry-run] [--json]
 
-Create AGENTS.md, agent entrypoints, docs indexes, and local memory gitignore entries.`;
+Create AGENTS.md, agent entrypoints, docs indexes, a project config from an initialization template, and local memory gitignore entries.`;
     case 'index':
       return `Usage:
   dotdotgod index <root> [--json]`;
     case 'config':
       return `Usage:
   dotdotgod config <root> [--json]
-  dotdotgod config init <root> [--json]
+  dotdotgod config init <root> [--template NAME] [--json]
 
 Inspect or initialize the project-level dotdotgod config file.`;
     case 'config init':
       return `Usage:
-  dotdotgod config init <root> [--json]
+  dotdotgod config init <root> [--template NAME] [--json]
 
-Create dotdotgod.config.json with the built-in default memory, traceability, validation, and impact ranking policy.`;
+Create dotdotgod.config.json from a bundled or user template. Without --template, use the global defaultTemplate and then software.`;
     case 'status':
       return `Usage:
   dotdotgod status <root> [--json]`;

@@ -19,7 +19,7 @@ The CLI checks the project root for `dotdotgod.config.json`.
 
 If no config exists, or if runtime parsing finds invalid config, the CLI falls back to built-in defaults. Validation still reports config errors so agents can repair them.
 
-`dotdotgod config <root>` exposes the same resolved policy without refreshing the graph cache. `dotdotgod config init <root>` and project initialization write `dotdotgod.config.json` through the same canonical default serializer. Generated adapter fallback templates come from that serializer as well. Config remains root-scoped; there is no global, user-level, or package-cascading config lookup.
+`dotdotgod config <root>` exposes the same resolved policy without refreshing the graph cache. `dotdotgod config init <root>` and project initialization write `dotdotgod.config.json` through the same canonical default serializer. Generated adapter fallback templates come from that serializer as well. Runtime config remains root-scoped; there is no global or package-cascading runtime lookup. User-level settings and custom templates are consulted only when initially creating a project config, as described in [`CONFIG_TEMPLATE_ARCHITECTURE.md`](CONFIG_TEMPLATE_ARCHITECTURE.md).
 
 ## Default Compatibility
 
