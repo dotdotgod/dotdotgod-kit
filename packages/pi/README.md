@@ -6,7 +6,7 @@ Pi adapter for dotdotgod's docs-first project-memory workflow.
 
 Use this package when you want Pi to initialize project memory, load bounded repository context, plan before source edits, run impact-aware checks, and archive completed work for future sessions.
 
-Pi is the fullest dotdotgod experience: it is the only adapter that enforces Plan Mode before source edits and can gate commit, push, and publish on pending impact checks. Throughout, the maintained graph stays a compact map for targeted reads, not a giant report to consume in full.
+Pi is the fullest dotdotgod experience: it is the only adapter with a Plan Mode that blocks source edits while active, and it can gate commit, push, and publish on pending impact checks. Throughout, the maintained graph stays a compact map for targeted reads, not a giant report to consume in full.
 
 ## Start Here
 

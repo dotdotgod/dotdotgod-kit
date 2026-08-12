@@ -44,16 +44,16 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 2. Ask the agent to analyze the task and create a plan.
 3. The agent should create or update a focused kebab-case task directory under `docs/plan/<task-slug>/`.
 4. The task overview, index, scope, and status belong in `docs/plan/<task-slug>/README.md`.
-6. If the session is long or noisy, Plan Mode automatically compacts with planning-focused instructions before continuing.
-7. If the plan contains unresolved `Discussion Queue` items, Pi opens the queue console before execution review; answer, defer, request research, request plan revision, or cancel back to planning.
-8. After the queue is clear, or when no queue exists, Pi opens a full-page saved-plan review UI and asks whether to execute, stay in plan mode, refine the plan, or cancel; choose with the action bar or shortcut keys. Follow-up prompts generated from those choices are queued explicitly and should not raise already-processing runtime errors.
-9. The agent should write concrete executable steps in the final `Plan:` section. Generic section labels such as `Target files and rationale`, `Implementation steps`, and `Verification method` are ignored for todo extraction.
-10. Choose execute in the review UI to switch into implementation mode; if you later ask to execute a resolvable active plan, the same queue-first review flow opens immediately. If no plan is selected or mentioned, ordinary planning/advisory requests remain in Plan Mode instead of opening the active-plan execution chooser.
-11. During execution, the agent must mark every completed step in the same response with `[DONE:n]` tags.
-12. Before source changes for implementation tasks, run the plan's `dotdotgod graph impact` refinement step and update target files, risks, or verification if needed.
-13. After source/config edits, run `/impact-check` or the `dotdotgod_graph_impact` tool and review related docs/tests/files before broad verification or commit.
-14. After modification or coding work, run `dotdotgod validate` for the project before final completion.
-15. After implementation and verification, the agent moves the completed task directory to `docs/archive/plan/<task-slug>/` and includes that step's `[DONE:n]` tag.
+5. If the session is long or noisy, Plan Mode automatically compacts with planning-focused instructions before continuing.
+6. If the plan contains unresolved `Discussion Queue` items, Pi opens the queue console before execution review; answer, defer, request research, request plan revision, or cancel back to planning.
+7. After the queue is clear, or when no queue exists, Pi opens a full-page saved-plan review UI and asks whether to execute, stay in plan mode, refine the plan, or cancel; choose with the action bar or shortcut keys. Follow-up prompts generated from those choices are queued explicitly and should not raise already-processing runtime errors.
+8. The agent should write concrete executable steps in the final `Plan:` section. Generic section labels such as `Target files and rationale`, `Implementation steps`, and `Verification method` are ignored for todo extraction.
+9. Choose execute in the review UI to switch into implementation mode; if you later ask to execute a resolvable active plan, the same queue-first review flow opens immediately. If no plan is selected or mentioned, ordinary planning/advisory requests remain in Plan Mode instead of opening the active-plan execution chooser.
+10. During execution, the agent must mark every completed step in the same response with `[DONE:n]` tags.
+11. Before source changes for implementation tasks, run the plan's `dotdotgod graph impact` refinement step and update target files, risks, or verification if needed.
+12. After source/config edits, run `/impact-check` or the `dotdotgod_graph_impact` tool and review related docs/tests/files before broad verification or commit.
+13. After modification or coding work, run `dotdotgod validate` for the project before final completion.
+14. After implementation and verification, the agent moves the completed task directory to `docs/archive/plan/<task-slug>/` and includes that step's `[DONE:n]` tag.
 
 ## Plan Mode Restrictions
 
