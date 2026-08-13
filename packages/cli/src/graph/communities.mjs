@@ -42,7 +42,7 @@ function addBounded(list, value, limit) {
 
 export function relationWeight(relation) {
   if (relation === 'implemented_by' || relation === 'verified_by') return 4;
-  if (relation === 'includes_resource' || relation === 'routes_to' || relation === 'related_doc' || relation === 'verification_command') return 3;
+  if (relation === 'includes_resource' || relation === 'routes_to' || relation === 'related_doc' || relation === 'design_decision' || relation === 'verification_command') return 3;
   if (relation === 'links_to' || relation === 'belongs_to_area' || relation === 'declares_package' || relation === 'declares_bin' || relation === 'vector_similarity') return 2;
   return 1;
 }

@@ -36,13 +36,9 @@
   - [docs/spec/IMPACT_RANKING_CONFIG.md](../IMPACT_RANKING_CONFIG.md)
   - [docs/test/README.md](../../test/README.md)
   - [packages/cli/README.md](../../../packages/cli/README.md)
-- Verification commands:
-  - `pnpm --filter @dotdotgod/cli test`
-  - `node packages/cli/bin/dotdotgod.mjs traceability links --help`
-  - `node packages/cli/bin/dotdotgod.mjs traceability links . --check --json`
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/commands/traceability.mjs","packages/cli/src/docs/traceability.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CLI_INTERFACE.md","docs/test/TRACEABILITY_CONFIG.md"],"relatedDocs":["docs/spec/TRACEABILITY_CONFIG.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/test/README.md","packages/cli/README.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs traceability links --help","node packages/cli/bin/dotdotgod.mjs traceability links . --check --json"]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/commands/traceability.mjs","packages/cli/src/docs/traceability.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CLI_INTERFACE.md","docs/test/TRACEABILITY_CONFIG.md"],"relatedDocs":["docs/spec/TRACEABILITY_CONFIG.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/test/README.md","packages/cli/README.md"],"designDecisions":[]}
 ```

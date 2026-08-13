@@ -88,13 +88,11 @@ The index preparation, exact-cosine, and unique-file aggregation primitives are 
 - Related docs:
   - [docs/spec/LOAD_PROJECT.md](../LOAD_PROJECT.md)
   - [docs/spec/cli/DISCOVERY.md](DISCOVERY.md)
+- Design decisions:
   - [docs/arch/EXTENSION_ARCHITECTURE.md](../../arch/EXTENSION_ARCHITECTURE.md)
-- Verification commands:
-  - `pnpm --filter @dotdotgod/cli test`
-  - `node packages/cli/bin/dotdotgod.mjs query . "project documentation" --limit 5 --json`
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/commands/query.mjs","packages/cli/src/query/chunks.mjs","packages/cli/src/query/embedder.mjs","packages/cli/src/query/store.mjs","packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/pi/test/load-project-utils.test.ts"],"relatedDocs":["docs/spec/LOAD_PROJECT.md","docs/spec/cli/DISCOVERY.md","docs/arch/EXTENSION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs query . \"project documentation\" --limit 5 --json"]}
+{"kind":"spec","implementedBy":["packages/cli/src/commands/query.mjs","packages/cli/src/query/chunks.mjs","packages/cli/src/query/embedder.mjs","packages/cli/src/query/store.mjs","packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/pi/test/load-project-utils.test.ts"],"relatedDocs":["docs/spec/LOAD_PROJECT.md","docs/spec/cli/DISCOVERY.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
 ```

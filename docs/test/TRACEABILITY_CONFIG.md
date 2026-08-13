@@ -12,8 +12,9 @@ node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory
 - Confirm the zero-config default still requires traceability for `docs/spec/**` markdown files except README files.
 - Confirm custom `traceability.required` arrays can require multiple non-spec paths, such as `docs/product/**` and `docs/requirements/**`.
 - Confirm custom traceability config uses replacement semantics for the default required list.
-- Confirm missing `traceability.keys` resolves to the ordered four defaults and explicit custom/empty arrays use complete-list semantics.
-- Confirm custom path and command keys render configured labels, validate target-specific arrays at top level and in contracts, and create configured graph relations/weights.
+- Confirm missing `traceability.keys` resolves to the ordered defaults `implementedBy`, `verifiedBy`, `relatedDocs`, and `designDecisions`; explicit custom/empty arrays use complete-list semantics.
+- Confirm `designDecisions` renders after `relatedDocs`, validates shared durable existing paths at top level and in contracts, and creates `design_decision` graph edges with weight `3`.
+- Confirm custom path and command keys render configured labels, validate target-specific arrays at top level and in contracts, and create configured graph relations/weights; an explicitly configured `verificationCommands` command key remains supported.
 - Confirm duplicate/reserved keys, duplicate/reserved relations, invalid targets, non-snake-case relations, and weights outside `0..20` fail validation; weight zero keeps rendering but disables traversal.
 - Confirm fields omitted from the configured complete list are rejected in top-level and contract blocks.
 - Confirm scalar string path settings fail validation; all path settings must be arrays.
@@ -38,8 +39,9 @@ When reviewing focused behavior contracts or micro-specs:
 
 - confirm the final traceability block points to the closest implementation files
 - confirm `verifiedBy` names automated tests or verification docs that actually exercise or inspect the behavior
-- confirm `relatedDocs` includes shared architecture, config, or test docs needed by future agents, not active plans or archive memory
-- confirm `verificationCommands` are runnable project-local commands
+- confirm `relatedDocs` includes shared config, test, or adjacent behavior docs needed by future agents, not active plans or archive memory
+- confirm `designDecisions` identifies maintained architecture or design decisions that constrain the behavior and does not duplicate `relatedDocs` targets
+- keep runnable commands in the linked verification documents or project command guidance
 - confirm generated Markdown traceability links are synchronized from the JSON block rather than edited as canonical data
 - when using `contracts[]`, confirm contract IDs are stable and unique within the file, contract titles are human-readable, and `sections` are navigation hints rather than strict anchors
 - do not add markdown comment anchors, symbol references, or line references for initial contract traceability

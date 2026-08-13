@@ -21,7 +21,7 @@ Traceability policy lives in the optional root `dotdotgod.config.json` file used
       { "key": "implementedBy", "label": "Implemented by", "description": "Files that implement the behavior.", "target": "path", "relation": "implemented_by", "weight": 4 },
       { "key": "verifiedBy", "label": "Verified by", "description": "Tests or maintained verification documents.", "target": "path", "relation": "verified_by", "weight": 4 },
       { "key": "relatedDocs", "label": "Related docs", "description": "Documents needed to interpret the behavior.", "target": "path", "relation": "related_doc", "weight": 3 },
-      { "key": "verificationCommands", "label": "Verification commands", "description": "Project-local verification commands.", "target": "command", "relation": "verification_command", "weight": 3 }
+      { "key": "designDecisions", "label": "Design decisions", "description": "Maintained architecture or design decision documents that constrain the behavior.", "target": "path", "relation": "design_decision", "weight": 3 }
     ]
   }
 }
@@ -33,7 +33,7 @@ Fields:
 - `exclude`: optional array of exact repository-relative paths, `/**` subtree patterns, or `**/suffix` patterns excluded from enforcement.
 - `keys`: optional ordered complete-list policy for traceability string-array fields. Each definition has unique `key`, display `label`, `description`, `target` (`path` or `command`), unique snake_case graph `relation`, and finite `weight` from `0` through `20`.
 
-Missing `keys` resolves to the four defaults above. An explicit empty array disables all traceability fields. A zero weight keeps parsing and rendering but removes that relation from PPR traversal. Keys cannot collide with `kind`, `contracts`, `id`, `title`, or `sections`, and traceability relations cannot collide with maintained non-traceability graph relations.
+Missing `keys` resolves to the four defaults above: implementation paths, verification evidence paths, related documentation paths, and design-decision paths. An explicit empty array disables all traceability fields. A zero weight keeps parsing and rendering but removes that relation from PPR traversal. Keys cannot collide with `kind`, `contracts`, `id`, `title`, or `sections`, and traceability relations cannot collide with maintained non-traceability graph relations.
 
 All path fields are arrays. Scalar string path settings are invalid and validation should report them for repair.
 
@@ -78,7 +78,7 @@ Command behavior:
 
 ## Focused Contract Traceability
 
-For focused behavior contracts and micro-specs, use the resolved keys to make the contract actionable for agents. The four zero-config defaults retain their current meanings: implementation paths, verification paths, related documentation paths, and runnable verification commands. Custom path and command keys use their configured descriptions and validation targets.
+For focused behavior contracts and micro-specs, use the resolved keys to make the contract actionable for agents. The four zero-config defaults represent implementation paths, verification evidence paths, related documentation paths, and maintained design-decision paths. `designDecisions` records architecture or design decisions that constrain the behavior, while `relatedDocs` records broader context needed to interpret it. Avoid placing the same target in both fields because parallel graph edges would overstate its ranking evidence. Runnable commands belong in verification documents or project command guidance. Custom path and command keys, including an explicitly configured `verificationCommands` key, continue to use their configured descriptions and validation targets.
 
 The CLI validates traceability block shape, placement, path safety, memory-area scope, existing path targets, and command string presence. Path fields must point to shared durable files; they must not reference local-memory areas such as `docs/plan/**`, `docs/archive/**`, or custom `memory.areas[]` entries with `scope: "local"`. It does not validate semantic completeness, prove that tests fully cover every behavior, or require one test per focused contract.
 
@@ -90,7 +90,7 @@ Large specs may add optional JSON-only `contracts[]` entries inside the same can
   "implementedBy": ["packages/cli/src/core.mjs"],
   "verifiedBy": ["packages/cli/test/core.test.mjs"],
   "relatedDocs": ["docs/arch/VALIDATION_ARCHITECTURE.md"],
-  "verificationCommands": ["pnpm --filter @dotdotgod/cli test"],
+  "designDecisions": ["docs/arch/VALIDATION_ARCHITECTURE.md"],
   "contracts": [{
     "id": "TRACEABILITY-CONTRACTS-001",
     "title": "Contract entries refine traceability",
@@ -98,7 +98,7 @@ Large specs may add optional JSON-only `contracts[]` entries inside the same can
     "implementedBy": ["packages/cli/src/docs/traceability.mjs"],
     "verifiedBy": ["packages/cli/test/core.test.mjs"],
     "relatedDocs": ["docs/test/TRACEABILITY_CONFIG.md"],
-    "verificationCommands": ["node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]
+    "designDecisions": ["docs/arch/VALIDATION_ARCHITECTURE.md"]
   }]
 }
 ```
@@ -133,17 +133,15 @@ Contract rules:
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
   - [docs/test/TRACEABILITY_CONFIG.md](../test/TRACEABILITY_CONFIG.md)
 - Related docs:
+  - [docs/spec/MEMORY_AREA_CONFIG.md](MEMORY_AREA_CONFIG.md)
+  - [docs/spec/CONFIG_COMMAND.md](CONFIG_COMMAND.md)
+- Design decisions:
   - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
   - [docs/arch/DOCS_STRUCTURE.md](../arch/DOCS_STRUCTURE.md)
   - [docs/arch/MEMORY_AREA_CONFIG.md](../arch/MEMORY_AREA_CONFIG.md)
-  - [docs/spec/MEMORY_AREA_CONFIG.md](MEMORY_AREA_CONFIG.md)
-  - [docs/spec/CONFIG_COMMAND.md](CONFIG_COMMAND.md)
-- Verification commands:
-  - `pnpm --filter @dotdotgod/cli test`
-  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory`
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/memory/config.mjs","packages/cli/src/docs/traceability.mjs","packages/cli/src/commands/traceability.mjs","packages/cli/src/validate/run.mjs","packages/cli/src/graph/metadata.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/TRACEABILITY_CONFIG.md"],"relatedDocs":["docs/arch/VALIDATION_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md","docs/arch/MEMORY_AREA_CONFIG.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/CONFIG_COMMAND.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
+{"kind":"spec","implementedBy":["packages/cli/src/memory/config.mjs","packages/cli/src/docs/traceability.mjs","packages/cli/src/commands/traceability.mjs","packages/cli/src/validate/run.mjs","packages/cli/src/graph/metadata.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/TRACEABILITY_CONFIG.md"],"relatedDocs":["docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/CONFIG_COMMAND.md"],"designDecisions":["docs/arch/VALIDATION_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md","docs/arch/MEMORY_AREA_CONFIG.md"]}
 ```

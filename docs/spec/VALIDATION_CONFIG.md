@@ -77,15 +77,12 @@ This keeps the default markdown budgets for normal docs while allowing the archi
 - Related docs:
   - [docs/spec/CONFIG_COMMAND.md](CONFIG_COMMAND.md)
   - [docs/spec/CLI_INTERFACE.md](CLI_INTERFACE.md)
+- Design decisions:
   - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
   - [docs/arch/DOCS_STRUCTURE.md](../arch/DOCS_STRUCTURE.md)
-- Verification commands:
-  - `pnpm --filter @dotdotgod/cli test`
-  - `node packages/cli/bin/dotdotgod.mjs config . --json`
-  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory`
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/VALIDATION_CONFIG.md"],"relatedDocs":["docs/spec/CONFIG_COMMAND.md","docs/spec/CLI_INTERFACE.md","docs/arch/VALIDATION_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs config . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/VALIDATION_CONFIG.md"],"relatedDocs":["docs/spec/CONFIG_COMMAND.md","docs/spec/CLI_INTERFACE.md"],"designDecisions":["docs/arch/VALIDATION_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"]}
 ```

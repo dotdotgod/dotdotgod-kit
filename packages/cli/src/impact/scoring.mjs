@@ -90,7 +90,7 @@ export function scoreImpactItem(item, seeds, changedPaths, policy, pprScores) {
   };
 }
 
-const CURATED_IMPACT_REASONS = new Set(['implemented_by', 'verified_by', 'related_doc', 'verification_command', 'links_to', 'routes_to', 'belongs_to_area']);
+const CURATED_IMPACT_REASONS = new Set(['implemented_by', 'verified_by', 'related_doc', 'design_decision', 'verification_command', 'links_to', 'routes_to', 'belongs_to_area']);
 const LOW_ACTIONABILITY_IMPACT_TYPES = new Set(['dependency', 'package', 'script', 'binary', 'heading', 'memory_area']);
 
 function baseImpactReason(reason = '') {

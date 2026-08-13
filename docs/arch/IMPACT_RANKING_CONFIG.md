@@ -27,7 +27,7 @@ The fixed reference is graph-policy state, not a runtime result maximum. Adding 
 
 ## Relation Ownership
 
-Traceability keys are an ordered complete-list registry. Their definitions own key, target type, relation, and `0..20` PPR weight. Graph edges retain traceability key/relation evidence; command-node IDs derive from stable source/key/command content rather than list position.
+Traceability keys are an ordered complete-list registry. Their definitions own key, target type, relation, and `0..20` PPR weight. The software defaults connect implementation (`implemented_by`), verification evidence (`verified_by`), supporting context (`related_doc`), and constraining design decisions (`design_decision`). Graph edges retain traceability key/relation evidence; custom command-node IDs derive from stable source/key/command content rather than list position.
 
 Non-traceability relations use built-in weights. Public `relationWeights` overrides are retired to prevent duplicate ownership.
 

@@ -60,6 +60,7 @@ import {
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-cli-unit-'));
   mkdirSync(join(root, 'docs/spec'), { recursive: true });
+  mkdirSync(join(root, 'docs/arch'), { recursive: true });
   mkdirSync(join(root, 'docs/plan'), { recursive: true });
   mkdirSync(join(root, 'docs/archive'), { recursive: true });
   mkdirSync(join(root, 'packages/tool/bin'), { recursive: true });
@@ -68,7 +69,8 @@ function fixture() {
   writeFileSync(join(root, 'README.md'), '# Fixture\n');
   writeFileSync(join(root, 'docs/README.md'), '# Docs\n[Spec](spec/README.md)\n');
   writeFileSync(join(root, 'docs/spec/README.md'), '# Spec\n');
-  writeFileSync(join(root, 'docs/spec/FEATURE.md'), '# Feature\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/tool/index.mjs"],\n  "verifiedBy": ["packages/tool/index.test.mjs"],\n  "relatedDocs": ["docs/test/README.md"],\n  "verificationCommands": ["node --test packages/tool/index.test.mjs"]\n}\n```\n');
+  writeFileSync(join(root, 'docs/arch/README.md'), '# Architecture\n');
+  writeFileSync(join(root, 'docs/spec/FEATURE.md'), '# Feature\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/tool/index.mjs"],\n  "verifiedBy": ["packages/tool/index.test.mjs"],\n  "relatedDocs": ["docs/test/README.md"],\n  "designDecisions": ["docs/arch/README.md"]\n}\n```\n');
   mkdirSync(join(root, 'docs/test'), { recursive: true });
   writeFileSync(join(root, 'docs/test/README.md'), '# Tests\n');
   writeFileSync(join(root, 'docs/plan/README.md'), '# Plans\n');
@@ -91,7 +93,7 @@ function writeFixtureJson(root, path, value) {
 }
 
 function writeImpactRankingFixture(root) {
-  writeFixtureFile(root, 'docs/spec/ROUTE_PLANNER.md', '# Route Planner Tools\n\n## Route Planner Tools\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/route-planner/index.mjs"],\n  "verifiedBy": ["packages/route-planner/route-planner.test.mjs"],\n  "relatedDocs": ["docs/arch/ROUTE_PLANNER_ARCH.md"],\n  "verificationCommands": ["pnpm --filter @fixture/route-planner test"]\n}\n```\n');
+  writeFixtureFile(root, 'docs/spec/ROUTE_PLANNER.md', '# Route Planner Tools\n\n## Route Planner Tools\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/route-planner/index.mjs"],\n  "verifiedBy": ["packages/route-planner/route-planner.test.mjs"],\n  "relatedDocs": ["docs/arch/ROUTE_PLANNER_ARCH.md"],\n  "designDecisions": ["docs/arch/ROUTE_PLANNER_ARCH.md"]\n}\n```\n');
   writeFixtureFile(root, 'docs/arch/ROUTE_PLANNER_ARCH.md', '# Route Planner Architecture\n');
   writeFixtureFile(root, 'docs/arch/ROUTE_PLANNER_SEMANTIC.md', '# Route Planner Design Notes\n\nSemantic-only route planner notes.\n');
   writeFixtureFile(root, 'docs/arch/ROUTE_PLANNER_PACKAGE.md', '# Route Planner Package\n');
@@ -265,15 +267,15 @@ describe('CLI docs helpers', () => {
     assert.equal(blocks.length, 1);
     assert.equal(blocks[0].data.kind, 'spec');
     assert.deepEqual(validateTraceabilityBlock(blocks[0].data, root, join(root, 'docs/spec/FEATURE.md')), []);
-    const errors = validateTraceabilityBlock({ kind: 'spec', implementedBy: 'bad', verifiedBy: [], relatedDocs: [], verificationCommands: [] }, root, join(root, 'docs/spec/BAD.md'));
+    const errors = validateTraceabilityBlock({ kind: 'spec', implementedBy: 'bad', verifiedBy: [], relatedDocs: [], designDecisions: [] }, root, join(root, 'docs/spec/BAD.md'));
     assert.equal(errors[0].code, 'TRACEABILITY_INVALID_FIELD');
     assert.match(errors[0].message, /Property guidance/);
 
-    const invalid = validateTraceabilityBlock({ kind: 'feature', implementedBy: ['../escape'], verifiedBy: ['missing.test.mjs'], relatedDocs: [], verificationCommands: [''] }, root, join(root, 'docs/spec/BAD.md'));
+    const invalid = validateTraceabilityBlock({ kind: 'feature', implementedBy: ['../escape'], verifiedBy: ['missing.test.mjs'], relatedDocs: [], designDecisions: ['../escape'] }, root, join(root, 'docs/spec/BAD.md'));
     assert(invalid.some((error) => error.code === 'TRACEABILITY_INVALID_KIND' && /Property guidance/.test(error.message)));
     assert(invalid.some((error) => error.code === 'TRACEABILITY_INVALID_PATH'));
     assert(invalid.some((error) => error.code === 'TRACEABILITY_MISSING_TARGET'));
-    assert(invalid.some((error) => error.code === 'TRACEABILITY_INVALID_COMMAND'));
+    assert(invalid.some((error) => error.code === 'TRACEABILITY_INVALID_PATH' && /designDecisions/.test(error.message)));
 
     writeFixtureFile(root, 'docs/archive/plan/old-task/README.md', '# Old Task\n');
     const defaultLocalTargets = validateTraceabilityBlock({
@@ -281,7 +283,7 @@ describe('CLI docs helpers', () => {
       implementedBy: ['docs/plan/README.md'],
       verifiedBy: ['docs/archive/plan/old-task/README.md'],
       relatedDocs: ['docs/archive/README.md'],
-      verificationCommands: ['node --test'],
+      designDecisions: ['docs/arch/README.md'],
     }, root, join(root, 'docs/spec/BAD.md'));
     assert.equal(defaultLocalTargets.filter((error) => error.code === 'TRACEABILITY_LOCAL_MEMORY_TARGET').length, 3);
     assert(defaultLocalTargets.some((error) => /active-plan/.test(error.message)));
@@ -298,7 +300,7 @@ describe('CLI docs helpers', () => {
       },
     });
     const config = readMemoryConfig(root);
-    const customLocalTargets = validateTraceabilityBlock({ kind: 'spec', implementedBy: [], verifiedBy: [], relatedDocs: ['docs/local/NOTE.md'], verificationCommands: ['node --test'] }, root, join(root, 'docs/spec/BAD.md'), null, config);
+    const customLocalTargets = validateTraceabilityBlock({ kind: 'spec', implementedBy: [], verifiedBy: [], relatedDocs: ['docs/local/NOTE.md'], designDecisions: ['docs/arch/README.md'] }, root, join(root, 'docs/spec/BAD.md'), null, config);
     assert.equal(customLocalTargets.filter((error) => error.code === 'TRACEABILITY_LOCAL_MEMORY_TARGET').length, 1);
     assert(customLocalTargets.some((error) => /custom-local/.test(error.message)));
   });
@@ -306,7 +308,7 @@ describe('CLI docs helpers', () => {
   it('validates optional JSON-only contract traceability metadata', () => {
     const root = fixture();
     const file = join(root, 'docs/spec/FEATURE.md');
-    const base = { kind: 'spec', implementedBy: [], verifiedBy: [], relatedDocs: [], verificationCommands: [] };
+    const base = { kind: 'spec', implementedBy: [], verifiedBy: [], relatedDocs: [], designDecisions: [] };
     assert.deepEqual(validateTraceabilityBlock({ ...base }, root, file), []);
     assert.deepEqual(validateTraceabilityBlock({ ...base, contracts: [] }, root, file), []);
     assert.deepEqual(validateTraceabilityBlock({
@@ -318,7 +320,7 @@ describe('CLI docs helpers', () => {
         implementedBy: ['packages/tool/index.mjs'],
         verifiedBy: ['packages/tool/index.test.mjs'],
         relatedDocs: ['docs/test/README.md'],
-        verificationCommands: ['node --test packages/tool/index.test.mjs'],
+        designDecisions: ['docs/arch/README.md'],
       }],
     }, root, file), []);
 
@@ -329,7 +331,7 @@ describe('CLI docs helpers', () => {
     const invalidMetadata = validateTraceabilityBlock({
       ...base,
       contracts: [
-        { id: '', title: '', extra: true, sections: ['ok', ''], implementedBy: ['../escape'], verificationCommands: [''] },
+        { id: '', title: '', extra: true, sections: ['ok', ''], implementedBy: ['../escape'], designDecisions: ['../escape'] },
         { id: 'DUPLICATE', title: 'First' },
         { id: 'DUPLICATE', title: 'Second' },
       ],
@@ -339,7 +341,7 @@ describe('CLI docs helpers', () => {
     assert(invalidMetadata.some((error) => /contracts\[0\]\.extra/.test(error.message)));
     assert(invalidMetadata.some((error) => /contracts\[0\]\.sections\[1\]/.test(error.message)));
     assert(invalidMetadata.some((error) => error.code === 'TRACEABILITY_INVALID_PATH' && /contracts\[0\]\.implementedBy/.test(error.message)));
-    assert(invalidMetadata.some((error) => error.code === 'TRACEABILITY_INVALID_COMMAND' && /contracts\[0\]\.verificationCommands/.test(error.message)));
+    assert(invalidMetadata.some((error) => error.code === 'TRACEABILITY_INVALID_PATH' && /contracts\[0\]\.designDecisions/.test(error.message)));
     assert(invalidMetadata.some((error) => /duplicates contract id/.test(error.message)));
 
     writeFixtureFile(root, 'docs/archive/plan/contract-local/README.md', '# Contract Local\n');
@@ -366,10 +368,10 @@ describe('CLI docs helpers', () => {
     assert.equal(extractDotdotgodTraceabilityBlocks(stripTraceabilityLinksRegion(synced.content)).length, 0);
     assert.equal(renderCompactTraceabilityBlock(block.data).includes('\n  "kind"'), false);
 
-    const contractData = { ...block.data, contracts: [{ id: 'FEATURE-CONTRACT-001', title: 'Focused contract', sections: ['Traceability'], implementedBy: ['packages/tool/index.mjs'], verifiedBy: ['packages/tool/index.test.mjs'], relatedDocs: ['docs/test/README.md'], verificationCommands: ['node --test packages/tool/index.test.mjs'] }] };
+    const contractData = { ...block.data, contracts: [{ id: 'FEATURE-CONTRACT-001', title: 'Focused contract', sections: ['Traceability'], implementedBy: ['packages/tool/index.mjs'], verifiedBy: ['packages/tool/index.test.mjs'], relatedDocs: ['docs/test/README.md'], designDecisions: ['docs/arch/README.md'] }] };
     const contractSynced = syncTraceabilityLinksInContent(content, contractData, root, file);
     assert.equal(contractSynced.ok, true);
-    assert.match(contractSynced.content, /- Contracts:\n  - `FEATURE-CONTRACT-001` — Focused contract \(sections: 1, implementedBy: 1, verifiedBy: 1, relatedDocs: 1, verificationCommands: 1\)/);
+    assert.match(contractSynced.content, /- Contracts:\n  - `FEATURE-CONTRACT-001` — Focused contract \(sections: 1, implementedBy: 1, verifiedBy: 1, relatedDocs: 1, designDecisions: 1\)/);
     assert.match(contractSynced.content, /```json dotdotgod\n\{"kind":"spec".*"contracts":\[/s);
     const contractReplaced = syncTraceabilityLinksInContent(contractSynced.content.replace('Focused contract', 'Stale contract'), contractData, root, file);
     assert.equal(contractReplaced.ok, true);
@@ -407,6 +409,9 @@ describe('CLI docs helpers', () => {
     assert(data.memory.areas.some((area) => area.id === 'archive-body' && area.includeBodiesByDefault === false));
     assert(data.memory.areas.some((area) => area.id === 'docs' && area.paths.includes('docs/**')));
     assert.deepEqual(data.planMode.writablePaths, ['docs/plan/**', 'docs/archive/**']);
+    assert.deepEqual(data.traceability.keys.map((entry) => entry.key), ['implementedBy', 'verifiedBy', 'relatedDocs', 'designDecisions']);
+    assert.deepEqual(data.traceability.keys.map((entry) => entry.relation), ['implemented_by', 'verified_by', 'related_doc', 'design_decision']);
+    assert.deepEqual(data.traceability.keys.map((entry) => entry.weight), [4, 4, 3, 3]);
     assert.deepEqual(data.traceability.required, ['docs/spec/**']);
     assert.equal(data.validation.markdown.maxLines, 200);
     assert.equal(data.validation.markdown.maxChars, 10000);
@@ -639,25 +644,25 @@ describe('CLI docs helpers', () => {
         exclude: ['**/README.md'],
         keys: [
           { key: 'ownedBy', label: 'Owned by', description: 'Owning implementation files.', target: 'path', relation: 'owned_by', weight: 6 },
-          { key: 'checks', label: 'Checks', description: 'Verification commands.', target: 'command', relation: 'checks', weight: 0 },
+          { key: 'verificationCommands', label: 'Verification commands', description: 'Project-local verification commands.', target: 'command', relation: 'verification_command', weight: 0 },
         ],
       },
     });
     const config = readMemoryConfig(root);
-    assert.deepEqual(config.traceability.keys.map((entry) => entry.key), ['ownedBy', 'checks']);
+    assert.deepEqual(config.traceability.keys.map((entry) => entry.key), ['ownedBy', 'verificationCommands']);
     const file = join(root, 'docs/spec/CUSTOM.md');
-    const data = { kind: 'spec', ownedBy: ['packages/tool/index.mjs'], checks: ['node --test', 'pnpm test'] };
+    const data = { kind: 'spec', ownedBy: ['packages/tool/index.mjs'], verificationCommands: ['node --test', 'pnpm test'] };
     assert.deepEqual(validateTraceabilityBlock(data, root, file, 1, config), []);
     assert(validateTraceabilityBlock({ ...data, implementedBy: [] }, root, file, 1, config).some((error) => error.code === 'TRACEABILITY_INVALID_FIELD'));
     const content = `# Custom\n\n## Traceability\n\n\`\`\`json dotdotgod\n${JSON.stringify(data)}\n\`\`\`\n`;
     const synced = syncTraceabilityLinksInContent(content, data, root, file, config);
     assert.match(synced.content, /- Owned by:/);
-    assert.match(synced.content, /- Checks:/);
+    assert.match(synced.content, /- Verification commands:/);
     writeFileSync(file, synced.content);
     const customGraph = buildGraph(root, [file, join(root, 'packages/tool/index.mjs')], config);
     assert(customGraph.edges.some((edge) => edge.source === 'file:docs/spec/CUSTOM.md' && edge.target === 'file:packages/tool/index.mjs' && edge.relation === 'owned_by' && edge.relationWeight === 6));
     const commandIds = customGraph.nodes.filter((node) => node.type === 'command').map((node) => node.id).sort();
-    const reorderedData = { ...data, checks: [...data.checks].reverse() };
+    const reorderedData = { ...data, verificationCommands: [...data.verificationCommands].reverse() };
     const reorderedContent = syncTraceabilityLinksInContent(content, reorderedData, root, file, config).content;
     writeFileSync(file, reorderedContent);
     const reorderedGraph = buildGraph(root, [file, join(root, 'packages/tool/index.mjs')], config);
@@ -1059,7 +1064,7 @@ describe('CLI index and graph helpers', () => {
   it('builds structural graph nodes, scores, and bounded neighborhoods', () => {
     const root = fixture();
     mkdirSync(join(root, 'packages/pi/extensions/plan-mode'), { recursive: true });
-    writeFileSync(join(root, 'docs/spec/PLAN_MODE.md'), '# Plan Mode Tool Settings\n\n## Plan Mode Tools\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/pi/extensions/plan-mode/utils.ts"],\n  "verifiedBy": ["packages/pi/test/plan-mode-utils.test.ts"],\n  "relatedDocs": ["docs/spec/FEATURE.md"],\n  "verificationCommands": ["pnpm --filter @dotdotgod/pi test"],\n  "contracts": [{\n    "id": "PLAN-MODE-TOOLS-001",\n    "title": "Plan mode tool access stays traceable",\n    "sections": ["Plan Mode Tools"],\n    "implementedBy": ["packages/tool/index.mjs"],\n    "verifiedBy": ["packages/tool/index.test.mjs"],\n    "relatedDocs": ["docs/spec/FEATURE.md"],\n    "verificationCommands": ["node --test packages/tool/index.test.mjs"]\n  }]\n}\n```\n');
+    writeFileSync(join(root, 'docs/spec/PLAN_MODE.md'), '# Plan Mode Tool Settings\n\n## Plan Mode Tools\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/pi/extensions/plan-mode/utils.ts"],\n  "verifiedBy": ["packages/pi/test/plan-mode-utils.test.ts"],\n  "relatedDocs": ["docs/spec/FEATURE.md"],\n  "designDecisions": ["docs/arch/README.md"],\n  "contracts": [{\n    "id": "PLAN-MODE-TOOLS-001",\n    "title": "Plan mode tool access stays traceable",\n    "sections": ["Plan Mode Tools"],\n    "implementedBy": ["packages/tool/index.mjs"],\n    "verifiedBy": ["packages/tool/index.test.mjs"],\n    "relatedDocs": ["docs/spec/FEATURE.md"],\n    "designDecisions": ["docs/arch/README.md"]\n  }]\n}\n```\n');
     writeFileSync(join(root, 'packages/pi/extensions/plan-mode/utils.ts'), "const planModeTools = ['read'];\nvoid planModeTools;\n");
     const index = buildIndex(root);
     const summary = graphSummary(index);
@@ -1071,7 +1076,7 @@ describe('CLI index and graph helpers', () => {
     assert.equal(summary.byType.memory_area >= 1, true);
     assert.equal(summary.byRelation.implemented_by >= 1, true);
     assert.equal(summary.byRelation.verified_by >= 1, true);
-    assert.equal(summary.byRelation.verification_command >= 1, true);
+    assert.equal(summary.byRelation.design_decision >= 1, true);
     assert.equal(summary.byRelation.includes_resource >= 1, true);
     assert.equal(summary.byRelation.routes_to >= 1, true);
     assert.equal(summary.byRelation.belongs_to_area >= 1, true);
@@ -1091,11 +1096,10 @@ describe('CLI index and graph helpers', () => {
     assert(index.graph.edges.some((edge) => edge.source === contractId && edge.target === 'file:packages/tool/index.mjs' && edge.relation === 'implemented_by' && edge.confidence === 'CURATED_TRACEABILITY'));
     assert(index.graph.edges.some((edge) => edge.source === contractId && edge.target === 'file:packages/tool/index.test.mjs' && edge.relation === 'verified_by' && edge.confidence === 'CURATED_TRACEABILITY'));
     assert(index.graph.edges.some((edge) => edge.source === contractId && edge.target === 'file:docs/spec/FEATURE.md' && edge.relation === 'related_doc' && edge.confidence === 'CURATED_TRACEABILITY'));
-    const verificationCommandEdge = index.graph.edges.find((edge) => edge.source === contractId && edge.relation === 'verification_command');
-    assert(verificationCommandEdge?.target.startsWith('command:verificationCommands:'));
-    assert(index.graph.nodes.some((node) => node.id === verificationCommandEdge.target && node.type === 'command' && node.command === 'node --test packages/tool/index.test.mjs'));
-    assert.equal(verificationCommandEdge.confidence, 'CURATED_TRACEABILITY');
-    assert.equal(verificationCommandEdge.relationWeight, 3);
+    const designDecisionEdge = index.graph.edges.find((edge) => edge.source === contractId && edge.relation === 'design_decision');
+    assert.equal(designDecisionEdge?.target, 'file:docs/arch/README.md');
+    assert.equal(designDecisionEdge.confidence, 'CURATED_TRACEABILITY');
+    assert.equal(designDecisionEdge.relationWeight, 3);
     assert(index.graph.edges.some((edge) => edge.source === 'file:docs/README.md' && edge.target === 'file:docs/spec/README.md' && edge.relation === 'routes_to' && edge.confidence === 'CURATED_INDEX'));
     const related = buildImpactReport(index, 'packages/tool/index.mjs').related;
     assert(related.some((node) => node.id === 'file:packages/tool/index.mjs'));

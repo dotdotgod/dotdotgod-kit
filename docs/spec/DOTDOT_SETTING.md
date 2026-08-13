@@ -87,15 +87,11 @@ Existing-file behavior:
   - [docs/test/README.md](../test/README.md)
 - Related docs:
   - [docs/spec/PROJECT_INITIALIZER.md](PROJECT_INITIALIZER.md)
+- Design decisions:
   - [docs/arch/DOCS_STRUCTURE.md](../arch/DOCS_STRUCTURE.md)
-- Verification commands:
-  - `node packages/cli/bin/dotdotgod.mjs init . --dry-run --dotdot-setting --project-name fixture-name`
-  - `sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --dotdot-setting --project-name fixture-name .`
-  - `pnpm --filter @dotdotgod/cli test`
-  - `pnpm run verify:generated`
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/init.mjs","packages/shared/initializer/scripts/init_project.sh","packages/pi/skills/project-initializer/scripts/init_project.sh","packages/claude-code/skills/project-initializer/scripts/init_project.sh","packages/codex/skills/project-initializer/scripts/init_project.sh","docs/arch/DOCS_STRUCTURE.md","docs/arch/CODE_CONVENTIONS.md"],"verifiedBy":["packages/cli/test/e2e.test.mjs","docs/test/README.md"],"relatedDocs":["docs/spec/PROJECT_INITIALIZER.md","docs/arch/DOCS_STRUCTURE.md"],"verificationCommands":["node packages/cli/bin/dotdotgod.mjs init . --dry-run --dotdot-setting --project-name fixture-name","sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --dotdot-setting --project-name fixture-name .","pnpm --filter @dotdotgod/cli test","pnpm run verify:generated"]}
+{"kind":"spec","implementedBy":["packages/cli/src/init.mjs","packages/shared/initializer/scripts/init_project.sh","packages/pi/skills/project-initializer/scripts/init_project.sh","packages/claude-code/skills/project-initializer/scripts/init_project.sh","packages/codex/skills/project-initializer/scripts/init_project.sh","docs/arch/DOCS_STRUCTURE.md","docs/arch/CODE_CONVENTIONS.md"],"verifiedBy":["packages/cli/test/e2e.test.mjs","docs/test/README.md"],"relatedDocs":["docs/spec/PROJECT_INITIALIZER.md"],"designDecisions":["docs/arch/DOCS_STRUCTURE.md"]}
 ```

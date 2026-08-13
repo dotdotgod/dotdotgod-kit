@@ -105,14 +105,11 @@ The CLI-independent POSIX fallback packages all built-in templates and accepts `
 - Related docs:
   - [docs/spec/CONFIG_COMMAND.md](CONFIG_COMMAND.md)
   - [docs/spec/PROJECT_INITIALIZER.md](PROJECT_INITIALIZER.md)
+- Design decisions:
   - [docs/arch/CONFIG_TEMPLATE_ARCHITECTURE.md](../arch/CONFIG_TEMPLATE_ARCHITECTURE.md)
-- Verification commands:
-  - `pnpm --filter @dotdotgod/cli test`
-  - `pnpm run verify:generated`
-  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory`
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/config/templates.mjs","packages/cli/src/commands/config.mjs","packages/cli/src/init.mjs","packages/shared/initializer/scripts/init_project.sh","packages/shared/workflows/init.md","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_TEMPLATES.md"],"relatedDocs":["docs/spec/CONFIG_COMMAND.md","docs/spec/PROJECT_INITIALIZER.md","docs/arch/CONFIG_TEMPLATE_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","pnpm run verify:generated","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
+{"kind":"spec","implementedBy":["packages/cli/src/config/templates.mjs","packages/cli/src/commands/config.mjs","packages/cli/src/init.mjs","packages/shared/initializer/scripts/init_project.sh","packages/shared/workflows/init.md","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_TEMPLATES.md"],"relatedDocs":["docs/spec/CONFIG_COMMAND.md","docs/spec/PROJECT_INITIALIZER.md"],"designDecisions":["docs/arch/CONFIG_TEMPLATE_ARCHITECTURE.md"]}
 ```

@@ -51,14 +51,9 @@
   - [docs/spec/IMPACT_RANKING_CONFIG.md](../IMPACT_RANKING_CONFIG.md)
   - [docs/test/README.md](../../test/README.md)
   - [packages/cli/README.md](../../../packages/cli/README.md)
-- Verification commands:
-  - `pnpm --filter @dotdotgod/cli test`
-  - `node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --json`
-  - `node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --yml`
-  - `node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --compact`
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/commands/graph.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/format.mjs","packages/cli/src/impact/vector-overlay.mjs","packages/cli/src/impact/vector-profile.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CLI_INTERFACE.md","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/spec/IMPACT_RANKING_CONFIG.md","docs/test/README.md","packages/cli/README.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --json","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --yml","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --changed packages/cli/src/impact/report.mjs --compact"]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/commands/graph.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/format.mjs","packages/cli/src/impact/vector-overlay.mjs","packages/cli/src/impact/vector-profile.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CLI_INTERFACE.md","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/spec/IMPACT_RANKING_CONFIG.md","docs/test/README.md","packages/cli/README.md"],"designDecisions":[]}
 ```

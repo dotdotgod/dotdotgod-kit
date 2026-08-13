@@ -92,7 +92,7 @@ Focused contracts are a documentation practice. They do not create validator sem
 
 ## Traceability Blocks
 
-Behavior specs may include fenced `json dotdotgod` traceability blocks as the final section to connect specs to source, tests, related docs, and verification commands.
+Behavior specs may include fenced `json dotdotgod` traceability blocks as the final section to connect specs to implementation, verification evidence, related context, and maintained design decisions. Runnable verification commands belong in linked verification documents or project command guidance.
 
 The dotdotgod CLI owns the schema and validation behavior. Docs may describe examples, but they are not the enforcement source. Architecture docs should stay focused on decisions, rules, rationale, and change guidance.
 

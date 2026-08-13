@@ -82,7 +82,7 @@ const keys = {
     ['implementedBy', 'Implemented by', 'Files that implement the behavior.', 'path', 'implemented_by', 4],
     ['verifiedBy', 'Verified by', 'Tests or maintained verification documents.', 'path', 'verified_by', 4],
     ['relatedDocs', 'Related docs', 'Documents needed to interpret the behavior.', 'path', 'related_doc', 3],
-    ['verificationCommands', 'Verification commands', 'Project-local verification commands.', 'command', 'verification_command', 3],
+    ['designDecisions', 'Design decisions', 'Maintained architecture or design decision documents that constrain the behavior.', 'path', 'design_decision', 3],
   ],
   research: [
     ['informedBy', 'Informed by', 'Research sources or prior findings that justify the direction.', 'path', 'informed_by', 4],

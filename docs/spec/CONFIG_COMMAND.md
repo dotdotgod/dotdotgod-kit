@@ -123,14 +123,11 @@ JSON output for init errors includes `ok: false`, `command: "config init"`, `roo
   - [docs/spec/VALIDATION_CONFIG.md](VALIDATION_CONFIG.md)
   - [docs/spec/IMPACT_RANKING_CONFIG.md](IMPACT_RANKING_CONFIG.md)
   - [docs/spec/CLI_INTERFACE.md](CLI_INTERFACE.md)
+- Design decisions:
   - [docs/arch/MEMORY_AREA_CONFIG.md](../arch/MEMORY_AREA_CONFIG.md)
-- Verification commands:
-  - `pnpm --filter @dotdotgod/cli test`
-  - `node packages/cli/bin/dotdotgod.mjs config . --json`
-  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory`
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/init.mjs","packages/cli/src/memory/config.mjs","packages/cli/src/config/templates.mjs","packages/shared/initializer/templates/dotdotgod.config.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_COMMAND.md","docs/test/CONFIG_TEMPLATES.md"],"relatedDocs":["docs/spec/CONFIG_TEMPLATES.md","docs/spec/PROJECT_INITIALIZER.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/spec/CLI_INTERFACE.md","docs/arch/MEMORY_AREA_CONFIG.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs config . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/init.mjs","packages/cli/src/memory/config.mjs","packages/cli/src/config/templates.mjs","packages/shared/initializer/templates/dotdotgod.config.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_COMMAND.md","docs/test/CONFIG_TEMPLATES.md"],"relatedDocs":["docs/spec/CONFIG_TEMPLATES.md","docs/spec/PROJECT_INITIALIZER.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/spec/CLI_INTERFACE.md"],"designDecisions":["docs/arch/MEMORY_AREA_CONFIG.md"]}
 ```

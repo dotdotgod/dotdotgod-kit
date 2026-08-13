@@ -47,15 +47,9 @@ The `dotdotgod` CLI provides predictable discovery commands for users and script
   - [docs/spec/CONFIG_COMMAND.md](../CONFIG_COMMAND.md)
   - [docs/spec/VALIDATION_CONFIG.md](../VALIDATION_CONFIG.md)
   - [docs/spec/REFERENCE_EXPANSION.md](../REFERENCE_EXPANSION.md)
-- Verification commands:
-  - `pnpm --filter @dotdotgod/cli test`
-  - `node packages/cli/bin/dotdotgod.mjs --help`
-  - `node packages/cli/bin/dotdotgod.mjs --version`
-  - `node packages/cli/bin/dotdotgod.mjs init --help`
-  - `node packages/cli/bin/dotdotgod.mjs config --help`
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/cli/usage.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CLI_INTERFACE.md"],"relatedDocs":["packages/cli/README.md","docs/test/README.md","docs/spec/cli/README.md","docs/spec/CONFIG_COMMAND.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/REFERENCE_EXPANSION.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs --help","node packages/cli/bin/dotdotgod.mjs --version","node packages/cli/bin/dotdotgod.mjs init --help","node packages/cli/bin/dotdotgod.mjs config --help"]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/cli/usage.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CLI_INTERFACE.md"],"relatedDocs":["packages/cli/README.md","docs/test/README.md","docs/spec/cli/README.md","docs/spec/CONFIG_COMMAND.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/REFERENCE_EXPANSION.md"],"designDecisions":[]}
 ```

@@ -24,7 +24,7 @@ Verify fixed PPR-only connection scoring, memory policy, dynamic traceability re
 
 ## Traceability-Key Cases
 
-- Default relations retain weights `4`, `4`, `3`, and `3`.
+- Default relations `implemented_by`, `verified_by`, `related_doc`, and `design_decision` retain weights `4`, `4`, `3`, and `3`.
 - Custom path and command relations create weighted graph edges with traceability-key metadata.
 - Complete-list removal means omitted fields are invalid in top-level and contract blocks.
 - Stable command IDs do not change when sibling commands are reordered.

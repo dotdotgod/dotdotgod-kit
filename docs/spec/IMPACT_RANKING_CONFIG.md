@@ -19,7 +19,7 @@ For an archive-seeded request, stale `-5` remains but the `includeBodiesByDefaul
 
 PPR uses damping `0.85`, at most 20 iterations, tolerance `0.000001`, and fixed reference `0.4`. The reference is independent of the returned candidate set, so unrelated candidate additions do not rescale existing scores.
 
-Traceability relation weights come only from `traceability.keys[]`; maintained non-traceability relations use built-in weights. Weight `0` disables traversal for that relation.
+Traceability relation weights come only from `traceability.keys[]`; maintained non-traceability relations use built-in weights. The software defaults assign weights `4`, `4`, `3`, and `3` to `implemented_by`, `verified_by`, `related_doc`, and `design_decision`. Weight `0` disables traversal for that relation.
 
 ## Impact Ranking Compatibility
 
@@ -80,20 +80,15 @@ JSON keeps top-level and nested `related`, grouped output, `impactScore`, and `s
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
   - [docs/test/IMPACT_RANKING_CONFIG.md](../test/IMPACT_RANKING_CONFIG.md)
 - Related docs:
-  - [docs/arch/IMPACT_RANKING_CONFIG.md](../arch/IMPACT_RANKING_CONFIG.md)
-  - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
   - [docs/spec/MEMORY_AREA_CONFIG.md](MEMORY_AREA_CONFIG.md)
   - [docs/spec/TRACEABILITY_CONFIG.md](TRACEABILITY_CONFIG.md)
   - [docs/spec/CONFIG_COMMAND.md](CONFIG_COMMAND.md)
-- Verification commands:
-  - `pnpm --filter @dotdotgod/cli test`
-  - `node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json`
-  - `node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml`
-  - `node scripts/evaluate-graph-impact.mjs . --json`
-  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory`
+- Design decisions:
+  - [docs/arch/IMPACT_RANKING_CONFIG.md](../arch/IMPACT_RANKING_CONFIG.md)
+  - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/memory/config.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/format.mjs","packages/cli/src/impact/vector-overlay.mjs","packages/cli/src/impact/vector-profile.mjs","scripts/evaluate-graph-impact.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/arch/IMPACT_RANKING_CONFIG.md","docs/arch/VALIDATION_ARCHITECTURE.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/CONFIG_COMMAND.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --json","node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/cli/src/core.mjs --yml","node scripts/evaluate-graph-impact.mjs . --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
+{"kind":"spec","implementedBy":["packages/cli/src/memory/config.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/format.mjs","packages/cli/src/impact/vector-overlay.mjs","packages/cli/src/impact/vector-profile.mjs","scripts/evaluate-graph-impact.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/CONFIG_COMMAND.md"],"designDecisions":["docs/arch/IMPACT_RANKING_CONFIG.md","docs/arch/VALIDATION_ARCHITECTURE.md"]}
 ```

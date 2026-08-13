@@ -197,7 +197,7 @@ function isSemanticOnly(item) {
 }
 
 function hasCurated(item) {
-  return (item.reasons ?? []).some((reason) => /implemented_by|verified_by|related_doc|verification_command|tests|imports|same-directory|shares-import|routes_to/.test(reason));
+  return (item.reasons ?? []).some((reason) => /implemented_by|verified_by|related_doc|design_decision|verification_command|tests|imports|same-directory|shares-import|routes_to/.test(reason));
 }
 
 function evaluateItems(items, gold) {
@@ -324,7 +324,7 @@ function calibrationEvidence() {
   };
   const policy = {
     ...DEFAULT_IMPACT_RANKING_POLICY,
-    relationWeights: { ...DEFAULT_IMPACT_RANKING_POLICY.relationWeights, implemented_by: 4, verified_by: 4, related_doc: 3, verification_command: 3 },
+    relationWeights: { ...DEFAULT_IMPACT_RANKING_POLICY.relationWeights, implemented_by: 4, verified_by: 4, related_doc: 3, design_decision: 3 },
   };
   const single = buildPersonalizedPageRank(graph, ['seed-a'], policy);
   const multi = buildPersonalizedPageRank(graph, ['seed-a', 'seed-b'], policy);

@@ -36,16 +36,13 @@ Workspace verification keeps dotdotgod changes safe before commits, package dry-
   - [docs/test/README.md](../test/README.md)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
 - Related docs:
-  - [docs/arch/CODE_CONVENTIONS.md](../arch/CODE_CONVENTIONS.md)
   - [docs/test/IMPACT_RANKING_CONFIG.md](../test/IMPACT_RANKING_CONFIG.md)
   - [docs/test/README.md](../test/README.md)
-- Verification commands:
-  - `pnpm run verify`
-  - `pnpm run verify:cache`
-  - `pnpm run pack:dry-run:packages`
+- Design decisions:
+  - [docs/arch/CODE_CONVENTIONS.md](../arch/CODE_CONVENTIONS.md)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["package.json",".husky/pre-push","scripts/check-package-verify-contract.mjs"],"verifiedBy":["docs/test/README.md","packages/cli/test/e2e.test.mjs"],"relatedDocs":["docs/arch/CODE_CONVENTIONS.md","docs/test/IMPACT_RANKING_CONFIG.md","docs/test/README.md"],"verificationCommands":["pnpm run verify","pnpm run verify:cache","pnpm run pack:dry-run:packages"]}
+{"kind":"spec","implementedBy":["package.json",".husky/pre-push","scripts/check-package-verify-contract.mjs"],"verifiedBy":["docs/test/README.md","packages/cli/test/e2e.test.mjs"],"relatedDocs":["docs/test/IMPACT_RANKING_CONFIG.md","docs/test/README.md"],"designDecisions":["docs/arch/CODE_CONVENTIONS.md"]}
 ```

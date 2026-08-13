@@ -68,13 +68,11 @@ The vector manifest records provider, model, dimensions, and a secret-free profi
 - Related docs:
   - [docs/spec/cli/QUERY.md](cli/QUERY.md)
   - [docs/spec/cli/GRAPH_IMPACT.md](cli/GRAPH_IMPACT.md)
+- Design decisions:
   - [docs/arch/EMBEDDING_PROVIDERS.md](../arch/EMBEDDING_PROVIDERS.md)
-- Verification commands:
-  - `pnpm --filter @dotdotgod/cli test`
-  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index`
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/query/embedding-config.mjs","packages/cli/src/query/embedder.mjs","packages/cli/src/query/store.mjs","packages/cli/src/commands/query.mjs","packages/cli/src/impact/vector-overlay.mjs"],"verifiedBy":["packages/cli/test/embedding-config.test.mjs","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/EMBEDDING_CONFIG.md"],"relatedDocs":["docs/spec/cli/QUERY.md","docs/spec/cli/GRAPH_IMPACT.md","docs/arch/EMBEDDING_PROVIDERS.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index"]}
+{"kind":"spec","implementedBy":["packages/cli/src/query/embedding-config.mjs","packages/cli/src/query/embedder.mjs","packages/cli/src/query/store.mjs","packages/cli/src/commands/query.mjs","packages/cli/src/impact/vector-overlay.mjs"],"verifiedBy":["packages/cli/test/embedding-config.test.mjs","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/EMBEDDING_CONFIG.md"],"relatedDocs":["docs/spec/cli/QUERY.md","docs/spec/cli/GRAPH_IMPACT.md"],"designDecisions":["docs/arch/EMBEDDING_PROVIDERS.md"]}
 ```

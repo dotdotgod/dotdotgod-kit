@@ -11,7 +11,7 @@ export const DEFAULT_TRACEABILITY_KEYS = [
   { key: 'implementedBy', label: 'Implemented by', description: 'Files that implement the behavior.', target: 'path', relation: 'implemented_by', weight: 4 },
   { key: 'verifiedBy', label: 'Verified by', description: 'Tests or maintained verification documents.', target: 'path', relation: 'verified_by', weight: 4 },
   { key: 'relatedDocs', label: 'Related docs', description: 'Documents needed to interpret the behavior.', target: 'path', relation: 'related_doc', weight: 3 },
-  { key: 'verificationCommands', label: 'Verification commands', description: 'Project-local verification commands.', target: 'command', relation: 'verification_command', weight: 3 },
+  { key: 'designDecisions', label: 'Design decisions', description: 'Maintained architecture or design decision documents that constrain the behavior.', target: 'path', relation: 'design_decision', weight: 3 },
 ];
 export const DEFAULT_TRACEABILITY_POLICY = {
   required: ['docs/spec/**'],

@@ -182,11 +182,11 @@
         "weight": 3
       },
       {
-        "key": "verificationCommands",
-        "label": "Verification commands",
-        "description": "Project-local verification commands.",
-        "target": "command",
-        "relation": "verification_command",
+        "key": "designDecisions",
+        "label": "Design decisions",
+        "description": "Maintained architecture or design decision documents that constrain the behavior.",
+        "target": "path",
+        "relation": "design_decision",
         "weight": 3
       }
     ]

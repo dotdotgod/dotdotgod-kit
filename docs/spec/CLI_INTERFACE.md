@@ -40,12 +40,9 @@ Use the focused specs for behavior changes:
   - [docs/spec/CONFIG_COMMAND.md](CONFIG_COMMAND.md)
   - [docs/spec/VALIDATION_CONFIG.md](VALIDATION_CONFIG.md)
   - [docs/spec/REFERENCE_EXPANSION.md](REFERENCE_EXPANSION.md)
-- Verification commands:
-  - `node packages/cli/bin/dotdotgod.mjs traceability links . --check --json`
-  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index`
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["docs/spec/cli/DISCOVERY.md","docs/spec/cli/GRAPH_IMPACT.md","docs/spec/cli/TRACEABILITY_LINKS.md"],"verifiedBy":["docs/test/CLI_INTERFACE.md"],"relatedDocs":["docs/spec/cli/README.md","packages/cli/README.md","docs/test/README.md","docs/spec/PROJECT_INITIALIZER.md","docs/spec/CONFIG_COMMAND.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/REFERENCE_EXPANSION.md"],"verificationCommands":["node packages/cli/bin/dotdotgod.mjs traceability links . --check --json","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index"]}
+{"kind":"spec","implementedBy":["docs/spec/cli/DISCOVERY.md","docs/spec/cli/GRAPH_IMPACT.md","docs/spec/cli/TRACEABILITY_LINKS.md"],"verifiedBy":["docs/test/CLI_INTERFACE.md"],"relatedDocs":["docs/spec/cli/README.md","packages/cli/README.md","docs/test/README.md","docs/spec/PROJECT_INITIALIZER.md","docs/spec/CONFIG_COMMAND.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/REFERENCE_EXPANSION.md"],"designDecisions":[]}
 ```

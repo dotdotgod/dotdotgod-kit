@@ -20,7 +20,7 @@ function createFixture() {
   writeFileSync(join(root, 'README.md'), '# Fixture\n');
   writeFileSync(join(root, 'docs/README.md'), '# Docs\n[Spec](spec/README.md)\n');
   writeFileSync(join(root, 'docs/spec/README.md'), '# Spec\n');
-  writeFileSync(join(root, 'docs/spec/APP.md'), '# Routing Policy App\n\n## Routing Contract\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["packages/app/index.test.mjs", "docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "verificationCommands": ["node --test packages/app/index.test.mjs"],\n  "contracts": [{\n    "id": "APP-ROUTING-001",\n    "title": "Routing policy contract",\n    "sections": ["Routing Contract"],\n    "implementedBy": ["packages/app/index.mjs"],\n    "verifiedBy": ["packages/app/index.test.mjs"],\n    "relatedDocs": ["docs/arch/README.md"],\n    "verificationCommands": ["node --test packages/app/index.test.mjs"]\n  }]\n}\n```\n');
+  writeFileSync(join(root, 'docs/spec/APP.md'), '# Routing Policy App\n\n## Routing Contract\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["packages/app/index.test.mjs", "docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "designDecisions": ["docs/arch/README.md"],\n  "contracts": [{\n    "id": "APP-ROUTING-001",\n    "title": "Routing policy contract",\n    "sections": ["Routing Contract"],\n    "implementedBy": ["packages/app/index.mjs"],\n    "verifiedBy": ["packages/app/index.test.mjs"],\n    "relatedDocs": ["docs/arch/README.md"],\n    "designDecisions": ["docs/arch/README.md"]\n  }]\n}\n```\n');
   writeFileSync(join(root, 'docs/test/README.md'), '# Tests\n');
   writeFileSync(join(root, 'docs/arch/README.md'), '# Architecture\n');
   writeFileSync(join(root, 'docs/arch/ROUTING_POLICY_NOTES.md'), '# Routing Policy Notes\n\nSemantic-only routing policy notes.\n');
@@ -503,6 +503,8 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(humanShow.status, 0, humanShow.stderr || humanShow.stdout);
     assert.match(humanShow.stdout, /traceability keys:/);
     assert.match(humanShow.stdout, /implementedBy: path -> implemented_by \(weight=4/);
+    assert.match(humanShow.stdout, /designDecisions: path -> design_decision \(weight=3/);
+    assert.doesNotMatch(humanShow.stdout, /verificationCommands: command -> verification_command/);
     assert.match(humanShow.stdout, /impact ranking: fixed PPR=80, memory=20, reference=0\.4/);
 
     const invalidRoot = createFixture();
@@ -577,7 +579,7 @@ describe('dotdotgod CLI e2e', () => {
 
   it('checks and writes generated traceability links and JSON traceability blocks without counting them against markdown budgets', () => {
     const root = createFixture();
-    writeFileSync(join(root, 'docs/spec/APP.md'), '# Routing Policy App\n\n## Routing Contract\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["packages/app/index.test.mjs", "docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "verificationCommands": ["node --test packages/app/index.test.mjs"],\n  "contracts": [{\n    "id": "APP-ROUTING-001",\n    "title": "Routing policy contract",\n    "sections": ["Routing Contract"],\n    "implementedBy": ["packages/app/index.mjs"],\n    "verifiedBy": ["packages/app/index.test.mjs"],\n    "relatedDocs": ["docs/arch/README.md"],\n    "verificationCommands": ["node --test packages/app/index.test.mjs"]\n  }]\n}\n```\n');
+    writeFileSync(join(root, 'docs/spec/APP.md'), '# Routing Policy App\n\n## Routing Contract\n\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["packages/app/index.test.mjs", "docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "designDecisions": ["docs/arch/README.md"],\n  "contracts": [{\n    "id": "APP-ROUTING-001",\n    "title": "Routing policy contract",\n    "sections": ["Routing Contract"],\n    "implementedBy": ["packages/app/index.mjs"],\n    "verifiedBy": ["packages/app/index.test.mjs"],\n    "relatedDocs": ["docs/arch/README.md"],\n    "designDecisions": ["docs/arch/README.md"]\n  }]\n}\n```\n');
 
     const missing = run(['traceability', 'links', root, '--check', '--json']);
     assert.equal(missing.status, 1);
@@ -588,7 +590,7 @@ describe('dotdotgod CLI e2e', () => {
     const spec = readFileSync(join(root, 'docs/spec/APP.md'), 'utf8');
     assert.match(spec, /dotdotgod:traceability-links:start/);
     assert.match(spec, /\.\.\/\.\.\/packages\/app\/index\.mjs/);
-    assert.match(spec, /- Contracts:\n  - `APP-ROUTING-001` — Routing policy contract \(sections: 1, implementedBy: 1, verifiedBy: 1, relatedDocs: 1, verificationCommands: 1\)/);
+    assert.match(spec, /- Contracts:\n  - `APP-ROUTING-001` — Routing policy contract \(sections: 1, implementedBy: 1, verifiedBy: 1, relatedDocs: 1, designDecisions: 1\)/);
     assert.equal(json(run(['traceability', 'links', root, '--check', '--json'])).ok, true);
 
     const invalidConfigRoot = createFixture();
@@ -602,7 +604,7 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(invalidWrite.status, 1);
     assert.equal(readFileSync(invalidConfigSpec, 'utf8'), beforeInvalidWrite);
 
-    const bloated = spec.replace('"verificationCommands":["node --test packages/app/index.test.mjs"]', `"verificationCommands":[${JSON.stringify('node --test packages/app/index.test.mjs ' + 'x'.repeat(5000))}]`);
+    const bloated = spec.replace('"designDecisions":["docs/arch/README.md"]', `"designDecisions":[${Array.from({ length: 300 }, () => JSON.stringify('docs/arch/README.md')).join(',')}]`);
     writeFileSync(join(root, 'docs/spec/APP.md'), bloated);
     assert.equal(json(run(['traceability', 'links', root, '--write', '--json'])).ok, true);
     writeConfig(root, { validation: { markdown: { maxLines: 30, maxChars: 2000 } } });
@@ -816,7 +818,7 @@ describe('dotdotgod CLI e2e', () => {
     assert(payload.errors.some((error) => error.code === 'TRACEABILITY_MISSING' && error.file === 'docs/requirements/REQ.md'));
     assert(!payload.errors.some((error) => error.code === 'TRACEABILITY_MISSING' && error.file === 'docs/spec/APP.md'));
 
-    const block = '\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "verificationCommands": ["node --test"]\n}\n```\n';
+    const block = '\n## Traceability\n\n```json dotdotgod\n{\n  "kind": "spec",\n  "implementedBy": ["packages/app/index.mjs"],\n  "verifiedBy": ["docs/test/README.md"],\n  "relatedDocs": ["docs/arch/README.md"],\n  "designDecisions": ["docs/arch/README.md"]\n}\n```\n';
     writeFileSync(join(root, 'docs/product/FEATURE.md'), `# Product Feature\n${block}`);
     writeFileSync(join(root, 'docs/requirements/REQ.md'), `# Requirement\n${block}`);
     assert.equal(json(run(['traceability', 'links', root, '--write', '--json'])).ok, true);
@@ -826,7 +828,7 @@ describe('dotdotgod CLI e2e', () => {
 
   it('rejects local-memory paths in traceability blocks during validation', () => {
     const root = createFixture();
-    const invalidSpec = '# App\n\n## Traceability\n\n```json dotdotgod\n{"kind":"spec","implementedBy":["packages/app/index.mjs"],"verifiedBy":["docs/plan/task/README.md"],"relatedDocs":["docs/archive/README.md"],"verificationCommands":["node --test packages/app/index.test.mjs"]}\n```\n';
+    const invalidSpec = '# App\n\n## Traceability\n\n```json dotdotgod\n{"kind":"spec","implementedBy":["packages/app/index.mjs"],"verifiedBy":["docs/plan/task/README.md"],"relatedDocs":["docs/archive/README.md"],"designDecisions":["docs/arch/README.md"]}\n```\n';
     writeFileSync(join(root, 'docs/spec/APP.md'), invalidSpec);
 
     const invalid = run(['validate', root, '--include-local-memory', '--json']);

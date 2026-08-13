@@ -124,15 +124,13 @@ Pi Load applies `load.documentationSummary.exclude` before rendering the Markdow
   - [docs/test/MEMORY_AREA_CONFIG.md](../test/MEMORY_AREA_CONFIG.md)
 - Related docs:
   - [docs/spec/CONFIG_COMMAND.md](CONFIG_COMMAND.md)
+- Design decisions:
   - [docs/arch/MEMORY_AREA_CONFIG.md](../arch/MEMORY_AREA_CONFIG.md)
   - [docs/arch/DOCS_STRUCTURE.md](../arch/DOCS_STRUCTURE.md)
   - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
-- Verification commands:
-  - `pnpm --filter @dotdotgod/cli test`
-  - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory`
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/memory/config.mjs","packages/cli/src/core.mjs","packages/cli/src/commands/query.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/README.md","docs/test/MEMORY_AREA_CONFIG.md"],"relatedDocs":["docs/spec/CONFIG_COMMAND.md","docs/arch/MEMORY_AREA_CONFIG.md","docs/arch/DOCS_STRUCTURE.md","docs/arch/VALIDATION_ARCHITECTURE.md"],"verificationCommands":["pnpm --filter @dotdotgod/cli test","node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory"]}
+{"kind":"spec","implementedBy":["packages/cli/src/memory/config.mjs","packages/cli/src/core.mjs","packages/cli/src/commands/query.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/README.md","docs/test/MEMORY_AREA_CONFIG.md"],"relatedDocs":["docs/spec/CONFIG_COMMAND.md"],"designDecisions":["docs/arch/MEMORY_AREA_CONFIG.md","docs/arch/DOCS_STRUCTURE.md","docs/arch/VALIDATION_ARCHITECTURE.md"]}
 ```
