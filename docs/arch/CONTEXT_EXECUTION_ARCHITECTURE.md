@@ -7,8 +7,9 @@ Use one shared runtime package, thin transport/adapter wrappers, and platform-na
 ```text
 @dotdotgod/context
 ├── process capture and file processing
-├── chunking and FTS5 storage/search
-├── fetch/index operations
+├── structural chunking, provenance, ranking, and FTS5 storage
+├── strict fetch/index operations
+├── read-only runtime diagnostics
 ├── project workflow services
 ├── shared hook state machine
 └── stdio MCP server
@@ -41,6 +42,28 @@ Project Load can provide focus and paths to execution retrieval. Execution outpu
 The initial implementation uses Node's built-in `node:sqlite` `DatabaseSync` and FTS5. The database lives below `.dotdotgod/context/`, which is expected to remain ignored local state.
 
 Source metadata is stored separately from FTS chunks so expiry and scoped purge can remove complete sources. WAL mode supports concurrent readers with one local writer.
+
+Provenance is additive metadata rather than a schema column. The indexing operation owns source type, trust, origin, SHA-256 content hash, timestamp, extractor, and chunker version, preventing caller metadata from promoting trust. Read-time normalization maps legacy or inconsistent records to `unknown` without rewriting them.
+
+## Chunking And Retrieval Pipeline
+
+Format detection selects Markdown or JSON structural chunking; plain text retains overlapping character chunks. Structural paths apply one UTF-8 byte ceiling, preserve Markdown headings and fence metadata, and emit deterministic JSON key paths. Extractor and chunker versions make mixed legacy/new indexes observable without mandatory reindexing.
+
+Search keeps authorization filters at candidate selection time. Porter BM25 and bounded label/path lists use the same scope, session, and source predicates. Reciprocal-rank fusion combines the lists; title, path, and term-proximity signals rerank fused candidates with deterministic ties. Search responses add bounded ranking evidence and provenance without removing existing fields.
+
+Transport adapters add a non-authoritative data notice. Retrieved content remains structured data with `instructionAuthority: "none"`; it is not promoted to system or developer instruction by the context runtime.
+
+## Safe Fetch Boundary
+
+`safe-fetch.mjs` uses Node core HTTP(S) with explicit lookup results rather than ambient proxy configuration. It rejects credentials and blocked address classes, validates all DNS answers, binds the connection lookup to the accepted addresses, rechecks the socket peer, and repeats validation for every manual redirect.
+
+Wire bytes are counted before optional gzip, deflate, or Brotli decoding, and decoded bytes have a separate limit. Timeouts and caller aborts destroy the request. Unsupported MIME types, encodings, statuses, redirects, or address policy results fail before indexing.
+
+This is application-level destination and resource validation. It does not provide a network namespace or process sandbox.
+
+## Diagnostics
+
+Doctor checks Node support, project/storage access, SQLite FTS5/Porter capability, existing schema compatibility, current store statistics, and configured fetch mode. Checks are local and read-only: doctor does not create the context database, migrate schemas, contact package registries, repair configuration, or execute commands.
 
 ## Process Capture
 

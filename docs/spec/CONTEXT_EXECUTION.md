@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Dotdotgod provides a local-first context layer that keeps large command, file, and fetched text outside the model context until bounded processing or retrieval selects useful output.
+Dotdotgod keeps large command, file, and fetched text outside model context until bounded retrieval selects useful output.
 
 ## Tool Contract
 
@@ -34,6 +34,12 @@ The context store is a project-local SQLite FTS5 database at `.dotdotgod/context
 
 Supported scopes are transient call, session, and project. Large automatic command output defaults to session scope with expiry. Search returns bounded excerpts and supports source, scope, session, and result-limit filters.
 
+New sources receive operation-owned source type, trust, origin, SHA-256 hash, indexed time, extractor, and chunker version metadata. Caller metadata cannot override these fields. Legacy records remain readable as `unknown` without migration.
+
+Markdown chunking preserves heading/fence metadata; JSON emits deterministic key-path chunks. Structural and fallback chunks have a hard UTF-8 byte bound, while generic text retains overlapping chunks.
+
+Search applies scope/session/source predicates before building bounded Porter and label/path lists, then uses reciprocal-rank fusion and deterministic title/path/proximity signals. Existing result fields remain; provenance, `instructionAuthority: "none"`, and bounded ranking evidence are additive. Retrieved text is non-authoritative data; this boundary is defense in depth, not a prompt-injection guarantee.
+
 `purge` requires explicit confirmation and exactly one selector: scope, session, or source.
 
 ## Execution Safety
@@ -43,7 +49,9 @@ Supported scopes are transient call, session, and project. Large automatic comma
 - Concurrency is bounded to eight and batch size to one hundred commands.
 - Timeouts are bounded and terminate the process group where supported.
 - File indexing and URL fetching enforce size bounds.
-- URL fetching accepts only HTTP and HTTPS.
+- URL fetching accepts credential-free HTTP(S), validates DNS answers, the selected peer, and every redirect against a private/reserved network deny policy.
+- Redirect, timeout, wire-byte, and decoded-byte limits apply; unsupported MIME types and encodings fail closed. This is application validation, not network isolation.
+- `doctor` performs local read-only runtime, storage, SQLite/FTS5, schema, and fetch-policy checks without npm access, repair, migration, or command execution.
 - Project initialization defaults to dry-run; writes require `dryRun: false` and `confirmWrite: true`.
 
 ## Project Workflow Boundaries
@@ -66,11 +74,11 @@ Claude Code and Codex adapter hooks maintain project/session runtime state under
 - Project MCP tools bypass their own guards.
 - Impact clears only paths whose current fingerprint matches the recorded edit.
 
-Hooks do not claim transparent conversion of one tool type into another or automatic retry. Hook coverage is limited to documented and tested host interception points.
+Hooks do not transform tool types or retry automatically. Coverage is limited to tested host interception points.
 
 ## Local-Only Boundary
 
-No remote dotdotgod service is required. The MCP server, process execution, SQLite FTS5 database, temporary files, vector query cache, and graph cache operate locally. `fetch_and_index` accesses the requested remote URL by definition.
+No remote dotdotgod service is required. Runtime state and caches are local; `fetch_and_index` accesses its requested URL.
 
 ## Traceability
 
@@ -85,7 +93,12 @@ No remote dotdotgod service is required. The MCP server, process execution, SQLi
   - [packages/context/src/server.mjs](../../packages/context/src/server.mjs)
   - [packages/context/src/execute.mjs](../../packages/context/src/execute.mjs)
   - [packages/context/src/store.mjs](../../packages/context/src/store.mjs)
+  - [packages/context/src/chunks.mjs](../../packages/context/src/chunks.mjs)
   - [packages/context/src/content.mjs](../../packages/context/src/content.mjs)
+  - [packages/context/src/provenance.mjs](../../packages/context/src/provenance.mjs)
+  - [packages/context/src/rank.mjs](../../packages/context/src/rank.mjs)
+  - [packages/context/src/safe-fetch.mjs](../../packages/context/src/safe-fetch.mjs)
+  - [packages/context/src/doctor.mjs](../../packages/context/src/doctor.mjs)
   - [packages/context/src/project.mjs](../../packages/context/src/project.mjs)
   - [packages/context/src/hooks.mjs](../../packages/context/src/hooks.mjs)
   - [packages/pi/extensions/context-tools/index.ts](../../packages/pi/extensions/context-tools/index.ts)
@@ -112,5 +125,5 @@ No remote dotdotgod service is required. The MCP server, process execution, SQLi
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/context/src/server.mjs","packages/context/src/execute.mjs","packages/context/src/store.mjs","packages/context/src/content.mjs","packages/context/src/project.mjs","packages/context/src/hooks.mjs","packages/pi/extensions/context-tools/index.ts","packages/claude-code/.claude-plugin/plugin.json","packages/claude-code/hooks/hooks.json","packages/codex/.codex-plugin/plugin.json","packages/codex/.mcp.json","packages/codex/hooks/hooks.json"],"verifiedBy":["packages/context/test/context.test.mjs","packages/context/test/mcp.test.mjs","packages/context/test/adapters.test.mjs","docs/test/CONTEXT_EXECUTION.md","docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md","docs/arch/CROSS_AGENT_ARCHITECTURE.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"],"contracts":[{"id":"CONTEXT-EXECUTION-TOOLS-001","title":"Local context tools keep large raw bytes outside model context","sections":["Tool Contract","Output Handling","Storage And Search"],"implementedBy":["packages/context/src/server.mjs","packages/context/src/execute.mjs","packages/context/src/store.mjs"],"verifiedBy":["packages/context/test/context.test.mjs","packages/context/test/mcp.test.mjs"],"relatedDocs":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]},{"id":"CONTEXT-EXECUTION-ADAPTERS-001","title":"Claude and Codex use MCP while Pi retains native adapter tools","sections":["Project Workflow Boundaries","Hook Routing"],"implementedBy":["packages/pi/extensions/context-tools/index.ts","packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","packages/context/src/hooks.mjs"],"verifiedBy":["packages/context/test/adapters.test.mjs","docs/test/CONTEXT_EXECUTION.md","docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]}]}
+{"kind":"spec","implementedBy":["packages/context/src/server.mjs","packages/context/src/execute.mjs","packages/context/src/store.mjs","packages/context/src/chunks.mjs","packages/context/src/content.mjs","packages/context/src/provenance.mjs","packages/context/src/rank.mjs","packages/context/src/safe-fetch.mjs","packages/context/src/doctor.mjs","packages/context/src/project.mjs","packages/context/src/hooks.mjs","packages/pi/extensions/context-tools/index.ts","packages/claude-code/.claude-plugin/plugin.json","packages/claude-code/hooks/hooks.json","packages/codex/.codex-plugin/plugin.json","packages/codex/.mcp.json","packages/codex/hooks/hooks.json"],"verifiedBy":["packages/context/test/context.test.mjs","packages/context/test/mcp.test.mjs","packages/context/test/adapters.test.mjs","docs/test/CONTEXT_EXECUTION.md","docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md","docs/arch/CROSS_AGENT_ARCHITECTURE.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"],"contracts":[{"id":"CONTEXT-EXECUTION-TOOLS-001","title":"Local context tools keep large raw bytes outside model context","sections":["Tool Contract","Output Handling","Storage And Search"],"implementedBy":["packages/context/src/server.mjs","packages/context/src/execute.mjs","packages/context/src/store.mjs"],"verifiedBy":["packages/context/test/context.test.mjs","packages/context/test/mcp.test.mjs"],"relatedDocs":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]},{"id":"CONTEXT-EXECUTION-ADAPTERS-001","title":"Claude and Codex use MCP while Pi retains native adapter tools","sections":["Project Workflow Boundaries","Hook Routing"],"implementedBy":["packages/pi/extensions/context-tools/index.ts","packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","packages/context/src/hooks.mjs"],"verifiedBy":["packages/context/test/adapters.test.mjs","docs/test/CONTEXT_EXECUTION.md","docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]}]}
 ```
