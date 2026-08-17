@@ -48,6 +48,22 @@ test('executeCommand returns small output directly and indexes large output', as
   } finally { f.close(); }
 });
 
+test('executeCommand stops capture at the internal hard ceiling', async () => {
+  const f = fixture();
+  try {
+    const result = await executeCommand(
+      { executable: process.execPath, args: ['-e', "process.stdout.write('x'.repeat(3000)); process.stderr.write('y'.repeat(3000))"], shell: false },
+      { root: f.root, captureLimitBytes: 4096 },
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.captureLimitExceeded, true);
+    assert.equal(result.captureLimitBytes, 4096);
+    assert.ok(result.stdoutBytes > 0);
+    assert.ok(result.stderrBytes > 0);
+    assert.ok(result.stdoutBytes + result.stderrBytes <= result.captureLimitBytes);
+  } finally { f.close(); }
+});
+
 test('executeCommand enforces project paths and timeout', async () => {
   const f = fixture();
   try {

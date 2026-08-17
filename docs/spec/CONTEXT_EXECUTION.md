@@ -17,7 +17,7 @@ Pi exposes native dotdotgod-prefixed execution and context tools over the same c
 
 ## Output Handling
 
-Execution captures child stdout and stderr through internal pipes and temporary files. MCP protocol stdout remains reserved for JSON-RPC.
+Execution captures child stdout and stderr through internal pipes and temporary files. MCP protocol stdout remains reserved for JSON-RPC. Combined temporary capture is hard-limited to 10 MiB per command; exceeding it terminates the process and reports `captureLimitExceeded`. Direct stdout and stderr excerpts are each capped at 1 MiB even when callers request larger limits.
 
 Output modes are:
 

@@ -2,6 +2,7 @@ import { createWriteStream, mkdtempSync, readFileSync, rmSync, statSync, writeFi
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
+import { Transform } from 'node:stream';
 import { resolveWithinRoot } from './paths.mjs';
 
 const DIRECT_LIMIT = 12_000;
@@ -42,6 +43,8 @@ export async function executeCommand(input, options = {}) {
   const startedAt = Date.now();
   let timedOut = false;
   let aborted = false;
+  let captureLimitExceeded = false;
+  const captureLimitBytes = Math.min(HARD_LIMIT, Math.max(1024, options.captureLimitBytes ?? HARD_LIMIT));
 
   try {
     const result = await new Promise((resolvePromise, reject) => {
@@ -52,8 +55,22 @@ export async function executeCommand(input, options = {}) {
         stdio: ['ignore', 'pipe', 'pipe'],
         env: options.env ?? process.env,
       });
-      child.stdout.pipe(stdout);
-      child.stderr.pipe(stderr);
+      let capturedBytes = 0;
+      const boundedCapture = () => new Transform({
+        transform(chunk, _encoding, callback) {
+          const remaining = Math.max(0, captureLimitBytes - capturedBytes);
+          const kept = chunk.subarray(0, remaining);
+          capturedBytes += kept.length;
+          if (kept.length) this.push(kept);
+          if (kept.length < chunk.length && !captureLimitExceeded) {
+            captureLimitExceeded = true;
+            killProcess(child);
+          }
+          callback();
+        },
+      });
+      child.stdout.pipe(boundedCapture()).pipe(stdout);
+      child.stderr.pipe(boundedCapture()).pipe(stderr);
       const timer = setTimeout(() => { timedOut = true; killProcess(child); }, timeoutMs);
       const onAbort = () => { aborted = true; killProcess(child); };
       options.signal?.addEventListener('abort', onAbort, { once: true });
@@ -77,6 +94,8 @@ export async function executeCommand(input, options = {}) {
       signal: result.signal,
       timedOut,
       aborted,
+      captureLimitExceeded,
+      captureLimitBytes,
       durationMs: Date.now() - startedAt,
       stdoutBytes: stdoutResult.bytes,
       stderrBytes: stderrResult.bytes,
@@ -98,7 +117,7 @@ export async function executeCommand(input, options = {}) {
       });
     }
     return {
-      ok: result.code === 0 && !timedOut && !aborted,
+      ok: result.code === 0 && !timedOut && !aborted && !captureLimitExceeded,
       ...metadata,
       ...(mode === 'discard' ? {} : shouldIndex ? { indexed } : { stdout: stdoutResult.text, stderr: stderrResult.text, truncated: stdoutResult.truncated || stderrResult.truncated }),
     };
