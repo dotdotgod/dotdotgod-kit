@@ -93,25 +93,23 @@ export interface PlanContextUsage {
 }
 
 export interface PlanningContextShapeTriggerState {
-	planModeEnabled: boolean;
-	executionMode: boolean;
+	mode: "off" | "planning" | "reviewing" | "executing";
 	planningContextShapePending: boolean;
 }
 
 export function shouldShapePlanningContextOnAgentStart(state: PlanningContextShapeTriggerState): boolean {
-	return state.planModeEnabled && !state.executionMode && state.planningContextShapePending;
+	return state.mode === "planning" && state.planningContextShapePending;
 }
 
 export interface PlanChoiceTriggerState {
-	planModeEnabled: boolean;
-	executionMode: boolean;
+	mode: "off" | "planning" | "reviewing" | "executing";
 	hasUI: boolean;
 	pendingPlanChoicePath?: string | undefined;
 	suppressPlanChoice?: boolean | undefined;
 }
 
 export function shouldPromptForPlanChoice(state: PlanChoiceTriggerState): boolean {
-	return state.planModeEnabled && !state.executionMode && state.hasUI && !state.suppressPlanChoice && Boolean(state.pendingPlanChoicePath);
+	return state.mode === "planning" && state.hasUI && !state.suppressPlanChoice && Boolean(state.pendingPlanChoicePath);
 }
 
 function formatFocusList(label: string, values: string[] | undefined): string | undefined {

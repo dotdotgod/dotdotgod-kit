@@ -1,0 +1,7 @@
+{
+  "hooks": {
+    "SessionStart": [{ "matcher": "", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/runtime.mjs\" sessionstart" }] }],
+    "PreToolUse": [{ "matcher": "Bash|Shell|Edit|Write|mcp__", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/runtime.mjs\" pretooluse" }] }],
+    "PostToolUse": [{ "matcher": "Edit|Write|mcp__", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/runtime.mjs\" posttooluse" }] }]
+  }
+}

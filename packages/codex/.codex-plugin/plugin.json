@@ -1,6 +1,6 @@
 {
   "name": "dotdotgod",
-  "version": "0.1.48",
+  "version": "0.2.23",
   "description": "Dotdotgod project memory workflows for Codex: initialize shared docs, load project memory, plan implementation work doc-first, review graph impact, and clarify documentation.",
   "author": {
     "name": "dotdotgod"
@@ -14,6 +14,8 @@
     "planning"
   ],
   "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "hooks": "./hooks/hooks.json",
   "interface": {
     "displayName": "Dotdotgod Project Memory",
     "shortDescription": "Initialize, load, plan, review impact, and clarify docs from shared project memory.",
@@ -22,7 +24,8 @@
     "category": "Productivity",
     "capabilities": [
       "Interactive",
-      "Write"
+      "Write",
+      "MCP"
     ],
     "defaultPrompt": [
       "Load this project's dotdotgod memory.",

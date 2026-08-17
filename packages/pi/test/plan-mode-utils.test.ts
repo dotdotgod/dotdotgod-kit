@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import { ContextShapingController } from "../extensions/plan-mode/controllers/context-shaping.ts";
+import { ExecutionFlowController } from "../extensions/plan-mode/controllers/execution-flow.ts";
 import { ExecutionProgressController } from "../extensions/plan-mode/controllers/execution-progress.ts";
 import { GateController } from "../extensions/plan-mode/controllers/gates.ts";
 import { ModeLifecycleController } from "../extensions/plan-mode/controllers/mode-lifecycle.ts";
@@ -109,6 +110,67 @@ describe("plan-mode domain controllers", () => {
 		assert.equal(restoredContext.advisorySummary, "summary");
 		assert.equal(restoredGates.pendingImpactItems.length, 1);
 		assert.equal(restoredExecution.todos[0]?.text, "Verify plan");
+	});
+
+	it("derives permissions from one lifecycle mode and normalizes restored state", () => {
+		const lifecycle = new ModeLifecycleController();
+		lifecycle.enablePlanning(["read"]);
+		assert.equal(lifecycle.restrictsMutation, true);
+		assert.equal(lifecycle.injectsPlanningPrompt, true);
+
+		const staleReview = lifecycle.beginReview();
+		assert.equal(lifecycle.mode, "reviewing");
+		assert.equal(lifecycle.restrictsMutation, true);
+		lifecycle.returnToPlanning();
+		assert.equal(lifecycle.mode, "planning");
+		assert.equal(lifecycle.startExecution(staleReview ?? -1), false);
+
+		const currentReview = lifecycle.beginReview();
+		assert.equal(lifecycle.startExecution(currentReview ?? -1), true);
+		assert.equal(lifecycle.injectsExecutionPrompt, true);
+		assert.equal(lifecycle.restrictsMutation, false);
+		assert.deepEqual(lifecycle.activeTools, []);
+
+		lifecycle.restore({ mode: "off", activeTools: ["read"] });
+		assert.deepEqual(lifecycle.snapshot(), { mode: "off", activeTools: [] });
+		lifecycle.restore({ mode: "invalid", executing: true, planningEnabled: true, activeTools: ["read"] });
+		assert.deepEqual(lifecycle.snapshot(), { mode: "executing", activeTools: [] });
+		lifecycle.restore({ planningEnabled: true, activeTools: ["read", "read", 42] });
+		assert.deepEqual(lifecycle.snapshot(), { mode: "planning", activeTools: ["read"] });
+		lifecycle.restore({ mode: "off", executing: true, activeTools: ["read"] });
+		assert.deepEqual(lifecycle.snapshot(), { mode: "off", activeTools: [] });
+	});
+
+	it("persists zero-todo execution before its follow-up and completes after the execution turn", async () => {
+		const lifecycle = new ModeLifecycleController();
+		lifecycle.enablePlanning(["read"]);
+		const reviewGeneration = lifecycle.beginReview();
+		assert.notEqual(reviewGeneration, undefined);
+
+		const artifact = new PlanArtifactController();
+		artifact.pendingReviewPath = "docs/plan/example/README.md";
+		const context = new ContextShapingController();
+		const execution = new ExecutionProgressController();
+		const events: string[] = [];
+		const flow = new ExecutionFlowController(lifecycle, artifact, context, execution, {
+			getFlag: () => false,
+			appendEntry: () => events.push("marker"),
+			sendUserMessage: () => events.push("follow-up"),
+			setNormalTools: () => events.push("tools"),
+			updateStatus: () => events.push("status"),
+			persistState: () => events.push("persist"),
+		});
+		const ctx = { ui: {} } as never;
+
+		await flow.handleReviewChoice(ctx, "execute", "docs/plan/example/README.md", reviewGeneration ?? -1);
+		assert.equal(lifecycle.mode, "executing");
+		assert.deepEqual(events.slice(0, 4), ["tools", "status", "marker", "persist"]);
+		await new Promise<void>((resolve) => setTimeout(resolve, 0));
+		assert.equal(events.at(-1), "follow-up");
+
+		assert.equal(flow.completeExecutionIfDone(ctx), true);
+		assert.equal(lifecycle.mode, "off");
+		assert.deepEqual(events.slice(-4), ["follow-up", "tools", "status", "persist"]);
 	});
 
 	it("loads an existing plan path and populates todos from its README", () => {
@@ -1039,26 +1101,27 @@ describe("plan-mode compaction helpers", () => {
 
 describe("plan-mode context shaping trigger", () => {
 	it("runs the initial shaping check only for active non-execution planning turns", () => {
-		assert.equal(shouldShapePlanningContextOnAgentStart({ planModeEnabled: true, executionMode: false, planningContextShapePending: true }), true);
-		assert.equal(shouldShapePlanningContextOnAgentStart({ planModeEnabled: false, executionMode: false, planningContextShapePending: true }), false);
-		assert.equal(shouldShapePlanningContextOnAgentStart({ planModeEnabled: true, executionMode: true, planningContextShapePending: true }), false);
-		assert.equal(shouldShapePlanningContextOnAgentStart({ planModeEnabled: true, executionMode: false, planningContextShapePending: false }), false);
+		assert.equal(shouldShapePlanningContextOnAgentStart({ mode: "planning", planningContextShapePending: true }), true);
+		assert.equal(shouldShapePlanningContextOnAgentStart({ mode: "off", planningContextShapePending: true }), false);
+		assert.equal(shouldShapePlanningContextOnAgentStart({ mode: "executing", planningContextShapePending: true }), false);
+		assert.equal(shouldShapePlanningContextOnAgentStart({ mode: "reviewing", planningContextShapePending: true }), false);
+		assert.equal(shouldShapePlanningContextOnAgentStart({ mode: "planning", planningContextShapePending: false }), false);
 	});
 });
 
 describe("plan-mode plan choice trigger", () => {
 	it("asks after every active plan file create or update", () => {
-		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: false, hasUI: true, pendingPlanChoicePath: "docs/plan/task/README.md" }), true);
-		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: false, hasUI: true }), false);
-		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: true, hasUI: true, pendingPlanChoicePath: "docs/plan/task/README.md" }), false);
-		assert.equal(shouldPromptForPlanChoice({ planModeEnabled: true, executionMode: false, hasUI: false, pendingPlanChoicePath: "docs/plan/task/README.md" }), false);
+		assert.equal(shouldPromptForPlanChoice({ mode: "planning", hasUI: true, pendingPlanChoicePath: "docs/plan/task/README.md" }), true);
+		assert.equal(shouldPromptForPlanChoice({ mode: "planning", hasUI: true }), false);
+		assert.equal(shouldPromptForPlanChoice({ mode: "executing", hasUI: true, pendingPlanChoicePath: "docs/plan/task/README.md" }), false);
+		assert.equal(shouldPromptForPlanChoice({ mode: "reviewing", hasUI: true, pendingPlanChoicePath: "docs/plan/task/README.md" }), false);
+		assert.equal(shouldPromptForPlanChoice({ mode: "planning", hasUI: false, pendingPlanChoicePath: "docs/plan/task/README.md" }), false);
 	});
 
 	it("suppresses the chooser for inline planning follow-up turns", () => {
 		assert.equal(
 			shouldPromptForPlanChoice({
-				planModeEnabled: true,
-				executionMode: false,
+				mode: "planning",
 				hasUI: true,
 				pendingPlanChoicePath: "docs/plan/task/README.md",
 				suppressPlanChoice: true,

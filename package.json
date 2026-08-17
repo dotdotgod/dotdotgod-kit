@@ -1,6 +1,6 @@
 {
   "name": "dotdotgod-workspace",
-  "version": "0.2.22",
+  "version": "0.2.23",
   "private": true,
   "description": "Workspace for dotdotgod project memory packages across CLI, Pi, Claude Code, and Codex adapters.",
   "type": "module",
@@ -22,7 +22,7 @@
     "thumbnail:terminal": "node scripts/generate-terminal-thumbnail.mjs",
     "pack:dry-run:packages": "pnpm -r --if-present run pack:dry-run",
     "pack:dry-run": "pnpm run verify:generated && pnpm run pack:dry-run:packages",
-    "publish:all": "pnpm --filter @dotdotgod/cli publish --access public && pnpm --filter @dotdotgod/pi publish --access public && pnpm --filter @dotdotgod/claude-code publish --access public && pnpm --filter @dotdotgod/codex publish --access public",
+    "publish:all": "pnpm --filter @dotdotgod/cli publish --access public && pnpm --filter @dotdotgod/context publish --access public && pnpm --filter @dotdotgod/pi publish --access public && pnpm --filter @dotdotgod/claude-code publish --access public && pnpm --filter @dotdotgod/codex publish --access public",
     "prepare": "husky"
   },
   "devDependencies": {

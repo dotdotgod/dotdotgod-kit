@@ -1,0 +1,46 @@
+{
+  "name": "@dotdotgod/context",
+  "version": "0.2.23",
+  "description": "Local-first MCP execution, indexing, and retrieval runtime for dotdotgod adapters.",
+  "type": "module",
+  "license": "Elastic-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "dotdotgod-context": "./bin/server.mjs"
+  },
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.mjs"
+    },
+    "./server": "./src/server.mjs",
+    "./hooks": "./src/hooks.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "verify": "node --check bin/server.mjs && node --check src/server.mjs && pnpm run test",
+    "pack:dry-run": "pnpm pack --dry-run --json"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@dotdotgod/cli": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.25.2",
+    "zod": "^3.25.76"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dotdotgod/dotdotgod-kit.git",
+    "directory": "packages/context"
+  }
+}

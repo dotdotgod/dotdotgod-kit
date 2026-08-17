@@ -14,7 +14,7 @@
 }
 ```
 
-Pi core packages are peer dependencies and are not bundled into the tarball. `@dotdotgod/cli` and `pi-subagents` are runtime dependencies so npm/Pi installs fetch them automatically; pnpm's isolated node linker prevents `bundledDependencies`, so the published tarball declares dependencies rather than embedding `node_modules` bodies.
+Pi core packages are peer dependencies and are not bundled into the tarball. `@dotdotgod/cli`, `@dotdotgod/context`, and `pi-subagents` are runtime dependencies so npm/Pi installs fetch them automatically; pnpm's isolated node linker prevents `bundledDependencies`, so the published tarball declares dependencies rather than embedding `node_modules` bodies.
 
 ## Package Distribution Metadata
 
@@ -28,6 +28,7 @@ Distribution metadata:
 - Tarballs contain dotdotgod-owned `skills/`, `extensions/`, package metadata, and license files; runtime dependency bodies are installed by the package manager from declared dependencies.
 - Pi peer dependencies remain unbundled and are resolved by the host Pi installation.
 - `@dotdotgod/cli` is a package dependency used by Pi extensions as a source-checkout, package-local, then global CLI fallback chain.
+- `@dotdotgod/context` provides process capture, local FTS5 retrieval, fetch/index operations, and safe initializer services. Pi registers native tools over this library and does not start the Claude/Codex MCP server.
 - `pi-subagents` is a pinned package dependency whose skill and prompts are resolved by the dotdotgod wrapper through Node package resolution. The wrapper defers duplicate tool detection until `session_start`; when a standalone `subagent` tool already exists it suppresses package-local tool, skill, and prompt resources, and when dotdotgod owns registration it exposes the dependency resources during `resources_discover`. This lets hoisted, package-local, and local development installs coexist with standalone `pi-subagents` without duplicate resource warnings or runtime action calls during extension loading.
 
 
@@ -53,7 +54,7 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 `plan-mode` owns runtime planning behavior:
 
 - Entry points: `pi --dd-plan` at startup, `/dd:plan`, `/dd:plan <request>`, and `Ctrl+Alt+P`; the namespaced startup flag avoids collisions with extensions that own `--plan`.
-- Runtime state: mode flags, internal todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/dd:plan <request>` delivery, advisory/execution request framing, and pending source/config impact-check records. It contains no automatic project-memory load state or load-prompt classification.
+- Runtime state: one authoritative `off`/`planning`/`reviewing`/`executing` lifecycle plus subordinate internal todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/dd:plan <request>` delivery, advisory/execution request framing, and pending source/config impact-check records. Lifecycle-derived capabilities alone select mutation restrictions, Plan Mode-owned tools, hidden prompts, and status; todo and UI state do not independently select permissions. It contains no automatic project-memory load state or load-prompt classification.
 - Context shaping: first-request planning compaction without a synthetic resume turn, compaction debounce, advisory CLI summary, optional validation, documentation-tree refresh, and bounded multi-file advisory graph impact checks when the CLI is available. Mode-neutral automatic project-memory prompt scheduling and loading are owned separately and apply equally to Plan Mode and ordinary mode.
 - Impact-check integration: structured `graph impact --yml` runtime summaries, short pending-impact reminders after source/config edits, pending-path plus git source/config union checks, and stale pending-record cleanup after successful checks.
 - UX: queue-first Discussion Queue Console, then saved-plan execute/stay/refine/cancel review only after queue clearance. Explicit execution requests use the same queue-first review flow. Plan Mode suppresses review for generator-authored or actively generating plans, but it does not run generator stage validation. Generator status overlays restore the underlying Plan Mode status when cleared.
@@ -118,7 +119,7 @@ Prompt content should:
 
 ## State and Persistence
 
-`plan-mode` persists custom session entries for mode state, todos, review-prompt eligibility, prompt tier, active plan path, touched plan/archive paths, latest planning request, pending inline planning request delivery, compaction measurements, one-time advisory-context state, pending impact-check files, and recent completed impact-check records. The global project-memory extension separately persists automatic assessment, hidden-instruction delivery, and pending-load state and restores only the latest state reachable from `ctx.sessionManager.getBranch()`. Discussion-queue state is read from the active plan artifact instead of a sidecar or opaque session object; the custom UI returns structured choices and the agent follow-up updates the plan markdown as the durable source.
+`plan-mode` persists custom session entries for its authoritative lifecycle state, todos, review-prompt eligibility, prompt tier, active plan path, touched plan/archive paths, latest planning request, pending inline planning request delivery, compaction measurements, one-time advisory-context state, pending impact-check files, and recent completed impact-check records. Restored lifecycle snapshots are normalized before Plan Mode-owned tools and status are synchronized; `off` and `executing` never restore planning-only active tools. The global project-memory extension separately persists automatic assessment, hidden-instruction delivery, and pending-load state and restores only the latest state reachable from `ctx.sessionManager.getBranch()`. Discussion-queue state is read from the active plan artifact instead of a sidecar or opaque session object; the custom UI returns structured choices and the agent follow-up updates the plan markdown as the durable source.
 
 
 ## Related Behavior and Verification

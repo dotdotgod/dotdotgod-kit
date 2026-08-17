@@ -1,10 +1,12 @@
-# Optional Codex Hooks
+# Codex Hooks
 
-Codex hooks can complement dotdotgod skills and `dd:*` trigger phrases, but they are not required. The `project-load`, `doc-first-planning`, `project-initializer`, and `impact-review` skills work without hook configuration.
+## Packaged Defaults
 
-Use hooks only when you want opt-in reminders, lightweight validation, or local safety rails around the same doc-first workflow. Hooks run local commands with your user permissions. Project-local `.codex/` hooks should be reviewed and trusted before use.
+The adapter packages `hooks/hooks.json` and `hooks/runtime.mjs`. After Codex's applicable plugin-hook enablement and trust review, they inject a bounded project-load requirement, record successful `apply_patch`/`Edit`/`Write` paths, and deny broad verification or handoff shell commands while graph impact is pending. A denial names the required dotdotgod MCP tool; Codex calls it and retries the original operation. Hooks do not transform a shell tool call into an MCP call.
 
-Current Codex docs support `hooks.json` and inline `config.toml` hooks next to active config layers. Installed plugins can also bundle hooks, but plugin-bundled hooks are off by default unless `[features].plugin_hooks = true`; non-managed hooks still require trust review. Dotdotgod therefore ships the Pi-like impact workflow as the `impact-review` skill and keeps runtime hooks as documented opt-in examples.
+Runtime state is local to `.dotdotgod/context/runtime/`. MCP tools bypass their own guards, and successful impact clears only matching file fingerprints. Hooks run local commands with user permissions, so review plugin resources before enabling them.
+
+Current Codex docs support plugin-bundled hooks subject to the active version's enablement and trust flow. The skills remain usable when hooks are disabled.
 
 ## When To Use Hooks
 

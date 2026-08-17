@@ -16,7 +16,7 @@ Current first-class support.
 - Initialization: `project-initializer` skill.
 - Documentation clarity: `document-clarify` skill.
 - Runtime workflow: `plan-mode`, `load-project`, and dependency-provided `pi-subagents` extensions.
-- Commands and tools: `/dd:plan`, `/load`, `/dd:load`, global pending-only `dotdotgod_project_load`, `/impact-check`, and the `subagent` delegation tool when the dependency resources load.
+- Commands and tools: `/dd:plan`, `/load`, `/dd:load`, global pending-only `dotdotgod_project_load`, `/impact-check`, native dotdotgod execution/context/initializer tools over `@dotdotgod/context`, and the `subagent` delegation tool when dependency resources load. Pi does not start the cross-agent MCP server.
 
 ### Claude Code
 
@@ -28,7 +28,8 @@ Current adapter support.
 - Planning workflow: `doc-first-planning` skill and `/dd:plan` command.
 - Impact review workflow: `impact-review` skill and `/dd:impact` command for post-edit graph-impact checks before broad verification or handoff.
 - Documentation clarity workflow: `document-clarify` skill loads resolved memory-area guidance with `dotdotgod config <root> --json`, then improves project documentation with direct prose while preserving established meaning and traceability.
-- Optional lifecycle hook guidance for advisory project-memory reminders, SDLC guardrails, validation, failure logging, and narrowly scoped plan-safety patterns using documented Claude Code hook events.
+- Bundled local stdio MCP tools for generic execution/retrieval and project load/impact/initialize operations.
+- Bundled lifecycle hooks for load-required and impact-pending deny/retry routing, plus maintained guidance for additional guardrails using documented Claude Code hook events.
 - `CLAUDE.md` remains a thin project entrypoint that imports or points to `AGENTS.md`.
 
 ### Codex
@@ -39,7 +40,8 @@ Current adapter support.
 - Skills: `project-initializer`, `project-load`, `doc-first-planning`, `impact-review`, and `document-clarify`.
 - Codex reads `AGENTS.md` as a primary project instruction source.
 - `dd:init`, `dd:load`, `dd:plan`, and `dd:impact` are command-like trigger phrases unless the active Codex runtime provides direct command registration.
-- Optional lifecycle hook guidance for trusted Codex configuration layers.
+- Bundled local stdio MCP tools for generic execution/retrieval and project load/impact/initialize operations.
+- Bundled lifecycle hooks, subject to Codex enablement/trust review, for load-required and impact-pending deny/retry routing.
 - `CODEX.md` remains a thin project entrypoint that points to `AGENTS.md`.
 
 ## Shared Contract
@@ -100,6 +102,7 @@ Cross-agent support is distributed as npm workspace packages:
 
 - `@dotdotgod/pi`: Pi adapter with skills, extensions, package-local `@dotdotgod/cli` dependency, and dependency-provided subagent resources.
 - `@dotdotgod/cli`: validation, local documentation query, and graph indexing CLI.
+- `@dotdotgod/context`: shared local execution, FTS5 retrieval, hooks, project workflow services, and stdio MCP runtime.
 - `@dotdotgod/claude-code`: Claude Code adapter with plugin commands and skills.
 - `@dotdotgod/codex`: Codex adapter with project memory skills.
 

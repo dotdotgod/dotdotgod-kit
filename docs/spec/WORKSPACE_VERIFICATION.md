@@ -8,9 +8,10 @@ Workspace verification keeps dotdotgod changes safe before commits, package dry-
 
 ## Required Workflows
 
-- `pnpm run verify` runs generated-resource drift checks, package verify contract checks, and each package's `verify` script.
+- `pnpm run verify` runs generated-resource drift checks, package verify contract checks, and each package's `verify` script, including the context runtime's syntax, core, hook, and stdio MCP protocol tests. The CLI package runs its test files serially so embedding/provider and e2e fixtures do not contend for shared runtime resources.
 - `pnpm run verify:cache` runs docs validation, refreshes the local `.dotdotgod/` index, and checks cache freshness.
 - `.husky/pre-push` runs the workspace gate, cache gate, and package dry-runs before pushes.
+- `publish:all` publishes `@dotdotgod/cli`, then `@dotdotgod/context`, then dependent Pi, Claude Code, and Codex adapters.
 - `scripts/check-package-verify-contract.mjs` fails packages that define quality scripts but omit them from package-level `verify`.
 
 ## Graph Retrieval Expectations

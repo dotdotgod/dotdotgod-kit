@@ -23,8 +23,9 @@ Every adapter follows the same loop:
 | --- | --- | --- |
 | [`@dotdotgod/pi`](packages/pi/README.md) | You use Pi and want initialization, project loading, Plan Mode, impact checks, and archive handoff. | `pi install npm:@dotdotgod/pi` |
 | [`@dotdotgod/cli`](packages/cli/README.md) | You want validation, graph indexing, local query, reference expansion, or impact reports. | `npx @dotdotgod/cli init .` |
-| [`@dotdotgod/claude-code`](packages/claude-code/README.md#start-here) | You use Claude Code and want `/dd:*` commands plus dotdotgod skills. | `/plugin marketplace add dotdotgod/dotdotgod-kit`, then `/plugin install dotdotgod@dotdotgod` |
-| [`@dotdotgod/codex`](packages/codex/README.md#start-here) | You use Codex and want dotdotgod skills plus `dd:*` trigger phrases. | Register the plugin manifest or copy `skills/` into a trusted Codex skills location. |
+| [`@dotdotgod/context`](packages/context/README.md) | You want local command/file processing, FTS5 retrieval, and the shared stdio MCP runtime. | Installed automatically by the agent adapters. |
+| [`@dotdotgod/claude-code`](packages/claude-code/README.md#start-here) | You use Claude Code and want `/dd:*` workflows plus local context MCP tools. | `/plugin marketplace add dotdotgod/dotdotgod-kit`, then `/plugin install dotdotgod@dotdotgod` |
+| [`@dotdotgod/codex`](packages/codex/README.md#start-here) | You use Codex and want dotdotgod skills, local context MCP tools, and reviewed hooks. | Register the plugin manifest through a trusted Codex plugin flow. |
 
 ## Quick Start
 

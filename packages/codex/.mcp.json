@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "dotdotgod-context": {
+      "command": "node",
+      "args": ["./mcp/server.mjs"],
+      "cwd": ".",
+      "default_tools_approval_mode": "prompt"
+    }
+  }
+}

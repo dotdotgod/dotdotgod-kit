@@ -12,13 +12,14 @@ Use shared source resources with thin generated agent adapters.
 dotdotgod
 ├── packages/shared/           # private shared source resources for generated adapters
 ├── packages/cli/              # shared CLI for validation, local query, and graph indexing
+├── packages/context/          # local execution, FTS5 retrieval, hooks, and stdio MCP runtime
 ├── packages/pi/               # generated Pi skills plus Pi extensions
 ├── packages/claude-code/      # generated Claude Code plugin commands and skills
 ├── packages/codex/            # generated Codex plugin skills
 └── scripts/generate-adapters.mjs
 ```
 
-`packages/shared` is the source of truth for common workflow text and initializer resources. Adapter packages keep generated concrete files checked in so local installs and npm tarballs work without a build step.
+`packages/shared` is the source of truth for common workflow text and initializer resources. `packages/context` is the source of truth for executable context processing shared by MCP adapters and Pi-native wrappers. Adapter packages keep generated concrete files checked in so local installs and npm tarballs work without a build step.
 
 ## Shared Source Responsibilities
 
@@ -49,6 +50,7 @@ Current implementation:
 
 Pi-specific behavior remains here:
 
+- native execution, file-processing, FTS5 retrieval, fetch, operations, and initializer tools over `@dotdotgod/context` without starting MCP
 - slash command registration
 - shortcut registration
 - tool filtering
@@ -85,6 +87,8 @@ Current implementation:
 Responsibilities:
 
 - Claude plugin manifest and installable resources
+- bundled local stdio MCP server wrapper for generic context tools and project load/impact/initialize operations
+- packaged lifecycle hooks for load-required and impact-pending deny/retry routing
 - project-memory initialization skill and `/dd:init` command
 - project loading skill and `/dd:load` command
 - planning workflow guidance using Claude-native command and skill components
@@ -109,6 +113,8 @@ Current implementation:
 Responsibilities:
 
 - Codex plugin manifest and package resources
+- bundled local stdio MCP configuration and wrapper for generic context tools and project workflows
+- trust-reviewed lifecycle hooks for load-required and impact-pending deny/retry routing
 - reusable skills for initialization, loading, planning, impact-review, and documentation clarity workflows
 - generated load guidance that renders the shared Markdown tree and uses `dotdotgod query` for focused semantic routing
 - `AGENTS.md`-first instruction flow

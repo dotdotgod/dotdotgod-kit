@@ -3,5 +3,13 @@
   "description": "Dotdotgod project memory workflows for Claude Code: initialize shared docs, load project memory, plan doc-first, review graph impact, and clarify documentation.",
   "author": {
     "name": "dotdotgod"
+  },
+  "mcpServers": {
+    "dotdotgod-context": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/mcp/server.mjs"
+      ]
+    }
   }
 }

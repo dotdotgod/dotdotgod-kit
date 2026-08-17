@@ -10,6 +10,10 @@ const contextSource = readFileSync(
 	new URL("../extensions/plan-mode/context.ts", import.meta.url),
 	"utf8",
 );
+const executionFlowSource = readFileSync(
+	new URL("../extensions/plan-mode/controllers/execution-flow.ts", import.meta.url),
+	"utf8",
+);
 
 describe("plan-mode command registration", () => {
 	it("registers only the namespaced plan command", () => {
@@ -36,5 +40,17 @@ describe("plan-mode command registration", () => {
 		assert.match(extensionSource, /composeActiveTools\([\s\S]*pi\.getActiveTools\(\),[\s\S]*getPlanModeOwnedTools\(\),[\s\S]*desiredOwned/);
 		assert.match(extensionSource, /setNormalTools: \(\) => setOwnedActiveTools\(NORMAL_MODE_TOOLS\)/);
 		assert.match(extensionSource, /setOwnedActiveTools\(modeLifecycle\.activeTools\)/);
+	});
+
+	it("uses the lifecycle for review, permission, prompt, and zero-todo execution transitions", () => {
+		assert.match(extensionSource, /modeLifecycle\.beginReview\(\)/);
+		assert.match(extensionSource, /modeLifecycle\.restore\([\s\S]*modeLifecycle\.returnToPlanning\(\)/);
+		assert.match(extensionSource, /modeLifecycle\.restrictsMutation/);
+		assert.match(extensionSource, /modeLifecycle\.injectsPlanningPrompt/);
+		assert.match(extensionSource, /modeLifecycle\.injectsExecutionPrompt/);
+		assert.match(extensionSource, /modeLifecycle\.isCurrentReview\(reviewGeneration\)/);
+		assert.match(extensionSource, /Plan review failed safely; execution was not started/);
+		assert.match(executionFlowSource, /modeLifecycle\.startExecution\(reviewGeneration\)/);
+		assert.doesNotMatch(executionFlowSource, /todos\.length > 0\) this\.modeLifecycle\.startExecution/);
 	});
 });

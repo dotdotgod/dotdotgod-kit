@@ -5,6 +5,7 @@ Use this area for architecture decisions, code conventions, module boundaries, d
 ## Index
 
 - `README.md`: architecture documentation scope and local table of contents.
+- `CONTEXT_EXECUTION_ARCHITECTURE.md`: shared local execution/retrieval runtime, FTS5 storage, MCP transport, and native adapter boundaries.
 - `CODE_CONVENTIONS.md`: dotdot code conventions, including abstraction boundaries, package `verify` contracts, and when to split long code. If conventions grow across multiple topics, promote them to `conventions/README.md` with supporting UPPER_SNAKE_CASE files.
 - `CONFIG_TEMPLATE_ARCHITECTURE.md`: initialization template registry, global/custom resolution boundary, skill selection, and POSIX fallback.
 - `EMBEDDING_PROVIDERS.md`: runtime embedding resolution, provider boundaries, cache identity, and remote safety.

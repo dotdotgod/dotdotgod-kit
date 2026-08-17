@@ -2,7 +2,7 @@
 
 ## Allowed Planning Work
 
-While plan mode is active:
+While the authoritative lifecycle is `planning` or `reviewing`:
 
 - Reading files and searching the project are allowed.
 - The default active tool list is conservative; see [`../PLAN_MODE_TOOL_SETTINGS.md`](../PLAN_MODE_TOOL_SETTINGS.md) for optional extra installed tools.
@@ -10,6 +10,8 @@ While plan mode is active:
 - `edit` and `write` are allowed only for markdown files under `docs/plan/` and `docs/archive/`.
 - Conservative plan/archive housekeeping bash commands are allowed only when every affected path stays under `docs/plan/` or `docs/archive/`.
 - Product/source/config changes outside those directories are blocked.
+
+The `executing` and `off` states do not apply these planning-only mutation restrictions. Todo presence or count never grants or revokes mutation permission; only the lifecycle state does.
 
 ## Dotdotgod Commands
 

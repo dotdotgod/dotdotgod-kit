@@ -1,13 +1,11 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { recordContextMetric } from "../../context-metrics/utils.js";
-import { NORMAL_MODE_TOOLS } from "../runtime/constants.js";
+import { recordContextMetric } from "../../context-metrics/utils.ts";
 import {
 	buildPlanExecutionDecision,
 	planModeFollowUpDeliveryOptions,
 	type PlanReviewChoice,
 } from "../plan-review.ts";
 import { buildPlanReviewRefinePrompt } from "../plans.ts";
-import type { TodoItem } from "../todos.ts";
 import type { ContextShapingController } from "./context-shaping.js";
 import type { ExecutionProgressController } from "./execution-progress.js";
 import type { ModeLifecycleController } from "./mode-lifecycle.js";
@@ -26,38 +24,31 @@ interface ExecutionFlowOptions {
 }
 
 export class ExecutionFlowController {
-	constructor(
-		private readonly modeLifecycle: ModeLifecycleController,
-		private readonly planArtifact: PlanArtifactController,
-		private readonly contextShaping: ContextShapingController,
-		private readonly executionProgress: ExecutionProgressController,
-		private readonly options: ExecutionFlowOptions,
-	) {}
+	private readonly modeLifecycle: ModeLifecycleController;
+	private readonly planArtifact: PlanArtifactController;
+	private readonly contextShaping: ContextShapingController;
+	private readonly executionProgress: ExecutionProgressController;
+	private readonly options: ExecutionFlowOptions;
 
-	startExplicitExecution(
-		ctx: ExtensionContext,
-		planPath: string,
-		todos: readonly TodoItem[],
-	): void {
-		this.planArtifact.currentPlanPath = planPath;
-		this.executionProgress.setTodos(todos);
-		this.startOrDisableExecution();
-		this.planArtifact.pendingReviewPath = undefined;
-		this.contextShaping.clearQueuedWork();
-		this.options.setNormalTools();
-		this.options.updateStatus(ctx);
-		recordContextMetric(ctx, this.options.getFlag, "plan-mode:execution-start", {
-			todoCount: this.executionProgress.todos.length,
-			planPath,
-			explicit: true,
-		});
-		this.options.persistState();
+	constructor(
+		modeLifecycle: ModeLifecycleController,
+		planArtifact: PlanArtifactController,
+		contextShaping: ContextShapingController,
+		executionProgress: ExecutionProgressController,
+		options: ExecutionFlowOptions,
+	) {
+		this.modeLifecycle = modeLifecycle;
+		this.planArtifact = planArtifact;
+		this.contextShaping = contextShaping;
+		this.executionProgress = executionProgress;
+		this.options = options;
 	}
 
 	async handleReviewChoice(
 		ctx: ExtensionContext,
 		choice: PlanReviewChoice | undefined,
 		planPath: string | undefined,
+		reviewGeneration: number,
 	): Promise<void> {
 		this.planArtifact.pendingReviewPath = undefined;
 		const decision = buildPlanExecutionDecision(
@@ -66,8 +57,8 @@ export class ExecutionFlowController {
 			planPath,
 		);
 		if (decision.shouldExecute && decision.handoff) {
+			if (!this.modeLifecycle.startExecution(reviewGeneration)) return;
 			this.contextShaping.shapePending = false;
-			this.startOrDisableExecution();
 			recordContextMetric(ctx, this.options.getFlag, "plan-mode:execution-start", {
 				todoCount: this.executionProgress.todos.length,
 				planPath,
@@ -86,6 +77,7 @@ export class ExecutionFlowController {
 			}, 0);
 			return;
 		}
+		this.modeLifecycle.returnToPlanning();
 		if (choice === "refine") {
 			const refinement = await ctx.ui.editor(
 				"What should the agent change before execution?",
@@ -105,23 +97,18 @@ export class ExecutionFlowController {
 				);
 			}
 		}
+		this.options.updateStatus(ctx);
 		this.options.persistState();
 	}
 
 	completeExecutionIfDone(ctx: ExtensionContext): boolean {
-		if (!this.modeLifecycle.executing || this.executionProgress.todos.length === 0)
-			return false;
-		if (!this.executionProgress.isComplete()) return true;
+		if (!this.modeLifecycle.executing) return false;
+		if (this.executionProgress.todos.length > 0 && !this.executionProgress.isComplete()) return true;
 		this.modeLifecycle.completeExecution();
 		this.executionProgress.clear();
 		this.options.setNormalTools();
 		this.options.updateStatus(ctx);
 		this.options.persistState();
 		return true;
-	}
-
-	private startOrDisableExecution(): void {
-		if (this.executionProgress.todos.length > 0) this.modeLifecycle.startExecution();
-		else this.modeLifecycle.disable();
 	}
 }

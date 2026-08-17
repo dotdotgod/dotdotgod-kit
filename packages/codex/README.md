@@ -4,7 +4,7 @@
 
 Codex adapter for dotdotgod's docs-first project-memory workflow.
 
-This package is a bundle of workflow skills, not runtime magic: it ships a Codex plugin manifest (`.codex-plugin/plugin.json`) that points to skill instructions Codex reads and follows. Use it when you want Codex to initialize shared project docs, load bounded repository context, plan from durable docs before implementation, and review changed files with graph-impact evidence before handoff.
+This package ships workflow skills, a local stdio MCP server, and reviewed lifecycle hooks through its Codex plugin manifest (`.codex-plugin/plugin.json`). Use it when you want Codex to initialize shared project docs, load bounded repository context, process large command output locally, plan from durable docs, and enforce graph-impact review before broad handoff operations.
 
 ## Start Here
 
@@ -39,10 +39,13 @@ The bundled skills interpret those phrases as command-like workflow requests.
 | `dd:plan` / `doc-first-planning` | Plan before implementation. | Captures current intent in `docs/plan/<task-slug>/README.md`. |
 | `dd:impact` / `impact-review` | Review changed files before verification or handoff. | Uses `dotdotgod graph impact` to identify likely related docs, tests, commands, and source files. |
 | `document-clarify` | Improve docs wording without changing behavior contracts. | Clarifies README/spec/test/arch/plan/archive docs using memory-area roles. |
+| `dotdotgod-context` MCP tools | Run commands, process files, fetch/index text, and search large output locally. | Keeps large raw bytes outside model context and returns bounded output or FTS5 excerpts. |
 
 ## Included
 
 - Codex plugin manifest: `.codex-plugin/plugin.json`
+- Local MCP configuration: `.mcp.json`
+- Hook configuration and runtime: `hooks/hooks.json`, `hooks/runtime.mjs`
 - Skills:
   - `project-load`
   - `doc-first-planning`
@@ -71,11 +74,11 @@ By default, `docs/spec/**` has two separate roles:
 
 Projects can customize memory roles with `memory.areas`, select traceability-enforced Markdown with `traceability.required` and `traceability.exclude`, and define the ordered complete list of traceability string arrays with `traceability.keys`. Each key owns its label, path or command target, graph relation, and PPR weight.
 
-## Optional Hooks
+## Bundled MCP And Hooks
 
-Codex can run lifecycle hooks from trusted Codex configuration layers. dotdotgod does not require hooks: the bundled skills and `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` trigger phrases work without them.
+The local stdio MCP server exposes generic execution/retrieval tools plus `dotdotgod_project_load`, `dotdotgod_project_impact`, and `dotdotgod_project_initialize`. Large outputs use the ignored project-local `.dotdotgod/context/` SQLite FTS5 store.
 
-Use hooks only when you want opt-in reminders or validation around the same workflow. Current Codex docs keep plugin-bundled hooks opt-in behind `plugin_hooks`, so this package defaults to skills and documented trusted hook examples instead of surprise runtime hooks. See [`hooks/README.md`](https://github.com/dotdotgod/dotdotgod-kit/blob/main/packages/codex/hooks/README.md) for advisory examples.
+Bundled hooks become active only after Codex's applicable plugin trust/review flow. They mark project load as required, record successful source/config edits, and deny broad verification or handoff commands until matching graph impact succeeds. Codex then calls the named MCP tool and retries the original operation; hooks do not silently change a shell call into an MCP call. See [`hooks/README.md`](https://github.com/dotdotgod/dotdotgod-kit/blob/main/packages/codex/hooks/README.md).
 
 ## Local Development
 

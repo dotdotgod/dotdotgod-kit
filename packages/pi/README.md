@@ -87,6 +87,8 @@ The automatic `dotdotgod_project_load` result keeps its complete content for the
 
 `/impact-check` and the `dotdotgod_graph_impact` tool use the maintained graph to surface related specs, tests, docs, commands, source, and config after a change. Pi can remind the agent to run impact checks and can block commit, push, or publish commands until pending impact checks pass.
 
+Pi also registers native `dotdotgod_execute`, `dotdotgod_batch_execute`, `dotdotgod_execute_file`, context index/search/fetch/stats/purge, and `dotdotgod_project_initialize` tools over `@dotdotgod/context`. Large command output stays outside model context and is stored in the ignored project-local `.dotdotgod/context/` FTS5 database. Pi does not start the Claude/Codex MCP server.
+
 ## Included Resources
 
 - `project-initializer` skill

@@ -69,6 +69,8 @@ Plan mode extracts numbered executable steps from a `Plan:` section. Generic tem
 
 When the user chooses refine from saved-plan review, Plan Mode wraps the user's feedback with the active plan path and current extracted execution-step context before sending the follow-up; it does not send raw feedback alone.
 
+One persisted lifecycle controls permissions, owned tools, prompts, and status. A review generation rejects stale asynchronous results. UI failures and interrupted review recover to planning; invalid legacy state normalizes to `off`.
+
 When execution starts:
 
 - Full tool access is restored.
@@ -76,6 +78,7 @@ When execution starts:
 - The execute follow-up names the active plan path when known.
 - Extension-generated execute, refine, and discussion follow-ups use explicit follow-up delivery; global project-memory prompt scheduling and loading remain independent, and compaction continues the active run without a Plan Mode resume follow-up.
 - Remaining steps are loaded from the selected README when needed.
+- Execute enters `executing` without extracted steps; untracked execution completes after that turn.
 - If optional `PROGRESS.md`, `DECISIONS.md`, or `VERIFY.md` files exist, the agent uses them as resume context before continuing work.
 - The agent marks completed steps by including `[DONE:n]` in the same response that reports completion.
 - After modification or coding work, execution guidance requires `dotdotgod validate` before final completion.

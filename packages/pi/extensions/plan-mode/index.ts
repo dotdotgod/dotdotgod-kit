@@ -363,7 +363,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     handler: async (args, ctx) => {
       const request = normalizePlanCommandRequest(args);
       if (!request) {
-        setPlanModeEnabled(ctx, !modeLifecycle.planningEnabled);
+        setPlanModeEnabled(ctx, !modeLifecycle.active);
         return;
       }
 
@@ -399,7 +399,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
   pi.registerShortcut(Key.ctrlAlt("p"), {
     description: "Toggle plan mode",
-    handler: async (ctx) => setPlanModeEnabled(ctx, !modeLifecycle.planningEnabled),
+    handler: async (ctx) => setPlanModeEnabled(ctx, !modeLifecycle.active),
   });
 
   pi.on("tool_call", async (event, ctx) => {
@@ -428,7 +428,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       }
     }
 
-    if (!modeLifecycle.planningEnabled) return;
+    if (!modeLifecycle.restrictsMutation) return;
 
     if (event.toolName === "bash") {
       const command = event.input.command as string;
@@ -482,7 +482,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   });
 
   pi.on("context", async (event) => {
-    if (modeLifecycle.planningEnabled) return;
+    if (modeLifecycle.restrictsMutation) return;
 
     return {
       messages: event.messages.filter((m) => {
@@ -522,8 +522,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
     if (
       shouldShapePlanningContextOnAgentStart({
-        planModeEnabled: modeLifecycle.planningEnabled,
-        executionMode: modeLifecycle.executing,
+        mode: modeLifecycle.mode,
         planningContextShapePending: contextShaping.shapePending,
       })
     ) {
@@ -548,7 +547,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
     const impactReminder = buildPendingImpactReminder();
 
-    if (modeLifecycle.planningEnabled) {
+    if (modeLifecycle.injectsPlanningPrompt) {
       if (modeLifecycle.activeTools.length === 0)
         modeLifecycle.activeTools = getPlanModeTools();
       const baseContent = buildPlanModeContextPrompt(
@@ -576,9 +575,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       };
     }
 
-    if (modeLifecycle.executing && executionProgress.todos.length > 0) {
+    if (modeLifecycle.injectsExecutionPrompt) {
       const remaining = executionProgress.todos.filter((t) => !t.completed);
-      const todoList = remaining.map((t) => `${t.step}. ${t.text}`).join("\n");
+      const todoList = remaining.length > 0
+        ? remaining.map((t) => `${t.step}. ${t.text}`).join("\n")
+        : "No tracked Plan: steps were extracted. Execute the approved plan scope, then report completion.";
       return {
         message: {
           customType: "plan-execution-context",
@@ -645,8 +646,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
     }
 
     const shouldShowChoice = shouldPromptForPlanChoice({
-      planModeEnabled: modeLifecycle.planningEnabled,
-      executionMode: modeLifecycle.executing,
+      mode: modeLifecycle.mode,
       hasUI: ctx.hasUI,
       pendingPlanChoicePath: planArtifact.pendingReviewPath,
       suppressPlanChoice: planArtifact.suppressChoiceForInlineRequest,
@@ -661,27 +661,50 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
       lastAssistant ? getMessageText(lastAssistant) : undefined,
     );
 
-    const queueResult = await reviewGates.promptForDiscussionQueue(ctx, inferredPlanPath);
-    if (queueResult) {
-      planArtifact.pendingReviewPath = undefined;
-      const prompt = buildDiscussionQueueFollowUp(
+    const reviewGeneration = modeLifecycle.beginReview();
+    if (reviewGeneration === undefined) return;
+    updateStatus(ctx);
+    persistState();
+
+    try {
+      const queueResult = await reviewGates.promptForDiscussionQueue(ctx, inferredPlanPath);
+      if (!modeLifecycle.isCurrentReview(reviewGeneration)) return;
+      if (queueResult) {
+        modeLifecycle.returnToPlanning();
+        updateStatus(ctx);
+        planArtifact.pendingReviewPath = undefined;
+        const prompt = buildDiscussionQueueFollowUp(
+          inferredPlanPath,
+          queueResult,
+        );
+        if (prompt)
+          pi.sendUserMessage(prompt, planModeFollowUpDeliveryOptions());
+        persistState();
+        return;
+      }
+
+      const choice = await reviewGates.promptForPlanReviewChoice(
+        ctx,
         inferredPlanPath,
-        queueResult,
+        executionProgress.todos,
       );
-      if (prompt)
-        pi.sendUserMessage(prompt, planModeFollowUpDeliveryOptions());
-      persistState();
-      return;
+      if (!modeLifecycle.isCurrentReview(reviewGeneration)) return;
+      planArtifact.pendingReviewPath = undefined;
+
+      await executionFlow.handleReviewChoice(ctx, choice, inferredPlanPath, reviewGeneration);
+    } catch (error) {
+      if (modeLifecycle.isCurrentReview(reviewGeneration)) {
+        modeLifecycle.returnToPlanning();
+        planArtifact.pendingReviewPath = undefined;
+        syncPlanModeTools();
+        updateStatus(ctx);
+        persistState();
+      }
+      ctx.ui.notify(
+        `Plan review failed safely; execution was not started. ${error instanceof Error ? error.message : String(error)}`,
+        "warning",
+      );
     }
-
-    const choice = await reviewGates.promptForPlanReviewChoice(
-      ctx,
-      inferredPlanPath,
-      executionProgress.todos,
-    );
-    planArtifact.pendingReviewPath = undefined;
-
-    await executionFlow.handleReviewChoice(ctx, choice, inferredPlanPath);
   });
 
   pi.on("session_start", async (_event, ctx) => {
@@ -713,6 +736,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
 
     if (planModeEntry?.data?.version === 2) {
       modeLifecycle.restore(planModeEntry.data.mode);
+      // A review overlay cannot survive a session boundary; recover to visible planning.
+      modeLifecycle.returnToPlanning();
       planArtifact.restore(planModeEntry.data.artifact);
       contextShaping.restore(planModeEntry.data.context);
       gates.restore(planModeEntry.data.gates);
@@ -724,7 +749,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
       executionProgress.replayCompletedFromSessionEntries(entries);
     }
 
-    if (modeLifecycle.planningEnabled) {
+    if (modeLifecycle.restrictsMutation) {
       modeLifecycle.activeTools = setOwnedActiveTools(getPlanModeTools());
       recordContextMetric(
         ctx,
@@ -735,6 +760,8 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
           tools: modeLifecycle.activeTools,
         },
       );
+    } else {
+      setOwnedActiveTools(NORMAL_MODE_TOOLS);
     }
     updateStatus(ctx);
     updateImpactStatus(ctx);

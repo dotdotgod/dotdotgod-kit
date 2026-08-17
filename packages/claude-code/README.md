@@ -41,6 +41,7 @@ claude --plugin-dir /path/to/dotdotgod/packages/claude-code
 | `/dd:plan` | Plan before implementation. | Writes or updates durable task intent in `docs/plan/<task-slug>/README.md`. |
 | `/dd:impact` | Review changed files before verification or handoff. | Uses `dotdotgod graph impact` to identify likely related docs, tests, commands, and source files. |
 | `document-clarify` | Improve docs wording without changing behavior contracts. | Clarifies README/spec/test/arch/plan/archive docs using memory-area roles. |
+| `dotdotgod-context` MCP tools | Run commands, process files, fetch/index text, and search large output locally. | Keeps large raw bytes outside model context and returns bounded output or FTS5 excerpts. |
 
 ## Shared Project-Memory Contract
 
@@ -63,11 +64,11 @@ By default, `docs/spec/**` has two separate roles:
 
 Projects can customize memory roles with `memory.areas`, select traceability-enforced Markdown with `traceability.required` and `traceability.exclude`, and define the ordered complete list of traceability string arrays with `traceability.keys`. Each key owns its label, path or command target, graph relation, and PPR weight.
 
-## Optional Hooks
+## Bundled MCP And Hooks
 
-Claude Code can run local lifecycle hooks from Claude settings. dotdotgod does not require hooks: `/dd:init`, `/dd:load`, `/dd:plan`, `/dd:impact`, and the bundled skills work without them.
+The plugin starts a local stdio MCP server. It exposes generic execution/retrieval tools plus `dotdotgod_project_load`, `dotdotgod_project_impact`, and `dotdotgod_project_initialize`. Large outputs use the ignored project-local `.dotdotgod/context/` SQLite FTS5 store.
 
-Use hooks only when you want opt-in reminders, validation, or local safety rails around the same loop: plan, implement, impact-review, verify, review, and archive. See [`hooks/README.md`](https://github.com/dotdotgod/dotdotgod-kit/blob/main/packages/claude-code/hooks/README.md) for current lifecycle notes and advisory examples.
+Bundled hooks mark project load as required at session start, record successful source/config edits, and deny broad verification or handoff commands until matching graph impact succeeds. Denial asks Claude to call the required MCP tool and retry; hooks do not silently change one tool type into another. See [`hooks/README.md`](https://github.com/dotdotgod/dotdotgod-kit/blob/main/packages/claude-code/hooks/README.md) for lifecycle and trust boundaries.
 
 ## Local Development
 

@@ -1,8 +1,10 @@
-# Optional Claude Code Hooks
+# Claude Code Hooks
 
-Claude Code hooks can complement dotdotgod commands and skills, but they are not required. `/dd:load`, `/dd:plan`, `/dd:init`, `/dd:impact`, and the bundled skills work without hook configuration.
+## Packaged Defaults
 
-Use hooks only when you want opt-in reminders, lightweight validation, or local safety rails around the same doc-first workflow. Hooks run local commands with your user permissions, so copy and adapt examples deliberately.
+The adapter packages `hooks/hooks.json` and `hooks/runtime.mjs`. They inject a bounded project-load requirement at session start, record successful `Edit`/`Write` paths, and deny broad verification or handoff shell commands while graph impact is pending. A denial names the required dotdotgod MCP tool; Claude calls it and retries the original operation. MCP tools bypass their own guards to prevent recursion.
+
+Runtime state is local to `.dotdotgod/context/runtime/`. A successful impact call clears only paths whose current fingerprints match recorded edit state. Hooks run local commands with user permissions; review plugin resources before enabling them.
 
 ## Current Claude Code Lifecycle Notes
 

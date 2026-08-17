@@ -57,7 +57,7 @@ Run `pi --help` and confirm dotdotgod contributes `--dd-plan` without contributi
 26. Confirm later planning turns do not automatically repeat load/compaction decisions.
 27. Confirm first-turn and later-turn hidden prompts use full and compact forms respectively while source/config mutation stays blocked.
 28. Confirm `pi --dd-plan --plan-extra-tools ctx_search,ctx_execute_file` adds only installed tools and renders the resolved tool list.
-29. In `/dd:plan`, create a plan, choose execute, and confirm the explicitly queued follow-up names the active plan path and does not raise an already-processing runtime error.
+29. Choose execute with and without extracted todos; confirm normal tools, execution guidance, and a queued follow-up naming the plan path.
 30. With extracted todos, confirm execution context includes the active plan path and compaction preserves it.
 31. Ask to execute an existing active plan path and confirm the queue-first review flow opens even if the plan was not edited in that turn; choose execute after the queue is clear and confirm execution starts through an explicitly queued follow-up.
 32. While multiple active plans exist and no current plan is selected, send a planning/proceed phrase such as `진행하자`, an advisory selector-policy request, and a non-plan command such as `run tests`; confirm Pi does not ask which active plan to execute. Then send an explicit plan execution request such as `실행하자` or mention a specific existing plan and confirm Pi asks or resolves the target before review.
