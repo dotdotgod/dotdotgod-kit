@@ -15,7 +15,7 @@ function getStore() {
   contextStore ??= new ContextStore(root);
   return contextStore;
 }
-const server = new McpServer({ name: 'dotdotgod-context', version: '0.2.24' });
+const server = new McpServer({ name: 'dotdotgod-context', version: '0.2.25' });
 
 const scopeSchema = z.enum(['transient', 'session', 'project']).optional();
 const outputModeSchema = z.enum(['auto', 'direct', 'indexed', 'discard']).optional();

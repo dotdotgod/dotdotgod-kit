@@ -87,7 +87,17 @@ The automatic `dotdotgod_project_load` result keeps its complete content for the
 
 `/impact-check` and the `dotdotgod_graph_impact` tool use the maintained graph to surface related specs, tests, docs, commands, source, and config after a change. Pi can remind the agent to run impact checks and can block commit, push, or publish commands until pending impact checks pass.
 
-Pi also registers native `dotdotgod_execute`, `dotdotgod_batch_execute`, `dotdotgod_execute_file`, context index/search/fetch/stats/purge, and `dotdotgod_project_initialize` tools over `@dotdotgod/context`. Large command output stays outside model context and is stored in the ignored project-local `.dotdotgod/context/` FTS5 database. Pi does not start the Claude/Codex MCP server.
+## Native Context Tools
+
+Pi registers native `dotdotgod_execute`, `dotdotgod_batch_execute`, `dotdotgod_execute_file`, `dotdotgod_context_index`, `dotdotgod_context_search`, `dotdotgod_fetch_and_index`, `dotdotgod_context_stats`, `dotdotgod_context_doctor`, `dotdotgod_context_purge`, and `dotdotgod_project_initialize` tools over `@dotdotgod/context`. Pi calls the shared library directly and does not start the Claude Code/Codex context MCP server.
+
+Only `dotdotgod_execute`, `dotdotgod_batch_execute`, and `dotdotgod_execute_file` apply the context runtime's command-capture policy. They return bounded small output directly and index larger output into the ignored project-local `.dotdotgod/context/context.sqlite` FTS5 database. A command's stdout and stderr share a 10 MiB capture ceiling, and direct excerpts are limited to 1 MiB per stream. Exceeding the shared ceiling terminates the command and reports `captureLimitExceeded`. Pi's ordinary shell tools are not transparently intercepted or redirected through this runtime.
+
+Indexed Markdown and JSON use structure-aware chunks. Search applies scope, session, and source filters before combining Porter FTS5 and label/path candidates with reciprocal-rank fusion and deterministic title, path, and proximity signals. Results return bounded excerpts with provenance and trust metadata; retrieved text has `instructionAuthority: "none"` and remains non-authoritative data. This is a defense-in-depth boundary, not a prompt-injection guarantee.
+
+`dotdotgod_fetch_and_index` accepts bounded credential-free HTTP(S) resources and applies application-level DNS, address, peer, redirect, encoding, wire-byte, and decoded-byte validation. It is not a network sandbox. `dotdotgod_context_doctor` performs local read-only checks without network access or repairs, while purge requires `confirm: true` and exactly one selector: scope, session ID, or source ID.
+
+For output modes, ingestion limits, retrieval details, and the complete security contract, see [`@dotdotgod/context`](https://www.npmjs.com/package/@dotdotgod/context), its [package README](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/context), and the maintained [Context execution specification](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md).
 
 ## Included Resources
 

@@ -66,7 +66,11 @@ Projects can customize memory roles with `memory.areas`, select traceability-enf
 
 ## Bundled MCP And Hooks
 
-The plugin starts a local stdio MCP server. It exposes generic execution/retrieval tools plus `dotdotgod_project_load`, `dotdotgod_project_impact`, and `dotdotgod_project_initialize`. Large outputs use the ignored project-local `.dotdotgod/context/` SQLite FTS5 store.
+The plugin starts a local stdio MCP server. It exposes `execute`, `batch_execute`, and `execute_file`; context index, search, fetch, stats, doctor, and purge tools; plus `dotdotgod_project_load`, `dotdotgod_project_impact`, and `dotdotgod_project_initialize`.
+
+Dotdotgod execution tools share a 10 MiB stdout/stderr capture ceiling per command. Crossing that ceiling terminates the child process and reports `captureLimitExceeded`; direct stdout and stderr excerpts are each capped at 1 MiB. Large output is indexed before retrieval in the ignored project-local `.dotdotgod/context/context.sqlite` FTS5 store, and searches return bounded excerpts. Structural Markdown/JSON chunks, reciprocal-rank fusion, and title/path/proximity signals improve retrieval while provenance and `instructionAuthority: "none"` identify retrieved text as non-authoritative data.
+
+These capture and retrieval rules apply only when Claude calls the dotdotgod MCP execution tools. The plugin does not transparently intercept or rewrite Claude Code's built-in Bash tool. URL indexing performs application-level HTTP(S), DNS/address, connected-peer, redirect, and byte-limit validation; it is not a network sandbox. See the [`@dotdotgod/context` npm package](https://www.npmjs.com/package/@dotdotgod/context), its [GitHub README](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/context), and the [maintained execution contract](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md) for the complete runtime behavior.
 
 Bundled hooks mark project load as required at session start, record successful source/config edits, and deny broad verification or handoff commands until matching graph impact succeeds. Denial asks Claude to call the required MCP tool and retry; hooks do not silently change one tool type into another. See [`hooks/README.md`](https://github.com/dotdotgod/dotdotgod-kit/blob/main/packages/claude-code/hooks/README.md) for lifecycle and trust boundaries.
 

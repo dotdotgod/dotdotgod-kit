@@ -75,6 +75,14 @@ The structure provides:
 - **Bounded history:** `docs/archive/README.md` remains the history map; archive bodies are read only when targeted.
 - **Local processing:** graph and query caches stay under `.dotdotgod/`; agent-facing commands return bounded summaries.
 
+## Local Context Runtime
+
+The adapter packages share a local execution and retrieval runtime. Small results can be returned directly; larger command output is indexed in the project-local SQLite FTS5 store and retrieved as bounded excerpts. Command stdout and stderr share a 10 MiB capture ceiling, and direct responses are capped at 1 MiB per stream. Markdown and JSON retain structural chunk metadata, while bounded Porter and label/path candidates are combined with reciprocal-rank fusion and title/path/proximity reranking.
+
+Fetched HTTP(S) content passes application-level DNS, address, peer, and redirect validation with separate wire and decoded limits. Indexed sources carry operation-owned provenance and trust metadata, and retrieved text is rendered as non-authoritative data with `instructionAuthority: "none"`; these controls are defense in depth, not network isolation or a prompt-injection guarantee.
+
+Claude Code and Codex expose this behavior through dotdotgod's local MCP tools, while Pi calls the same core through native `dotdotgod_*` tools. It applies only when those execution, indexing, search, or fetch tools are used—ordinary host shell tools are not intercepted automatically. See the [`@dotdotgod/context` package](packages/context/README.md) and the maintained [context execution contract](docs/spec/CONTEXT_EXECUTION.md) for details.
+
 ### Beyond Software Projects
 
 Although dotdotgod was designed for software projects, its memory and traceability model is not limited to code. I also use it personally to organize a real-world property dispute: separating confirmed facts from hypotheses, maintaining a timeline and evidence index, and tracing external documents back to their factual and legal grounds.
