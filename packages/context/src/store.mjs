@@ -47,6 +47,14 @@ export class ContextStore {
         tokenize='porter unicode61'
       );
     `);
+    const sourceColumns = new Set(this.db.prepare('PRAGMA table_info(sources)').all().map((row) => row.name));
+    const chunkColumns = new Set(this.db.prepare('PRAGMA table_info(chunks)').all().map((row) => row.name));
+    const missingSources = ['id', 'scope', 'session_id', 'label', 'kind', 'metadata', 'created_at', 'expires_at'].filter((name) => !sourceColumns.has(name));
+    const missingChunks = ['source_id', 'scope', 'session_id', 'ordinal', 'body'].filter((name) => !chunkColumns.has(name));
+    if (missingSources.length || missingChunks.length) {
+      this.db.close();
+      throw new Error(`Incompatible context database schema; run doctor before repair (missing: ${[...missingSources, ...missingChunks].join(', ')}).`);
+    }
   }
 
   close() { this.db.close(); }

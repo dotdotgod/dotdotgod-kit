@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { resolveWithinRoot } from './paths.mjs';
 
 const DIRECT_LIMIT = 12_000;
+const MAX_DIRECT_RETURN = 1024 * 1024;
 const HARD_LIMIT = 10 * 1024 * 1024;
 
 function readBounded(path, limit = DIRECT_LIMIT) {
@@ -64,8 +65,10 @@ export async function executeCommand(input, options = {}) {
       });
     });
 
-    const stdoutResult = readBounded(stdoutPath, input.outputLimit ?? DIRECT_LIMIT);
-    const stderrResult = readBounded(stderrPath, input.outputLimit ?? DIRECT_LIMIT);
+    const outputLimit = Math.min(MAX_DIRECT_RETURN, Math.max(1, input.outputLimit ?? DIRECT_LIMIT));
+    const directLimit = Math.min(HARD_LIMIT, Math.max(1, input.directLimit ?? DIRECT_LIMIT));
+    const stdoutResult = readBounded(stdoutPath, outputLimit);
+    const stderrResult = readBounded(stderrPath, outputLimit);
     const totalBytes = stdoutResult.bytes + stderrResult.bytes;
     const metadata = {
       command: input.command ?? [input.executable, ...(input.args ?? [])].join(' '),
@@ -79,7 +82,7 @@ export async function executeCommand(input, options = {}) {
       stderrBytes: stderrResult.bytes,
     };
     const mode = input.outputMode ?? 'auto';
-    const shouldIndex = mode === 'indexed' || (mode === 'auto' && totalBytes > (input.directLimit ?? DIRECT_LIMIT));
+    const shouldIndex = mode === 'indexed' || (mode === 'auto' && totalBytes > directLimit);
     let indexed;
     if (shouldIndex && options.store) {
       const stdoutText = statSync(stdoutPath).size <= HARD_LIMIT ? readFileSync(stdoutPath, 'utf8') : stdoutResult.text;

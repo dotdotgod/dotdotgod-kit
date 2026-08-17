@@ -2,6 +2,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import {
   ContextStore,
+  contextDbPath,
   executeBatch,
   executeCommand,
   executeFile,
@@ -71,7 +72,7 @@ export default function contextTools(pi: ExtensionAPI): void {
   });
   pi.registerTool({
     name: "dotdotgod_context_doctor", label: "dotdotgod context doctor", description: "Run local read-only context runtime checks without network or repairs.", parameters: Type.Object({}),
-    async execute(_id, _params, _signal, _update, ctx) { const store = storeFor(ctx.cwd); return result({ sessionId, ...runDoctor({ root: ctx.cwd, dbPath: store.path, stats: store.stats() }) }); },
+    async execute(_id, _params, _signal, _update, ctx) { return result({ sessionId, ...runDoctor({ root: ctx.cwd, dbPath: contextDbPath(ctx.cwd) }) }); },
   });
   pi.registerTool({
     name: "dotdotgod_context_purge", label: "dotdotgod context purge", description: "Permanently delete one explicitly selected context scope, session, or source.",

@@ -9,7 +9,8 @@ export function indexFile(store, input, sessionId) {
   const path = resolveExistingWithinRoot(input.root || process.cwd(), input.path);
   const stat = statSync(path);
   if (!stat.isFile()) throw new Error('Only regular files are supported in the first release.');
-  if (stat.size > (input.maxBytes ?? MAX_FILE_BYTES)) throw new Error(`File exceeds maximum size: ${stat.size} bytes`);
+  const maxBytes = Math.min(input.maxBytes ?? MAX_FILE_BYTES, MAX_FILE_BYTES);
+  if (stat.size > maxBytes) throw new Error(`File exceeds maximum size: ${stat.size} bytes`);
   return store.index({
     scope: input.scope ?? 'session',
     sessionId,
@@ -22,11 +23,12 @@ export function indexFile(store, input, sessionId) {
 }
 
 export async function fetchAndIndex(store, input, sessionId, signal) {
+  const maxBytes = Math.min(input.maxBytes ?? MAX_FETCH_BYTES, MAX_FETCH_BYTES);
   const fetched = await safeFetch(input.url, {
     signal,
     timeoutMs: input.timeoutMs,
-    maxBytes: input.maxBytes ?? MAX_FETCH_BYTES,
-    maxWireBytes: input.maxBytes ?? MAX_FETCH_BYTES,
+    maxBytes,
+    maxWireBytes: maxBytes,
   });
   return store.index({
     scope: input.scope ?? 'project',

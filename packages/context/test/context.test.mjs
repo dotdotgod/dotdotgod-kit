@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { DatabaseSync } from 'node:sqlite';
 import { chunkText } from '../src/chunks.mjs';
 import { executeBatch, executeCommand, executeFile } from '../src/execute.mjs';
 import { ContextStore } from '../src/store.mjs';
@@ -90,6 +91,17 @@ test('project workflows preserve bounded load, impact, and dry-run initializatio
     assert.equal(initialized.dryRun, true);
     await assert.rejects(() => projectInitialize({ root, dryRun: false }), /confirmWrite/);
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('ContextStore rejects an incompatible existing schema without migration', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-context-schema-test-'));
+  const dir = join(root, '.dotdotgod', 'context');
+  mkdirSync(dir, { recursive: true });
+  const db = new DatabaseSync(join(dir, 'context.sqlite'));
+  db.exec('CREATE TABLE sources (id TEXT PRIMARY KEY); CREATE VIRTUAL TABLE chunks USING fts5(body);');
+  db.close();
+  try { assert.throws(() => new ContextStore(root), /Incompatible context database schema/); }
+  finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test('purge requires exactly one selector', () => {

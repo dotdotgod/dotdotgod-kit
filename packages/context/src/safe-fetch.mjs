@@ -130,8 +130,8 @@ function requestOnce(url, addresses, options, signal) {
 
 export async function safeFetch(value, options = {}) {
   const originalUrl = validateUrl(value);
-  const maxBytes = Math.max(1, options.maxBytes ?? DEFAULT_MAX_BYTES);
-  const maxWireBytes = Math.max(1, options.maxWireBytes ?? maxBytes);
+  const maxBytes = Math.min(DEFAULT_MAX_BYTES, Math.max(1, options.maxBytes ?? DEFAULT_MAX_BYTES));
+  const maxWireBytes = Math.min(DEFAULT_MAX_BYTES, Math.max(1, options.maxWireBytes ?? maxBytes));
   const maxRedirects = Math.max(0, options.maxRedirects ?? DEFAULT_REDIRECTS);
   const timeoutMs = Math.min(Math.max(1, options.timeoutMs ?? DEFAULT_TIMEOUT_MS), 120_000);
   const resolver = options.resolve ?? (async (hostname) => lookup(hostname, { all: true, verbatim: true }));

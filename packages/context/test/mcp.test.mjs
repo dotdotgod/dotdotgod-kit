@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
@@ -22,9 +22,11 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
     await client.connect(transport);
     const listed = await client.listTools();
     assert.deepEqual(listed.tools.map((tool) => tool.name).sort(), expected.sort());
+    assert.equal(existsSync(join(root, '.dotdotgod')), false);
     const result = await client.callTool({ name: 'doctor', arguments: {} });
     assert.equal(result.isError, undefined);
     assert.equal(result.structuredContent.ok, true);
+    assert.equal(existsSync(join(root, '.dotdotgod')), false);
 
     const outsideRoot = mkdtempSync(join(tmpdir(), 'dotdotgod-mcp-outside-'));
     const outsideFile = join(outsideRoot, 'secret.txt');

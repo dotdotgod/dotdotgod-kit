@@ -1,3 +1,4 @@
+export function contextDbPath(root?: string): string;
 export class ContextStore {
   constructor(root?: string);
   root: string;
