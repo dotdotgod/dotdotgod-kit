@@ -1,7 +1,10 @@
 import { mkdirSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { chunkText, excerpt } from './chunks.mjs';
+import { extname } from 'node:path';
+import { chunkContent, chunkText, excerpt } from './chunks.mjs';
+import { createProvenanceMetadata, readProvenanceMetadata } from './provenance.mjs';
+import { normalizeSearchTerms, reciprocalRankFusion, rerankCandidates } from './rank.mjs';
 
 function ftsQuery(value) {
   const terms = String(value ?? '').match(/[\p{L}\p{N}_./:@-]+/gu) ?? [];
@@ -48,16 +51,23 @@ export class ContextStore {
 
   close() { this.db.close(); }
 
-  index({ id = crypto.randomUUID(), scope = 'session', sessionId = null, label, kind = 'text', text, metadata = {}, ttlMs = null }) {
+  index({ id = crypto.randomUUID(), scope = 'session', sessionId = null, label, kind = 'text', text, metadata = {}, ttlMs = null, provenance = {} }) {
     const createdAt = Date.now();
     const expiresAt = ttlMs == null ? null : createdAt + Math.max(0, ttlMs);
+    const sourceType = provenance.sourceType ?? (kind === 'file' ? 'project-file' : kind === 'command' ? 'command-output' : kind === 'url' ? 'fetched-url' : 'unknown');
+    const origin = provenance.origin ?? metadata.path ?? metadata.url ?? label ?? id;
+    const contentType = String(provenance.contentType ?? metadata.contentType ?? '').toLowerCase();
+    const extension = extname(String(metadata.path ?? '')).toLowerCase();
+    const format = provenance.format ?? (contentType.includes('json') || extension === '.json' ? 'json' : contentType.includes('markdown') || ['.md', '.mdx'].includes(extension) ? 'markdown' : 'text');
+    const extractor = format === 'json' ? 'json-v1' : format === 'markdown' ? 'markdown-v1' : 'plain';
+    const normalizedMetadata = createProvenanceMetadata(metadata, { sourceType, origin, content: text, extractor, indexedAt: new Date(createdAt).toISOString() });
     this.db.exec('BEGIN IMMEDIATE');
     try {
       this.db.prepare('INSERT OR REPLACE INTO sources(id, scope, session_id, label, kind, metadata, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-        .run(id, scope, sessionId, label || id, kind, JSON.stringify(metadata), createdAt, expiresAt);
+        .run(id, scope, sessionId, label || id, kind, JSON.stringify(normalizedMetadata), createdAt, expiresAt);
       this.db.prepare('DELETE FROM chunks WHERE source_id = ?').run(id);
       const insert = this.db.prepare('INSERT INTO chunks(source_id, scope, session_id, ordinal, body) VALUES (?, ?, ?, ?, ?)');
-      const chunks = chunkText(text);
+      const chunks = format === 'text' ? chunkText(text) : chunkContent(text, { format });
       chunks.forEach((chunk, ordinal) => insert.run(id, scope, sessionId, ordinal, chunk.text));
       this.db.exec('COMMIT');
       return { id, chunks: chunks.length, bytes: Buffer.byteLength(String(text ?? '')), scope, expiresAt };
@@ -77,28 +87,59 @@ export class ContextStore {
 
   search({ query, scope, sessionId, source, limit = 5 }) {
     this.expire();
-    const clauses = ['chunks MATCH ?'];
-    const params = [ftsQuery(query)];
-    if (scope) { clauses.push('c.scope = ?'); params.push(scope); }
-    if (sessionId) { clauses.push('c.session_id = ?'); params.push(sessionId); }
-    if (source) { clauses.push('(s.id = ? OR s.label LIKE ?)'); params.push(source, `%${source}%`); }
-    params.push(Math.min(50, Math.max(1, limit)));
-    const rows = this.db.prepare(`
-      SELECT c.source_id, c.ordinal, c.body, s.label, s.kind, s.scope, s.metadata, bm25(chunks) AS rank
+    const resultLimit = Math.min(50, Math.max(1, limit));
+    const candidateLimit = Math.min(200, Math.max(20, resultLimit * 4));
+    const filters = [];
+    const filterParams = [];
+    if (scope) { filters.push('c.scope = ?'); filterParams.push(scope); }
+    if (sessionId) { filters.push('c.session_id = ?'); filterParams.push(sessionId); }
+    if (source) { filters.push('(s.id = ? OR s.label LIKE ?)'); filterParams.push(source, `%${source}%`); }
+    const filterSql = filters.length ? ` AND ${filters.join(' AND ')}` : '';
+    const select = 'SELECT c.source_id, c.ordinal, c.body, s.label, s.kind, s.scope, s.metadata';
+    const porterRows = this.db.prepare(`
+      ${select}, bm25(chunks) AS rank
       FROM chunks c JOIN sources s ON s.id = c.source_id
-      WHERE ${clauses.join(' AND ')}
+      WHERE chunks MATCH ?${filterSql}
       ORDER BY rank LIMIT ?
-    `).all(...params);
-    return rows.map((row) => ({
-      sourceId: row.source_id,
-      label: row.label,
-      kind: row.kind,
-      scope: row.scope,
-      ordinal: Number(row.ordinal),
-      rank: row.rank,
-      text: excerpt(row.body, query),
-      metadata: JSON.parse(row.metadata),
-    }));
+    `).all(ftsQuery(query), ...filterParams, candidateLimit);
+    const terms = normalizeSearchTerms(query);
+    const labelClauses = terms.map(() => '(lower(s.label) LIKE ? OR lower(s.metadata) LIKE ?)');
+    const labelParams = terms.flatMap((term) => [`%${term}%`, `%${term}%`]);
+    const labelRows = labelClauses.length === 0 ? [] : this.db.prepare(`
+      ${select}, 0 AS rank
+      FROM chunks c JOIN sources s ON s.id = c.source_id
+      WHERE s.kind != 'command'
+        AND c.ordinal = (SELECT min(c2.ordinal) FROM chunks c2 WHERE c2.source_id = c.source_id)
+        AND (${labelClauses.join(' OR ')})${filterSql}
+      ORDER BY lower(s.label), c.ordinal LIMIT ?
+    `).all(...labelParams, ...filterParams, candidateLimit);
+    const toCandidate = (row) => {
+      let storedMetadata = {};
+      try { storedMetadata = JSON.parse(row.metadata); } catch { /* legacy invalid metadata */ }
+      return { sourceId: row.source_id, ordinal: Number(row.ordinal), body: row.body, label: row.label, kind: row.kind, scope: row.scope, rank: row.rank, metadata: readProvenanceMetadata(storedMetadata) };
+    };
+    const fused = reciprocalRankFusion([
+      { name: 'porter-bm25', candidates: porterRows.map(toCandidate) },
+      { name: 'label-path', candidates: labelRows.map(toCandidate) },
+    ], { limit: candidateLimit });
+    return rerankCandidates(fused, query, { limit: resultLimit }).map((entry) => {
+      const row = entry.candidate;
+      return {
+        sourceId: row.sourceId,
+        label: row.label,
+        kind: row.kind,
+        scope: row.scope,
+        ordinal: row.ordinal,
+        rank: row.rank,
+        text: excerpt(row.body, query),
+        metadata: row.metadata,
+        trust: row.metadata.trust,
+        sourceType: row.metadata.sourceType,
+        instructionAuthority: 'none',
+        ...(row.metadata.contentHash ? { contentHash: row.metadata.contentHash } : {}),
+        ranking: entry.ranking,
+      };
+    });
   }
 
   stats() {
