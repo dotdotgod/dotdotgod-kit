@@ -161,6 +161,48 @@ const PRESETS = {
       ['Design', '#f5c451'],
     ],
   },
+  'purpose-memory': {
+    output: 'docs/post/designing-project-memory-for-purpose/thumbnail.png',
+    title: '목적에 맞게|프로젝트 메모리를|설계한다',
+    subtitle: '지식의 역할과 관계가 다음 행동을 만든다',
+    label: 'PROJECT MEMORY / PURPOSE',
+    command: '$ dotdotgod config . --json',
+    lines: [
+      [190, 0, '', 'project purpose', '#f7faf8', 700],
+      [236, 1, '├─', 'memory areas', '#56d986', 700],
+      [282, 1, '├─', 'traceability keys', '#63a9ff', 700],
+      [328, 1, '├─', 'knowledge gaps', '#b995ff', 700],
+      [374, 1, '└─', 'next action', '#f5c451', 700],
+      [448, 0, '', 'book · stock · roof claim', '#aab4ae'],
+      [506, 0, '', 'purpose → memory → relation', '#56d986'],
+    ],
+    footer: [
+      ['Purpose', '#56d986'],
+      ['Memory', '#63a9ff'],
+      ['Action', '#f5c451'],
+    ],
+  },
+  'connected-cognition': {
+    output: 'docs/post/how-connected-memory-expands-project-cognition/thumbnail.png',
+    title: '연결된 메모리는|프로젝트 감각을|확장한다',
+    subtitle: '질문·판단 기준·다음 행동이 선명해진다',
+    label: 'PROJECT MEMORY / COGNITION',
+    command: '$ dotdotgod query . "what comes next?"',
+    lines: [
+      [190, 0, '', 'new knowledge', '#f7faf8', 700],
+      [236, 1, '└─', 'existing memory', '#56d986', 700],
+      [300, 0, '', 'missing relation', '#f7faf8', 700],
+      [346, 1, '└─', 'better question', '#63a9ff', 700],
+      [410, 0, '', 'purposeful action', '#f7faf8', 700],
+      [456, 1, '└─', 'updated memory', '#f5c451', 700],
+      [520, 0, '', 'learn → connect → act', '#b995ff'],
+    ],
+    footer: [
+      ['Learn', '#56d986'],
+      ['Connect', '#63a9ff'],
+      ['Act', '#f5c451'],
+    ],
+  },
 };
 
 function readOption(args, name, fallback) {
@@ -231,7 +273,7 @@ function buildSvg({ title, subtitle, label, preset }) {
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--help')) {
-    console.log(`Usage: node scripts/generate-terminal-thumbnail.mjs [options]\n\nOptions:\n  --preset <name>   Visual preset: toc, docs-first, maintain-toc, load, query, impact, practice\n  --output <path>   PNG output path\n  --svg <path>      Also save the source SVG\n  --title <text>    Use | to split title lines\n  --subtitle <text> Supporting copy\n  --label <text>    Small terminal-style label`);
+    console.log(`Usage: node scripts/generate-terminal-thumbnail.mjs [options]\n\nOptions:\n  --preset <name>   Visual preset: toc, docs-first, maintain-toc, load, query, impact, practice, purpose-memory, connected-cognition\n  --output <path>   PNG output path\n  --svg <path>      Also save the source SVG\n  --title <text>    Use | to split title lines\n  --subtitle <text> Supporting copy\n  --label <text>    Small terminal-style label`);
     return;
   }
 
