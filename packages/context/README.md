@@ -36,6 +36,8 @@ Each command has one **10 MiB combined capture ceiling** shared by stdout and st
 
 `batch_execute` accepts up to 100 commands, uses concurrency from 1 through 8, and preserves input order. Execution and explicit shell mode remain write-capable operations subject to the host's approval model.
 
+`execute`, `batch_execute`, and `execute_file` share an `inherit-filtered-v1` child-environment policy. It preserves compatibility-oriented inheritance while filtering `NODE_OPTIONS`, `PYTHONPATH`, `RUBYOPT`, `LD_PRELOAD`, and supported-platform `DYLD_*` variables. Callers may provide string overrides or remove inherited variables with `null`, but cannot restore reserved variables. Results report filtered names without values. This policy applies only to these dotdotgod tools and does not isolate ordinary inherited credentials.
+
 ## Local Storage And Retrieval
 
 Indexed content is stored in the project-local SQLite FTS5 database:
@@ -44,7 +46,7 @@ Indexed content is stored in the project-local SQLite FTS5 database:
 .dotdotgod/context/context.sqlite
 ```
 
-The store is local ignored state, not maintained project truth. Sources can use transient, session, or project scope and carry optional expiry metadata. Search applies scope, session, and source predicates before candidate fusion, then:
+The store is local ignored state, not maintained project truth. Sources can use transient, session, or project scope and carry optional expiry metadata. Writable connections use WAL and a 1-second busy timeout. Source replacement, expiry, and purge update source and FTS rows transactionally. Existing compatible schemas reopen without migration; incompatible schemas fail before automatic repair. Search applies scope, session, and source predicates before candidate fusion, then:
 
 1. retrieves bounded Porter-tokenized FTS5 candidates;
 2. retrieves bounded label/path candidates;
@@ -56,7 +58,17 @@ This is bounded indexing and retrieval, not LLM summarization. Search does not a
 
 ## Structural Ingestion
 
-Local `index` accepts one regular text file up to **25 MiB**. Directory ingestion is not supported.
+Local `index` accepts one project-contained regular text file or directory. A file is limited to **25 MiB**. Directory defaults allow at most depth 16, 10,000 visited entries, 1,000 indexed files, 25 MiB per file, and 100 MiB in aggregate; callers may configure the traversal limits explicitly.
+
+Directory ingestion:
+
+- walks paths in deterministic lexical order and returns metadata-only indexed, skipped, and failed entries;
+- accepts explicit `includeExtensions` and `excludePaths` filters but does not interpret `.gitignore` files;
+- skips directory and file symlinks by default; optional file-symlink following remains limited to targets inside the project;
+- rejects special files and verifies file identity through a bounded descriptor read before indexing;
+- stops further traversal/indexing on cancellation while reporting already committed sources.
+
+Content chunking then applies these rules:
 
 - Markdown is split around headings, prose blocks, and fenced blocks while retaining heading and fence metadata.
 - JSON is parsed into deterministic key-path chunks; invalid JSON falls back to bounded text chunks.
@@ -91,7 +103,7 @@ The application-level fetch policy:
 - supports identity, gzip, deflate, and Brotli encodings and rejects unsupported encodings;
 - accepts bounded text-oriented MIME types and fails closed for unsupported types or HTTP statuses.
 
-HTML is handled as bounded untrusted text; the package does not claim rich HTML extraction. These controls provide application-level URL and address validation, not a network namespace or process sandbox.
+Accepted HTML is normalized by a bounded `html-v1` extractor. It validates supported UTF-8/US-ASCII declarations, removes scripts, styles, noscript and hidden/non-content elements, and preserves basic titles, headings, paragraphs, lists, tables, code, and link text. Link metadata is separately bounded. The extractor does not invoke a browser, execute JavaScript, load subresources, follow links, or provide standards-complete HTML rendering. HTML remains `external-untrusted`; normalization is not rendering sanitization or a prompt-injection guarantee. These controls provide application-level URL and address validation, not a network namespace or process sandbox.
 
 ## Diagnostics And Deletion
 
@@ -100,7 +112,7 @@ HTML is handled as bounded untrusted text; the package does not claim rich HTML 
 - the minimum Node.js runtime;
 - project and storage-path readiness;
 - SQLite FTS5 with the Porter tokenizer;
-- compatibility of an existing context database schema;
+- compatibility of an existing context database schema without migration or repair;
 - current store statistics when supplied;
 - the configured strict fetch policy.
 
