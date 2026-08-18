@@ -2,6 +2,9 @@ export { chunkContent, chunkJson, chunkMarkdown, chunkText, excerpt, normalizeTe
 export { ContextStore, contextDbPath } from './store.mjs';
 export { executeBatch, executeCommand, executeFile } from './execute.mjs';
 export { fetchAndIndex, indexFile } from './content.mjs';
+export { composeEnvironment } from './environment-policy.mjs';
+export { DIRECTORY_INGESTION_LIMITS, readManifestFile, verifyManifestFile, walkDirectoryManifest } from './directory-ingestion.mjs';
+export { normalizeHtml } from './html-normalize.mjs';
 export { runDoctor } from './doctor.mjs';
 export { createProvenanceMetadata, readProvenanceMetadata, sha256Content } from './provenance.mjs';
 export { normalizeSearchTerms, reciprocalRankFusion, rerankCandidates } from './rank.mjs';

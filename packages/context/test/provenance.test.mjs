@@ -98,6 +98,12 @@ test('readProvenanceMetadata rejects malformed or internally inconsistent securi
   assert.equal(readProvenanceMetadata({ ...stored, provenanceVersion: 2 }).sourceType, 'unknown');
 });
 
+test('HTML extractor provenance remains observable for fetched content', () => {
+  const metadata = createProvenanceMetadata({}, { sourceType: 'fetched-url', origin: 'https://example.test/', content: 'body', extractor: 'html-v1' });
+  assert.equal(metadata.extractor, 'html-v1');
+  assert.equal(readProvenanceMetadata(metadata).extractor, 'html-v1');
+});
+
 test('metadata normalization accepts absent and non-object legacy values', () => {
   for (const value of [undefined, null, 'metadata', []]) {
     const result = readProvenanceMetadata(value);

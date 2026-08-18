@@ -11,14 +11,18 @@
 - file processing without returning source bytes;
 - destructive purge selector validation.
 
-Focused Phase 1 suites cover:
+Focused hardening suites cover:
 
 - `chunks.test.mjs`: Markdown headings/fences, JSON key paths, deterministic fallback, depth policy, Unicode, and UTF-8 byte bounds;
 - `provenance.test.mjs`: hashes, operation-owned trust, spoof prevention, malformed metadata, and legacy defaults;
 - `rank.test.mjs`: normalized terms, RRF, deterministic ties, title/path coverage, proximity, and bounded explanations;
 - `safe-fetch.test.mjs`: URL/address policy, every DNS answer, redirects, wire/decoded limits, MIME/encoding rejection, timeout, and abort;
 - `doctor.test.mjs`: no-network read-only checks, existing schema inspection, and incompatible schema failure without repair;
-- `package-audit.test.mjs`: package exports, declared files, license, and absence of a `context-mode` dependency or known copied artifact.
+- `package-audit.test.mjs`: package exports, declared files, license, and absence of a `context-mode` dependency or known copied artifact;
+- `store-operations.test.mjs`: WAL, busy timeout, reopen, concurrent access, transactional failure rollback, incompatible/corrupt databases, and privacy-safe statistics;
+- `environment-policy.test.mjs`: platform-specific reserved variables, overrides, deletion, validation, deterministic metadata, and value secrecy;
+- `directory-ingestion.test.mjs`: containment, symlinks, special files, deterministic filters, cancellation, replacement checks, and every traversal budget;
+- `html-normalize.test.mjs`: structural extraction, active/hidden content removal, MIME/charset policy, malformed input, and UTF-8 byte bounds.
 
 `packages/context/test/mcp.test.mjs` starts the real stdio server and verifies:
 
@@ -34,14 +38,16 @@ Pi typecheck and adapter package verification cover native imports, packaged MCP
 
 Add or preserve focused cases for:
 
-- nonzero exit, spawn failure, timeout, abort, and process-group cleanup;
+- nonzero exit, spawn failure, timeout, abort, process-group cleanup, and identical environment policy across command/batch/file execution;
 - stdout/stderr identity, Unicode, huge lines, binary-like bytes, JSON, logs, and Markdown;
 - automatic direct/indexed threshold and response-size bound;
-- concurrent session/project isolation;
+- concurrent session/project isolation, bounded SQLite busy behavior, atomic expiry/purge, and reopen compatibility;
 - TTL expiry and scoped purge;
 - legacy provenance defaults, trust spoof prevention, and non-authoritative search rendering;
 - scope/session/source filtering before ranking fusion;
 - Markdown/JSON deterministic structural chunking and byte bounds;
+- directory root escape, symlink defaults, replacement races, special files, cancellation, deterministic filters, and aggregate limits;
+- HTML active/hidden content, malformed input, MIME/charset, deterministic output, and preserved external-untrusted provenance;
 - URL protocols, credentials, blocked IPv4/IPv6 classes, all DNS answers, socket peer checks, and redirects;
 - HTTP errors, MIME/encoding rejection, timeout, abort, wire limits, and decompressed limits;
 - doctor no-network/no-repair behavior and schema compatibility;

@@ -23,6 +23,7 @@ const commandSchema = {
   label: z.string().optional(), command: z.string().optional(), executable: z.string().optional(), args: z.array(z.string()).optional(),
   shell: z.boolean().optional(), cwd: z.string().optional(), timeoutMs: z.number().int().positive().optional(), outputLimit: z.number().int().positive().optional(),
   directLimit: z.number().int().positive().optional(), outputMode: outputModeSchema, scope: scopeSchema, ttlMs: z.number().int().nonnegative().optional(),
+  env: z.record(z.string(), z.string().nullable()).optional(),
 };
 
 function success(value) {
@@ -49,9 +50,11 @@ register('batch_execute', 'Run labeled local commands sequentially or with bound
 register('execute_file', 'Process a local file in an isolated child process; only bounded stdout/stderr is returned.', {
   path: z.string(), language: z.enum(['javascript', 'python', 'shell']).default('javascript'), code: z.string(), ...commandSchema,
 }, (input, extra) => executeFile(input, { root, store: getStore(), sessionId, signal: extra.signal }), { openWorldHint: false, destructiveHint: true });
-register('index', 'Index a local text file into the project-local FTS5 store without returning its raw bytes.', {
+register('index', 'Index a local text file or bounded directory into the project-local FTS5 store without returning raw bytes.', {
   path: z.string(), root: z.string().optional(), source: z.string().optional(), scope: scopeSchema, ttlMs: z.number().int().nonnegative().optional(), maxBytes: z.number().int().positive().optional(),
-}, (input) => ({ ok: true, ...indexFile(getStore(), { ...input, root }, sessionId) }), { readOnlyHint: true });
+  includeExtensions: z.array(z.string()).max(100).optional(), excludePaths: z.array(z.string()).max(500).optional(), followFileSymlinks: z.boolean().optional(),
+  maxDepth: z.number().int().nonnegative().optional(), maxVisitedEntries: z.number().int().nonnegative().optional(), maxFiles: z.number().int().nonnegative().optional(), maxAggregateBytes: z.number().int().nonnegative().optional(),
+}, (input, extra) => ({ ok: true, ...indexFile(getStore(), { ...input, root }, sessionId, extra.signal) }), { readOnlyHint: true });
 register('search', 'Search indexed command, file, and fetched content and return bounded excerpts.', {
   query: z.string().min(1), scope: scopeSchema, source: z.string().optional(), limit: z.number().int().min(1).max(50).optional(), sessionOnly: z.boolean().optional(),
 }, (input) => ({

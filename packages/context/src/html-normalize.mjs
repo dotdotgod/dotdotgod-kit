@@ -3,6 +3,8 @@ const DEFAULT_OUTPUT_BYTES = 10 * 1024 * 1024;
 const EXTRACTOR = 'html-v1';
 const ACCEPTED_MIME = new Set(['text/html', 'application/xhtml+xml']);
 const ACCEPTED_CHARSET = new Set(['utf-8', 'utf8', 'us-ascii']);
+const MAX_LINKS = 100;
+const MAX_LINK_METADATA_BYTES = 64 * 1024;
 const BLOCK_TAGS = new Set(['address', 'article', 'aside', 'blockquote', 'br', 'dd', 'div', 'dl', 'dt', 'figcaption', 'figure', 'footer', 'header', 'hr', 'main', 'nav', 'p', 'section', 'tr']);
 const DROP_CONTENT = new Set(['script', 'style', 'noscript', 'template', 'svg', 'math', 'iframe', 'object', 'embed', 'form']);
 
@@ -79,12 +81,22 @@ function hrefFrom(attributes) {
 }
 
 export function normalizeHtml(value, options = {}) {
-  const html = String(value ?? '').replace(/\0/gu, '\uFFFD').replace(/\r\n?/gu, '\n');
   const maxInputBytes = positiveLimit(options.maxInputBytes, DEFAULT_INPUT_BYTES);
   const maxOutputBytes = positiveLimit(options.maxOutputBytes, DEFAULT_OUTPUT_BYTES);
-  const inputBytes = Buffer.byteLength(html);
-  if (inputBytes > maxInputBytes) throw new Error(`HTML input exceeds maximum size: ${inputBytes} bytes`);
   const { mimeType, charset } = parseMediaType(options.contentType);
+  const input = Buffer.isBuffer(value) ? value : Buffer.from(String(value ?? ''), 'utf8');
+  const inputBytes = input.length;
+  if (inputBytes > maxInputBytes) throw new Error(`HTML input exceeds maximum size: ${inputBytes} bytes`);
+  if (charset === 'us-ascii' && input.some((byte) => byte > 0x7f)) throw new Error('HTML body contains bytes outside the declared US-ASCII charset.');
+  let html;
+  try { html = new TextDecoder('utf-8', { fatal: true }).decode(input); }
+  catch { throw new Error('HTML body is not valid UTF-8.'); }
+  const declaredCharsets = [...html.matchAll(/<meta\b[^>]*charset\s*=\s*["']?([^\s"'/>;]+)/giu)].map((match) => match[1].toLowerCase().replace('utf8', 'utf-8'));
+  for (const match of html.matchAll(/<meta\b(?=[^>]*http-equiv\s*=\s*["']?content-type["']?)[^>]*content\s*=\s*(?:"[^"]*charset\s*=\s*([^\s";]+)[^"]*"|'[^']*charset\s*=\s*([^\s';]+)[^']*'|[^>]*charset\s*=\s*([^\s;>]+))[^>]*>/giu)) {
+    declaredCharsets.push((match[1] || match[2] || match[3]).toLowerCase().replace('utf8', 'utf-8'));
+  }
+  if (declaredCharsets.some((declared) => !ACCEPTED_CHARSET.has(declared) || declared !== charset)) throw new Error('HTML document charset conflicts with the response charset.');
+  html = html.replace(/\0/gu, '\uFFFD').replace(/\r\n?/gu, '\n');
   const lower = html.toLowerCase();
   const output = [];
   const headings = [];
@@ -155,7 +167,10 @@ export function normalizeHtml(value, options = {}) {
         const anchor = anchors.pop();
         if (anchor) {
           const text = normalizeWhitespace(output.slice(anchor.start).join(''));
-          if (text && anchor.href) links.push({ text, href: anchor.href });
+          if (text && anchor.href && links.length < MAX_LINKS) {
+            const link = { text: boundedUtf8(text, 500).value, href: boundedUtf8(anchor.href, 2048).value };
+            if (Buffer.byteLength(JSON.stringify([...links, link])) <= MAX_LINK_METADATA_BYTES) links.push(link);
+          }
         }
       }
     } else if (tag.name === 'td' || tag.name === 'th') append(tag.closing ? ' | ' : '| ');

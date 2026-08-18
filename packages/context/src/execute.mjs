@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { Transform } from 'node:stream';
 import { resolveWithinRoot } from './paths.mjs';
+import { composeEnvironment } from './environment-policy.mjs';
 
 const DIRECT_LIMIT = 12_000;
 const MAX_DIRECT_RETURN = 1024 * 1024;
@@ -32,6 +33,7 @@ function killProcess(child) {
 }
 
 export async function executeCommand(input, options = {}) {
+  if (options.signal?.aborted) throw options.signal.reason ?? new Error('Execution aborted.');
   const spec = commandSpec(input);
   const cwd = resolveWithinRoot(options.root || process.cwd(), input.cwd || '.');
   const timeoutMs = Math.min(Math.max(1, input.timeoutMs ?? 120_000), 30 * 60_000);
@@ -45,6 +47,10 @@ export async function executeCommand(input, options = {}) {
   let aborted = false;
   let captureLimitExceeded = false;
   const captureLimitBytes = Math.min(HARD_LIMIT, Math.max(1024, options.captureLimitBytes ?? HARD_LIMIT));
+  const environment = composeEnvironment({
+    inherited: options.env ?? process.env,
+    overrides: input.env ?? {},
+  });
 
   try {
     const result = await new Promise((resolvePromise, reject) => {
@@ -53,7 +59,7 @@ export async function executeCommand(input, options = {}) {
         shell: spec.shell,
         detached: process.platform !== 'win32',
         stdio: ['ignore', 'pipe', 'pipe'],
-        env: options.env ?? process.env,
+        env: environment.env,
       });
       let capturedBytes = 0;
       const boundedCapture = () => new Transform({
@@ -99,6 +105,7 @@ export async function executeCommand(input, options = {}) {
       durationMs: Date.now() - startedAt,
       stdoutBytes: stdoutResult.bytes,
       stderrBytes: stderrResult.bytes,
+      environmentPolicy: environment.policy,
     };
     const mode = input.outputMode ?? 'auto';
     const shouldIndex = mode === 'indexed' || (mode === 'auto' && totalBytes > directLimit);
@@ -128,6 +135,7 @@ export async function executeCommand(input, options = {}) {
 
 export async function executeFile(input, options = {}) {
   const path = resolveWithinRoot(options.root || process.cwd(), input.path);
+  const selectorEnvironment = composeEnvironment({ inherited: options.env ?? process.env, overrides: input.env ?? {} }).env;
   const dir = mkdtempSync(join(tmpdir(), 'dotdotgod-context-file-'));
   try {
     let executable;
@@ -135,12 +143,12 @@ export async function executeFile(input, options = {}) {
     if (input.language === 'python') {
       const wrapper = join(dir, 'run.py');
       writeFileSync(wrapper, `from pathlib import Path\nFILE_CONTENT = Path(${JSON.stringify(path)}).read_text(encoding='utf-8', errors='replace')\n${input.code}\n`);
-      executable = process.env.PYTHON || 'python3';
+      executable = selectorEnvironment.PYTHON || 'python3';
       args = [wrapper];
     } else if (input.language === 'shell') {
       const wrapper = join(dir, 'run.sh');
       writeFileSync(wrapper, `FILE_PATH=${JSON.stringify(path)}\nexport FILE_PATH\n${input.code}\n`);
-      executable = process.env.SHELL || '/bin/sh';
+      executable = selectorEnvironment.SHELL || '/bin/sh';
       args = [wrapper];
     } else {
       const wrapper = join(dir, 'run.mjs');

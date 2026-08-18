@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 import { chunkText } from '../src/chunks.mjs';
+import { indexFile } from '../src/content.mjs';
 import { executeBatch, executeCommand, executeFile } from '../src/execute.mjs';
 import { ContextStore } from '../src/store.mjs';
 import { projectImpact, projectInitialize, projectLoad } from '../src/project.mjs';
@@ -61,6 +62,49 @@ test('executeCommand stops capture at the internal hard ceiling', async () => {
     assert.ok(result.stdoutBytes > 0);
     assert.ok(result.stderrBytes > 0);
     assert.ok(result.stdoutBytes + result.stderrBytes <= result.captureLimitBytes);
+  } finally { f.close(); }
+});
+
+test('executeCommand filters runtime injection variables and reports names without values', async () => {
+  const f = fixture();
+  try {
+    const result = await executeCommand({
+      executable: process.execPath,
+      args: ['-e', "console.log(process.env.NODE_OPTIONS ?? 'filtered'); console.log(process.env.ORDINARY_VALUE)"],
+      shell: false,
+      env: { ORDINARY_VALUE: 'retained' },
+    }, { root: f.root, env: { ...process.env, NODE_OPTIONS: '--trace-warnings', PRIVATE_SENTINEL: 'do-not-report' } });
+    assert.equal(result.ok, true);
+    assert.match(result.stdout, /filtered/);
+    assert.match(result.stdout, /retained/);
+    assert.ok(result.environmentPolicy.filteredNames.includes('NODE_OPTIONS'));
+    assert.equal(JSON.stringify(result.environmentPolicy).includes('do-not-report'), false);
+  } finally { f.close(); }
+});
+
+test('indexFile indexes a bounded directory as independent sources', () => {
+  const f = fixture();
+  try {
+    mkdirSync(join(f.root, 'docs'));
+    writeFileSync(join(f.root, 'docs', 'a.md'), '# Alpha\nsearchable-one');
+    writeFileSync(join(f.root, 'docs', 'b.txt'), 'searchable-two');
+    const result = indexFile(f.store, { root: f.root, path: 'docs', scope: 'project', includeExtensions: ['.md'] }, 's1');
+    assert.deepEqual(result.indexed.map((entry) => entry.path), ['docs/a.md']);
+    assert.equal(result.skipped[0].reason, 'extension-filter');
+    assert.equal(f.store.search({ query: 'searchable-one', scope: 'project' }).length, 1);
+    assert.equal(f.store.search({ query: 'searchable-two', scope: 'project' }).length, 0);
+  } finally { f.close(); }
+});
+
+test('execution honors pre-aborted signals and executeFile resolves selectors from the composed environment', async () => {
+  const f = fixture();
+  try {
+    const controller = new AbortController();
+    controller.abort(new Error('cancelled before spawn'));
+    await assert.rejects(() => executeCommand({ executable: process.execPath, args: ['-e', '0'] }, { root: f.root, signal: controller.signal }), /cancelled before spawn/);
+    const path = join(f.root, 'input.txt');
+    writeFileSync(path, 'input');
+    await assert.rejects(() => executeFile({ path, language: 'shell', code: 'true' }, { root: f.root, env: { ...process.env, SHELL: '/definitely/missing/shell' } }), /ENOENT/);
   } finally { f.close(); }
 });
 

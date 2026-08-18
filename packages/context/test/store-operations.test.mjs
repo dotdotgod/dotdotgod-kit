@@ -175,6 +175,24 @@ test('expiry is atomic when deleting one expired source fails', () => {
   }
 });
 
+test('an incomplete existing schema is rejected without creating missing tables', () => {
+  const root = rootFixture();
+  const path = contextDbPath(root);
+  mkdirSync(join(root, '.dotdotgod', 'context'), { recursive: true });
+  const db = new DatabaseSync(path);
+  db.exec(`CREATE TABLE sources (
+    id TEXT PRIMARY KEY, scope TEXT NOT NULL, session_id TEXT, label TEXT NOT NULL,
+    kind TEXT NOT NULL, metadata TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER
+  );`);
+  db.close();
+  try {
+    assert.throws(() => new ContextStore(root), /Incompatible context database schema/);
+    const inspected = openExisting(root, { readOnly: true });
+    try { assert.equal(inspected.prepare("SELECT count(*) AS count FROM sqlite_master WHERE name = 'chunks'").get().count, 0); }
+    finally { inspected.close(); }
+  } finally { removeRoot(root); }
+});
+
 test('incompatible schemas are rejected before mutation', () => {
   const root = rootFixture();
   const path = contextDbPath(root);

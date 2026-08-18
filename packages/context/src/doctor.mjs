@@ -92,11 +92,20 @@ function schemaCheck(dbPath) {
     const names = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type IN ('table', 'view')").all().map((row) => row.name));
     const missing = [...EXPECTED_TABLES].filter((name) => !names.has(name));
     if (missing.length > 0) return check('schema-compatibility', 'FAIL', 'Context database is missing required tables.', { dbPath, missing });
-    const sourceColumns = new Set(db.prepare('PRAGMA table_info(sources)').all().map((row) => row.name));
-    const requiredColumns = ['id', 'scope', 'session_id', 'label', 'kind', 'metadata', 'created_at', 'expires_at'];
-    const missingColumns = requiredColumns.filter((name) => !sourceColumns.has(name));
-    if (missingColumns.length > 0) return check('schema-compatibility', 'FAIL', 'Sources table is incompatible.', { dbPath, missingColumns });
-    return check('schema-compatibility', 'OK', 'Existing context database has the required schema.', { dbPath });
+    const sourceRows = db.prepare('PRAGMA table_info(sources)').all();
+    const chunkRows = db.prepare('PRAGMA table_info(chunks)').all();
+    const requiredSources = ['id', 'scope', 'session_id', 'label', 'kind', 'metadata', 'created_at', 'expires_at'];
+    const requiredChunks = ['source_id', 'scope', 'session_id', 'ordinal', 'body'];
+    const missingColumns = [...requiredSources.filter((name) => !sourceRows.some((row) => row.name === name)), ...requiredChunks.filter((name) => !chunkRows.some((row) => row.name === name))];
+    const sourceShape = sourceRows.length === requiredSources.length && sourceRows.every((row, index) => row.name === requiredSources[index])
+      && sourceRows[0].pk === 1
+      && sourceRows.every((row) => ['scope', 'label', 'kind', 'metadata', 'created_at'].includes(row.name) ? row.notnull === 1 : true);
+    const chunkShape = chunkRows.length === requiredChunks.length && chunkRows.every((row, index) => row.name === requiredChunks[index]);
+    const chunkSql = String(db.prepare("SELECT sql FROM sqlite_master WHERE name = 'chunks'").get()?.sql ?? '').toLowerCase();
+    if (missingColumns.length > 0 || !sourceShape || !chunkShape || !chunkSql.includes('using fts5') || !chunkSql.includes("tokenize='porter unicode61'")) {
+      return check('schema-compatibility', 'FAIL', 'Context database schema is incompatible.', { dbPath, schemaProfile: 'unknown', missingColumns });
+    }
+    return check('schema-compatibility', 'OK', 'Existing context database matches compatibility profile 1.', { dbPath, schemaProfile: 1 });
   } catch (error) {
     return check('schema-compatibility', 'FAIL', 'Context database could not be inspected read-only.', { dbPath, error: error.message });
   } finally {

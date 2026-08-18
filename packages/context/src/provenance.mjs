@@ -11,7 +11,7 @@ const TRUST_BY_SOURCE_TYPE = Object.freeze({
   unknown: 'unknown',
 });
 
-const EXTRACTORS = new Set(['plain', 'markdown-v1', 'json-v1']);
+const EXTRACTORS = new Set(['plain', 'markdown-v1', 'json-v1', 'html-v1']);
 const HASH_PATTERN = /^[a-f0-9]{64}$/u;
 
 function asMetadata(value) {

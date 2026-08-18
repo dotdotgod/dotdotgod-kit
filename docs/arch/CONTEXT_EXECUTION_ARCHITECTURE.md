@@ -41,7 +41,7 @@ Project Load can provide focus and paths to execution retrieval. Execution outpu
 
 The initial implementation uses Node's built-in `node:sqlite` `DatabaseSync` and FTS5. The database lives below `.dotdotgod/context/`, which is expected to remain ignored local state.
 
-Source metadata is stored separately from FTS chunks so expiry and scoped purge can remove complete sources. WAL mode supports concurrent readers with one local writer.
+Source metadata is stored separately from FTS chunks so expiry and scoped purge can remove complete sources. Writable connections configure WAL and a bounded busy timeout. Source replacement, expiry, and purge wrap source and FTS changes in transactions so injected write failures roll back the complete operation. Schema compatibility is checked before normal use; this phase does not migrate or repair databases.
 
 Provenance is additive metadata rather than a schema column. The indexing operation owns source type, trust, origin, SHA-256 content hash, timestamp, extractor, and chunker version, preventing caller metadata from promoting trust. Read-time normalization maps legacy or inconsistent records to `unknown` without rewriting them.
 
@@ -52,6 +52,12 @@ Format detection selects Markdown or JSON structural chunking; plain text retain
 Search keeps authorization filters at candidate selection time. Porter BM25 and bounded label/path lists use the same scope, session, and source predicates. Reciprocal-rank fusion combines the lists; title, path, and term-proximity signals rerank fused candidates with deterministic ties. Search responses add bounded ranking evidence and provenance without removing existing fields.
 
 Transport adapters add a non-authoritative data notice. Retrieved content remains structured data with `instructionAuthority: "none"`; it is not promoted to system or developer instruction by the context runtime.
+
+## Directory And HTML Acquisition
+
+Directory indexing first builds a deterministic metadata-only manifest. It resolves the requested directory and every accepted file against the real project root, skips symlinks by default, rejects special files, and applies depth, entry, file-count, per-file, and aggregate-byte limits. Each manifest entry is verified again immediately before reading to reduce replacement races. Successfully indexed files remain independent sources; the operation returns bounded success, skip, and failure records.
+
+HTML normalization runs only after safe fetch has accepted and bounded the response. A dependency-free extractor removes active, hidden, and non-content elements and preserves basic headings, paragraphs, lists, tables, links, and code as bounded text. It does not execute scripts, load subresources, follow links, or provide browser-grade parsing. Normalized content retains fetched-URL provenance and external-untrusted authority.
 
 ## Safe Fetch Boundary
 
@@ -67,7 +73,9 @@ Doctor checks Node support, project/storage access, SQLite FTS5/Porter capabilit
 
 ## Process Capture
 
-Commands may use an executable/argument array or explicit shell string. The runtime:
+Commands may use an executable/argument array or explicit shell string. Before spawn, one shared policy composes the child environment for command, batch, and file execution. It preserves compatibility-oriented inheritance while removing reserved runtime injection variables, applies validated string/null overrides, and reports filtered names without values. It does not claim to remove ordinary inherited credentials.
+
+The runtime:
 
 1. resolves the working directory;
 2. creates private temporary stdout/stderr files;

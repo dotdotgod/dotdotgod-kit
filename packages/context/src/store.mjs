@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { extname } from 'node:path';
@@ -20,40 +20,72 @@ export function contextDbPath(root) {
   return join(safeRoot(root), '.dotdotgod', 'context', 'context.sqlite');
 }
 
+function inspectSchema(db) {
+  const objects = new Map(db.prepare("SELECT name, type, sql FROM sqlite_master WHERE name IN ('sources', 'chunks')").all().map((row) => [row.name, row]));
+  const sourceRows = db.prepare('PRAGMA table_info(sources)').all();
+  const chunkRows = db.prepare('PRAGMA table_info(chunks)').all();
+  const requiredSources = ['id', 'scope', 'session_id', 'label', 'kind', 'metadata', 'created_at', 'expires_at'];
+  const requiredChunks = ['source_id', 'scope', 'session_id', 'ordinal', 'body'];
+  const missingSources = requiredSources.filter((name) => !sourceRows.some((row) => row.name === name));
+  const missingChunks = requiredChunks.filter((name) => !chunkRows.some((row) => row.name === name));
+  const sourceShape = sourceRows.length === requiredSources.length && sourceRows.every((row, index) => row.name === requiredSources[index])
+    && sourceRows[0].pk === 1
+    && sourceRows.every((row) => ['scope', 'label', 'kind', 'metadata', 'created_at'].includes(row.name) ? row.notnull === 1 : true);
+  const chunkShape = chunkRows.length === requiredChunks.length && chunkRows.every((row, index) => row.name === requiredChunks[index]);
+  const chunkSql = String(objects.get('chunks')?.sql ?? '').toLowerCase();
+  const compatible = objects.get('sources')?.type === 'table'
+    && objects.get('chunks')?.type === 'table'
+    && chunkSql.includes('using fts5')
+    && chunkSql.includes("tokenize='porter unicode61'")
+    && sourceShape
+    && chunkShape
+    && missingSources.length === 0
+    && missingChunks.length === 0;
+  return { compatible, schemaProfile: compatible ? 1 : null, missing: [...missingSources, ...missingChunks] };
+}
+
 export class ContextStore {
   constructor(root = process.cwd()) {
     this.root = safeRoot(root);
     this.path = contextDbPath(this.root);
+    const existing = existsSync(this.path);
+    if (existing) {
+      if (statSync(this.path).size === 0) throw new Error('Incompatible context database schema; empty database cannot be repaired automatically.');
+      const inspection = new DatabaseSync(this.path, { readOnly: true });
+      try {
+        const result = inspectSchema(inspection);
+        if (!result.compatible) throw new Error(`Incompatible context database schema; run doctor before repair${result.missing.length ? ` (missing: ${result.missing.join(', ')})` : ''}.`);
+      } finally {
+        inspection.close();
+      }
+    }
     mkdirSync(dirname(this.path), { recursive: true });
     this.db = new DatabaseSync(this.path);
-    this.db.exec(`
-      PRAGMA journal_mode=WAL;
-      CREATE TABLE IF NOT EXISTS sources (
-        id TEXT PRIMARY KEY,
-        scope TEXT NOT NULL,
-        session_id TEXT,
-        label TEXT NOT NULL,
-        kind TEXT NOT NULL,
-        metadata TEXT NOT NULL,
-        created_at INTEGER NOT NULL,
-        expires_at INTEGER
-      );
-      CREATE VIRTUAL TABLE IF NOT EXISTS chunks USING fts5(
-        source_id UNINDEXED,
-        scope UNINDEXED,
-        session_id UNINDEXED,
-        ordinal UNINDEXED,
-        body,
-        tokenize='porter unicode61'
-      );
-    `);
-    const sourceColumns = new Set(this.db.prepare('PRAGMA table_info(sources)').all().map((row) => row.name));
-    const chunkColumns = new Set(this.db.prepare('PRAGMA table_info(chunks)').all().map((row) => row.name));
-    const missingSources = ['id', 'scope', 'session_id', 'label', 'kind', 'metadata', 'created_at', 'expires_at'].filter((name) => !sourceColumns.has(name));
-    const missingChunks = ['source_id', 'scope', 'session_id', 'ordinal', 'body'].filter((name) => !chunkColumns.has(name));
-    if (missingSources.length || missingChunks.length) {
+    try {
+      this.db.exec('PRAGMA busy_timeout=1000; PRAGMA journal_mode=WAL;');
+      if (!existing) this.db.exec(`
+        CREATE TABLE sources (
+          id TEXT PRIMARY KEY,
+          scope TEXT NOT NULL,
+          session_id TEXT,
+          label TEXT NOT NULL,
+          kind TEXT NOT NULL,
+          metadata TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          expires_at INTEGER
+        );
+        CREATE VIRTUAL TABLE chunks USING fts5(
+          source_id UNINDEXED,
+          scope UNINDEXED,
+          session_id UNINDEXED,
+          ordinal UNINDEXED,
+          body,
+          tokenize='porter unicode61'
+        );
+      `);
+    } catch (error) {
       this.db.close();
-      throw new Error(`Incompatible context database schema; run doctor before repair (missing: ${[...missingSources, ...missingChunks].join(', ')}).`);
+      throw error;
     }
   }
 
@@ -67,7 +99,7 @@ export class ContextStore {
     const contentType = String(provenance.contentType ?? metadata.contentType ?? '').toLowerCase();
     const extension = extname(String(metadata.path ?? '')).toLowerCase();
     const format = provenance.format ?? (contentType.includes('json') || extension === '.json' ? 'json' : contentType.includes('markdown') || ['.md', '.mdx'].includes(extension) ? 'markdown' : 'text');
-    const extractor = format === 'json' ? 'json-v1' : format === 'markdown' ? 'markdown-v1' : 'plain';
+    const extractor = provenance.extractor ?? (format === 'json' ? 'json-v1' : format === 'markdown' ? 'markdown-v1' : 'plain');
     const normalizedMetadata = createProvenanceMetadata(metadata, { sourceType, origin, content: text, extractor, indexedAt: new Date(createdAt).toISOString() });
     this.db.exec('BEGIN IMMEDIATE');
     try {
@@ -87,10 +119,18 @@ export class ContextStore {
 
   expire() {
     const ids = this.db.prepare('SELECT id FROM sources WHERE expires_at IS NOT NULL AND expires_at <= ?').all(Date.now()).map((row) => row.id);
+    if (ids.length === 0) return 0;
     const removeChunks = this.db.prepare('DELETE FROM chunks WHERE source_id = ?');
     const removeSource = this.db.prepare('DELETE FROM sources WHERE id = ?');
-    for (const id of ids) { removeChunks.run(id); removeSource.run(id); }
-    return ids.length;
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      for (const id of ids) { removeChunks.run(id); removeSource.run(id); }
+      this.db.exec('COMMIT');
+      return ids.length;
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
   }
 
   search({ query, scope, sessionId, source, limit = 5 }) {
@@ -168,11 +208,18 @@ export class ContextStore {
     const removeChunks = this.db.prepare('DELETE FROM chunks WHERE source_id = ?');
     const removeSource = this.db.prepare('DELETE FROM sources WHERE id = ?');
     let removed = 0;
-    for (const id of ids) {
-      removeChunks.run(id);
-      removed += Number(removeSource.run(id).changes ?? 0);
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      for (const id of ids) {
+        removeChunks.run(id);
+        removed += Number(removeSource.run(id).changes ?? 0);
+      }
+      this.db.exec('COMMIT');
+      return { removed };
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
     }
-    return { removed };
   }
 
   destroy() {

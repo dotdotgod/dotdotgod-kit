@@ -1,4 +1,4 @@
-import { lstatSync, readdirSync, realpathSync, statSync } from 'node:fs';
+import { closeSync, constants, fstatSync, lstatSync, openSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 
 const DEFAULT_LIMITS = Object.freeze({
@@ -147,17 +147,36 @@ export function walkDirectoryManifest(options = {}) {
   return { root, directory, files, skipped, failed, aborted, truncated, visitedEntries, aggregateBytes };
 }
 
+function matchesIdentity(stat, identity) {
+  return stat.dev === identity.dev && stat.ino === identity.ino && stat.size === identity.size && stat.mtimeMs === identity.mtimeMs;
+}
+
 export function verifyManifestFile(entry, root) {
   const base = realpathSync(resolve(root));
   const target = realpathSync(entry.absolutePath);
   if (!inside(base, target)) throw new Error(`Manifest file escapes project root: ${entry.path}`);
   const stat = statSync(target);
-  const identity = entry.identity ?? {};
   if (!stat.isFile()) throw new Error(`Manifest entry is not a regular file: ${entry.path}`);
-  if (stat.dev !== identity.dev || stat.ino !== identity.ino || stat.size !== identity.size || stat.mtimeMs !== identity.mtimeMs) {
-    throw new Error(`Manifest file changed before indexing: ${entry.path}`);
-  }
+  if (!matchesIdentity(stat, entry.identity ?? {})) throw new Error(`Manifest file changed before indexing: ${entry.path}`);
   return target;
+}
+
+export function readManifestFile(entry, root, maxBytes = DEFAULT_LIMITS.maxFileBytes) {
+  const target = verifyManifestFile(entry, root);
+  const noFollow = constants.O_NOFOLLOW ?? 0;
+  const descriptor = openSync(target, constants.O_RDONLY | noFollow);
+  try {
+    const before = fstatSync(descriptor);
+    if (!before.isFile() || !matchesIdentity(before, entry.identity ?? {})) throw new Error(`Manifest file changed before indexing: ${entry.path}`);
+    if (before.size > maxBytes) throw new Error(`Manifest file exceeds maximum size: ${entry.path}`);
+    const bytes = readFileSync(descriptor);
+    const after = fstatSync(descriptor);
+    if (!matchesIdentity(after, entry.identity ?? {}) || bytes.length !== before.size) throw new Error(`Manifest file changed while indexing: ${entry.path}`);
+    if (bytes.length > maxBytes) throw new Error(`Manifest file exceeds maximum size: ${entry.path}`);
+    return bytes;
+  } finally {
+    closeSync(descriptor);
+  }
 }
 
 export { DEFAULT_LIMITS as DIRECTORY_INGESTION_LIMITS };

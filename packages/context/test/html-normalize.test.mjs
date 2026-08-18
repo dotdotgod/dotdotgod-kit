@@ -57,6 +57,20 @@ test('rejects unsupported MIME types and charsets', () => {
   assert.equal(normalizeHtml('<p>ok</p>', { contentType: 'application/xhtml+xml; charset=us-ascii' }).charset, 'us-ascii');
 });
 
+test('rejects invalid bytes and conflicting document charset declarations', () => {
+  assert.throws(() => normalizeHtml(Buffer.from([0xff]), { contentType: 'text/html; charset=utf-8' }), /not valid UTF-8/u);
+  assert.throws(() => normalizeHtml(Buffer.from('é'), { contentType: 'text/html; charset=us-ascii' }), /outside the declared US-ASCII/u);
+  assert.throws(() => normalizeHtml('<meta charset="us-ascii"><p>ok</p>', { contentType: 'text/html; charset=utf-8' }), /charset conflicts/u);
+  assert.throws(() => normalizeHtml('<meta http-equiv="Content-Type" content="text/html; charset=us-ascii"><p>ok</p>', { contentType: 'text/html; charset=utf-8' }), /charset conflicts/u);
+});
+
+test('bounds collected link metadata independently from normalized text', () => {
+  const html = Array.from({ length: 150 }, (_, index) => `<a href="/${index}">link ${index}</a>`).join('');
+  const result = normalizeHtml(html);
+  assert.equal(result.links.length, 100);
+  assert.ok(Buffer.byteLength(JSON.stringify(result.links)) <= 64 * 1024);
+});
+
 test('enforces input bytes and bounds output at UTF-8 code-point boundaries', () => {
   assert.throws(() => normalizeHtml('<p>12345</p>', { maxInputBytes: 5 }), /input exceeds maximum/u);
   const result = normalizeHtml('<p>éééé</p>', { maxOutputBytes: 5 });
