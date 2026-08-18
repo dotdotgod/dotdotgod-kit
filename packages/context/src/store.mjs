@@ -20,7 +20,8 @@ export function contextDbPath(root) {
   return join(safeRoot(root), '.dotdotgod', 'context', 'context.sqlite');
 }
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
+const MAX_PENDING_JOBS = 100;
 
 function inspectSchema(db) {
   const objects = new Map(db.prepare("SELECT name, type, sql FROM sqlite_master WHERE name IN ('sources', 'chunks')").all().map((row) => [row.name, row]));
@@ -66,6 +67,11 @@ function migrate(db, fromVersion) {
       db.prepare('INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (1, ?)').run(Date.now());
       db.prepare('INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (2, ?)').run(Date.now());
     }
+    if (fromVersion < 3) {
+      const columns = db.prepare('PRAGMA table_info(ingestion_jobs)').all();
+      if (!columns.some((row) => row.name === 'session_id')) db.exec('ALTER TABLE ingestion_jobs ADD COLUMN session_id TEXT;');
+      db.prepare('INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (3, ?)').run(Date.now());
+    }
     db.exec('COMMIT');
   } catch (error) { db.exec('ROLLBACK'); throw error; }
 }
@@ -105,21 +111,34 @@ function typoScore(query, value) {
 export function healContextDatabase(root = process.cwd()) {
   const path = contextDbPath(root);
   if (!existsSync(path)) throw new Error('No context database exists to heal.');
-  const backupPath = `${path}.backup-${Date.now()}`;
-  copyFileSync(path, backupPath, 0);
+  const stamp = Date.now();
+  const backupPath = `${path}.backup-${stamp}`;
+  const rebuiltPath = `${path}.healed-${stamp}`;
   let inspection;
-  const rebuiltPath = `${path}.healed-${Date.now()}`;
+  let replaced = false;
   const db = new DatabaseSync(path);
   try {
+    db.exec('PRAGMA busy_timeout=1000; PRAGMA wal_checkpoint(FULL);');
     inspection = inspectSchema(db);
-    if (!inspection.compatible || ![1, 2].includes(inspection.schemaProfile)) {
-      throw new Error('Schema is not a recognized recoverable context database; backup retained and no rebuild performed.');
+    if (!inspection.compatible || ![1, 2, 3].includes(inspection.schemaProfile)) {
+      throw new Error('Schema is not a recognized recoverable context database; no rebuild performed.');
     }
+    copyFileSync(path, backupPath, 0);
     migrate(db, inspection.schemaProfile);
     db.exec('PRAGMA wal_checkpoint(TRUNCATE);');
     db.exec(`VACUUM INTO '${rebuiltPath.replaceAll("'", "''")}';`);
+  } catch (error) {
+    rmSync(rebuiltPath, { force: true });
+    throw error;
   } finally { db.close(); }
-  renameSync(rebuiltPath, path);
+  try {
+    renameSync(rebuiltPath, path);
+    replaced = true;
+    rmSync(`${path}-wal`, { force: true });
+    rmSync(`${path}-shm`, { force: true });
+  } finally {
+    if (!replaced) rmSync(rebuiltPath, { force: true });
+  }
   return { ok: true, backupPath, fromVersion: inspection.schemaProfile, toVersion: SCHEMA_VERSION, rebuilt: true };
 }
 
@@ -244,12 +263,23 @@ export class ContextStore {
         AND (${labelClauses.join(' OR ')})${filterSql}
       ORDER BY lower(s.label), c.ordinal LIMIT ?
     `).all(...labelParams, ...filterParams, candidateLimit);
+    const typoWindow = Math.min(500, candidateLimit * 5);
+    const typoHalf = Math.max(1, Math.floor(typoWindow / 2));
     const trigramRows = this.db.prepare(`
-      ${select}, 0 AS rank
-      FROM chunks c JOIN sources s ON s.id = c.source_id
-      WHERE 1 = 1${filterSql}
-      ORDER BY c.rowid DESC LIMIT ?
-    `).all(...filterParams, Math.min(500, candidateLimit * 5))
+      SELECT * FROM (
+        SELECT ${select.replace('SELECT ', '')}, 0 AS rank
+        FROM chunks c JOIN sources s ON s.id = c.source_id
+        WHERE 1 = 1${filterSql}
+        ORDER BY c.rowid ASC LIMIT ?
+      )
+      UNION ALL
+      SELECT * FROM (
+        SELECT ${select.replace('SELECT ', '')}, 0 AS rank
+        FROM chunks c JOIN sources s ON s.id = c.source_id
+        WHERE 1 = 1${filterSql}
+        ORDER BY c.rowid DESC LIMIT ?
+      )
+    `).all(...filterParams, typoHalf, ...filterParams, typoWindow - typoHalf)
       .map((row) => ({ ...row, trigramScore: Math.max(typoScore(query, row.body), Number(row.ordinal) === 0 ? typoScore(query, row.label) : 0) }))
       .filter((row) => row.trigramScore >= 0.5)
       .sort((left, right) => right.trigramScore - left.trigramScore || String(left.source_id).localeCompare(String(right.source_id), 'en') || Number(left.ordinal) - Number(right.ordinal))
@@ -284,19 +314,25 @@ export class ContextStore {
     });
   }
 
-  createJob({ id = crypto.randomUUID(), kind, input }) {
+  createJob({ id = crypto.randomUUID(), kind, input, sessionId = null }) {
     const now = Date.now();
     const serializedInput = JSON.stringify(input);
     if (Buffer.byteLength(serializedInput) > 64 * 1024) throw new Error('Background ingestion job input exceeds 64 KiB.');
-    this.db.prepare('INSERT INTO ingestion_jobs(id, state, kind, input, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(id, 'queued', kind, serializedInput, now, now);
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const pending = Number(this.db.prepare("SELECT count(*) AS count FROM ingestion_jobs WHERE state IN ('queued','running')").get().count);
+      if (pending >= MAX_PENDING_JOBS) throw new Error('Background ingestion queue is full.');
+      this.db.prepare('INSERT INTO ingestion_jobs(id, state, kind, input, session_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .run(id, 'queued', kind, serializedInput, sessionId, now, now);
+      this.db.exec('COMMIT');
+    } catch (error) { this.db.exec('ROLLBACK'); throw error; }
     return this.getJob(id);
   }
 
   getJob(id) {
     const row = this.db.prepare('SELECT * FROM ingestion_jobs WHERE id = ?').get(id);
     if (!row) return null;
-    return { id: row.id, state: row.state, kind: row.kind, input: JSON.parse(row.input), result: row.result ? JSON.parse(row.result) : null, error: row.error, createdAt: row.created_at, updatedAt: row.updated_at };
+    return { id: row.id, state: row.state, kind: row.kind, input: JSON.parse(row.input), sessionId: row.session_id ?? null, result: row.result ? JSON.parse(row.result) : null, error: row.error, createdAt: row.created_at, updatedAt: row.updated_at };
   }
 
   claimNextJob() {

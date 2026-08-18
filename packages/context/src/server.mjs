@@ -9,6 +9,7 @@ import { projectImpact, projectInitialize, projectLoad } from './project.mjs';
 import { resolveWithinRoot } from './paths.mjs';
 import { IngestionJobRunner } from './jobs.mjs';
 import { resolveSessionId, validateSessionId } from './session.mjs';
+import { PHASE3_TOOL_INPUT_SCHEMAS } from './tool-contracts.mjs';
 
 const root = process.env.DOTDOTGOD_PROJECT_ROOT || process.cwd();
 let sessionId = resolveSessionId(process.env.DOTDOTGOD_SESSION_ID);
@@ -69,11 +70,30 @@ register('search', 'Search indexed command, file, and fetched content and return
 register('fetch_and_index', 'Fetch an HTTP(S) URL locally, index bounded text, and return metadata only.', {
   url: z.string().url(), source: z.string().optional(), scope: scopeSchema, ttlMs: z.number().int().nonnegative().optional(), timeoutMs: z.number().int().positive().optional(), maxBytes: z.number().int().positive().optional(), browser: z.boolean().optional(),
 }, (input, extra) => fetchAndIndex(getStore(), input, sessionId, extra.signal).then((value) => ({ ok: true, ...value })), { openWorldHint: true, readOnlyHint: true });
-register('session_resume', 'Use an explicit opaque session ID for subsequent context operations; historical sessions are not listed.', { sessionId: z.string().min(1).max(128) }, (input) => { sessionId = validateSessionId(input.sessionId); if (jobRunner) jobRunner.sessionId = sessionId; return { ok: true, sessionId }; });
-register('ingestion_job_start', 'Queue one durable bounded background index or strict-fetch ingestion job.', { kind: z.enum(['index', 'fetch']), input: z.record(z.string(), z.unknown()) }, (input) => ({ ok: true, job: getJobs().enqueue(input.kind, input.input) }));
-register('ingestion_job_status', 'Return bounded status for one background ingestion job.', { id: z.string().uuid() }, (input) => ({ ok: true, job: getJobs().status(input.id) }), { readOnlyHint: true });
-register('ingestion_job_cancel', 'Cancel one queued or running background ingestion job.', { id: z.string().uuid() }, (input) => ({ ok: true, ...getJobs().cancel(input.id) }), { destructiveHint: true });
-register('context_heal', 'Explicitly back up and migrate only a recognized recoverable context database.', { confirm: z.literal(true) }, () => { contextStore?.close(); contextStore = undefined; jobRunner = undefined; return healContextDatabase(root); }, { destructiveHint: true });
+function zodFromContract(schema) {
+  if (schema.const !== undefined) return z.literal(schema.const);
+  if (schema.enum) return z.enum(schema.enum);
+  if (schema.type === 'string') {
+    let value = z.string();
+    if (schema.minLength !== undefined) value = value.min(schema.minLength);
+    if (schema.maxLength !== undefined) value = value.max(schema.maxLength);
+    if (schema.pattern) value = value.regex(new RegExp(schema.pattern, 'u'));
+    if (schema.format === 'uuid') value = value.uuid();
+    return value;
+  }
+  if (schema.type === 'object') {
+    if (!schema.properties) return z.record(z.string(), z.unknown());
+    const required = new Set(schema.required ?? []);
+    return z.object(Object.fromEntries(Object.entries(schema.properties).map(([key, value]) => [key, required.has(key) ? zodFromContract(value) : zodFromContract(value).optional()]))).strict();
+  }
+  throw new Error('Unsupported shared tool contract schema.');
+}
+const phase3Shape = (name) => zodFromContract(PHASE3_TOOL_INPUT_SCHEMAS[name]).shape;
+register('session_resume', 'Use an explicit opaque session ID for subsequent context operations; historical sessions are not listed.', phase3Shape('session_resume'), (input) => { sessionId = validateSessionId(input.sessionId); if (jobRunner) jobRunner.sessionId = sessionId; return { ok: true, sessionId }; });
+register('ingestion_job_start', 'Queue one durable bounded background index or strict-fetch ingestion job.', phase3Shape('ingestion_job_start'), (input) => ({ ok: true, job: getJobs().enqueue(input.kind, input.input) }));
+register('ingestion_job_status', 'Return bounded status for one background ingestion job.', phase3Shape('ingestion_job_status'), (input) => ({ ok: true, job: getJobs().status(input.id) }), { readOnlyHint: true });
+register('ingestion_job_cancel', 'Cancel one queued or running background ingestion job.', phase3Shape('ingestion_job_cancel'), (input) => ({ ok: true, ...getJobs().cancel(input.id) }), { destructiveHint: true });
+register('context_heal', 'Explicitly back up and migrate only a recognized recoverable context database.', phase3Shape('context_heal'), () => { contextStore?.close(); contextStore = undefined; jobRunner = undefined; return healContextDatabase(root); }, { destructiveHint: true });
 register('stats', 'Report local context store counts and location.', {}, () => ({ ok: true, sessionId, ...getStore().stats() }), { readOnlyHint: true });
 register('doctor', 'Run local read-only Node.js, SQLite FTS5, storage, schema, and fetch-policy checks without network or repair actions.', {}, () => ({ sessionId, ...runDoctor({ root, dbPath: contextDbPath(root) }) }), { readOnlyHint: true });
 register('purge', 'Permanently delete one explicit context scope, session, or source.', {

@@ -5,6 +5,7 @@ export { fetchAndIndex, indexFile } from './content.mjs';
 export { composeEnvironment } from './environment-policy.mjs';
 export { INGESTION_JOB_LIMITS, IngestionJobRunner } from './jobs.mjs';
 export { resolveSessionId, validateSessionId } from './session.mjs';
+export { PHASE3_TOOL_INPUT_SCHEMAS } from './tool-contracts.mjs';
 export { DIRECTORY_INGESTION_LIMITS, readManifestFile, verifyManifestFile, walkDirectoryManifest } from './directory-ingestion.mjs';
 export { normalizeHtml } from './html-normalize.mjs';
 export { runDoctor } from './doctor.mjs';

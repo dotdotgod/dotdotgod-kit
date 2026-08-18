@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { PHASE3_TOOL_INPUT_SCHEMAS } from '../src/index.mjs';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const expected = ['execute', 'batch_execute', 'execute_file', 'index', 'search', 'fetch_and_index', 'session_resume', 'ingestion_job_start', 'ingestion_job_status', 'ingestion_job_cancel', 'context_heal', 'stats', 'doctor', 'purge', 'dotdotgod_project_load', 'dotdotgod_project_impact', 'dotdotgod_project_initialize'];
@@ -22,6 +23,9 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
     await client.connect(transport);
     const listed = await client.listTools();
     assert.deepEqual(listed.tools.map((tool) => tool.name).sort(), expected.sort());
+    for (const [name, schema] of Object.entries(PHASE3_TOOL_INPUT_SCHEMAS)) {
+      assert.deepEqual(listed.tools.find((tool) => tool.name === name)?.inputSchema, schema, `${name} schema must match shared adapter contract`);
+    }
     assert.equal(existsSync(join(root, '.dotdotgod')), false);
     const result = await client.callTool({ name: 'doctor', arguments: {} });
     assert.equal(result.isError, undefined);
@@ -42,6 +46,18 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
     assert.equal(JSON.stringify(indexedDirectory.structuredContent).includes('public-mcp-directory-needle'), false);
     const searched = await client.callTool({ name: 'search', arguments: { query: 'public-mcp-directory-needle', scope: 'project' } });
     assert.equal(searched.structuredContent.results.length, 1);
+
+    const resumed = await client.callTool({ name: 'session_resume', arguments: { sessionId: 'mcp-resumed-session' } });
+    assert.equal(resumed.structuredContent.sessionId, 'mcp-resumed-session');
+    const started = await client.callTool({ name: 'ingestion_job_start', arguments: { kind: 'index', input: { path: 'docs/a.md', scope: 'session' } } });
+    let durable;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      durable = await client.callTool({ name: 'ingestion_job_status', arguments: { id: started.structuredContent.job.id } });
+      if (['completed', 'failed'].includes(durable.structuredContent.job.state)) break;
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 5));
+    }
+    assert.equal(durable.structuredContent.job.state, 'completed');
+    assert.equal(durable.structuredContent.job.sessionId, 'mcp-resumed-session');
 
     const executed = await client.callTool({
       name: 'execute',

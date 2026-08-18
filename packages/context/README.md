@@ -10,7 +10,8 @@ The package exposes a local stdio MCP server and reusable core modules. Claude C
 
 - `execute`, `batch_execute`, `execute_file`
 - `index`, `search`, `fetch_and_index`
-- `stats`, `doctor`, `purge`
+- `session_resume`, `ingestion_job_start`, `ingestion_job_status`, `ingestion_job_cancel`
+- `context_heal`, `stats`, `doctor`, `purge`
 - `dotdotgod_project_load`, `dotdotgod_project_impact`, `dotdotgod_project_initialize`
 
 Run the stdio MCP server directly with:
@@ -130,7 +131,7 @@ Claude Code and Codex adapter hooks may tell the model to call these MCP tools a
 
 Search includes a bounded typo-tolerant trigram lane while Porter FTS remains primary. Databases use transactional version-ledger migrations; explicit healing backs up first and accepts only recognized profiles. Opaque session IDs can be resumed without a history-listing API. Durable background ingestion has bounded queue, status, cancellation, and restart recovery.
 
-Execution keeps filtered inheritance by default and offers opt-in `allowlist-v1` with explicit names and names-only reporting. Strict fetch remains default. Browser rendering is available only through an injected renderer plus `browser: true`; this package bundles no browser, keeps rendered content `external-untrusted`, enforces limits/abort, and makes no sandbox claim.
+Execution keeps compatibility-oriented filtered inheritance by default; this mode is not credential isolation. Opt-in `allowlist-v1` starts from an empty child environment and copies only explicit names, including caller overrides only when separately allowlisted, with names-only reporting. Strict fetch remains default. Browser rendering is available only through an injected renderer plus `browser: true`; this package bundles no browser, keeps rendered content `external-untrusted`, enforces limits/abort, and makes no sandbox claim.
 
 ## Learn More
 

@@ -7,7 +7,9 @@ export interface HtmlNormalization { text: string; title: string | null; links: 
 export interface ExecutionInput { label?: string; command?: string; executable?: string; args?: string[]; shell?: boolean; cwd?: string; timeoutMs?: number; outputLimit?: number; directLimit?: number; outputMode?: 'auto' | 'direct' | 'indexed' | 'discard'; scope?: ContextScope; ttlMs?: number; env?: Record<string, string | null>; environmentMode?: 'inherit-filtered-v1' | 'allowlist-v1'; allowedEnv?: string[] }
 export interface IndexInput { path: string; root?: string; source?: string; scope?: ContextScope; ttlMs?: number; maxBytes?: number; includeExtensions?: string[]; excludePaths?: string[]; followFileSymlinks?: boolean; maxDepth?: number; maxVisitedEntries?: number; maxFiles?: number; maxAggregateBytes?: number }
 export interface FetchInput { url: string; source?: string; scope?: ContextScope; ttlMs?: number; timeoutMs?: number; maxBytes?: number; browser?: boolean }
-export interface IngestionJob { id: string; state: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'; kind: 'index' | 'fetch'; input: Record<string, unknown>; result: unknown; error: string | null; createdAt: number; updatedAt: number }
+export interface IndexResult { id: string; chunks: number; bytes: number; scope: ContextScope; expiresAt: number | null }
+export interface FetchResult extends IndexResult {}
+export interface IngestionJob { id: string; state: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'; kind: 'index' | 'fetch'; input: Record<string, unknown>; sessionId: string | null; result: unknown; error: string | null; createdAt: number; updatedAt: number }
 export interface DoctorResult { ok: boolean; status: 'OK' | 'WARN' | 'FAIL'; node: string; platform: string; root: string; dbPath: string; checks: Array<{ id: string; status: 'OK' | 'WARN' | 'FAIL'; message: string; details?: unknown }> }
 
 export function contextDbPath(root?: string): string;
@@ -20,24 +22,26 @@ export class ContextStore {
   search(input: { query: string; scope?: ContextScope; sessionId?: string; source?: string; limit?: number }): unknown[];
   stats(): { path: string; sources: number; chunks: number; byScope: Array<{ scope: ContextScope; count: number }> };
   purge(input: { scope?: ContextScope; sessionId?: string; sourceId?: string }): { removed: number };
-  createJob(input: { id?: string; kind: 'index' | 'fetch'; input: Record<string, unknown> }): IngestionJob;
+  createJob(input: { id?: string; kind: 'index' | 'fetch'; input: Record<string, unknown>; sessionId?: string | null }): IngestionJob;
   getJob(id: string): IngestionJob | null;
   claimNextJob(): IngestionJob | null;
   finishJob(id: string, state: 'completed' | 'failed' | 'cancelled', value?: unknown): IngestionJob | null;
   cancelJob(id: string): { changed: number; job: IngestionJob | null };
   listPendingJobs(limit?: number): IngestionJob[];
 }
-export function healContextDatabase(root?: string): { ok: true; backupPath: string; fromVersion: number; toVersion: number; rebuilt: boolean };
+export function healContextDatabase(root?: string): { ok: true; backupPath: string; fromVersion: number; toVersion: number; rebuilt: true };
 export function validateSessionId(value: unknown): string;
 export function resolveSessionId(value?: unknown): string;
 export class IngestionJobRunner { sessionId?: string; constructor(store: ContextStore, options?: { sessionId?: string; renderer?: BrowserRenderer; root?: string }); enqueue(kind: 'index' | 'fetch', input: Record<string, unknown>): IngestionJob; status(id: string): IngestionJob | null; cancel(id: string): { changed: number; job: IngestionJob | null }; pump(): Promise<void> }
-export type BrowserRenderer = (input: { url: string; signal?: AbortSignal; timeoutMs: number; maxBytes: number }) => Promise<{ body?: Buffer; text?: string; url?: string; contentType?: string; status?: number }>;
+export interface BrowserRendererResult { body?: Buffer; text?: string; url?: string; contentType?: string; status?: number }
+export type BrowserRenderer = (input: Readonly<{ url: string; signal: AbortSignal; timeoutMs: number; maxBytes: number }>) => Promise<BrowserRendererResult>;
 export const INGESTION_JOB_LIMITS: Readonly<{ maxPendingJobs: number; concurrency: 1 }>;
+export const PHASE3_TOOL_INPUT_SCHEMAS: Readonly<Record<'session_resume' | 'ingestion_job_start' | 'ingestion_job_status' | 'ingestion_job_cancel' | 'context_heal', Readonly<Record<string, unknown>>>>;
 export function executeCommand(input: ExecutionInput, options?: { root?: string; store?: ContextStore; sessionId?: string; signal?: AbortSignal | undefined; env?: Record<string, string | undefined>; captureLimitBytes?: number }): Promise<Record<string, any>>;
 export function executeBatch(input: { commands: ExecutionInput[]; concurrency?: number; cwd?: string; timeoutMs?: number }, options?: Record<string, any>): Promise<Record<string, any>>;
 export function executeFile(input: ExecutionInput & { path: string; language: 'javascript' | 'python' | 'shell'; code: string }, options?: Record<string, any>): Promise<Record<string, any>>;
-export function indexFile(store: ContextStore, input: IndexInput, sessionId?: string, signal?: AbortSignal): Record<string, any>;
-export function fetchAndIndex(store: ContextStore, input: FetchInput, sessionId?: string, signal?: AbortSignal, capabilities?: { renderer?: BrowserRenderer }): Promise<Record<string, any>>;
+export function indexFile(store: ContextStore, input: IndexInput, sessionId?: string, signal?: AbortSignal): IndexResult | (Record<string, unknown> & { indexed: IndexResult[] });
+export function fetchAndIndex(store: ContextStore, input: FetchInput, sessionId?: string, signal?: AbortSignal, capabilities?: { renderer?: BrowserRenderer }): Promise<FetchResult>;
 export function composeEnvironment(input?: { inherited?: Record<string, string | undefined>; overrides?: Record<string, string | null>; platform?: string; mode?: 'inherit-filtered-v1' | 'allowlist-v1'; allow?: string[] }): { env: Record<string, string>; policy: EnvironmentPolicy };
 export const DIRECTORY_INGESTION_LIMITS: Readonly<{ maxDepth: number; maxVisitedEntries: number; maxFiles: number; maxFileBytes: number; maxAggregateBytes: number }>;
 export function walkDirectoryManifest(input: IndexInput & { signal?: AbortSignal }): DirectoryManifest;

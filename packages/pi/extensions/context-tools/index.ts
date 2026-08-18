@@ -13,6 +13,7 @@ import {
   indexFile,
   projectInitialize,
   runDoctor,
+  PHASE3_TOOL_INPUT_SCHEMAS,
 } from "@dotdotgod/context";
 
 const stores = new Map<string, ContextStore>();
@@ -30,6 +31,11 @@ function result(value: unknown) {
 }
 
 const Scope = Type.Union([Type.Literal("transient"), Type.Literal("session"), Type.Literal("project")]);
+
+type SessionResumeInput = { sessionId: string };
+type JobStartInput = { kind: 'index' | 'fetch'; input: Record<string, unknown> };
+type JobIdInput = { id: string };
+type HealInput = { confirm: true };
 
 const Command = Type.Object({
   label: Type.Optional(Type.String()), command: Type.Optional(Type.String()), executable: Type.Optional(Type.String()), args: Type.Optional(Type.Array(Type.String())),
@@ -81,25 +87,25 @@ export default function contextTools(pi: ExtensionAPI): void {
   });
   pi.registerTool({
     name: "dotdotgod_context_session_resume", label: "dotdotgod context session resume", description: "Use an explicit opaque session ID; historical sessions are not listed.",
-    parameters: Type.Object({ sessionId: Type.String({ minLength: 1, maxLength: 128 }) }),
+    parameters: Type.Unsafe<SessionResumeInput>(PHASE3_TOOL_INPUT_SCHEMAS.session_resume),
     async execute(_id, params) { sessionId = validateSessionId(params.sessionId); for (const runner of jobs.values()) runner.sessionId = sessionId; return result({ ok: true, sessionId }); },
   });
   pi.registerTool({
     name: "dotdotgod_ingestion_job_start", label: "dotdotgod ingestion job start", description: "Queue a durable bounded background ingestion job.",
-    parameters: Type.Object({ kind: Type.Union([Type.Literal('index'), Type.Literal('fetch')]), input: Type.Record(Type.String(), Type.Unknown()) }),
+    parameters: Type.Unsafe<JobStartInput>(PHASE3_TOOL_INPUT_SCHEMAS.ingestion_job_start),
     async execute(_id, params, _signal, _update, ctx) { let runner = jobs.get(ctx.cwd); if (!runner) { runner = new IngestionJobRunner(storeFor(ctx.cwd), { sessionId }); jobs.set(ctx.cwd, runner); } return result({ ok: true, job: runner.enqueue(params.kind, params.input) }); },
   });
   pi.registerTool({
-    name: "dotdotgod_ingestion_job_status", label: "dotdotgod ingestion job status", description: "Return status for one ingestion job.", parameters: Type.Object({ id: Type.String() }),
-    async execute(_id, params, _signal, _update, ctx) { return result({ ok: true, job: storeFor(ctx.cwd).getJob(params.id) }); },
+    name: "dotdotgod_ingestion_job_status", label: "dotdotgod ingestion job status", description: "Return status for one ingestion job.", parameters: Type.Unsafe<JobIdInput>(PHASE3_TOOL_INPUT_SCHEMAS.ingestion_job_status),
+    async execute(_id, params, _signal, _update, ctx) { const runner = jobs.get(ctx.cwd); return result({ ok: true, job: runner ? runner.status(params.id) : storeFor(ctx.cwd).getJob(params.id) }); },
   });
   pi.registerTool({
-    name: "dotdotgod_ingestion_job_cancel", label: "dotdotgod ingestion job cancel", description: "Cancel one queued or running ingestion job.", parameters: Type.Object({ id: Type.String() }),
-    async execute(_id, params, _signal, _update, ctx) { return result({ ok: true, ...storeFor(ctx.cwd).cancelJob(params.id) }); },
+    name: "dotdotgod_ingestion_job_cancel", label: "dotdotgod ingestion job cancel", description: "Cancel one queued or running ingestion job.", parameters: Type.Unsafe<JobIdInput>(PHASE3_TOOL_INPUT_SCHEMAS.ingestion_job_cancel),
+    async execute(_id, params, _signal, _update, ctx) { const runner = jobs.get(ctx.cwd); return result({ ok: true, ...(runner ? runner.cancel(params.id) : storeFor(ctx.cwd).cancelJob(params.id)) }); },
   });
   pi.registerTool({
-    name: "dotdotgod_context_heal", label: "dotdotgod context heal", description: "Explicitly back up and migrate a recognized context database.", parameters: Type.Object({ confirm: Type.Literal(true) }),
-    async execute(_id, _params, _signal, _update, ctx) { stores.get(ctx.cwd)?.close(); stores.delete(ctx.cwd); return result(healContextDatabase(ctx.cwd)); },
+    name: "dotdotgod_context_heal", label: "dotdotgod context heal", description: "Explicitly back up and migrate a recognized context database.", parameters: Type.Unsafe<HealInput>(PHASE3_TOOL_INPUT_SCHEMAS.context_heal),
+    async execute(_id, _params, _signal, _update, ctx) { jobs.delete(ctx.cwd); stores.get(ctx.cwd)?.close(); stores.delete(ctx.cwd); return result(healContextDatabase(ctx.cwd)); },
   });
   pi.registerTool({
     name: "dotdotgod_context_stats", label: "dotdotgod context stats", description: "Report project-local context store statistics.", parameters: Type.Object({}),

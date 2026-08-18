@@ -89,7 +89,7 @@ Hooks do not transform tool types or retry automatically. Coverage is limited to
 - Healing requires an explicit tool call and confirmation, creates a backup first, and only migrates recognized profiles. It does not promise reconstruction when source bytes are unavailable.
 - A caller may resume an opaque validated session ID. The runtime does not list historical session IDs.
 - Background file/directory and strict-fetch ingestion uses durable bounded job rows with queued, running, completed, failed, and cancelled states. One process-local worker runs jobs; interrupted running jobs return to queued on restart.
-- Command execution retains filtered inheritance by default. `allowlist-v1` is opt-in, requires explicit allowed names, and reports names without values.
+- Command execution retains compatibility-oriented filtered inheritance by default; this default is not credential isolation. `allowlist-v1` is opt-in, starts from an empty child environment, requires explicit allowed names for inherited values and caller overrides, and reports names without values.
 - Strict fetch remains the default. Browser rendering requires an explicitly injected renderer capability and `browser: true`; no browser dependency is bundled. Rendered content is bounded, abortable, and `external-untrusted`. This is not a sandbox.
 
 ## Local-Only Boundary

@@ -16,8 +16,7 @@ export class IngestionJobRunner {
 
   enqueue(kind, input) {
     if (!['index', 'fetch'].includes(kind)) throw new Error('Unsupported ingestion job kind.');
-    if (this.store.listPendingJobs(MAX_PENDING_JOBS).length >= MAX_PENDING_JOBS) throw new Error('Background ingestion queue is full.');
-    const job = this.store.createJob({ kind, input });
+    const job = this.store.createJob({ kind, input, sessionId: this.sessionId ?? null });
     this.schedule();
     return job;
   }
@@ -46,14 +45,15 @@ export class IngestionJobRunner {
         this.controllers.set(job.id, controller);
         try {
           const value = job.kind === 'index'
-            ? indexFile(this.store, { ...job.input, root: this.root }, this.sessionId, controller.signal)
-            : await fetchAndIndex(this.store, job.input, this.sessionId, controller.signal, { renderer: this.renderer });
+            ? indexFile(this.store, { ...job.input, root: this.root }, job.sessionId ?? undefined, controller.signal)
+            : await fetchAndIndex(this.store, job.input, job.sessionId ?? undefined, controller.signal, { renderer: this.renderer });
           const current = this.store.getJob(job.id);
           if (current?.state === 'running') this.store.finishJob(job.id, 'completed', value);
         } catch (error) {
           const current = this.store.getJob(job.id);
           if (current?.state === 'running') this.store.finishJob(job.id, controller.signal.aborted ? 'cancelled' : 'failed', error instanceof Error ? error.message : String(error));
         } finally { this.controllers.delete(job.id); }
+        await new Promise((resolve) => setImmediate(resolve));
       }
     } finally { this.running = false; }
   }
