@@ -44,7 +44,7 @@ Search applies scope/session/source predicates before building bounded Porter an
 
 Fetched HTML is normalized without a browser, JavaScript, subresources, or link following. The bounded extractor removes active and hidden content, preserves basic document structure, records extractor metadata, and keeps the source `external-untrusted`. It is not a standards-complete HTML renderer or prompt-injection prevention mechanism.
 
-Writable database connections use WAL and a bounded busy timeout. Source replacement, expiry, and purge update source and FTS rows transactionally. Existing compatible databases open without migration; incompatible databases fail clearly and doctor remains read-only.
+Writable database connections use WAL and a bounded busy timeout. Source replacement, expiry, and purge update source and FTS rows transactionally. Recognized older databases migrate transactionally through a version ledger; unknown, newer, incomplete, or corrupt databases fail clearly and doctor remains read-only.
 
 `purge` requires explicit confirmation and exactly one selector: scope, session, or source.
 
@@ -82,6 +82,16 @@ Claude Code and Codex adapter hooks maintain project/session runtime state under
 
 Hooks do not transform tool types or retry automatically. Coverage is limited to tested host interception points.
 
+## Phase 3 Runtime Operations
+
+- Search adds a bounded trigram candidate lane for typo tolerance. Scope, session, and source predicates are applied in SQL before fusion; Porter FTS remains primary.
+- Existing profile-1 databases migrate transactionally and idempotently through a version ledger. Unknown, newer, incomplete, and corrupt schemas fail closed.
+- Healing requires an explicit tool call and confirmation, creates a backup first, and only migrates recognized profiles. It does not promise reconstruction when source bytes are unavailable.
+- A caller may resume an opaque validated session ID. The runtime does not list historical session IDs.
+- Background file/directory and strict-fetch ingestion uses durable bounded job rows with queued, running, completed, failed, and cancelled states. One process-local worker runs jobs; interrupted running jobs return to queued on restart.
+- Command execution retains filtered inheritance by default. `allowlist-v1` is opt-in, requires explicit allowed names, and reports names without values.
+- Strict fetch remains the default. Browser rendering requires an explicitly injected renderer capability and `browser: true`; no browser dependency is bundled. Rendered content is bounded, abortable, and `external-untrusted`. This is not a sandbox.
+
 ## Local-Only Boundary
 
 No remote dotdotgod service is required. Runtime state and caches are local; `fetch_and_index` accesses its requested URL.
@@ -116,6 +126,8 @@ No remote dotdotgod service is required. Runtime state and caches are local; `fe
   - [packages/codex/.codex-plugin/plugin.json](../../packages/codex/.codex-plugin/plugin.json)
   - [packages/codex/.mcp.json](../../packages/codex/.mcp.json)
   - [packages/codex/hooks/hooks.json](../../packages/codex/hooks/hooks.json)
+  - [packages/context/src/jobs.mjs](../../packages/context/src/jobs.mjs)
+  - [packages/context/src/session.mjs](../../packages/context/src/session.mjs)
 - Verified by:
   - [packages/context/test/context.test.mjs](../../packages/context/test/context.test.mjs)
   - [packages/context/test/store-operations.test.mjs](../../packages/context/test/store-operations.test.mjs)
@@ -126,6 +138,7 @@ No remote dotdotgod service is required. Runtime state and caches are local; `fe
   - [packages/context/test/adapters.test.mjs](../../packages/context/test/adapters.test.mjs)
   - [docs/test/CONTEXT_EXECUTION.md](../test/CONTEXT_EXECUTION.md)
   - [docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md](../test/manual-smoke/CROSS_AGENT_ADAPTERS.md)
+  - [packages/context/test/phase3.test.mjs](../../packages/context/test/phase3.test.mjs)
 - Related docs:
   - [docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md](../arch/CONTEXT_EXECUTION_ARCHITECTURE.md)
   - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../arch/CROSS_AGENT_ARCHITECTURE.md)
@@ -138,5 +151,5 @@ No remote dotdotgod service is required. Runtime state and caches are local; `fe
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/context/src/server.mjs","packages/context/src/execute.mjs","packages/context/src/store.mjs","packages/context/src/chunks.mjs","packages/context/src/content.mjs","packages/context/src/provenance.mjs","packages/context/src/rank.mjs","packages/context/src/safe-fetch.mjs","packages/context/src/environment-policy.mjs","packages/context/src/directory-ingestion.mjs","packages/context/src/html-normalize.mjs","packages/context/src/doctor.mjs","packages/context/src/project.mjs","packages/context/src/hooks.mjs","packages/pi/extensions/context-tools/index.ts","packages/claude-code/.claude-plugin/plugin.json","packages/claude-code/hooks/hooks.json","packages/codex/.codex-plugin/plugin.json","packages/codex/.mcp.json","packages/codex/hooks/hooks.json"],"verifiedBy":["packages/context/test/context.test.mjs","packages/context/test/store-operations.test.mjs","packages/context/test/environment-policy.test.mjs","packages/context/test/directory-ingestion.test.mjs","packages/context/test/html-normalize.test.mjs","packages/context/test/mcp.test.mjs","packages/context/test/adapters.test.mjs","docs/test/CONTEXT_EXECUTION.md","docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md","docs/arch/CROSS_AGENT_ARCHITECTURE.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"],"contracts":[{"id":"CONTEXT-EXECUTION-TOOLS-001","title":"Local context tools keep large raw bytes outside model context","sections":["Tool Contract","Output Handling","Storage And Search"],"implementedBy":["packages/context/src/server.mjs","packages/context/src/execute.mjs","packages/context/src/store.mjs"],"verifiedBy":["packages/context/test/context.test.mjs","packages/context/test/mcp.test.mjs"],"relatedDocs":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]},{"id":"CONTEXT-EXECUTION-ADAPTERS-001","title":"Claude and Codex use MCP while Pi retains native adapter tools","sections":["Project Workflow Boundaries","Hook Routing"],"implementedBy":["packages/pi/extensions/context-tools/index.ts","packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","packages/context/src/hooks.mjs"],"verifiedBy":["packages/context/test/adapters.test.mjs","docs/test/CONTEXT_EXECUTION.md","docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]}]}
+{"kind":"spec","implementedBy":["packages/context/src/server.mjs","packages/context/src/execute.mjs","packages/context/src/store.mjs","packages/context/src/chunks.mjs","packages/context/src/content.mjs","packages/context/src/provenance.mjs","packages/context/src/rank.mjs","packages/context/src/safe-fetch.mjs","packages/context/src/environment-policy.mjs","packages/context/src/directory-ingestion.mjs","packages/context/src/html-normalize.mjs","packages/context/src/doctor.mjs","packages/context/src/project.mjs","packages/context/src/hooks.mjs","packages/pi/extensions/context-tools/index.ts","packages/claude-code/.claude-plugin/plugin.json","packages/claude-code/hooks/hooks.json","packages/codex/.codex-plugin/plugin.json","packages/codex/.mcp.json","packages/codex/hooks/hooks.json","packages/context/src/jobs.mjs","packages/context/src/session.mjs"],"verifiedBy":["packages/context/test/context.test.mjs","packages/context/test/store-operations.test.mjs","packages/context/test/environment-policy.test.mjs","packages/context/test/directory-ingestion.test.mjs","packages/context/test/html-normalize.test.mjs","packages/context/test/mcp.test.mjs","packages/context/test/adapters.test.mjs","docs/test/CONTEXT_EXECUTION.md","docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md","packages/context/test/phase3.test.mjs"],"relatedDocs":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md","docs/arch/CROSS_AGENT_ARCHITECTURE.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"],"contracts":[{"id":"CONTEXT-EXECUTION-TOOLS-001","title":"Local context tools keep large raw bytes outside model context","sections":["Tool Contract","Output Handling","Storage And Search"],"implementedBy":["packages/context/src/server.mjs","packages/context/src/execute.mjs","packages/context/src/store.mjs"],"verifiedBy":["packages/context/test/context.test.mjs","packages/context/test/mcp.test.mjs"],"relatedDocs":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]},{"id":"CONTEXT-EXECUTION-ADAPTERS-001","title":"Claude and Codex use MCP while Pi retains native adapter tools","sections":["Project Workflow Boundaries","Hook Routing"],"implementedBy":["packages/pi/extensions/context-tools/index.ts","packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","packages/context/src/hooks.mjs"],"verifiedBy":["packages/context/test/adapters.test.mjs","docs/test/CONTEXT_EXECUTION.md","docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]}]}
 ```

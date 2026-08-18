@@ -41,7 +41,7 @@ Project Load can provide focus and paths to execution retrieval. Execution outpu
 
 The initial implementation uses Node's built-in `node:sqlite` `DatabaseSync` and FTS5. The database lives below `.dotdotgod/context/`, which is expected to remain ignored local state.
 
-Source metadata is stored separately from FTS chunks so expiry and scoped purge can remove complete sources. Writable connections configure WAL and a bounded busy timeout. Source replacement, expiry, and purge wrap source and FTS changes in transactions so injected write failures roll back the complete operation. Schema compatibility is checked before normal use; this phase does not migrate or repair databases.
+Source metadata is stored separately from FTS chunks so expiry and scoped purge can remove complete sources. Writable connections configure WAL and a bounded busy timeout. Source replacement, expiry, and purge wrap source and FTS changes in transactions so injected write failures roll back the complete operation. Schema compatibility is checked before normal use. Recognized profiles migrate transactionally; explicit healing backs up and rebuilds only recognized recoverable profiles.
 
 Provenance is additive metadata rather than a schema column. The indexing operation owns source type, trust, origin, SHA-256 content hash, timestamp, extractor, and chunker version, preventing caller metadata from promoting trust. Read-time normalization maps legacy or inconsistent records to `unknown` without rewriting them.
 
@@ -102,6 +102,14 @@ This is tested interception coverage, not a claim that every external file mutat
 - Claude uses `${CLAUDE_PLUGIN_ROOT}` for its server and hook scripts.
 - Codex references root `.mcp.json` and `hooks/hooks.json` through its plugin manifest.
 - Pi depends on the runtime package but starts no MCP process.
+
+## Phase 3 Components
+
+`ContextStore` owns the schema migration ledger, bounded trigram candidate scan, and durable ingestion-job rows. Migration occurs under `BEGIN IMMEDIATE`; startup requeues interrupted running jobs. Explicit healing copies the database before inspecting and migrating a recognized profile.
+
+`IngestionJobRunner` is a process-local, concurrency-one dispatcher over durable rows. It delegates to the same bounded file/directory and fetch functions as synchronous tools. Session IDs are opaque validated routing values and are never discovered through a listing API.
+
+Environment composition has a compatibility default and an opt-in allowlist. Both report variable names only. Browser acquisition is a capability injection into `fetchAndIndex`; MCP and Pi ship without a renderer, so strict fetch is the operational default. A host-provided renderer must honor timeout, abort, and byte limits; dotdotgod makes no process-isolation or sandbox claim.
 
 ## Related Behavior And Verification
 

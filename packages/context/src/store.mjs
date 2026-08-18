@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { extname } from 'node:path';
@@ -19,6 +19,8 @@ function safeRoot(root) {
 export function contextDbPath(root) {
   return join(safeRoot(root), '.dotdotgod', 'context', 'context.sqlite');
 }
+
+const SCHEMA_VERSION = 2;
 
 function inspectSchema(db) {
   const objects = new Map(db.prepare("SELECT name, type, sql FROM sqlite_master WHERE name IN ('sources', 'chunks')").all().map((row) => [row.name, row]));
@@ -41,7 +43,84 @@ function inspectSchema(db) {
     && chunkShape
     && missingSources.length === 0
     && missingChunks.length === 0;
-  return { compatible, schemaProfile: compatible ? 1 : null, missing: [...missingSources, ...missingChunks] };
+  let version = 0;
+  if (compatible) {
+    const ledger = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations'").get();
+    if (ledger) version = Number(db.prepare('SELECT coalesce(max(version), 0) AS version FROM schema_migrations').get().version);
+    else version = 1;
+  }
+  return { compatible: compatible && version <= SCHEMA_VERSION, schemaProfile: compatible ? version : null, missing: [...missingSources, ...missingChunks] };
+}
+
+function migrate(db, fromVersion) {
+  if (fromVersion > SCHEMA_VERSION) throw new Error(`Incompatible context database schema version ${fromVersion}; runtime supports ${SCHEMA_VERSION}.`);
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL);');
+    if (fromVersion < 2) {
+      db.exec(`CREATE TABLE IF NOT EXISTS ingestion_jobs (
+        id TEXT PRIMARY KEY, state TEXT NOT NULL CHECK(state IN ('queued','running','completed','failed','cancelled')),
+        kind TEXT NOT NULL, input TEXT NOT NULL, result TEXT, error TEXT,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+      ); CREATE INDEX IF NOT EXISTS ingestion_jobs_state_created ON ingestion_jobs(state, created_at);`);
+      db.prepare('INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (1, ?)').run(Date.now());
+      db.prepare('INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (2, ?)').run(Date.now());
+    }
+    db.exec('COMMIT');
+  } catch (error) { db.exec('ROLLBACK'); throw error; }
+}
+
+function trigrams(value) {
+  const normalized = `  ${String(value).toLocaleLowerCase('en').replace(/[^\p{L}\p{N}]+/gu, ' ').trim()}  `;
+  const out = new Set();
+  for (let index = 0; index + 3 <= normalized.length; index += 1) out.add(normalized.slice(index, index + 3));
+  return out;
+}
+function trigramScore(left, right) {
+  const a = trigrams(left); const b = trigrams(right);
+  if (!a.size || !b.size) return 0;
+  let overlap = 0; for (const item of a) if (b.has(item)) overlap += 1;
+  return (2 * overlap) / (a.size + b.size);
+}
+function editDistance(left, right, ceiling = 2) {
+  if (Math.abs(left.length - right.length) > ceiling) return ceiling + 1;
+  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= left.length; i += 1) {
+    const current = [i]; let rowMin = i;
+    for (let j = 1; j <= right.length; j += 1) { current[j] = Math.min(current[j - 1] + 1, previous[j] + 1, previous[j - 1] + (left[i - 1] === right[j - 1] ? 0 : 1)); rowMin = Math.min(rowMin, current[j]); }
+    if (rowMin > ceiling) return ceiling + 1; previous = current;
+  }
+  return previous[right.length];
+}
+function typoScore(query, value) {
+  const queryTerms = normalizeSearchTerms(query);
+  const valueTerms = normalizeSearchTerms(value);
+  let best = 0;
+  for (const needle of queryTerms) for (const token of valueTerms) {
+    if (needle.length >= 5 && editDistance(needle, token) <= 2) best = Math.max(best, trigramScore(needle, token));
+  }
+  return best;
+}
+
+export function healContextDatabase(root = process.cwd()) {
+  const path = contextDbPath(root);
+  if (!existsSync(path)) throw new Error('No context database exists to heal.');
+  const backupPath = `${path}.backup-${Date.now()}`;
+  copyFileSync(path, backupPath, 0);
+  let inspection;
+  const rebuiltPath = `${path}.healed-${Date.now()}`;
+  const db = new DatabaseSync(path);
+  try {
+    inspection = inspectSchema(db);
+    if (!inspection.compatible || ![1, 2].includes(inspection.schemaProfile)) {
+      throw new Error('Schema is not a recognized recoverable context database; backup retained and no rebuild performed.');
+    }
+    migrate(db, inspection.schemaProfile);
+    db.exec('PRAGMA wal_checkpoint(TRUNCATE);');
+    db.exec(`VACUUM INTO '${rebuiltPath.replaceAll("'", "''")}';`);
+  } finally { db.close(); }
+  renameSync(rebuiltPath, path);
+  return { ok: true, backupPath, fromVersion: inspection.schemaProfile, toVersion: SCHEMA_VERSION, rebuilt: true };
 }
 
 export class ContextStore {
@@ -49,12 +128,14 @@ export class ContextStore {
     this.root = safeRoot(root);
     this.path = contextDbPath(this.root);
     const existing = existsSync(this.path);
+    let schemaVersion = 1;
     if (existing) {
       if (statSync(this.path).size === 0) throw new Error('Incompatible context database schema; empty database cannot be repaired automatically.');
       const inspection = new DatabaseSync(this.path, { readOnly: true });
       try {
         const result = inspectSchema(inspection);
-        if (!result.compatible) throw new Error(`Incompatible context database schema; run doctor before repair${result.missing.length ? ` (missing: ${result.missing.join(', ')})` : ''}.`);
+        if (!result.compatible) throw new Error(`Incompatible context database schema; run doctor before explicit healing${result.missing.length ? ` (missing: ${result.missing.join(', ')})` : ''}.`);
+        schemaVersion = result.schemaProfile;
       } finally {
         inspection.close();
       }
@@ -83,6 +164,8 @@ export class ContextStore {
           tokenize='porter unicode61'
         );
       `);
+      migrate(this.db, schemaVersion);
+      this.db.prepare("UPDATE ingestion_jobs SET state = 'queued', updated_at = ? WHERE state = 'running'").run(Date.now());
     } catch (error) {
       this.db.close();
       throw error;
@@ -161,6 +244,16 @@ export class ContextStore {
         AND (${labelClauses.join(' OR ')})${filterSql}
       ORDER BY lower(s.label), c.ordinal LIMIT ?
     `).all(...labelParams, ...filterParams, candidateLimit);
+    const trigramRows = this.db.prepare(`
+      ${select}, 0 AS rank
+      FROM chunks c JOIN sources s ON s.id = c.source_id
+      WHERE 1 = 1${filterSql}
+      ORDER BY c.rowid DESC LIMIT ?
+    `).all(...filterParams, Math.min(500, candidateLimit * 5))
+      .map((row) => ({ ...row, trigramScore: Math.max(typoScore(query, row.body), Number(row.ordinal) === 0 ? typoScore(query, row.label) : 0) }))
+      .filter((row) => row.trigramScore >= 0.5)
+      .sort((left, right) => right.trigramScore - left.trigramScore || String(left.source_id).localeCompare(String(right.source_id), 'en') || Number(left.ordinal) - Number(right.ordinal))
+      .slice(0, candidateLimit);
     const toCandidate = (row) => {
       let storedMetadata = {};
       try { storedMetadata = JSON.parse(row.metadata); } catch { /* legacy invalid metadata */ }
@@ -169,6 +262,7 @@ export class ContextStore {
     const fused = reciprocalRankFusion([
       { name: 'porter-bm25', candidates: porterRows.map(toCandidate) },
       { name: 'label-path', candidates: labelRows.map(toCandidate) },
+      { name: 'trigram-v1', candidates: trigramRows.map(toCandidate) },
     ], { limit: candidateLimit });
     return rerankCandidates(fused, query, { limit: resultLimit }).map((entry) => {
       const row = entry.candidate;
@@ -188,6 +282,47 @@ export class ContextStore {
         ranking: entry.ranking,
       };
     });
+  }
+
+  createJob({ id = crypto.randomUUID(), kind, input }) {
+    const now = Date.now();
+    const serializedInput = JSON.stringify(input);
+    if (Buffer.byteLength(serializedInput) > 64 * 1024) throw new Error('Background ingestion job input exceeds 64 KiB.');
+    this.db.prepare('INSERT INTO ingestion_jobs(id, state, kind, input, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(id, 'queued', kind, serializedInput, now, now);
+    return this.getJob(id);
+  }
+
+  getJob(id) {
+    const row = this.db.prepare('SELECT * FROM ingestion_jobs WHERE id = ?').get(id);
+    if (!row) return null;
+    return { id: row.id, state: row.state, kind: row.kind, input: JSON.parse(row.input), result: row.result ? JSON.parse(row.result) : null, error: row.error, createdAt: row.created_at, updatedAt: row.updated_at };
+  }
+
+  claimNextJob() {
+    const row = this.db.prepare("SELECT id FROM ingestion_jobs WHERE state = 'queued' ORDER BY created_at, id LIMIT 1").get();
+    if (!row) return null;
+    const changed = this.db.prepare("UPDATE ingestion_jobs SET state = 'running', updated_at = ? WHERE id = ? AND state = 'queued'").run(Date.now(), row.id).changes;
+    return changed ? this.getJob(row.id) : null;
+  }
+
+  finishJob(id, state, value = null) {
+    if (!['completed', 'failed', 'cancelled'].includes(state)) throw new Error('Invalid terminal job state.');
+    let result = state === 'completed' ? JSON.stringify(value) : null;
+    if (result && Buffer.byteLength(result) > 256 * 1024) result = JSON.stringify({ truncated: true, message: 'Completed result exceeded the durable status limit.' });
+    const error = state === 'failed' ? String(value ?? 'Job failed').slice(0, 4096) : null;
+    this.db.prepare("UPDATE ingestion_jobs SET state = ?, result = ?, error = ?, updated_at = ? WHERE id = ? AND state IN ('queued','running')")
+      .run(state, result, error, Date.now(), id);
+    return this.getJob(id);
+  }
+
+  cancelJob(id) {
+    const changed = this.db.prepare("UPDATE ingestion_jobs SET state = 'cancelled', updated_at = ? WHERE id = ? AND state IN ('queued','running')").run(Date.now(), id).changes;
+    return { changed: Number(changed), job: this.getJob(id) };
+  }
+
+  listPendingJobs(limit = 20) {
+    return this.db.prepare("SELECT id FROM ingestion_jobs WHERE state IN ('queued','running') ORDER BY created_at, id LIMIT ?").all(Math.min(100, Math.max(1, limit))).map((row) => this.getJob(row.id));
   }
 
   stats() {

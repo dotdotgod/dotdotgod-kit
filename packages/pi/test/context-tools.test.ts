@@ -20,9 +20,12 @@ function register() {
 
 test("Pi registers native context tools with bounded directory and scope schemas", () => {
   const tools = register();
-  assert.equal(tools.size, 10);
+  assert.equal(tools.size, 15);
   assert.ok(tools.has("dotdotgod_context_index"));
   assert.ok(tools.has("dotdotgod_execute"));
+  assert.ok(tools.has("dotdotgod_context_session_resume"));
+  assert.ok(tools.has("dotdotgod_ingestion_job_start"));
+  assert.ok(tools.has("dotdotgod_context_heal"));
   const indexSchema = JSON.stringify(tools.get("dotdotgod_context_index")?.parameters);
   assert.match(indexSchema, /maxAggregateBytes/);
   assert.match(indexSchema, /maxVisitedEntries/);

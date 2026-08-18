@@ -3,6 +3,9 @@ import { Type } from "typebox";
 import {
   ContextStore,
   contextDbPath,
+  healContextDatabase,
+  IngestionJobRunner,
+  validateSessionId,
   executeBatch,
   executeCommand,
   executeFile,
@@ -13,7 +16,8 @@ import {
 } from "@dotdotgod/context";
 
 const stores = new Map<string, ContextStore>();
-const sessionId = crypto.randomUUID();
+const jobs = new Map<string, IngestionJobRunner>();
+let sessionId: string = crypto.randomUUID();
 
 function storeFor(root: string): ContextStore {
   let store = stores.get(root);
@@ -33,6 +37,8 @@ const Command = Type.Object({
   directLimit: Type.Optional(Type.Number()), outputMode: Type.Optional(Type.Union([Type.Literal("auto"), Type.Literal("direct"), Type.Literal("indexed"), Type.Literal("discard")])),
   scope: Type.Optional(Scope), ttlMs: Type.Optional(Type.Number({ minimum: 0 })),
   env: Type.Optional(Type.Record(Type.String(), Type.Union([Type.String(), Type.Null()]))),
+  environmentMode: Type.Optional(Type.Union([Type.Literal('inherit-filtered-v1'), Type.Literal('allowlist-v1')])),
+  allowedEnv: Type.Optional(Type.Array(Type.String(), { maxItems: 100 })),
 });
 
 export default function contextTools(pi: ExtensionAPI): void {
@@ -70,8 +76,30 @@ export default function contextTools(pi: ExtensionAPI): void {
   });
   pi.registerTool({
     name: "dotdotgod_fetch_and_index", label: "dotdotgod fetch and index", description: "Fetch and locally index a bounded HTTP(S) resource.",
-    parameters: Type.Object({ url: Type.String(), source: Type.Optional(Type.String()), scope: Type.Optional(Scope), ttlMs: Type.Optional(Type.Integer({ minimum: 0 })), timeoutMs: Type.Optional(Type.Integer({ minimum: 1 })), maxBytes: Type.Optional(Type.Integer({ minimum: 1 })) }),
+    parameters: Type.Object({ url: Type.String(), source: Type.Optional(Type.String()), scope: Type.Optional(Scope), ttlMs: Type.Optional(Type.Integer({ minimum: 0 })), timeoutMs: Type.Optional(Type.Integer({ minimum: 1 })), maxBytes: Type.Optional(Type.Integer({ minimum: 1 })), browser: Type.Optional(Type.Boolean()) }),
     async execute(_id, params, signal, _update, ctx) { return result({ ok: true, ...await fetchAndIndex(storeFor(ctx.cwd), params, sessionId, signal) }); },
+  });
+  pi.registerTool({
+    name: "dotdotgod_context_session_resume", label: "dotdotgod context session resume", description: "Use an explicit opaque session ID; historical sessions are not listed.",
+    parameters: Type.Object({ sessionId: Type.String({ minLength: 1, maxLength: 128 }) }),
+    async execute(_id, params) { sessionId = validateSessionId(params.sessionId); for (const runner of jobs.values()) runner.sessionId = sessionId; return result({ ok: true, sessionId }); },
+  });
+  pi.registerTool({
+    name: "dotdotgod_ingestion_job_start", label: "dotdotgod ingestion job start", description: "Queue a durable bounded background ingestion job.",
+    parameters: Type.Object({ kind: Type.Union([Type.Literal('index'), Type.Literal('fetch')]), input: Type.Record(Type.String(), Type.Unknown()) }),
+    async execute(_id, params, _signal, _update, ctx) { let runner = jobs.get(ctx.cwd); if (!runner) { runner = new IngestionJobRunner(storeFor(ctx.cwd), { sessionId }); jobs.set(ctx.cwd, runner); } return result({ ok: true, job: runner.enqueue(params.kind, params.input) }); },
+  });
+  pi.registerTool({
+    name: "dotdotgod_ingestion_job_status", label: "dotdotgod ingestion job status", description: "Return status for one ingestion job.", parameters: Type.Object({ id: Type.String() }),
+    async execute(_id, params, _signal, _update, ctx) { return result({ ok: true, job: storeFor(ctx.cwd).getJob(params.id) }); },
+  });
+  pi.registerTool({
+    name: "dotdotgod_ingestion_job_cancel", label: "dotdotgod ingestion job cancel", description: "Cancel one queued or running ingestion job.", parameters: Type.Object({ id: Type.String() }),
+    async execute(_id, params, _signal, _update, ctx) { return result({ ok: true, ...storeFor(ctx.cwd).cancelJob(params.id) }); },
+  });
+  pi.registerTool({
+    name: "dotdotgod_context_heal", label: "dotdotgod context heal", description: "Explicitly back up and migrate a recognized context database.", parameters: Type.Object({ confirm: Type.Literal(true) }),
+    async execute(_id, _params, _signal, _update, ctx) { stores.get(ctx.cwd)?.close(); stores.delete(ctx.cwd); return result(healContextDatabase(ctx.cwd)); },
   });
   pi.registerTool({
     name: "dotdotgod_context_stats", label: "dotdotgod context stats", description: "Report project-local context store statistics.", parameters: Type.Object({}),

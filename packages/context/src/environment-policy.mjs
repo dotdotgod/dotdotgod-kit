@@ -34,8 +34,11 @@ function entriesOf(value, label) {
  * Compose a child-process environment without exposing filtered values.
  * Override values may be strings or null; null explicitly deletes a variable.
  */
-export function composeEnvironment({ inherited = {}, overrides = {}, platform = process.platform } = {}) {
+export function composeEnvironment({ inherited = {}, overrides = {}, platform = process.platform, mode = 'inherit-filtered-v1', allow = [] } = {}) {
   const family = platformFamily(platform);
+  if (!['inherit-filtered-v1', 'allowlist-v1'].includes(mode)) throw new TypeError(`Unsupported environment policy mode: ${mode}`);
+  if (!Array.isArray(allow)) throw new TypeError('allow must be an array');
+  const allowed = new Set(allow.map((name) => { validateName(name); return canonicalName(name, family); }));
   const env = {};
   const filtered = new Set();
 
@@ -46,7 +49,7 @@ export function composeEnvironment({ inherited = {}, overrides = {}, platform = 
     }
     if (value === undefined) continue;
     const outputName = canonicalName(name, family);
-    if (isFilteredName(outputName, family)) {
+    if (isFilteredName(outputName, family) || (mode === 'allowlist-v1' && !allowed.has(outputName))) {
       filtered.add(outputName);
       continue;
     }
@@ -59,6 +62,7 @@ export function composeEnvironment({ inherited = {}, overrides = {}, platform = 
     if (isFilteredName(outputName, family)) {
       throw new TypeError(`Environment variable ${name} is reserved by the execution policy`);
     }
+    if (mode === 'allowlist-v1' && !allowed.has(outputName)) throw new TypeError(`Environment variable ${name} is not in the explicit allowlist`);
     if (value === null) {
       delete env[outputName];
       continue;
@@ -72,8 +76,9 @@ export function composeEnvironment({ inherited = {}, overrides = {}, platform = 
   return {
     env,
     policy: {
-      mode: 'inherit-filtered-v1',
+      mode,
       platform: family,
+      ...(mode === 'allowlist-v1' ? { allowedNames: [...allowed].sort((left, right) => left.localeCompare(right, 'en')) } : {}),
       filteredNames: [...filtered].sort((left, right) => left.localeCompare(right, 'en')),
     },
   };

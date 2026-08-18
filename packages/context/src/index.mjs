@@ -1,8 +1,10 @@
 export { chunkContent, chunkJson, chunkMarkdown, chunkText, excerpt, normalizeText } from './chunks.mjs';
-export { ContextStore, contextDbPath } from './store.mjs';
+export { ContextStore, contextDbPath, healContextDatabase } from './store.mjs';
 export { executeBatch, executeCommand, executeFile } from './execute.mjs';
 export { fetchAndIndex, indexFile } from './content.mjs';
 export { composeEnvironment } from './environment-policy.mjs';
+export { INGESTION_JOB_LIMITS, IngestionJobRunner } from './jobs.mjs';
+export { resolveSessionId, validateSessionId } from './session.mjs';
 export { DIRECTORY_INGESTION_LIMITS, readManifestFile, verifyManifestFile, walkDirectoryManifest } from './directory-ingestion.mjs';
 export { normalizeHtml } from './html-normalize.mjs';
 export { runDoctor } from './doctor.mjs';

@@ -74,9 +74,18 @@ export function indexFile(store, input, sessionId, signal) {
   return indexRegularFile(store, input, sessionId, path, stat);
 }
 
-export async function fetchAndIndex(store, input, sessionId, signal) {
+export async function fetchAndIndex(store, input, sessionId, signal, capabilities = {}) {
   const maxBytes = Math.min(input.maxBytes ?? MAX_FETCH_BYTES, MAX_FETCH_BYTES);
-  const fetched = await safeFetch(input.url, {
+  let fetched;
+  if (input.browser === true) {
+    if (typeof capabilities.renderer !== 'function') throw new Error('Browser rendering capability is unavailable; strict fetch remains the default.');
+    const url = new URL(input.url);
+    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Only HTTP(S) browser rendering is supported.');
+    const rendered = await capabilities.renderer({ url: url.href, signal, timeoutMs: input.timeoutMs ?? 10_000, maxBytes });
+    const body = Buffer.isBuffer(rendered?.body) ? rendered.body : Buffer.from(String(rendered?.text ?? ''), 'utf8');
+    if (body.length > maxBytes) throw new Error(`Rendered content exceeds maximum size: ${body.length} bytes`);
+    fetched = { body, text: body.toString('utf8'), url: String(rendered?.url ?? url.href), originalUrl: url.href, redirects: [], contentType: String(rendered?.contentType ?? 'text/html; charset=utf-8'), contentEncoding: 'identity', status: Number(rendered?.status ?? 200), bytes: body.length, wireLength: body.length };
+  } else fetched = await safeFetch(input.url, {
     signal,
     timeoutMs: input.timeoutMs,
     maxBytes,
@@ -112,6 +121,7 @@ export async function fetchAndIndex(store, input, sessionId, signal) {
         htmlTruncated: normalized.truncated,
         htmlFallbackReason: normalized.fallbackReason,
       } : {}),
+      acquisitionMode: input.browser === true ? 'browser-renderer' : 'strict-fetch',
     },
     provenance: {
       sourceType: 'fetched-url',

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { Transform } from 'node:stream';
+import { finished } from 'node:stream/promises';
 import { resolveWithinRoot } from './paths.mjs';
 import { composeEnvironment } from './environment-policy.mjs';
 
@@ -50,6 +51,8 @@ export async function executeCommand(input, options = {}) {
   const environment = composeEnvironment({
     inherited: options.env ?? process.env,
     overrides: input.env ?? {},
+    mode: input.environmentMode ?? 'inherit-filtered-v1',
+    allow: input.allowedEnv ?? [],
   });
 
   try {
@@ -80,14 +83,22 @@ export async function executeCommand(input, options = {}) {
       const timer = setTimeout(() => { timedOut = true; killProcess(child); }, timeoutMs);
       const onAbort = () => { aborted = true; killProcess(child); };
       options.signal?.addEventListener('abort', onAbort, { once: true });
-      child.once('error', (error) => { clearTimeout(timer); reject(error); });
+      let spawnError = false;
+      child.once('error', (error) => {
+        spawnError = true;
+        clearTimeout(timer);
+        options.signal?.removeEventListener('abort', onAbort);
+        stdout.end(() => stderr.end(() => reject(error)));
+      });
       child.once('close', (code, signal) => {
+        if (spawnError) return;
         clearTimeout(timer);
         options.signal?.removeEventListener('abort', onAbort);
         stdout.end(() => stderr.end(() => resolvePromise({ code, signal })));
       });
     });
 
+    await Promise.all([finished(stdout), finished(stderr)]);
     const outputLimit = Math.min(MAX_DIRECT_RETURN, Math.max(1, input.outputLimit ?? DIRECT_LIMIT));
     const directLimit = Math.min(HARD_LIMIT, Math.max(1, input.directLimit ?? DIRECT_LIMIT));
     const stdoutResult = readBounded(stdoutPath, outputLimit);
@@ -129,13 +140,13 @@ export async function executeCommand(input, options = {}) {
       ...(mode === 'discard' ? {} : shouldIndex ? { indexed } : { stdout: stdoutResult.text, stderr: stderrResult.text, truncated: stdoutResult.truncated || stderrResult.truncated }),
     };
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 10 });
   }
 }
 
 export async function executeFile(input, options = {}) {
   const path = resolveWithinRoot(options.root || process.cwd(), input.path);
-  const selectorEnvironment = composeEnvironment({ inherited: options.env ?? process.env, overrides: input.env ?? {} }).env;
+  const selectorEnvironment = composeEnvironment({ inherited: options.env ?? process.env, overrides: input.env ?? {}, mode: input.environmentMode ?? 'inherit-filtered-v1', allow: input.allowedEnv ?? [] }).env;
   const dir = mkdtempSync(join(tmpdir(), 'dotdotgod-context-file-'));
   try {
     let executable;
@@ -158,7 +169,7 @@ export async function executeFile(input, options = {}) {
     }
     return await executeCommand({ ...input, executable, args, command: undefined, shell: false, cwd: input.cwd ?? options.root }, options);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 10 });
   }
 }
 

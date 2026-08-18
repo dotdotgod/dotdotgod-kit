@@ -65,6 +65,10 @@ Verify Pi registers native tools and does not start a dotdotgod MCP child proces
 
 Safe-fetch integration tests must use controlled fixtures with an explicit private-network test override. Production defaults must continue to reject private and reserved destinations.
 
+## Phase 3 Regression Coverage
+
+Automated coverage verifies typo retrieval with SQL scope filtering, migration ledger idempotence, restart job recovery, explicit backup-before-heal, durable job completion, allowlist name-only reporting, opaque session validation, absent-by-default renderer behavior, rendered byte limits, and untrusted provenance. MCP and Pi registration tests verify tool/schema parity.
+
 ## Commands
 
 ```bash

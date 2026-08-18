@@ -46,7 +46,7 @@ Indexed content is stored in the project-local SQLite FTS5 database:
 .dotdotgod/context/context.sqlite
 ```
 
-The store is local ignored state, not maintained project truth. Sources can use transient, session, or project scope and carry optional expiry metadata. Writable connections use WAL and a 1-second busy timeout. Source replacement, expiry, and purge update source and FTS rows transactionally. Existing compatible schemas reopen without migration; incompatible schemas fail before automatic repair. Search applies scope, session, and source predicates before candidate fusion, then:
+The store is local ignored state, not maintained project truth. Sources can use transient, session, or project scope and carry optional expiry metadata. Writable connections use WAL and a 1-second busy timeout. Source replacement, expiry, and purge update source and FTS rows transactionally. Recognized older schemas migrate transactionally through a version ledger; unknown, newer, incomplete, or corrupt schemas fail closed before explicit healing. Search applies scope, session, and source predicates before candidate fusion, then:
 
 1. retrieves bounded Porter-tokenized FTS5 candidates;
 2. retrieves bounded label/path candidates;
@@ -125,6 +125,12 @@ Doctor does not create the database, execute commands, contact npm or other netw
 The MCP server also exposes bounded project load, graph impact, and initializer services. Project initialization defaults to dry-run and requires both `dryRun: false` and `confirmWrite: true` before writing.
 
 Claude Code and Codex adapter hooks may tell the model to call these MCP tools and retry a denied operation. Hooks do not transform an ordinary host shell call into an MCP call. Pi retains its native project-memory lifecycle and calls the shared runtime directly.
+
+## Phase 3 Capabilities
+
+Search includes a bounded typo-tolerant trigram lane while Porter FTS remains primary. Databases use transactional version-ledger migrations; explicit healing backs up first and accepts only recognized profiles. Opaque session IDs can be resumed without a history-listing API. Durable background ingestion has bounded queue, status, cancellation, and restart recovery.
+
+Execution keeps filtered inheritance by default and offers opt-in `allowlist-v1` with explicit names and names-only reporting. Strict fetch remains default. Browser rendering is available only through an injected renderer plus `browser: true`; this package bundles no browser, keeps rendered content `external-untrusted`, enforces limits/abort, and makes no sandbox claim.
 
 ## Learn More
 
