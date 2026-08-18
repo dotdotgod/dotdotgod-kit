@@ -89,7 +89,9 @@ test('allowlist environment mode is opt-in and reports names only', () => {
 });
 
 test('session IDs are explicit opaque validated values', () => {
-  assert.equal(validateSessionId('resume_2026-01'), 'resume_2026-01'); assert.throws(() => validateSessionId('../bad'), /sessionId/);
+  assert.equal(validateSessionId('resume_2026-01~retry'), 'resume_2026-01~retry');
+  assert.throws(() => validateSessionId('resume:2026'), /sessionId/);
+  assert.throws(() => validateSessionId('../bad'), /sessionId/);
 });
 
 test('browser renderer is absent by default and injected capability stays bounded and untrusted', async () => {
