@@ -799,7 +799,7 @@ describe('CLI docs helpers', () => {
     assert.match(codexHooks, /up to 20 unique paths/);
     assert.match(claudeHooks, /UserPromptSubmit` does not support matchers/);
     assert.match(claudeHooks, /submitted `prompt` field/);
-    assert.match(claudeHooks, /does not ship a default hook config/);
+    assert.match(claudeHooks, /ships `hooks\/hooks\.json` with bounded load-required and impact-pending routing/);
     assert.match(claudeHooks, /\/dd:impact/);
     assert.match(claudeHooks, /dotdotgod graph impact \. --changed <path-a> --changed <path-b> --compact/);
     assert.match(claudeHooks, /one bounded multi-seed graph impact command/);

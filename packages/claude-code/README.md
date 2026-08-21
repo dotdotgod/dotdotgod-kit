@@ -4,11 +4,19 @@
 
 Claude Code adapter for dotdotgod's docs-first project-memory workflow.
 
-Use this package when you want Claude Code to initialize shared project docs, load bounded repository context, plan from durable docs before implementation, and review changed files with graph-impact evidence before handoff.
+Use this package when you want Claude Code to work from a shared project brain: maintained agent rules and docs, durable plans, focused context loading, and changed-file evidence before handoff.
+
+## What Changes
+
+- **Claude starts from shared project knowledge.** `AGENTS.md` and the documentation map remain reusable across agents while Claude-specific commands provide a native entry point.
+- **Plans become durable project artifacts.** `/dd:plan` records task intent under `docs/plan/` so it survives compaction, handoff, and new sessions.
+- **Project evidence arrives when needed.** `/dd:load` and the local MCP runtime provide bounded documentation, command output, files, and fetched text.
+- **Changed files retain their review context.** Packaged hooks track successful edits and require matching graph impact before broad verification or handoff commands.
+- **The workflow stays inspectable.** A denied operation names the required MCP action, and Claude retries the original operation after the check succeeds.
 
 ## Start Here
 
-This package is a Claude Code plugin: a plugin manifest plus `/dd:*` commands and skills. Installing it from npm alone does not register the commands — Claude Code loads it through plugin registration or a local plugin directory.
+This package is a Claude Code plugin containing a manifest, `/dd:*` commands, skills, MCP integration, and hooks. Claude Code registers these resources when it loads the package through plugin registration or a local plugin directory.
 
 Register the dotdotgod plugin marketplace inside Claude Code, then install the plugin:
 
@@ -70,7 +78,7 @@ The plugin starts a local stdio MCP server. It exposes `execute`, `batch_execute
 
 Dotdotgod execution tools share a 10 MiB stdout/stderr capture ceiling per command. Crossing that ceiling terminates the child process and reports `captureLimitExceeded`; direct stdout and stderr excerpts are each capped at 1 MiB. Their child environments preserve compatibility-oriented inheritance after filtering runtime injection variables; this reports filtered names without values but does not isolate ordinary inherited credentials. Large output is indexed before retrieval in the ignored project-local `.dotdotgod/context/context.sqlite` FTS5 store, and searches return bounded excerpts. The store uses WAL, a bounded busy timeout, and transactional source replacement, expiry, and purge. Structural Markdown/JSON chunks, bounded typo-tolerant trigram candidates, reciprocal-rank fusion, and title/path/proximity signals improve retrieval while provenance and `instructionAuthority: "none"` identify retrieved text as non-authoritative data.
 
-The MCP `index` tool accepts project-contained files or bounded directories with deterministic traversal, configurable resource limits, explicit extension/path exclusions, and symlinks skipped by default; it does not apply `.gitignore` semantics automatically. These capture and retrieval rules apply only when Claude calls the dotdotgod MCP tools. The plugin does not transparently intercept or rewrite Claude Code's built-in Bash tool. URL indexing performs application-level HTTP(S), DNS/address, connected-peer, redirect, and byte-limit validation. Accepted HTML is normalized as bounded untrusted text without browser rendering, JavaScript, subresource loading, or link following by default. The server bundles no browser renderer, so browser opt-in fails unless a host injects that capability. These controls are not a network sandbox or complete prompt-injection prevention. See the [`@dotdotgod/context` npm package](https://www.npmjs.com/package/@dotdotgod/context), its [GitHub README](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/context), and the [maintained execution contract](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md) for the complete runtime behavior.
+The MCP `index` tool accepts project-contained files or bounded directories with deterministic traversal, configurable resource limits, explicit extension/path exclusions, and symlinks skipped by default. These capture and retrieval rules apply when Claude calls the dotdotgod MCP tools; Claude Code's built-in Bash tool keeps its native behavior. URL indexing performs application-level HTTP(S), DNS/address, connected-peer, redirect, and byte-limit validation. Accepted HTML is normalized as bounded untrusted text without browser rendering, JavaScript, subresource loading, or link following by default. The server bundles no browser renderer, so browser opt-in fails unless a host injects that capability. These controls are not a network sandbox or complete prompt-injection prevention. See the [`@dotdotgod/context` npm package](https://www.npmjs.com/package/@dotdotgod/context), its [GitHub README](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/context), and the [maintained execution contract](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md) for the complete runtime behavior.
 
 Bundled hooks mark project load as required at session start, record successful source/config edits, and deny broad verification or handoff commands until matching graph impact succeeds. Denial asks Claude to call the required MCP tool and retry; hooks do not silently change one tool type into another. See [`hooks/README.md`](https://github.com/dotdotgod/dotdotgod-kit/blob/main/packages/claude-code/hooks/README.md) for lifecycle and trust boundaries.
 
@@ -85,6 +93,6 @@ pnpm --filter @dotdotgod/claude-code run pack:dry-run
 
 See the [root README](https://github.com/dotdotgod/dotdotgod-kit#readme), [Context curation](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/concept/CONTEXT_CURATION.md), [Context mechanics](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/concept/CONTEXT_MECHANICS.md), [Memory area config](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/MEMORY_AREA_CONFIG.md), and [Traceability config](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/TRACEABILITY_CONFIG.md).
 
-## Compared with Graphify-Style Memory
+## Workflow Model
 
-This adapter is guidance-oriented. It asks Claude Code to prefer a depth-bounded documentation map with optional focused local query, avoid broad archive scans, and follow README indexes before reading raw files. The strength is structured retrieval from maintained project docs, not a giant graph report.
+The adapter connects Claude Code's commands, skills, MCP tools, and hooks to the same maintained project memory used by other agents. README indexes route focused reads, durable plans preserve intent, and graph impact supplies related evidence for review.

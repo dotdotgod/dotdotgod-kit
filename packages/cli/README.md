@@ -6,7 +6,15 @@ Command-line tools for dotdotgod project memory.
 
 Use this package when you want to initialize a docs-first project scaffold, validate project-memory docs, build a local graph/cache, search shared documentation locally, expand project references, or ask what should be checked after a file changes.
 
-These commands support dotdotgod's project-memory loop with initialization, documentation query, validation, and impact analysis for shells, scripts, CI, and agents without a dedicated adapter.
+These commands support dotdotgod's project-memory loop with initialization, documentation query, validation, and impact analysis for shells, scripts, CI, and agents that use the CLI directly.
+
+## What Changes
+
+- **Repository knowledge becomes navigable memory.** Local multilingual query finds focused documentation evidence and keeps the cache under `.dotdotgod/`.
+- **Project references become actionable context.** `resolve` and `expand` connect explicit `[[...]]` references and high-signal natural-language requests to maintained files; `--with-impact` adds related evidence.
+- **Changes carry their verification neighborhood.** Multi-file graph impact combines structural, traceability, package, and optional semantic evidence while preserving a per-file explanation.
+- **Large repositories reveal natural domains.** `graph communities` groups the maintained project graph to help teams inspect documentation and source boundaries.
+- **Different knowledge shapes can share one workflow.** Editable config templates initialize software or research-oriented memory policies.
 
 ## Start Here
 
@@ -37,7 +45,7 @@ dotdotgod graph impact . --changed <path> --compact
 - `validate` checks the dotdotgod docs/project-memory structure, local links, traceability blocks, config validity, and optional index freshness.
 - `index` builds `.dotdotgod/manifest.json` and compact graph shards from maintained project files.
 - `query` locally embeds shared Markdown with `Xenova/multilingual-e5-small`, incrementally stores vectors under `.dotdotgod/vectors/`, and returns the best-ranked chunk from each relevant Markdown file.
-- `resolve` and `expand` map explicit or high-signal prompt references to project files.
+- `resolve` and `expand` map explicit or high-signal prompt references to project files and can include related impact evidence.
 - `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five. Non-seed scores use fixed weighted PPR connection `80` plus memory policy `20`. A bounded request-local multilingual vector overlay participates in PPR when the query cache is available; vector preparation failures degrade to structural-only results.
 - `traceability links` checks or repairs generated Markdown traceability-link sections.
 
@@ -58,6 +66,7 @@ dotdotgod query . "plan mode tools"
 dotdotgod resolve . PLAN_MODE
 dotdotgod expand . "Update [[PLAN_MODE]] and [[HOOKS]]"
 dotdotgod expand . "PLAN_MODE 수정하자" --fuzzy
+dotdotgod expand . "Update [[PLAN_MODE]]" --with-impact
 dotdotgod traceability links . --check
 dotdotgod traceability links . --write
 dotdotgod graph impact . --changed <path>

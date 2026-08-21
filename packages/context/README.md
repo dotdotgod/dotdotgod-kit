@@ -4,7 +4,27 @@
 
 Local-first execution, ingestion, and retrieval runtime for dotdotgod adapters.
 
-The package exposes a local stdio MCP server and reusable core modules. Claude Code and Codex start the server through their adapter packages. Pi calls the same core through native extension tools and does not start an MCP child. Only dotdotgod execution tools use the capture and indexing behavior described here; the adapters do not transparently intercept ordinary host Bash or shell tools.
+Use this package to keep large command output, project files, and fetched text available as bounded local evidence across agent turns. Small results return directly; larger results become searchable excerpts with source provenance. Durable ingestion jobs and opaque session resume support work that outlives one tool call.
+
+Claude Code and Codex start the bundled stdio MCP server through their adapter packages. Pi calls the same core through native extension tools. Direct integrators can use the server, hooks, and typed core exports on Node.js 22.5 or newer.
+
+```bash
+npm install @dotdotgod/context
+```
+
+```bash
+dotdotgod-context
+```
+
+The runtime policies apply to dotdotgod execution and retrieval tools. Each host's built-in shell keeps its native behavior.
+
+## What Changes
+
+- **Large output remains useful.** The runtime indexes oversized results locally and returns only the excerpts relevant to the next question.
+- **Evidence keeps its identity.** Project files, command output, and fetched resources carry distinct provenance and trust metadata.
+- **Longer processing becomes resumable.** Durable ingestion jobs expose bounded queue, status, cancellation, and restart recovery.
+- **Retrieved text stays evidence.** Search marks indexed content with `instructionAuthority: "none"` so callers can treat it as data rather than project instructions.
+- **One core supports different agent hosts.** MCP adapters and Pi-native tools share the same execution, storage, retrieval, fetch, and diagnostic behavior.
 
 ## Tool Surface
 
@@ -55,7 +75,7 @@ The store is local ignored state, not maintained project truth. Sources can use 
 4. reranks deterministically using title, path, and term-proximity signals;
 5. returns bounded excerpts with ranking and provenance evidence.
 
-This is bounded indexing and retrieval, not LLM summarization. Search does not add execution output to the maintained documentation graph automatically.
+This bounded retrieval keeps indexed runtime material separate from maintained project truth. Search returns source excerpts and does not add execution output to the maintained documentation graph.
 
 ## Structural Ingestion
 
@@ -104,7 +124,7 @@ The application-level fetch policy:
 - supports identity, gzip, deflate, and Brotli encodings and rejects unsupported encodings;
 - accepts bounded text-oriented MIME types and fails closed for unsupported types or HTTP statuses.
 
-Accepted HTML is normalized by a bounded `html-v1` extractor. It validates supported UTF-8/US-ASCII declarations, removes scripts, styles, noscript and hidden/non-content elements, and preserves basic titles, headings, paragraphs, lists, tables, code, and link text. Link metadata is separately bounded. The extractor does not invoke a browser, execute JavaScript, load subresources, follow links, or provide standards-complete HTML rendering. HTML remains `external-untrusted`; normalization is not rendering sanitization or a prompt-injection guarantee. These controls provide application-level URL and address validation, not a network namespace or process sandbox.
+Accepted HTML is normalized by a bounded `html-v1` extractor. It validates supported UTF-8/US-ASCII declarations, removes scripts, styles, noscript and hidden/non-content elements, and preserves basic titles, headings, paragraphs, lists, tables, code, and link text. Link metadata is separately bounded. The extractor does not invoke a browser, execute JavaScript, load subresources, follow links, or provide standards-complete HTML rendering. HTML remains `external-untrusted`; normalization is not rendering sanitization or a prompt-injection guarantee. These controls provide application-level URL and address validation. They offer defense in depth rather than a network namespace or process sandbox.
 
 ## Diagnostics And Deletion
 
@@ -127,7 +147,7 @@ The MCP server also exposes bounded project load, graph impact, and initializer 
 
 Claude Code and Codex adapter hooks may tell the model to call these MCP tools and retry a denied operation. Hooks do not transform an ordinary host shell call into an MCP call. Pi retains its native project-memory lifecycle and calls the shared runtime directly.
 
-## Phase 3 Capabilities
+## Advanced Runtime Capabilities
 
 Search includes a bounded typo-tolerant trigram lane while Porter FTS remains primary. Databases use transactional version-ledger migrations; explicit healing backs up first and accepts only recognized profiles. Opaque session IDs can be resumed without a history-listing API. Durable background ingestion has bounded queue, status, cancellation, and restart recovery.
 

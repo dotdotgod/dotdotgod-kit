@@ -2,7 +2,7 @@
 
 > **Change a file, know what else must be checked.**
 
-Dotdotgod gives AI coding agents a maintained project-memory map, bounded context loading, durable task plans, and changed-file impact review. It helps agents find the right evidence without loading the whole repository or reconstructing intent from stale chat history.
+Dotdotgod gives AI coding agents a maintained project-memory map, bounded context loading, durable task plans, and changed-file impact review. Agents begin with the smallest useful set of project evidence and expand context through maintained documentation routes.
 
 Use it to carry project knowledge across sessions while keeping plans, verification, and historical context explicit.
 
@@ -69,25 +69,19 @@ Dotdotgod keeps a small, high-signal project-memory surface so an agent can answ
 
 The structure provides:
 
-- **Low-noise loading:** agents follow the documentation map and read targeted bodies instead of broad file lists.
+- **Focused loading:** agents begin with a bounded documentation map and expand context through relevant indexes and evidence.
 - **Durable intent:** active plans and archived outcomes survive compaction, handoff, and new sessions.
-- **Traceable behavior:** ordered traceability-key definitions connect behavior specs to configured path or command targets with explicit graph relations and weights.
-- **Bounded history:** `docs/archive/README.md` remains the history map; archive bodies are read only when targeted.
-- **Local processing:** graph and query caches stay under `.dotdotgod/`; agent-facing commands return bounded summaries.
+- **Traceable behavior:** behavior specs connect to implementation, verification, and design evidence through configured graph relations.
+- **Routed history:** `docs/archive/README.md` guides agents to historical records relevant to the current task.
+- **Local processing:** graph, query, and execution results stay locally available while agent-facing commands return bounded summaries.
 
 ## Local Context Runtime
 
-The adapter packages share a local execution and retrieval runtime. Small results can be returned directly; larger command output is indexed in the project-local SQLite FTS5 store and retrieved as bounded excerpts. Command stdout and stderr share a 10 MiB capture ceiling, and direct responses are capped at 1 MiB per stream. Dotdotgod execution tools inherit a compatibility-oriented environment after filtering runtime injection variables; ordinary inherited credentials are not isolated. Markdown and JSON retain structural chunk metadata, while bounded Porter, label/path, and typo-tolerant trigram candidates are combined with reciprocal-rank fusion and title/path/proximity reranking.
+The adapters share a local runtime that keeps large command output, files, and fetched text useful without filling the model context. Small results return directly; larger results become locally searchable, bounded excerpts with provenance and trust metadata. Durable ingestion jobs and opaque session resume let longer processing survive individual turns.
 
-The `index` tool accepts project-contained files or bounded directories with explicit extension and path exclusions, deterministic traversal, symlinks skipped by default, and depth, entry, file-count, per-file, and aggregate-byte limits. It does not apply `.gitignore` semantics automatically. Fetched HTTP(S) content passes application-level DNS, address, peer, and redirect validation with separate wire and decoded limits; bounded HTML is normalized without browser rendering, JavaScript, subresource loading, or link following by default. An optional injected browser renderer is available only through explicit opt-in and is not bundled or described as a sandbox. Indexed sources carry operation-owned provenance and trust metadata, and retrieved text is rendered as non-authoritative data with `instructionAuthority: "none"`; these controls are defense in depth, not network isolation or a prompt-injection guarantee.
+Pi calls this core through native `dotdotgod_*` tools. Claude Code and Codex use the local stdio MCP server. These policies apply to dotdotgod execution and retrieval tools, while each host's built-in shell keeps its native behavior. The default compatibility environment preserves ordinary inherited credentials; an opt-in allowlist mode provides a stricter child environment.
 
-The local SQLite store uses WAL, a bounded busy timeout, and transactional source replacement, expiry, and purge. Recognized databases use versioned transactional migrations, while unknown or corrupt schemas fail closed; explicit healing backs up before a conservative rebuild. Opaque session resume, durable bounded ingestion jobs, and opt-in environment allowlisting are exposed consistently through MCP and Pi. Claude Code and Codex expose this behavior through dotdotgod's local MCP tools, while Pi calls the same core through native `dotdotgod_*` tools. It applies only when those execution, indexing, search, or fetch tools are used—ordinary host shell tools are not intercepted automatically. See the [`@dotdotgod/context` package](packages/context/README.md) and the maintained [context execution contract](docs/spec/CONTEXT_EXECUTION.md) for details.
-
-### Beyond Software Projects
-
-Although dotdotgod was designed for software projects, its memory and traceability model is not limited to code. I also use it personally to organize a real-world property dispute: separating confirmed facts from hypotheses, maintaining a timeline and evidence index, and tracing external documents back to their factual and legal grounds.
-
-This makes dotdotgod useful as structured memory for preparing complaints, formal notices, and potential legal proceedings—not as legal advice, but as a way to keep complex evidence and reasoning organized.
+The runtime applies bounded capture, storage, traversal, and HTTP(S) fetch policies. These controls provide defense in depth rather than a network sandbox or prompt-injection guarantee. See the [`@dotdotgod/context` npm landing page](packages/context/README.md), [behavior contract](docs/spec/CONTEXT_EXECUTION.md), [architecture](docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md), and [verification strategy](docs/test/CONTEXT_EXECUTION.md).
 
 ## Changed-File Impact Example
 
@@ -110,7 +104,7 @@ files:
 
 Non-seed scores use a fixed weighted Personalized PageRank connection component capped at `80` plus memory policy capped at `20`. Direct, curated, test, type, and semantic evidence add no separate score or ordering bonus; relation weights participate through PPR and reasons remain explanation evidence. When the local query cache is available, impact analysis can add a bounded request-local multilingual `vector_similarity` overlay without changing the indexed graph or persisting changed-file vectors. Vector failures degrade to structural-only results.
 
-Each result includes ranking reasons so agents can inspect relevant evidence instead of scanning broadly. Exact scores vary with the project graph and memory policy. Keep results useful through focused README indexes, current traceability blocks, meaningful package metadata, and single-responsibility documents.
+Each result includes ranking reasons so agents can inspect the smallest useful set of related evidence. Exact scores vary with the project graph and memory policy. Keep results useful through focused README indexes, current traceability blocks, meaningful package metadata, and single-responsibility documents.
 
 ## Core Concepts
 

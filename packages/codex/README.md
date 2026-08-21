@@ -4,13 +4,21 @@
 
 Codex adapter for dotdotgod's docs-first project-memory workflow.
 
-This package ships workflow skills, a local stdio MCP server, and reviewed lifecycle hooks through its Codex plugin manifest (`.codex-plugin/plugin.json`). Use it when you want Codex to initialize shared project docs, load bounded repository context, process large command output locally, plan from durable docs, and enforce graph-impact review before broad handoff operations.
+This package brings dotdotgod's shared project memory to Codex through workflow skills, a local stdio MCP server, and trust-reviewed lifecycle hooks declared by its plugin manifest (`.codex-plugin/plugin.json`).
+
+## What Changes
+
+- **Codex shares the project's durable knowledge.** `AGENTS.md`, maintained docs, active plans, and archived outcomes stay portable across agent hosts.
+- **Skills provide a native workflow vocabulary.** `dd:init`, `dd:load`, `dd:plan`, and `dd:impact` map normal chat requests to reusable project-memory workflows.
+- **Large working evidence remains local and retrievable.** The MCP runtime processes command output, files, and fetched text as bounded excerpts with provenance.
+- **Plans and impact checks survive individual turns.** Durable plan files preserve intent, while trusted hooks track edits and require matching impact evidence before broad handoff operations.
+- **Activation follows Codex trust boundaries.** Skills remain available independently; packaged hooks become active after the applicable plugin enablement and review flow.
 
 ## Start Here
 
 Make the bundled skills visible to Codex: register the package through your Codex environment's plugin mechanism if it supports plugin manifests, or copy the `skills/` directories into a trusted Codex skills location.
 
-Codex environments may not expose the same slash-command model as Pi or Claude Code. When slash commands are unavailable, use dotdotgod trigger phrases in normal chat:
+Codex uses dotdotgod trigger phrases in normal chat when its environment does not provide a matching slash-command surface:
 
 ```text
 dd:init
@@ -78,7 +86,7 @@ Projects can customize memory roles with `memory.areas`, select traceability-enf
 
 The local stdio MCP server exposes generic execution/retrieval tools plus `dotdotgod_project_load`, `dotdotgod_project_impact`, and `dotdotgod_project_initialize`. These dotdotgod execution tools share a 10 MiB stdout/stderr capture ceiling per command; exceeding it terminates the process and reports `captureLimitExceeded`. Direct stdout and stderr excerpts are each capped at 1 MiB. Child environments preserve compatibility-oriented inheritance after filtering runtime injection variables; filtered names are reported without values, but ordinary inherited credentials remain ambient. Larger output is indexed in the ignored project-local `.dotdotgod/context/` SQLite FTS5 store and retrieved as bounded excerpts. The store uses WAL, a bounded busy timeout, and transactional source replacement, expiry, and purge.
 
-The MCP `index` tool accepts project-contained files or bounded directories with deterministic traversal, configurable depth/entry/file/byte limits, explicit extension/path exclusions, and symlinks skipped by default. It does not interpret `.gitignore` automatically. Indexed Markdown and JSON use structure-aware chunks. Search combines bounded Porter and label/path candidates with reciprocal-rank fusion plus deterministic title, path, and proximity signals. Results include operation-owned provenance and trust metadata and mark retrieved text as non-authoritative data with `instructionAuthority: "none"`; this is defense in depth, not a prompt-injection guarantee. URL fetching accepts credential-free HTTP(S), validates DNS answers, connected addresses, and every redirect, and applies separate wire and decoded-body limits. Accepted HTML is normalized as bounded untrusted text without browser rendering, JavaScript, subresource loading, or link following by default. The server bundles no browser renderer, so browser opt-in fails unless a host injects that capability. These controls are application-level validation, not a network sandbox or complete prompt-injection prevention.
+The MCP `index` tool accepts project-contained files or bounded directories with deterministic traversal, configurable depth/entry/file/byte limits, explicit extension/path exclusions, and symlinks skipped by default. Indexed Markdown and JSON use structure-aware chunks. Search combines bounded Porter and label/path candidates with reciprocal-rank fusion plus deterministic title, path, and proximity signals. Results include operation-owned provenance and trust metadata and mark retrieved text as non-authoritative data with `instructionAuthority: "none"`; this is defense in depth, not a prompt-injection guarantee. URL fetching accepts credential-free HTTP(S), validates DNS answers, connected addresses, and every redirect, and applies separate wire and decoded-body limits. Accepted HTML is normalized as bounded untrusted text without browser rendering, JavaScript, subresource loading, or link following by default. The server bundles no browser renderer, so browser opt-in fails unless a host injects that capability. These controls provide application-level validation and defense in depth rather than a network sandbox or prompt-injection guarantee.
 
 This behavior applies only when Codex calls the `dotdotgod-context` MCP execution, indexing, search, fetch, or diagnostic tools. It does not intercept or rewrite Codex's ordinary built-in shell calls. See the [`@dotdotgod/context` npm package](https://www.npmjs.com/package/@dotdotgod/context), its [GitHub README](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/context#readme), and the [maintained context execution contract](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md) for the complete tool and limit definitions.
 
@@ -95,6 +103,6 @@ pnpm --filter @dotdotgod/codex run pack:dry-run
 
 See the [root README](https://github.com/dotdotgod/dotdotgod-kit#readme), [Context curation](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/concept/CONTEXT_CURATION.md), [Context mechanics](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/concept/CONTEXT_MECHANICS.md), [Memory area config](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/MEMORY_AREA_CONFIG.md), and [Traceability config](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/TRACEABILITY_CONFIG.md).
 
-## Compared with Graphify-Style Memory
+## Workflow Model
 
-This adapter packages reusable workflow skills. It guides Codex to prefer a depth-bounded documentation map with optional focused local query, avoid broad archive scans, and follow README indexes before reading raw files. The strength is structured retrieval from maintained project docs, not a giant graph report.
+The adapter maps shared project memory onto Codex's own extension model. Skills express the workflow, MCP tools provide bounded local evidence, and trust-reviewed hooks connect edits to project loading and impact review.

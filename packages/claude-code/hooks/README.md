@@ -25,7 +25,7 @@ Claude Code currently does not document dedicated plan-mode transition hooks suc
 
 Hook handlers may be `command`, `http`, `mcp_tool`, `prompt`, or `agent`, with event-specific support limits. `SessionStart` and `Setup` support only `command` and `mcp_tool`. For project or plugin scripts, prefer command exec form with `args` so `${CLAUDE_PROJECT_DIR}`, `${CLAUDE_PLUGIN_ROOT}`, and `${CLAUDE_PLUGIN_DATA}` paths are passed without shell quoting. Hooks should not write directly to `/dev/tty`; use JSON `systemMessage` for user-visible messages or Claude Code's `terminalSequence` field for terminal notifications.
 
-Claude Code plugins can package hook config at `hooks/hooks.json` or through the plugin manifest. Dotdotgod intentionally does not ship a default hook config today: `/dd:impact` and the `impact-review` skill provide the Pi-like changed-file review path without adding automatic local command execution. If a future release adds packaged hooks, they should be advisory, fast, and clearly documented as opt-in or safe defaults.
+Claude Code plugins can package hook config at `hooks/hooks.json` or through the plugin manifest. Dotdotgod ships `hooks/hooks.json` with bounded load-required and impact-pending routing. The hooks run local commands with user permissions, so users should review the packaged resources through Claude Code's plugin trust flow. `/dd:impact` and the `impact-review` skill remain explicit ways to request the same changed-file review workflow.
 
 ## SDLC Guardrail Framing
 

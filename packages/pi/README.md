@@ -6,7 +6,7 @@ Pi adapter for dotdotgod's docs-first project-memory workflow.
 
 Use this package when you want Pi to initialize project memory, load bounded repository context, plan before source edits, run impact-aware checks, and archive completed work for future sessions.
 
-Pi is the fullest dotdotgod experience: it is the only adapter with a Plan Mode that blocks source edits while active, and it can gate commit, push, and publish on pending impact checks. Throughout, the maintained graph stays a compact map for targeted reads, not a giant report to consume in full.
+Pi provides dotdotgod's enforceable workflow: Plan Mode blocks source edits while planning, durable plan files preserve intent, and pending impact checks can gate commit, push, and publish. The maintained graph guides Pi to the smallest useful set of related evidence.
 
 ## Start Here
 
@@ -30,6 +30,15 @@ A good first run:
 4. Review the files the initializer will create or skip.
 5. Let Pi's automatic project-memory assessment load focused context when baseline coverage is missing, or run `/dd:load` for an explicit full load.
 6. Use `/dd:plan <request>` before implementation work.
+
+## What Changes
+
+- **Planning becomes an enforceable working state.** Pi limits active tools and writable paths until a durable plan is ready for the user's execute, stay, or refine decision.
+- **Intent survives the conversation.** Plan steps and `[DONE:n]` progress markers persist under `docs/plan/` and move to the archive after completion.
+- **Prompts connect to project evidence.** Explicit `[[...]]` references and high-signal natural-language references can expand into focused context and related impact evidence.
+- **Project memory follows session lineage.** Automatic assessment reuses completed reachable loads while forks and abandoned sibling work retain correct isolation.
+- **Handoffs include related checks.** Pending impact state keeps broad verification, commits, pushes, and publishing aligned with changed files.
+- **Specialized work can be delegated.** Bundled `pi-subagents` resources support parallel review and controlled implementation handoffs.
 
 ## What It Adds to Pi
 
@@ -91,11 +100,11 @@ The automatic `dotdotgod_project_load` result keeps its complete content for the
 
 Pi registers native `dotdotgod_execute`, `dotdotgod_batch_execute`, `dotdotgod_execute_file`, `dotdotgod_context_index`, `dotdotgod_context_search`, `dotdotgod_fetch_and_index`, session-resume, background-ingestion start/status/cancel, explicit context-heal, stats, doctor, purge, and project-initialize tools over `@dotdotgod/context`. Pi calls the shared library directly and does not start the Claude Code/Codex context MCP server.
 
-Only `dotdotgod_execute`, `dotdotgod_batch_execute`, and `dotdotgod_execute_file` apply the context runtime's command-capture and child-environment policies. They return bounded small output directly and index larger output into the ignored project-local `.dotdotgod/context/context.sqlite` FTS5 database. A command's stdout and stderr share a 10 MiB capture ceiling, and direct excerpts are limited to 1 MiB per stream. Exceeding the shared ceiling terminates the command and reports `captureLimitExceeded`. Child environments preserve compatibility-oriented inheritance after filtering runtime injection variables; policy metadata reports names, not values, and ordinary inherited credentials remain ambient. Pi's ordinary shell tools are not transparently intercepted or redirected through this runtime.
+The context runtime's command-capture and child-environment policies apply to `dotdotgod_execute`, `dotdotgod_batch_execute`, and `dotdotgod_execute_file`. They return bounded small output directly and index larger output into the ignored project-local `.dotdotgod/context/context.sqlite` FTS5 database. A command's stdout and stderr share a 10 MiB capture ceiling, and direct excerpts are limited to 1 MiB per stream. Exceeding the shared ceiling terminates the command and reports `captureLimitExceeded`. Child environments preserve compatibility-oriented inheritance after filtering runtime injection variables; policy metadata reports names, not values, and ordinary inherited credentials remain ambient. Pi's ordinary shell tools are not transparently intercepted or redirected through this runtime.
 
 `dotdotgod_context_index` accepts project-contained files or bounded directories. Directory traversal has deterministic order, configurable depth/entry/file/byte limits, explicit extension and path exclusions, symlinks skipped by default, and partial-result reporting. It does not apply `.gitignore` semantics automatically. Indexed Markdown and JSON use structure-aware chunks. Search applies scope, session, and source filters before combining Porter FTS5 and label/path candidates with reciprocal-rank fusion and deterministic title, path, and proximity signals. Results return bounded excerpts with provenance and trust metadata; retrieved text has `instructionAuthority: "none"` and remains non-authoritative data. This is a defense-in-depth boundary, not a prompt-injection guarantee.
 
-`dotdotgod_fetch_and_index` accepts bounded credential-free HTTP(S) resources and applies application-level DNS, address, peer, redirect, encoding, wire-byte, and decoded-byte validation. Accepted HTML is normalized as bounded untrusted text without browser rendering, JavaScript, subresource loading, or link following by default. The shared API supports an optional injected renderer, but Pi bundles none, so `browser: true` fails explicitly. It is not a network sandbox or prompt-injection prevention boundary. The SQLite store uses WAL, a bounded busy timeout, and transactional source replacement, expiry, and purge. `dotdotgod_context_doctor` performs local read-only checks without network access, migration, or repairs, while purge requires `confirm: true` and exactly one selector: scope, session ID, or source ID.
+`dotdotgod_fetch_and_index` accepts bounded credential-free HTTP(S) resources and applies application-level DNS, address, peer, redirect, encoding, wire-byte, and decoded-byte validation. Accepted HTML is normalized as bounded untrusted text without browser rendering, JavaScript, subresource loading, or link following by default. The shared API supports an optional injected renderer, but Pi bundles none, so `browser: true` fails explicitly. These controls provide defense in depth rather than a network sandbox or prompt-injection guarantee. The SQLite store uses WAL, a bounded busy timeout, and transactional source replacement, expiry, and purge. `dotdotgod_context_doctor` performs local read-only checks without network access, migration, or repairs, while purge requires `confirm: true` and exactly one selector: scope, session ID, or source ID.
 
 For output modes, ingestion limits, retrieval details, and the complete security contract, see [`@dotdotgod/context`](https://www.npmjs.com/package/@dotdotgod/context), its [package README](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/context), and the maintained [Context execution specification](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md).
 
@@ -123,6 +132,6 @@ pnpm --filter @dotdotgod/pi run pack:dry-run
 
 See the [root README](https://github.com/dotdotgod/dotdotgod-kit#readme), [Context curation](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/concept/CONTEXT_CURATION.md), [Context mechanics](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/concept/CONTEXT_MECHANICS.md), [Memory area config](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/MEMORY_AREA_CONFIG.md), and [Traceability config](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/TRACEABILITY_CONFIG.md).
 
-## Compared with Graphify-Style Memory
+## Workflow Model
 
-The Pi adapter focuses on workflow. It initializes the project-memory scaffold, loads a depth-bounded documentation map with optional focused query results, plans before source edits, checks changed-file impact, and archives completed work for future sessions. The graph is a compact map for targeted reads, not a giant report for agents to consume in full.
+The Pi adapter turns project memory into a working loop: initialize shared knowledge, load focused evidence, plan durably, execute tracked steps, review changed-file impact, and archive the completed outcome for future sessions.
