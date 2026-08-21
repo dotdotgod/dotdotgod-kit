@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/cli",
-  "version": "0.2.27",
+  "version": "0.2.28",
   "description": "CLI for dotdotgod validation, local documentation search, and graph indexing.",
   "type": "module",
   "license": "Elastic-2.0",
