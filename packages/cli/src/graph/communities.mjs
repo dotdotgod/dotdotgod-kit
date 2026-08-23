@@ -1,17 +1,15 @@
 import { Graph, leiden } from 'leiden-ts';
+import { resolveMemoryArea } from '../memory/config.mjs';
 
 const DURABLE_COMMUNITY_NODE_TYPES = new Set(['file', 'memory_area', 'package_resource', 'package', 'script', 'binary']);
 
-function docsArea(path = '') {
-  if (path.startsWith('docs/spec/')) return 'spec';
-  if (path.startsWith('docs/test/')) return 'test';
-  if (path.startsWith('docs/arch/')) return 'architecture';
-  if (path.startsWith('docs/plan/')) return 'active-plan';
-  if (path.startsWith('docs/archive/')) return 'archive';
-  return null;
+function docsArea(path = '', config) {
+  const area = resolveMemoryArea(path, config);
+  const roles = { 'behavior-truth': 'spec', 'verification-knowledge': 'test', 'architecture-rationale': 'architecture', 'active-task-intent': 'active-plan', 'historical-memory-map': 'archive', 'historical-memory-body': 'archive', 'project-documentation': 'docs' };
+  return roles[area?.role] ?? null;
 }
 
-function communityKeyForNode(node) {
+function communityKeyForNode(node, config) {
   if (node.type === 'memory_area') return `memory-${node.area}`;
   const path = node.path ?? node.id?.replace(/^file:/, '').replace(/^test:/, '') ?? '';
   if (path.startsWith('packages/pi/extensions/plan-mode/')) return 'pi-plan-mode';
@@ -21,7 +19,7 @@ function communityKeyForNode(node) {
   if (path.startsWith('packages/claude-code/')) return 'claude-code-adapter';
   if (path.startsWith('packages/codex/')) return 'codex-adapter';
   if (path.startsWith('packages/shared/')) return 'shared-adapter-resources';
-  const area = docsArea(path);
+  const area = docsArea(path, config);
   if (area) return `docs-${area}`;
   if (node.type === 'package' || node.type === 'script' || node.type === 'binary' || node.type === 'dependency' || node.type === 'package_resource') return 'package-metadata';
   if (node.type === 'command') return `command-${node.name}`;
@@ -47,11 +45,11 @@ export function relationWeight(relation) {
   return 1;
 }
 
-function addCommunityDetails(community, node, itemLimit) {
+function addCommunityDetails(community, node, itemLimit, config) {
   community.nodeCount += 1;
   const path = node.path ?? node.id?.replace(/^file:/, '').replace(/^test:/, '');
   if (node.type === 'file') {
-    const area = docsArea(path);
+    const area = docsArea(path, config);
     community.omitted += addBounded(area ? community.docs : community.files, path, itemLimit);
   } else if (node.type === 'heading' && node.path) community.omitted += addBounded(community.docs, node.path, itemLimit);
   else if (node.type === 'memory_area') community.omitted += addBounded(community.docs, `memory_area:${node.area}`, itemLimit);
@@ -65,14 +63,14 @@ function makeCommunity(id, label = communityLabel(id)) {
   return { id, label, files: [], docs: [], commands: [], events: [], tests: [], packageResources: [], nodeCount: 0, edgeCount: 0, omitted: 0 };
 }
 
-function deterministicCommunities(graph, maxCommunities, itemLimit, fallback = false) {
+function deterministicCommunities(graph, maxCommunities, itemLimit, config, fallback = false) {
   const map = new Map();
   for (const node of graph.nodes) {
-    const id = communityKeyForNode(node);
+    const id = communityKeyForNode(node, config);
     if (!map.has(id)) map.set(id, makeCommunity(id));
-    addCommunityDetails(map.get(id), node, itemLimit);
+    addCommunityDetails(map.get(id), node, itemLimit, config);
   }
-  const nodeToCommunity = new Map(graph.nodes.map((node) => [node.id, communityKeyForNode(node)]));
+  const nodeToCommunity = new Map(graph.nodes.map((node) => [node.id, communityKeyForNode(node, config)]));
   for (const edge of graph.edges) {
     const source = nodeToCommunity.get(edge.source);
     const target = nodeToCommunity.get(edge.target);
@@ -112,18 +110,19 @@ function buildLeidenProjection(graph) {
   return { durable, edges: [...adjacency.entries()].map(([key, weight]) => [...key.split(':').map(Number), weight]) };
 }
 
-function labelForLeidenCommunity(nodes) {
+function labelForLeidenCommunity(nodes, config) {
   const counts = new Map();
-  for (const node of nodes) counts.set(communityKeyForNode(node), (counts.get(communityKeyForNode(node)) ?? 0) + 1);
+  for (const node of nodes) counts.set(communityKeyForNode(node, config), (counts.get(communityKeyForNode(node, config)) ?? 0) + 1);
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? 'community';
 }
 
 export function buildCommunities(index, limits = {}) {
+  const config = index?.memoryConfig;
   const graph = index?.graph ?? { nodes: [], edges: [] };
   const maxCommunities = limits.communities ?? 8;
   const itemLimit = limits.items ?? 8;
   const projection = buildLeidenProjection(graph);
-  if (projection.durable.length < 3 || projection.edges.length === 0) return deterministicCommunities(graph, maxCommunities, itemLimit, true);
+  if (projection.durable.length < 3 || projection.edges.length === 0) return deterministicCommunities(graph, maxCommunities, itemLimit, config, true);
 
   try {
     const result = leiden(Graph.fromEdgeList(projection.durable.length, projection.edges), { seed: 42, resolution: limits.resolution ?? 1.0 });
@@ -133,9 +132,9 @@ export function buildCommunities(index, limits = {}) {
       byCommunity.get(communityId).push(projection.durable[index]);
     });
     const communities = [...byCommunity.entries()].map(([communityId, nodes]) => {
-      const labelKey = labelForLeidenCommunity(nodes);
+      const labelKey = labelForLeidenCommunity(nodes, config);
       const community = makeCommunity(`leiden-${communityId}`, communityLabel(labelKey));
-      for (const node of nodes.sort((a, b) => a.id.localeCompare(b.id))) addCommunityDetails(community, node, itemLimit);
+      for (const node of nodes.sort((a, b) => a.id.localeCompare(b.id))) addCommunityDetails(community, node, itemLimit, config);
       return community;
     });
     const nodeToCommunity = new Map();
@@ -148,6 +147,6 @@ export function buildCommunities(index, limits = {}) {
     const all = communities.sort((a, b) => (b.nodeCount + b.edgeCount) - (a.nodeCount + a.edgeCount) || a.id.localeCompare(b.id));
     return { communities: all.slice(0, maxCommunities), omitted: Math.max(0, all.length - maxCommunities), total: all.length, method: 'leiden', fallback: false, modularity: result.modularity };
   } catch {
-    return deterministicCommunities(graph, maxCommunities, itemLimit, true);
+    return deterministicCommunities(graph, maxCommunities, itemLimit, config, true);
   }
 }

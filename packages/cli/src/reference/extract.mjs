@@ -54,8 +54,12 @@ export function referencePathForNode(node) {
   return '';
 }
 
-export function isArchiveBodyPath(path = '') {
-  return path.startsWith('docs/archive/') && path !== 'docs/archive/README.md';
+export function isArchiveBodyPath(path = '', memoryConfig) {
+  const area = memoryConfig?.areas?.find((candidate) => candidate.id === 'archive-body' || candidate.role === 'historical-memory-body');
+  if (!area) return path.startsWith('docs/archive/') && path !== 'docs/archive/README.md';
+  const normalize = (value) => value.replace(/\/\*\*$/, '');
+  return (area.paths ?? []).some((pattern) => path === normalize(pattern) || path.startsWith(`${normalize(pattern)}/`))
+    && !(area.excludePaths ?? []).some((excluded) => path === excluded);
 }
 
 function aliasEntriesForPath(path = '') {
@@ -112,7 +116,7 @@ export function extractFuzzyReferences(prompt = '', index = null, options = {}) 
     for (const node of graph.nodes ?? []) {
       if (!['file', 'heading'].includes(node.type)) continue;
       const path = referencePathForNode(node);
-      if (options.includeArchive !== true && isArchiveBodyPath(path)) continue;
+      if (options.includeArchive !== true && isArchiveBodyPath(path, options.memoryConfig ?? index?.memoryConfig)) continue;
       for (const entry of referenceCandidateAliases(node)) {
         const alias = String(entry.alias ?? '').replace(/\.md$/i, '').replace(/[_-]+/g, ' ').trim();
         if (!fuzzyPhraseAllowed(alias, lowSignalTerms)) continue;

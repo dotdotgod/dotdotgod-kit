@@ -42,11 +42,11 @@ const BUILT_IN_TEMPLATE_SCAFFOLDS = {
   ],
 };
 
-export function builtInTemplateScaffold(name) {
+export function builtInTemplateScaffold(name, { documentationRoot = 'docs' } = {}) {
   const entries = BUILT_IN_TEMPLATE_SCAFFOLDS[name];
   if (!entries) return null;
   return entries.map(([path, heading, description]) => ({
-    path,
+    path: path.replace(/^docs(?=\/|$)/, documentationRoot),
     type: heading ? 'file' : 'directory',
     ...(heading ? { content: `# ${heading}\n\n${description}` } : {}),
   }));
@@ -122,7 +122,13 @@ function withPolicy(areas, required, definitionsList) {
   return config;
 }
 
-export function builtInTemplateData(name) {
+function rebaseBuiltIn(value, root) {
+  if (Array.isArray(value)) return value.map(item => rebaseBuiltIn(item, root));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, rebaseBuiltIn(item, root)]));
+  return typeof value === 'string' ? value.replace(/^docs(?=\/|$)/, root) : value;
+}
+
+function rawBuiltInTemplateData(name) {
   if (name === 'software') return defaultDotdotgodConfigData();
   if (name === 'research') return withPolicy([
     area('spec', 'Research Specifications', ['docs/spec/**'], 'research-contract', 85),
@@ -162,8 +168,13 @@ export function builtInTemplateData(name) {
   return null;
 }
 
-export function builtInTemplateText(name) {
-  const data = builtInTemplateData(name);
+export function builtInTemplateData(name, { documentationRoot = 'docs' } = {}) {
+  const data = rawBuiltInTemplateData(name);
+  return data ? rebaseBuiltIn(data, documentationRoot) : null;
+}
+
+export function builtInTemplateText(name, options) {
+  const data = builtInTemplateData(name, options);
   return data ? `${JSON.stringify(data, null, 2)}\n` : null;
 }
 

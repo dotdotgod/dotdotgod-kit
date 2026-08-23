@@ -20,7 +20,7 @@ Create a non-destructive dotdotgod baseline with canonical agent instructions, t
 ## Workflow
 
 1. Preserve existing files and unrelated user work.
-2. Run `dotdotgod init <project-root> --template <name>` when available; otherwise run `{{INIT_SCRIPT_COMMAND}} --template <name>`. Existing files must be skipped, not replaced.
+2. Run `dotdotgod init <project-root> [--documentation-root PATH] --template <name>` when available; otherwise run `{{INIT_SCRIPT_COMMAND}} --template <name>`. Existing files must be skipped, not replaced.
 3. The POSIX fallback supports bundled templates only. If a custom template was selected and the CLI is unavailable, stop and explain that custom templates require the CLI; do not silently substitute another template.
 4. Validate the initialized project with `dotdotgod validate <project-root>` when available.
 5. Report created and skipped files, the selected template, validation failures, and unresolved instruction conflicts.

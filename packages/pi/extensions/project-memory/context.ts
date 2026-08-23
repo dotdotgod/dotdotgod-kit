@@ -44,13 +44,17 @@ export interface ProjectMemoryLoadDecision {
 
 export function collectProjectMemoryContextCoverage(contextText: string | undefined): ProjectMemoryContextCoverage {
 	const text = contextText ?? "";
-	const markers = REQUIRED_PROJECT_MEMORY_MARKERS.filter((marker) => text.includes(marker));
+	const markers = REQUIRED_PROJECT_MEMORY_MARKERS.filter((marker) => {
+		if (!marker.startsWith("docs/")) return text.includes(marker);
+		const suffix = marker.slice("docs/".length).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		return new RegExp(`(?:^|[\\s(\\[` + "`" + `])(?:[A-Za-z0-9._-]+/)+${suffix}(?=$|[\\s)\\]` + "`" + `.,])`).test(text);
+	});
 	const areas = [
-		["spec", /docs\/spec\/(?!README\.md)/],
-		["arch", /docs\/arch\/(?!README\.md)/],
-		["test", /docs\/test\/(?!README\.md)/],
-		["plan", /docs\/plan\/(?!README\.md)/],
-		["archive", /docs\/archive\/README\.md/],
+		["spec", /(?:^|\s)(?:[A-Za-z0-9._-]+\/)+spec\/(?!README\.md)/],
+		["arch", /(?:^|\s)(?:[A-Za-z0-9._-]+\/)+arch\/(?!README\.md)/],
+		["test", /(?:^|\s)(?:[A-Za-z0-9._-]+\/)+test\/(?!README\.md)/],
+		["plan", /(?:^|\s)(?:[A-Za-z0-9._-]+\/)+plan\/(?!README\.md)/],
+		["archive", /(?:^|\s)(?:[A-Za-z0-9._-]+\/)+archive\/README\.md/],
 	]
 		.filter(([, pattern]) => (pattern as RegExp).test(text))
 		.map(([area]) => area as string);

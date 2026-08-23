@@ -1,6 +1,6 @@
 import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { PLAN_DIRECTORY, planPathExists } from "../runtime/paths.ts";
+import { PLAN_DIRECTORY, isActivePlanPath, planPathExists } from "../runtime/paths.ts";
 import {
 	getCurrentPlanReadmePath,
 	resolvePlanExecutionTarget,
@@ -58,7 +58,7 @@ export class PlanArtifactController {
 			this.pendingReviewPath ??
 			this.currentPlanPath ??
 			getCurrentPlanReadmePath(
-				this.touchedPlanPaths.find((path) => path.startsWith("docs/plan/")) ?? "",
+				this.touchedPlanPaths.find(isActivePlanPath) ?? "",
 			)
 		);
 	}
@@ -76,9 +76,10 @@ export class PlanArtifactController {
 
 	loadExistingPlanPath(cwd: string, requestOrPath: string): string | undefined {
 		const normalized = requestOrPath.trim().replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "");
-		const directoryMatch = normalized.match(/^docs\/plan\/([a-z0-9]+(?:-[a-z0-9]+)*)\/?$/);
+		const planPrefix = `${PLAN_DIRECTORY}/`;
+		const directoryMatch = normalized.startsWith(planPrefix) ? normalized.slice(planPrefix.length).match(/^([a-z0-9]+(?:-[a-z0-9]+)*)\/?$/) : null;
 		const planPath = directoryMatch?.[1]
-			? `docs/plan/${directoryMatch[1]}/README.md`
+			? `${PLAN_DIRECTORY}/${directoryMatch[1]}/README.md`
 			: getCurrentPlanReadmePath(normalized) ?? normalized;
 		if (!planPath.startsWith(`${PLAN_DIRECTORY}/`) || !planPath.endsWith("/README.md")) return undefined;
 		if (!existsSync(resolve(cwd, planPath))) return undefined;

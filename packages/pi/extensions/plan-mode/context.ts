@@ -4,6 +4,8 @@ export function detectPlanExecutionIntent(text: string): boolean {
 	return /^Execute the plan in docs\/plan\/[a-z0-9]+(?:-[a-z0-9]+)*\/README\.md\b/i.test(normalized);
 }
 
+import { PLAN_DIRECTORY } from "./runtime/paths.ts";
+
 export type PlanModeRequestKind = "advisory" | "explicit_execution";
 
 export interface LatestPlanningRequestSelectionInput {
@@ -65,8 +67,8 @@ export function classifyPlanModeRequest(text: string | undefined): PlanModeReque
 export function buildPlanModeRequestFraming(latestRequest: string | undefined): string {
 	const kind = classifyPlanModeRequest(latestRequest);
 	if (kind === "explicit_execution") {
-		return "Plan Mode request framing: the latest user request appears to explicitly execute an active plan. Resolve the referenced docs/plan/<task-slug>/README.md through the existing Plan Mode execution path before making source/code/config changes.";
+		return `Plan Mode request framing: the latest user request appears to explicitly execute an active plan. Resolve the referenced ${PLAN_DIRECTORY}/<task-slug>/README.md through the existing Plan Mode execution path before making source/code/config changes.`;
 	}
-	return "Plan Mode request framing: treat the latest user request as advisory or planning work. Answer without source/code/config changes. Create or update a docs/plan/<task-slug>/README.md file only when durable implementation steps are needed.";
+	return `Plan Mode request framing: treat the latest user request as advisory or planning work. Answer without source/code/config changes. Create or update a ${PLAN_DIRECTORY}/<task-slug>/README.md file only when durable implementation steps are needed.`;
 }
 

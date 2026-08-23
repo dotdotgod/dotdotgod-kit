@@ -1,3 +1,4 @@
+import { PLAN_DIRECTORY, isActivePlanPath, isArchivePath } from "./runtime/paths.ts";
 export type {
 	PlanExecutionDecision,
 	PlanExecutionHandoff,
@@ -215,9 +216,11 @@ export function buildPlanReviewRefinePrompt(options: PlanRefinementPromptOptions
 
 export function getCurrentPlanReadmePath(path: string): string | undefined {
 	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
-	const match = normalized.match(/^docs\/plan\/([a-z0-9]+(?:-[a-z0-9]+)*)\/(?:README\.md|[A-Z0-9]+(?:_[A-Z0-9]+)*\.md)$/);
+	const prefix = `${PLAN_DIRECTORY}/`;
+	if (!normalized.startsWith(prefix)) return undefined;
+	const match = normalized.slice(prefix.length).match(/^([a-z0-9]+(?:-[a-z0-9]+)*)\/(?:README\.md|[A-Z0-9]+(?:_[A-Z0-9]+)*\.md)$/);
 	if (!match?.[1]) return undefined;
-	return `docs/plan/${match[1]}/README.md`;
+	return `${PLAN_DIRECTORY}/${match[1]}/README.md`;
 }
 
 export function extractPlanSlugMentions(text: string): string[] {
@@ -229,7 +232,8 @@ export function extractPlanSlugMentions(text: string): string[] {
 		slugs.push(slug);
 	};
 
-	for (const match of text.matchAll(/docs\/plan\/([a-z0-9]+(?:-[a-z0-9]+)*)\/(?:README\.md|[A-Z0-9]+(?:_[A-Z0-9]+)*\.md)/g)) {
+	const escapedPlanDirectory = PLAN_DIRECTORY.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	for (const match of text.matchAll(new RegExp(`${escapedPlanDirectory}/([a-z0-9]+(?:-[a-z0-9]+)*)/(?:README\\.md|[A-Z0-9]+(?:_[A-Z0-9]+)*\\.md)`, "g"))) {
 		add(match[1]);
 	}
 	for (const match of text.matchAll(/(?:^|[\s`"'(:])([a-z0-9]+(?:-[a-z0-9]+)+)(?=$|[\s`"'),.;:])/g)) {
@@ -239,14 +243,15 @@ export function extractPlanSlugMentions(text: string): string[] {
 }
 
 function hasStructuredExecutionRequest(request: string): boolean {
-	return /^Execute the plan in docs\/plan\/[a-z0-9]+(?:-[a-z0-9]+)*\/README\.md\b/i.test(request.replace(/\s+/g, " ").trim());
+	const escaped = PLAN_DIRECTORY.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	return new RegExp(`^Execute the plan in ${escaped}/[a-z0-9]+(?:-[a-z0-9]+)*/README\\.md\\b`, "i").test(request.replace(/\s+/g, " ").trim());
 }
 
 export function resolvePlanExecutionTarget(input: PlanExecutionTargetInput): PlanExecutionTargetResolution {
 	const request = input.request ?? "";
 	const explicitCandidates = [
 		...extractPathMentions(request).map((path) => getCurrentPlanReadmePath(path)).filter((path): path is string => Boolean(path)),
-		...extractPlanSlugMentions(request).map((slug) => `docs/plan/${slug}/README.md`),
+		...extractPlanSlugMentions(request).map((slug) => `${PLAN_DIRECTORY}/${slug}/README.md`),
 	];
 	const contextCandidates = [
 		...(input.pendingPlanChoicePath ? [input.pendingPlanChoicePath] : []),
@@ -311,7 +316,7 @@ export function extractPathMentions(text: string): string[] {
 function isLikelyImpactTarget(path: string): boolean {
 	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
 	if (!normalized || normalized.startsWith(".") || normalized.includes("..")) return false;
-	if (normalized.startsWith("docs/plan/") || normalized.startsWith("docs/archive/")) return false;
+	if (isActivePlanPath(normalized) || isArchivePath(normalized)) return false;
 	if (normalized.startsWith(".dotdotgod/") || normalized.startsWith("node_modules/") || normalized.startsWith("dist/") || normalized.startsWith("build/") || normalized.startsWith("coverage/")) return false;
 	return /[.][A-Za-z0-9]+$/.test(normalized);
 }

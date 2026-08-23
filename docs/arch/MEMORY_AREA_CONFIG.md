@@ -103,3 +103,7 @@ Possible later additions:
 - a load policy enum such as `eager`, `indexed`, `targeted`, or `excluded`
 - per-command memory profiles
 - explicit archive-body opt-in command flags
+
+## Root Resolution
+
+The CLI config resolver is the canonical boundary for `documentation.root`. It validates and normalizes the root, derives default areas and policies from it, then overlays explicitly configured policy properties without rewriting their paths. Runtime consumers use the resolved root or resolved memory-area metadata rather than inferring ownership from a literal `docs/` prefix.

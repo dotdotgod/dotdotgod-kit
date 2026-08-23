@@ -108,6 +108,11 @@ Generated docs follow these conventions:
 - The initializer does not materialize arbitrary custom-template globs or create placeholder content for file-specific memory areas.
 - `docs/plan`, `docs/archive`, and `.dotdotgod` are local working/cache areas by default and are ignored by git unless a project deliberately changes that policy.
 
+
+## Documentation Root
+
+`dotdotgod init <root> --documentation-root PATH` creates the documentation scaffold at `PATH` and records the normalized value as `documentation.root`. The default remains `docs`. Existing unrelated directories are preserved. A rerun with an existing config is allowed only when its resolved root matches; initialization does not migrate documentation between roots.
+
 ## Traceability
 
 

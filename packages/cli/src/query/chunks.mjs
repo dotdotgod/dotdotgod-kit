@@ -10,8 +10,8 @@ export function textFingerprint(text) {
   return createHash('sha256').update(text).digest('hex');
 }
 
-export function collectDocumentationMarkdown(root, exclude = ['docs/plan', 'docs/archive']) {
-  const docsRoot = join(root, 'docs');
+export function collectDocumentationMarkdown(root, exclude = ['docs/plan', 'docs/archive'], documentationRoot = 'docs') {
+  const docsRoot = join(root, documentationRoot);
   const files = [];
   const walk = (directory) => {
     let entries;
@@ -84,8 +84,8 @@ export function chunkMarkdown(path, content, maxChars = MAX_CHUNK_CHARS) {
   return sections;
 }
 
-export function collectDocumentationChunks(root, exclude) {
-  return collectDocumentationMarkdown(root, exclude).flatMap((path) => {
+export function collectDocumentationChunks(root, exclude, documentationRoot = 'docs') {
+  return collectDocumentationMarkdown(root, exclude, documentationRoot).flatMap((path) => {
     const content = readFileSync(join(root, path), 'utf8');
     return chunkMarkdown(path, content);
   });

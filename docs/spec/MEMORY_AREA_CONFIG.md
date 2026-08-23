@@ -104,6 +104,13 @@ Invalid memory config does not make the CLI crash. Runtime commands fall back to
 
 Pi Load applies `load.documentationSummary.exclude` before rendering the Markdown tree. `dotdotgod query` applies the same exclusions before chunking and embedding shared documentation. `memory.areas[].includeBodiesByDefault` independently controls graph indexing. Default policies align by excluding plan/archive bodies, but changing one policy does not change the other. Memory-area metadata remains available through `dotdotgod config` and graph commands rather than being injected into Load narrative.
 
+
+## Documentation Root
+
+`documentation.root` selects the safe repository-relative directory that anchors managed documentation. It defaults to `docs`. The value is normalized to forward slashes and must not be absolute, empty, traversing, globbed, secret-like, or overlap `.dotdotgod` or `dotdotgod.config.json`.
+
+Root-derived defaults cover documentation memory areas, required spec traceability, Load plan/archive exclusions, and Plan Mode writable paths. Explicit policy arrays remain complete authoritative values and are not rebased. An invalid config falls back to the default root and policies while reporting `DOCUMENTATION_CONFIG_INVALID_ROOT`.
+
 ## Traceability
 
 

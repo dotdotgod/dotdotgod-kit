@@ -2,6 +2,8 @@
  * Plan Mode command and tool safety helpers.
  */
 
+import { ARCHIVE_DIRECTORY, DEFAULT_PLAN_MODE_WRITABLE_PATHS } from "./runtime/paths.ts";
+
 export function normalizePlanCommandRequest(args: string): string | undefined {
 	const request = args.trim();
 	return request.length > 0 ? request : undefined;
@@ -137,7 +139,7 @@ export function tokenizeShellCommand(command: string): string[] | undefined {
 	return tokens;
 }
 
-const DEFAULT_WRITABLE_PATHS = ["docs/plan/**", "docs/archive/**"];
+const DEFAULT_WRITABLE_PATHS = DEFAULT_PLAN_MODE_WRITABLE_PATHS;
 
 function matchesWritablePath(path: string, patterns: readonly string[]): boolean {
 	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/").replace(/\/$/, "");
@@ -161,7 +163,7 @@ export function isPlanArchivePath(path: string, writablePaths: readonly string[]
 
 export function isProtectedPlanArchiveRoot(path: string, writablePaths: readonly string[] = DEFAULT_WRITABLE_PATHS): boolean {
 	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
-	if (normalized === "docs/archive/plan" && matchesWritablePath(normalized, writablePaths)) return true;
+	if (normalized === `${ARCHIVE_DIRECTORY}/plan` && matchesWritablePath(normalized, writablePaths)) return true;
 	return writablePaths.some((pattern) => normalized === pattern.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/\*\*$/, "").replace(/\/$/, ""));
 }
 

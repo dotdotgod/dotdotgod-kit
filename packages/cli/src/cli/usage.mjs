@@ -11,7 +11,7 @@ export function commandUsage(command = 'root') {
   dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]`;
     case 'init':
       return `Usage:
-  dotdotgod init <root> [--project-name NAME] [--template NAME] [--dotdot-setting] [--dry-run] [--json]
+  dotdotgod init <root> [--project-name NAME] [--template NAME] [--documentation-root PATH] [--dotdot-setting] [--dry-run] [--json]
 
 Create AGENTS.md, agent entrypoints, docs indexes, a project config from an initialization template, and local memory gitignore entries.`;
     case 'index':

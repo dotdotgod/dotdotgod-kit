@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { builtInTemplateScaffold, resolveInitializationTemplate } from './config/templates.mjs';
+import { builtInTemplateData, builtInTemplateScaffold, resolveInitializationTemplate } from './config/templates.mjs';
+import { isValidDocumentationRoot, normalizeDocumentationRoot, readMemoryConfig } from './memory/config.mjs';
 
 function action(status, path, extra = {}) {
   return { status, path, ...extra };
@@ -12,17 +13,18 @@ function formatAction(item) {
 }
 
 function parseInitOptions(argv) {
-  const options = { root: null, projectName: '', dotdotSetting: false, dryRun: false, json: false, template: null };
+  const options = { root: null, projectName: '', dotdotSetting: false, dryRun: false, json: false, template: null, documentationRoot: 'docs', documentationRootExplicit: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--json') options.json = true;
     else if (arg === '--dotdot-setting') options.dotdotSetting = true;
     else if (arg === '--dry-run') options.dryRun = true;
-    else if (arg === '--project-name' || arg === '--template') {
+    else if (arg === '--project-name' || arg === '--template' || arg === '--documentation-root') {
       const value = argv[i + 1];
       if (!value || value.startsWith('-')) throw new Error(`${arg} requires a value`);
       if (arg === '--project-name') options.projectName = value;
-      else options.template = value;
+      else if (arg === '--template') options.template = value;
+      else { options.documentationRoot = normalizeDocumentationRoot(value); options.documentationRootExplicit = true; }
       i += 1;
     } else if (!arg.startsWith('-') && !options.root) {
       options.root = arg;
@@ -33,6 +35,7 @@ function parseInitOptions(argv) {
     }
   }
   if (!options.root) throw new Error('Missing required argument: <root>');
+  if (!isValidDocumentationRoot(options.documentationRoot)) throw new Error('Invalid --documentation-root: expected a safe repository-relative directory');
   options.root = resolve(options.root);
   if (!options.projectName) options.projectName = basename(options.root);
   return options;
@@ -287,7 +290,7 @@ function initFiles(options) {
     files.push(['docs/arch/DOCS_STRUCTURE.md', docsStructureContent()]);
     files.push(['docs/arch/CODE_CONVENTIONS.md', codeConventionsContent()]);
   }
-  return files;
+  return files.map(([path, content]) => [path.replace(/^docs(?=\/|$)/, options.documentationRoot), content.replaceAll('docs/', `${options.documentationRoot}/`).replaceAll('`docs`', `\`${options.documentationRoot}\``)]);
 }
 
 export function runInit(argv, usage) {
@@ -310,13 +313,19 @@ export function runInit(argv, usage) {
   if (!options.dryRun) mkdirSync(options.root, { recursive: true });
 
   const configExists = existsSync(join(options.root, 'dotdotgod.config.json'));
-  const template = configExists ? null : resolveInitializationTemplate(options.template);
+  if (configExists && options.documentationRootExplicit) {
+    const existingRoot = readMemoryConfig(options.root).documentation.root;
+    if (existingRoot !== options.documentationRoot) initError(options, 'DOCUMENTATION_ROOT_CONFLICT', `Existing config uses documentation root ${existingRoot}; initialization does not migrate documentation.`);
+  }
+  let template = configExists ? null : resolveInitializationTemplate(options.template);
   if (template && !template.ok) initError(options, template.error.code, template.error.message);
+  if (template?.source === 'custom' && normalizeDocumentationRoot(template.data.documentation?.root ?? 'docs') !== options.documentationRoot) initError(options, 'DOCUMENTATION_ROOT_CONFLICT', 'Custom template documentation.root conflicts with --documentation-root; custom policy paths are never rewritten.');
+  if (template?.source === 'bundled') { const data = builtInTemplateData(template.name, { documentationRoot: options.documentationRoot }); template = { ...template, data, text: `${JSON.stringify(data, null, 2)}\n` }; }
 
   const actions = [];
   for (const [relativePath, content] of initFiles(options)) writeInitFile(options, relativePath, content, actions);
   if (template?.source === 'bundled') {
-    for (const item of builtInTemplateScaffold(template.name) ?? []) {
+    for (const item of builtInTemplateScaffold(template.name, { documentationRoot: options.documentationRoot }) ?? []) {
       if (item.type === 'directory') ensureInitDirectory(options, item.path, actions);
       else writeInitFile(options, item.path, item.content, actions);
     }
@@ -324,9 +333,9 @@ export function runInit(argv, usage) {
 
   writeInitFile(options, 'dotdotgod.config.json', template?.text ?? '', actions);
 
-  for (const entry of ['docs/plan', 'docs/archive', '.dotdotgod']) ensureGitignoreEntry(options, entry, actions);
+  for (const entry of [`${options.documentationRoot}/plan`, `${options.documentationRoot}/archive`, '.dotdotgod']) ensureGitignoreEntry(options, entry, actions);
 
-  const payload = { ok: true, command: 'init', root: options.root, projectName: options.projectName, dryRun: options.dryRun, dotdotSetting: options.dotdotSetting, template: template ? { name: template.name, source: template.source, selectedBy: template.selectedBy } : null, actions };
+  const payload = { ok: true, command: 'init', root: options.root, projectName: options.projectName, documentationRoot: options.documentationRoot, dryRun: options.dryRun, dotdotSetting: options.dotdotSetting, template: template ? { name: template.name, source: template.source, selectedBy: template.selectedBy } : null, actions };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else {
     if (template) console.log(`template      ${template.source}:${template.name} (${template.selectedBy})`);

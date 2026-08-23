@@ -1,5 +1,6 @@
 import type { PlanCompactionFocus } from "../prompts.ts";
 import type { TodoItem } from "../todos.ts";
+import { ARCHIVE_DIRECTORY, isActivePlanPath } from "../runtime/paths.ts";
 
 export type PlanningAdvisoryContextStatus = "pending" | "ready" | "unavailable";
 
@@ -84,7 +85,7 @@ export class ContextShapingController {
 		const completed = input.todos.filter((item) => item.completed).length;
 		const activePlanPaths = [
 			...(input.currentPlanPath ? [input.currentPlanPath] : []),
-			...input.touchedPlanPaths.filter((path) => path.startsWith("docs/plan/")),
+			...input.touchedPlanPaths.filter(isActivePlanPath),
 		];
 		const focus: PlanCompactionFocus = {
 			activePlanPaths,
@@ -92,8 +93,8 @@ export class ContextShapingController {
 			constraints: [
 				"Use pnpm for workspace commands",
 				"Plan Mode blocks source/config mutation until execution mode",
-				"Keep docs/archive/README.md included as the archive map",
-				"Exclude docs/archive/** bodies by default unless targeted",
+				`Keep ${ARCHIVE_DIRECTORY}/README.md included as the archive map`,
+				`Exclude ${ARCHIVE_DIRECTORY}/** bodies by default unless targeted`,
 			],
 		};
 		if (input.lastPlanningRequest) focus.task = input.lastPlanningRequest;

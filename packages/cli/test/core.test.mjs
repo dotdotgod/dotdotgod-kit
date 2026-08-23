@@ -36,6 +36,7 @@ import {
   headingToAnchor,
   isKebabCase,
   isNumberedSeriesFilename,
+  isValidDocumentationRoot,
   isReadmeIndexPath,
   isUpperSnakeMarkdown,
   memoryAreaForPath,
@@ -1233,5 +1234,26 @@ describe('local documentation vector query', () => {
     await queryDocumentation(root, '한국어', { limit: 3, embed: fakeEmbed });
     assert.equal(embeddedTexts, firstEmbedded + 1, 'the second query should reuse every cached passage vector');
     assert.equal(readVectorCache(root)?.manifest.model, 'Xenova/multilingual-e5-small');
+  });
+});
+
+describe('configurable documentation root', () => {
+  it('derives defaults while preserving explicit policy paths', () => {
+    const config = defaultMemoryConfig({ documentationRoot: 'project-memory' });
+    assert.equal(config.documentation.root, 'project-memory');
+    assert.ok(config.areas.some((area) => area.paths.includes('project-memory/spec/**')));
+    assert.deepEqual(config.traceability.required, ['project-memory/spec/**']);
+    assert.deepEqual(config.load.documentationSummary.exclude, ['project-memory/plan', 'project-memory/archive']);
+    assert.deepEqual(config.planMode.writablePaths, ['project-memory/plan/**', 'project-memory/archive/**']);
+    assert.equal(isValidDocumentationRoot('project-memory'), true);
+    for (const value of ['', '../docs', '/docs', '.dotdotgod', 'secret/data', 'docs/*']) assert.equal(isValidDocumentationRoot(value), false);
+  });
+
+  it('roots bundled templates without rebasing external artifact areas', () => {
+    const data = builtInTemplateData('publication', { documentationRoot: 'project-memory' });
+    assert.equal(data.documentation.root, 'project-memory');
+    assert.ok(data.memory.areas.some((area) => area.paths.includes('project-memory/chapters/**')));
+    assert.ok(data.memory.areas.some((area) => area.paths.includes('book/**')));
+    assert.equal(builtInTemplateScaffold('publication', { documentationRoot: 'project-memory' })[0].path, 'project-memory/outline/README.md');
   });
 });

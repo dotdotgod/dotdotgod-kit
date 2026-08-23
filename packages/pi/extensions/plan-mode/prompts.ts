@@ -47,14 +47,17 @@ export function resolvePlanModeTools(extraTools: unknown, availableTools?: reado
 	});
 }
 
+function documentationRootFor(writablePaths: readonly string[]): string { return writablePaths[0]?.replaceAll("\\", "/").split("/")[0] || "docs"; }
+
 function buildPlanModeFullContextPrompt(allowedTools = DEFAULT_PLAN_MODE_TOOLS, writablePaths: readonly string[] = ["docs/plan/**", "docs/archive/**"]): string {
+	const documentationRoot = documentationRootFor(writablePaths);
 	return `[PLAN MODE ACTIVE]
 You are in Plan Mode. This is a planning-only exploration and design phase before code changes.
 
 Restrictions:
 - Allowed tools: ${allowedTools.join(", ")}
 - edit/write are allowed only for valid markdown files matching the configured documentation paths: ${writablePaths.join(", ") || "none"}.
-- Under docs/, directories must use kebab-case and markdown file names must use UPPER_SNAKE_CASE.md, including README.md.
+- Under ${documentationRoot}/, directories must use kebab-case and markdown file names must use UPPER_SNAKE_CASE.md, including README.md.
 - Forbidden: source/code/config mutation; configured writable paths remain limited to documentation markdown.
 - Bash is restricted to read-only allowlisted commands.
 
@@ -63,15 +66,16 @@ Workflow:
 2. Reuse loaded memory and the documentation map, then use focused query and README indexes to select maintained docs and verify conclusions in them.
 3. Inspect the source needed to confirm targets and constraints.
 4. Run impact review on likely changed files and refine targets, risks, and verification.
-5. For durable work, write and present docs/plan/<task-slug>/README.md with scope, targets, executable steps, verification, and required completion gates; otherwise use an in-chat checklist.
+5. For durable work, write and present ${documentationRoot}/plan/<task-slug>/README.md with scope, targets, executable steps, verification, and required completion gates; otherwise use an in-chat checklist.
 6. Resolve blocking decisions and stop until the user approves execution.
 
 Use questionnaire for required clarification and web tools only for required external evidence. Use a Plan: section only for concrete executable steps.`;
 }
 
 function buildPlanModeCompactContextPrompt(writablePaths: readonly string[]): string {
+	const documentationRoot = documentationRootFor(writablePaths);
 	return `[PLAN MODE ACTIVE]
-Compact reminder: remain in planning-only mode until execution approval. Keep source, code, and config unchanged. edit/write are limited to valid documentation markdown matching: ${writablePaths.join(", ") || "none"}; bash remains read-only apart from safe directory operations there. Reuse loaded memory and the documentation map, route focused requests through query and README indexes, verify selected docs, and run impact review after likely targets are known. Maintain docs/plan/<task-slug>/README.md for durable work or use a short in-chat checklist for bounded work. Reserve the Plan: section for concrete executable steps.`;
+Compact reminder: remain in planning-only mode until execution approval. Keep source, code, and config unchanged. edit/write are limited to valid documentation markdown matching: ${writablePaths.join(", ") || "none"}; bash remains read-only apart from safe directory operations there. Reuse loaded memory and the documentation map, route focused requests through query and README indexes, verify selected docs, and run impact review after likely targets are known. Maintain ${documentationRoot}/plan/<task-slug>/README.md for durable work or use a short in-chat checklist for bounded work. Reserve the Plan: section for concrete executable steps.`;
 }
 
 export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS, writablePaths: readonly string[] = ["docs/plan/**", "docs/archive/**"]): string {

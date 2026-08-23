@@ -24,7 +24,9 @@ export function runValidate(argv) {
   }
 
   const root = resolve(options.root);
-  const docs = join(root, 'docs');
+  const memoryConfig = readMemoryConfig(root);
+  const documentationRoot = memoryConfig.documentation?.root ?? 'docs';
+  const docs = join(root, documentationRoot);
   const errors = [];
   const warnings = [];
   const markdownFiles = [];
@@ -37,7 +39,7 @@ export function runValidate(argv) {
     if (path.includes('/node_modules') || path === 'node_modules') return true;
     if (path.includes('/.git') || path === '.git') return true;
     if (path === CACHE_DIR || path.startsWith(`${CACHE_DIR}/`)) return true;
-    if (!options.includeLocalMemory && (path === 'docs/plan' || path.startsWith('docs/plan/') || path === 'docs/archive' || path.startsWith('docs/archive/'))) return true;
+    if (!options.includeLocalMemory && (resolveMemoryArea(path, memoryConfig)?.scope === 'local')) return true;
     return false;
   };
   const walk = (dir) => {
@@ -55,7 +57,6 @@ export function runValidate(argv) {
   };
 
   if (!existsSync(docs)) usage(`docs directory not found: ${docs}`);
-  const memoryConfig = readMemoryConfig(root);
   const validationPolicy = cloneValidationPolicy(memoryConfig.validation ?? DEFAULT_VALIDATION_POLICY);
   const maxLines = options.maxLines ?? validationPolicy.markdown.maxLines;
   const maxChars = options.maxChars ?? validationPolicy.markdown.maxChars;
@@ -78,10 +79,10 @@ export function runValidate(argv) {
     (memoryConfig.areas ?? [])
       .filter(area => area.scope === 'shared')
       .flatMap(area => area.paths ?? [])
-      .map(p => { const m = p.match(/^docs\/([^/*]+)\/\*\*$/); return m ? m[1] : null; })
+      .map(p => { const prefix = `${documentationRoot}/`; return p.startsWith(prefix) && p.endsWith('/**') ? p.slice(prefix.length, -3) : null; })
       .filter(Boolean)
   );
-  const filenameQualityScope = [...FILENAME_QUALITY_AREAS].sort().map(area => `docs/${area}`).join(', ') || 'configured shared documentation areas';
+  const filenameQualityScope = [...FILENAME_QUALITY_AREAS].sort().map(area => `${documentationRoot}/${area}`).join(', ') || 'configured shared documentation areas';
   const FILENAME_QUALITY_PROMPT =
     'Filenames and paths are LLM/agent context signals used for impact ranking, search, and retrieval.\n' +
     `Use meaning-based filenames in ${filenameQualityScope}. A filename should identify its primary endpoint, screen, policy, state, response type, or domain subject. ` +
@@ -191,15 +192,15 @@ export function runValidate(argv) {
         if (!entry.isDirectory()) continue;
         if (!isKebabCase(entry.name)) addError(join(areaRoot, entry.name), 'SLUG_NAMING', `Archive/plan/report slug must be kebab-case: ${entry.name}`, null, 'rename the task/report directory to kebab-case and update any README index links that reference it.');
         const readme = join(areaRoot, entry.name, 'README.md');
-        if (!existsSync(readme)) addError(readme, 'MISSING_README', `Expected README.md in docs/${area}/${entry.name}/`, null, 'add a README.md that summarizes the task/report and links any supporting files.');
+        if (!existsSync(readme)) addError(readme, 'MISSING_README', `Expected README.md in ${documentationRoot}/${area}/${entry.name}/`, null, 'add a README.md that summarizes the task/report and links any supporting files.');
       }
     }
   }
   const gitignore = join(root, '.gitignore');
-  if (!existsSync(gitignore)) addError(gitignore, 'MISSING_GITIGNORE', 'Expected .gitignore', null, 'create .gitignore and include docs/plan, docs/archive, and .dotdotgod entries.');
+  if (!existsSync(gitignore)) addError(gitignore, 'MISSING_GITIGNORE', 'Expected .gitignore', null, `create .gitignore and include ${documentationRoot}/plan, ${documentationRoot}/archive, and .dotdotgod entries.`);
   else {
     const content = readFileSync(gitignore, 'utf8').split('\n').map((line) => line.trim());
-    for (const required of ['docs/plan', 'docs/archive', CACHE_DIR]) if (!content.includes(required)) addError(gitignore, 'MISSING_GITIGNORE_ENTRY', `Expected .gitignore entry: ${required}`, null, `add ${required} to .gitignore so local plans, archives, and cache files stay untracked.`);
+    for (const required of [`${documentationRoot}/plan`, `${documentationRoot}/archive`, CACHE_DIR]) if (!content.includes(required)) addError(gitignore, 'MISSING_GITIGNORE_ENTRY', `Expected .gitignore entry: ${required}`, null, `add ${required} to .gitignore so local plans, archives, and cache files stay untracked.`);
   }
   if (options.json) console.log(JSON.stringify({ ok: errors.length === 0, errors, warnings }, null, 2));
   else {

@@ -96,13 +96,13 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
     const retrieval = node.retrieval ?? retrievalMetadataForPath(path);
     const reasonSignals = reasonList.map((reason) => `reason:${reason}`);
     const hasCuratedEvidence = reasonList.some((reason) => curatedRelations.has(reason.replace(/^incoming:/, '')));
-    const scored = scoreImpactItem({ ...node, reasons: reasonList, retrieval }, seedSet, changedPaths, policy, pprScores);
+    const scored = scoreImpactItem({ ...node, reasons: reasonList, retrieval }, seedSet, changedPaths, policy, pprScores, config);
     return { ...node, reasons: reasonList, hasCuratedEvidence, ...(vectorEvidence.has(id) ? { vectorEvidence: vectorEvidence.get(id) } : {}), retrieval: { ...retrieval, signals: [...new Set([...(retrieval.signals ?? []), ...reasonSignals])] }, ...scored };
   }).sort(compareImpactItems(seeds));
   const related = selectImpactItems(relatedAll, maxRelated, seeds);
   for (const item of related) {
     if (item.type === 'file') {
-      const area = docsArea(item.path);
+      const area = docsArea(item.path, config);
       if (area) addImpactItem(groups.docs, { ...item, area }, limits.docs ?? 10);
       else if (isTestPath(item.path)) addImpactItem(groups.tests, item, limits.tests ?? 10);
       else addImpactItem(groups.files, item, limits.files ?? 10);

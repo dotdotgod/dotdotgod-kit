@@ -40,6 +40,7 @@ function formatConfigOutput(payload) {
   const errors = payload.errors ?? [];
   const lines = [`dotdotgod config: ${payload.source}${errors.length > 0 ? ' (invalid; using defaults)' : ''}`];
   lines.push(`- path: ${payload.path ?? 'none'}`);
+  lines.push(`- documentation root: ${payload.config.documentation.root}`);
   lines.push(`- memory areas: ${payload.config.areas.length}`);
   lines.push(`- embedding: ${payload.embedding.profile.provider}/${payload.embedding.profile.model} (${payload.embedding.source})`);
   lines.push(`- traceability required: ${(payload.config.traceability.required ?? []).join(', ') || 'none'}`);

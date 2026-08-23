@@ -63,7 +63,7 @@ export async function buildVectorIndex(root, embedOrOptions = {}) {
   const resolved = await resolveEmbedder(root, options);
   const config = readMemoryConfig(root);
   const exclude = config.load?.documentationSummary?.exclude ?? ['docs/plan', 'docs/archive'];
-  const chunks = collectDocumentationChunks(root, exclude);
+  const chunks = collectDocumentationChunks(root, exclude, config.documentation?.root ?? 'docs');
   const cached = readVectorCache(root, resolved.identity);
   const cachedOffsets = new Map((cached?.chunks ?? []).map((chunk, index) => [chunk.fingerprint, index]));
   const rows = new Array(chunks.length);

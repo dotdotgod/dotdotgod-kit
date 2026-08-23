@@ -15,7 +15,7 @@ function treeNode(): TreeNode {
 
 function documentationPaths(snapshot: ProjectMemorySnapshot): string[] {
 	return [...new Set([
-		...snapshot.present.filter((path) => path.startsWith("docs/") && path.toLowerCase().endsWith(".md") && !(snapshot.exclude ?? DEFAULT_DOCUMENTATION_SUMMARY_EXCLUDE).some((excluded) => path === excluded || path.startsWith(`${excluded}/`))),
+		...snapshot.present.filter((path) => path.startsWith(`${snapshot.documentationRoot ?? "docs"}/`) && path.toLowerCase().endsWith(".md") && !(snapshot.exclude ?? DEFAULT_DOCUMENTATION_SUMMARY_EXCLUDE).some((excluded) => path === excluded || path.startsWith(`${excluded}/`))),
 		...snapshot.directories.flatMap((directory) => directory.markdownFiles),
 	])].sort();
 }
@@ -52,9 +52,10 @@ function plural(count: number, singular: string, pluralForm = `${singular}s`): s
 
 export function formatDocumentationTree(snapshot: ProjectMemorySnapshot, maxDepth: number): string {
 	const tree = buildTree(documentationPaths(snapshot));
-	const docs = tree.directories.get("docs");
-	if (!docs) return "- docs/: missing";
-	const lines = ["docs/"];
+	const rootName = snapshot.documentationRoot ?? "docs";
+	const docs = tree.directories.get(rootName);
+	if (!docs) return `- ${rootName}/: missing`;
+	const lines = [`${rootName}/`];
 	const render = (node: TreeNode, depth: number, indent: string): void => {
 		for (const file of node.files.sort()) lines.push(`${indent}- ${file}`);
 		if (depth >= maxDepth && node.directories.size > 0) {
@@ -78,8 +79,9 @@ export function documentationSummaryDirectories(snapshot: ProjectMemorySnapshot)
 	return snapshot.directories;
 }
 
-export function extractDocsPathMentions(text: string): string[] {
-	return [...new Set((text.match(/docs\/[A-Za-z0-9_\-./]+/g) ?? []).map((value) => value.replace(/[.,;:!?]+$/, "")))];
+export function extractDocsPathMentions(text: string, documentationRoot = "docs"): string[] {
+	const escaped = documentationRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	return [...new Set((text.match(new RegExp(`${escaped}/[A-Za-z0-9_\\-./]+`, "g")) ?? []).map((value) => value.replace(/[.,;:!?]+$/, "")))];
 }
 
 function formatQueryResults(result: QueryRunResult | undefined): string {

@@ -24,6 +24,7 @@ export interface ProjectMemorySnapshot {
 	missing: string[];
 	directories: Array<{ path: string; exists: boolean; markdownFiles: string[]; readmeFiles: string[] }>;
 	exclude?: string[];
+	documentationRoot?: string;
 }
 
 export interface LoadCommandInfo {
@@ -40,15 +41,17 @@ export function pathExists(cwd: string, path: string): boolean {
 	return existsSync(join(cwd, path));
 }
 
-function configuredExclusions(cwd: string): string[] {
+function configuredDocumentation(cwd: string): { root: string; exclude: string[] } {
 	try {
-		const parsed = JSON.parse(readFileSync(join(cwd, "dotdotgod.config.json"), "utf8")) as { load?: { documentationSummary?: { exclude?: unknown } } };
+		const parsed = JSON.parse(readFileSync(join(cwd, "dotdotgod.config.json"), "utf8")) as { documentation?: { root?: unknown }; load?: { documentationSummary?: { exclude?: unknown } } };
 		const values = parsed.load?.documentationSummary?.exclude;
-		if (Array.isArray(values) && values.every((value) => typeof value === "string")) return values;
+		const root = typeof parsed.documentation?.root === "string" ? parsed.documentation.root.replaceAll("\\", "/").replace(/^\.\//, "").replace(/^\/+|\/+$/g, "") : "docs";
+		if (Array.isArray(values) && values.every((value) => typeof value === "string")) return { root, exclude: values };
+		return { root, exclude: [`${root}/plan`, `${root}/archive`] };
 	} catch {
 		// Use the built-in safe local-memory exclusions.
 	}
-	return DEFAULT_DOCUMENTATION_SUMMARY_EXCLUDE;
+	return { root: "docs", exclude: DEFAULT_DOCUMENTATION_SUMMARY_EXCLUDE };
 }
 
 function isExcluded(path: string, patterns: string[]): boolean {
@@ -96,14 +99,16 @@ export function listReadmeFiles(cwd: string, directory: string, limit?: number):
 }
 
 export function collectSnapshot(cwd: string): ProjectMemorySnapshot {
-	const present = MARKER_FILES.filter((file) => pathExists(cwd, file));
-	const missing = MARKER_FILES.filter((file) => !pathExists(cwd, file));
-	const exclude = configuredExclusions(cwd);
+	const documentation = configuredDocumentation(cwd);
+	const markers = MARKER_FILES.map((file) => file.replace(/^docs(?=\/|$)/, documentation.root));
+	const present = markers.filter((file) => pathExists(cwd, file));
+	const missing = markers.filter((file) => !pathExists(cwd, file));
+	const exclude = documentation.exclude;
 	let documentationDirectories: string[] = [];
 	try {
-		documentationDirectories = readdirSync(join(cwd, "docs"), { withFileTypes: true, encoding: "utf8" })
+		documentationDirectories = readdirSync(join(cwd, documentation.root), { withFileTypes: true, encoding: "utf8" })
 			.filter((entry) => entry.isDirectory() && !entry.name.startsWith(".") && !SKIPPED_DIRECTORY_NAMES.has(entry.name))
-			.map((entry) => `docs/${entry.name}`)
+			.map((entry) => `${documentation.root}/${entry.name}`)
 			.filter((path) => !isExcluded(path, exclude))
 			.sort();
 	} catch {
@@ -115,7 +120,7 @@ export function collectSnapshot(cwd: string): ProjectMemorySnapshot {
 		markdownFiles: walkMarkdownFiles(cwd, directory, (name) => name.toLowerCase().endsWith(".md"), exclude),
 		readmeFiles: walkMarkdownFiles(cwd, directory, (name) => name.toLowerCase() === "readme.md", exclude),
 	}));
-	return { present, missing, directories, exclude };
+	return { present, missing, directories, exclude, documentationRoot: documentation.root };
 }
 
 export function hasOtherLoadCommand(commands: readonly LoadCommandInfo[]): boolean {

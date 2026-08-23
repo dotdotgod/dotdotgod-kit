@@ -1,5 +1,6 @@
 import { isAbsolute, relative, resolve } from "node:path";
 import { getDotdotgodCliArgs } from "./tools.ts";
+import { isActivePlanPath, isArchivePath } from "./runtime/paths.ts";
 
 function formatCandidatePath(candidate: Record<string, unknown>): string | undefined {
 	const path = typeof candidate.path === "string" ? candidate.path : undefined;
@@ -94,7 +95,7 @@ export function normalizeImpactPath(cwd: string, path: string): string | undefin
 
 export function shouldTrackImpactPath(path: string): boolean {
 	const normalized = path.replace(/^@/, "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
-	if (!normalized || normalized.startsWith("docs/plan/") || normalized.startsWith("docs/archive/")) return false;
+	if (!normalized || isActivePlanPath(normalized) || isArchivePath(normalized)) return false;
 	if (normalized.startsWith(".dotdotgod/") || normalized.startsWith("node_modules/") || normalized.startsWith("dist/") || normalized.startsWith("build/") || normalized.startsWith("coverage/")) return false;
 	return /[.][A-Za-z0-9]+$/.test(normalized);
 }

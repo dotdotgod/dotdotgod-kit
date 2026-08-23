@@ -315,3 +315,12 @@ describe("global project-memory orchestration", () => {
 		assert.equal(shouldLoadProjectMemory({ contextText: baselineTranscript }).loadNeeded, false);
 	});
 });
+
+describe("alternate-root transcript coverage", () => {
+	it("recognizes baseline and area coverage outside docs", () => {
+		const text = "AGENTS.md README.md project-memory/README.md project-memory/spec/README.md project-memory/arch/README.md project-memory/test/README.md project-memory/plan/README.md project-memory/spec/FEATURE.md project-memory/arch/DESIGN.md project-memory/test/VERIFY.md";
+		const coverage = collectProjectMemoryContextCoverage(text);
+		assert.equal(coverage.markers.length, 7);
+		assert.deepEqual(coverage.areas.sort(), ["arch", "spec", "test"]);
+	});
+});

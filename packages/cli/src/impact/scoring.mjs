@@ -1,18 +1,14 @@
-import { SEMANTIC_RELATIONS } from '../memory/config.mjs';
+import { SEMANTIC_RELATIONS, resolveMemoryArea } from '../memory/config.mjs';
 import { relationWeight } from '../graph/communities.mjs';
 
 export function isTestPath(path = '') {
   return /(^|\/)(test|tests)\//.test(path) || /\.(test|spec)\.(mjs|cjs|js|jsx|ts|tsx)$/.test(path);
 }
 
-export function docsArea(path = '') {
-  if (path.startsWith('docs/spec/')) return 'spec';
-  if (path.startsWith('docs/arch/')) return 'arch';
-  if (path.startsWith('docs/test/')) return 'test-docs';
-  if (path.startsWith('docs/plan/')) return 'plan';
-  if (path.startsWith('docs/archive/')) return 'archive-index';
-  if (path.startsWith('docs/')) return 'docs';
-  return undefined;
+export function docsArea(path = '', config) {
+  const area = resolveMemoryArea(path, config);
+  const byRole = { 'behavior-truth': 'spec', 'architecture-rationale': 'arch', 'verification-knowledge': 'test-docs', 'active-task-intent': 'plan', 'historical-memory-map': 'archive-index', 'historical-memory-body': 'archive-index', 'project-documentation': 'docs', 'documentation-routing-map': 'docs' };
+  return byRole[area?.role] ?? (area?.id === 'spec' ? 'spec' : area?.id === 'architecture' ? 'arch' : area?.id === 'test' ? 'test-docs' : undefined);
 }
 
 function clamp(value, min, max) {
@@ -61,10 +57,10 @@ export function buildPersonalizedPageRank(graph, seeds, policy) {
   return ranks;
 }
 
-export function scoreImpactItem(item, seeds, changedPaths, policy, pprScores) {
+export function scoreImpactItem(item, seeds, changedPaths, policy, pprScores, config) {
   const seedSet = seeds instanceof Set ? seeds : new Set(Array.isArray(seeds) ? seeds : [seeds]);
   const paths = Array.isArray(changedPaths) ? changedPaths : [changedPaths];
-  const archiveSeeded = paths.some((path) => path.startsWith('docs/archive/'));
+  const archiveSeeded = paths.some((path) => resolveMemoryArea(path, config)?.role?.startsWith('historical-memory'));
   if (seedSet.has(item.id)) return { impactScore: 100, scoreBreakdown: { seed: 100, connection: { ppr: 80, reference: policy.ppr.reference }, memory: { priority: 20, policyAdjustments: 0 } } };
   const retrieval = item.retrieval ?? {};
   const probability = pprScores.get(item.id) ?? 0;

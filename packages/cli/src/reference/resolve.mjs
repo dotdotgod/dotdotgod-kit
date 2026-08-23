@@ -16,6 +16,7 @@ function exactReferenceScore(ref, alias, kind) {
 export function resolveReferenceCandidates(index, ref, options = {}) {
   const graph = index?.graph ?? { nodes: [], edges: [] };
   const includeArchive = options.includeArchive === true;
+  const memoryConfig = options.memoryConfig ?? index?.memoryConfig;
   const limit = Number.isFinite(options.maxResults) ? options.maxResults : DEFAULT_REFERENCE_LIMIT;
   const query = String(ref ?? '').trim().replace(/^\[\[/, '').replace(/\]\]$/, '').split('|')[0].trim();
   const normalized = normalizeReferenceAlias(query);
@@ -23,7 +24,7 @@ export function resolveReferenceCandidates(index, ref, options = {}) {
   for (const node of graph.nodes ?? []) {
     if (!['file', 'heading'].includes(node.type)) continue;
     const path = referencePathForNode(node);
-    if (!includeArchive && isArchiveBodyPath(path)) continue;
+    if (!includeArchive && isArchiveBodyPath(path, memoryConfig)) continue;
     let best = null;
     for (const entry of referenceCandidateAliases(node)) {
       const aliasKey = normalizeReferenceAlias(entry.alias);
@@ -95,7 +96,7 @@ export function runResolve(argv) {
   const ref = options.rootArgv?.join(' ');
   if (!ref) usage('Missing required argument: <ref>.', 'resolve');
   const { status, index, metadata } = readFreshIndex(options.root);
-  const refs = [resolveReferenceCandidates(index, ref, options)];
+  const refs = [resolveReferenceCandidates(index, ref, { ...options, memoryConfig: readMemoryConfig(options.root) })];
   const payload = { ok: status.ok, command: 'resolve', root: options.root, status, metadata, refs, omitted: refs.reduce((sum, item) => sum + item.omitted, 0) };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else console.log(formatReferenceOutput(payload));
@@ -110,8 +111,8 @@ export function runExpand(argv) {
   const { status, index, metadata } = readFreshIndex(options.root);
   const fuzzyRefs = options.fuzzy ? extractFuzzyReferences(prompt, index, { ...options, memoryConfig: readMemoryConfig(options.root), existingTargets: refsInPrompt.map((item) => item.target) }) : [];
   let refs = [
-    ...refsInPrompt.map((item) => ({ ...resolveReferenceCandidates(index, item.target, options), source: 'explicit', raw: item.raw, label: item.label })),
-    ...fuzzyRefs.map((item) => ({ ...resolveReferenceCandidates(index, item.target, options), source: 'fuzzy', raw: item.raw, confidence: item.confidence, reasons: item.reasons })),
+    ...refsInPrompt.map((item) => ({ ...resolveReferenceCandidates(index, item.target, { ...options, memoryConfig: readMemoryConfig(options.root) }), source: 'explicit', raw: item.raw, label: item.label })),
+    ...fuzzyRefs.map((item) => ({ ...resolveReferenceCandidates(index, item.target, { ...options, memoryConfig: readMemoryConfig(options.root) }), source: 'fuzzy', raw: item.raw, confidence: item.confidence, reasons: item.reasons })),
   ];
   if (options.withImpact) refs = refs.map((item) => {
     const topPath = item.top?.path;

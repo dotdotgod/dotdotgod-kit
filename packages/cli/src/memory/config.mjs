@@ -5,6 +5,7 @@ import { isKebabCase } from '../docs/markdown.mjs';
 import { validateEmbeddingProfile } from '../query/embedding-config.mjs';
 
 const MEMORY_CONFIG_FILE = 'dotdotgod.config.json';
+export const DEFAULT_DOCUMENTATION_ROOT = 'docs';
 const MEMORY_SCOPES = new Set(['shared', 'local']);
 const MEMORY_FRESHNESS = new Set(['fresh', 'stale']);
 export const DEFAULT_TRACEABILITY_KEYS = [
@@ -65,7 +66,9 @@ const DEFAULT_FUZZY_LOW_SIGNAL_TERMS = [
   'a', 'an', 'and', 'are', 'as', 'by', 'docs', 'document', 'for', 'from', 'it', 'of', 'on', 'plan', 'test', 'the', 'to', 'update', 'version', 'with',
   '계획', '문서', '수정', '업데이트', '버전', '정보', '확인', '테스트',
 ];
-const DEFAULT_MEMORY_AREAS = [
+function memoryAreasForRoot(documentationRoot = DEFAULT_DOCUMENTATION_ROOT) {
+  const d = (path = '') => path ? `${documentationRoot}/${path}` : documentationRoot;
+  return [
   { id: 'rules', label: 'Agent Rules', paths: ['AGENTS.md'], scope: 'shared', freshness: 'fresh', role: 'agent-working-rules', priority: 100, includeBodiesByDefault: true },
   { id: 'agent-entrypoint', label: 'Agent Entrypoints', paths: ['CLAUDE.md', 'CODEX.md'], scope: 'shared', freshness: 'fresh', role: 'agent-specific-entrypoint', priority: 85, includeBodiesByDefault: true },
   { id: 'project-overview', label: 'Project Overview', paths: ['README.md'], scope: 'shared', freshness: 'fresh', role: 'project-map', priority: 85, includeBodiesByDefault: true },
@@ -76,8 +79,10 @@ const DEFAULT_MEMORY_AREAS = [
   { id: 'active-plan', label: 'Active Plans', paths: ['docs/plan/**'], scope: 'local', freshness: 'fresh', role: 'active-task-intent', priority: 95, includeBodiesByDefault: true },
   { id: 'archive-map', label: 'Archive Map', paths: ['docs/archive/README.md'], scope: 'local', freshness: 'stale', role: 'historical-memory-map', priority: 65, includeBodiesByDefault: true },
   { id: 'archive-body', label: 'Archive Body', paths: ['docs/archive/**'], excludePaths: ['docs/archive/README.md'], scope: 'local', freshness: 'stale', role: 'historical-memory-body', priority: 20, includeBodiesByDefault: false },
-  { id: 'docs', label: 'Project Documentation', paths: ['docs/**'], scope: 'shared', freshness: 'fresh', role: 'project-documentation', priority: 60, includeBodiesByDefault: true },
-];
+  { id: 'docs', label: 'Project Documentation', paths: [d('**')], scope: 'shared', freshness: 'fresh', role: 'project-documentation', priority: 60, includeBodiesByDefault: true },
+  ].map(area => ({ ...area, paths: area.paths.map(path => path.replace(/^docs(?=\/|$)/, documentationRoot)), excludePaths: (area.excludePaths ?? []).map(path => path.replace(/^docs(?=\/|$)/, documentationRoot)) }));
+}
+const DEFAULT_MEMORY_AREAS = memoryAreasForRoot();
 
 function cloneClarifyGuidance(clarify) {
   if (!clarify || typeof clarify !== 'object' || Array.isArray(clarify)) return undefined;
@@ -198,8 +203,19 @@ export function clonePlanModePolicy(policy = DEFAULT_PLAN_MODE_POLICY) {
   return { writablePaths: [...(policy.writablePaths ?? DEFAULT_PLAN_MODE_POLICY.writablePaths)] };
 }
 
-export function defaultMemoryConfig() {
-  return { source: 'default', areas: DEFAULT_MEMORY_AREAS.map(cloneArea), traceability: cloneTraceabilityPolicy(), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), load: cloneLoadPolicy(), planMode: clonePlanModePolicy() };
+export function normalizeDocumentationRoot(value = DEFAULT_DOCUMENTATION_ROOT) {
+  return String(value).trim().replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/{2,}/g, '/').replace(/^\/+|\/+$/g, '');
+}
+export function isValidDocumentationRoot(value) {
+  if (typeof value !== 'string' || !value.trim() || /^[A-Za-z]:[\\/]/.test(value) || /^[/\\]{2}/.test(value) || value.trim().startsWith('/')) return false;
+  const root = normalizeDocumentationRoot(value);
+  if (!root || root === '.' || root.split('/').some(part => part === '..' || !part || /[*?\[\]{}]/.test(part)) || isSecretLikePathPattern(root)) return false;
+  const first = root.split('/')[0];
+  return first !== 'dotdotgod.config.json' && first !== '.dotdotgod';
+}
+export function defaultMemoryConfig({ documentationRoot = DEFAULT_DOCUMENTATION_ROOT } = {}) {
+  const root = normalizeDocumentationRoot(documentationRoot);
+  return { source: 'default', documentation: { root }, areas: memoryAreasForRoot(root).map(cloneArea), traceability: cloneTraceabilityPolicy({ ...DEFAULT_TRACEABILITY_POLICY, required: [`${root}/spec/**`] }), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), load: cloneLoadPolicy({ ...DEFAULT_LOAD_POLICY, documentationSummary: { exclude: [`${root}/plan`, `${root}/archive`] } }), planMode: clonePlanModePolicy({ writablePaths: [`${root}/plan/**`, `${root}/archive/**`] }) };
 }
 
 export function normalizePathPattern(value = '') {
@@ -336,6 +352,10 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
     add('MEMORY_CONFIG_INVALID', null, 'Config must be a JSON object.');
     return errors;
   }
+  if (data.documentation !== undefined) {
+    if (!data.documentation || typeof data.documentation !== 'object' || Array.isArray(data.documentation)) add('DOCUMENTATION_CONFIG_INVALID', 'documentation', 'Expected an object.');
+    else if (!isValidDocumentationRoot(data.documentation.root)) add('DOCUMENTATION_CONFIG_INVALID_ROOT', 'documentation.root', 'Expected a safe repository-relative directory without traversal, glob syntax, secrets, or reserved config/cache overlap.');
+  }
   if (data.embedding !== undefined) {
     try { validateEmbeddingProfile(data.embedding, 'embedding'); }
     catch (error) { add('EMBEDDING_CONFIG_INVALID', 'embedding', error instanceof Error ? error.message : String(error)); }
@@ -420,7 +440,7 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
     } else if (planMode.writablePaths !== undefined) {
       const paths = planMode.writablePaths;
       if (!Array.isArray(paths)) add('PLAN_MODE_CONFIG_INVALID_WRITABLE_PATHS', 'planMode.writablePaths', 'Expected an array of documentation path strings.');
-      else if (paths.some((value) => !isValidPathPattern(value) || typeof value !== 'string' || value.trim().startsWith('/') || (!normalizePathPattern(value).startsWith('docs/') && normalizePathPattern(value) !== 'docs') || normalizePathPattern(value).startsWith('docs/.') || isSecretLikePathPattern(value))) add('PLAN_MODE_CONFIG_INVALID_WRITABLE_PATHS', 'planMode.writablePaths', 'Expected safe repository-relative paths under docs/ using exact paths or /** subtree patterns.');
+      else if (paths.some((value) => !isValidPathPattern(value) || typeof value !== 'string' || value.trim().startsWith('/') || (!normalizePathPattern(value).startsWith(`${normalizeDocumentationRoot(data.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT)}/`)) || normalizePathPattern(value).startsWith(`${normalizeDocumentationRoot(data.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT)}/.`) || isSecretLikePathPattern(value))) add('PLAN_MODE_CONFIG_INVALID_WRITABLE_PATHS', 'planMode.writablePaths', 'Expected safe repository-relative paths under documentation.root using exact paths or /** subtree patterns.');
     }
   }
   const referenceExpansion = data.referenceExpansion;
@@ -493,14 +513,16 @@ export function readMemoryConfig(root = '.') {
     const data = JSON.parse(readFileSync(path, 'utf8'));
     const errors = validateMemoryConfigData(data, root, MEMORY_CONFIG_FILE);
     if (errors.length > 0) return { ...defaultMemoryConfig(), source: MEMORY_CONFIG_FILE, errors };
+    const documentationRoot = normalizeDocumentationRoot(data.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT);
+    const defaults = defaultMemoryConfig({ documentationRoot });
     const configuredAreas = data.memory?.areas?.map(normalizeMemoryArea) ?? [];
-    const traceability = data.traceability === undefined ? cloneTraceabilityPolicy() : normalizeTraceabilityPolicy(data.traceability);
+    const traceability = data.traceability === undefined ? defaults.traceability : normalizeTraceabilityPolicy(data.traceability);
     const validation = data.validation === undefined ? cloneValidationPolicy() : normalizeValidationPolicy(data.validation);
     const impactRanking = normalizeImpactRankingPolicy(data.impactRanking);
     const referenceExpansion = normalizeReferenceExpansionPolicy(data.referenceExpansion);
-    const load = normalizeLoadPolicy(data.load);
-    const planMode = normalizePlanModePolicy(data.planMode);
-    return configuredAreas.length > 0 ? { source: MEMORY_CONFIG_FILE, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, load, planMode, errors: [] } : { ...defaultMemoryConfig(), traceability, validation, impactRanking, referenceExpansion, load, planMode, source: MEMORY_CONFIG_FILE, errors: [] };
+    const load = data.load === undefined ? defaults.load : normalizeLoadPolicy(data.load);
+    const planMode = data.planMode === undefined ? defaults.planMode : normalizePlanModePolicy(data.planMode);
+    return configuredAreas.length > 0 ? { source: MEMORY_CONFIG_FILE, documentation: { root: documentationRoot }, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, load, planMode, errors: [] } : { ...defaults, traceability, validation, impactRanking, referenceExpansion, load, planMode, source: MEMORY_CONFIG_FILE, errors: [] };
   } catch (error) {
     return { ...defaultMemoryConfig(), source: MEMORY_CONFIG_FILE, errors: [{ file: MEMORY_CONFIG_FILE, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}\nFix: repair ${MEMORY_CONFIG_FILE} so it is valid JSON, or remove it before regenerating the default config with \`dotdotgod config init <root>\`.` }] };
   }
@@ -520,9 +542,10 @@ function serializableMemoryArea(area) {
   }, area);
 }
 
-export function defaultDotdotgodConfigData() {
-  const config = defaultMemoryConfig();
+export function defaultDotdotgodConfigData({ documentationRoot = DEFAULT_DOCUMENTATION_ROOT } = {}) {
+  const config = defaultMemoryConfig({ documentationRoot });
   return {
+    documentation: { ...config.documentation },
     memory: {
       areas: (config.areas ?? []).map(serializableMemoryArea),
     },
@@ -542,6 +565,7 @@ export function defaultDotdotgodConfigText() {
 export function memoryConfigSummary(config) {
   return {
     source: config.source ?? 'default',
+    documentation: { root: config.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT },
     areas: (config.areas ?? []).map((area) => withOptionalAreaMetadata({
       id: area.id,
       label: area.label,

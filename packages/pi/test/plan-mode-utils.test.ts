@@ -9,7 +9,7 @@ import { ExecutionProgressController } from "../extensions/plan-mode/controllers
 import { GateController } from "../extensions/plan-mode/controllers/gates.ts";
 import { ModeLifecycleController } from "../extensions/plan-mode/controllers/mode-lifecycle.ts";
 import { PlanArtifactController } from "../extensions/plan-mode/controllers/plan-artifact.ts";
-import { isActivePlanMarkdownPath, isManagedPlanMarkdownPath } from "../extensions/plan-mode/runtime/paths.ts";
+import { configureDocumentationPaths, isActivePlanMarkdownPath, isManagedPlanMarkdownPath } from "../extensions/plan-mode/runtime/paths.ts";
 import {
 	PLAN_COMPACTION_PERCENT_THRESHOLD,
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
@@ -1162,5 +1162,37 @@ describe("plan-mode done markers", () => {
 			items.map((item) => item.completed),
 			[false, true],
 		);
+	});
+});
+
+describe("alternate documentation root Plan Mode policy", () => {
+	it("accepts safe configured-root markdown and renders the durable path", () => {
+		const root = mkdtempSync(join(tmpdir(), "dotdotgod-plan-root-"));
+		assert.equal(isManagedPlanMarkdownPath(root, "project-memory/plan/task/README.md", ["project-memory/plan/**"]), true);
+		assert.equal(isManagedPlanMarkdownPath(root, "../project-memory/plan/task/README.md", ["project-memory/plan/**"]), false);
+		const prompt = buildPlanModeContextPrompt(false, undefined, ["project-memory/plan/**", "project-memory/archive/**"]);
+		assert.match(prompt, /project-memory\/plan\/<task-slug>\/README\.md/);
+		assert.doesNotMatch(prompt, /docs\/plan\/<task-slug>/);
+	});
+});
+
+describe("resolved alternate-root plan execution policy", () => {
+	it("propagates plan/archive identity through resolution, tracking, context, and guards", () => {
+		configureDocumentationPaths("project-memory");
+		try {
+			assert.equal(getCurrentPlanReadmePath("project-memory/plan/task/VERIFICATION.md"), "project-memory/plan/task/README.md");
+			assert.deepEqual(extractPlanSlugMentions("Execute project-memory/plan/task/README.md"), ["task"]);
+			assert.match(buildPlanModeRequestFraming("Execute the active plan"), /project-memory\/plan/);
+			assert.equal(shouldTrackImpactPath("project-memory/plan/task/README.md"), false);
+			assert.equal(isSafePlanArchiveCommand("mkdir -p project-memory/archive/plan", ["project-memory/archive/**"]), true);
+			const artifact = new PlanArtifactController();
+			artifact.markTouched("project-memory/plan/task/README.md");
+			assert.equal(artifact.inferPlanPath(), "project-memory/plan/task/README.md");
+			const focus = new ContextShapingController().buildCurrentWorkFocus({ touchedPlanPaths: ["project-memory/plan/task/README.md"], todos: [] });
+			assert.deepEqual(focus.activePlanPaths, ["project-memory/plan/task/README.md"]);
+			assert.match(focus.constraints?.join("\n") ?? "", /project-memory\/archive\/README\.md/);
+		} finally {
+			configureDocumentationPaths("docs");
+		}
 	});
 });

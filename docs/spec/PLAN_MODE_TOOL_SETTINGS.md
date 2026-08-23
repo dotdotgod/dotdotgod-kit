@@ -25,7 +25,7 @@ This lets users opt into external read-oriented tools, such as context-mode tool
 
 ## Writable Documentation Paths
 
-Project config may define `planMode.writablePaths` as an array of repository-relative exact paths or `/**` subtree patterns under `docs/`. The default is `docs/plan/**` and `docs/archive/**`; an explicit array replaces that default, and an empty array disables general Plan Mode document mutation.
+Project config may define `planMode.writablePaths` as an array of repository-relative exact paths or `/**` subtree patterns contained by the resolved `documentation.root`. The default is `docs/plan/**` and `docs/archive/**`; the defaults follow the configured root; an explicit array replaces that default without rebasing, and an empty array disables general Plan Mode document mutation.
 
 
 ## Prompt Requirements

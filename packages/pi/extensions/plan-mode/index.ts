@@ -1,7 +1,7 @@
 /**
  * Customized Plan Mode Extension
  *
- * Safe exploration mode for code analysis and docs/plan plan-file management.
+ * Safe exploration mode for code analysis and configured plan-file management.
  */
 
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
@@ -37,6 +37,7 @@ import {
 import {
   ARCHIVE_DIRECTORY,
   DEFAULT_PLAN_MODE_WRITABLE_PATHS,
+  configureDocumentationPaths,
   getToolPath,
   isActivePlanMarkdownPath,
   isManagedPlanMarkdownPath,
@@ -92,7 +93,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
   function refreshPlanModePolicy(cwd: string): void {
     const result = runDotdotgodCli(cwd, ["config", cwd, "--json"]);
-    const data = result.data as { config?: { planMode?: { writablePaths?: unknown } } } | undefined;
+    const data = result.data as { config?: { documentation?: { root?: unknown }; planMode?: { writablePaths?: unknown } } } | undefined;
+    const documentationRoot = data?.config?.documentation?.root;
+    configureDocumentationPaths(typeof documentationRoot === "string" ? documentationRoot : "docs");
     const configured = data?.config?.planMode?.writablePaths;
     writablePaths = Array.isArray(configured) && configured.every((value) => typeof value === "string")
       ? configured as string[]
@@ -125,7 +128,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   );
 
   pi.registerFlag("dd-plan", {
-    description: "Start in plan mode (safe exploration plus docs/plan updates)",
+    description: "Start in plan mode (safe exploration plus configured documentation-plan updates)",
     type: "boolean",
     default: false,
   });
@@ -595,7 +598,7 @@ After completing any step, include its [DONE:n] tag in the same assistant respon
 Final responses after implementation or verification MUST include [DONE:n] for every step completed in that turn.
 Example: after completing step 1, include [DONE:1]. If steps 1 and 2 are both complete, include [DONE:1] [DONE:2].
 After modification or coding work, run dotdotgod validate for the project before final completion. Prefer the local source CLI form when available: node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index.
-When implementation and verification are complete, move the completed task directory from docs/plan/<task-slug>/ to docs/archive/plan/<task-slug>/ as the final housekeeping step and include the archive step's [DONE:n] tag.
+When implementation and verification are complete, move the completed task directory from ${PLAN_DIRECTORY}/<task-slug>/ to ${ARCHIVE_DIRECTORY}/plan/<task-slug>/ as the final housekeeping step and include the archive step's [DONE:n] tag.
 
 If an out-of-scope change is required, stop and ask the user for confirmation.${impactReminder ? `\n\n${impactReminder}` : ""}`,
           display: false,

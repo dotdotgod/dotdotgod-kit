@@ -130,3 +130,19 @@ describe("load-project helpers", () => {
 		assert.equal(hasOtherLoadCommand([{ name: "load", sourceInfo: { path: "/extensions/load-project/index.ts" } }]), false);
 	});
 });
+
+describe("alternate documentation root", () => {
+	it("discovers and renders only the configured documentation tree", () => {
+		const root = fixture();
+		write(root, "dotdotgod.config.json", JSON.stringify({ documentation: { root: "project-memory" } }));
+		write(root, "project-memory/README.md");
+		write(root, "project-memory/spec/FEATURE.md");
+		write(root, "project-memory/plan/task/README.md");
+		write(root, "docs/generated.md");
+		const snapshot = collectSnapshot(root);
+		assert.equal(snapshot.documentationRoot, "project-memory");
+		assert.deepEqual(snapshot.exclude, ["project-memory/plan", "project-memory/archive"]);
+		assert.match(formatDocumentationTree(snapshot, 3), /^project-memory\//);
+		assert.doesNotMatch(formatDocumentationTree(snapshot, 3), /generated/);
+	});
+});

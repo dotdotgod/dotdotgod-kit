@@ -1,9 +1,26 @@
 import { existsSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 
-export const PLAN_DIRECTORY = "docs/plan";
-export const ARCHIVE_DIRECTORY = "docs/archive";
+export let DOCUMENTATION_ROOT = "docs";
+export let PLAN_DIRECTORY = "docs/plan";
+export let ARCHIVE_DIRECTORY = "docs/archive";
 export const DEFAULT_PLAN_MODE_WRITABLE_PATHS = ["docs/plan/**", "docs/archive/**"] as const;
+
+export function configureDocumentationPaths(documentationRoot = "docs"): void {
+	DOCUMENTATION_ROOT = documentationRoot;
+	PLAN_DIRECTORY = `${documentationRoot}/plan`;
+	ARCHIVE_DIRECTORY = `${documentationRoot}/archive`;
+}
+
+export function isActivePlanPath(path: string): boolean {
+	const normalized = path.replace(/^@/, "").replaceAll("\\", "/").replace(/^\.\//, "");
+	return normalized.startsWith(`${PLAN_DIRECTORY}/`);
+}
+
+export function isArchivePath(path: string): boolean {
+	const normalized = path.replace(/^@/, "").replaceAll("\\", "/").replace(/^\.\//, "");
+	return normalized.startsWith(`${ARCHIVE_DIRECTORY}/`);
+}
 
 export function normalizeToolPath(path: string): string {
 	return path.replace(/^@/, "");
@@ -38,7 +55,7 @@ function isMarkdownPathInside(cwd: string, path: string, directory: string): boo
 
 function writableDirectory(pattern: string): string | undefined {
 	const normalized = pattern.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
-	if (!normalized.startsWith("docs/") || normalized.includes("..") || normalized.startsWith("docs/.")) return undefined;
+	if (!normalized || normalized.startsWith("/") || /^[A-Za-z]:/.test(normalized) || normalized.includes("..") || normalized.split("/").some((part) => part.startsWith("."))) return undefined;
 	if (normalized.includes("*") && !normalized.endsWith("/**")) return undefined;
 	return normalized.endsWith("/**") ? normalized.slice(0, -3) : normalized;
 }
