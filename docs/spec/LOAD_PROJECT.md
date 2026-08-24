@@ -15,7 +15,7 @@ Explicit command delivery uses an internal structural marker that the global inp
 
 Pi also performs one mode-neutral automatic project-memory assessment at the beginning of session work. Automatic state, recent-load lookup, and transcript inspection use only entries reachable from the active session branch. A fork before assessment reassesses; a fork before completion cannot inherit an abandoned sibling's completion; a fork after reachable completion reuses it. When baseline coverage is missing and no recent load exists, the global project-memory extension leaves the original `input` and attached images unchanged, makes `dotdotgod_project_load` available to that agent run, and injects a persistent custom instruction with `display: false` before agent start. The hidden instruction is sent to the model but is not rendered as user-authored request text. The extension records instruction delivery when `before_agent_start` schedules that message, allowing the model's immediate tool call without waiting for the session branch to expose the newly injected entry; restored branches may also confirm delivery from a reachable hidden message. Other extensions and tools remain independently owned. The instruction keeps downstream planning and impact targeting task-directed, requires one agent-selected focused load, returns compact Load output, records completion exactly once for the reachable branch state, and continues the original request. Pending and instruction-delivery state persist across active-branch restore. This automatic flow applies in ordinary mode and Plan Mode; Plan Mode does not classify, queue, or recognize automatic-load prompts. `/dd:no-load`, `dd:no-load`, or `/no-load` opts out of the automatic assessment for that request.
 
-Claude Code and Codex provide generated Load commands or skills from `packages/shared/workflows/load.md`. Their generated workflow runs `dotdotgod config <root> --json` to resolve documentation exclusions and uses `dotdotgod query` for focused routing, with README and tree fallback when CLI execution is unavailable.
+Claude Code and Codex provide generated Load commands or skills from `packages/shared/workflows/load.md`. Their generated workflow runs `dotdotgod map <root> --depth <3|5> --json` for the configured documentation map and uses `dotdotgod query` for focused routing, with README and local tree fallback when CLI execution is unavailable.
 
 ## CLI Discovery
 
@@ -40,14 +40,14 @@ Agents preserve existing user changes and avoid rereading baseline content alrea
 
 ## Documentation Map
 
-Load discovers Markdown files below `docs/` and renders repository-relative paths as a prefix-compressed tree. Directory depth counts `docs/` as depth 1, `docs/spec/` as depth 2, and `docs/spec/plan-mode/` as depth 3.
+The shared CLI `map` command discovers Markdown below the configured documentation root and renders repository-relative paths as a prefix-compressed tree for every adapter. Pi invokes `map --json` through its source/package/global CLI resolver and retains a bounded local fallback for CLI-unavailable operation. Directory depth counts `docs/` as depth 1, `docs/spec/` as depth 2, and `docs/spec/plan-mode/` as depth 3 under the default root.
 
 `load.documentationSummary.exclude` filters complete subtrees from this shared map. Its default values are:
 
 - `docs/plan`
 - `docs/archive`
 
-Without arguments, Load expands the tree through directory depth 5. At that boundary it lists every directly contained Markdown file and every immediate child directory, regardless of item count. Each child directory gets its own exact recursive directory and Markdown-file count for content hidden below the boundary; Load does not combine multiple children into one anonymous summary or recursively print their contents. It does not silently truncate by directory or item count.
+Without arguments, Load requests `dotdotgod map <root> --depth 5 --json` and expands the tree through directory depth 5. At that boundary it lists every directly contained Markdown file and every immediate child directory, regardless of item count. Each child directory gets its own exact recursive directory and Markdown-file count for content hidden below the boundary; Load does not combine multiple children into one anonymous summary or recursively print their contents. It does not silently truncate by directory or item count.
 
 Load lists paths but reads bodies selectively through maintained README indexes and current-task evidence.
 
@@ -57,7 +57,7 @@ Free-form Load arguments are query text, not mode switches. When arguments are p
 
 1. runs `dotdotgod query <root> "<arguments>" --limit 30 --json` when available
 2. presents the best-ranked chunk from each of at most 30 distinct Markdown files
-3. renders the documentation map through directory depth 3 with the same named boundary-child summaries
+3. runs `dotdotgod map <root> --depth 3 --json` and renders its documentation tree with the same named boundary-child summaries
 4. falls back to README routing and targeted reads when query is unavailable
 
 The query command searches shared documentation and excludes plan/archive bodies by default. Each result includes a path, heading, score, and bounded excerpt.
@@ -93,7 +93,7 @@ Neither output form reports graph size, cache metrics, communities, or index sta
 
 ## Safety
 
-Load and query do not modify source, docs, or project config. Query may create or incrementally refresh ignored `.dotdotgod/vectors/` files and may download the configured local embedding model into the user model cache on first use. Secret-like paths and excluded local-memory bodies must not be embedded. The Help hint is guidance only, so unavailable CLI or shell execution does not block Load.
+Load and `map` do not modify source, docs, project config, or derived indexes. Query may create or incrementally refresh ignored `.dotdotgod/vectors/` files and may download the configured local embedding model into the user model cache on first use. Secret-like paths and excluded local-memory bodies must not be embedded. The Help hint is guidance only, so unavailable CLI or shell execution does not block Load.
 
 ## Traceability
 
@@ -109,6 +109,8 @@ Load and query do not modify source, docs, or project config. Query may create o
   - [packages/pi/extensions/load-project/index.ts](../../packages/pi/extensions/load-project/index.ts)
   - [packages/pi/extensions/load-project/prompt.ts](../../packages/pi/extensions/load-project/prompt.ts)
   - [packages/pi/extensions/load-project/snapshot.ts](../../packages/pi/extensions/load-project/snapshot.ts)
+  - [packages/cli/src/commands/map.mjs](../../packages/cli/src/commands/map.mjs)
+  - [packages/cli/src/memory/documentation-map.mjs](../../packages/cli/src/memory/documentation-map.mjs)
   - [packages/cli/src/commands/query.mjs](../../packages/cli/src/commands/query.mjs)
   - [packages/shared/workflows/load.md](../../packages/shared/workflows/load.md)
 - Verified by:
@@ -118,6 +120,7 @@ Load and query do not modify source, docs, or project config. Query may create o
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
 - Related docs:
   - [docs/spec/CROSS_AGENT_SUPPORT.md](CROSS_AGENT_SUPPORT.md)
+  - [docs/spec/cli/MAP.md](cli/MAP.md)
   - [docs/spec/cli/QUERY.md](cli/QUERY.md)
 - Design decisions:
   - [docs/arch/EXTENSION_ARCHITECTURE.md](../arch/EXTENSION_ARCHITECTURE.md)
@@ -125,5 +128,5 @@ Load and query do not modify source, docs, or project config. Query may create o
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/pi/extensions/project-memory/index.ts","packages/pi/extensions/project-memory/context.ts","packages/pi/extensions/project-memory/lifecycle.ts","packages/pi/extensions/load-project/index.ts","packages/pi/extensions/load-project/prompt.ts","packages/pi/extensions/load-project/snapshot.ts","packages/cli/src/commands/query.mjs","packages/shared/workflows/load.md"],"verifiedBy":["packages/pi/test/project-memory-extension.test.ts","packages/pi/test/load-project-utils.test.ts","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/cli/QUERY.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/pi/extensions/project-memory/index.ts","packages/pi/extensions/project-memory/context.ts","packages/pi/extensions/project-memory/lifecycle.ts","packages/pi/extensions/load-project/index.ts","packages/pi/extensions/load-project/prompt.ts","packages/pi/extensions/load-project/snapshot.ts","packages/cli/src/commands/map.mjs","packages/cli/src/memory/documentation-map.mjs","packages/cli/src/commands/query.mjs","packages/shared/workflows/load.md"],"verifiedBy":["packages/pi/test/project-memory-extension.test.ts","packages/pi/test/load-project-utils.test.ts","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/cli/MAP.md","docs/spec/cli/QUERY.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
 ```

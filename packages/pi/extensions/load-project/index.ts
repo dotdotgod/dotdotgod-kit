@@ -7,7 +7,7 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { recordContextMetric } from "../context-metrics/utils.js";
 import { PROJECT_MEMORY_EXPLICIT_LOAD_MARKER } from "../project-memory/context.js";
-import { buildLoadPrompt, collectSnapshot, documentationSummaryDirectories, estimateTextMetrics, hasOtherLoadCommand, runDotdotgodQuery } from "./utils.js";
+import { buildLoadPrompt, collectSnapshot, documentationSummaryDirectories, estimateTextMetrics, hasOtherLoadCommand, runDotdotgodMap, runDotdotgodQuery } from "./utils.js";
 
 async function runLoadCommand(
 	pi: ExtensionAPI,
@@ -17,7 +17,9 @@ async function runLoadCommand(
 ) {
 	const mode = "full";
 	const snapshot = collectSnapshot(ctx.cwd);
-	const queryResult = args.trim() ? runDotdotgodQuery(ctx.cwd, args.trim()) : undefined;
+	const focus = args.trim();
+	const documentationMap = runDotdotgodMap(ctx.cwd, focus ? 3 : 5);
+	const queryResult = focus ? runDotdotgodQuery(ctx.cwd, focus) : undefined;
 	const conflict = hasOtherLoadCommand(pi.getCommands());
 
 	if (ctx.hasUI && conflict) {
@@ -27,12 +29,13 @@ async function runLoadCommand(
 		);
 	}
 
-	const prompt = buildLoadPrompt(ctx.cwd, args, snapshot, queryResult, { mode });
+	const prompt = buildLoadPrompt(ctx.cwd, args, snapshot, queryResult, { mode, documentationMap });
 	const promptMetrics = estimateTextMetrics(prompt);
 	recordContextMetric(ctx, (name) => pi.getFlag(name), "load-project:before-send", {
 		commandName,
 		promptMetrics,
 		directorySummaryPaths: documentationSummaryDirectories(snapshot).map((directory) => directory.path),
+		map: { ok: documentationMap.ok, command: documentationMap.command, error: documentationMap.error },
 		query: queryResult ? { ok: queryResult.ok, command: queryResult.command, error: queryResult.error } : undefined,
 	});
 	const deliverAs = ctx.isIdle() ? undefined : "followUp";
@@ -44,6 +47,7 @@ async function runLoadCommand(
 		commandName,
 		entryCount: ctx.sessionManager.getEntries().length,
 		promptMetrics,
+		map: { ok: documentationMap.ok, command: documentationMap.command, error: documentationMap.error },
 		query: queryResult ? { ok: queryResult.ok, command: queryResult.command, error: queryResult.error } : undefined,
 	});
 	recordContextMetric(ctx, (name) => pi.getFlag(name), "load-project:after-send", { commandName, deliverAs: deliverAs ?? "immediate" });

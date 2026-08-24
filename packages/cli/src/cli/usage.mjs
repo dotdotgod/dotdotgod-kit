@@ -36,6 +36,11 @@ Create dotdotgod.config.json from a bundled or user template. Without --template
   dotdotgod query <root> <query> [--limit n] [--json]
 
 Search shared project documentation with the resolved local or remote embedding provider.`;
+    case 'map':
+      return `Usage:
+  dotdotgod map <root> [--depth <positive-integer>] [--json]
+
+Render the configured shared Markdown documentation map without modifying the project.`;
     case 'resolve':
       return `Usage:
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]`;
@@ -73,6 +78,7 @@ Commands:
   init                  Initialize project memory files.
   config                Inspect or initialize project configuration.
   query                 Search project documentation.
+  map                   Render the project documentation map.
   resolve               Resolve a project reference.
   expand                Expand references in a prompt.
   validate              Validate project memory and documentation.

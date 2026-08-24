@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import { buildDotdotgodCliCandidates } from "../extensions/shared/dotdotgod-cli.ts";
-import { buildLoadPrompt, collectSnapshot, estimateTextMetrics, extractDocsPathMentions, formatDocumentationTree, hasOtherLoadCommand, listMarkdownFiles, listReadmeFiles } from "../extensions/load-project/utils.ts";
+import { buildLoadPrompt, collectSnapshot, estimateTextMetrics, extractDocsPathMentions, formatDocumentationTree, hasOtherLoadCommand, listMarkdownFiles, listReadmeFiles, runDotdotgodMap } from "../extensions/load-project/utils.ts";
 
 function fixture(): string {
 	return mkdtempSync(join(tmpdir(), "dotdotgod-load-test-"));
@@ -24,6 +24,21 @@ describe("dotdotgod CLI resolution", () => {
 		write(packageRoot, "node_modules/@dotdotgod/cli/bin/dotdotgod.mjs", "#!/usr/bin/env node\n");
 		const candidates = buildDotdotgodCliCandidates(root, ["query", root, "focus", "--json"], { packageRoot });
 		assert.deepEqual(candidates.map((candidate) => candidate.label), ["local workspace CLI", "bundled @dotdotgod/cli", "dotdotgod"]);
+	});
+});
+
+describe("dotdotgod map consumption", () => {
+	it("uses the source checkout map JSON contract", () => {
+		const root = fixture();
+		write(root, "packages/cli/bin/dotdotgod.mjs", `#!/usr/bin/env node
+const depth = Number(process.argv[process.argv.indexOf("--depth") + 1]);
+console.log(JSON.stringify({ ok: true, root: process.argv[3], documentationRoot: "docs", depth, exclude: ["docs/plan"], paths: ["docs/README.md"], tree: "docs/\\n  - README.md" }));
+`);
+		const result = runDotdotgodMap(root, 3);
+		assert.equal(result.ok, true);
+		assert.equal(result.command, "local workspace CLI");
+		assert.equal(result.data?.depth, 3);
+		assert.equal(result.data?.tree, "docs/\n  - README.md");
 	});
 });
 
@@ -116,6 +131,35 @@ describe("documentation tree", () => {
 		assert.match(prompt, /Project narrative and purpose/);
 		assert.match(prompt, /^Help: dotdotgod --help$/m);
 		assert.doesNotMatch(prompt, /CLI status:/);
+	});
+
+	it("prefers CLI map output and exclusions while retaining snapshot fallback", () => {
+		const mapPrompt = buildLoadPrompt("/project", "focus", snapshot, undefined, {
+			mode: "compact",
+			documentationMap: {
+				ok: true,
+				command: "local workspace CLI",
+				data: {
+					ok: true,
+					root: "/project",
+					documentationRoot: "memory",
+					depth: 3,
+					exclude: ["memory/private"],
+					paths: ["memory/README.md"],
+					tree: "memory/\n  - README.md",
+				},
+			},
+		});
+		assert.match(mapPrompt, /memory\/\n  - README\.md/);
+		assert.match(mapPrompt, /- memory\/private\/\*\*/);
+		assert.doesNotMatch(mapPrompt, /docs\/plan\/\*\*/);
+
+		const fallbackPrompt = buildLoadPrompt("/project", "", snapshot, undefined, {
+			mode: "compact",
+			documentationMap: { ok: false, error: "CLI unavailable" },
+		});
+		assert.match(fallbackPrompt, /docs\/\n/);
+		assert.match(fallbackPrompt, /- docs\/plan\/\*\*/);
 	});
 });
 

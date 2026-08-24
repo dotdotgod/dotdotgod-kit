@@ -65,7 +65,7 @@ function renderInitBody(platform) {
 
 function renderLoadBody(platform) {
   if (platform === "pi") return loadBody;
-  const configGuidance = `## CLI Context\n\nRun \`dotdotgod config <root> --json\` and apply \`config.load.documentationSummary.exclude\` before building the documentation tree. With focus text, run \`dotdotgod query <root> "<focus>" --limit 30 --json\`. If the CLI is unavailable, continue from the documentation tree and README indexes.`;
+  const configGuidance = `## CLI Context\n\nRun \`dotdotgod map <root> --depth 5 --json\` for a broad documentation map. With focus text, run \`dotdotgod query <root> "<focus>" --limit 30 --json\` and \`dotdotgod map <root> --depth 3 --json\`. The map command resolves the configured documentation root and exclusions. If the CLI is unavailable, continue from the documentation tree and README indexes.`;
   return `${configGuidance}\n\n${loadBody}`;
 }
 

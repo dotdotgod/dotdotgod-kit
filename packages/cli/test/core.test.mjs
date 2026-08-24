@@ -14,6 +14,8 @@ import {
   buildChangedFileProfile,
   buildVectorImpactOverlay,
   buildMemoryAreas,
+  buildDocumentationMap,
+  formatDocumentationTree,
   builtInTemplateData,
   builtInTemplateScaffold,
   buildIndex,
@@ -57,6 +59,49 @@ import {
   validateTraceabilityBlock,
   validateTraceabilityLinksRegion,
 } from '../src/core.mjs';
+
+describe('documentation map', () => {
+  it('renders all boundary files and named child summaries deterministically', () => {
+    const paths = [
+      'docs/README.md',
+      'docs/spec/runtime/api/SECOND.md',
+      'docs/spec/runtime/api/README.md',
+      'docs/spec/runtime/api/alpha/DETAIL.md',
+      'docs/spec/runtime/api/zeta/nested/DETAIL.md',
+    ];
+    const tree = formatDocumentationTree(paths, 'docs', 4);
+    assert.match(tree, /^docs\//);
+    assert.match(tree, /README\.md/);
+    assert.match(tree, /SECOND\.md/);
+    assert.match(tree, /alpha\/\n\s+- … 0 directories, 1 Markdown file/);
+    assert.match(tree, /zeta\/\n\s+- … 1 directory, 1 Markdown file/);
+    assert.ok(tree.indexOf('alpha/') < tree.indexOf('zeta/'));
+    assert.doesNotMatch(tree, /DETAIL\.md/);
+  });
+
+  it('discovers configured Markdown while excluding local and secret-like paths', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dotdotgod-map-unit-'));
+    for (const directory of ['project-memory/spec', 'project-memory/plan/task', 'project-memory/secrets']) mkdirSync(join(root, directory), { recursive: true });
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({ documentation: { root: 'project-memory' } }));
+    writeFileSync(join(root, 'project-memory/README.md'), '# Map');
+    writeFileSync(join(root, 'project-memory/spec/FEATURE.md'), '# Feature');
+    writeFileSync(join(root, 'project-memory/plan/task/README.md'), '# Plan');
+    writeFileSync(join(root, 'project-memory/secrets/README.md'), '# Secret');
+    const result = buildDocumentationMap(root, { depth: 3 });
+    assert.equal(result.ok, true);
+    assert.equal(result.documentationRoot, 'project-memory');
+    assert.deepEqual(result.exclude, ['project-memory/archive', 'project-memory/plan']);
+    assert.deepEqual(result.paths, ['project-memory/README.md', 'project-memory/spec/FEATURE.md']);
+    assert.doesNotMatch(result.tree, /plan|Secret/);
+  });
+
+  it('returns a successful missing documentation-root map', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dotdotgod-map-missing-'));
+    const result = buildDocumentationMap(root, { depth: 5 });
+    assert.deepEqual(result.paths, []);
+    assert.equal(result.tree, '- docs/: missing');
+  });
+});
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-cli-unit-'));

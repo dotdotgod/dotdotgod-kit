@@ -6,9 +6,10 @@ Load the repository's dotdotgod project memory without modifying maintained file
 
 1. Identify the repository root. Expose `Help: dotdotgod --help` as optional CLI discovery guidance without checking or reporting installation status, and do not require Help execution for Load to continue.
 2. When baseline context is missing, read `AGENTS.md`, the adapter entrypoint, `README.md`, and `docs/README.md` when present.
-3. Build a prefix-compressed tree of `docs/**/*.md` after `load.documentationSummary.exclude`. Count `docs/` as depth 1; without arguments, expand through depth 5. At the boundary, list every direct Markdown file and immediate child directory regardless of item count, then summarize hidden descendants separately under each named child with exact recursive directory and Markdown-file counts.
-4. With arguments, use focused query results to return at most 30 distinct Markdown files and render the tree through depth 3 with the same named boundary-child summaries.
-5. Read bodies selectively from query results, explicit paths, and README indexes. Read relevant active plans only when needed, use `docs/archive/README.md` as the history map, and avoid broad generated, dependency, cache, or secret reads.
+3. Without arguments, run `dotdotgod map <root> --depth 5 --json` and use its configured prefix-compressed documentation tree. The command owns `documentation.root`, `load.documentationSummary.exclude`, deterministic Markdown discovery, and boundary summaries.
+4. With arguments, run `dotdotgod query <root> "<focus>" --limit 30 --json` for at most 30 distinct Markdown files and `dotdotgod map <root> --depth 3 --json` for the configured navigation tree.
+5. If the CLI or shell execution is unavailable, preserve Load behavior by building the same tree from the configured documentation root when known, excluding local memory, and using README routing. At the depth boundary, list every direct Markdown file and immediate child directory, then summarize hidden descendants separately under each named child with exact recursive directory and Markdown-file counts.
+6. Read bodies selectively from query results, explicit paths, and README indexes. Read relevant active plans only when needed, use `docs/archive/README.md` (or the configured archive `README.md` under an alternate documentation root) as the history map, and avoid broad generated, dependency, cache, or secret reads.
 
 ## Output
 

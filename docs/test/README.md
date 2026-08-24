@@ -18,6 +18,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `EMBEDDING_CONFIG.md`: provider precedence, transport, credentials, dynamic dimensions, and cache invalidation checks.
 - `HOOKS.md`: optional Claude Code and Codex hook documentation and package-resource smoke checks.
 - `CLI_INTERFACE.md`: baseline CLI help/version and invalid invocation checks.
+- `CLI_MAP.md`: shared documentation-map command, depth, filtering, JSON, errors, side effects, and adapter parity checks.
 - `REFERENCE_EXPANSION.md`: reference resolution and prompt-time expansion regression and smoke checks.
 - `MANUAL_SMOKE.md`: compatibility route for manual smoke tests.
 - `manual-smoke/README.md`: adapter, Plan Mode, initializer, publishing, and README landing smoke checks.
@@ -30,6 +31,7 @@ Use source-checkout commands in this repository. Installed `dotdotgod` or `npx @
 | --- | --- | --- |
 | Docs/project-memory correctness | `node packages/cli/bin/dotdotgod.mjs validate . ...` | Checks docs, config, traceability, and optional index freshness. |
 | Generated traceability drift | `node packages/cli/bin/dotdotgod.mjs traceability links . --check --json` | Focused check; use `--write` only to repair generated links and compact JSON. |
+| Documentation navigation | `map` | Read-only configured Markdown discovery and tree rendering; does not build or refresh indexes. |
 | Search/graph cache smoke | `query`, `graph impact`, `graph communities`, `status` | Query/graph commands may refresh ignored `.dotdotgod/` caches; `status` does not rebuild. |
 | Release-style workspace gate | `pnpm run verify` | Runs package checks, tests, typecheck, generated-resource checks, and docs validation. |
 
@@ -60,6 +62,7 @@ node packages/cli/bin/dotdotgod.mjs --help
 node packages/cli/bin/dotdotgod.mjs --version
 node packages/cli/bin/dotdotgod.mjs init . --dry-run --project-name fixture-name
 node packages/cli/bin/dotdotgod.mjs config . --json
+node packages/cli/bin/dotdotgod.mjs map . --depth 3 --json
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --json
 node packages/cli/bin/dotdotgod.mjs graph impact . --changed packages/pi/extensions/plan-mode/index.ts --yml
 node scripts/evaluate-graph-impact.mjs . --json

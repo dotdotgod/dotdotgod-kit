@@ -94,13 +94,14 @@ A small pure active-tool composition helper is the boundary between project-memo
 - `/load` compatibility full-load command
 - `/dd:load` namespaced full-load command
 - structural explicit-load input marking, stripped by the global project-memory handler to bypass automatic transformation
-- complete shared Markdown discovery with configured plan/archive exclusions
-- prefix-compressed tree rendering through depth 5 without focus or depth 3 with focus, with all direct boundary files and named per-child summaries below the boundary
+- shared `dotdotgod map --json` invocation through the source/package/global CLI resolver for configured Markdown discovery and prefix-compressed tree rendering
+- depth 5 maps without focus and depth 3 maps with focus, preserving all direct boundary files and named per-child summaries below the boundary
+- bounded local discovery/rendering fallback only when CLI execution is unavailable
 - local `dotdotgod query` invocation for up to 30 focused multilingual E5 results
 - lightweight detection of baseline memory files and narrative loader prompt generation
 - command-conflict guidance for `/load`
 
-The shared CLI owns deterministic validation, graph cache/index management, bounded graph-impact reports, and local multilingual documentation query. The explicit load extension and global automatic loader reuse the same filesystem snapshot, prompt, and focused query helpers without injecting graph statistics into the Load narrative. It preserves `docs/archive/README.md` as the archive routing map while keeping archive bodies excluded by default.
+The shared CLI owns deterministic documentation-map discovery/rendering, validation, graph cache/index management, bounded graph-impact reports, and local multilingual documentation query. The explicit load extension and global automatic loader reuse the same map command, baseline snapshot, prompt, and focused query helpers without injecting graph statistics into the Load narrative. Pi retains a bounded CLI-unavailable map fallback and preserves `docs/archive/README.md` as the archive routing map while keeping archive bodies excluded by default.
 
 ## Prompt Layer
 
@@ -129,7 +130,7 @@ Prompt content should:
 
 ## Search Architecture
 
-Focused Load arguments route through `dotdotgod query`, which maintains a separate local `Xenova/multilingual-e5-small` vector cache under `.dotdotgod/vectors/`. This flat exact-scan index is derived routing data, not project truth and not part of the deterministic relationship graph.
+Load navigation routes through read-only `dotdotgod map`; focused Load arguments separately route through `dotdotgod query`, which maintains a separate local `Xenova/multilingual-e5-small` vector cache under `.dotdotgod/vectors/`. This flat exact-scan index is derived routing data, not project truth and not part of the deterministic relationship graph.
 
 Potential future additions include explicit search/status commands, graph-entity search, or an LLM-callable search tool. They should reuse the current query contract only when the behavior is stable rather than adding speculative provider or index abstractions.
 

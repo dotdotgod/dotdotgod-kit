@@ -3,7 +3,7 @@ import { keyHint } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { recordContextMetric } from "../context-metrics/utils.js";
-import { buildLoadPrompt, collectSnapshot, runDotdotgodQuery } from "../load-project/utils.js";
+import { buildLoadPrompt, collectSnapshot, runDotdotgodMap, runDotdotgodQuery } from "../load-project/utils.js";
 import { composeActiveTools } from "../shared/active-tools.js";
 import {
 	buildPendingProjectMemoryLoadPrompt,
@@ -67,19 +67,22 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 			const focus = params.focus.replace(/\s+/g, " ").trim();
 			try {
 				const snapshot = collectSnapshot(ctx.cwd);
+				const documentationMap = runDotdotgodMap(ctx.cwd, focus ? 3 : 5);
 				const queryResult = focus ? runDotdotgodQuery(ctx.cwd, focus) : undefined;
-				const prompt = buildLoadPrompt(ctx.cwd, focus, snapshot, queryResult, { mode: "compact" });
+				const prompt = buildLoadPrompt(ctx.cwd, focus, snapshot, queryResult, { mode: "compact", documentationMap });
 				lifecycle.completeLoad();
 				const entryCount = ctx.sessionManager.getBranch().length;
 				pi.appendEntry("project-memory-load", {
 					reason: "global-context-shaping",
 					entryCount,
 					focus,
+					mapOk: documentationMap.ok,
 					queryOk: queryResult?.ok,
 				});
 				recordContextMetric(ctx, (name) => pi.getFlag(name), "project-memory:auto-load-complete", {
 					entryCount,
 					focus,
+					mapOk: documentationMap.ok,
 					queryOk: queryResult?.ok,
 				});
 				persistState();
@@ -87,9 +90,10 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 				return {
 					content: [{ type: "text", text: prompt }],
 					details: {
-						ok: queryResult?.ok ?? true,
+						ok: documentationMap.ok && (queryResult?.ok ?? true),
 						focus,
 						output: prompt,
+						map: { ok: documentationMap.ok, command: documentationMap.command, error: documentationMap.error },
 						query: queryResult
 							? { ok: queryResult.ok, command: queryResult.command, error: queryResult.error }
 							: undefined,

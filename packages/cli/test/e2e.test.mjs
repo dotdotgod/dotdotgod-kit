@@ -92,6 +92,7 @@ describe('dotdotgod CLI e2e', () => {
         /init\s+Initialize project memory files\./,
         /config\s+Inspect or initialize project configuration\./,
         /query\s+Search project documentation\./,
+        /map\s+Render the project documentation map\./,
         /resolve\s+Resolve a project reference\./,
         /expand\s+Expand references in a prompt\./,
         /validate\s+Validate project memory and documentation\./,
@@ -122,6 +123,7 @@ describe('dotdotgod CLI e2e', () => {
       [['help', 'config', 'init'], /dotdotgod config init <root> \[--template NAME\] \[--json\]/],
       [['status', 'help'], /dotdotgod status <root>/],
       [['query', '--help'], /dotdotgod query <root> <query>/],
+      [['map', '--help'], /dotdotgod map <root> \[--depth <positive-integer>\] \[--json\]/],
       [['resolve', '--help'], /dotdotgod resolve <root> <ref>/],
       [['expand', '--help'], /--fuzzy/],
       [['traceability', '--help'], /dotdotgod traceability links <root>/],
@@ -137,6 +139,42 @@ describe('dotdotgod CLI e2e', () => {
       assert.match(result.stdout, pattern);
       assert.equal(result.stderr, '');
     }
+  });
+
+  it('renders documentation maps in human and stable JSON modes', () => {
+    const root = createFixture();
+    const human = run(['map', root]);
+    assert.equal(human.status, 0, human.stderr);
+    assert.match(human.stdout, /^docs\/\n/);
+    assert.match(human.stdout, /APP\.md/);
+    assert.doesNotMatch(human.stdout, /plan\/|archive\//);
+
+    const payload = json(run(['map', root, '--depth', '3', '--json']));
+    assert.equal(payload.ok, true);
+    assert.equal(payload.root, root);
+    assert.equal(payload.documentationRoot, 'docs');
+    assert.equal(payload.depth, 3);
+    assert.deepEqual(payload.exclude, ['docs/archive', 'docs/plan']);
+    assert(payload.paths.includes('docs/spec/APP.md'));
+    assert(!payload.paths.some(path => path.startsWith('docs/plan/') || path.startsWith('docs/archive/')));
+    assert.equal(typeof payload.tree, 'string');
+  });
+
+  it('returns structured map failures and treats a missing documentation root as empty', () => {
+    const invalidDepth = run(['map', '.', '--depth', '0', '--json']);
+    assert.equal(invalidDepth.status, 2);
+    assert.deepEqual(JSON.parse(invalidDepth.stdout), { ok: false, error: { code: 'INVALID_DEPTH', message: '--depth requires a positive integer.' } });
+    assert.equal(invalidDepth.stderr, '');
+
+    const missingRoot = run(['map', join(tmpdir(), 'dotdotgod-map-does-not-exist'), '--json']);
+    assert.equal(missingRoot.status, 2);
+    assert.equal(JSON.parse(missingRoot.stdout).error.code, 'ROOT_NOT_FOUND');
+    assert.equal(missingRoot.stderr, '');
+
+    const root = mkdtempSync(join(tmpdir(), 'dotdotgod-map-empty-'));
+    const empty = json(run(['map', root, '--json']));
+    assert.deepEqual(empty.paths, []);
+    assert.equal(empty.tree, '- docs/: missing');
   });
 
   it('keeps CLI usage errors on stderr and reports missing graph impact changed paths', () => {

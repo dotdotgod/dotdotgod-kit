@@ -2,7 +2,7 @@
 
 ## Scope
 
-Verify baseline `dotdotgod` command discovery, version reporting, init/config command discovery, plan validation, and invalid `graph impact` guidance.
+Verify baseline `dotdotgod` command discovery, version reporting, init/config/map command discovery, plan validation, and invalid `graph impact` guidance. The focused `map` behavior contract is verified through [`CLI_MAP.md`](CLI_MAP.md).
 
 ## Automated Coverage
 
@@ -28,6 +28,7 @@ node packages/cli/bin/dotdotgod.mjs validate --help
 node packages/cli/bin/dotdotgod.mjs init --help
 node packages/cli/bin/dotdotgod.mjs config --help
 node packages/cli/bin/dotdotgod.mjs config init --help
+node packages/cli/bin/dotdotgod.mjs map --help
 node packages/cli/bin/dotdotgod.mjs resolve --help
 node packages/cli/bin/dotdotgod.mjs expand --help
 node packages/cli/bin/dotdotgod.mjs graph impact --help
