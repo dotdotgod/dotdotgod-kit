@@ -6,8 +6,9 @@ These checks cover packaged Claude Code and Codex runtime hooks plus additional 
 
 - `pnpm --filter @dotdotgod/cli test` parses hook README JSON examples, checks Codex TOML example shape, enforces hook safety policy constraints, and confirms Claude Code/Codex package dry-runs include `hooks/README.md`.
 - `pnpm --filter @dotdotgod/context test` exercises session-start load state, deny/retry guidance, MCP recursion bypass, changed-file fingerprints, impact gating, and matching-state clearance.
-- `pnpm --filter @dotdotgod/claude-code run verify` confirms packaged `hooks/hooks.json`, `hooks/runtime.mjs`, and hook guidance.
-- `pnpm --filter @dotdotgod/codex run verify` confirms packaged `hooks/hooks.json`, `hooks/runtime.mjs`, manifest registration, and hook guidance.
+- `pnpm --filter @dotdotgod/claude-code run verify` confirms packaged hook resources and generated hook/MCP/CLI runtime drift.
+- `pnpm --filter @dotdotgod/codex run verify` confirms packaged hook resources, manifest registration, and generated hook/MCP/CLI runtime drift.
+- `node --test packages/context/test/adapter-packaging.test.mjs` executes both extracted adapter tarballs outside workspace dependency ancestry and covers hook module loading, fail-open malformed input, MCP startup/tool listing/project load, packaged CLI syntax, link/path leakage, and artifact sizes.
 - `pnpm run verify:generated` confirms generated commands and skills did not drift when hook docs are updated manually, including `/dd:impact` and `impact-review` resources generated from `packages/shared/workflows/impact.md`.
 - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index` confirms hook-related docs, links, traceability, and markdown index freshness stay valid after indexing.
 

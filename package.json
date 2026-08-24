@@ -1,14 +1,14 @@
 {
   "name": "dotdotgod-workspace",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Workspace for dotdotgod project memory packages across CLI, Pi, Claude Code, and Codex adapters.",
   "type": "module",
   "license": "Elastic-2.0",
   "packageManager": "pnpm@10.30.0",
   "scripts": {
-    "generate": "node scripts/generate-adapters.mjs",
-    "verify:generated": "node scripts/generate-adapters.mjs --check",
+    "generate": "node scripts/generate-adapters.mjs && node scripts/build-adapter-runtime.mjs",
+    "verify:generated": "node scripts/generate-adapters.mjs --check && node scripts/build-adapter-runtime.mjs --check",
     "verify:types": "pnpm -r --if-present run typecheck",
     "verify:unit": "pnpm -r --if-present run test",
     "verify:contract": "node scripts/check-package-verify-contract.mjs",

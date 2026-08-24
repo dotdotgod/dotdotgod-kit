@@ -19,7 +19,7 @@ dotdotgod
 └── scripts/generate-adapters.mjs
 ```
 
-`packages/shared` is the source of truth for common workflow text and initializer resources. `packages/context` is the source of truth for executable context processing shared by MCP adapters and Pi-native wrappers. Adapter packages keep generated concrete files checked in so local installs and npm tarballs work without a build step.
+`packages/shared` is the source of truth for common workflow text and initializer resources. `packages/context` is the source of truth for executable context processing shared by MCP adapters and Pi-native wrappers. Adapter packages keep generated concrete files checked in so local installs and npm tarballs work without a consumer-side build; Claude and Codex generate self-contained core hook, MCP, and CLI artifacts during repository development.
 
 ## Shared Source Responsibilities
 
@@ -87,7 +87,7 @@ Current implementation:
 Responsibilities:
 
 - Claude plugin manifest and installable resources
-- bundled local stdio MCP server wrapper for generic context tools and project load/impact/initialize operations
+- generated self-contained core stdio MCP server and CLI artifacts for generic context tools and project load/impact/initialize operations
 - packaged lifecycle hooks for load-required and impact-pending deny/retry routing
 - project-memory initialization skill and `/dd:init` command
 - project loading skill and `/dd:load` command
@@ -113,7 +113,7 @@ Current implementation:
 Responsibilities:
 
 - Codex plugin manifest and package resources
-- bundled local stdio MCP configuration and wrapper for generic context tools and project workflows
+- generated self-contained core stdio MCP server and CLI artifacts plus local MCP configuration for project workflows
 - trust-reviewed lifecycle hooks for load-required and impact-pending deny/retry routing
 - reusable skills for initialization, loading, planning, impact-review, and documentation clarity workflows
 - generated Load guidance using `dotdotgod map` for the tree and `query` for focus

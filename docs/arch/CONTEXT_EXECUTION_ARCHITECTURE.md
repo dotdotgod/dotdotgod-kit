@@ -97,8 +97,10 @@ This is tested interception coverage, not a claim that every external file mutat
 
 ## Packaging
 
-- `@dotdotgod/context` is published before adapters.
-- Claude and Codex depend on it and package small plugin-local server/hook wrappers.
+- `@dotdotgod/context` remains the runtime source of truth and is published before packages that consume it directly, including Pi.
+- Claude and Codex generate self-contained hook, MCP server, and CLI entry artifacts at build time; their published plugin caches do not require a separately installed `@dotdotgod/context` package.
+- Generated artifacts are checked into the adapter packages and verified for drift. `@dotdotgod/context` and esbuild are build-time dependencies of those adapters.
+- The optional local semantic-embedding implementation remains an ordinary adapter dependency rather than part of the generated JavaScript artifact.
 - Claude uses `${CLAUDE_PLUGIN_ROOT}` for its server and hook scripts.
 - Codex references root `.mcp.json` and `hooks/hooks.json` through its plugin manifest.
 - Pi depends on the runtime package but starts no MCP process.

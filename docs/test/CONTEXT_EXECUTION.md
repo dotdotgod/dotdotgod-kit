@@ -30,9 +30,11 @@ Focused hardening suites cover:
 - `tools/list` exposes the complete context and project workflow surface;
 - a structured tool call succeeds without protocol stdout corruption.
 
-`packages/context/test/adapters.test.mjs` starts both Claude Code and Codex MCP wrappers from working directories outside their plugin directories and verifies all twelve tools plus `doctor`.
+`packages/context/test/adapters.test.mjs` starts both Claude Code and Codex MCP wrappers from working directories outside their plugin directories and verifies the complete context, project-workflow, session, ingestion-job, healing, and doctor tool surface.
 
-Pi typecheck and adapter package verification cover native imports, packaged MCP wrappers, hook resources, manifests, and package allowlists. Pi keeps direct native context bindings, including the read-only doctor, rather than starting a context MCP child.
+`packages/context/test/adapter-packaging.test.mjs` packs and extracts both adapters outside workspace dependency ancestry, audits links and local-path leakage, blocks runtime package-manager/network commands, executes valid and malformed hook input, initializes MCP, lists the complete tool surface, calls project load, executes the packaged CLI entry, and reports compressed and unpacked sizes.
+
+Pi typecheck and adapter package verification cover native imports, generated MCP/hook runtime drift, hook resources, manifests, and package allowlists. Pi keeps direct native context bindings, including the read-only doctor, rather than starting a context MCP child.
 
 ## Required Regression Cases
 

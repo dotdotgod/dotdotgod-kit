@@ -6,13 +6,13 @@
 
 ## Claude Code Adapter
 
-Run locally:
+Build and pack the adapter, extract the tarball under a clean temporary parent outside the checkout, and run with an isolated home/profile that has no separately installed `@dotdotgod/context` or `@dotdotgod/cli`. Then load it with the current local plugin flow, for example:
 
 ```bash
-claude --plugin-dir /path/to/dotdotgod/packages/claude-code
+claude --plugin-dir /tmp/dotdotgod-claude-code/package
 ```
 
-Confirm the packaged `dotdotgod-context` stdio MCP server starts and exposes `execute`, `batch_execute`, `execute_file`, `index`, `search`, `fetch_and_index`, `stats`, `doctor`, `purge`, `dotdotgod_project_load`, `dotdotgod_project_impact`, and `dotdotgod_project_initialize`. Run from a project directory different from the plugin path. Verify small output returns directly and a large output returns an index handle without the full raw bytes.
+Confirm `SessionStart` and `PreToolUse` do not emit `package_json_reader` or `ERR_MODULE_NOT_FOUND`. Confirm the packaged `dotdotgod-context` stdio MCP server starts and exposes the complete context, project-workflow, session, ingestion-job, healing, and doctor tool surface. Run from a project directory different from the plugin path. Verify small output returns directly and a large output returns an index handle without the full raw bytes.
 
 Confirm these commands are discoverable or invokable:
 
@@ -33,7 +33,7 @@ For `/dd:impact`, generated guidance should identify changed source/config/docs 
 
 Install or add `/path/to/dotdotgod/packages/codex` with the current local plugin workflow.
 
-After Codex plugin hook trust/review, confirm the packaged `dotdotgod-context` stdio MCP server exposes the same twelve tools as Claude Code. Verify a direct write creates impact-pending state, a broad verification command is denied with exact MCP guidance, successful impact clears matching fingerprints, and the original command can be retried. Confirm `project-load`, `doc-first-planning`, `project-initializer`, `impact-review`, and `document-clarify` skills are discoverable. Trigger phrases `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` should activate the expected workflows. For `dd:init`, verify the same config template and preservation behavior as Claude Code. For `dd:load`, expose the same `Help: dotdotgod --help` hint without installation status or mandatory execution, and use the same depth-bounded documentation-map, focused-query, archive-exclusion, and unavailable-CLI/shell fallback expectations as Claude Code. For `dd:impact`, use the same bounded multi-seed changed-file graph-impact and focused-verification expectations as Claude Code.
+Pack and extract Codex under the same clean-cache constraints. After Codex plugin hook trust/review, confirm hooks load without module-resolution diagnostics and the packaged `dotdotgod-context` server exposes the same complete tool surface as Claude Code. Verify a direct write creates impact-pending state, a broad verification command is denied with exact MCP guidance, successful impact clears matching fingerprints, and the original command can be retried. Confirm `project-load`, `doc-first-planning`, `project-initializer`, `impact-review`, and `document-clarify` skills are discoverable. Trigger phrases `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` should activate the expected workflows. For `dd:init`, verify the same config template and preservation behavior as Claude Code. For `dd:load`, expose the same `Help: dotdotgod --help` hint without installation status or mandatory execution, and use the same depth-bounded documentation-map, focused-query, archive-exclusion, and unavailable-CLI/shell fallback expectations as Claude Code. For `dd:impact`, use the same bounded multi-seed changed-file graph-impact and focused-verification expectations as Claude Code.
 
 ## Pi Context Tools
 
