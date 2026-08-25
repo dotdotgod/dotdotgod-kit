@@ -5,7 +5,7 @@ import { ContextStore, contextDbPath, healContextDatabase } from './store.mjs';
 import { executeBatch, executeCommand, executeFile } from './execute.mjs';
 import { fetchAndIndex, indexFile } from './content.mjs';
 import { runDoctor } from './doctor.mjs';
-import { projectImpact, projectInitialize, projectLoad } from './project.mjs';
+import { projectEmbeddingInstall, projectEmbeddingStatus, projectImpact, projectInitialize, projectLoad } from './project.mjs';
 import { resolveWithinRoot } from './paths.mjs';
 import { IngestionJobRunner } from './jobs.mjs';
 import { resolveSessionId, validateSessionId } from './session.mjs';
@@ -93,7 +93,7 @@ register('session_resume', 'Use an explicit opaque session ID for subsequent con
 register('ingestion_job_start', 'Queue one durable bounded background index or strict-fetch ingestion job.', phase3Shape('ingestion_job_start'), (input) => ({ ok: true, job: getJobs().enqueue(input.kind, input.input) }));
 register('ingestion_job_status', 'Return bounded status for one background ingestion job.', phase3Shape('ingestion_job_status'), (input) => ({ ok: true, job: getJobs().status(input.id) }), { readOnlyHint: true });
 register('ingestion_job_cancel', 'Cancel one queued or running background ingestion job.', phase3Shape('ingestion_job_cancel'), (input) => ({ ok: true, ...getJobs().cancel(input.id) }), { destructiveHint: true });
-register('context_heal', 'Explicitly back up and migrate only a recognized recoverable context database.', phase3Shape('context_heal'), () => { contextStore?.close(); contextStore = undefined; jobRunner = undefined; return healContextDatabase(root); }, { destructiveHint: true });
+register('context_heal', 'Explicitly back up and migrate only a recognized recoverable context database.', phase3Shape('context_heal'), async () => { await jobRunner?.close(); jobRunner = undefined; contextStore?.close(); contextStore = undefined; return healContextDatabase(root); }, { destructiveHint: true });
 register('stats', 'Report local context store counts and location.', {}, () => ({ ok: true, sessionId, ...getStore().stats() }), { readOnlyHint: true });
 register('doctor', 'Run local read-only Node.js, SQLite FTS5, storage, schema, and fetch-policy checks without network or repair actions.', {}, () => ({ sessionId, ...runDoctor({ root, dbPath: contextDbPath(root) }) }), { readOnlyHint: true });
 register('purge', 'Permanently delete one explicit context scope, session, or source.', {
@@ -102,6 +102,8 @@ register('purge', 'Permanently delete one explicit context scope, session, or so
 register('dotdotgod_project_load', 'Load a bounded documentation map and optional semantic project query.', {
   root: z.string().optional(), focus: z.string().max(500).optional(), limit: z.number().int().min(1).max(30).optional(), maxDepth: z.number().int().min(1).max(5).optional(),
 }, (input) => projectLoad(projectInput(input)), { readOnlyHint: true });
+register('dotdotgod_embedding_status', 'Inspect the optional persistent embedding runtime without installing or contacting a registry.', { root: z.string().optional() }, (input) => projectEmbeddingStatus(projectInput(input)), { readOnlyHint: true });
+register('dotdotgod_embedding_install', 'After explicit user approval, install the fixed optional embedding runtime persistently. Uses network and dependency install scripts.', { root: z.string().optional(), confirm: z.literal(true) }, (input) => projectEmbeddingInstall(projectInput(input)), { destructiveHint: true, openWorldHint: true });
 register('dotdotgod_project_impact', 'Run bounded graph impact for up to 20 changed paths.', {
   root: z.string().optional(), paths: z.array(z.string()).min(1).max(20),
 }, (input) => projectImpact(projectInput(input)), { readOnlyHint: true });

@@ -1,4 +1,5 @@
 import { embeddingProfileIdentity, resolveEmbeddingProfile } from './embedding-config.mjs';
+import { importTransformers } from './embedding-runtime.mjs';
 
 const localPipelines = new Map();
 
@@ -11,7 +12,7 @@ function normalize(row) {
 
 async function localEmbedder(profile) {
   if (!localPipelines.has(profile.model)) {
-    localPipelines.set(profile.model, import('@huggingface/transformers').then(async ({ env, pipeline }) => {
+    localPipelines.set(profile.model, importTransformers().then(async ({ env, pipeline }) => {
       env.allowLocalModels = true;
       return pipeline('feature-extraction', profile.model);
     }));

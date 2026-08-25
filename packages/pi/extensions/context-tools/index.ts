@@ -105,7 +105,7 @@ export default function contextTools(pi: ExtensionAPI): void {
   });
   pi.registerTool({
     name: "dotdotgod_context_heal", label: "dotdotgod context heal", description: "Explicitly back up and migrate a recognized context database.", parameters: Type.Unsafe<HealInput>(PHASE3_TOOL_INPUT_SCHEMAS.context_heal),
-    async execute(_id, _params, _signal, _update, ctx) { jobs.delete(ctx.cwd); stores.get(ctx.cwd)?.close(); stores.delete(ctx.cwd); return result(healContextDatabase(ctx.cwd)); },
+    async execute(_id, _params, _signal, _update, ctx) { const runner = jobs.get(ctx.cwd); await runner?.close(); jobs.delete(ctx.cwd); stores.get(ctx.cwd)?.close(); stores.delete(ctx.cwd); return result(healContextDatabase(ctx.cwd)); },
   });
   pi.registerTool({
     name: "dotdotgod_context_stats", label: "dotdotgod context stats", description: "Report project-local context store statistics.", parameters: Type.Object({}),

@@ -11,5 +11,5 @@ export { normalizeHtml } from './html-normalize.mjs';
 export { runDoctor } from './doctor.mjs';
 export { createProvenanceMetadata, readProvenanceMetadata, sha256Content } from './provenance.mjs';
 export { normalizeSearchTerms, reciprocalRankFusion, rerankCandidates } from './rank.mjs';
-export { projectImpact, projectInitialize, projectLoad } from './project.mjs';
+export { projectEmbeddingInstall, projectEmbeddingStatus, projectImpact, projectInitialize, projectLoad } from './project.mjs';
 export { startServer } from './server.mjs';

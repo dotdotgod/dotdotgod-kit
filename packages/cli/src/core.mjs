@@ -4,6 +4,7 @@ import { runValidate } from './validate/run.mjs';
 import { runIndex, runStatus } from './index/cache.mjs';
 import { runConfig } from './commands/config.mjs';
 import { runQuery } from './commands/query.mjs';
+import { runEmbedding } from './commands/embedding.mjs';
 import { runMap } from './commands/map.mjs';
 import { runResolve, runExpand } from './reference/resolve.mjs';
 import { runTraceability } from './commands/traceability.mjs';
@@ -33,6 +34,8 @@ export { formatCompactImpactOutput, formatYmlGraphImpactError, formatYmlImpactOu
 export { runConfig } from './commands/config.mjs';
 export { runMap } from './commands/map.mjs';
 export { buildVectorIndex, cosineScore, parseQueryOptions, queryDocumentation, rankVectorFiles, runQuery } from './commands/query.mjs';
+export { runEmbedding } from './commands/embedding.mjs';
+export { EmbeddingRuntimeMissingError, embeddingRuntimeRoot, embeddingRuntimeStatus, installEmbeddingRuntime, resolvePersistentTransformers } from './query/embedding-runtime.mjs';
 export { chunkMarkdown, collectDocumentationChunks, collectDocumentationMarkdown, textFingerprint } from './query/chunks.mjs';
 export { readVectorCache, VECTOR_DIMENSIONS, VECTOR_MODEL, VECTOR_SCHEMA_VERSION, profileFingerprint, vectorCachePaths, writeVectorCache } from './query/store.mjs';
 export { DEFAULT_EMBEDDING_PROFILE, EMBEDDING_PROVIDERS, embeddingProfileIdentity, resolveEmbeddingProfile, sanitizeEmbeddingProfile, validateEmbeddingProfile } from './query/embedding-config.mjs';
@@ -54,6 +57,7 @@ export async function runCli(argv = process.argv.slice(2)) {
   else if (command === 'config') runConfig(args);
   else if (command === 'status') runStatus(args);
   else if (command === 'query') await runQuery(args);
+  else if (command === 'embedding') runEmbedding(args);
   else if (command === 'map') runMap(args);
   else if (command === 'resolve') runResolve(args);
   else if (command === 'expand') runExpand(args);

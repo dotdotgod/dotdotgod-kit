@@ -40,10 +40,39 @@ async function cliJson(args, cwd) {
 
 export async function projectLoad(input) {
   const root = resolve(input.root || process.cwd());
-  const tree = markdownTree(root, input.maxDepth ?? (input.focus ? 3 : 5));
+  const focus = input.focus?.trim() ?? '';
+  const tree = markdownTree(root, input.maxDepth ?? (focus ? 3 : 5));
   let query = null;
-  if (input.focus?.trim()) query = await cliJson(['query', root, input.focus.trim(), '--limit', String(Math.min(input.limit ?? 30, 30)), '--json'], root);
-  return { ok: true, root, focus: input.focus?.trim() ?? '', documentationTree: tree, query };
+  let queryUnavailable;
+  if (focus) {
+    try {
+      query = await cliJson(['query', root, focus, '--limit', String(Math.min(input.limit ?? 30, 30)), '--json'], root);
+    } catch (error) {
+      const missingRuntime = String(error?.message ?? error).includes('Optional local embedding runtime is not installed');
+      queryUnavailable = missingRuntime ? {
+        code: 'EMBEDDING_RUNTIME_MISSING',
+        message: 'Local semantic search requires an optional embedding runtime; continue with the documentation map or ask the user before installation.',
+        recovery: { kind: 'embedding-runtime-install', requiresConfirmation: true, statusTool: 'dotdotgod_embedding_status', installTool: 'dotdotgod_embedding_install', cliCommand: 'dotdotgod embedding install --confirm' },
+      } : {
+        code: 'QUERY_UNAVAILABLE',
+        message: 'Semantic project query is unavailable; continue with the documentation map and targeted reads.',
+      };
+    }
+  }
+  return { ok: true, root, focus, documentationTree: tree, query, ...(queryUnavailable ? { queryUnavailable } : {}) };
+}
+
+export async function projectEmbeddingStatus(input = {}) {
+  const root = resolve(input.root || process.cwd());
+  const result = await cliJson(['embedding', 'status', root, '--json'], root);
+  return { ...result, ...(result.location ? { location: '~/.dotdotgod/runtime/embedding' } : {}) };
+}
+
+export async function projectEmbeddingInstall(input = {}) {
+  if (input.confirm !== true) throw new Error('confirm: true is required after explicit user approval.');
+  const root = resolve(input.root || process.cwd());
+  const result = await cliJson(['embedding', 'install', root, '--confirm', '--json'], root);
+  return { ...result, ...(result.location ? { location: '~/.dotdotgod/runtime/embedding' } : {}) };
 }
 
 export async function projectImpact(input) {

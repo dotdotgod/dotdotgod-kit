@@ -32,7 +32,7 @@ export class ContextStore {
 export function healContextDatabase(root?: string): { ok: true; backupPath: string; fromVersion: number; toVersion: number; rebuilt: true };
 export function validateSessionId(value: unknown): string;
 export function resolveSessionId(value?: unknown): string;
-export class IngestionJobRunner { sessionId?: string; constructor(store: ContextStore, options?: { sessionId?: string; renderer?: BrowserRenderer; root?: string }); enqueue(kind: 'index' | 'fetch', input: Record<string, unknown>): IngestionJob; status(id: string): IngestionJob | null; cancel(id: string): { changed: number; job: IngestionJob | null }; pump(): Promise<void> }
+export class IngestionJobRunner { sessionId?: string; constructor(store: ContextStore, options?: { sessionId?: string; renderer?: BrowserRenderer; root?: string }); enqueue(kind: 'index' | 'fetch', input: Record<string, unknown>): IngestionJob; status(id: string): IngestionJob | null; cancel(id: string): { changed: number; job: IngestionJob | null }; close(): Promise<void>; pump(): Promise<void> }
 export interface BrowserRendererResult { body?: Buffer; text?: string; url?: string; contentType?: string; status?: number }
 export type BrowserRenderer = (input: Readonly<{ url: string; signal: AbortSignal; timeoutMs: number; maxBytes: number }>) => Promise<BrowserRendererResult>;
 export const INGESTION_JOB_LIMITS: Readonly<{ maxPendingJobs: number; concurrency: 1 }>;

@@ -78,7 +78,7 @@ Adapters should provide workflow parity across each agent's native capabilities.
 Required workflows:
 
 - initialize or normalize the project memory scaffold and complete editable default config
-- load project memory without modifying source, documentation, or project config; Claude Code and Codex resolve documentation exclusions with `dotdotgod config <root> --json` and use `dotdotgod query` for focused routing, while focused query may refresh ignored vector and model caches
+- load project memory without modifying source, documentation, or project config; Claude Code and Codex always retain the bounded documentation map, use `dotdotgod query` for optional focused routing, and return structured query-unavailable evidence when cached/extracted adapters cannot resolve optional embeddings; standalone focused query may refresh ignored vector and model caches or retain its visible failure contract
 - expose `Help: dotdotgod --help` as optional Load guidance across native adapter mechanics without reporting installation status or blocking fallback when CLI or shell execution is unavailable
 - plan safely before source/config changes; Claude Code and Codex use explicit `dotdotgod query` guidance and resolve config when planning policy affects the task
 - review changed files with graph-impact evidence before broad verification, commits, pushes, publishing, or final handoff when the CLI or an equivalent project-local impact command is available; otherwise preserve the same review intent through targeted specs/tests/docs reads
@@ -106,7 +106,7 @@ Cross-agent support is distributed as npm workspace packages:
 - `@dotdotgod/claude-code`: Claude Code adapter with plugin commands and skills.
 - `@dotdotgod/codex`: Codex adapter with project memory skills.
 
-Versions are fixed across packages initially. The root workspace package is private and is not published.
+Extracted or cached Claude Code and Codex adapters must satisfy the mandatory project-load map contract without ancestor `node_modules`; unavailable optional semantic dependencies degrade only focused enrichment. Versions are fixed across packages initially. The root workspace package is private and is not published.
 
 New package, command, and tool names should use dotdotgod and `dd` prefixes.
 

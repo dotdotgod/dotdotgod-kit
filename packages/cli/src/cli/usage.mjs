@@ -36,6 +36,14 @@ Create dotdotgod.config.json from a bundled or user template. Without --template
   dotdotgod query <root> <query> [--limit n] [--json]
 
 Search shared project documentation with the resolved local or remote embedding provider.`;
+    case 'embedding':
+      return `Usage:
+  dotdotgod embedding status [<root>] [--json]
+  dotdotgod embedding install [<root>] --confirm [--json]`;
+    case 'embedding status':
+      return `Usage:\n  dotdotgod embedding status [<root>] [--json]\n\nInspect the optional persistent local embedding runtime without network access.`;
+    case 'embedding install':
+      return `Usage:\n  dotdotgod embedding install [<root>] --confirm [--json]\n\nAfter user approval, install the fixed optional runtime persistently. Uses network access and dependency install scripts; the model may download on first query.`;
     case 'map':
       return `Usage:
   dotdotgod map <root> [--depth <positive-integer>] [--json]
@@ -78,6 +86,7 @@ Commands:
   init                  Initialize project memory files.
   config                Inspect or initialize project configuration.
   query                 Search project documentation.
+  embedding             Inspect or install the optional local embedding runtime.
   map                   Render the project documentation map.
   resolve               Resolve a project reference.
   expand                Expand references in a prompt.
@@ -137,6 +146,7 @@ export function helpCommandFromArgs(args) {
   if (nonHelp[0] === 'graph' && nonHelp[1]) return `graph ${nonHelp[1]}`;
   if (nonHelp[0] === 'traceability' && nonHelp[1]) return `traceability ${nonHelp[1]}`;
   if (nonHelp[0] === 'config' && nonHelp[1] === 'init') return 'config init';
+  if (nonHelp[0] === 'embedding' && nonHelp[1]) return `embedding ${nonHelp[1]}`;
   return nonHelp[0] ?? 'root';
 }
 

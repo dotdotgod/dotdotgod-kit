@@ -26,6 +26,7 @@ const expectedTools = [
   'execute', 'batch_execute', 'execute_file', 'index', 'search', 'fetch_and_index',
   'session_resume', 'ingestion_job_start', 'ingestion_job_status', 'ingestion_job_cancel',
   'context_heal', 'stats', 'doctor', 'purge', 'dotdotgod_project_load',
+  'dotdotgod_embedding_status', 'dotdotgod_embedding_install',
   'dotdotgod_project_impact', 'dotdotgod_project_initialize',
 ];
 const blockedCommands = ['npm', 'npx', 'pnpm', 'yarn', 'bun', 'curl', 'wget'];
@@ -142,6 +143,8 @@ for (const adapter of ['claude-code', 'codex']) {
     t.after(() => rmSync(root, { recursive: true, force: true }));
     const project = join(root, 'project');
     mkdirSync(project);
+    mkdirSync(join(project, 'docs'));
+    writeFileSync(join(project, 'docs', 'README.md'), '# Project docs\n\nPackaged focused Load fixture.\n');
     mkdirSync(join(root, 'home'));
     const stubBin = createNetworkStubs(root);
     const env = isolatedEnvironment(root, project, stubBin);
@@ -162,6 +165,9 @@ for (const adapter of ['claude-code', 'codex']) {
     assert.equal(hookOutput.hookSpecificOutput.hookEventName, 'SessionStart');
     assert.match(hookOutput.hookSpecificOutput.additionalContext, /dotdotgod_project_load/u);
     assert.equal(existsSync(join(project, '.dotdotgod', 'context', 'runtime', `packed-${adapter}.json`)), true);
+    const substantive = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'Bash', tool_input: { command: 'git status --short' } });
+    const deniedBeforeLoad = JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout);
+    assert.equal(deniedBeforeLoad.hookSpecificOutput.permissionDecision, 'deny');
 
     const malformed = runHook(runtime, 'sessionstart', '{bad json', { cwd: project, env });
     assert.equal(malformed.status, 0);
@@ -181,12 +187,30 @@ for (const adapter of ['claude-code', 'codex']) {
       await withTimeout(client.connect(transport), 10_000, `${adapter} MCP initialize`);
       const listed = await withTimeout(client.listTools(), 10_000, `${adapter} MCP listTools`);
       assert.deepEqual(listed.tools.map((tool) => tool.name).sort(), [...expectedTools].sort());
+      const failed = await withTimeout(client.callTool({
+        name: 'dotdotgod_project_load',
+        arguments: { root: '.', focus: 'x'.repeat(501), limit: 3, maxDepth: 2 },
+      }), 10_000, `${adapter} rejected project load`);
+      assert.equal(failed.isError, true);
+      assert.equal(JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout).hookSpecificOutput.permissionDecision, 'deny');
+
       const loaded = await withTimeout(client.callTool({
         name: 'dotdotgod_project_load',
-        arguments: { root: '.', focus: '', limit: 3, maxDepth: 2 },
-      }), 10_000, `${adapter} project load`);
+        arguments: { root: '.', focus: 'packaged focused project memory', limit: 3, maxDepth: 2 },
+      }), 10_000, `${adapter} focused project load`);
       assert.equal(loaded.isError, undefined, JSON.stringify(loaded.structuredContent));
       assert.equal(loaded.structuredContent.ok, true);
+      assert.ok(loaded.structuredContent.documentationTree.some((line) => line.includes('docs/README.md')));
+      assert.equal(loaded.structuredContent.query, null);
+      assert.equal(loaded.structuredContent.queryUnavailable.code, 'EMBEDDING_RUNTIME_MISSING');
+      assert.equal(loaded.structuredContent.queryUnavailable.recovery.requiresConfirmation, true);
+      assert.equal(loaded.structuredContent.queryUnavailable.recovery.installTool, 'dotdotgod_embedding_install');
+      const serializedLoad = JSON.stringify(loaded);
+      assert.doesNotMatch(serializedLoad, /ERR_MODULE_NOT_FOUND|plugins\/cache|package_json_reader/u);
+
+      const completedLoad = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'mcp__dotdotgod_project_load', tool_input: { root: '.', focus: 'packaged focused project memory' } });
+      assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', completedLoad, { cwd: project, env }).stdout), {});
+      assert.deepEqual(JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout), {});
     } finally {
       await withTimeout(client.close(), 5_000, `${adapter} MCP close`);
     }

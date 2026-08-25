@@ -62,15 +62,28 @@ test('trigram lane samples old and new rows rather than excluding old relevant c
 
 test('durable worker persists enqueue-time session identity and completes ingestion', async () => {
   const root = fixture(); writeFileSync(join(root, 'note.txt'), 'durable background content'); const store = new ContextStore(root);
+  const runner = new IngestionJobRunner(store, { sessionId: 'resume-1' });
   try {
-    const runner = new IngestionJobRunner(store, { sessionId: 'resume-1' });
     const job = runner.enqueue('index', { root, path: 'note.txt' });
     runner.sessionId = 'resume-2';
     for (let attempt = 0; attempt < 50 && !['completed', 'failed'].includes(runner.status(job.id).state); attempt += 1) await new Promise((resolve) => setTimeout(resolve, 5));
     assert.equal(runner.status(job.id).state, 'completed'); assert.equal(runner.status(job.id).sessionId, 'resume-1');
     assert.equal(store.search({ query: 'durable', sessionId: 'resume-1' }).length, 1);
     assert.equal(store.search({ query: 'durable', sessionId: 'resume-2' }).length, 0);
-  } finally { store.destroy(); }
+  } finally {
+    await runner.close();
+    store.destroy();
+  }
+});
+
+test('durable worker closes before its store and rejects later enqueue', async () => {
+  const root = fixture(); writeFileSync(join(root, 'note.txt'), 'shutdown content'); const store = new ContextStore(root);
+  const runner = new IngestionJobRunner(store);
+  runner.enqueue('index', { root, path: 'note.txt' });
+  await runner.close();
+  assert.equal(runner.running, false);
+  assert.throws(() => runner.enqueue('index', { root, path: 'note.txt' }), /runner is closed/);
+  store.destroy();
 });
 
 test('queue capacity check and insertion are one transaction', () => {

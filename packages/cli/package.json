@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/cli",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "CLI for dotdotgod validation, local documentation search, and graph indexing.",
   "type": "module",
   "license": "Elastic-2.0",
@@ -34,7 +34,6 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@huggingface/transformers": "^4.2.0",
     "leiden-ts": "^0.1.0"
   },
   "homepage": "https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/cli#readme",

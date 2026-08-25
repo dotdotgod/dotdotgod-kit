@@ -7,7 +7,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { PHASE3_TOOL_INPUT_SCHEMAS } from '../src/index.mjs';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
-const expected = ['execute', 'batch_execute', 'execute_file', 'index', 'search', 'fetch_and_index', 'session_resume', 'ingestion_job_start', 'ingestion_job_status', 'ingestion_job_cancel', 'context_heal', 'stats', 'doctor', 'purge', 'dotdotgod_project_load', 'dotdotgod_project_impact', 'dotdotgod_project_initialize'];
+const expected = ['execute', 'batch_execute', 'execute_file', 'index', 'search', 'fetch_and_index', 'session_resume', 'ingestion_job_start', 'ingestion_job_status', 'ingestion_job_cancel', 'context_heal', 'stats', 'doctor', 'purge', 'dotdotgod_project_load', 'dotdotgod_embedding_status', 'dotdotgod_embedding_install', 'dotdotgod_project_impact', 'dotdotgod_project_initialize'];
 
 test('stdio server lists the complete tool surface and calls doctor', async () => {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-mcp-test-'));

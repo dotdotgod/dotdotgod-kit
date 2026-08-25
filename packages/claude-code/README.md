@@ -34,6 +34,8 @@ Then use the bundled `/dd:*` commands in your repository:
 /dd:impact
 ```
 
+After an update, restart Claude Code and confirm the active plugin points to the new installed cache entry. Source changes do not rewrite an existing `~/.claude/plugins/cache/.../<hash>/`; reinstall the plugin through the supported flow if Claude continues using an older cache hash.
+
 For local development from a source checkout, load the plugin directory directly instead of installing:
 
 ```bash
@@ -45,7 +47,7 @@ claude --plugin-dir /path/to/dotdotgod/packages/claude-code
 | Command or skill | Use it for | Result |
 | --- | --- | --- |
 | `/dd:init` | Start a repository with dotdotgod conventions. | Creates or normalizes shared agent files, docs indexes, local-memory areas, and the complete default project config. |
-| `/dd:load` | Load project memory without changing maintained project files. | Renders the shared Markdown tree and uses `dotdotgod query` when focus text is provided; query may refresh ignored caches. |
+| `/dd:load` | Load project memory without changing maintained project files. | Renders the shared Markdown tree and uses `dotdotgod query` when focus text is provided; unavailable optional semantic routing falls back to the map with bounded evidence. |
 | `/dd:plan` | Plan before implementation. | Writes or updates durable task intent in `docs/plan/<task-slug>/README.md`. |
 | `/dd:impact` | Review changed files before verification or handoff. | Uses `dotdotgod graph impact` to identify likely related docs, tests, commands, and source files. |
 | `document-clarify` | Improve docs wording without changing behavior contracts. | Clarifies README/spec/test/arch/plan/archive docs using memory-area roles. |

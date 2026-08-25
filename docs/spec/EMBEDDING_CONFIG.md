@@ -39,6 +39,12 @@ Direct `apiKey` values are supported, but `apiKeyEnv` is recommended for committ
 
 Selecting a remote provider authorizes sending documentation chunks, queries, and changed-file profiles to its endpoint. No additional consent flag is required.
 
+## Optional Local Runtime Installation
+
+Local embeddings first use an ordinarily installed `@huggingface/transformers` package, then a persistent user runtime under `~/.dotdotgod/runtime/embedding/`. Missing runtime does not make Project Load fail: Load returns its documentation map plus an `EMBEDDING_RUNTIME_MISSING` recovery offer. The agent must ask the user before invoking `dotdotgod_embedding_install` or `dotdotgod embedding install --confirm`; refusal continues map-only work.
+
+`dotdotgod embedding status [<root>] [--json]` is read-only and offline. `dotdotgod embedding install [<root>] --confirm [--json]` installs the fixed compatible runtime with npm using a fixed prefix and package version. Installation uses network access and dependency install scripts. The configured model may still download on the first subsequent local query. Remote embedding profiles do not require or offer local runtime installation.
+
 ## Cache and Failures
 
 The vector manifest records provider, model, dimensions, and a secret-free profile fingerprint. Schema version 2 invalidates all schema-1 caches. Output-affecting profile changes rebuild the index.

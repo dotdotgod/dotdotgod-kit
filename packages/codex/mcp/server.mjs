@@ -23179,10 +23179,37 @@ async function cliJson(args, cwd) {
 }
 async function projectLoad(input) {
   const root2 = resolve5(input.root || process.cwd());
-  const tree = markdownTree(root2, input.maxDepth ?? (input.focus ? 3 : 5));
+  const focus = input.focus?.trim() ?? "";
+  const tree = markdownTree(root2, input.maxDepth ?? (focus ? 3 : 5));
   let query = null;
-  if (input.focus?.trim()) query = await cliJson(["query", root2, input.focus.trim(), "--limit", String(Math.min(input.limit ?? 30, 30)), "--json"], root2);
-  return { ok: true, root: root2, focus: input.focus?.trim() ?? "", documentationTree: tree, query };
+  let queryUnavailable;
+  if (focus) {
+    try {
+      query = await cliJson(["query", root2, focus, "--limit", String(Math.min(input.limit ?? 30, 30)), "--json"], root2);
+    } catch (error2) {
+      const missingRuntime = String(error2?.message ?? error2).includes("Optional local embedding runtime is not installed");
+      queryUnavailable = missingRuntime ? {
+        code: "EMBEDDING_RUNTIME_MISSING",
+        message: "Local semantic search requires an optional embedding runtime; continue with the documentation map or ask the user before installation.",
+        recovery: { kind: "embedding-runtime-install", requiresConfirmation: true, statusTool: "dotdotgod_embedding_status", installTool: "dotdotgod_embedding_install", cliCommand: "dotdotgod embedding install --confirm" }
+      } : {
+        code: "QUERY_UNAVAILABLE",
+        message: "Semantic project query is unavailable; continue with the documentation map and targeted reads."
+      };
+    }
+  }
+  return { ok: true, root: root2, focus, documentationTree: tree, query, ...queryUnavailable ? { queryUnavailable } : {} };
+}
+async function projectEmbeddingStatus(input = {}) {
+  const root2 = resolve5(input.root || process.cwd());
+  const result = await cliJson(["embedding", "status", root2, "--json"], root2);
+  return { ...result, ...result.location ? { location: "~/.dotdotgod/runtime/embedding" } : {} };
+}
+async function projectEmbeddingInstall(input = {}) {
+  if (input.confirm !== true) throw new Error("confirm: true is required after explicit user approval.");
+  const root2 = resolve5(input.root || process.cwd());
+  const result = await cliJson(["embedding", "install", root2, "--confirm", "--json"], root2);
+  return { ...result, ...result.location ? { location: "~/.dotdotgod/runtime/embedding" } : {} };
 }
 async function projectImpact(input) {
   const root2 = resolve5(input.root || process.cwd());
@@ -23216,10 +23243,13 @@ var IngestionJobRunner = class {
     this.renderer = renderer;
     this.running = false;
     this.scheduled = false;
+    this.closed = false;
+    this.pumpPromise = void 0;
     this.controllers = /* @__PURE__ */ new Map();
     this.schedule();
   }
   enqueue(kind, input) {
+    if (this.closed) throw new Error("Ingestion job runner is closed.");
     if (!["index", "fetch"].includes(kind)) throw new Error("Unsupported ingestion job kind.");
     const job = this.store.createJob({ kind, input, sessionId: this.sessionId ?? null });
     this.schedule();
@@ -23233,18 +23263,31 @@ var IngestionJobRunner = class {
     return this.store.cancelJob(id);
   }
   schedule() {
-    if (this.scheduled || this.running) return;
+    if (this.closed || this.scheduled || this.running) return;
     this.scheduled = true;
     queueMicrotask(() => {
       this.scheduled = false;
-      void this.pump();
+      if (this.closed) return;
+      const pending = this.pump();
+      this.pumpPromise = pending;
+      const clearPending = () => {
+        if (this.pumpPromise === pending) this.pumpPromise = void 0;
+      };
+      void pending.then(clearPending, clearPending);
     });
   }
+  async close() {
+    this.closed = true;
+    for (const controller of this.controllers.values()) controller.abort();
+    if (this.scheduled) await Promise.resolve();
+    await this.pumpPromise;
+  }
   async pump() {
-    if (this.running) return;
+    if (this.closed || this.running) return;
     this.running = true;
     try {
       for (; ; ) {
+        if (this.closed) break;
         const job = this.store.claimNextJob();
         if (!job) break;
         const controller = new AbortController();
@@ -23259,7 +23302,7 @@ var IngestionJobRunner = class {
         } finally {
           this.controllers.delete(job.id);
         }
-        await new Promise((resolve6) => setImmediate(resolve6));
+        if (!this.closed) await new Promise((resolve6) => setImmediate(resolve6));
       }
     } finally {
       this.running = false;
@@ -23427,10 +23470,11 @@ register("session_resume", "Use an explicit opaque session ID for subsequent con
 register("ingestion_job_start", "Queue one durable bounded background index or strict-fetch ingestion job.", phase3Shape("ingestion_job_start"), (input) => ({ ok: true, job: getJobs().enqueue(input.kind, input.input) }));
 register("ingestion_job_status", "Return bounded status for one background ingestion job.", phase3Shape("ingestion_job_status"), (input) => ({ ok: true, job: getJobs().status(input.id) }), { readOnlyHint: true });
 register("ingestion_job_cancel", "Cancel one queued or running background ingestion job.", phase3Shape("ingestion_job_cancel"), (input) => ({ ok: true, ...getJobs().cancel(input.id) }), { destructiveHint: true });
-register("context_heal", "Explicitly back up and migrate only a recognized recoverable context database.", phase3Shape("context_heal"), () => {
+register("context_heal", "Explicitly back up and migrate only a recognized recoverable context database.", phase3Shape("context_heal"), async () => {
+  await jobRunner?.close();
+  jobRunner = void 0;
   contextStore?.close();
   contextStore = void 0;
-  jobRunner = void 0;
   return healContextDatabase(root);
 }, { destructiveHint: true });
 register("stats", "Report local context store counts and location.", {}, () => ({ ok: true, sessionId, ...getStore().stats() }), { readOnlyHint: true });
@@ -23447,6 +23491,8 @@ register("dotdotgod_project_load", "Load a bounded documentation map and optiona
   limit: external_exports.number().int().min(1).max(30).optional(),
   maxDepth: external_exports.number().int().min(1).max(5).optional()
 }, (input) => projectLoad(projectInput(input)), { readOnlyHint: true });
+register("dotdotgod_embedding_status", "Inspect the optional persistent embedding runtime without installing or contacting a registry.", { root: external_exports.string().optional() }, (input) => projectEmbeddingStatus(projectInput(input)), { readOnlyHint: true });
+register("dotdotgod_embedding_install", "After explicit user approval, install the fixed optional embedding runtime persistently. Uses network and dependency install scripts.", { root: external_exports.string().optional(), confirm: external_exports.literal(true) }, (input) => projectEmbeddingInstall(projectInput(input)), { destructiveHint: true, openWorldHint: true });
 register("dotdotgod_project_impact", "Run bounded graph impact for up to 20 changed paths.", {
   root: external_exports.string().optional(),
   paths: external_exports.array(external_exports.string()).min(1).max(20)

@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@huggingface/transformers':
+        specifier: ^4.2.0
+        version: 4.2.0
       '@types/node':
         specifier: ^25.7.0
         version: 25.8.0
@@ -22,10 +25,6 @@ importers:
         version: 6.0.3
 
   packages/claude-code:
-    dependencies:
-      '@huggingface/transformers':
-        specifier: ^4.2.0
-        version: 4.2.0
     devDependencies:
       '@dotdotgod/context':
         specifier: workspace:*
@@ -36,18 +35,11 @@ importers:
 
   packages/cli:
     dependencies:
-      '@huggingface/transformers':
-        specifier: ^4.2.0
-        version: 4.2.0
       leiden-ts:
         specifier: ^0.1.0
         version: 0.1.0
 
   packages/codex:
-    dependencies:
-      '@huggingface/transformers':
-        specifier: ^4.2.0
-        version: 4.2.0
     devDependencies:
       '@dotdotgod/context':
         specifier: workspace:*

@@ -23,7 +23,7 @@ for (const adapter of ['claude-code', 'codex']) {
     try {
       await client.connect(transport);
       const listed = await client.listTools();
-      assert.equal(listed.tools.length, 17);
+      assert.equal(listed.tools.length, 19);
       const doctor = await client.callTool({ name: 'doctor', arguments: {} });
       assert.equal(doctor.structuredContent.ok, true);
     } finally {

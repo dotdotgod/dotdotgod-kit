@@ -55,13 +55,14 @@ Add or preserve focused cases for:
 - doctor no-network/no-repair behavior and schema compatibility;
 - initializer dry-run default and explicit write confirmation;
 - project-load query and project-impact 20-path bound;
-- hook recursion bypass, retry cap, stale fingerprint, and unsupported-tool gaps.
+- hook recursion bypass, retry cap, stale fingerprint, unsupported-tool gaps, stable state routing across differing or missing cwd values, declared-root precedence, same-session cross-project isolation, and canonical-root fingerprints;
+- packed Claude/Codex focused Load without ancestor `node_modules`, including bounded query degradation without `ERR_MODULE_NOT_FOUND`, failed-Load gate retention, and successful Load plus PostToolUse gate clearance.
 
 ## Manual Adapter Verification
 
 Follow [`manual-smoke/CROSS_AGENT_ADAPTERS.md`](manual-smoke/CROSS_AGENT_ADAPTERS.md).
 
-Verify Claude Code and Codex from working directories different from the installed plugin path. Confirm the local MCP server starts, hooks follow host trust rules, large output is indexed without appearing in full, and denial messages lead to a successful MCP call followed by retry.
+Verify Claude Code and Codex from working directories different from the installed plugin path. Within one session, also vary project-relative hook cwd values and confirm a successful load clears the original root's denial state. Confirm the local MCP server starts, hooks follow host trust rules, large output is indexed without appearing in full, and denial messages lead to a successful MCP call followed by retry.
 
 Verify Pi registers native tools and does not start a dotdotgod MCP child process. Confirm search output marks retrieved text as data with no instruction authority, existing database records surface safe `unknown` defaults, and doctor performs no repair or network activity.
 

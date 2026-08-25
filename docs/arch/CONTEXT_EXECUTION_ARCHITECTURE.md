@@ -89,7 +89,7 @@ Batch workers share no shell state. Result order follows input order, not comple
 
 ## Hook State Machine
 
-Hooks store session state separately from indexed content. `loadRequired` gates substantive work. `pending[path] = fingerprint` gates broad verification and handoff operations.
+Hooks store session state separately from indexed content. `loadRequired` gates substantive work; `pending[path] = fingerprint` gates broad operations. State identity combines canonical project root and sanitized session ID. Resolution prefers a host-declared root, then nearest same-session ancestor state, then a new SessionStart cwd. One invocation shares this identity across state and fingerprints. Lookup remains project-local; unidentified events fail open.
 
 A denied host tool is not transformed. The denial tells the model which MCP tool to call. Successful MCP PostToolUse updates state, and the model retries the original operation. MCP project tools bypass PreToolUse guards to prevent loops.
 
@@ -100,7 +100,7 @@ This is tested interception coverage, not a claim that every external file mutat
 - `@dotdotgod/context` remains the runtime source of truth and is published before packages that consume it directly, including Pi.
 - Claude and Codex generate self-contained hook, MCP server, and CLI entry artifacts at build time; their published plugin caches do not require a separately installed `@dotdotgod/context` package.
 - Generated artifacts are checked into the adapter packages and verified for drift. `@dotdotgod/context` and esbuild are build-time dependencies of those adapters.
-- The optional local semantic-embedding implementation remains an ordinary adapter dependency rather than part of the generated JavaScript artifact.
+- Optional semantic embeddings remain outside generated JavaScript. Project Load requires the filesystem map but not semantic routing: unresolved embeddings in an extracted plugin return the map with bounded query-unavailable evidence. Raw module paths stay hidden, and standalone query failure behavior is unchanged.
 - Claude uses `${CLAUDE_PLUGIN_ROOT}` for its server and hook scripts.
 - Codex references root `.mcp.json` and `hooks/hooks.json` through its plugin manifest.
 - Pi depends on the runtime package but starts no MCP process.
@@ -109,7 +109,7 @@ This is tested interception coverage, not a claim that every external file mutat
 
 `ContextStore` owns the schema migration ledger, bounded trigram candidate scan, and durable ingestion-job rows. Migration occurs under `BEGIN IMMEDIATE`; startup requeues interrupted running jobs. Explicit healing copies the database before inspecting and migrating a recognized profile.
 
-`IngestionJobRunner` is a process-local, concurrency-one dispatcher over durable rows. It delegates to the same bounded file/directory and fetch functions as synchronous tools. Session IDs are opaque validated routing values and are never discovered through a listing API.
+`IngestionJobRunner` is a process-local, concurrency-one dispatcher over durable rows. It delegates to the same bounded file/directory and fetch functions as synchronous tools. Its asynchronous `close()` boundary stops scheduling, aborts active work, and settles the pump before an adapter closes or heals the backing store. Session IDs are opaque validated routing values and are never discovered through a listing API.
 
 Environment composition has a compatibility default and an opt-in allowlist. Both report variable names only. Browser acquisition is a capability injection into `fetchAndIndex`; MCP and Pi ship without a renderer, so strict fetch is the operational default. A host-provided renderer must honor timeout, abort, and byte limits; dotdotgod makes no process-isolation or sandbox claim.
 

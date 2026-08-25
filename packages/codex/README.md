@@ -36,14 +36,14 @@ dd:plan Update the API migration plan.
 dd:impact
 ```
 
-The bundled skills interpret those phrases as command-like workflow requests.
+The bundled skills interpret those phrases as command-like workflow requests. After updating or re-registering the adapter, restart Codex and verify the active MCP artifact path; source changes do not automatically replace a stale host-managed plugin cache.
 
 ## What It Adds to Codex
 
 | Skill or trigger | Use it for | Result |
 | --- | --- | --- |
 | `dd:init` / `project-initializer` | Start a repository with dotdotgod conventions. | Creates or normalizes shared agent files, docs indexes, local-memory areas, and the complete default project config. |
-| `dd:load` / `project-load` | Load project memory without changing maintained project files. | Renders the shared Markdown tree and uses `dotdotgod query` when focus text is provided; query may refresh ignored caches. |
+| `dd:load` / `project-load` | Load project memory without changing maintained project files. | Renders the shared Markdown tree and uses `dotdotgod query` when focus text is provided; unavailable optional semantic routing falls back to the map with bounded evidence. |
 | `dd:plan` / `doc-first-planning` | Plan before implementation. | Captures current intent in `docs/plan/<task-slug>/README.md`. |
 | `dd:impact` / `impact-review` | Review changed files before verification or handoff. | Uses `dotdotgod graph impact` to identify likely related docs, tests, commands, and source files. |
 | `document-clarify` | Improve docs wording without changing behavior contracts. | Clarifies README/spec/test/arch/plan/archive docs using memory-area roles. |

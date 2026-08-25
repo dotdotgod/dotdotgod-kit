@@ -1309,6 +1309,20 @@ Create dotdotgod.config.json from a bundled or user template. Without --template
   dotdotgod query <root> <query> [--limit n] [--json]
 
 Search shared project documentation with the resolved local or remote embedding provider.`;
+    case "embedding":
+      return `Usage:
+  dotdotgod embedding status [<root>] [--json]
+  dotdotgod embedding install [<root>] --confirm [--json]`;
+    case "embedding status":
+      return `Usage:
+  dotdotgod embedding status [<root>] [--json]
+
+Inspect the optional persistent local embedding runtime without network access.`;
+    case "embedding install":
+      return `Usage:
+  dotdotgod embedding install [<root>] --confirm [--json]
+
+After user approval, install the fixed optional runtime persistently. Uses network access and dependency install scripts; the model may download on first query.`;
     case "map":
       return `Usage:
   dotdotgod map <root> [--depth <positive-integer>] [--json]
@@ -1351,6 +1365,7 @@ Commands:
   init                  Initialize project memory files.
   config                Inspect or initialize project configuration.
   query                 Search project documentation.
+  embedding             Inspect or install the optional local embedding runtime.
   map                   Render the project documentation map.
   resolve               Resolve a project reference.
   expand                Expand references in a prompt.
@@ -1403,6 +1418,7 @@ function helpCommandFromArgs(args) {
   if (nonHelp[0] === "graph" && nonHelp[1]) return `graph ${nonHelp[1]}`;
   if (nonHelp[0] === "traceability" && nonHelp[1]) return `traceability ${nonHelp[1]}`;
   if (nonHelp[0] === "config" && nonHelp[1] === "init") return "config init";
+  if (nonHelp[0] === "embedding" && nonHelp[1]) return `embedding ${nonHelp[1]}`;
   return nonHelp[0] ?? "root";
 }
 function parseCommon(argv) {
@@ -2709,6 +2725,74 @@ function collectDocumentationChunks(root, exclude, documentationRoot = "docs") {
   });
 }
 
+// packages/cli/src/query/embedding-runtime.mjs
+import { existsSync as existsSync12, mkdirSync as mkdirSync3, readFileSync as readFileSync11, rmSync, writeFileSync as writeFileSync4 } from "node:fs";
+import { spawnSync as spawnSync2 } from "node:child_process";
+import { createRequire } from "node:module";
+import { homedir as homedir3 } from "node:os";
+import { join as join11 } from "node:path";
+import { pathToFileURL } from "node:url";
+var EMBEDDING_RUNTIME_PACKAGE = "@huggingface/transformers";
+var EMBEDDING_RUNTIME_VERSION = "4.2.0";
+var EmbeddingRuntimeMissingError = class extends Error {
+  constructor() {
+    super("Optional local embedding runtime is not installed.");
+    this.name = "EmbeddingRuntimeMissingError";
+    this.code = "EMBEDDING_RUNTIME_MISSING";
+  }
+};
+function embeddingRuntimeRoot(options = {}) {
+  return join11(options.home ?? homedir3(), ".dotdotgod", "runtime", "embedding");
+}
+function resolvePersistentTransformers(options = {}) {
+  const root = embeddingRuntimeRoot(options);
+  try {
+    const require2 = createRequire(join11(root, "package.json"));
+    return require2.resolve(EMBEDDING_RUNTIME_PACKAGE);
+  } catch {
+    throw new EmbeddingRuntimeMissingError();
+  }
+}
+function embeddingRuntimeStatus(options = {}) {
+  const root = embeddingRuntimeRoot(options);
+  try {
+    const require2 = createRequire(join11(root, "package.json"));
+    const packagePath = require2.resolve(`${EMBEDDING_RUNTIME_PACKAGE}/package.json`);
+    const version = JSON.parse(readFileSync11(packagePath, "utf8")).version;
+    return { ok: true, installed: true, installAvailable: true, package: EMBEDDING_RUNTIME_PACKAGE, requiredVersion: EMBEDDING_RUNTIME_VERSION, packageVersion: version, location: root };
+  } catch {
+    return { ok: true, installed: false, installAvailable: true, package: EMBEDDING_RUNTIME_PACKAGE, requiredVersion: EMBEDDING_RUNTIME_VERSION, packageVersion: null, location: root };
+  }
+}
+function installEmbeddingRuntime(options = {}) {
+  if (options.confirm !== true) throw new Error("Embedding runtime installation requires explicit confirmation.");
+  const root = embeddingRuntimeRoot(options);
+  const lock = join11(root, ".installing");
+  if (existsSync12(lock)) throw new Error("Embedding runtime installation is already in progress.");
+  mkdirSync3(root, { recursive: true });
+  writeFileSync4(lock, `${process.pid}
+`, { flag: "wx" });
+  try {
+    const spawn = options.spawnImpl ?? spawnSync2;
+    const result = spawn(options.npmCommand ?? "npm", ["install", "--prefix", root, "--save-exact", "--omit=dev", "--no-audit", "--no-fund", `${EMBEDDING_RUNTIME_PACKAGE}@${EMBEDDING_RUNTIME_VERSION}`], { encoding: "utf8", timeout: options.timeoutMs ?? 3e5, shell: false, stdio: ["ignore", "pipe", "pipe"] });
+    if (result.error || result.status !== 0) throw new Error(result.error?.code === "ENOENT" ? "npm is unavailable." : "Embedding runtime installation failed.");
+    const status = embeddingRuntimeStatus({ home: options.home });
+    if (!status.installed) throw new Error("Embedding runtime installation could not be verified.");
+    return { ...status, command: "embedding install", modelDownloadPending: true };
+  } finally {
+    rmSync(lock, { force: true });
+  }
+}
+async function importTransformers(options = {}) {
+  try {
+    return await import(EMBEDDING_RUNTIME_PACKAGE);
+  } catch (error) {
+    if (error?.code !== "ERR_MODULE_NOT_FOUND") throw error;
+    const path = resolvePersistentTransformers(options);
+    return import(pathToFileURL(path).href);
+  }
+}
+
 // packages/cli/src/query/embedder.mjs
 var localPipelines = /* @__PURE__ */ new Map();
 function normalize(row) {
@@ -2719,7 +2803,7 @@ function normalize(row) {
 }
 async function localEmbedder(profile) {
   if (!localPipelines.has(profile.model)) {
-    localPipelines.set(profile.model, import("@huggingface/transformers").then(async ({ env, pipeline }) => {
+    localPipelines.set(profile.model, importTransformers().then(async ({ env, pipeline }) => {
       env.allowLocalModels = true;
       return pipeline("feature-extraction", profile.model);
     }));
@@ -2787,8 +2871,8 @@ async function resolveEmbedder(root, options = {}) {
 
 // packages/cli/src/query/store.mjs
 import { createHash as createHash4 } from "node:crypto";
-import { existsSync as existsSync12, mkdirSync as mkdirSync3, readFileSync as readFileSync11, renameSync, rmSync, writeFileSync as writeFileSync4 } from "node:fs";
-import { join as join11 } from "node:path";
+import { existsSync as existsSync13, mkdirSync as mkdirSync4, readFileSync as readFileSync12, renameSync, rmSync as rmSync2, writeFileSync as writeFileSync5 } from "node:fs";
+import { join as join12 } from "node:path";
 var VECTOR_SCHEMA_VERSION = 2;
 var VECTOR_DIMENSIONS = 384;
 function profileFingerprint(identity) {
@@ -2808,18 +2892,18 @@ function isValidNormalizedVectorValues(values, dimensions = VECTOR_DIMENSIONS) {
   return true;
 }
 function vectorCachePaths(root) {
-  const directory = join11(root, ".dotdotgod", "vectors");
-  return { directory, manifest: join11(directory, "manifest.json"), chunks: join11(directory, "chunks.jsonl"), embeddings: join11(directory, "embeddings.f32") };
+  const directory = join12(root, ".dotdotgod", "vectors");
+  return { directory, manifest: join12(directory, "manifest.json"), chunks: join12(directory, "chunks.jsonl"), embeddings: join12(directory, "embeddings.f32") };
 }
 function readVectorCache(root, identity = null) {
   const paths = vectorCachePaths(root);
-  if (!existsSync12(paths.manifest) || !existsSync12(paths.chunks) || !existsSync12(paths.embeddings)) return null;
+  if (!existsSync13(paths.manifest) || !existsSync13(paths.chunks) || !existsSync13(paths.embeddings)) return null;
   try {
-    const manifest = JSON.parse(readFileSync11(paths.manifest, "utf8"));
+    const manifest = JSON.parse(readFileSync12(paths.manifest, "utf8"));
     if (manifest.schemaVersion !== VECTOR_SCHEMA_VERSION || !Number.isInteger(manifest.dimensions) || manifest.dimensions < 1) return null;
     if (identity && manifest.profileFingerprint !== profileFingerprint(identity)) return null;
-    const chunks = readFileSync11(paths.chunks, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
-    const buffer = readFileSync11(paths.embeddings);
+    const chunks = readFileSync12(paths.chunks, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
+    const buffer = readFileSync12(paths.embeddings);
     if (buffer.byteLength !== chunks.length * manifest.dimensions * 4) return null;
     const vectors = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4);
     if (!isValidNormalizedVectorValues(vectors, manifest.dimensions)) return null;
@@ -2830,14 +2914,14 @@ function readVectorCache(root, identity = null) {
 }
 function atomicWrite(path, data) {
   const temporary = `${path}.tmp-${process.pid}`;
-  writeFileSync4(temporary, data);
+  writeFileSync5(temporary, data);
   renameSync(temporary, path);
 }
 function writeVectorCache(root, chunks, vectors, metadata = {}) {
   const paths = vectorCachePaths(root);
   const dimensions = metadata.dimensions;
   if (!Number.isInteger(dimensions) || dimensions < 1) throw new Error("Vector dimensions must be a positive integer.");
-  mkdirSync3(paths.directory, { recursive: true });
+  mkdirSync4(paths.directory, { recursive: true });
   if (vectors.length !== chunks.length * dimensions) throw new Error("Vector count does not match chunk metadata.");
   if (!isValidNormalizedVectorValues(vectors, dimensions)) throw new Error("Vectors must contain finite normalized values.");
   const manifest = { schemaVersion: VECTOR_SCHEMA_VERSION, chunks: chunks.length, generatedAt: (/* @__PURE__ */ new Date()).toISOString(), ...metadata };
@@ -2976,12 +3060,44 @@ async function runQuery(argv) {
   }
 }
 
+// packages/cli/src/commands/embedding.mjs
+import { resolve as resolve10 } from "node:path";
+function parse(argv) {
+  const [action2 = "status", ...rest] = argv;
+  let root = ".";
+  let json = false;
+  let confirm = false;
+  for (const arg of rest) {
+    if (arg === "--json") json = true;
+    else if (arg === "--confirm") confirm = true;
+    else if (!arg.startsWith("-") && root === ".") root = arg;
+    else usage(`Unknown embedding option: ${arg}`, `embedding ${action2}`);
+  }
+  return { action: action2, root: resolve10(root), json, confirm };
+}
+function runEmbedding(argv, options = {}) {
+  const parsed = parse(argv);
+  if (!["status", "install"].includes(parsed.action)) usage(`Unknown embedding command: ${parsed.action}`, "embedding");
+  const resolved = resolveEmbeddingProfile(parsed.root, options);
+  if (resolved.profile.provider !== "local") {
+    const result2 = { ok: true, command: `embedding ${parsed.action}`, provider: resolved.profile.provider, required: false, installed: false, installAvailable: false };
+    console.log(parsed.json ? JSON.stringify(result2, null, 2) : "Local embedding runtime is not required for the configured remote provider.");
+    return result2;
+  }
+  if (parsed.action === "install" && !parsed.confirm) usage("embedding install requires --confirm after user approval.", "embedding install");
+  const runtimeOptions = { home: options.home };
+  const result = parsed.action === "status" ? embeddingRuntimeStatus(runtimeOptions) : installEmbeddingRuntime({ ...runtimeOptions, confirm: true, spawnImpl: options.spawnImpl, npmCommand: options.npmCommand });
+  const payload = { ...result, command: `embedding ${parsed.action}`, provider: "local", required: true, ...parsed.action === "install" ? { disclosure: "Installation uses network access and dependency install scripts; the configured model may download on first query." } : {} };
+  console.log(parsed.json ? JSON.stringify(payload, null, 2) : payload.installed ? `Embedding runtime installed (${payload.packageVersion}).` : "Embedding runtime is not installed.");
+  return payload;
+}
+
 // packages/cli/src/commands/map.mjs
-import { resolve as resolve11 } from "node:path";
+import { resolve as resolve12 } from "node:path";
 
 // packages/cli/src/memory/documentation-map.mjs
-import { existsSync as existsSync13, readdirSync as readdirSync4, statSync as statSync6 } from "node:fs";
-import { join as join12, resolve as resolve10 } from "node:path";
+import { existsSync as existsSync14, readdirSync as readdirSync4, statSync as statSync6 } from "node:fs";
+import { join as join13, resolve as resolve11 } from "node:path";
 var SKIPPED_DIRECTORIES2 = /* @__PURE__ */ new Set(["node_modules", "dist", "build", "coverage", ".git", ".dotdotgod"]);
 function node() {
   return { directories: /* @__PURE__ */ new Map(), files: [] };
@@ -3044,7 +3160,7 @@ function discoverMarkdown(root, documentationRoot, exclude) {
   const walk = (relativeDirectory) => {
     let entries;
     try {
-      entries = readdirSync4(join12(root, relativeDirectory), { withFileTypes: true, encoding: "utf8" });
+      entries = readdirSync4(join13(root, relativeDirectory), { withFileTypes: true, encoding: "utf8" });
     } catch {
       return;
     }
@@ -3061,8 +3177,8 @@ function discoverMarkdown(root, documentationRoot, exclude) {
   return paths.sort();
 }
 function buildDocumentationMap(projectRoot = ".", { depth = 5 } = {}) {
-  const root = resolve10(projectRoot);
-  if (!existsSync13(root)) return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
+  const root = resolve11(projectRoot);
+  if (!existsSync14(root)) return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
   try {
     if (!statSync6(root).isDirectory()) return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
   } catch {
@@ -3110,7 +3226,7 @@ function parseMapOptions(argv) {
     } else if (!arg.startsWith("-")) fail(options.json, "UNEXPECTED_ARGUMENT", `Unexpected argument: ${arg}`);
     else fail(options.json, "UNKNOWN_OPTION", `Unknown option: ${arg}`);
   }
-  options.root = resolve11(options.root);
+  options.root = resolve12(options.root);
   return options;
 }
 function runMap(argv) {
@@ -3122,7 +3238,7 @@ function runMap(argv) {
 }
 
 // packages/cli/src/reference/resolve.mjs
-import { resolve as resolve13 } from "node:path";
+import { resolve as resolve14 } from "node:path";
 
 // node_modules/.pnpm/leiden-ts@0.1.0/node_modules/leiden-ts/dist/index.js
 var GraphValidationError = class extends Error {
@@ -4493,15 +4609,15 @@ function compareImpactItems(seeds) {
 }
 
 // packages/cli/src/impact/vector-profile.mjs
-import { lstatSync, readFileSync as readFileSync12, realpathSync } from "node:fs";
-import { extname as extname5, relative as relative4, resolve as resolve12, sep } from "node:path";
+import { lstatSync, readFileSync as readFileSync13, realpathSync } from "node:fs";
+import { extname as extname5, relative as relative4, resolve as resolve13, sep } from "node:path";
 var MAX_VECTOR_PROFILE_FILE_BYTES = 64 * 1024;
 var MAX_VECTOR_PROFILE_CHARS = 4e3;
 var MAX_VECTOR_PROFILE_METADATA_ITEMS = 20;
 var TEXT_EXTENSIONS = /* @__PURE__ */ new Set([".c", ".cc", ".cpp", ".css", ".go", ".h", ".hpp", ".html", ".java", ".js", ".json", ".jsx", ".md", ".mjs", ".py", ".rb", ".rs", ".sh", ".ts", ".tsx", ".txt", ".yaml", ".yml"]);
 var GENERATED_SEGMENTS = /* @__PURE__ */ new Set([".dotdotgod", "build", "coverage", "dist", "node_modules"]);
 function insideRoot(root, absolute) {
-  const normalizedRoot = resolve12(root);
+  const normalizedRoot = resolve13(root);
   return absolute === normalizedRoot || absolute.startsWith(`${normalizedRoot}${sep}`);
 }
 function normalizeChangedPath(path) {
@@ -4512,8 +4628,8 @@ function normalizeChangedPath(path) {
 function canonicalizeChangedPath(root, path) {
   const normalized = normalizeChangedPath(path);
   if (!normalized) return null;
-  const rootAbsolute = resolve12(root);
-  const absolute = resolve12(rootAbsolute, normalized);
+  const rootAbsolute = resolve13(root);
+  const absolute = resolve13(rootAbsolute, normalized);
   if (!insideRoot(rootAbsolute, absolute)) return normalized;
   try {
     const canonicalRoot = realpathSync(rootAbsolute);
@@ -4544,7 +4660,7 @@ function graphMetadata(graph, seedId) {
 function safeTextPrefix(root, path) {
   if (unsafeProfilePath(path) || !TEXT_EXTENSIONS.has(extname5(path).toLowerCase())) return "";
   try {
-    const absolute = resolve12(root, path);
+    const absolute = resolve13(root, path);
     if (!insideRoot(root, absolute)) return "";
     const canonicalAbsolute = realpathSync(absolute);
     if (!insideRoot(realpathSync(root), canonicalAbsolute)) return "";
@@ -4552,7 +4668,7 @@ function safeTextPrefix(root, path) {
     if (canonicalPath !== path || unsafeProfilePath(canonicalPath) || !TEXT_EXTENSIONS.has(extname5(canonicalPath).toLowerCase())) return "";
     const stats = lstatSync(canonicalAbsolute);
     if (!stats.isFile() || stats.isSymbolicLink() || stats.size > MAX_VECTOR_PROFILE_FILE_BYTES) return "";
-    const buffer = readFileSync12(canonicalAbsolute);
+    const buffer = readFileSync13(canonicalAbsolute);
     if (buffer.includes(0)) return "";
     const text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
     return text.slice(0, MAX_VECTOR_PROFILE_CHARS);
@@ -4945,7 +5061,7 @@ function parseReferenceOptions(argv, command) {
     else filtered.push(arg);
   }
   const operands = filtered.filter((arg) => !arg.startsWith("-"));
-  return { ...options, root: resolve13(operands[0] ?? "."), json: filtered.includes("--json"), rootArgv: operands.slice(1) };
+  return { ...options, root: resolve14(operands[0] ?? "."), json: filtered.includes("--json"), rootArgv: operands.slice(1) };
 }
 function formatReferenceOutput(payload) {
   const refreshNote = payload.metadata.cacheRefreshed ? ", refreshed" : "";
@@ -4994,15 +5110,15 @@ function runExpand(argv) {
 }
 
 // packages/cli/src/commands/traceability.mjs
-import { existsSync as existsSync14, readFileSync as readFileSync13, readdirSync as readdirSync5, writeFileSync as writeFileSync5 } from "node:fs";
-import { join as join13, resolve as resolve14 } from "node:path";
+import { existsSync as existsSync15, readFileSync as readFileSync14, readdirSync as readdirSync5, writeFileSync as writeFileSync6 } from "node:fs";
+import { join as join14, resolve as resolve15 } from "node:path";
 function collectDocsMarkdownFiles(root) {
-  const docs = join13(root, "docs");
+  const docs = join14(root, "docs");
   const files = [];
   const walk = (dir) => {
-    if (!existsSync14(dir)) return;
+    if (!existsSync15(dir)) return;
     for (const entry of readdirSync5(dir, { withFileTypes: true })) {
-      const path = join13(dir, entry.name);
+      const path = join14(dir, entry.name);
       if (entry.isDirectory()) walk(path);
       else if (entry.isFile() && entry.name.endsWith(".md")) files.push(path);
     }
@@ -5027,7 +5143,7 @@ function parseTraceabilityOptions(argv) {
   }
   if (options.check && options.write) usage("Choose only one traceability links mode: --check or --write.", "traceability links");
   options.check = options.check || !options.write;
-  options.root = resolve14(options.root);
+  options.root = resolve15(options.root);
   return options;
 }
 function runTraceability(argv) {
@@ -5038,7 +5154,7 @@ function runTraceability(argv) {
   const errors = [...config.errors ?? []];
   for (const file of files) {
     if (options.write && errors.length > 0) break;
-    const content = readFileSync13(file, "utf8");
+    const content = readFileSync14(file, "utf8");
     for (const error of validateTraceabilityLinksRegion(content, options.root, file)) errors.push(error);
     const blocks = extractDotdotgodTraceabilityBlocks(content).filter((block) => !block.error);
     if (blocks.length === 0) continue;
@@ -5047,7 +5163,7 @@ function runTraceability(argv) {
       for (const error of result.errors ?? []) errors.push(error);
       continue;
     }
-    if (options.write && result.changed) writeFileSync5(file, result.content);
+    if (options.write && result.changed) writeFileSync6(file, result.content);
     if (result.changed) results.push({ file: rel(options.root, file), changed: true });
   }
   const ok = errors.length === 0 && (!options.check || results.length === 0);
@@ -5253,6 +5369,7 @@ async function runCli(argv = process.argv.slice(2)) {
   else if (command === "config") runConfig(args);
   else if (command === "status") runStatus(args);
   else if (command === "query") await runQuery(args);
+  else if (command === "embedding") runEmbedding(args);
   else if (command === "map") runMap(args);
   else if (command === "resolve") runResolve(args);
   else if (command === "expand") runExpand(args);

@@ -10,11 +10,14 @@ export class IngestionJobRunner {
     this.renderer = renderer;
     this.running = false;
     this.scheduled = false;
+    this.closed = false;
+    this.pumpPromise = undefined;
     this.controllers = new Map();
     this.schedule();
   }
 
   enqueue(kind, input) {
+    if (this.closed) throw new Error('Ingestion job runner is closed.');
     if (!['index', 'fetch'].includes(kind)) throw new Error('Unsupported ingestion job kind.');
     const job = this.store.createJob({ kind, input, sessionId: this.sessionId ?? null });
     this.schedule();
@@ -29,16 +32,33 @@ export class IngestionJobRunner {
   }
 
   schedule() {
-    if (this.scheduled || this.running) return;
+    if (this.closed || this.scheduled || this.running) return;
     this.scheduled = true;
-    queueMicrotask(() => { this.scheduled = false; void this.pump(); });
+    queueMicrotask(() => {
+      this.scheduled = false;
+      if (this.closed) return;
+      const pending = this.pump();
+      this.pumpPromise = pending;
+      const clearPending = () => {
+        if (this.pumpPromise === pending) this.pumpPromise = undefined;
+      };
+      void pending.then(clearPending, clearPending);
+    });
+  }
+
+  async close() {
+    this.closed = true;
+    for (const controller of this.controllers.values()) controller.abort();
+    if (this.scheduled) await Promise.resolve();
+    await this.pumpPromise;
   }
 
   async pump() {
-    if (this.running) return;
+    if (this.closed || this.running) return;
     this.running = true;
     try {
       for (;;) {
+        if (this.closed) break;
         const job = this.store.claimNextJob();
         if (!job) break;
         const controller = new AbortController();
@@ -53,7 +73,7 @@ export class IngestionJobRunner {
           const current = this.store.getJob(job.id);
           if (current?.state === 'running') this.store.finishJob(job.id, controller.signal.aborted ? 'cancelled' : 'failed', error instanceof Error ? error.message : String(error));
         } finally { this.controllers.delete(job.id); }
-        await new Promise((resolve) => setImmediate(resolve));
+        if (!this.closed) await new Promise((resolve) => setImmediate(resolve));
       }
     } finally { this.running = false; }
   }

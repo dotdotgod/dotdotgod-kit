@@ -1,6 +1,6 @@
 {
   "name": "dotdotgod-workspace",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "description": "Workspace for dotdotgod project memory packages across CLI, Pi, Claude Code, and Codex adapters.",
   "type": "module",
@@ -26,6 +26,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "@types/node": "^25.7.0",
     "husky": "^9.1.7",
     "sharp": "^0.35.3",

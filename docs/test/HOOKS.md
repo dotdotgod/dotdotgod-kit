@@ -5,10 +5,10 @@ These checks cover packaged Claude Code and Codex runtime hooks plus additional 
 ## Automated Checks
 
 - `pnpm --filter @dotdotgod/cli test` parses hook README JSON examples, checks Codex TOML example shape, enforces hook safety policy constraints, and confirms Claude Code/Codex package dry-runs include `hooks/README.md`.
-- `pnpm --filter @dotdotgod/context test` exercises session-start load state, deny/retry guidance, MCP recursion bypass, changed-file fingerprints, impact gating, and matching-state clearance.
+- `pnpm --filter @dotdotgod/context test` exercises session-start load state, deny/retry guidance, MCP recursion bypass, changed-file fingerprints, impact gating, and matching-state clearance. Regression cases cover nested or missing event cwd values, declared-root precedence, same-session cross-project isolation, canonical-root fingerprints, and unidentified-input fail-open behavior.
 - `pnpm --filter @dotdotgod/claude-code run verify` confirms packaged hook resources and generated hook/MCP/CLI runtime drift.
 - `pnpm --filter @dotdotgod/codex run verify` confirms packaged hook resources, manifest registration, and generated hook/MCP/CLI runtime drift.
-- `node --test packages/context/test/adapter-packaging.test.mjs` executes both extracted adapter tarballs outside workspace dependency ancestry and covers hook module loading, fail-open malformed input, MCP startup/tool listing/project load, packaged CLI syntax, link/path leakage, and artifact sizes.
+- `node --test packages/context/test/adapter-packaging.test.mjs` executes both extracted adapter tarballs outside workspace dependency ancestry and covers hook module loading, fail-open malformed input, MCP startup/tool listing, non-empty-focus project Load with structured query degradation, failed/successful Load gate lifecycle, packaged CLI syntax, link/path leakage, and artifact sizes.
 - `pnpm run verify:generated` confirms generated commands and skills did not drift when hook docs are updated manually, including `/dd:impact` and `impact-review` resources generated from `packages/shared/workflows/impact.md`.
 - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index` confirms hook-related docs, links, traceability, and markdown index freshness stay valid after indexing.
 
@@ -43,6 +43,7 @@ For Codex hook examples:
 
 For both adapters:
 
+- start a session at the project root, complete project load from a nested cwd or with cwd omitted while a project root is declared, and confirm Bash/Edit/Write are no longer denied at the original root
 - `dotdotgod status` may be shown as read-only cache reporting, but Codex Stop examples must not return raw status JSON as hook output
 - `dotdotgod validate . --include-local-memory --check-index` may be shown as explicit opt-in validation and index-freshness checking
 - `dotdotgod query` and `dotdotgod graph` must be labeled cache-aware because they can refresh `.dotdotgod/` caches
