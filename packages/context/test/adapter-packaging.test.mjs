@@ -137,6 +137,17 @@ function withTimeout(promise, milliseconds, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+function assertClaudeMcpHookMatchers(packageRoot) {
+  const config = JSON.parse(readFileSync(join(packageRoot, 'hooks', 'hooks.json'), 'utf8'));
+  const pluginQualifiedLoad = 'mcp__plugin_dotdotgod_dotdotgod-context__dotdotgod_project_load';
+  for (const event of ['PreToolUse', 'PostToolUse']) {
+    const matcher = config.hooks[event]?.[0]?.matcher;
+    assert.equal(typeof matcher, 'string', `${event} must declare a matcher`);
+    assert.match(matcher, /(?:^|\|)mcp__\.\*(?:\||$)/u, `${event} must use Claude's documented MCP wildcard form`);
+    assert.equal(new RegExp(matcher, 'u').test(pluginQualifiedLoad), true, `${event} must dispatch plugin-qualified Load tools`);
+  }
+}
+
 for (const adapter of ['claude-code', 'codex']) {
   test(`${adapter} packed adapter is a standalone hook and MCP runtime`, { timeout: 90_000 }, async (t) => {
     const root = mkdtempSync(join(tmpdir(), `dotdotgod-packed-${adapter}-`));
@@ -153,6 +164,7 @@ for (const adapter of ['claude-code', 'codex']) {
     auditExtractedPackage(packageRoot);
     const packedManifest = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
     assert.equal(packedManifest.engines.node, '>=22.5.0');
+    if (adapter === 'claude-code') assertClaudeMcpHookMatchers(packageRoot);
 
     const runtime = join(packageRoot, 'hooks', 'runtime.mjs');
     const sessionInput = JSON.stringify({ cwd: project, session_id: `packed-${adapter}` });
@@ -194,6 +206,10 @@ for (const adapter of ['claude-code', 'codex']) {
       assert.equal(failed.isError, true);
       assert.equal(JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout).hookSpecificOutput.permissionDecision, 'deny');
 
+      const unrelatedMcp = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'mcp__plugin_other_server__unrelated_tool', tool_input: {} });
+      assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', unrelatedMcp, { cwd: project, env }).stdout), {});
+      assert.equal(JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout).hookSpecificOutput.permissionDecision, 'deny');
+
       const loaded = await withTimeout(client.callTool({
         name: 'dotdotgod_project_load',
         arguments: { root: '.', focus: 'packaged focused project memory', limit: 3, maxDepth: 2 },
@@ -208,9 +224,17 @@ for (const adapter of ['claude-code', 'codex']) {
       const serializedLoad = JSON.stringify(loaded);
       assert.doesNotMatch(serializedLoad, /ERR_MODULE_NOT_FOUND|plugins\/cache|package_json_reader/u);
 
-      const completedLoad = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'mcp__dotdotgod_project_load', tool_input: { root: '.', focus: 'packaged focused project memory' } });
+      const completedLoad = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'mcp__plugin_dotdotgod_dotdotgod-context__dotdotgod_project_load', tool_input: { root: '.', focus: 'packaged focused project memory' } });
       assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', completedLoad, { cwd: project, env }).stdout), {});
       assert.deepEqual(JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout), {});
+
+      const changedPath = join(project, 'docs', 'README.md');
+      const completedWrite = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'Write', tool_input: { file_path: changedPath } });
+      assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', completedWrite, { cwd: project, env }).stdout), {});
+      const broadVerification = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'Bash', tool_input: { command: 'pnpm run verify' } });
+      assert.equal(JSON.parse(runHook(runtime, 'pretooluse', broadVerification, { cwd: project, env }).stdout).hookSpecificOutput.permissionDecision, 'deny');
+      assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', unrelatedMcp, { cwd: project, env }).stdout), {});
+      assert.equal(JSON.parse(runHook(runtime, 'pretooluse', broadVerification, { cwd: project, env }).stdout).hookSpecificOutput.permissionDecision, 'deny');
     } finally {
       await withTimeout(client.close(), 5_000, `${adapter} MCP close`);
     }

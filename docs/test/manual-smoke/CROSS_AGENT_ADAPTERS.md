@@ -12,7 +12,9 @@ Build and pack the adapter, extract the tarball under a clean temporary parent o
 claude --plugin-dir /tmp/dotdotgod-claude-code/package
 ```
 
-Confirm `SessionStart` and `PreToolUse` do not emit `package_json_reader` or `ERR_MODULE_NOT_FOUND`. Confirm the packaged `dotdotgod-context` stdio MCP server starts and exposes the complete context, project-workflow, session, ingestion-job, healing, and doctor tool surface. Run a non-empty-focus `dotdotgod_project_load` from a project directory different from the plugin path: it must return the documentation map, and unavailable optional embeddings must appear only as bounded `queryUnavailable` evidence. Confirm a rejected Load leaves Bash/Edit/Write denied, while a successful Load followed by PostToolUse allows retry. Verify small output returns directly and a large output returns an index handle without the full raw bytes.
+Confirm `SessionStart` and `PreToolUse` do not emit `package_json_reader` or `ERR_MODULE_NOT_FOUND`. Confirm the packaged `dotdotgod-context` stdio MCP server starts and exposes the complete context, project-workflow, session, ingestion-job, healing, and doctor tool surface. Run a non-empty-focus `dotdotgod_project_load` from a project directory different from the plugin path: it must return the documentation map, and unavailable optional embeddings must appear only as bounded `queryUnavailable` evidence. Confirm a rejected Load leaves Bash/Edit/Write denied.
+
+Then verify host dispatch with the installed plugin, not by invoking `runtime.mjs posttooluse` directly: start a fresh session, observe the initial Bash/Edit/Write denial, let Claude call the plugin-qualified `dotdotgod_project_load`, confirm its successful PostToolUse hook runs, and retry Bash/Edit/Write. The retry must succeed without ending the session. To check unrelated MCP isolation, first complete a Write, confirm a broad verification command is denied by pending impact state, call an unrelated MCP tool, and confirm the same command remains denied. Verify small output returns directly and a large output returns an index handle without the full raw bytes.
 
 Confirm these commands are discoverable or invokable:
 

@@ -8,7 +8,7 @@ These checks cover packaged Claude Code and Codex runtime hooks plus additional 
 - `pnpm --filter @dotdotgod/context test` exercises session-start load state, deny/retry guidance, MCP recursion bypass, changed-file fingerprints, impact gating, and matching-state clearance. Regression cases cover nested or missing event cwd values, declared-root precedence, same-session cross-project isolation, canonical-root fingerprints, and unidentified-input fail-open behavior.
 - `pnpm --filter @dotdotgod/claude-code run verify` confirms packaged hook resources and generated hook/MCP/CLI runtime drift.
 - `pnpm --filter @dotdotgod/codex run verify` confirms packaged hook resources, manifest registration, and generated hook/MCP/CLI runtime drift.
-- `node --test packages/context/test/adapter-packaging.test.mjs` executes both extracted adapter tarballs outside workspace dependency ancestry and covers hook module loading, fail-open malformed input, MCP startup/tool listing, non-empty-focus project Load with structured query degradation, failed/successful Load gate lifecycle, packaged CLI syntax, link/path leakage, and artifact sizes.
+- `node --test packages/context/test/adapter-packaging.test.mjs` executes both extracted adapter tarballs outside workspace dependency ancestry and covers hook module loading, fail-open malformed input, MCP startup/tool listing, plugin-qualified Claude MCP matcher selection, non-empty-focus project Load with structured query degradation, failed/successful Load gate lifecycle, packaged CLI syntax, link/path leakage, and artifact sizes.
 - `pnpm run verify:generated` confirms generated commands and skills did not drift when hook docs are updated manually, including `/dd:impact` and `impact-review` resources generated from `packages/shared/workflows/impact.md`.
 - `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index` confirms hook-related docs, links, traceability, and markdown index freshness stay valid after indexing.
 
@@ -29,6 +29,8 @@ For Claude Code hook examples:
 - confirm docs do not present unavailable plan-mode transition hooks such as `PrePlanMode`, `PostPlanMode`, plan accept, or plan reject as available
 - confirm strict plan-safety examples require a local tested mode signal before blocking writes
 - confirm packaged hooks deny only substantive pre-load work and broad impact-gated operations, name the required MCP tool, and bypass their own MCP calls
+- confirm MCP hook matchers use the documented `mcp__.*` form so plugin-qualified tool names dispatch, then use an installed-plugin Load → PostToolUse → Bash/Edit/Write retry to verify host dispatch; direct runtime invocation alone is insufficient
+- confirm unrelated MCP PostToolUse events leave dotdotgod load and impact state unchanged
 
 For Codex hook examples:
 
