@@ -12,7 +12,7 @@
 - dynamic dimensions and normalized vectors
 - schema-1 cache invalidation and schema-2 persistence
 - secret-free cache manifests and fingerprints
-- persistent runtime missing/installed status without network access
+- persistent runtime missing/installed status without network access, including packages that do not export their `package.json` subpath and rejection of incomplete package installs
 - explicit confirmation and fixed no-shell npm install arguments
 
 Existing CLI tests verify incremental chunk reuse, query ranking, malformed vectors, and graph-impact graceful degradation. All provider tests use injected embedders or local HTTP fixtures; CI must not download models or contact external services.

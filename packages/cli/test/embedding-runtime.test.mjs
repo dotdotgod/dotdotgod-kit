@@ -11,7 +11,7 @@ function fakePackage(home) {
   const pkg = join(root, 'node_modules', '@huggingface', 'transformers');
   mkdirSync(pkg, { recursive: true });
   writeFileSync(join(root, 'package.json'), '{"private":true}\n');
-  writeFileSync(join(pkg, 'package.json'), '{"name":"@huggingface/transformers","version":"4.2.0","exports":{".":"./index.js","./package.json":"./package.json"},"type":"module"}\n');
+  writeFileSync(join(pkg, 'package.json'), '{"name":"@huggingface/transformers","version":"4.2.0","exports":{".":"./index.js"},"type":"module"}\n');
   writeFileSync(join(pkg, 'index.js'), 'export const env = {}; export const pipeline = async () => {};\n');
 }
 
@@ -28,8 +28,22 @@ test('persistent embedding runtime status and resolution are local', () => {
     assert.equal(embeddingRuntimeStatus({ home }).installed, false);
     assert.throws(() => resolvePersistentTransformers({ home }), /not installed/);
     fakePackage(home);
-    assert.equal(embeddingRuntimeStatus({ home }).installed, true);
+    const status = embeddingRuntimeStatus({ home });
+    assert.equal(status.installed, true);
+    assert.equal(status.packageVersion, '4.2.0');
     assert.match(resolvePersistentTransformers({ home }), /transformers\/index\.js$/);
+  } finally { rmSync(home, { recursive: true, force: true }); }
+});
+
+test('persistent embedding runtime status rejects an incomplete package', () => {
+  const home = fixture();
+  try {
+    const root = embeddingRuntimeRoot({ home });
+    const pkg = join(root, 'node_modules', '@huggingface', 'transformers');
+    mkdirSync(pkg, { recursive: true });
+    writeFileSync(join(root, 'package.json'), '{"private":true}\n');
+    writeFileSync(join(pkg, 'package.json'), '{"name":"@huggingface/transformers","version":"4.2.0","exports":{".":"./missing.js"},"type":"module"}\n');
+    assert.equal(embeddingRuntimeStatus({ home }).installed, false);
   } finally { rmSync(home, { recursive: true, force: true }); }
 });
 

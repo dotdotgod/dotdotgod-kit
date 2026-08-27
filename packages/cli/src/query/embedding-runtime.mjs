@@ -26,7 +26,8 @@ export function embeddingRuntimeStatus(options = {}) {
   const root = embeddingRuntimeRoot(options);
   try {
     const require = createRequire(join(root, 'package.json'));
-    const packagePath = require.resolve(`${EMBEDDING_RUNTIME_PACKAGE}/package.json`);
+    require.resolve(EMBEDDING_RUNTIME_PACKAGE);
+    const packagePath = join(root, 'node_modules', ...EMBEDDING_RUNTIME_PACKAGE.split('/'), 'package.json');
     const version = JSON.parse(readFileSync(packagePath, 'utf8')).version;
     return { ok: true, installed: true, installAvailable: true, package: EMBEDDING_RUNTIME_PACKAGE, requiredVersion: EMBEDDING_RUNTIME_VERSION, packageVersion: version, location: root };
   } catch {
