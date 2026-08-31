@@ -19,6 +19,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/plan-review-bottom-alignment/`: padded short Plan Mode saved-plan review previews to the full terminal body viewport so execute/stay/refine/cancel controls remain near the review surface bottom on tall displays.
+- `plan/responsive-plan-review-ui/`: made Plan Mode saved-plan review height responsive so execute/stay/refine/cancel controls remain visible when the minimum terminal layout fits.
 - `plan/fix-claude-mcp-hook-matcher/`: corrected Claude MCP hook matching for plugin-qualified tools and added packaged matcher, load-gate, and pending-impact isolation coverage.
 - `plan/stabilize-hook-runtime-state-root/`: stabilized cross-event hook state routing and made packaged focused Load degrade safely when optional semantic-query dependencies are unavailable.
 - `plan/simplify-plan-mode-project-memory-boundary/`: moved automatic project-memory user-prompt transformation and lifecycle ownership into the global extension, removed Plan Mode load classification/string framing, and preserved advisory graph impact plus automatic compaction.

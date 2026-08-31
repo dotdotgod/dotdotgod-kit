@@ -63,6 +63,7 @@ export {
 export type { DiscussionQueueAction, DiscussionQueueItem, DiscussionQueueItemState, DiscussionQueueOption, DiscussionQueueResult, DiscussionQueueSummary, PlanExecutionDecision, PlanExecutionTargetInput, PlanExecutionTargetResolution, PlanModeUserMessageDeliveryOptions, PlanRefinementPromptOptions, PlanReviewAction, PlanReviewChoice, PlanReviewDisplayMarkdownOptions, PlanReviewFileReader, PlanReviewMarkdown, PlanReviewScrollState } from "./plans.ts";
 export {
 	PLAN_REVIEW_ACTIONS,
+	PLAN_REVIEW_MIN_BODY_LINES,
 	planModeFollowUpDeliveryOptions,
 	buildDiscussionQueueFollowUp,
 	buildPlanExecutionDecision,
@@ -75,7 +76,9 @@ export {
 	mapPlanReviewFallbackChoice,
 	getNextPlanReviewActionIndex,
 	getPlanReviewActionChoice,
+	getPlanReviewBodyViewportLines,
 	getPlanReviewScrollState,
+	getPlanReviewVisibleBodyLines,
 	summarizeDiscussionQueue,
 	getCurrentPlanReadmePath,
 	extractPlanSlugMentions,

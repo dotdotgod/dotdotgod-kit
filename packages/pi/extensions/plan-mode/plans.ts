@@ -12,6 +12,7 @@ export type {
 } from "./plan-review.ts";
 export {
 	PLAN_REVIEW_ACTIONS,
+	PLAN_REVIEW_MIN_BODY_LINES,
 	buildPlanExecutionDecision,
 	buildPlanExecutionHandoff,
 	buildPlanReviewDisplayMarkdown,
@@ -19,7 +20,9 @@ export {
 	buildPlanReviewTitle,
 	getNextPlanReviewActionIndex,
 	getPlanReviewActionChoice,
+	getPlanReviewBodyViewportLines,
 	getPlanReviewScrollState,
+	getPlanReviewVisibleBodyLines,
 	mapPlanReviewFallbackChoice,
 	planModeFollowUpDeliveryOptions,
 } from "./plan-review.ts";

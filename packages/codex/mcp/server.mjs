@@ -22936,7 +22936,6 @@ async function fetchAndIndex(store, input, sessionId2, signal, capabilities = {}
         controller.abort(new Error("Browser rendering timed out."));
         reject(new Error(`Browser rendering timed out after ${timeoutMs}ms.`));
       }, timeoutMs);
-      timer.unref?.();
     });
     let rendered;
     try {

@@ -13,6 +13,7 @@ import { configureDocumentationPaths, isActivePlanMarkdownPath, isManagedPlanMar
 import {
 	PLAN_COMPACTION_PERCENT_THRESHOLD,
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
+	PLAN_REVIEW_MIN_BODY_LINES,
 	buildPlanCompactionInstructions,
 	buildDiscussionQueueFollowUp,
 	buildPlanExecutionDecision,
@@ -40,7 +41,9 @@ import {
 	getNextPlanReviewActionIndex,
 	getPlanCompactionReason,
 	getPlanReviewActionChoice,
+	getPlanReviewBodyViewportLines,
 	getPlanReviewScrollState,
+	getPlanReviewVisibleBodyLines,
 	hasExplicitBracketReferences,
 	hasLikelyFuzzyReferences,
 	isBroadVerificationCommand,
@@ -619,11 +622,35 @@ describe("plan-mode review helpers", () => {
 		assert.equal(mapPlanReviewFallbackChoice("Unexpected"), "cancel");
 	});
 
+	it("sizes review body lines from terminal rows with a minimum viewport", () => {
+		assert.equal(getPlanReviewVisibleBodyLines(60), 53);
+		assert.equal(getPlanReviewVisibleBodyLines(30), 23);
+		assert.equal(getPlanReviewVisibleBodyLines(18), PLAN_REVIEW_MIN_BODY_LINES);
+		assert.equal(getPlanReviewVisibleBodyLines(undefined), PLAN_REVIEW_MIN_BODY_LINES);
+		assert.equal(getPlanReviewVisibleBodyLines(Number.NaN), PLAN_REVIEW_MIN_BODY_LINES);
+	});
+
 	it("clamps review scroll offsets to the rendered body range", () => {
 		assert.deepEqual(getPlanReviewScrollState(-10, 100, 24), { offset: 0, maxOffset: 76, canScrollUp: false, canScrollDown: true });
 		assert.deepEqual(getPlanReviewScrollState(20, 100, 24), { offset: 20, maxOffset: 76, canScrollUp: true, canScrollDown: true });
 		assert.deepEqual(getPlanReviewScrollState(999, 100, 24), { offset: 76, maxOffset: 76, canScrollUp: true, canScrollDown: false });
 		assert.deepEqual(getPlanReviewScrollState(5, 10, 24), { offset: 0, maxOffset: 0, canScrollUp: false, canScrollDown: false });
+		assert.deepEqual(getPlanReviewScrollState(999, 100, PLAN_REVIEW_MIN_BODY_LINES), { offset: 88, maxOffset: 88, canScrollUp: true, canScrollDown: false });
+	});
+
+	it("pads short review bodies to the full tall-terminal viewport", () => {
+		const visibleLines = getPlanReviewVisibleBodyLines(60);
+		const viewport = getPlanReviewBodyViewportLines(["# Short", "Body"], 0, visibleLines);
+
+		assert.equal(visibleLines, 53);
+		assert.equal(viewport.length, visibleLines);
+		assert.deepEqual(viewport.slice(0, 2), ["# Short", "Body"]);
+		assert.deepEqual(viewport.slice(2), Array.from({ length: visibleLines - 2 }, () => ""));
+	});
+
+	it("keeps long review body viewports bounded to visible lines", () => {
+		const bodyLines = Array.from({ length: 100 }, (_, index) => `line ${index + 1}`);
+		assert.deepEqual(getPlanReviewBodyViewportLines(bodyLines, 10, 3), ["line 11", "line 12", "line 13"]);
 	});
 
 	it("maps cursor-selectable review actions and wraps selection", () => {

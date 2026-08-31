@@ -88,7 +88,7 @@ export async function fetchAndIndex(store, input, sessionId, signal, capabilitie
     const abort = () => { const reason = signal?.reason instanceof Error ? signal.reason : new Error('Browser rendering aborted.'); controller.abort(reason); rejectAbort(reason); };
     if (signal?.aborted) abort(); else signal?.addEventListener('abort', abort, { once: true });
     let timer;
-    const timeout = new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(new Error('Browser rendering timed out.')); reject(new Error(`Browser rendering timed out after ${timeoutMs}ms.`)); }, timeoutMs); timer.unref?.(); });
+    const timeout = new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(new Error('Browser rendering timed out.')); reject(new Error(`Browser rendering timed out after ${timeoutMs}ms.`)); }, timeoutMs); });
     let rendered;
     try { rendered = await Promise.race([capabilities.renderer({ url: url.href, signal: controller.signal, timeoutMs, maxBytes }), timeout, aborted]); }
     finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }

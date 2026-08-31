@@ -56,6 +56,9 @@ export interface PlanReviewScrollState {
 	canScrollDown: boolean;
 }
 
+export const PLAN_REVIEW_MIN_BODY_LINES = 12;
+const PLAN_REVIEW_CHROME_LINES = 7;
+
 export function planModeFollowUpDeliveryOptions(): PlanModeUserMessageDeliveryOptions {
 	return { deliverAs: "followUp" };
 }
@@ -93,6 +96,13 @@ export function mapPlanReviewFallbackChoice(choice: string | undefined): PlanRev
 	return "cancel";
 }
 
+export function getPlanReviewVisibleBodyLines(terminalRows: number | undefined): number {
+	const safeRows = typeof terminalRows === "number" && Number.isFinite(terminalRows) && terminalRows > 0
+		? Math.floor(terminalRows)
+		: PLAN_REVIEW_MIN_BODY_LINES + PLAN_REVIEW_CHROME_LINES;
+	return Math.max(PLAN_REVIEW_MIN_BODY_LINES, safeRows - PLAN_REVIEW_CHROME_LINES);
+}
+
 export function getPlanReviewScrollState(offset: number, totalLines: number, visibleLines: number): PlanReviewScrollState {
 	const safeVisibleLines = Math.max(1, Math.floor(visibleLines));
 	const safeTotalLines = Math.max(0, Math.floor(totalLines));
@@ -104,6 +114,13 @@ export function getPlanReviewScrollState(offset: number, totalLines: number, vis
 		canScrollUp: safeOffset > 0,
 		canScrollDown: safeOffset < maxOffset,
 	};
+}
+
+export function getPlanReviewBodyViewportLines(bodyLines: readonly string[], offset: number, visibleLines: number): string[] {
+	const safeVisibleLines = Math.max(1, Math.floor(visibleLines));
+	const viewport = bodyLines.slice(Math.max(0, Math.floor(offset)), Math.max(0, Math.floor(offset)) + safeVisibleLines);
+	while (viewport.length < safeVisibleLines) viewport.push("");
+	return viewport;
 }
 
 export function getPlanReviewActionChoice(index: number): PlanReviewChoice {

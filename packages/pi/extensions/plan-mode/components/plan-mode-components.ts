@@ -5,13 +5,17 @@ import {
 	PLAN_REVIEW_ACTIONS,
 	getNextPlanReviewActionIndex,
 	getPlanReviewActionChoice,
+	getPlanReviewBodyViewportLines,
 	getPlanReviewScrollState,
+	getPlanReviewVisibleBodyLines,
 	type DiscussionQueueItem,
 	type DiscussionQueueResult,
 	type PlanReviewChoice,
 } from "../plans.ts";
 
-const PLAN_REVIEW_VISIBLE_LINES = 48;
+function getPlanReviewBodyLineCount(): number {
+	return getPlanReviewVisibleBodyLines(process.stdout.rows);
+}
 
 function getSafeCustomComponentWidth(width: number): number {
 	const requestedWidth = Number.isFinite(width) ? Math.floor(width) : 80;
@@ -19,7 +23,7 @@ function getSafeCustomComponentWidth(width: number): number {
 	return Math.max(20, Math.min(requestedWidth, terminalWidth) - 2);
 }
 
-function getCustomComponentScrollOffset(currentOffset: number, data: string): number | undefined {
+function getCustomComponentScrollOffset(currentOffset: number, data: string, visibleLines: number): number | undefined {
 	let wheel = 0;
 	if (/\x1b\[<64;\d+;\d+[mM]/.test(data) || /\x1b\[M[`]/.test(data)) wheel = -3;
 	else if (/\x1b\[<65;\d+;\d+[mM]/.test(data) || /\x1b\[M[a]/.test(data)) wheel = 3;
@@ -28,8 +32,8 @@ function getCustomComponentScrollOffset(currentOffset: number, data: string): nu
 	if (matchesKey(data, Key.down)) return currentOffset + 1;
 	if (matchesKey(data, Key.home)) return 0;
 	if (matchesKey(data, Key.end)) return Number.MAX_SAFE_INTEGER;
-	if (matchesKey(data, Key.pageUp)) return Math.max(0, currentOffset - PLAN_REVIEW_VISIBLE_LINES);
-	if (matchesKey(data, Key.pageDown)) return currentOffset + PLAN_REVIEW_VISIBLE_LINES;
+	if (matchesKey(data, Key.pageUp)) return Math.max(0, currentOffset - visibleLines);
+	if (matchesKey(data, Key.pageDown)) return currentOffset + visibleLines;
 	return undefined;
 }
 
@@ -53,7 +57,8 @@ export class PlanReviewComponent {
 	) {}
 
 	handleInput(data: string): void {
-		const nextOffset = getCustomComponentScrollOffset(this.offset, data);
+		const visibleLines = getPlanReviewBodyLineCount();
+		const nextOffset = getCustomComponentScrollOffset(this.offset, data, visibleLines);
 		if (nextOffset !== undefined) {
 			this.offset = nextOffset;
 			this.invalidate();
@@ -72,18 +77,19 @@ export class PlanReviewComponent {
 	render(width: number): string[] {
 		const safeWidth = getSafeCustomComponentWidth(width);
 		const bodyLines = this.getMarkdownLines(safeWidth);
-		const scroll = getPlanReviewScrollState(this.offset, bodyLines.length, PLAN_REVIEW_VISIBLE_LINES);
+		const visibleLines = getPlanReviewBodyLineCount();
+		const scroll = getPlanReviewScrollState(this.offset, bodyLines.length, visibleLines);
 		this.offset = scroll.offset;
 		const th = this.theme;
 		const title = ` Plan Mode Review (${this.todoCount === 1 ? "1 step" : `${this.todoCount} steps`}) `;
 		const controls = "↑/↓ PgUp/PgDn Home/End scroll · ←/→ Tab select · Enter confirm · e/s/r/c shortcuts";
-		const status = `${scroll.offset + Math.min(bodyLines.length, 1)}-${Math.min(bodyLines.length, scroll.offset + PLAN_REVIEW_VISIBLE_LINES)} / ${bodyLines.length}`;
+		const status = `${scroll.offset + Math.min(bodyLines.length, 1)}-${Math.min(bodyLines.length, scroll.offset + visibleLines)} / ${bodyLines.length}`;
 		const lines = [
 			truncateToWidth(th.fg("borderAccent", "─".repeat(2)) + th.fg("accent", title) + th.fg("borderAccent", "─".repeat(safeWidth)), safeWidth),
 			truncateToWidth(th.fg("dim", controls), safeWidth),
 			truncateToWidth(th.fg("dim", `Scroll: ${status}${scroll.canScrollDown ? " · more below" : ""}`), safeWidth),
 			truncateToWidth(th.fg("borderMuted", "─".repeat(safeWidth)), safeWidth),
-			...bodyLines.slice(scroll.offset, scroll.offset + PLAN_REVIEW_VISIBLE_LINES),
+			...getPlanReviewBodyViewportLines(bodyLines, scroll.offset, visibleLines),
 			truncateToWidth(th.fg("borderMuted", "─".repeat(safeWidth)), safeWidth),
 			this.renderActionBar(safeWidth),
 			truncateToWidth(th.fg("dim", controls), safeWidth),
