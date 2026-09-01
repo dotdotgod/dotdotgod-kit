@@ -55,7 +55,7 @@ Add or preserve focused cases for:
 - doctor no-network/no-repair behavior and schema compatibility;
 - initializer dry-run default and explicit write confirmation;
 - project-load query and project-impact 20-path bound;
-- hook recursion bypass, retry cap, stale fingerprint, unsupported-tool gaps, stable state routing across differing or missing cwd values, declared-root precedence, same-session cross-project isolation, and canonical-root fingerprints;
+- hook recursion bypass, retry cap, unsupported-tool gaps, stable state routing across differing or missing cwd values, declared-root precedence, same-session cross-project isolation, canonical-root impact paths, project-external scratchpad pruning, acknowledgement-based impact clearing, failure warning without retry loops, and re-edit gating after impact acknowledgement;
 - packed Claude/Codex focused Load without ancestor `node_modules`, including bounded query degradation without `ERR_MODULE_NOT_FOUND`, failed-Load gate retention, successful Load plus direct PostToolUse runtime clearance, and Claude matcher coverage for plugin-qualified MCP tool names.
 
 ## Manual Adapter Verification

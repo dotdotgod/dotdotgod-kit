@@ -19,6 +19,7 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/fix-hook-impact-pending-loop/`: fixed Claude Code/Codex hook impact pending loops by pruning project-external scratchpad paths, clearing requested impact paths on PostToolUse acknowledgement, warning on failed impact results, and preserving re-edit gating.
 - `plan/plan-review-bottom-alignment/`: padded short Plan Mode saved-plan review previews to the full terminal body viewport so execute/stay/refine/cancel controls remain near the review surface bottom on tall displays.
 - `plan/responsive-plan-review-ui/`: made Plan Mode saved-plan review height responsive so execute/stay/refine/cancel controls remain visible when the minimum terminal layout fits.
 - `plan/fix-claude-mcp-hook-matcher/`: corrected Claude MCP hook matching for plugin-qualified tools and added packaged matcher, load-gate, and pending-impact isolation coverage.

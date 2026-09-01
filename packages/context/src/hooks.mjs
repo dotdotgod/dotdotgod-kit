@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { dirname, join, parse, resolve } from 'node:path';
+import { dirname, isAbsolute, join, parse, relative, resolve } from 'node:path';
 
 function inputText() { return readFileSync(0, 'utf8'); }
 function parseInput() { const text = inputText().trim(); return text ? JSON.parse(text) : {}; }
@@ -37,6 +37,25 @@ function writeState(path, state) {
   const temp = `${path}.${process.pid}.tmp`; writeFileSync(temp, `${JSON.stringify(state, null, 2)}\n`); renameSync(temp, path);
 }
 function fileHash(path) { try { return createHash('sha256').update(readFileSync(path)).digest('hex'); } catch { return 'missing'; } }
+function isInsideRoot(root, path) {
+  if (!root || typeof path !== 'string') return false;
+  const absolute = resolve(path);
+  const rel = relative(root, absolute);
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+}
+function normalizeProjectPath(root, path) {
+  if (!root || typeof path !== 'string' || !path.trim()) return null;
+  const absolute = resolve(root, path);
+  return isInsideRoot(root, absolute) ? absolute : null;
+}
+function prunePending(state, root) {
+  const next = {};
+  for (const [path, fingerprint] of Object.entries(state.pending || {})) {
+    const absolute = normalizeProjectPath(root, path);
+    if (absolute) next[absolute] = fingerprint;
+  }
+  state.pending = next;
+}
 function toolName(input) { return String(input.tool_name || input.toolName || ''); }
 function toolInput(input) { return input.tool_input || input.toolInput || {}; }
 function mcpTool(name, suffix) { return name === suffix || name.endsWith(`__${suffix}`) || name.endsWith(`_${suffix}`); }
@@ -50,7 +69,14 @@ function isImpactGate(name, input) {
 function changedPath(input, root) {
   const value = toolInput(input);
   const path = value.file_path || value.path;
-  return root && typeof path === 'string' ? resolve(root, path) : null;
+  return normalizeProjectPath(root, path);
+}
+function hasFailedToolResult(input) {
+  const response = input.tool_response || input.toolResponse || input.tool_result || input.toolResult || input.result;
+  if (!response || typeof response !== 'object') return false;
+  if (response.is_error === true || response.isError === true || response.error) return true;
+  if (response.ok === false || response.status === 'error' || response.status === 'failed') return true;
+  return false;
 }
 
 export function runHook(event) {
@@ -59,6 +85,10 @@ export function runHook(event) {
   const context = resolveHookContext(input, event);
   const state = readState(context?.path);
   state.pending ||= {};
+  if (context) {
+    prunePending(state, context.root);
+    writeState(context.path, state);
+  }
 
   if (event === 'sessionstart') {
     if (!context) return {};
@@ -80,10 +110,17 @@ export function runHook(event) {
     if (mcpTool(name, 'dotdotgod_project_load')) state.loadRequired = false;
     else if (mcpTool(name, 'dotdotgod_project_impact')) {
       const checked = toolInput(input).paths;
+      let cleared = 0;
       if (Array.isArray(checked)) for (const path of checked) {
-        const absolute = resolve(context.root, path);
-        if (state.pending[absolute] === fileHash(absolute)) delete state.pending[absolute];
+        const absolute = normalizeProjectPath(context.root, path);
+        if (absolute && Object.hasOwn(state.pending, absolute)) {
+          delete state.pending[absolute];
+          cleared += 1;
+        }
       }
+      writeState(context.path, state);
+      if (cleared > 0 && hasFailedToolResult(input)) return { hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `dotdotgod_project_impact reported a failure, but dotdotgod cleared pending graph impact for ${cleared} requested path(s) to avoid a blocking retry loop. Review the impact error before broad operations.` } };
+      return {};
     } else if (/^(Edit|Write|apply_patch)$/i.test(name)) {
       const path = changedPath(input, context.root);
       if (path) state.pending[path] = fileHash(path);

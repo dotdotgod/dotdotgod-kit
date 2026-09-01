@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Dotdotgod keeps large command, file, and fetched text outside model context until bounded retrieval selects useful output.
+Dotdotgod keeps large command, file, and fetched text outside model context until bounded retrieval selects output.
 
 ## Tool Contract
 
@@ -27,7 +27,7 @@ Output modes are:
 - `indexed`: index output and return metadata instead of raw bytes;
 - `discard`: return status and metrics without stream content.
 
-The implementation MUST NOT place the complete large output in a tool response before indexing or filtering. Batch results preserve input order even when commands run concurrently. All three execution entrypoints inherit a compatibility-oriented environment after removing runtime injection variables. Callers may add string overrides or delete inherited names, but cannot restore reserved variables. Results report the policy and filtered names, never values. This filtering is defense in depth and does not isolate ordinary inherited credentials.
+The implementation MUST NOT place complete large output in a tool response before indexing or filtering. Batch results preserve input order. Execution entrypoints inherit a compatibility-oriented environment after removing runtime injection variables. Callers may add string overrides or delete inherited names, but cannot restore reserved variables. Results report policy and filtered names, never values. This filtering is defense in depth and does not isolate ordinary inherited credentials.
 
 ## Storage And Search
 
@@ -41,11 +41,11 @@ Markdown chunking preserves heading/fence metadata; JSON emits deterministic key
 
 Search applies scope/session/source predicates before building bounded Porter and label/path lists, then uses reciprocal-rank fusion and deterministic title/path/proximity signals. Existing result fields remain; provenance, `instructionAuthority: "none"`, and bounded ranking evidence are additive. Retrieved text is non-authoritative data; this boundary is defense in depth, not a prompt-injection guarantee.
 
-`index` accepts one project-contained regular file or directory. Directory traversal is deterministic and bounded by depth, visited entries, file count, per-file bytes, and aggregate bytes. Directory symlinks and file symlinks are skipped by default; explicitly followed file symlinks must resolve inside the project. Responses contain path/status metadata rather than file content and report partial success, skips, failures, truncation, and cancellation.
+`index` accepts one project-contained regular file or directory. Directory traversal is deterministic and bounded by depth, entries, file count, per-file bytes, and aggregate bytes. Symlinks are skipped by default; followed file symlinks must resolve inside the project. Responses contain path/status metadata, not file content, and report partial success, skips, failures, truncation, and cancellation.
 
-Fetched HTML is normalized without a browser, JavaScript, subresources, or link following. The bounded extractor removes active and hidden content, preserves basic document structure, records extractor metadata, and keeps the source `external-untrusted`. It is not a standards-complete HTML renderer or prompt-injection prevention mechanism.
+Fetched HTML is normalized without a browser, JavaScript, subresources, or link following. The bounded extractor removes active and hidden content, preserves basic structure, records metadata, and keeps the source `external-untrusted`. It is not a complete HTML renderer or prompt-injection defense.
 
-Writable database connections use WAL and a bounded busy timeout. Source replacement, expiry, and purge update source and FTS rows transactionally. Recognized older databases migrate transactionally through a version ledger; unknown, newer, incomplete, or corrupt databases fail clearly and doctor remains read-only.
+Writable database connections use WAL and a bounded busy timeout. Source replacement, expiry, and purge update source and FTS rows transactionally. Recognized older databases migrate transactionally; unknown, newer, incomplete, or corrupt databases fail clearly and doctor remains read-only.
 
 `purge` requires explicit confirmation and exactly one selector: scope, session, or source.
 
@@ -79,11 +79,12 @@ Claude Code and Codex hooks keep project/session state under `.dotdotgod/context
 
 - Session start marks project load as required.
 - Substantive shell or write tools are denied until project load succeeds.
-- Successful edit tools record changed paths and content fingerprints.
+- Successful edit tools record project-contained changed paths and fingerprints.
 - Broad test, build, lint, verify, commit, push, publish, and deploy commands are denied while impact is pending.
 - Denial identifies the required MCP tool; the model calls it and retries the original operation.
 - Project MCP tools bypass their own guards.
-- Impact clears only paths whose current fingerprint matches the recorded edit.
+- Pending paths outside the canonical project root are pruned before gating, so host scratchpad files cannot block commits.
+- Impact PostToolUse clears matching requested pending paths without fingerprint checks. Failed impact results warn while still clearing the gate to avoid retry loops.
 
 Hooks do not transform tool types or retry automatically. Coverage is limited to tested host interception points.
 
@@ -99,7 +100,7 @@ Hooks do not transform tool types or retry automatically. Coverage is limited to
 
 ## Local-Only Boundary
 
-No remote dotdotgod service is required. Runtime state and caches are local; `fetch_and_index` accesses its requested URL.
+No remote dotdotgod service is required. Runtime state and caches are local; `fetch_and_index` accesses the requested URL.
 
 ## Traceability
 

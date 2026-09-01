@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
@@ -21,7 +21,7 @@ function payload(root, event, extra = {}) {
 const bash = { tool_name: 'Bash', tool_input: { command: 'npm test' } };
 const load = { tool_name: 'mcp__dotdotgod_project_load', tool_input: {} };
 
-test('hooks gate load and fingerprinted impact without recursion', () => {
+test('hooks gate load and acknowledgement-based impact without recursion', () => {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-test-'));
   try {
     const started = payload(root, 'sessionstart');
@@ -82,7 +82,7 @@ test('hook state remains isolated between projects with the same session id', ()
   }
 });
 
-test('impact fingerprints resolve against the canonical project root', () => {
+test('impact paths resolve against the canonical project root', () => {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-impact-root-'));
   const nested = join(root, 'nested');
   mkdirSync(nested);
@@ -95,6 +95,73 @@ test('impact fingerprints resolve against the canonical project root', () => {
     assert.match(hook('pretooluse', { project_dir: root, session_id: 'impact', ...verify }).hookSpecificOutput.permissionDecisionReason, /project_impact/);
     hook('posttooluse', { project_dir: root, cwd: nested, session_id: 'impact', tool_name: 'mcp__dotdotgod_project_impact', tool_input: { paths: ['source.ts'] } });
     assert.deepEqual(hook('pretooluse', { project_dir: root, session_id: 'impact', ...verify }), {});
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('outside-root scratchpad writes do not create commit-blocking pending impact', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-root-'));
+  const scratch = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-scratch-'));
+  try {
+    payload(root, 'sessionstart');
+    payload(root, 'posttooluse', load);
+    const scratchFile = join(scratch, 'scratchpad', 'test_zzz_diag.py');
+    mkdirSync(dirname(scratchFile), { recursive: true });
+    writeFileSync(scratchFile, 'print("diagnostic")\n');
+    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: scratchFile } });
+    assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } }), {});
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+test('stale outside-root pending impact state is pruned before broad command gates', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-stale-'));
+  const scratch = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-stale-scratch-'));
+  try {
+    payload(root, 'sessionstart');
+    payload(root, 'posttooluse', load);
+    const statePath = join(root, '.dotdotgod', 'context', 'runtime', 'test.json');
+    const scratchFile = join(scratch, 'scratchpad', 'stale.py');
+    writeFileSync(statePath, `${JSON.stringify({ loadRequired: false, pending: { [scratchFile]: 'missing' } }, null, 2)}\n`);
+    assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } }), {});
+    const state = JSON.parse(readFileSync(statePath, 'utf8'));
+    assert.deepEqual(state.pending, {});
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+test('impact posttooluse clears requested pending paths even when result reports failure', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-impact-clear-'));
+  try {
+    payload(root, 'sessionstart');
+    payload(root, 'posttooluse', load);
+    const file = join(root, 'source.ts');
+    writeFileSync(file, 'export const value = 1;\n');
+    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
+    assert.equal(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } }).hookSpecificOutput.permissionDecision, 'deny');
+    const impact = { tool_name: 'mcp__dotdotgod_project_impact', tool_input: { paths: [file] }, tool_response: { ok: false, error: 'diagnostic failure' } };
+    const warning = payload(root, 'posttooluse', impact);
+    assert.match(warning.hookSpecificOutput.additionalContext, /cleared pending graph impact/i);
+    assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } }), {});
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('re-edit after impact acknowledgement creates a fresh pending gate', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-reedit-'));
+  try {
+    payload(root, 'sessionstart');
+    payload(root, 'posttooluse', load);
+    const file = join(root, 'source.ts');
+    writeFileSync(file, 'export const value = 1;\n');
+    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
+    payload(root, 'posttooluse', { tool_name: 'mcp__dotdotgod_project_impact', tool_input: { paths: [file] } });
+    assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'pnpm test' } }), {});
+    writeFileSync(file, 'export const value = 2;\n');
+    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
+    assert.equal(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'pnpm test' } }).hookSpecificOutput.permissionDecision, 'deny');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

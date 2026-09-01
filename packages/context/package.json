@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/context",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "Local-first MCP execution, indexing, and retrieval runtime for dotdotgod adapters.",
   "type": "module",
   "license": "Elastic-2.0",
