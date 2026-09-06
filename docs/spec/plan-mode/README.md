@@ -20,6 +20,8 @@ Pi has no built-in plan mode; this package provides the workflow as an extension
 
 ## Domain Map
 
+- [`DECISION_WIZARD.md`](DECISION_WIZARD.md): sequential decision questions, draft answers, batch confirmation, compatibility, fallback, and stale-result safety.
+
 - [`TOOL_POLICY.md`](TOOL_POLICY.md): allowed planning work and command boundaries.
 - [`WORKFLOW.md`](WORKFLOW.md): context shaping, compaction, plan review, todo extraction, execution, and pending impact checks.
 - [`DEBUG_AND_ARCHIVE.md`](DEBUG_AND_ARCHIVE.md): debug metrics, archive policy, and traceability.

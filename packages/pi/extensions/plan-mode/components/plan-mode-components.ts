@@ -8,8 +8,6 @@ import {
 	getPlanReviewBodyViewportLines,
 	getPlanReviewScrollState,
 	getPlanReviewVisibleBodyLines,
-	type DiscussionQueueItem,
-	type DiscussionQueueResult,
 	type PlanReviewChoice,
 } from "../plans.ts";
 
@@ -117,96 +115,5 @@ export class PlanReviewComponent {
 		this.cachedWidth = width;
 		this.cachedMarkdownLines = renderMarkdownLines(this.markdown, width);
 		return this.cachedMarkdownLines;
-	}
-}
-
-export class DiscussionQueueComponent {
-	private itemIndex = 0;
-	private optionIndex = 0;
-
-	constructor(
-		private readonly planPath: string | undefined,
-		private readonly items: readonly DiscussionQueueItem[],
-		private readonly totalCount: number,
-		private readonly theme: Theme,
-		private readonly done: (result: DiscussionQueueResult) => void,
-	) {}
-
-	handleInput(data: string): void {
-		const current = this.currentItem();
-		if (!current) {
-			this.done({ action: "cancel" });
-			return;
-		}
-		if (matchesKey(data, Key.up)) {
-			this.itemIndex = Math.max(0, this.itemIndex - 1);
-			this.optionIndex = 0;
-		} else if (matchesKey(data, Key.down)) {
-			this.itemIndex = Math.min(this.items.length - 1, this.itemIndex + 1);
-			this.optionIndex = 0;
-		} else if (matchesKey(data, Key.left) || matchesKey(data, Key.shift("tab"))) {
-			this.optionIndex = this.wrapOptionIndex(current, -1);
-		} else if (matchesKey(data, Key.right) || matchesKey(data, Key.tab)) {
-			this.optionIndex = this.wrapOptionIndex(current, 1);
-		} else if (matchesKey(data, Key.enter) || matchesKey(data, Key.return)) {
-			const option = this.selectedOption(current);
-			this.done({ action: "answer", itemId: current.id, ...(option ? { optionLabel: option.label, optionText: option.text } : {}) });
-		} else if (data === "a" || data === "A") this.done({ action: "custom_answer", itemId: current.id });
-		else if (data === "d" || data === "D") this.done({ action: "defer", itemId: current.id });
-		else if (data === "r" || data === "R") this.done({ action: "research", itemId: current.id });
-		else if (data === "p" || data === "P") this.done({ action: "revise", itemId: current.id, rationale: "Preview or revise the saved plan before resolving this discussion item." });
-		else if (data === "q" || data === "Q" || matchesKey(data, Key.escape) || matchesKey(data, Key.ctrl("c"))) this.done({ action: "cancel" });
-	}
-
-	invalidate(): void {}
-
-	render(width: number): string[] {
-		const safeWidth = Math.max(20, width);
-		const item = this.currentItem();
-		const th = this.theme;
-		const plan = this.planPath ?? "unknown active plan";
-		const summary = `Queue ${this.items.length} unresolved · ${this.totalCount} total · Execute review suppressed`;
-		const lines = [
-			truncateToWidth(th.fg("borderAccent", "─".repeat(2)) + th.fg("accent", " Discussion Queue Console ") + th.fg("borderAccent", "─".repeat(safeWidth)), safeWidth),
-			truncateToWidth(th.fg("dim", `Plan: ${plan}`), safeWidth),
-			truncateToWidth(th.fg("warning", summary), safeWidth),
-			truncateToWidth(th.fg("borderMuted", "─".repeat(safeWidth)), safeWidth),
-		];
-		if (!item) {
-			lines.push(truncateToWidth("No unresolved discussion items were found.", safeWidth));
-		} else {
-			const option = this.selectedOption(item);
-			lines.push(truncateToWidth(th.bold(`${item.id} [${[item.type, ...item.flags].join("/") || "discussion"}] ${item.question}`), safeWidth));
-			if (item.why) lines.push(truncateToWidth(`Why: ${item.why}`, safeWidth));
-			if (item.affects) lines.push(truncateToWidth(`Affects: ${item.affects}`, safeWidth));
-			if (item.verificationImpact) lines.push(truncateToWidth(`Verification: ${item.verificationImpact}`, safeWidth));
-			lines.push(truncateToWidth(th.fg("borderMuted", "─".repeat(safeWidth)), safeWidth));
-			const options = item.options.length > 0 ? item.options : [{ label: "A", text: "Answer or accept the discussion item as written.", recommended: true }];
-			for (let i = 0; i < options.length; i += 1) {
-				const candidate = options[i];
-				if (!candidate) continue;
-				const prefix = i === this.optionIndex ? "▶" : " ";
-				const text = `${prefix} ${candidate.label}. ${candidate.text}${candidate.recommended ? "" : ""}`;
-				lines.push(truncateToWidth(i === this.optionIndex ? th.fg("accent", text) : text, safeWidth));
-			}
-			if (option) lines.push(truncateToWidth(th.fg("dim", `Selected: ${option.label}. ${option.text}`), safeWidth));
-		}
-		lines.push(truncateToWidth(th.fg("borderMuted", "─".repeat(safeWidth)), safeWidth));
-		lines.push(truncateToWidth(th.fg("dim", `${Math.min(this.itemIndex + 1, this.items.length)}/${this.items.length} · ↑/↓ item · ←/→ Tab option · Enter answer · a custom · d defer · r research · p revise · q cancel`), safeWidth));
-		return lines.map((line) => truncateToWidth(line, safeWidth));
-	}
-
-	private currentItem(): DiscussionQueueItem | undefined {
-		return this.items[this.itemIndex];
-	}
-
-	private selectedOption(item: DiscussionQueueItem): DiscussionQueueItem["options"][number] | undefined {
-		const options = item.options.length > 0 ? item.options : [{ label: "A", text: "Answer or accept the discussion item as written.", recommended: true }];
-		return options[Math.min(this.optionIndex, options.length - 1)];
-	}
-
-	private wrapOptionIndex(item: DiscussionQueueItem, direction: -1 | 1): number {
-		const count = Math.max(1, item.options.length);
-		return (this.optionIndex + direction + count) % count;
 	}
 }

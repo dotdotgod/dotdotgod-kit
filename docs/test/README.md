@@ -73,6 +73,10 @@ node packages/cli/bin/dotdotgod.mjs status . --json
 
 Confirm JSON includes schema/refresh metadata, graph counts, bounded summaries, retrieval hints, archive policy, and traceability-related specs/tests/docs for graph impact.
 
+## Plan Decision Wizard Coverage
+
+`packages/pi/test/decision-wizard.test.ts` verifies drafts, explicit choice/custom text, batch confirmation, terminal bounds, fallback, and failure safety. `packages/pi/test/decision-wizard-extension.test.ts` exercises actual extension handlers through Pi's loader for one batch delivery, reopened questions, separate execution approval, and shutdown/branch invalidation. `packages/pi/test/plan-mode-utils.test.ts` covers legacy Discussion Queue status compatibility; `manual-smoke/PI_ADAPTER.md` covers live IME/paste, resize, lifecycle changes, and separate execution approval.
+
 ## Workspace Coverage
 
 - `@dotdotgod/shared`: private source resources for generated adapter commands, skills, and initializer files.

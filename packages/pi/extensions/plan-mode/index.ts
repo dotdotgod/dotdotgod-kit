@@ -13,6 +13,8 @@ import type {
 import { keyHint } from "@earendil-works/pi-coding-agent";
 import { Key, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { buildDecisionWizardFollowUp } from "./decision-wizard.ts";
+import { describePendingPlanDecisions } from "./controllers/decision-wizard.ts";
 import { recordContextMetric } from "../context-metrics/utils.js";
 import { composeActiveTools } from "../shared/active-tools.js";
 import { ContextOrchestrationController } from "./controllers/context-orchestration.js";
@@ -54,7 +56,6 @@ import {
   type PendingImpactItem,
 } from "./impact.js";
 import {
-  buildDiscussionQueueFollowUp,
   buildPlanReviewDisplayMarkdown,
   buildPlanReviewMarkdown,
   planModeFollowUpDeliveryOptions,
@@ -637,12 +638,28 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
     persistState();
   });
 
+  pi.on("session_shutdown", () => modeLifecycle.disable());
+  pi.on("session_tree", () => {
+    if (modeLifecycle.reviewing) modeLifecycle.returnToPlanning();
+  });
+
   pi.on("agent_end", async (event, ctx) => {
     if (executionFlow.completeExecutionIfDone(ctx)) return;
 
     if (!modeLifecycle.planningEnabled) return;
     if (planArtifact.suppressChoiceForInlineRequest) {
       planArtifact.suppressChoiceForInlineRequest = false;
+      planArtifact.pendingReviewPath = undefined;
+      persistState();
+      return;
+    }
+
+    if (!ctx.hasUI && planArtifact.pendingReviewPath) {
+      pi.sendMessage({
+        customType: "plan-decisions-pending",
+        content: describePendingPlanDecisions(ctx.cwd, planArtifact.pendingReviewPath),
+        display: true,
+      });
       planArtifact.pendingReviewPath = undefined;
       persistState();
       return;
@@ -670,13 +687,15 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
     persistState();
 
     try {
-      const queueResult = await reviewGates.promptForDiscussionQueue(ctx, inferredPlanPath);
+      const queueResult = await reviewGates.promptForDiscussionQueue(ctx, inferredPlanPath, () =>
+        modeLifecycle.isCurrentReview(reviewGeneration) && planArtifact.inferPlanPath() === inferredPlanPath,
+      );
       if (!modeLifecycle.isCurrentReview(reviewGeneration)) return;
       if (queueResult) {
         modeLifecycle.returnToPlanning();
         updateStatus(ctx);
         planArtifact.pendingReviewPath = undefined;
-        const prompt = buildDiscussionQueueFollowUp(
+        const prompt = buildDecisionWizardFollowUp(
           inferredPlanPath,
           queueResult,
         );
@@ -692,6 +711,12 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
         executionProgress.todos,
       );
       if (!modeLifecycle.isCurrentReview(reviewGeneration)) return;
+      if (planArtifact.inferPlanPath() !== inferredPlanPath) {
+        modeLifecycle.returnToPlanning();
+        updateStatus(ctx);
+        persistState();
+        return;
+      }
       planArtifact.pendingReviewPath = undefined;
 
       await executionFlow.handleReviewChoice(ctx, choice, inferredPlanPath, reviewGeneration);

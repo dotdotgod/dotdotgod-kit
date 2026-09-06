@@ -60,12 +60,11 @@ export {
 	selectLatestPlanningRequest,
 } from "./context.ts";
 
-export type { DiscussionQueueAction, DiscussionQueueItem, DiscussionQueueItemState, DiscussionQueueOption, DiscussionQueueResult, DiscussionQueueSummary, PlanExecutionDecision, PlanExecutionTargetInput, PlanExecutionTargetResolution, PlanModeUserMessageDeliveryOptions, PlanRefinementPromptOptions, PlanReviewAction, PlanReviewChoice, PlanReviewDisplayMarkdownOptions, PlanReviewFileReader, PlanReviewMarkdown, PlanReviewScrollState } from "./plans.ts";
+export type { DiscussionQueueItem, DiscussionQueueItemState, DiscussionQueueOption, DiscussionQueueSummary, PlanExecutionDecision, PlanExecutionTargetInput, PlanExecutionTargetResolution, PlanModeUserMessageDeliveryOptions, PlanRefinementPromptOptions, PlanReviewAction, PlanReviewChoice, PlanReviewDisplayMarkdownOptions, PlanReviewFileReader, PlanReviewMarkdown, PlanReviewScrollState } from "./plans.ts";
 export {
 	PLAN_REVIEW_ACTIONS,
 	PLAN_REVIEW_MIN_BODY_LINES,
 	planModeFollowUpDeliveryOptions,
-	buildDiscussionQueueFollowUp,
 	buildPlanExecutionDecision,
 	buildPlanExecutionHandoff,
 	buildPlanReviewDisplayMarkdown,

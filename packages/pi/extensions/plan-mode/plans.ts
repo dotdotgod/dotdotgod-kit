@@ -28,7 +28,6 @@ export {
 } from "./plan-review.ts";
 
 export type DiscussionQueueItemState = "open" | "answered" | "deferred" | "research_requested" | "plan_revision_requested" | "accepted_risk";
-export type DiscussionQueueAction = "answer" | "custom_answer" | "defer" | "research" | "revise" | "cancel";
 
 export interface DiscussionQueueOption {
 	label: string;
@@ -48,15 +47,6 @@ export interface DiscussionQueueItem {
 	checked: boolean;
 	options: DiscussionQueueOption[];
 	order: number;
-}
-
-export interface DiscussionQueueResult {
-	action: DiscussionQueueAction;
-	itemId?: string;
-	optionLabel?: string;
-	optionText?: string;
-	answer?: string;
-	rationale?: string;
 }
 
 export interface DiscussionQueueSummary {
@@ -97,6 +87,8 @@ function normalizeDiscussionQueueState(value: string | undefined, checked: boole
 }
 
 function isDiscussionQueueResolved(item: DiscussionQueueItem): boolean {
+	// Explicit required deferral remains blocking even if a legacy writer checked it.
+	if (item.status === "deferred" && item.flags.includes("blocks-execute-review")) return false;
 	return item.checked || DISCUSSION_QUEUE_RESOLVED_STATES.has(item.status);
 }
 
@@ -187,21 +179,6 @@ export function summarizeDiscussionQueue(markdown: string): DiscussionQueueSumma
 	const items = extractDiscussionQueueItems(markdown);
 	const unresolved = items.filter((item) => !isDiscussionQueueResolved(item));
 	return { items, unresolved, blocksExecutionReview: unresolved.length > 0 };
-}
-
-export function buildDiscussionQueueFollowUp(planPath: string | undefined, result: DiscussionQueueResult): string | undefined {
-	if (result.action === "cancel" || !result.itemId) return undefined;
-	const target = planPath ? ` in ${planPath}` : " in the active plan";
-	const suffix = "Update the durable plan's Discussion Queue and keep Plan Mode active until execution approval.";
-	if (result.action === "answer") {
-		const selected = [result.optionLabel, result.optionText].filter(Boolean).join(": ");
-		return `Record the user's answer for Discussion Queue item ${result.itemId}${target}: ${selected}. ${suffix}`;
-	}
-	if (result.action === "custom_answer") return `Record the user's custom answer for Discussion Queue item ${result.itemId}${target}: ${result.answer ?? ""}. ${suffix}`;
-	if (result.action === "defer") return `Mark Discussion Queue item ${result.itemId}${target} as deferred${result.rationale ? ` with rationale: ${result.rationale}` : ""}. ${suffix}`;
-	if (result.action === "research") return `Research the bounded question for Discussion Queue item ${result.itemId}${target} and record findings or next options. ${suffix}`;
-	if (result.action === "revise") return `Revise the plan for Discussion Queue item ${result.itemId}${target}${result.rationale ? `: ${result.rationale}` : "."} ${suffix}`;
-	return undefined;
 }
 
 

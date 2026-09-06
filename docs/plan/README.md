@@ -26,6 +26,8 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 
 ## Active Plans
 
+- `plan-decision-wizard/` — active: sequential decision wizard implemented and automatically verified; awaiting review and completion confirmation before archive.
+
 - `2-stage2-3/` — active: plan and support design for extending `/plan-generator` from Stage 01 into Stage 02 context-load and Stage 03 discovery using store state plus data-only stage constants.
 - `codex-plugin-metadata/` — paused: plan to align Claude Code and Codex plugin metadata and verification with current platform docs and the impact-review workflow contract; ready for execution when prioritized.
 - `cli-core-module-split/` — active: plan to split `packages/cli/src/core.mjs` into responsibility-focused modules while preserving CLI behavior and public exports.

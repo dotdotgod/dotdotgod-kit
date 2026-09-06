@@ -15,7 +15,6 @@ import {
 	PLAN_MODE_COMPACTION_INSTRUCTIONS,
 	PLAN_REVIEW_MIN_BODY_LINES,
 	buildPlanCompactionInstructions,
-	buildDiscussionQueueFollowUp,
 	buildPlanExecutionDecision,
 	buildPlanExecutionHandoff,
 	buildPlanReviewDisplayMarkdown,
@@ -714,18 +713,15 @@ describe("plan-mode discussion queue helpers", () => {
 		assert.equal(summarizeDiscussionQueue(answered).blocksExecutionReview, false);
 	});
 
-	it("builds follow-up prompts that keep plan markdown as the durable source", () => {
-		const answer = buildDiscussionQueueFollowUp("docs/plan/example/README.md", {
-			action: "answer",
-			itemId: "Q1",
-			optionLabel: "A",
-			optionText: "Markdown only",
-		});
-		assert.match(answer ?? "", /Record the user's answer/);
-		assert.match(answer ?? "", /Q1/);
-		assert.match(answer ?? "", /docs\/plan\/example\/README\.md/);
-		assert.match(answer ?? "", /keep Plan Mode active until execution approval/);
-		assert.equal(buildDiscussionQueueFollowUp("docs/plan/example/README.md", { action: "cancel" }), undefined);
+	it("keeps required deferred items blocking without invalidating historical decisions", () => {
+		for (const checked of [" ", "x"]) {
+			const deferred = queueMarkdown.replace("- [ ] Q1", `- [${checked}] Q1`).replace("Status: open", "Status: deferred");
+			assert.equal(summarizeDiscussionQueue(deferred).blocksExecutionReview, true);
+			assert.equal(summarizeDiscussionQueue(deferred.replace("blocks-execute-review", "")).blocksExecutionReview, false);
+		}
+		for (const status of ["answered", "accepted_risk"]) {
+			assert.equal(summarizeDiscussionQueue(queueMarkdown.replace("Status: open", `Status: ${status}`)).blocksExecutionReview, false);
+		}
 	});
 });
 
