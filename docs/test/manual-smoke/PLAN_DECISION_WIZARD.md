@@ -24,7 +24,7 @@ Behavior contract: [DECISION_WIZARD.md](../../spec/plan-mode/DECISION_WIZARD.md)
 ## Terminal Layout
 
 1. Compare question and summary screens with saved-plan execution review: accent title, muted separators, and bracketed highlighted footer actions should share the same theme.
-2. At 80×24 and a tall terminal, compare a one-line question with long Korean questions/options and multiline summary answers. Empty body rows must be padded; the footer must stay at the bottom instead of floating within the transcript.
+2. At 80×24 and a tall terminal, compare a one-line question with long Korean questions/options and multiline summary answers. Short panels must shrink to content plus framing without empty body padding; the footer must touch the terminal bottom. Long panels must stay bounded to terminal height. Advance from a long question to a short one and shorten a summary draft: the panel must shrink without stale painted rows above it.
 3. Scroll via PgUp/PgDn. Only body content moves; Back/Next/Cancel or Confirm answers/Back/Cancel remain outside the scroll area. Tab/Up/Down must reach every option, summary edit link, and footer action without implicitly answering.
 4. Resize to 40×12, 22×8, and back to 80×24. Check width bounds, wrapped footer actions, visible selected actions, and bottom alignment. Extremely short layouts reduce framing rather than clipping controls away.
 5. Open Other and submit or cancel the native editor; the reopened wizard must retain drafts and bottom alignment. Verify separate execution review and fallback pagination remain unchanged.

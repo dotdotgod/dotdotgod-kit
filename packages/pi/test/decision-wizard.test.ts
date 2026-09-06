@@ -162,7 +162,7 @@ describe("decision wizard terminal screen", () => {
 		screen.handleInput("\x1b[B");
 		assert.match(screen.render(80).join("\n"), /▶ Confirm answers/);
 	});
-	it("pins themed footer rows for short/long questions, summary edits, and resize", () => {
+	it("sizes themed panels to content within terminal bounds across summary edits and resize", () => {
 		const colors = new Set<string>();
 		const themed = { fg: (color: string, text: string) => { colors.add(color); return text; }, bold: (text: string) => text } as Theme;
 		const questions = items();
@@ -175,7 +175,9 @@ describe("decision wizard terminal screen", () => {
 				questions[0]!.question = long ? "Long question\n".repeat(80) : "Short?";
 				state.edit(0);
 				const before = screen.render(width!);
-				assert.equal(before.length, height);
+				assert.ok(before.length <= height);
+				if (long) assert.equal(before.length, height);
+				else if (height >= 24) assert.equal(before.length, 12);
 				assert.match(before[0]!, /── Plan Mode/);
 				assert.ok(before.every((line) => visibleWidth(line) <= width!));
 				screen.handleInput("\x1b[6~");
@@ -185,7 +187,9 @@ describe("decision wizard terminal screen", () => {
 				state.custom(long ? "Full answer\n".repeat(60) : "Yes");
 				state.next();
 				const summary = screen.render(width!);
-				assert.equal(summary.length, height);
+				assert.ok(summary.length <= height);
+				if (long) assert.equal(summary.length, height);
+				else if (height >= 24) assert.equal(summary.length, 14);
 				assert.ok(summary.slice(-4).join("\n").includes("["));
 				screen.handleInput("\x1b[5~");
 				assert.deepEqual(screen.render(width!).slice(-2), summary.slice(-2));
@@ -193,19 +197,46 @@ describe("decision wizard terminal screen", () => {
 		}
 		for (const color of ["accent", "borderAccent", "borderMuted", "muted", "dim"]) assert.ok(colors.has(color));
 	});
+	it("shrinks after advancing from overflow and after shortening a summary draft", () => {
+		const questions = items();
+		questions[0]!.question = "Long question\n".repeat(50);
+		let height = 24;
+		const state = new DecisionWizardState(questions);
+		const screen = new DecisionWizardComponent(state, theme, () => {}, () => {}, () => height);
+		assert.equal(screen.render(80).length, 24);
+		screen.handleInput("\x1b[6~");
+		screen.handleInput("\r");
+		const short = screen.render(80);
+		assert.equal(short.length, 10);
+		assert.match(short[1]!, /Scroll: 1-4 \/ 4/);
+		for (height of [1, 2, 3, 4, 6, 8, 40]) {
+			const lines = screen.render(80);
+			assert.ok(lines.length <= height);
+			assert.ok(lines.some((line) => line.includes("[")));
+		}
+		state.custom("Long answer\n".repeat(50));
+		state.next();
+		assert.equal(screen.render(80).length, 40);
+		questions[0]!.question = "Short?";
+		state.edit(1);
+		state.custom("Yes");
+		state.next();
+		assert.equal(screen.render(80).length, 14);
+		assert.match(screen.render(80)[1]!, /Scroll: 1-8 \/ 8/);
+	});
 	it("keeps footer actions out of the scrolled body and keyboard reachable", () => {
 		const state = new DecisionWizardState(items().slice(0, 1));
 		let result: WizardScreenResult | undefined;
 		const screen = new DecisionWizardComponent(state, theme, (value) => { result = value; }, () => {}, () => 24);
 		let lines = screen.render(80);
-		assert.match(lines[22]!, /\[   Back \].*\[   Next \].*\[   Cancel \]/);
-		assert.ok(!lines.slice(3, 21).join("\n").includes("[   Next ]"));
+		assert.match(lines.at(-2)!, /\[   Back \].*\[   Next \].*\[   Cancel \]/);
+		assert.ok(!lines.slice(3, -3).join("\n").includes("[   Next ]"));
 		screen.handleInput("\r");
 		lines = screen.render(80);
 		assert.equal(state.summary, true);
-		assert.match(lines[22]!, /\[   Confirm answers \]/);
+		assert.match(lines.at(-2)!, /\[   Confirm answers \]/);
 		screen.handleInput("\x1b[B");
-		assert.match(screen.render(80)[22]!, /\[ ▶ Confirm answers \]/);
+		assert.match(screen.render(80).at(-2)!, /\[ ▶ Confirm answers \]/);
 		screen.handleInput("\r");
 		assert.equal(result?.action, "confirm");
 	});
@@ -230,7 +261,7 @@ describe("decision wizard controller", () => {
 				const screen = factory({ terminal: { rows: 24 }, requestRender: () => { renders++; } }, theme, {}, (value) => { result = value; });
 				const keys = screens++ === 0 ? ["\u001b[B", "\u001b[B", "\r"]
 					: screens === 2 ? ["\r"] : ["\u001b[B", "\u001b[B", "\r"];
-				assert.equal(screen.render(80).length, 24); // Includes re-open after native editor.
+				assert.ok(screen.render(80).length < 24); // Includes re-open after native editor.
 				for (const key of keys) screen.handleInput(key);
 				return result;
 			},

@@ -26,6 +26,8 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 
 ## Active Plans
 
+- `wizard-layout-smoke/` — active: live-session question and summary layout verification only; no implementation or commit authorization.
+
 - `plan-decision-wizard/` — active: sequential decision wizard implemented and automatically verified; awaiting review and completion confirmation before archive.
 
 - `2-stage2-3/` — active: plan and support design for extending `/plan-generator` from Stage 01 into Stage 02 context-load and Stage 03 discovery using store state plus data-only stage constants.

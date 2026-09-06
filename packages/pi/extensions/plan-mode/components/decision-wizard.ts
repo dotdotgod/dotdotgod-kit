@@ -120,7 +120,7 @@ export class DecisionWizardComponent {
 			bar = [button(actions[index]!, index)];
 		}
 		const chrome = height >= 7 ? 5 : height >= 4 ? 2 : 0;
-		const visible = Math.max(0, height - chrome - bar.length);
+		const visible = Math.min(body.length, Math.max(0, height - chrome - bar.length));
 		this.viewportLines = Math.max(1, visible);
 		const geometry = `${w}:${height}`;
 		if (this.geometry && this.geometry !== geometry) this.followSelection = true;
@@ -133,7 +133,6 @@ export class DecisionWizardComponent {
 		this.offset = Math.max(0, Math.min(this.offset, body.length - visible));
 		const title = this.state.summary ? "Review answers" : `Question ${this.state.index + 1}/${this.state.items.length}`;
 		const viewport = body.slice(this.offset, this.offset + visible);
-		while (viewport.length < visible) viewport.push("");
 		const border = th.fg("borderMuted", "─".repeat(w));
 		const heading = th.fg("borderAccent", "──") + th.fg("accent", ` Plan Mode Decisions · ${title} `) + th.fg("borderAccent", "─".repeat(w));
 		const status = th.fg(this.error ? "warning" : "dim", this.error || `Scroll: ${this.offset + 1}-${Math.min(body.length, this.offset + visible)} / ${body.length} · PgUp/PgDn scroll`);
