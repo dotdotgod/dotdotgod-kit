@@ -412,6 +412,12 @@ describe('CLI docs helpers', () => {
     assert(findTraceabilityLinksRegion(synced.content).status === 'present');
     assert.deepEqual(validateTraceabilityLinksRegion(synced.content, root, file), []);
     assert.equal(extractDotdotgodTraceabilityBlocks(stripTraceabilityLinksRegion(synced.content)).length, 0);
+    const metadata = '```json dotdotgod\n{"kind":"spec"}\n```';
+    for (const padding of ['\n', '\n\n\n', '\n \t\n\n']) {
+      assert.equal(stripTraceabilityLinksRegion(`# Body\n${padding}## Traceability${padding}${metadata}${padding}`), '# Body\n');
+    }
+    assert.equal(stripTraceabilityLinksRegion(`# Body\n\n## Traceability\n\nNotes stay.\n\n${metadata}\n\n## Next\nText`), '# Body\nNotes stay.\n\n\n\n## Next\nText');
+    assert.equal(stripTraceabilityLinksRegion('# Body\n\n## Other\n\nText\n'), '# Body\n\n## Other\n\nText\n');
     assert.equal(renderCompactTraceabilityBlock(block.data).includes('\n  "kind"'), false);
 
     const contractData = { ...block.data, contracts: [{ id: 'FEATURE-CONTRACT-001', title: 'Focused contract', sections: ['Traceability'], implementedBy: ['packages/tool/index.mjs'], verifiedBy: ['packages/tool/index.test.mjs'], relatedDocs: ['docs/test/README.md'], designDecisions: ['docs/arch/README.md'] }] };

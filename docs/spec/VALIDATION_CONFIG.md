@@ -39,7 +39,7 @@ All path fields are arrays. Scalar path settings are invalid and validation shou
 - `dotdotgod validate --max-lines <n>` and `--max-chars <n>` override configured numeric budgets for that invocation.
 - `validation.markdown.exclude` applies when CLI numeric overrides are used.
 - Invalid config is reported by `dotdotgod validate` and `dotdotgod config`. Runtime commands fall back to the default policy so graph, Load, and query routing remain usable.
-- Generated traceability-link regions and canonical `json dotdotgod` blocks are excluded before line and character budgets are measured.
+- Generated traceability-link regions and canonical `json dotdotgod` blocks are excluded before line and character budgets are measured. When metadata is present, `## Traceability` headings and adjacent blank lines are also excluded; surrounding prose and other sections remain counted. The preceding body line's newline is preserved.
 - `FILE_TOO_LONG` and `FILE_TOO_LARGE` errors include a repair prompt that names the matched memory area and role, and tells agents to split the oversized document into focused files by documentation area and role while updating the nearest README index.
 - Markdown size budgets encourage focused specs and test docs, but size validation does not classify micro-specs or enforce semantic coverage.
 

@@ -1533,7 +1533,8 @@ function stripTraceabilityLinksRegion(content) {
   if (region.status === "present") ranges.push({ start: region.start, end: region.end });
   for (const block of extractDotdotgodTraceabilityBlocks(content)) ranges.push({ start: block.index, end: block.end });
   if (ranges.length === 0) return content;
-  return ranges.sort((a, b) => b.start - a.start).reduce((next, range) => `${next.slice(0, range.start)}${next.slice(range.end)}`, content);
+  const stripped = ranges.sort((a, b) => b.start - a.start).reduce((next, range) => `${next.slice(0, range.start)}${next.slice(range.end)}`, content);
+  return stripped.replace(/(?:^[ \t]*\r?\n)*^##[ \t]+Traceability[ \t]*\r?(?:\n(?:[ \t]*\r?\n)*|$)/gm, "");
 }
 function markdownLinkPath(root, file, target) {
   const fromDir = dirname2(file);

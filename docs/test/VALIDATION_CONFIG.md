@@ -12,6 +12,7 @@ These checks cover configurable markdown validation size budgets and path-specif
 - valid validation config is loaded from `dotdotgod.config.json`
 - invalid max-line, max-character, and exclude settings are reported by the shared config validator
 - invalid validation config falls back to default policy at runtime
+- traceability size stripping excludes the heading and adjacent blank lines regardless of padding, while retaining prose and other sections
 
 `packages/cli/test/e2e.test.mjs` verifies:
 
