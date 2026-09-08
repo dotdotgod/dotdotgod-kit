@@ -26,6 +26,7 @@ export class DecisionWizardComponent {
 		this.done = done;
 		this.requestRender = requestRender;
 		this.rows = rows;
+		this.reset();
 	}
 
 	private actions(): string[] {
@@ -52,7 +53,7 @@ export class DecisionWizardComponent {
 		this.followSelection = true;
 	}
 
-	private reset(): void { this.selected = 0; this.offset = 0; this.error = ""; this.followSelection = false; }
+	private reset(): void { this.selected = this.state.summary ? this.state.items.length : 0; this.offset = 0; this.error = ""; this.followSelection = false; }
 	private back(): void { this.state.back(); this.reset(); }
 	private next(): void {
 		if (this.state.next()) this.reset();

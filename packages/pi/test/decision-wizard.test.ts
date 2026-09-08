@@ -98,7 +98,7 @@ describe("decision wizard terminal screen", () => {
 		assert.equal(results.length, 0);
 		assert.equal(state.summary, true); // Last answer immediately opens summary.
 		assert.equal(results.length, 0);
-		screen.handleInput("\x1b[B"); // Confirm answers (first summary action edits Q1)
+		assert.match(screen.render(80).join("\n"), /▶ Confirm answers/);
 		screen.handleInput("\r");
 		screen.handleInput("\r"); // late repeated input must not submit twice
 		assert.deepEqual(results.map((result) => result.action), ["confirm"]);
@@ -117,13 +117,18 @@ describe("decision wizard terminal screen", () => {
 		assert.equal(state.index, 1);
 		screen.handleInput("\r");
 		assert.equal(state.summary, true);
-		screen.handleInput("\r"); // Edit Q1.
+		screen.handleInput("\x1b[A"); // Edit Q2.
+		screen.handleInput("\x1b[A"); // Edit Q1.
+		screen.handleInput("\r");
 		assert.equal(state.index, 0);
 		screen.handleInput("\x1b[B");
 		screen.handleInput("\r"); // Choose JSON and return directly to summary.
 		assert.equal(state.summary, true);
 		assert.equal(state.answer(0)?.value, "JSON");
-		assert.deepEqual(results, []);
+		assert.equal(results.length, 0);
+		assert.match(screen.render(80).join("\n"), /▶ Confirm answers/);
+		screen.handleInput("\r");
+		assert.deepEqual(results.map((result) => result.action), ["confirm"]);
 	});
 	it("wraps long Korean content and scrolls within narrow and short terminals", () => {
 		const long = items();
@@ -159,7 +164,6 @@ describe("decision wizard terminal screen", () => {
 		}
 		state.choose(0);
 		screen.handleInput("\x1b[C");
-		screen.handleInput("\x1b[B");
 		assert.match(screen.render(80).join("\n"), /▶ Confirm answers/);
 	});
 	it("sizes themed panels to content within terminal bounds across summary edits and resize", () => {
@@ -234,8 +238,7 @@ describe("decision wizard terminal screen", () => {
 		screen.handleInput("\r");
 		lines = screen.render(80);
 		assert.equal(state.summary, true);
-		assert.match(lines.at(-2)!, /\[   Confirm answers \]/);
-		screen.handleInput("\x1b[B");
+		assert.match(lines.at(-2)!, /\[ ▶ Confirm answers \]/);
 		assert.match(screen.render(80).at(-2)!, /\[ ▶ Confirm answers \]/);
 		screen.handleInput("\r");
 		assert.equal(result?.action, "confirm");
@@ -260,7 +263,7 @@ describe("decision wizard controller", () => {
 				let result: WizardScreenResult | undefined;
 				const screen = factory({ terminal: { rows: 24 }, requestRender: () => { renders++; } }, theme, {}, (value) => { result = value; });
 				const keys = screens++ === 0 ? ["\u001b[B", "\u001b[B", "\r"]
-					: screens === 2 ? ["\r"] : ["\u001b[B", "\u001b[B", "\r"];
+					: ["\r"];
 				assert.ok(screen.render(80).length < 24); // Includes re-open after native editor.
 				for (const key of keys) screen.handleInput(key);
 				return result;

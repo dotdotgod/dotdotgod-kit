@@ -12,7 +12,7 @@ Custom text uses Pi's native multiline editor for paste and IME support. Empty t
 
 ## Batch Confirmation
 
-After the last question, an editable answer summary offers Confirm answers. The user can return to any question and revise it before submission. Confirmation sends one structured batch in one explicit follow-up asking the agent to record answers as answered and revise affected plan steps and verification. It does not approve execution.
+After the last question, an editable answer summary offers Confirm answers. The custom terminal summary initially focuses Confirm answers, including when reopened after custom input or returned to after editing an answer. Focus alone does not submit; Enter explicitly confirms the batch. The user can return to any question and revise it before submission. Confirmation sends one structured batch in one explicit follow-up asking the agent to record answers as answered and revise affected plan steps and verification. It does not approve execution.
 
 Cancel discards the unsubmitted batch and returns to planning. Drafts are not persisted across sessions. Deferral, research, and plan revision are requested in planning rather than questionnaire shortcuts.
 
