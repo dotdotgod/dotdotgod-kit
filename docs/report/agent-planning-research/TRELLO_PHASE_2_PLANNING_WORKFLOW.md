@@ -100,10 +100,10 @@ Reviewers found Phase 2 gaps that were easy to miss in a single implementation p
 
 | Artifact | Role in Workflow |
 | --- | --- |
-| `docs/plan/trello-docs-sync/phase-2/DECISIONS.md` | Locked behavior, endpoint, credential, marker, status, and error-message decisions. |
-| `docs/plan/trello-docs-sync/phase-2/ENDPOINT.md` | Parent orchestration plan for Phase 2 subagents. |
+| Local decision record | Locked behavior, endpoint, credential, marker, status, and error-message decisions. |
+| Local orchestration plan | Parent orchestration plan for Phase 2 subagents. |
 | `docs/plan/trello-docs-sync/phase-2/ROLE_*.md` | Role-specific subagent handoffs. |
-| `docs/plan/trello-docs-sync/phase-2/TEST_MATRIX.md` | Condition-by-condition fixture and mock matrix. |
+| Local test matrix | Condition-by-condition fixture and mock matrix. |
 | `docs/spec/TRELLO_DOCS_SYNC.md` | Durable behavior contract after synthesis. |
 | `docs/arch/TRELLO_DOCS_SYNC.md` | Durable architecture rationale after synthesis. |
 | `docs/test/TRELLO_DOCS_SYNC.md` | Durable verification strategy after synthesis. |
@@ -125,7 +125,7 @@ Accepted fixes included:
 - mixed valid/blocked write execution; and
 - managed-section conflicts through write orchestration.
 
-Deferred or unrelated items included Phase 3 automation, comments, custom fields, Power-Up, backend, OAuth, webhooks, and existing local-memory size debt in `docs/plan/cli-core-module-split/README.md`.
+Deferred or unrelated items included Phase 3 automation, comments, custom fields, Power-Up, backend, OAuth, webhooks, and existing local-memory size debt in the CLI module-split working plan.
 
 ## Verification Evidence
 

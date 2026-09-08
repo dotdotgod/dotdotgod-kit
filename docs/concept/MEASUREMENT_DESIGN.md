@@ -28,7 +28,7 @@ This measures the curated project-memory surface.
 ### Archive Excluded Size
 Estimate tokens avoided by excluding `docs/archive` from automatic directory summaries:
 
-- token estimate for `docs/archive/README.md`
+- token estimate for the README directly under `docs/archive/`
 - token estimate for all archived plan/report markdown files
 - token estimate for only targeted archives selected for a task
 

@@ -67,7 +67,7 @@ The query command searches shared documentation and excludes plan/archive bodies
 Local memory is not part of the shared documentation map:
 
 - list and read `docs/plan` only when current work makes an active plan relevant
-- use `docs/archive/README.md` as the history map
+- use the README directly under `docs/archive/` as the history map
 - read an archive body only when necessary historical context is directly relevant
 
 ## Output

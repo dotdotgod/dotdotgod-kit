@@ -19,6 +19,10 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/document-clarify-google-writing/`: supplemented the shared clarification skill using Technical Writing One, preserved meaning safeguards, and verified generated adapter parity.
+
+- `plan/shared-local-reference-validation/`: implemented shared-to-local Markdown and concrete inline-code reference errors, allowed layout examples, preserved traceability rules, and passed workspace verification.
+
 - `plan/fix-hook-impact-pending-loop/`: fixed Claude Code/Codex hook impact pending loops by pruning project-external scratchpad paths, clearing requested impact paths on PostToolUse acknowledgement, warning on failed impact results, and preserving re-edit gating.
 - `plan/plan-review-bottom-alignment/`: padded short Plan Mode saved-plan review previews to the full terminal body viewport so execute/stay/refine/cancel controls remain near the review surface bottom on tall displays.
 - `plan/responsive-plan-review-ui/`: made Plan Mode saved-plan review height responsive so execute/stay/refine/cancel controls remain visible when the minimum terminal layout fits.

@@ -75,10 +75,8 @@ function renderPlanBody(platform) {
   return `${queryGuidance}\n\n${planBody}`;
 }
 
-function renderDocClarifyBody(platform) {
-  const contextGuidance = platform === "pi"
-    ? `## Memory-Area Context\n\nBefore evaluating the target document, run \`dotdotgod config <root> --json\` (or the source-checkout CLI equivalent) and include the resolved \`config.areas\` in the active working context. Match the target path against the ordered areas and use the first match.`
-    : `## Memory-Area Context\n\nRun \`dotdotgod config <root> --json\` and use the resolved \`config.areas\`. Match the target path against the ordered areas and use the first match. If the CLI is unavailable, continue from the target document, nearest README, and direct links.`;
+function renderDocClarifyBody() {
+  const contextGuidance = `## Memory-Area Context\n\nUse \`dotdotgod config <root> --json\` (or the source-checkout CLI equivalent) to obtain resolved \`config.areas\`; reuse current resolved settings already in context when the project/config has not changed. Normalize the target to a repository-relative path. Check areas in order, applying each area's \`excludePaths\` before selecting the first matching \`paths\` entry. Keep the matched area's relevant guidance in context rather than repeatedly injecting the entire configuration. If no area matches, use the document's purpose and repository conventions without inventing metadata.`;
   return `${contextGuidance}\n\n${docClarifyBody}`;
 }
 
@@ -115,7 +113,7 @@ write(
   skill(
     `name: document-clarify\ndescription: Clarify project documentation using resolved dotdotgod memory-area guidance and direct, concise prose. Use when asked to improve README indexes, specs, tests, architecture docs, plans, archives, or project-specific docs while preserving established meaning and traceability.`,
     "Document Clarify",
-    renderDocClarifyBody("pi"),
+    renderDocClarifyBody(),
   ),
 );
 write("packages/pi/skills/document-clarify/agents/openai.yaml", yaml.docClarify);
@@ -193,7 +191,7 @@ write(
   skill(
     `name: document-clarify\ndescription: Use this skill when Claude Code should clarify project documentation using resolved dotdotgod memory-area guidance and direct, concise prose; when README indexes or project-specific docs need clearer wording while preserving established meaning and traceability.\nversion: 1.0.0`,
     "Document Clarify",
-    renderDocClarifyBody("claude"),
+    renderDocClarifyBody(),
   ),
 );
 write("packages/claude-code/skills/project-load/agents/openai.yaml", yaml.load);
@@ -242,7 +240,7 @@ write(
   skill(
     `name: document-clarify\ndescription: Clarify project documentation using resolved dotdotgod memory-area guidance and direct, concise prose. Use when Codex is asked to improve README indexes or project-specific docs while preserving established meaning and traceability.`,
     "Document Clarify",
-    renderDocClarifyBody("codex"),
+    renderDocClarifyBody(),
   ),
 );
 write("packages/codex/skills/project-load/agents/openai.yaml", yaml.load);

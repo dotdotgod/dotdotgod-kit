@@ -27,7 +27,7 @@ Future tasks reuse archived memory
 5. **Keep planning separate from mutation.** In Pi, Plan Mode allows exploration and plan-file edits while blocking source/config changes until execution mode.
 6. **Compact planning context when needed.** If planning context grows large after the user has requested planning work, Plan Mode requests compaction with planning-specific instructions. If both load and compaction are needed, compaction happens first and curated project memory follows.
 7. **Execute explicit steps and verify.** Execution starts from the written plan, completed steps are marked with `[DONE:n]`, and verification follows project docs.
-8. **Archive the outcome.** Completed plans move to `docs/archive/plan/<task-slug>/`, leaving `docs/archive/README.md` as the history map for future targeted lookup and keeping future graph/load context useful.
+8. **Archive the outcome.** Completed plans move to `docs/archive/plan/<task-slug>/`, leaving the archive directory's README as the history map for future targeted lookup and keeping future graph/load context useful.
 
 This workflow does not require every agent to remember every previous conversation. It gives agents stable places to find current intent, project rules, constraints, verification history, and completed decisions. Plan Mode shapes context in two directions after the user sends a planning request: load missing curated memory or compact noisy planning history before the agent writes or refines the plan.
 
@@ -75,7 +75,7 @@ The docs tree is treated as a maintained project interface, not a loose notes fo
 - `docs/arch` is rationale: decisions, constraints, code conventions, data flow, and integration boundaries.
 - `docs/test` is verification knowledge: regression cases, smoke checks, command expectations, and manual notes.
 - `docs/plan` is active local intent: one kebab-case task directory with a focused `README.md` and executable steps.
-- `docs/archive` is historical local memory: completed plans and reports, with `docs/archive/README.md` kept as the visible map and archive bodies excluded by default.
+- `docs/archive` is historical local memory: completed plans and reports, with its top-level README kept as the visible map and archive bodies excluded by default.
 - Each `README.md` is a routing table. When docs are added, moved, split, or archived, update the nearest README index in the same change so agents can find the new location.
 
 ## Why This Becomes More Useful as Projects Grow

@@ -145,7 +145,7 @@ A plan records its goal, scope, target files, risks, implementation sequence, ve
 docs/archive/plan/<task-slug>/
 ```
 
-`docs/archive/README.md` remains the historical index for completed work. The history is preserved without mixing it into the current work queue.
+The README directly under `docs/archive/` remains the historical index for completed work. The history is preserved without mixing it into the current work queue.
 
 Agents do not load every archive body by default. They inspect the historical index first and open a specific record only when a past decision is relevant. Archiving preserves history while removing completed work from the active table of contents.
 

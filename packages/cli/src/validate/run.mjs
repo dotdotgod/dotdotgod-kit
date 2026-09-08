@@ -8,6 +8,7 @@ import { DEFAULT_VALIDATION_POLICY, cloneValidationPolicy, isMarkdownSizeExclude
 import { cacheFile, collectIndexFiles, fingerprint } from '../index/files.mjs';
 import { CACHE_DIR, CACHE_VERSION } from '../index/constants.mjs';
 import { readIndex } from '../index/cache.mjs';
+import { sharedLocalReferences } from './references.mjs';
 
 export function runValidate(argv) {
   const options = { root: '.', includeLocalMemory: false, checkIndex: false, maxLines: null, maxChars: null, linkCheck: true, json: false };
@@ -146,6 +147,11 @@ export function runValidate(argv) {
   for (const file of markdownFiles) byDir.set(dirname(file), [...(byDir.get(dirname(file)) ?? []), file]);
   for (const [dir, files] of byDir) {
     if (files.length > 1 && !files.some((file) => basename(file) === 'README.md')) addError(dir, 'MISSING_README', 'Directory with multiple markdown files must include README.md', null, 'add a README.md in this directory that indexes the important markdown files and their purpose.');
+  }
+  for (const [file, content] of fileCache) {
+    for (const item of sharedLocalReferences(content, root, file, memoryConfig)) {
+      addError(file, 'SHARED_LOCAL_MEMORY_REFERENCE', `${item.kind} from shared area "${item.sourceArea}" targets local area "${item.targetArea}": ${item.target}`, item.line, 'replace the local reference with shared durable documentation, or remove the dependency. Inline-code directory, glob, and placeholder usage examples are allowed.');
+    }
   }
   if (options.linkCheck) {
     for (const [file, content] of fileCache) {

@@ -120,7 +120,7 @@ The default docs structure separates shared and local memory:
 - Local memory is ignored project-local working memory. This project uses `docs/plan/`, `docs/post/`, and `docs/archive/`.
 - Fresh memory is current or active memory that should be surfaced early, such as active plans.
 - Stale memory is historical or completed memory that should be available through an index or targeted lookup, such as archive bodies.
-- The archive map is `docs/archive/README.md`; it is stale local memory but stays visible by default.
+- The archive map is the README directly under `docs/archive/`; it is stale local memory but stays visible by default.
 - Archive bodies are the rest of `docs/archive/**`; they are stale local memory and are not loaded indiscriminately.
 
 Projects can keep these defaults or define explicit memory-area policy with the optional config described in `MEMORY_AREA_CONFIG.md`.

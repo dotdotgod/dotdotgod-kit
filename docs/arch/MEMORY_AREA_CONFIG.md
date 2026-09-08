@@ -10,7 +10,7 @@ Memory-area config turns the docs-first memory model into an explicit project po
 - **Local memory:** ignored project-local memory. Default examples are `docs/plan/` and `docs/archive/`.
 - **Fresh memory:** current or active memory that should rank high in retrieval. Default examples are active plans and current docs indexes.
 - **Stale memory:** historical or completed memory that should remain available, but should not be loaded indiscriminately.
-- **Archive map:** `docs/archive/README.md`; a stale local index that stays visible by default.
+- **Archive map:** the README directly under `docs/archive/`; a stale local index that stays visible by default.
 - **Archive body:** files under `docs/archive/**` except the archive map; stale local history excluded by default.
 
 ## Config Discovery
@@ -39,7 +39,7 @@ Each area has ordered `paths` and optional `excludePaths`.
 
 Supported patterns are intentionally small:
 
-- exact repository-relative paths, such as `docs/archive/README.md`
+- exact repository-relative paths, such as `docs/spec/README.md`
 - subtree patterns ending in `/**`, such as `docs/spec/**`
 - suffix patterns starting with `**/`, such as `**/README.md`, for traceability exclusions
 

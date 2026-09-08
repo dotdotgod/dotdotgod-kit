@@ -47,7 +47,7 @@ Without config, the CLI behaves as if these areas were configured:
 - `docs/arch/**`: shared fresh architecture docs.
 - `docs/test/**`: shared fresh verification knowledge.
 - `docs/plan/**`: local fresh active-plan memory.
-- `docs/archive/README.md`: local stale archive map included by default.
+- The README directly under `docs/archive/`: local stale archive map included by default.
 - `docs/archive/**`: local stale archive body excluded by default.
 - all remaining `docs/**`: shared fresh project documentation through a final low-priority catch-all area.
 
@@ -57,7 +57,7 @@ Configured local areas with body inclusion enabled are also direct-disk discover
 
 ## Archive Map and Archive Body
 
-`docs/archive/README.md` is the archive map. It is stale local memory, but it remains included by default because it tells agents what historical memory exists.
+The README directly under `docs/archive/` is the archive map. It is stale local memory, but it remains included by default because it tells agents what historical memory exists.
 
 Archive bodies under `docs/archive/**` are stale local memory and are excluded from default indexing/loading unless explicit project policy includes them. Agents should use the archive map first and read archive bodies only through targeted lookup when the current task needs history.
 

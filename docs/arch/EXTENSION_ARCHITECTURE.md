@@ -101,7 +101,7 @@ A small pure active-tool composition helper is the boundary between project-memo
 - lightweight detection of baseline memory files and narrative loader prompt generation
 - command-conflict guidance for `/load`
 
-The shared CLI owns deterministic documentation-map discovery/rendering, validation, graph cache/index management, bounded graph-impact reports, and local multilingual documentation query. The explicit load extension and global automatic loader reuse the same map command, baseline snapshot, prompt, and focused query helpers without injecting graph statistics into the Load narrative. Pi retains a bounded CLI-unavailable map fallback and preserves `docs/archive/README.md` as the archive routing map while keeping archive bodies excluded by default.
+The shared CLI owns deterministic documentation-map discovery/rendering, validation, graph cache/index management, bounded graph-impact reports, and local multilingual documentation query. The explicit load extension and global automatic loader reuse the same map command, baseline snapshot, prompt, and focused query helpers without injecting graph statistics into the Load narrative. Pi retains a bounded CLI-unavailable map fallback and preserves the README directly under `docs/archive/` as the archive routing map while keeping archive bodies excluded by default.
 
 ## Prompt Layer
 

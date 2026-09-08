@@ -30,8 +30,8 @@ The initializer creates a common scaffold when files are missing:
 - `docs/spec/README.md`
 - `docs/test/README.md`
 - `docs/arch/README.md`
-- `docs/plan/README.md`
-- `docs/archive/README.md`
+- A README directly under `docs/plan/`
+- A README directly under `docs/archive/`
 
 For bundled templates, it also materializes the template's maintained domain areas with focused `README.md` indexes. The `research` template adds `docs/research/README.md`, `docs/record/README.md`, `docs/report/README.md`, and the generated-artifact directory `outputs/`. Other bundled templates likewise create indexes for their directory-based domain areas. File-specific paths are not synthesized, and non-document artifact roots are created as empty runtime directories.
 

@@ -24,6 +24,8 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 
 ## Index
 
+- `REFERENCE_SCOPE_VALIDATION.md`: shared-to-local Markdown and inline-code dependency errors with layout-example exemptions.
+
 - `README.md`: specs documentation scope and local table of contents.
 - `PROJECT_INITIALIZER.md`: project initializer scaffold, CLI options, overwrite policy, and docs contract.
 - `DOTDOT_SETTING.md`: optional project-initializer dotdot setting behavior and generated code convention contract.

@@ -84,7 +84,7 @@ docs/plan/
 docs/archive/
 ```
 
-이 기본 범위는 현재 공유 문서에 우선순위를 둔다. 현재 작업에 계획이 관련되면 `docs/plan/`의 항목을 확인하고 필요한 계획을 읽는다. 과거 결정이 필요할 때는 `docs/archive/README.md`를 역사 목차로 사용해 관련 아카이브 본문을 찾는다. 현재 작업과 과거 기록은 이렇게 서로 다른 읽기 경로로 들어온다.
+This default scope prioritizes current shared documentation. When an active plan matters, Load checks `docs/plan/` and reads the relevant plan. For past decisions, it uses the README directly under `docs/archive/` as the history map. Current work and historical records enter through separate reading routes.
 
 ## 검색이 실패해도 문서 목차는 남는다
 

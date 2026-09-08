@@ -104,11 +104,11 @@ This made the review parallel without creating write conflicts. The parent then 
 
 | Artifact | Role in Workflow |
 | --- | --- |
-| `docs/plan/trello-docs-sync/phase-1/DECISIONS.md` | Locked decisions and deferred behavior. |
-| `docs/plan/trello-docs-sync/phase-1/GAPS.md` | Open questions to close before implementation. |
-| `docs/plan/trello-docs-sync/phase-1/ENDPOINT.md` | Stage and subagent orchestration plan. |
-| `docs/plan/trello-docs-sync/phase-1/STAGE_4_SYNTHESIS.md` | Parent conflict resolution and implementation handoff. |
-| `docs/plan/trello-docs-sync/phase-1/REVIEW_FIXES.md` | Accepted review findings and verification notes. |
+| Local decision record | Locked decisions and deferred behavior. |
+| Local gap inventory | Open questions to close before implementation. |
+| Local orchestration plan | Stage and subagent orchestration plan. |
+| Local synthesis notes | Parent conflict resolution and implementation handoff. |
+| Local review notes | Accepted review findings and verification notes. |
 | `docs/spec/TRELLO_DOCS_SYNC.md` | Durable behavior contract. |
 | `docs/arch/TRELLO_DOCS_SYNC.md` | Durable architecture rationale. |
 | `docs/test/TRELLO_DOCS_SYNC.md` | Durable verification strategy. |

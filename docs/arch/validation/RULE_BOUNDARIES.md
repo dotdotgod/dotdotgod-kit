@@ -9,6 +9,7 @@ The validator owns dotdotgod-specific structure checks:
 - Markdown files stay within configurable line and character budgets unless explicitly excluded; generated traceability-link regions and canonical `json dotdotgod` traceability blocks are ignored for these budgets.
 - Directories with multiple markdown files include `README.md`.
 - Local markdown links and anchors point to existing targets.
+- Ordinary shared-to-local Markdown links and concrete inline-code paths fail scope validation; local sources remain unrestricted by this new rule. Layout examples are allowed in inline code. A dedicated validator helper preserves line offsets without changing graph extraction. See `docs/spec/REFERENCE_SCOPE_VALIDATION.md` for the contract; traceability retains its separate stricter rules.
 - Optional config files use valid memory-area, traceability, validation, and impact-ranking settings.
 - `docs/plan`, `docs/archive/plan`, and `docs/archive/report` use expected task/report shapes.
 - `.gitignore` contains `docs/plan`, `docs/archive`, and `.dotdotgod`.

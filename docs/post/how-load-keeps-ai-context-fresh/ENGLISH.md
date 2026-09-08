@@ -84,7 +84,7 @@ docs/plan/
 docs/archive/
 ```
 
-This default scope prioritizes current shared documentation. When an active plan matters, Load inspects the entries under `docs/plan/` and reads the relevant plan. When a past decision matters, it uses `docs/archive/README.md` as the history map and follows it to the relevant archive body. Current work and historical records enter the context through separate reading routes.
+This default scope prioritizes current shared documentation. When an active plan matters, Load inspects the entries under `docs/plan/` and reads the relevant plan. When a past decision matters, it uses the README directly under `docs/archive/` as the history map and follows it to the relevant archive body. Current work and historical records enter the context through separate reading routes.
 
 ## Keep the Documentation Route Available When Search Fails
 

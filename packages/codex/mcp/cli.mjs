@@ -1434,7 +1434,7 @@ function parseCommon(argv) {
 
 // packages/cli/src/validate/run.mjs
 import { existsSync as existsSync10, readFileSync as readFileSync9, readdirSync as readdirSync2 } from "node:fs";
-import { basename as basename7, dirname as dirname5, extname as extname4, join as join8, resolve as resolve7 } from "node:path";
+import { basename as basename7, dirname as dirname6, extname as extname4, join as join8, resolve as resolve8 } from "node:path";
 
 // packages/cli/src/docs/traceability.mjs
 import { existsSync as existsSync5 } from "node:fs";
@@ -2322,6 +2322,138 @@ function graphSummary(index) {
   return { nodes: graph.nodes.length, edges: graph.edges.length, byType, byRelation };
 }
 
+// packages/cli/src/validate/references.mjs
+import { statSync as statSync5 } from "node:fs";
+import { dirname as dirname5, relative as relative3, resolve as resolve7 } from "node:path";
+var blank = (text) => text.replace(/[^\n\r]/g, " ");
+var unescape = (text) => text.replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~])/g, "$1");
+var labelKey = (text) => unescape(text).trim().replace(/\s+/g, " ").toLowerCase();
+var escaped = (text, index) => {
+  let count = 0;
+  while (index > 0 && text[--index] === "\\") count++;
+  return count % 2 === 1;
+};
+function visibleContent(content) {
+  const region = findTraceabilityLinksRegion(content);
+  let text = region.status === "present" ? content.slice(0, region.start) + blank(content.slice(region.start, region.end)) + content.slice(region.end) : content;
+  const tokens = /<!--[\s\S]*?(?:-->|(?![\s\S]))|^ {0,3}(`{3,}|~{3,})[^\n]*/gm;
+  let token;
+  while (token = tokens.exec(text)) {
+    let end = tokens.lastIndex;
+    if (token[1]) {
+      const closing = new RegExp(`^ {0,3}${token[1][0]}{${token[1].length},}[ \\t]*\\r?$`, "gm");
+      closing.lastIndex = end + 1;
+      end = closing.exec(text) ? closing.lastIndex : text.length;
+    }
+    text = text.slice(0, token.index) + blank(text.slice(token.index, end)) + text.slice(end);
+    tokens.lastIndex = end;
+  }
+  return text;
+}
+function destination(text, start) {
+  let i = start;
+  while (/\s/.test(text[i] ?? "") && i < text.length) i++;
+  const begin = i;
+  if (text[i] === "<") {
+    for (++i; i < text.length; i++) {
+      if (text[i] === ">" && !escaped(text, i)) return { href: text.slice(begin + 1, i), end: i + 1 };
+      if (text[i] === "\n") return null;
+    }
+    return null;
+  }
+  let depth = 0;
+  for (; i < text.length; i++) {
+    if (escaped(text, i)) continue;
+    if (/\s/.test(text[i]) || text[i] === ")" && depth === 0) break;
+    if (text[i] === "(") depth++;
+    if (text[i] === ")") depth--;
+  }
+  return depth === 0 && i > begin ? { href: text.slice(begin, i), end: i } : null;
+}
+function extractMemoryReferences(content) {
+  let text = visibleContent(content);
+  const references = [];
+  const code = [];
+  const lineAt = (offset) => content.slice(0, offset).split("\n").length;
+  text = text.replace(/(`+)([\s\S]*?)\1(?!`)/g, (match2, ticks, value, offset) => {
+    if (escaped(text, offset)) return match2;
+    code.push({ href: value.trim(), offset, end: offset + match2.length, kind: "inline-code", line: lineAt(offset) });
+    return blank(match2);
+  });
+  const definitions2 = /* @__PURE__ */ new Map();
+  text = text.replace(/^ {0,3}\[([^\]\n]+)\]:[ \t]*(.*)$/gm, (match2, label, value) => {
+    const parsed = destination(value, 0);
+    if (parsed && !definitions2.has(labelKey(label))) definitions2.set(labelKey(label), parsed.href);
+    return blank(match2);
+  });
+  const linkRanges = [];
+  const labels = /!?\[((?:\\.|[^\]\\\n])*)\]/g;
+  let match;
+  while (match = labels.exec(text)) {
+    if (escaped(text, match.index) || match[0][0] === "!" && escaped(text, match.index + 1)) continue;
+    const after = labels.lastIndex;
+    let end = after;
+    let href;
+    if (text[after] === "(") {
+      const parsed = destination(text, after + 1);
+      if (parsed) {
+        const tail = text.slice(parsed.end).match(/^\s*(?:(?:"[^"\n]*"|'[^'\n]*'|\([^\n)]*\))\s*)?\)/);
+        if (tail) {
+          href = parsed.href;
+          end = parsed.end + tail[0].length;
+        }
+      }
+    } else {
+      const suffix = text.slice(after).match(/^\[([^\]\n]*)\]/);
+      const label = suffix?.[1] || match[1];
+      href = definitions2.get(labelKey(label));
+      if (suffix) end += suffix[0].length;
+    }
+    if (href !== void 0) {
+      references.push({ href: unescape(href), kind: "markdown-link", line: lineAt(match.index) });
+      linkRanges.push([match.index, end]);
+      labels.lastIndex = end;
+    }
+  }
+  for (const item of code) {
+    if (linkRanges.some(([start, end]) => item.offset >= start && item.end <= end)) continue;
+    const path = item.href.split("#")[0];
+    if (!path.includes("/") && !/\.[\w-]+$/.test(path) || /[\s*?<>\[\]{}]/.test(path) || path.endsWith("/")) continue;
+    references.push({ href: item.href, kind: item.kind, line: item.line });
+  }
+  return references;
+}
+function sharedLocalReferences(content, root, file, config) {
+  const source = resolveMemoryArea(relative3(root, file).split("\\").join("/"), config);
+  if (source?.scope !== "shared") return [];
+  const errors = [];
+  for (const item of extractMemoryReferences(content)) {
+    if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(item.href)) continue;
+    let path;
+    try {
+      path = decodeURIComponent(item.href.split(/[?#]/)[0]);
+    } catch {
+      continue;
+    }
+    if (!path) continue;
+    const base = item.kind === "markdown-link" || /^\.\.?\//.test(path) ? dirname5(file) : root;
+    const target = relative3(root, resolve7(base, path)).split("\\").join("/");
+    if (target === ".." || target.startsWith("../")) continue;
+    if (item.kind === "inline-code") {
+      const configuredDirectory = (config.areas ?? []).some((area3) => (area3.paths ?? []).some((pattern) => pattern === `${target}/**`));
+      let directory = configuredDirectory;
+      try {
+        directory ||= statSync5(resolve7(root, target)).isDirectory();
+      } catch {
+      }
+      if (directory) continue;
+    }
+    const area2 = resolveMemoryArea(target, config);
+    if (area2?.scope === "local") errors.push({ ...item, target, sourceArea: source.id, targetArea: area2.id });
+  }
+  return errors;
+}
+
 // packages/cli/src/validate/run.mjs
 function runValidate(argv) {
   const options = { root: ".", includeLocalMemory: false, checkIndex: false, maxLines: null, maxChars: null, linkCheck: true, json: false };
@@ -2336,7 +2468,7 @@ function runValidate(argv) {
     else if (!arg.startsWith("-")) options.root = arg;
     else usage(`Unknown option: ${arg}`, "validate");
   }
-  const root = resolve7(options.root);
+  const root = resolve8(options.root);
   const memoryConfig = readMemoryConfig(root);
   const documentationRoot = memoryConfig.documentation?.root ?? "docs";
   const docs = join8(root, documentationRoot);
@@ -2400,7 +2532,7 @@ README.md directory indexes, clear HTTP-status filenames such as RESPONSE_200_OK
   walk(docs);
   const dirSiblingMap = /* @__PURE__ */ new Map();
   for (const f of markdownFiles) {
-    const dir = dirname5(f);
+    const dir = dirname6(f);
     if (!dirSiblingMap.has(dir)) dirSiblingMap.set(dir, []);
     dirSiblingMap.get(dir).push(basename7(f));
   }
@@ -2416,7 +2548,7 @@ README.md directory indexes, clear HTTP-status filenames such as RESPONSE_200_OK
       const fp = validationPolicy.markdown?.filename ?? {};
       const allow = fp.allow ?? [];
       if (!allow.some((p) => matchPathPattern(rootRel, p)) && (fp.warnNumberedSeries ?? true)) {
-        const siblings = dirSiblingMap.get(dirname5(file)) ?? [];
+        const siblings = dirSiblingMap.get(dirname6(file)) ?? [];
         if (isNumberedSeriesFilename(name, siblings)) {
           const heading = extractFirstHeading(content);
           const suggestion = suggestFilenameFromHeading(heading);
@@ -2458,18 +2590,23 @@ ${traceabilityExample()}`, block.line);
     }
   }
   const byDir = /* @__PURE__ */ new Map();
-  for (const file of markdownFiles) byDir.set(dirname5(file), [...byDir.get(dirname5(file)) ?? [], file]);
+  for (const file of markdownFiles) byDir.set(dirname6(file), [...byDir.get(dirname6(file)) ?? [], file]);
   for (const [dir, files] of byDir) {
     if (files.length > 1 && !files.some((file) => basename7(file) === "README.md")) addError(dir, "MISSING_README", "Directory with multiple markdown files must include README.md", null, "add a README.md in this directory that indexes the important markdown files and their purpose.");
   }
+  for (const [file, content] of fileCache) {
+    for (const item of sharedLocalReferences(content, root, file, memoryConfig)) {
+      addError(file, "SHARED_LOCAL_MEMORY_REFERENCE", `${item.kind} from shared area "${item.sourceArea}" targets local area "${item.targetArea}": ${item.target}`, item.line, "replace the local reference with shared durable documentation, or remove the dependency. Inline-code directory, glob, and placeholder usage examples are allowed.");
+    }
+  }
   if (options.linkCheck) {
     for (const [file, content] of fileCache) {
-      const fileDir = dirname5(file);
+      const fileDir = dirname6(file);
       for (const { href, line } of extractLinks(content)) {
         const hashIndex = href.indexOf("#");
         const pathPart = hashIndex === -1 ? href : href.slice(0, hashIndex);
         const anchor = hashIndex === -1 ? "" : href.slice(hashIndex + 1);
-        const target = pathPart ? resolve7(fileDir, pathPart) : file;
+        const target = pathPart ? resolve8(fileDir, pathPart) : file;
         if (pathPart && !existsSync10(target)) {
           addError(file, "BROKEN_LINK", `Local link target does not exist: ${pathPart}`, line, "update the link target to an existing local file, create the intended file, or remove the stale link.");
           continue;
@@ -2539,8 +2676,8 @@ Prompt: ${error.prompt}` : ""}`);
 }
 
 // packages/cli/src/commands/config.mjs
-import { existsSync as existsSync11, statSync as statSync5, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join9, resolve as resolve8 } from "node:path";
+import { existsSync as existsSync11, statSync as statSync6, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join9, resolve as resolve9 } from "node:path";
 function parseConfigOptions(argv, usageKey = "config") {
   const options = { root: ".", json: false, template: null };
   let rootSet = false;
@@ -2558,7 +2695,7 @@ function parseConfigOptions(argv, usageKey = "config") {
     } else if (!arg.startsWith("-")) usage(`Unexpected argument: ${arg}`, usageKey);
     else usage(`Unknown option: ${arg}`, usageKey);
   }
-  options.root = resolve8(options.root);
+  options.root = resolve9(options.root);
   return options;
 }
 function configInitError(options, code, message, path = null) {
@@ -2603,7 +2740,7 @@ function runConfig(argv) {
   if (isInit) {
     if (!existsSync11(options.root)) configInitError(options, "ROOT_NOT_FOUND", `Project root not found: ${options.root}`);
     try {
-      if (!statSync5(options.root).isDirectory()) configInitError(options, "ROOT_NOT_DIRECTORY", `Project root is not a directory: ${options.root}`);
+      if (!statSync6(options.root).isDirectory()) configInitError(options, "ROOT_NOT_DIRECTORY", `Project root is not a directory: ${options.root}`);
     } catch {
       configInitError(options, "ROOT_NOT_FOUND", `Project root not found: ${options.root}`);
     }
@@ -2634,11 +2771,11 @@ function runConfig(argv) {
 }
 
 // packages/cli/src/commands/query.mjs
-import { resolve as resolve9 } from "node:path";
+import { resolve as resolve10 } from "node:path";
 
 // packages/cli/src/query/chunks.mjs
 import { readFileSync as readFileSync10, readdirSync as readdirSync3 } from "node:fs";
-import { join as join10, relative as relative3 } from "node:path";
+import { join as join10, relative as relative4 } from "node:path";
 import { createHash as createHash3 } from "node:crypto";
 var MAX_CHUNK_CHARS = 1600;
 var SKIPPED_DIRECTORIES = /* @__PURE__ */ new Set(["node_modules", "dist", "build", "coverage", ".git", ".dotdotgod"]);
@@ -2659,7 +2796,7 @@ function collectDocumentationMarkdown(root, exclude = ["docs/plan", "docs/archiv
     for (const entry of entries) {
       if (entry.name.startsWith(".")) continue;
       const absolute = join10(directory, entry.name);
-      const path = relative3(root, absolute).replaceAll("\\", "/");
+      const path = relative4(root, absolute).replaceAll("\\", "/");
       if (isSecretLikePathPattern(path) || exclude.some((pattern) => matchPathPattern(path, pattern) || path === pattern || path.startsWith(`${pattern}/`))) continue;
       if (entry.isDirectory()) {
         if (!SKIPPED_DIRECTORIES.has(entry.name)) walk(absolute);
@@ -2952,7 +3089,7 @@ function parseQueryOptions(argv) {
       options.limit = value;
     } else if (arg.startsWith("-")) usage(`Unknown option: ${arg}`, "query");
     else if (!rootSet) {
-      options.root = resolve9(arg);
+      options.root = resolve10(arg);
       rootSet = true;
     } else queryParts.push(arg);
   }
@@ -3063,7 +3200,7 @@ async function runQuery(argv) {
 }
 
 // packages/cli/src/commands/embedding.mjs
-import { resolve as resolve10 } from "node:path";
+import { resolve as resolve11 } from "node:path";
 function parse(argv) {
   const [action2 = "status", ...rest] = argv;
   let root = ".";
@@ -3075,7 +3212,7 @@ function parse(argv) {
     else if (!arg.startsWith("-") && root === ".") root = arg;
     else usage(`Unknown embedding option: ${arg}`, `embedding ${action2}`);
   }
-  return { action: action2, root: resolve10(root), json, confirm };
+  return { action: action2, root: resolve11(root), json, confirm };
 }
 function runEmbedding(argv, options = {}) {
   const parsed = parse(argv);
@@ -3095,11 +3232,11 @@ function runEmbedding(argv, options = {}) {
 }
 
 // packages/cli/src/commands/map.mjs
-import { resolve as resolve12 } from "node:path";
+import { resolve as resolve13 } from "node:path";
 
 // packages/cli/src/memory/documentation-map.mjs
-import { existsSync as existsSync14, readdirSync as readdirSync4, statSync as statSync6 } from "node:fs";
-import { join as join13, resolve as resolve11 } from "node:path";
+import { existsSync as existsSync14, readdirSync as readdirSync4, statSync as statSync7 } from "node:fs";
+import { join as join13, resolve as resolve12 } from "node:path";
 var SKIPPED_DIRECTORIES2 = /* @__PURE__ */ new Set(["node_modules", "dist", "build", "coverage", ".git", ".dotdotgod"]);
 function node() {
   return { directories: /* @__PURE__ */ new Map(), files: [] };
@@ -3179,10 +3316,10 @@ function discoverMarkdown(root, documentationRoot, exclude) {
   return paths.sort();
 }
 function buildDocumentationMap(projectRoot = ".", { depth = 5 } = {}) {
-  const root = resolve11(projectRoot);
+  const root = resolve12(projectRoot);
   if (!existsSync14(root)) return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
   try {
-    if (!statSync6(root).isDirectory()) return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
+    if (!statSync7(root).isDirectory()) return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
   } catch {
     return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
   }
@@ -3228,7 +3365,7 @@ function parseMapOptions(argv) {
     } else if (!arg.startsWith("-")) fail(options.json, "UNEXPECTED_ARGUMENT", `Unexpected argument: ${arg}`);
     else fail(options.json, "UNKNOWN_OPTION", `Unknown option: ${arg}`);
   }
-  options.root = resolve12(options.root);
+  options.root = resolve13(options.root);
   return options;
 }
 function runMap(argv) {
@@ -3240,7 +3377,7 @@ function runMap(argv) {
 }
 
 // packages/cli/src/reference/resolve.mjs
-import { resolve as resolve14 } from "node:path";
+import { resolve as resolve15 } from "node:path";
 
 // node_modules/.pnpm/leiden-ts@0.1.0/node_modules/leiden-ts/dist/index.js
 var GraphValidationError = class extends Error {
@@ -4476,8 +4613,8 @@ function buildCommunities(index, limits = {}) {
       byCommunity.get(communityId).push(projection.durable[index2]);
     });
     const communities = [...byCommunity.entries()].map(([communityId, nodes]) => {
-      const labelKey = labelForLeidenCommunity(nodes, config);
-      const community = makeCommunity(`leiden-${communityId}`, communityLabel(labelKey));
+      const labelKey2 = labelForLeidenCommunity(nodes, config);
+      const community = makeCommunity(`leiden-${communityId}`, communityLabel(labelKey2));
       for (const node2 of nodes.sort((a, b) => a.id.localeCompare(b.id))) addCommunityDetails(community, node2, itemLimit, config);
       return community;
     });
@@ -4612,14 +4749,14 @@ function compareImpactItems(seeds) {
 
 // packages/cli/src/impact/vector-profile.mjs
 import { lstatSync, readFileSync as readFileSync13, realpathSync } from "node:fs";
-import { extname as extname5, relative as relative4, resolve as resolve13, sep } from "node:path";
+import { extname as extname5, relative as relative5, resolve as resolve14, sep } from "node:path";
 var MAX_VECTOR_PROFILE_FILE_BYTES = 64 * 1024;
 var MAX_VECTOR_PROFILE_CHARS = 4e3;
 var MAX_VECTOR_PROFILE_METADATA_ITEMS = 20;
 var TEXT_EXTENSIONS = /* @__PURE__ */ new Set([".c", ".cc", ".cpp", ".css", ".go", ".h", ".hpp", ".html", ".java", ".js", ".json", ".jsx", ".md", ".mjs", ".py", ".rb", ".rs", ".sh", ".ts", ".tsx", ".txt", ".yaml", ".yml"]);
 var GENERATED_SEGMENTS = /* @__PURE__ */ new Set([".dotdotgod", "build", "coverage", "dist", "node_modules"]);
 function insideRoot(root, absolute) {
-  const normalizedRoot = resolve13(root);
+  const normalizedRoot = resolve14(root);
   return absolute === normalizedRoot || absolute.startsWith(`${normalizedRoot}${sep}`);
 }
 function normalizeChangedPath(path) {
@@ -4630,17 +4767,17 @@ function normalizeChangedPath(path) {
 function canonicalizeChangedPath(root, path) {
   const normalized = normalizeChangedPath(path);
   if (!normalized) return null;
-  const rootAbsolute = resolve13(root);
-  const absolute = resolve13(rootAbsolute, normalized);
+  const rootAbsolute = resolve14(root);
+  const absolute = resolve14(rootAbsolute, normalized);
   if (!insideRoot(rootAbsolute, absolute)) return normalized;
   try {
     const canonicalRoot = realpathSync(rootAbsolute);
     const canonicalAbsolute = realpathSync(absolute);
     if (!insideRoot(canonicalRoot, canonicalAbsolute)) return normalized;
-    const canonical = relative4(canonicalRoot, canonicalAbsolute).replaceAll("\\", "/");
+    const canonical = relative5(canonicalRoot, canonicalAbsolute).replaceAll("\\", "/");
     return canonical || normalized;
   } catch {
-    return relative4(rootAbsolute, absolute).replaceAll("\\", "/") || normalized;
+    return relative5(rootAbsolute, absolute).replaceAll("\\", "/") || normalized;
   }
 }
 function unsafeProfilePath(path) {
@@ -4662,11 +4799,11 @@ function graphMetadata(graph, seedId) {
 function safeTextPrefix(root, path) {
   if (unsafeProfilePath(path) || !TEXT_EXTENSIONS.has(extname5(path).toLowerCase())) return "";
   try {
-    const absolute = resolve13(root, path);
+    const absolute = resolve14(root, path);
     if (!insideRoot(root, absolute)) return "";
     const canonicalAbsolute = realpathSync(absolute);
     if (!insideRoot(realpathSync(root), canonicalAbsolute)) return "";
-    const canonicalPath = relative4(realpathSync(root), canonicalAbsolute).replaceAll("\\", "/");
+    const canonicalPath = relative5(realpathSync(root), canonicalAbsolute).replaceAll("\\", "/");
     if (canonicalPath !== path || unsafeProfilePath(canonicalPath) || !TEXT_EXTENSIONS.has(extname5(canonicalPath).toLowerCase())) return "";
     const stats = lstatSync(canonicalAbsolute);
     if (!stats.isFile() || stats.isSymbolicLink() || stats.size > MAX_VECTOR_PROFILE_FILE_BYTES) return "";
@@ -4882,7 +5019,7 @@ function buildCompactImpactReport(impact, limits = {}) {
 }
 
 // packages/cli/src/reference/extract.mjs
-import { basename as basename8, dirname as dirname6, extname as extname6 } from "node:path";
+import { basename as basename8, dirname as dirname7, extname as extname6 } from "node:path";
 var DEFAULT_REFERENCE_LIMIT = 5;
 function extractBracketReferences(prompt = "") {
   const refs = [];
@@ -4933,7 +5070,7 @@ function aliasEntriesForPath(path = "") {
   const parts = withoutMd.split("/").filter(Boolean);
   for (let i = 0; i < parts.length; i += 1) entries.push({ alias: parts.slice(i).join("/"), kind: "path-suffix" });
   if (base === "README.md") {
-    const dir = dirname6(path).replace(/\\/g, "/");
+    const dir = dirname7(path).replace(/\\/g, "/");
     entries.push({ alias: basename8(dir), kind: "path" });
   }
   for (const alias of [path, withoutMd, base, stem]) entries.push({ alias, kind: "path" });
@@ -4987,8 +5124,8 @@ function extractFuzzyReferences(prompt = "", index = null, options = {}) {
       }
     }
     for (const { alias } of [...aliasByKey.values()].sort((a, b) => b.priority - a.priority || b.alias.length - a.alias.length)) {
-      const escaped = alias.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s_-]+");
-      const pattern = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i");
+      const escaped2 = alias.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s_-]+");
+      const pattern = new RegExp(`(^|[^a-z0-9])${escaped2}([^a-z0-9]|$)`, "i");
       if (pattern.test(lower)) add(alias, "known_alias", "medium");
       if (refs.length >= (options.maxFuzzyRefs ?? 5)) break;
     }
@@ -5063,7 +5200,7 @@ function parseReferenceOptions(argv, command) {
     else filtered.push(arg);
   }
   const operands = filtered.filter((arg) => !arg.startsWith("-"));
-  return { ...options, root: resolve14(operands[0] ?? "."), json: filtered.includes("--json"), rootArgv: operands.slice(1) };
+  return { ...options, root: resolve15(operands[0] ?? "."), json: filtered.includes("--json"), rootArgv: operands.slice(1) };
 }
 function formatReferenceOutput(payload) {
   const refreshNote = payload.metadata.cacheRefreshed ? ", refreshed" : "";
@@ -5113,7 +5250,7 @@ function runExpand(argv) {
 
 // packages/cli/src/commands/traceability.mjs
 import { existsSync as existsSync15, readFileSync as readFileSync14, readdirSync as readdirSync5, writeFileSync as writeFileSync6 } from "node:fs";
-import { join as join14, resolve as resolve15 } from "node:path";
+import { join as join14, resolve as resolve16 } from "node:path";
 function collectDocsMarkdownFiles(root) {
   const docs = join14(root, "docs");
   const files = [];
@@ -5145,7 +5282,7 @@ function parseTraceabilityOptions(argv) {
   }
   if (options.check && options.write) usage("Choose only one traceability links mode: --check or --write.", "traceability links");
   options.check = options.check || !options.write;
-  options.root = resolve15(options.root);
+  options.root = resolve16(options.root);
   return options;
 }
 function runTraceability(argv) {

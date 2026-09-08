@@ -79,7 +79,7 @@ If multiple candidates have close scores, output MUST mark the reference as ambi
 
 ## Archive Policy
 
-Archive bodies under `docs/archive/**` MUST be excluded by default, except for `docs/archive/README.md` as the archive map. `--include-archive` MAY include archive bodies in the candidate set.
+Archive bodies under `docs/archive/**` MUST be excluded by default, except for the README directly under `docs/archive/` as the archive map. `--include-archive` MAY include archive bodies in the candidate set.
 
 ## Output
 

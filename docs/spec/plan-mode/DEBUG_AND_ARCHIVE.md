@@ -22,7 +22,7 @@ to:
 docs/archive/plan/<task-slug>/
 ```
 
-Use `docs/archive/README.md` as the first routing map before reading archive bodies. Archive bodies are not part of routine context loading; read them only when the current task needs related completed decisions, reports, payloads, or investigation notes.
+Use the README directly under `docs/archive/` as the first routing map before reading archive bodies. Archive bodies are not part of routine context loading; read them only when the current task needs related completed decisions, reports, payloads, or investigation notes.
 
 Completed or superseded plans belong under `docs/archive/plan/<task-slug>/`. Temporary investigations, measurements, and reports belong under `docs/archive/report/<report-slug>/`.
 

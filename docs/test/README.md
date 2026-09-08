@@ -4,6 +4,8 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 
 ## Index
 
+- `REFERENCE_SCOPE_VALIDATION.md`: reference extraction, scope combinations, layout examples, and traceability isolation regressions.
+
 - `README.md`: test documentation scope, verification command cheat sheet, and local table of contents.
 - `MEMORY_AREA_CONFIG.md`: memory-area config validation and graph/Load-query policy smoke checks.
 - `TRACEABILITY_CONFIG.md`: configurable traceability enforcement validation smoke checks.

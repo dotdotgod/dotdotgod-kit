@@ -9,20 +9,31 @@ description: Clarify project documentation using resolved dotdotgod memory-area 
 
 ## Memory-Area Context
 
-Run `dotdotgod config <root> --json` and use the resolved `config.areas`. Match the target path against the ordered areas and use the first match. If the CLI is unavailable, continue from the target document, nearest README, and direct links.
+Use `dotdotgod config <root> --json` (or the source-checkout CLI equivalent) to obtain resolved `config.areas`; reuse current resolved settings already in context when the project/config has not changed. Normalize the target to a repository-relative path. Check areas in order, applying each area's `excludePaths` before selecting the first matching `paths` entry. Keep the matched area's relevant guidance in context rather than repeatedly injecting the entire configuration. If no area matches, use the document's purpose and repository conventions without inventing metadata.
 
 ## Goal
 
 Make project documentation easier to understand and act on while preserving established behavior, decisions, task state, historical meaning, and traceability.
 
+## Editing Checklist
+
+Adapted from [Google Technical Writing One](https://developers.google.com/tech-writing/one); these principles supplement repository policy. Apply them directly without requiring runtime web access.
+
+- **Audience:** distinguish what readers already know from what they need to learn or do. Add only evidence-backed context that closes that gap.
+- **Terminology:** use one consistent name per concept; explain unfamiliar terms and abbreviations when readers need them. Preserve exact API names and identifiers.
+- **Sentences:** use specific verbs and make responsibility clear. Prefer active voice when it helps; retain passive voice when appropriate and never invent an unknown actor. Keep one main idea per sentence while preserving conditions, exceptions, and logical relationships.
+- **Paragraphs:** focus each paragraph on one topic and make its main point clear near the beginning. Remove sentences that do not support that topic or relocate them within the approved scope.
+- **Lists and tables:** use numbered lists when order matters, bullets otherwise, and parallel phrasing for comparable items. Use tables when readers need to compare the same attributes across items, not merely to decorate prose.
+- **Language:** apply these principles idiomatically in the document's language. Do not impose English word order, a passive-voice ban, or sentence-length quotas on Korean or other languages.
+
 ## Workflow
 
-1. Confirm the target document and requested outcome. Use its matched memory-area metadata when available: `clarify` guidance first, then `description`, `label`, and `role`.
+1. Confirm the target, audience, requested outcome, and edit scope. Diagnose ambiguity, repetition, or missing information before editing; small changes need no separate diagnostic report. Use matched memory-area metadata when available: `clarify` guidance first, then `description`, `label`, and `role`.
 2. Read only the context needed to preserve meaning: the nearest README, directly linked documents, relevant query results, and targeted history when a past decision matters.
-3. Clarify purpose, next actions, terms, ownership, headings, links, and runnable examples. Keep exact commands, paths, package names, API names, requirements, and behavior claims unless verified evidence supports a change.
-4. Prefer direct affirmative statements. Use “X is not Y; it is Z” only when that contrast resolves a likely ambiguity. Remove repeated framing, indirect wording, mixed responsibilities, and background that obscures the document's job.
-5. Follow repository-local generated markers and canonical-source instructions. For dotdotgod traceability, edit the fenced `json dotdotgod` block as the canonical mapping and use `dotdotgod traceability links <root> --write` to refresh generated links.
+3. Apply criteria suited to the document: README navigation and starting points; spec conditions, behavior, and exceptions; test procedures and pass criteria; architecture boundaries, rationale, and constraints; plan ordering, dependencies, and completion criteria; archive decisions and outcomes in their historical context. Repository-specific guidance takes priority. Clarify terms, ownership, headings, links, and runnable examples. Preserve commands, paths, package/API names, requirement strength, conditions, exceptions, unresolved questions, limitations, and evidence unless verified sources support a change. Do not invent missing facts.
+4. Prefer direct affirmative statements. Remove repeated framing, indirect wording, mixed responsibilities, and irrelevant background. Remove negative or absence statements only when deleting them leaves the reader's understanding, actions, and decisions unchanged. Rewrite redundant contrasts affirmatively: “It is not automatic; the user starts it” becomes “The user starts it.” Preserve meaningful prohibitions, unsupported cases, exceptions, security constraints, and unverified status. Use “X is not Y; it is Z” when the contrast resolves a likely ambiguity. Accuracy takes priority over brevity.
+5. Keep edits within the agreed scope. Confirm scope before splitting or moving files, changing meaning, or editing additional documents outside that scope. Update the nearest README when approved structural changes affect navigation. Follow generated markers and canonical-source instructions. For dotdotgod traceability, edit the fenced `json dotdotgod` block as the canonical mapping. Inspect `dotdotgod traceability links <root> --check --json` before using `--write`; the root-wide write can change unrelated documents, so obtain approval if its affected files exceed the agreed scope. Apply ordinary reference policy: shared documents must not depend on concrete local file paths in inline code or Markdown links; inline-code directory, glob, and placeholder usage examples remain allowed. Preserve traceability's separate stricter local-target prohibition.
 6. Ask for a decision when the requested clarification would change established meaning or when current sources conflict.
-7. Run verification that matches the changed surface. Use documentation and traceability checks for ordinary docs; add generation checks, focused package tests, dry-runs, or workspace verification when shared resources or product behavior are affected.
+7. Run verification that matches the changed surface. Use documentation and traceability checks for ordinary docs; add generation checks, focused package tests, dry-runs, or workspace verification when shared resources or product behavior are affected. Report briefly: what became clearer; important meaning preserved and unresolved questions; checks run and checks not run. Do not equate shorter text with improved accuracy.
 
 When CLI-backed routing is unavailable, continue from the target document, nearest README, direct links, and repository conventions.

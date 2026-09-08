@@ -25,12 +25,12 @@ Dotdotgod changes the control point. The durable source of truth is curated proj
 
 | dotdotgod mechanism | Production effect |
 | --- | --- |
-| Structured memory areas: `docs/spec/`, `docs/arch/`, `docs/test/`, `docs/plan/`, and `docs/archive/README.md`. | Retrieval starts with intent before ranking begins: behavior, rationale, verification, active work, and history are separated. |
+| Structured memory areas: `docs/spec/`, `docs/arch/`, `docs/test/`, `docs/plan/`, and the archive directory's README. | Retrieval starts with intent before ranking begins: behavior, rationale, verification, active work, and history are separated. |
 | Traceability blocks with `implementedBy`, `verifiedBy`, `relatedDocs`, and `verificationCommands`. | Relationships are explicit, source-controlled, reviewable, and parsed deterministically. |
 | Validation of naming, links, anchors, traceability placement, config, markdown budgets, and cache/index state. | Memory quality becomes observable; broken contracts fail early before they influence context. |
 | Impact ranking that demotes semantic-only links. | Semantic discovery remains useful, but curated traceability, verification links, proximity, memory policy, freshness, and changed-file PageRank carry stronger signal. |
 | Depth-bounded documentation maps with optional local query. | Agents receive maintained paths and focused file-level routing without flooding context with graph statistics or repeated chunks. |
-| Archive-body exclusion by default. | Historical memory remains discoverable through `docs/archive/README.md` without contaminating current work unless targeted. |
+| Archive-body exclusion by default. | Historical memory remains discoverable through the archive directory's README without contaminating current work unless targeted. |
 
 A spec can declare its implementation, verification, related docs, and commands through canonical `json dotdotgod` metadata. See [`docs/spec/TRACEABILITY_CONFIG.md`](../spec/TRACEABILITY_CONFIG.md) for the authoritative syntax, generated-link rules, and validation behavior.
 

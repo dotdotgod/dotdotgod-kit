@@ -14,8 +14,7 @@ node scripts/measure-context.mjs --markdown --impact-changed packages/pi/extensi
 
 - Measurement script: [scripts/measure-context.mjs](../../scripts/measure-context.mjs)
 - Load-project behavior: [docs/spec/LOAD_PROJECT.md](../spec/LOAD_PROJECT.md)
-- Optional local follow-up plan: `docs/plan/context-metrics-follow-up/README.md`
-- Optional local context metrics reports: `docs/archive/report/context-metrics/README.md`
+- Local follow-up plans and metrics reports are optional working notes, not required evidence for this shared verification guide.
 
 The optional local paths are ignored by git by convention. They may exist in an active workspace but are not required committed references for this verification doc.
 

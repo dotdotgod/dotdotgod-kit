@@ -151,7 +151,7 @@ docs/plan/<task-slug>/README.md
 docs/archive/plan/<task-slug>/
 ```
 
-`docs/archive/README.md`는 완료된 작업을 찾는 역사 목차로 남는다. 과거를 삭제하지 않으면서도 현재 작업과 섞이지 않게 하는 방식이다.
+The README directly under `docs/archive/` remains the historical index for completed work, preserving history without mixing it into current work.
 
 에이전트는 모든 아카이브 본문을 항상 읽지 않는다. 먼저 역사 목차를 확인하고, 특정한 과거 결정이 필요할 때만 관련 기록을 연다. 아카이브는 과거를 보존하면서 현재 목차에서 완료된 작업을 분리한다.
 
