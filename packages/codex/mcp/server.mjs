@@ -23157,7 +23157,7 @@ function markdownTree(root2, maxDepth = 5) {
   walk(docs, 1);
   return output;
 }
-async function cliJson(args, cwd) {
+async function cliText(args, cwd) {
   return await new Promise((resolvePromise, reject) => {
     const child = spawn2(process.execPath, [cli, ...args], { cwd, stdio: ["ignore", "pipe", "pipe"] });
     const stdout = [];
@@ -23168,13 +23168,17 @@ async function cliJson(args, cwd) {
     child.once("close", (code) => {
       const out = Buffer.concat(stdout).toString("utf8");
       if (code !== 0) return reject(new Error(Buffer.concat(stderr).toString("utf8") || out || `dotdotgod exited ${code}`));
-      try {
-        resolvePromise(JSON.parse(out));
-      } catch {
-        reject(new Error(`Expected JSON from dotdotgod: ${out.slice(0, 500)}`));
-      }
+      resolvePromise(out);
     });
   });
+}
+async function cliJson(args, cwd) {
+  const out = await cliText(args, cwd);
+  try {
+    return JSON.parse(out);
+  } catch {
+    throw new Error(`Expected JSON from dotdotgod: ${out.slice(0, 500)}`);
+  }
 }
 async function projectLoad(input) {
   const root2 = resolve5(input.root || process.cwd());
@@ -23217,8 +23221,8 @@ async function projectImpact(input) {
   if (paths.length > 20) throw new Error("paths is limited to 20 entries per call");
   const args = ["graph", "impact", root2];
   for (const path of paths) args.push("--changed", path);
-  args.push("--json");
-  return await cliJson(args, root2);
+  args.push("--compact");
+  return { ok: true, summary: (await cliText(args, root2)).trim() };
 }
 async function projectInitialize(input) {
   const root2 = resolve5(input.root || process.cwd());

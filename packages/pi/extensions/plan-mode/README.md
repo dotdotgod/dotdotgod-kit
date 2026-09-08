@@ -35,7 +35,7 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 - `/dd:plan` - Toggle plan mode
 - `/dd:plan <request>` - Enable Plan Mode if needed and send `<request>` as a planning request without toggling off an active Plan Mode session
 - `/dd:plan <path>` - Load an existing `docs/plan/<task>/README.md` or `docs/plan/<task>` as the active plan and restore its internal todo state
-- `/impact-check` - Run `dotdotgod graph impact --yml` for pending source/config files plus current git unstaged, staged, and untracked source/config files
+- `/impact-check` - Run `dotdotgod graph impact --compact` for pending source/config files plus current git unstaged, staged, and untracked source/config files
 - `Ctrl+Alt+P` - Toggle plan mode
 
 ## Usage
@@ -63,7 +63,7 @@ Allowed:
 - Plan/archive markdown updates under `docs/plan/` and `docs/archive/`: `edit`, `write`
 - Directory names under `docs/` must be kebab-case; markdown file names must be UPPER_SNAKE_CASE.md
 - Read-only bash commands: `rg`, `git status`, `git diff`, `yarn info`, `npm view`, etc.
-- `dotdotgod_graph_impact` is available as an LLM-callable tool for changed-file impact checks and returns structured YML summaries by default. In the Pi TUI, outputs longer than 10 lines collapse to the first 10 lines with a remaining-line count and expand via the tool-output keybinding.
+- `dotdotgod_graph_impact` is available as an LLM-callable tool for changed-file impact checks and returns compact text summaries by default. In the Pi TUI, outputs longer than 10 lines collapse to the first 10 lines with a remaining-line count and expand via the tool-output keybinding.
 - Plan/archive housekeeping bash commands when every affected path stays under `docs/plan/` or `docs/archive/`: `mkdir -p docs/archive/plan`, `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`, `rm -r docs/plan/<task-slug>`
 - Web/document research: `web_search`, `code_search`, `fetch_content`, `get_search_content`
 

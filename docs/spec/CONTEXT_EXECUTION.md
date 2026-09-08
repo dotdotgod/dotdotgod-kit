@@ -65,7 +65,7 @@ Writable database connections use WAL and a bounded busy timeout. Source replace
 
 `dotdotgod_project_load` requires a bounded documentation tree; its semantic query is optional. If the local runtime is missing, Load succeeds with `query: null`, code `EMBEDDING_RUNTIME_MISSING`, and a confirmation-gated installation offer. Other focused-query failures use `QUERY_UNAVAILABLE`. Load never installs automatically; refusal continues map-only work. Standalone query still fails visibly. Rejected Load keeps the hook gate; map-success Load may clear it through successful PostToolUse. This does not reproduce Pi's pending-only lifecycle.
 
-`dotdotgod_project_impact` accepts one to twenty unique changed paths and returns CLI-equivalent structured impact evidence. It does not mutate Pi extension state when called from Claude Code or Codex.
+`dotdotgod_project_impact` accepts 1–20 unique paths and returns `{ ok: true, summary }` via `graph impact --compact`; nonzero exits fail. It does not mutate Pi state. Pi's impact tool and `/impact-check` also use `--compact`.
 
 `dotdotgod_project_initialize` preserves existing initializer behavior and existing files.
 

@@ -149,6 +149,12 @@ test('project workflows preserve bounded load, impact, and dry-run initializatio
     const initialized = await projectInitialize({ root });
     assert.equal(initialized.ok, true);
     assert.equal(initialized.dryRun, true);
+    await projectInitialize({ root, dryRun: false, confirmWrite: true });
+    const impact = await projectImpact({ root, paths: ['README.md'] });
+    assert.deepEqual(Object.keys(impact).sort(), ['ok', 'summary']);
+    assert.equal(impact.ok, true);
+    assert.match(impact.summary, /^graph impact compact:/);
+    assert.match(impact.summary, /changed files: README.md/);
     await assert.rejects(() => projectInitialize({ root, dryRun: false }), /confirmWrite/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

@@ -260,7 +260,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
         "impact",
         ctx.cwd,
         ...batch.flatMap((path) => ["--changed", path]),
-        "--yml",
+        "--compact",
       ]),
     );
     updateImpactStatus(ctx);
