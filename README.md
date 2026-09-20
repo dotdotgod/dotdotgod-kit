@@ -55,6 +55,7 @@ npx @dotdotgod/cli validate .
 npx @dotdotgod/cli init .
 npx @dotdotgod/cli validate .
 npx @dotdotgod/cli graph impact . --changed <path> --compact
+npx @dotdotgod/cli graph serve . --changed <path>
 ```
 
 For Claude Code and Codex setup, follow the package-specific **Start Here** links in the package table.
@@ -105,6 +106,14 @@ files:
 Non-seed scores use a fixed weighted Personalized PageRank connection component capped at `80` plus memory policy capped at `20`. Direct, curated, test, type, and semantic evidence add no separate score or ordering bonus; relation weights participate through PPR and reasons remain explanation evidence. When the local query cache is available, impact analysis can add a bounded request-local multilingual `vector_similarity` overlay without changing the indexed graph or persisting changed-file vectors. Vector failures degrade to structural-only results.
 
 Each result includes ranking reasons so agents can inspect the smallest useful set of related evidence. Exact scores vary with the project graph and memory policy. Keep results useful through focused README indexes, current traceability blocks, meaningful package metadata, and single-responsibility documents.
+
+For visual review, start the local explorer:
+
+```bash
+dotdotgod graph serve . --changed packages/cli/src/core.mjs
+```
+
+The explorer keeps only shared structural nodes connected to the changed-file root, preserves relation-arrow direction, and lays nodes out from the root by structural hop. Its **Node reveal** control offers **Instant**, **By hop layer**, and **One by one** modes; the choice is saved locally, **Skip reveal** finishes an active sequence, and reduced-motion preferences use immediate placement. The server binds to `127.0.0.1` by default; use `--host` or `--port` only when needed.
 
 ## Core Concepts
 

@@ -37,6 +37,7 @@ dotdotgod init .
 dotdotgod validate .
 dotdotgod query . "project documentation"
 dotdotgod graph impact . --changed <path> --compact
+dotdotgod graph serve . --changed <path>
 ```
 
 ## What It Does
@@ -47,6 +48,7 @@ dotdotgod graph impact . --changed <path> --compact
 - `query` locally embeds shared Markdown with `Xenova/multilingual-e5-small`, incrementally stores vectors under `.dotdotgod/vectors/`, and returns the best-ranked chunk from each relevant Markdown file.
 - `resolve` and `expand` map explicit or high-signal prompt references to project files and can include related impact evidence.
 - `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five. Non-seed scores use fixed weighted PPR connection `80` plus memory policy `20`. A bounded request-local multilingual vector overlay participates in PPR when the query cache is available; vector preparation failures degrade to structural-only results.
+- `graph serve` starts a local read-only explorer rooted at one or more changed files. It keeps only connected shared structural nodes, lays them out by minimum structural hop, and supports persisted instant, layer, or one-by-one reveal modes.
 - `traceability links` checks or repairs generated Markdown traceability-link sections.
 
 ## Commands
@@ -72,6 +74,8 @@ dotdotgod traceability links . --write
 dotdotgod graph impact . --changed <path>
 dotdotgod graph impact . --changed <path> --changed <another-path> --compact
 dotdotgod graph impact . --changed <path> --changed <another-path> --yml
+dotdotgod graph serve . --changed <path>
+dotdotgod graph serve . --changed <path> --changed <another-path> --port 4313
 dotdotgod graph communities .
 ```
 
@@ -86,6 +90,7 @@ dotdotgod graph communities .
 | Resolve `[[...]]` references from a prompt | `dotdotgod expand . "Update [[PLAN_MODE]]"` |
 | Repair generated traceability-link sections | `dotdotgod traceability links . --write` |
 | See what else to inspect after a change | `dotdotgod graph impact . --changed <path> --compact` |
+| Explore the connected structural graph visually | `dotdotgod graph serve . --changed <path>` |
 
 ## Changed-File Impact
 
@@ -108,6 +113,24 @@ files:
 `graph impact` needs at least one `--changed <path>` and accepts repeated options. Multi-file output preserves input order, deduplicates repeated paths, returns a bounded combined ranking, and includes the top five non-seed results for each changed file. Use `--compact` for short text, `--yml` or `--yaml` for compact structured agent-facing output, and `--json` for machine-readable detail.
 
 The indexed graph is built from maintained project files: Markdown links, README routes, headings, configured traceability relations, package metadata, scripts and packaged resources, dependencies, and memory-area membership. Impact analysis can add request-local vector edges for candidate discovery and PPR without mutating that indexed graph.
+
+## Local Impact Graph Explorer
+
+```bash
+dotdotgod graph serve . --changed packages/cli/src/core.mjs
+```
+
+`graph serve` prints a local URL and binds to `127.0.0.1` by default. Repeat `--changed` to use multiple roots. Set `--port 4313` for a fixed port or `--host <host>` when the default loopback binding is not suitable.
+
+The explorer includes only shared indexed nodes structurally connected to a retained changed-file root. Connectivity treats stored structural edges as undirected so incoming evidence remains discoverable, while rendered arrows preserve each relation's original direction. Local-memory nodes, disconnected nodes, and request-local vector edges are excluded from the canvas and search.
+
+Use **Node reveal** to choose:
+
+- **Instant** — place the complete connected graph immediately.
+- **By hop layer** — reveal the root first and then each minimum-hop layer.
+- **One by one** — reveal nodes in deterministic breadth-first order with an automatically bounded total delay.
+
+The browser remembers the selected mode. **Skip reveal** completes an active sequence immediately. Re-rooting and relation filters morph surviving nodes toward their new positions, while `prefers-reduced-motion` resolves every mode to immediate placement. Graph distance is layout-only and never represents impact score.
 
 ## Validation and Verification Boundaries
 
