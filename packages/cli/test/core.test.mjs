@@ -11,6 +11,7 @@ import {
   buildCommunities,
   buildGraph,
   buildImpactReport,
+  buildImpactGraphPayload,
   buildChangedFileProfile,
   buildVectorImpactOverlay,
   buildMemoryAreas,
@@ -921,9 +922,8 @@ describe('impact ranking unit coverage', () => {
     const report = buildImpactReport(buildIndex(root), 'packages/route-planner/index.mjs', { related: 50, overlay: { status: 'available', edges: [{ source: 'file:packages/route-planner/index.mjs', target: 'file:docs/arch/ROUTE_PLANNER_SEMANTIC.md', relation: 'vector_similarity', weight: 1.8, score: 0.9, confidence: 'INFERRED_VECTOR_SEMANTIC', heading: 'Route Planner Semantic' }] } });
 
     const seed = itemById(report, 'file:packages/route-planner/index.mjs');
-    assert.equal(rankOf(report, seed.id), 0);
-    assert.equal(seed.impactScore, 100);
-    assert.equal(seed.scoreBreakdown.seed, 100);
+    assert.equal(seed, undefined);
+    assert.equal(rankOf(report, 'file:packages/route-planner/index.mjs'), -1);
 
     const spec = itemById(report, 'file:docs/spec/ROUTE_PLANNER.md');
     const semanticOnly = itemById(report, 'file:docs/arch/ROUTE_PLANNER_SEMANTIC.md');
@@ -973,7 +973,7 @@ describe('impact ranking unit coverage', () => {
     const capped = itemById(buildImpactReport(capIndex, 'packages/cap/seed.mjs'), 'file:docs/spec/CAP.md');
     assert.equal(capped.impactScore, 100);
     assert.equal(capped.scoreBreakdown.strongestDirectRelation, 'implemented_by');
-    assert.equal(rankOf(buildImpactReport(capIndex, 'packages/cap/seed.mjs'), 'file:packages/cap/seed.mjs'), 0);
+    assert.equal(rankOf(buildImpactReport(capIndex, 'packages/cap/seed.mjs'), 'file:packages/cap/seed.mjs'), -1);
   });
 
   it('combines multiple changed files while retaining per-seed top-five rankings', () => {
@@ -997,8 +997,8 @@ describe('impact ranking unit coverage', () => {
 
     assert.equal(report.changed, 'packages/multi/a.mjs');
     assert.deepEqual(report.changedFiles, ['packages/multi/a.mjs', 'packages/multi/b.mjs']);
-    assert.deepEqual(report.related.slice(0, 2).map((item) => item.id), ['file:packages/multi/a.mjs', 'file:packages/multi/b.mjs']);
-    assert(report.related.slice(0, 2).every((item) => item.impactScore === 100 && item.scoreBreakdown.seed === 100));
+    assert(!report.related.some((item) => ['file:packages/multi/a.mjs', 'file:packages/multi/b.mjs'].includes(item.id)));
+    assert(!Object.values(report.groups).some((group) => group.items.some((item) => ['file:packages/multi/a.mjs', 'file:packages/multi/b.mjs'].includes(item.id))));
     assert.equal(report.perSeed.length, 2);
     assert(report.perSeed.every((entry) => entry.related.length === 5));
     assert(report.perSeed.every((entry) => entry.related.every((item) => item.id !== `file:${entry.changed}`)));
@@ -1008,13 +1008,110 @@ describe('impact ranking unit coverage', () => {
     const single = buildImpactReport(index, 'packages/multi/a.mjs');
     assert.equal(single.changed, 'packages/multi/a.mjs');
     assert.deepEqual(single.changedFiles, ['packages/multi/a.mjs']);
-    assert.equal(single.related[0].id, 'file:packages/multi/a.mjs');
+    assert(!single.related.some((item) => item.id === 'file:packages/multi/a.mjs'));
     assert.equal(single.perSeed[0].related.length, 5);
 
     const compact = buildCompactImpactReport(report);
     assert.deepEqual(compact.changedFiles, report.changedFiles);
     assert.equal(compact.perSeed.length, 2);
     assert(compact.perSeed.every((entry) => entry.related.length === 5));
+    assert(!compact.related.some((item) => ['file:packages/multi/a.mjs', 'file:packages/multi/b.mjs'].includes(item.id)));
+
+    const payload = buildImpactGraphPayload(index, report);
+    assert.deepEqual(payload.nodes.filter((node) => node.seed).map((node) => node.id).sort(), ['file:packages/multi/a.mjs', 'file:packages/multi/b.mjs']);
+    assert(!report.related.some((item) => payload.nodes.find((node) => node.id === item.id)?.seed));
+    assert(payload.edges.every((edge) => payload.nodes.some((node) => node.id === edge.source) && payload.nodes.some((node) => node.id === edge.target)));
+    assert.equal(payload.complete, true);
+    assert.deepEqual(new Set(payload.edges.map((edge) => edge.relation)), new Set(['related_doc', 'verified_by']));
+    assert(payload.nodes.every((node) => Number.isInteger(node.component)));
+  });
+
+  it('builds a complete cycle-safe shared structural graph with isolated nodes and deduplicated edges', () => {
+    const nodes = [
+      { id: 'file:a.mjs', type: 'file', path: 'a.mjs' },
+      { id: 'file:b.mjs', type: 'file', path: 'b.mjs' },
+      { id: 'file:c.mjs', type: 'file', path: 'c.mjs' },
+      { id: 'file:isolated.mjs', type: 'file', path: 'isolated.mjs' },
+      { id: 'package:app', type: 'package', name: 'app' },
+      { id: 'resource:api', type: 'resource', target: '/api' },
+    ];
+    const edges = [
+      { source: 'file:a.mjs', target: 'file:b.mjs', relation: 'related_doc' },
+      { source: 'file:b.mjs', target: 'file:c.mjs', relation: 'links_to' },
+      { source: 'file:c.mjs', target: 'file:a.mjs', relation: 'routes_to' },
+      { source: 'file:a.mjs', target: 'file:b.mjs', relation: 'related_doc' },
+      { source: 'package:app', target: 'resource:api', relation: 'declares_resource' },
+    ];
+    const config = defaultMemoryConfig();
+    const impact = buildImpactReport({ memoryConfig: config, graph: { nodes, edges } }, 'a.mjs');
+    const payload = buildImpactGraphPayload({ memoryConfig: config, graph: { nodes, edges } }, impact);
+
+    assert.equal(payload.nodes.length, 3);
+    assert.equal(payload.edges.length, 3);
+    assert.equal(new Set(payload.nodes.map((node) => node.id)).size, 3);
+    assert.equal(payload.components.length, 1);
+    assert(!payload.nodes.some((node) => node.id === 'file:isolated.mjs'));
+    assert.deepEqual(payload.diagnostics, { rootNodes: 1, connectedNodes: 3, disconnectedNodesOmitted: 3, maximumDepth: 1 });
+    assert.equal(payload.nodes.find((node) => node.id === 'file:a.mjs').depth, 0);
+    assert.equal(payload.nodes.find((node) => node.id === 'file:b.mjs').depth, 1);
+    assert.deepEqual(new Set(payload.edges.map((edge) => edge.relation)), new Set(['related_doc', 'links_to', 'routes_to']));
+  });
+
+  it('includes shared headings while excluding local memory and preserving endpoint integrity', () => {
+    const config = defaultMemoryConfig();
+    const nodes = [
+      { id: 'file:src/a.mjs', type: 'file', path: 'src/a.mjs' },
+      { id: 'file:docs/spec/A.md', type: 'file', path: 'docs/spec/A.md' },
+      { id: 'file:docs/plan/local/README.md', type: 'file', path: 'docs/plan/local/README.md' },
+      { id: 'file:src/orphan.mjs', type: 'file', path: 'src/orphan.mjs' },
+      { id: 'heading:docs/spec/A.md#purpose', type: 'heading', path: 'docs/spec/A.md', title: 'Purpose' },
+      { id: 'heading:docs/plan/local/README.md#notes', type: 'heading', path: 'docs/plan/local/README.md', title: 'Notes' },
+    ];
+    const edges = [
+      { source: 'file:docs/spec/A.md', target: 'file:src/a.mjs', relation: 'implemented_by' },
+      { source: 'file:docs/plan/local/README.md', target: 'file:src/a.mjs', relation: 'related_doc' },
+      { source: 'file:src/a.mjs', target: 'file:src/orphan.mjs', relation: 'links_to' },
+      { source: 'file:docs/spec/A.md', target: 'heading:docs/spec/A.md#purpose', relation: 'contains_heading' },
+      { source: 'heading:docs/spec/A.md#purpose', target: 'file:src/a.mjs', relation: 'links_to' },
+      { source: 'file:docs/plan/local/README.md', target: 'heading:docs/plan/local/README.md#notes', relation: 'contains_heading' },
+    ];
+    const impact = buildImpactReport({ memoryConfig: config, graph: { nodes, edges } }, 'src/a.mjs');
+    const payload = buildImpactGraphPayload({ memoryConfig: config, graph: { nodes, edges } }, impact);
+
+    assert.deepEqual(payload.edges.map((edge) => edge.relation), ['implemented_by', 'links_to', 'contains_heading', 'links_to']);
+    assert.deepEqual(payload.nodes.map((node) => node.id).sort(), ['file:docs/spec/A.md', 'file:src/a.mjs', 'file:src/orphan.mjs', 'heading:docs/spec/A.md#purpose']);
+    assert.equal(payload.nodes.find((node) => node.id === 'file:docs/spec/A.md').depth, 1, 'incoming implemented_by relation permits undirected reachability');
+    assert(payload.edges.some((edge) => edge.source === 'file:docs/spec/A.md' && edge.target === 'file:src/a.mjs'), 'rendered direction is preserved');
+    assert(payload.edges.every((edge) => payload.nodes.some((node) => node.id === edge.source) && payload.nodes.some((node) => node.id === edge.target)));
+  });
+
+  it('keeps incremental graph output equal to a full rebuild after Markdown changes', () => {
+    const root = fixture();
+    const file = join(root, 'docs/spec/INCREMENTAL.md');
+    writeFileSync(file, '# Incremental\n\n[Feature](./FEATURE.md)\n\n## Before\n');
+    const previous = buildIndex(root, null);
+    writeFileSync(file, '# Incremental\n\n[Architecture](../arch/README.md)\n\n## After\n');
+    const incremental = buildIndex(root, previous);
+    const full = buildIndex(root, null);
+    const normalize = (graph) => ({
+      nodes: graph.nodes.map((node) => JSON.stringify(node)).sort(),
+      edges: graph.edges.map((edge) => JSON.stringify(edge)).sort(),
+    });
+    assert.deepEqual(normalize(incremental.graph), normalize(full.graph));
+    assert(!incremental.graph.nodes.some((node) => node.id.endsWith('#before')));
+    assert(incremental.graph.edges.some((edge) => edge.target.endsWith('#after') && edge.relation === 'contains_heading'));
+  });
+
+  it('preserves unchanged incoming edges to a target referenced by a changed file', () => {
+    const root = fixture();
+    const changed = join(root, 'docs/spec/INCREMENTAL.md');
+    writeFileSync(changed, '# Incremental\n\n[Shared](./FEATURE.md)\n');
+    const previous = buildIndex(root, null);
+    writeFileSync(changed, '# Incremental updated\n\n[Shared](./FEATURE.md)\n');
+    const incremental = buildIndex(root, previous);
+    const full = buildIndex(root, null);
+    const incoming = (index) => index.graph.edges.filter((edge) => edge.target === 'file:docs/spec/FEATURE.md').map((edge) => JSON.stringify(edge)).sort();
+    assert.deepEqual(incoming(incremental), incoming(full));
   });
 
   it('uses fixed changed-file PPR, traceability weights, and grouping compatibility', () => {
@@ -1154,11 +1251,12 @@ describe('CLI index and graph helpers', () => {
     assert.equal(designDecisionEdge.relationWeight, 3);
     assert(index.graph.edges.some((edge) => edge.source === 'file:docs/README.md' && edge.target === 'file:docs/spec/README.md' && edge.relation === 'routes_to' && edge.confidence === 'CURATED_INDEX'));
     const related = buildImpactReport(index, 'packages/tool/index.mjs').related;
-    assert(related.some((node) => node.id === 'file:packages/tool/index.mjs'));
+    assert(!related.some((node) => node.id === 'file:packages/tool/index.mjs'));
     assert(related.length <= 25);
     const impact = buildImpactReport(index, 'packages/tool/index.mjs');
     assert(impact.groups.tests.items.some((item) => item.id === 'file:packages/tool/index.test.mjs'));
-    assert(impact.related.some((item) => item.id === 'file:packages/tool/index.mjs' && item.retrieval?.signals.includes('reason:changed-file')));
+    assert(!impact.related.some((item) => item.id === 'file:packages/tool/index.mjs'));
+    assert(!Object.values(impact.groups).some((group) => group.items.some((item) => item.id === 'file:packages/tool/index.mjs')));
     assert.equal(impact.ranking.method, 'weighted-personalized-pagerank+memory');
     assert(impact.related.every((item) => typeof item.impactScore === 'number' && item.scoreBreakdown));
     assert(impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/FEATURE.md'));
@@ -1230,7 +1328,7 @@ describe('local documentation vector query', () => {
     assert(overlay.edges.some((edge) => edge.source === 'file:packages/app/search.mjs' && edge.target === 'file:docs/spec/SEARCH.md' && edge.relation === 'vector_similarity'));
     const report = buildImpactReport(index, './packages/app/search.mjs', { overlay });
     assert.equal(report.changed, 'packages/app/search.mjs');
-    assert.equal(report.related.filter((item) => item.id === 'file:packages/app/search.mjs').length, 1);
+    assert.equal(report.related.filter((item) => item.id === 'file:packages/app/search.mjs').length, 0);
     const result = itemById(report, 'file:docs/spec/SEARCH.md');
     assert(result.reasons.includes('vector_similarity'));
     assert.equal(result.vectorEvidence.confidence, 'INFERRED_VECTOR_SEMANTIC');

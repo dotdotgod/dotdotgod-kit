@@ -23,7 +23,7 @@ function mergeIncrementalGraph(previousGraph, changedGraph, changedPaths) {
   if (!previousGraph) return changedGraph;
   const changedSet = new Set(changedPaths);
   const changedNodeIds = new Set(previousGraph.nodes.filter((node) => nodeOwnedByPath(node, changedSet)).map((node) => node.id));
-  for (const node of changedGraph.nodes) changedNodeIds.add(node.id);
+  for (const node of changedGraph.nodes) if (nodeOwnedByPath(node, changedSet)) changedNodeIds.add(node.id);
   const graph = { nodes: [], edges: [] };
   for (const node of previousGraph.nodes) if (!changedNodeIds.has(node.id) && !nodeOwnedByPath(node, changedSet)) addNode(graph, node.id, node.type, Object.fromEntries(Object.entries(node).filter(([key]) => key !== 'id' && key !== 'type')));
   for (const edge of previousGraph.edges) if (!changedNodeIds.has(edge.source) && !changedNodeIds.has(edge.target)) addEdge(graph, edge.source, edge.target, edge.relation, Object.fromEntries(Object.entries(edge).filter(([key]) => key !== 'source' && key !== 'target' && key !== 'relation')));

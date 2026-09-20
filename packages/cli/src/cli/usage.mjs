@@ -66,12 +66,18 @@ Checks or writes generated Markdown traceability link sections from canonical fe
     case 'graph':
       return `Usage:
   dotdotgod graph impact <root> --changed <path> [--changed <path> ...] [--compact|--json|--yml|--yaml]
+  dotdotgod graph serve <root> --changed <path> [--changed <path> ...] [--host HOST] [--port PORT]
   dotdotgod graph communities <root> [--json]`;
     case 'graph impact':
       return `Usage:
   dotdotgod graph impact <root> --changed <path> [--changed <path> ...] [--compact|--json|--yml|--yaml]
 
 Ranks nodes related to one or more changed files. <root> is the project root; repeat --changed with project-relative file paths. Results include a combined ranking and the top five related nodes for each changed file. Use --compact for a short text summary or --yml/--yaml for structured agent-facing output.`;
+    case 'graph serve':
+      return `Usage:
+  dotdotgod graph serve <root> --changed <path> [--changed <path> ...] [--host HOST] [--port PORT]
+
+Starts a local-only impact graph explorer. Changed files are rendered as root nodes and are excluded from related-result lists.`;
     case 'graph communities':
       return `Usage:
   dotdotgod graph communities <root> [--json]`;
@@ -95,6 +101,7 @@ Commands:
   status                Show local index status.
   traceability links    Check or write generated traceability links.
   graph impact          Find files related to changed files.
+  graph serve           Open a local impact graph explorer.
   graph communities     Find groups of related project-memory nodes.
 
 Options:

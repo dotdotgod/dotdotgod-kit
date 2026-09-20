@@ -61,7 +61,7 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
   const seeds = changedPaths.map((path) => `file:${path}`);
   const seedSet = new Set(seeds);
-  const maxRelated = Math.max(limits.related ?? 25, seeds.length);
+  const maxRelated = Math.max(limits.related ?? 25, 0);
   const groups = { files: { items: [], omitted: 0 }, docs: { items: [], omitted: 0 }, contracts: { items: [], omitted: 0 }, tests: { items: [], omitted: 0 }, commands: { items: [], omitted: 0 }, events: { items: [], omitted: 0 }, packageResources: { items: [], omitted: 0 }, symbols: { items: [], omitted: 0 } };
   const relatedIds = new Set(seeds);
   const reasons = new Map(seeds.map((seed) => [seed, new Set(['changed-file'])]));
@@ -99,7 +99,8 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
     const scored = scoreImpactItem({ ...node, reasons: reasonList, retrieval }, seedSet, changedPaths, policy, pprScores, config);
     return { ...node, reasons: reasonList, hasCuratedEvidence, ...(vectorEvidence.has(id) ? { vectorEvidence: vectorEvidence.get(id) } : {}), retrieval: { ...retrieval, signals: [...new Set([...(retrieval.signals ?? []), ...reasonSignals])] }, ...scored };
   }).sort(compareImpactItems(seeds));
-  const related = selectImpactItems(relatedAll, maxRelated, seeds);
+  const rankedRelated = relatedAll.filter((item) => !seedSet.has(item.id));
+  const related = selectImpactItems(rankedRelated, maxRelated, []);
   for (const item of related) {
     if (item.type === 'file') {
       const area = docsArea(item.path, config);
@@ -122,9 +123,9 @@ export function buildImpactReport(index, changedPaths, limits = {}) {
   aggregate.perSeed = normalized.map((changed) => {
     const seedId = `file:${changed}`;
     const seedOverlay = limits.overlay ? { ...limits.overlay, edges: (limits.overlay.edges ?? []).filter((edge) => edge.source === seedId) } : undefined;
-    const report = buildCombinedImpactReport(index, [changed], { ...limits, overlay: seedOverlay, related: Math.max(limits.related ?? 25, perSeedLimit + 1) });
-    const related = report.related.filter((item) => item.id !== `file:${changed}`).slice(0, perSeedLimit);
-    return { changed, related, omittedRelated: Math.max(0, report.related.length - 1 - related.length) + report.omittedRelated };
+    const report = buildCombinedImpactReport(index, [changed], { ...limits, overlay: seedOverlay, related: Math.max(limits.related ?? 25, perSeedLimit) });
+    const related = report.related.slice(0, perSeedLimit);
+    return { changed, related, omittedRelated: Math.max(0, report.related.length - related.length) + report.omittedRelated };
   });
   return aggregate;
 }
@@ -148,7 +149,7 @@ function compactImpactGroup(group = { items: [], omitted: 0 }, limit = 5) {
 }
 
 export function buildCompactImpactReport(impact, limits = {}) {
-  const relatedLimit = Math.max(limits.related ?? 10, impact.changedFiles?.length ?? 1);
+  const relatedLimit = limits.related ?? 10;
   const groupLimit = limits.groupItems ?? 5;
   const changedFiles = impact.changedFiles ?? [impact.changed];
   const seedIds = new Set(changedFiles.map((path) => `file:${path}`));

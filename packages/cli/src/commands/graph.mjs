@@ -4,6 +4,7 @@ import { graphSummary, readFreshIndex } from '../index/cache.mjs';
 import { buildCompactImpactReport, buildImpactReport } from '../impact/report.mjs';
 import { buildVectorImpactOverlay } from '../impact/vector-overlay.mjs';
 import { canonicalizeChangedPath } from '../impact/vector-profile.mjs';
+import { startImpactGraphServer } from '../graph-view/server.mjs';
 import { formatCompactImpactOutput, formatYmlGraphImpactError, formatYmlImpactOutput } from '../impact/format.mjs';
 
 const MAX_CHANGED_FILES = 20;
@@ -13,6 +14,8 @@ export function parseGraphOptions(argv) {
   const changed = [];
   let compact = false;
   let yml = false;
+  let host = '127.0.0.1';
+  let port = 0;
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--changed') {
       const next = argv[i + 1];
@@ -22,20 +25,33 @@ export function parseGraphOptions(argv) {
       }
     } else if (argv[i] === '--compact') compact = true;
     else if (argv[i] === '--yml' || argv[i] === '--yaml') yml = true;
+    else if (argv[i] === '--host' && argv[i + 1] && !argv[i + 1].startsWith('-')) { host = argv[i + 1]; i += 1; }
+    else if (argv[i] === '--port' && argv[i + 1] && !argv[i + 1].startsWith('-')) { port = Number(argv[i + 1]); i += 1; }
     else filtered.push(argv[i]);
   }
   const options = parseCommon(filtered);
   options.changed = [...new Set(changed)];
   options.compact = compact;
   options.yml = yml;
+  options.host = host;
+  options.port = Number.isInteger(port) && port >= 0 && port <= 65535 ? port : NaN;
   return options;
 }
 
 export async function runGraph(argv) {
   const sub = argv[0];
   const isImpact = sub === 'impact';
-  if (!['impact', 'communities'].includes(sub)) usage(sub ? `Unknown graph command: ${sub}` : 'Missing graph command.', 'graph');
+  const isServe = sub === 'serve';
+  if (!['impact', 'communities', 'serve'].includes(sub)) usage(sub ? `Unknown graph command: ${sub}` : 'Missing graph command.', 'graph');
   const options = parseGraphOptions(argv.slice(1));
+  if (isServe && options.changed.length === 0) usage('Missing required option: --changed <path>.', 'graph serve');
+  if (isServe && !Number.isInteger(options.port)) usage('Invalid --port. Use an integer from 0 through 65535.', 'graph serve');
+  if (isServe) {
+    options.changed = [...new Set(options.changed.map((path) => canonicalizeChangedPath(options.root, path)).filter(Boolean))];
+    const running = await startImpactGraphServer({ root: options.root, changed: options.changed, host: options.host, port: options.port });
+    console.log(`graph serve: ${running.url}`);
+    return;
+  }
   if (isImpact && [options.json, options.compact, options.yml].filter(Boolean).length > 1) {
     const message = 'Choose only one graph impact output mode: --compact, --json, or --yml/--yaml.';
     if (options.json) console.log(JSON.stringify({ ok: false, command: 'graph impact', compact: options.compact || undefined, yml: options.yml || undefined, root: options.root, error: { code: 'OUTPUT_MODE_CONFLICT', message }, usage: commandUsage('graph impact') }, null, 2));

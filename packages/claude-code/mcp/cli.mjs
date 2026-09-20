@@ -1345,12 +1345,18 @@ Checks or writes generated Markdown traceability link sections from canonical fe
     case "graph":
       return `Usage:
   dotdotgod graph impact <root> --changed <path> [--changed <path> ...] [--compact|--json|--yml|--yaml]
+  dotdotgod graph serve <root> --changed <path> [--changed <path> ...] [--host HOST] [--port PORT]
   dotdotgod graph communities <root> [--json]`;
     case "graph impact":
       return `Usage:
   dotdotgod graph impact <root> --changed <path> [--changed <path> ...] [--compact|--json|--yml|--yaml]
 
 Ranks nodes related to one or more changed files. <root> is the project root; repeat --changed with project-relative file paths. Results include a combined ranking and the top five related nodes for each changed file. Use --compact for a short text summary or --yml/--yaml for structured agent-facing output.`;
+    case "graph serve":
+      return `Usage:
+  dotdotgod graph serve <root> --changed <path> [--changed <path> ...] [--host HOST] [--port PORT]
+
+Starts a local-only impact graph explorer. Changed files are rendered as root nodes and are excluded from related-result lists.`;
     case "graph communities":
       return `Usage:
   dotdotgod graph communities <root> [--json]`;
@@ -1374,6 +1380,7 @@ Commands:
   status                Show local index status.
   traceability links    Check or write generated traceability links.
   graph impact          Find files related to changed files.
+  graph serve           Open a local impact graph explorer.
   graph communities     Find groups of related project-memory nodes.
 
 Options:
@@ -1711,7 +1718,7 @@ import { spawnSync } from "node:child_process";
 import { basename as basename3, extname as extname2, join as join5 } from "node:path";
 
 // packages/cli/src/index/constants.mjs
-var CACHE_VERSION = 13;
+var CACHE_VERSION = 14;
 var CACHE_DIR = ".dotdotgod";
 var MANIFEST_FILE = "manifest.json";
 
@@ -2225,7 +2232,7 @@ function mergeIncrementalGraph(previousGraph, changedGraph, changedPaths) {
   if (!previousGraph) return changedGraph;
   const changedSet = new Set(changedPaths);
   const changedNodeIds = new Set(previousGraph.nodes.filter((node2) => nodeOwnedByPath(node2, changedSet)).map((node2) => node2.id));
-  for (const node2 of changedGraph.nodes) changedNodeIds.add(node2.id);
+  for (const node2 of changedGraph.nodes) if (nodeOwnedByPath(node2, changedSet)) changedNodeIds.add(node2.id);
   const graph = { nodes: [], edges: [] };
   for (const node2 of previousGraph.nodes) if (!changedNodeIds.has(node2.id) && !nodeOwnedByPath(node2, changedSet)) addNode(graph, node2.id, node2.type, Object.fromEntries(Object.entries(node2).filter(([key]) => key !== "id" && key !== "type")));
   for (const edge of previousGraph.edges) if (!changedNodeIds.has(edge.source) && !changedNodeIds.has(edge.target)) addEdge(graph, edge.source, edge.target, edge.relation, Object.fromEntries(Object.entries(edge).filter(([key]) => key !== "source" && key !== "target" && key !== "relation")));
@@ -3204,15 +3211,15 @@ import { resolve as resolve11 } from "node:path";
 function parse(argv) {
   const [action2 = "status", ...rest] = argv;
   let root = ".";
-  let json = false;
+  let json2 = false;
   let confirm = false;
   for (const arg of rest) {
-    if (arg === "--json") json = true;
+    if (arg === "--json") json2 = true;
     else if (arg === "--confirm") confirm = true;
     else if (!arg.startsWith("-") && root === ".") root = arg;
     else usage(`Unknown embedding option: ${arg}`, `embedding ${action2}`);
   }
-  return { action: action2, root: resolve11(root), json, confirm };
+  return { action: action2, root: resolve11(root), json: json2, confirm };
 }
 function runEmbedding(argv, options = {}) {
   const parsed = parse(argv);
@@ -3339,8 +3346,8 @@ function buildDocumentationMap(projectRoot = ".", { depth = 5 } = {}) {
 }
 
 // packages/cli/src/commands/map.mjs
-function fail(json, code, message) {
-  if (json) console.log(JSON.stringify({ ok: false, error: { code, message } }, null, 2));
+function fail(json2, code, message) {
+  if (json2) console.log(JSON.stringify({ ok: false, error: { code, message } }, null, 2));
   else console.error(message);
   process.exit(2);
 }
@@ -4926,7 +4933,7 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
   const nodeById = new Map(graph.nodes.map((node2) => [node2.id, node2]));
   const seeds = changedPaths.map((path) => `file:${path}`);
   const seedSet = new Set(seeds);
-  const maxRelated = Math.max(limits.related ?? 25, seeds.length);
+  const maxRelated = Math.max(limits.related ?? 25, 0);
   const groups = { files: { items: [], omitted: 0 }, docs: { items: [], omitted: 0 }, contracts: { items: [], omitted: 0 }, tests: { items: [], omitted: 0 }, commands: { items: [], omitted: 0 }, events: { items: [], omitted: 0 }, packageResources: { items: [], omitted: 0 }, symbols: { items: [], omitted: 0 } };
   const relatedIds = new Set(seeds);
   const reasons = new Map(seeds.map((seed) => [seed, /* @__PURE__ */ new Set(["changed-file"])]));
@@ -4962,7 +4969,8 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
     const scored = scoreImpactItem({ ...node2, reasons: reasonList, retrieval }, seedSet, changedPaths, policy, pprScores, config);
     return { ...node2, reasons: reasonList, hasCuratedEvidence, ...vectorEvidence.has(id) ? { vectorEvidence: vectorEvidence.get(id) } : {}, retrieval: { ...retrieval, signals: [.../* @__PURE__ */ new Set([...retrieval.signals ?? [], ...reasonSignals])] }, ...scored };
   }).sort(compareImpactItems(seeds));
-  const related = selectImpactItems(relatedAll, maxRelated, seeds);
+  const rankedRelated = relatedAll.filter((item) => !seedSet.has(item.id));
+  const related = selectImpactItems(rankedRelated, maxRelated, []);
   for (const item of related) {
     if (item.type === "file") {
       const area2 = docsArea2(item.path, config);
@@ -4984,9 +4992,9 @@ function buildImpactReport(index, changedPaths, limits = {}) {
   aggregate2.perSeed = normalized.map((changed) => {
     const seedId = `file:${changed}`;
     const seedOverlay = limits.overlay ? { ...limits.overlay, edges: (limits.overlay.edges ?? []).filter((edge) => edge.source === seedId) } : void 0;
-    const report = buildCombinedImpactReport(index, [changed], { ...limits, overlay: seedOverlay, related: Math.max(limits.related ?? 25, perSeedLimit + 1) });
-    const related = report.related.filter((item) => item.id !== `file:${changed}`).slice(0, perSeedLimit);
-    return { changed, related, omittedRelated: Math.max(0, report.related.length - 1 - related.length) + report.omittedRelated };
+    const report = buildCombinedImpactReport(index, [changed], { ...limits, overlay: seedOverlay, related: Math.max(limits.related ?? 25, perSeedLimit) });
+    const related = report.related.slice(0, perSeedLimit);
+    return { changed, related, omittedRelated: Math.max(0, report.related.length - related.length) + report.omittedRelated };
   });
   return aggregate2;
 }
@@ -5006,7 +5014,7 @@ function compactImpactGroup(group = { items: [], omitted: 0 }, limit = 5) {
   return { items, omitted: (group.omitted ?? 0) + Math.max(0, (group.items?.length ?? 0) - items.length) };
 }
 function buildCompactImpactReport(impact, limits = {}) {
-  const relatedLimit = Math.max(limits.related ?? 10, impact.changedFiles?.length ?? 1);
+  const relatedLimit = limits.related ?? 10;
   const groupLimit = limits.groupItems ?? 5;
   const changedFiles = impact.changedFiles ?? [impact.changed];
   const seedIds = new Set(changedFiles.map((path) => `file:${path}`));
@@ -5321,6 +5329,187 @@ function runTraceability(argv) {
   process.exit(ok ? 0 : 1);
 }
 
+// packages/cli/src/graph-view/server.mjs
+import { createServer } from "node:http";
+import { readFileSync as readFileSync15 } from "node:fs";
+import { dirname as dirname8, extname as extname7, join as join15 } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// packages/cli/src/graph-view/payload.mjs
+function edgeKey(edge) {
+  return `${edge.source}\0${edge.target}\0${edge.relation}`;
+}
+function labelForNode(node2) {
+  if (node2.type === "contract") return node2.title ?? node2.contractId ?? node2.id;
+  return node2.path ?? node2.command ?? node2.name ?? node2.target ?? node2.id;
+}
+function adjacencyFor(nodes, edges) {
+  const adjacency = new Map(nodes.map((node2) => [node2.id, /* @__PURE__ */ new Set()]));
+  for (const edge of edges) {
+    adjacency.get(edge.source)?.add(edge.target);
+    adjacency.get(edge.target)?.add(edge.source);
+  }
+  return adjacency;
+}
+function rootReachability(nodes, edges, seedIds) {
+  const adjacency = adjacencyFor(nodes, edges);
+  const reachable = /* @__PURE__ */ new Set();
+  const depthByNode = /* @__PURE__ */ new Map();
+  const nearestRootByNode = /* @__PURE__ */ new Map();
+  const queue = [];
+  for (const node2 of nodes) {
+    if (!seedIds.has(node2.id)) continue;
+    reachable.add(node2.id);
+    depthByNode.set(node2.id, 0);
+    nearestRootByNode.set(node2.id, node2.id);
+    queue.push(node2.id);
+  }
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    const current = queue[cursor];
+    for (const neighbor of adjacency.get(current) ?? []) {
+      if (reachable.has(neighbor)) continue;
+      reachable.add(neighbor);
+      depthByNode.set(neighbor, (depthByNode.get(current) ?? 0) + 1);
+      nearestRootByNode.set(neighbor, nearestRootByNode.get(current));
+      queue.push(neighbor);
+    }
+  }
+  return { reachable, depthByNode, nearestRootByNode };
+}
+function buildImpactGraphPayload(index, impact) {
+  const graph = index?.graph ?? { nodes: [], edges: [] };
+  const config = index?.memoryConfig;
+  const seedIds = new Set((impact.changedFiles ?? [impact.changed]).map((path) => `file:${path}`));
+  const impactItems = new Map((impact.related ?? []).map((item) => [item.id, item]));
+  const isAllowedNode = (node2) => {
+    if (!node2) return false;
+    if (node2.path && resolveMemoryArea(node2.path, config)?.scope === "local") return false;
+    return true;
+  };
+  const sourceNodes = (graph.nodes ?? []).filter(isAllowedNode);
+  const indexedNodes = new Map(sourceNodes.map((node2) => [node2.id, node2]));
+  const seenEdges = /* @__PURE__ */ new Set();
+  const edges = [];
+  for (const edge of graph.edges ?? []) {
+    if (!indexedNodes.has(edge.source) || !indexedNodes.has(edge.target)) continue;
+    const key = edgeKey(edge);
+    if (seenEdges.has(key)) continue;
+    seenEdges.add(key);
+    edges.push({ source: edge.source, target: edge.target, relation: edge.relation, confidence: edge.confidence, weight: edge.weight ?? edge.relationWeight, score: edge.score, traceabilityKey: edge.traceabilityKey });
+  }
+  const { reachable, depthByNode, nearestRootByNode } = rootReachability(sourceNodes, edges, seedIds);
+  const retainedNodes = sourceNodes.filter((node2) => reachable.has(node2.id));
+  const retainedEdges = edges.filter((edge) => reachable.has(edge.source) && reachable.has(edge.target));
+  const nodes = retainedNodes.map((source) => {
+    const item = impactItems.get(source.id);
+    const seed = seedIds.has(source.id);
+    return {
+      id: source.id,
+      type: source.type ?? item?.type ?? "file",
+      path: source.path ?? item?.path,
+      label: labelForNode({ ...source, ...item }),
+      seed,
+      ranked: Boolean(item),
+      depth: depthByNode.get(source.id) ?? 0,
+      nearestRoot: nearestRootByNode.get(source.id),
+      component: 0,
+      seededComponent: true,
+      impactScore: seed ? 100 : item?.impactScore ?? 0,
+      reasons: seed ? ["changed-file"] : item?.reasons ?? [],
+      scoreBreakdown: seed ? { seed: 100 } : item?.scoreBreakdown,
+      retrieval: item?.retrieval ?? source.retrieval,
+      contractId: item?.contractId ?? source.contractId,
+      title: item?.title ?? source.title,
+      sections: item?.sections ?? source.sections,
+      vectorEvidence: item?.vectorEvidence
+    };
+  });
+  return {
+    changed: impact.changed,
+    changedFiles: impact.changedFiles ?? [impact.changed],
+    ranking: impact.ranking,
+    semantic: impact.semantic,
+    complete: true,
+    nodes,
+    edges: retainedEdges,
+    components: retainedNodes.length > 0 ? [{ id: 0, size: retainedNodes.length, seeded: true }] : [],
+    diagnostics: {
+      rootNodes: retainedNodes.filter((node2) => seedIds.has(node2.id)).length,
+      connectedNodes: retainedNodes.length,
+      disconnectedNodesOmitted: sourceNodes.length - retainedNodes.length,
+      maximumDepth: Math.max(0, ...depthByNode.values())
+    },
+    omittedRelated: impact.omittedRelated ?? 0
+  };
+}
+
+// packages/cli/src/graph-view/server.mjs
+var ASSET_ROOT = join15(dirname8(fileURLToPath(import.meta.url)), "assets");
+var CONTENT_TYPES = { ".css": "text/css; charset=utf-8", ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".map": "application/json; charset=utf-8" };
+var VENDOR_FILES = {
+  "/vendor/sigma.js": new URL("../../node_modules/sigma/dist/sigma.min.js", import.meta.url),
+  "/vendor/graphology.js": new URL("../../node_modules/graphology/dist/graphology.umd.min.js", import.meta.url),
+  "/vendor/d3.js": new URL("../../node_modules/d3/dist/d3.min.js", import.meta.url)
+};
+function json(response, status, value) {
+  response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+  response.end(JSON.stringify(value));
+}
+function asset(response, file) {
+  try {
+    const body = readFileSync15(file);
+    response.writeHead(200, { "content-type": CONTENT_TYPES[extname7(file)] ?? "application/octet-stream", "cache-control": "no-store" });
+    response.end(body);
+  } catch {
+    response.writeHead(404);
+    response.end("Not found");
+  }
+}
+async function buildServedImpact(root, changedPaths) {
+  const normalized = [...new Set(changedPaths.map((path) => canonicalizeChangedPath(root, path)).filter(Boolean))];
+  const { status, index, metadata } = readFreshIndex(root);
+  const overlay = await buildVectorImpactOverlay(root, index, normalized);
+  const impact = buildImpactReport(index, normalized, { overlay, verboseSemantic: false, related: 40 });
+  const graph = buildImpactGraphPayload(index, impact);
+  const graphIds = new Set(graph.nodes.map((node2) => node2.id));
+  const explorerImpact = {
+    ...impact,
+    related: impact.related.filter((item) => graphIds.has(item.id))
+  };
+  return { ok: status.ok, status, metadata, impact: explorerImpact, graph };
+}
+async function startImpactGraphServer({ root, changed, host = "127.0.0.1", port = 0 }) {
+  let payload = await buildServedImpact(root, changed);
+  const server = createServer(async (request, response) => {
+    const url = new URL(request.url ?? "/", `http://${request.headers.host ?? host}`);
+    if (url.pathname === "/api/impact") return json(response, 200, payload);
+    if (url.pathname === "/api/reroot") {
+      const paths = url.searchParams.getAll("changed");
+      if (paths.length === 0) return json(response, 400, { ok: false, error: { code: "MISSING_CHANGED", message: "At least one changed path is required." } });
+      try {
+        payload = await buildServedImpact(root, paths);
+        return json(response, 200, payload);
+      } catch (error) {
+        return json(response, 500, { ok: false, error: { code: "GRAPH_SERVE_FAILED", message: error instanceof Error ? error.message : String(error) } });
+      }
+    }
+    if (VENDOR_FILES[url.pathname]) return asset(response, fileURLToPath(VENDOR_FILES[url.pathname]));
+    const relative6 = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
+    if (!["index.html", "app.css", "app.js"].includes(relative6)) {
+      response.writeHead(404);
+      return response.end("Not found");
+    }
+    return asset(response, join15(ASSET_ROOT, relative6));
+  });
+  await new Promise((resolve17, reject) => {
+    server.once("error", reject);
+    server.listen(port, host, resolve17);
+  });
+  const address = server.address();
+  const actualPort = typeof address === "object" && address ? address.port : port;
+  return { server, url: `http://${host}:${actualPort}`, payload };
+}
+
 // packages/cli/src/impact/format.mjs
 function formatCompactImpactGroup(name, group) {
   const items = group?.items ?? [];
@@ -5428,6 +5617,8 @@ function parseGraphOptions(argv) {
   const changed = [];
   let compact = false;
   let yml = false;
+  let host = "127.0.0.1";
+  let port = 0;
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === "--changed") {
       const next = argv[i + 1];
@@ -5437,19 +5628,36 @@ function parseGraphOptions(argv) {
       }
     } else if (argv[i] === "--compact") compact = true;
     else if (argv[i] === "--yml" || argv[i] === "--yaml") yml = true;
-    else filtered.push(argv[i]);
+    else if (argv[i] === "--host" && argv[i + 1] && !argv[i + 1].startsWith("-")) {
+      host = argv[i + 1];
+      i += 1;
+    } else if (argv[i] === "--port" && argv[i + 1] && !argv[i + 1].startsWith("-")) {
+      port = Number(argv[i + 1]);
+      i += 1;
+    } else filtered.push(argv[i]);
   }
   const options = parseCommon(filtered);
   options.changed = [...new Set(changed)];
   options.compact = compact;
   options.yml = yml;
+  options.host = host;
+  options.port = Number.isInteger(port) && port >= 0 && port <= 65535 ? port : NaN;
   return options;
 }
 async function runGraph(argv) {
   const sub = argv[0];
   const isImpact = sub === "impact";
-  if (!["impact", "communities"].includes(sub)) usage(sub ? `Unknown graph command: ${sub}` : "Missing graph command.", "graph");
+  const isServe = sub === "serve";
+  if (!["impact", "communities", "serve"].includes(sub)) usage(sub ? `Unknown graph command: ${sub}` : "Missing graph command.", "graph");
   const options = parseGraphOptions(argv.slice(1));
+  if (isServe && options.changed.length === 0) usage("Missing required option: --changed <path>.", "graph serve");
+  if (isServe && !Number.isInteger(options.port)) usage("Invalid --port. Use an integer from 0 through 65535.", "graph serve");
+  if (isServe) {
+    options.changed = [...new Set(options.changed.map((path) => canonicalizeChangedPath(options.root, path)).filter(Boolean))];
+    const running = await startImpactGraphServer({ root: options.root, changed: options.changed, host: options.host, port: options.port });
+    console.log(`graph serve: ${running.url}`);
+    return;
+  }
   if (isImpact && [options.json, options.compact, options.yml].filter(Boolean).length > 1) {
     const message = "Choose only one graph impact output mode: --compact, --json, or --yml/--yaml.";
     if (options.json) console.log(JSON.stringify({ ok: false, command: "graph impact", compact: options.compact || void 0, yml: options.yml || void 0, root: options.root, error: { code: "OUTPUT_MODE_CONFLICT", message }, usage: commandUsage("graph impact") }, null, 2));

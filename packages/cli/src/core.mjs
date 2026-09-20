@@ -28,6 +28,8 @@ export { addDeterministicSemanticEdges } from './graph/semantic.mjs';
 export { buildIndex, writeIndex, readIndex, getStatus, runIndex, runStatus, readFreshIndex, graphSummary } from './index/cache.mjs';
 export { runValidate } from './validate/run.mjs';
 export { buildImpactReport, buildCompactImpactReport } from './impact/report.mjs';
+export { buildImpactGraphPayload } from './graph-view/payload.mjs';
+export { buildServedImpact, startImpactGraphServer } from './graph-view/server.mjs';
 export { buildChangedFileProfile, MAX_VECTOR_PROFILE_CHARS, MAX_VECTOR_PROFILE_FILE_BYTES, MAX_VECTOR_PROFILE_METADATA_ITEMS } from './impact/vector-profile.mjs';
 export { buildVectorImpactOverlay, VECTOR_RELATION_WEIGHT } from './impact/vector-overlay.mjs';
 export { formatCompactImpactOutput, formatYmlGraphImpactError, formatYmlImpactOutput } from './impact/format.mjs';

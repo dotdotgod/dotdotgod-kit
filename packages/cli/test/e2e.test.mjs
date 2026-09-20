@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { startImpactGraphServer } from '../src/core.mjs';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -666,7 +667,7 @@ describe('dotdotgod CLI e2e', () => {
     assert(payload.errors.some((error) => error.code === 'TRACEABILITY_INVALID_FIELD' && /contracts\[0\]\.unknown/.test(error.message)));
   });
 
-  it('validates, indexes, reports status, and graph impact results', () => {
+  it('validates, indexes, reports status, and graph impact results', async () => {
     const root = createFixture();
 
     const validate = run(['validate', root, '--include-local-memory']);
@@ -713,9 +714,8 @@ describe('dotdotgod CLI e2e', () => {
     assert.deepEqual(impact.related, impact.impact.related);
     assert.equal(impact.related.every((node) => typeof node.impactScore === 'number' && node.scoreBreakdown), true);
     const changed = itemById(impact, 'file:packages/app/index.mjs');
-    assert.equal(rankOf(impact, changed.id), 0);
-    assert.equal(changed.impactScore, 100);
-    assert.equal(changed.scoreBreakdown.seed, 100);
+    assert.equal(changed, undefined);
+    assert.equal(rankOf(impact, 'file:packages/app/index.mjs'), -1);
     const spec = itemById(impact, 'file:docs/spec/APP.md');
     assert(spec);
     assert(spec.scoreBreakdown.connection.ppr > 0);
@@ -727,7 +727,8 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(contract.contractId, 'APP-ROUTING-001');
     assert.equal(contract.title, 'Routing policy contract');
     assert(impact.impact.groups.contracts.items.some((item) => item.id === contract.id));
-    assert(impact.related.some((item) => item.id === 'file:packages/app/index.mjs' && item.retrieval?.signals.includes('reason:changed-file')));
+    assert(!impact.related.some((item) => item.id === 'file:packages/app/index.mjs'));
+    assert(!Object.values(impact.impact.groups).some((group) => group.items.some((item) => item.id === 'file:packages/app/index.mjs')));
     assert(!impact.related.some((item) => item.id.startsWith('file:docs/archive/plan/')));
     assert.equal(typeof impact.impact.omittedRelated, 'number');
     assert.deepEqual(impact.changedFiles, ['packages/app/index.mjs']);
@@ -739,8 +740,8 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(multiImpact.changed, 'packages/app/index.mjs');
     assert.deepEqual(multiImpact.changedFiles, ['packages/app/index.mjs', 'packages/app/index.test.mjs']);
     assert.deepEqual(multiImpact.impact.changedFiles, multiImpact.changedFiles);
-    assert.deepEqual(multiImpact.related.slice(0, 2).map((item) => item.id), ['file:packages/app/index.mjs', 'file:packages/app/index.test.mjs']);
-    assert(multiImpact.related.slice(0, 2).every((item) => item.impactScore === 100));
+    assert(!multiImpact.related.some((item) => ['file:packages/app/index.mjs', 'file:packages/app/index.test.mjs'].includes(item.id)));
+    assert(!Object.values(multiImpact.impact.groups).some((group) => group.items.some((item) => ['file:packages/app/index.mjs', 'file:packages/app/index.test.mjs'].includes(item.id))));
     assert.equal(multiImpact.impact.perSeed.length, 2);
     assert(multiImpact.impact.perSeed.every((entry) => entry.related.length <= 5 && entry.related.every((item) => item.path !== entry.changed)));
 
@@ -761,6 +762,40 @@ describe('dotdotgod CLI e2e', () => {
     const yamlAlias = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--yaml']);
     assert.equal(yamlAlias.status, 0, yamlAlias.stderr || yamlAlias.stdout);
     assert.match(yamlAlias.stdout, /output: "yml"/);
+
+    const served = await startImpactGraphServer({ root, changed: ['packages/app/index.mjs'], port: 0 });
+    try {
+      const servedImpact = await fetch(`${served.url}/api/impact`).then((response) => response.json());
+      assert.equal(servedImpact.ok, true);
+      assert(servedImpact.graph.nodes.some((node) => node.id === 'file:packages/app/index.mjs' && node.seed === true));
+      assert(!servedImpact.impact.related.some((item) => item.id === 'file:packages/app/index.mjs'));
+      assert(servedImpact.graph.edges.some((edge) => !['implemented_by', 'verified_by', 'related_doc', 'design_decision'].includes(edge.relation)));
+      assert(servedImpact.graph.nodes.some((node) => node.type === 'heading' || node.id.startsWith('heading:')));
+      assert(servedImpact.graph.edges.some((edge) => edge.relation === 'contains_heading'));
+      assert(!servedImpact.graph.edges.some((edge) => edge.relation === 'vector_similarity'));
+      assert.equal(servedImpact.graph.diagnostics.connectedNodes, servedImpact.graph.nodes.length);
+      assert.equal(typeof servedImpact.graph.diagnostics.disconnectedNodesOmitted, 'number');
+      assert(servedImpact.graph.nodes.every((node) => Number.isInteger(node.depth) && node.depth >= 0));
+      assert(servedImpact.impact.related.every((item) => servedImpact.graph.nodes.some((node) => node.id === item.id)));
+      assert.match(await fetch(served.url).then((response) => response.text()), /dotdotgod structural graph/);
+      const appSource = await fetch(`${served.url}/app.js`).then((response) => response.text());
+      assert.match(appSource, /forceSimulation/);
+      assert.match(appSource, /const MORPH_DURATION = 380/);
+      assert.match(appSource, /dotdotgod:graph-motion/);
+      assert.match(appSource, /state\.motionMode === 'sequence'/);
+      assert.match(appSource, /requestAnimationFrame/);
+      assert.match(appSource, /prefers-reduced-motion/);
+      assert.match(appSource, /node\.depth/);
+      const pageSource = await fetch(served.url).then((response) => response.text());
+      assert.match(pageSource, /<option value="instant">Instant<\/option>/);
+      assert.match(pageSource, /<option value="sequence">One by one<\/option>/);
+      assert.match(pageSource, /id="skip-reveal"/);
+      const d3Bundle = await fetch(`${served.url}/vendor/d3.js`);
+      assert.equal(d3Bundle.status, 200);
+      assert.match(await d3Bundle.text(), /d3js\.org v7/);
+    } finally {
+      await new Promise((resolve) => served.server.close(resolve));
+    }
 
     const compactText = run(['graph', 'impact', root, '--changed', 'packages/app/index.mjs', '--changed', 'packages/app/index.test.mjs', '--compact']);
     assert.equal(compactText.status, 0, compactText.stderr || compactText.stdout);

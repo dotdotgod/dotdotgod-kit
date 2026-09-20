@@ -19,6 +19,12 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/root-connected-graph-morphing/`: restricted the explorer to structural nodes reachable from changed-file roots, added deterministic hop layers, and introduced bounded root-first morph transitions with reduced-motion support.
+- `plan/graph-integrity-and-cluster-ux/`: restored incremental/full graph parity, repaired heading relationships through cache migration, added isolate diagnostics, and replaced size-scaled cluster circles with fixed-size expandable aggregates.
+- `plan/shared-graph-headings-and-layout/`: restored shared headings and introduced packed, connected-structure-first graph layout while preserving local-memory exclusion.
+- `plan/shared-structural-impact-graph/`: expanded the explorer to the complete shared structural index while excluding local memory, headings, and request-local semantic edges.
+- `plan/traceability-only-impact-graph/`: restricted the explorer to shared configured traceability endpoints, excluded local memory and structural-only data, and intersected explorer evidence with graph membership while preserving standalone impact ranking.
+- `plan/impact-graph-depth-expansion/`: replaced the bounded graph explorer with a complete indexed graph, disconnected-component metadata, expandable visual clusters, and keyboard-accessible whole-node search without depth controls.
 - `plan/document-clarify-google-writing/`: supplemented the shared clarification skill using Technical Writing One, preserved meaning safeguards, and verified generated adapter parity.
 
 - `plan/shared-local-reference-validation/`: implemented shared-to-local Markdown and concrete inline-code reference errors, allowed layout examples, preserved traceability rules, and passed workspace verification.

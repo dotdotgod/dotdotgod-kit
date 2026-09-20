@@ -14,6 +14,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `CONTEXT_EXECUTION.md`: automated and manual coverage for local execution, FTS5 retrieval, MCP protocol, hooks, and adapter parity.
 - `COMMAND_GUIDANCE.md`: environment-aware query and project command guidance checks.
 - `IMPACT_RANKING_CONFIG.md`: fixed graph-impact scoring, non-blocking compatibility config, request-local vector overlay, compact output, and selection-noise checks.
+- `IMPACT_GRAPH_EXPLORER.md`: seed exclusion, bounded graph payload, local explorer lifecycle, interaction, accessibility, and fallback smoke coverage.
 - `GRAPH_IMPACT_QUALITY.md`: graph impact quality scoring script, metrics, and baseline comparison checks.
 - `CONFIG_COMMAND.md`: project-level config show/init command checks.
 - `CONFIG_TEMPLATES.md`: initialization template selection, isolation, shadowing, packaging, and fallback checks.
