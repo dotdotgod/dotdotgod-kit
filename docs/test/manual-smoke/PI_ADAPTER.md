@@ -68,8 +68,8 @@ Run `pi --help` and confirm dotdotgod contributes `--dd-plan` without contributi
 ## Pending Impact Checks
 
 1. In execution or normal mode, make a source/config edit.
-2. Confirm the impact status/widget appears and hidden context reminds the agent to run `/impact-check` or `dotdotgod_graph_impact`.
-3. Confirm `/impact-check` runs `dotdotgod graph impact --yml` for pending files plus current git unstaged, staged, and untracked source/config files, then clears the status/widget after success.
+2. Confirm neither an impact list widget nor a pending-count status appears. Ask the agent for pending impact checks; `dotdotgod_impact_status` must return current session records without clearing them. Hidden context still reminds the agent to run `/impact-check` or `dotdotgod_graph_impact`.
+3. Confirm `/impact-check` runs compact graph impact for pending files plus current git unstaged, staged, and untracked source/config files, then status query returns no pending records after success.
 4. Change a pending file again before impact and confirm a successful `/impact-check` clears the stale pending record for that path.
 5. Stage a source/config file without an unstaged diff and confirm `/impact-check` includes it.
 6. With pending impact checks, confirm `git commit`, `git push`, and package publish commands are blocked.

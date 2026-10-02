@@ -22,6 +22,18 @@ Verify fixed PPR-only connection scoring, memory policy, dynamic traceability re
 | Quality evidence | Evaluator reports legacy deltas, saturation, raw calibration fixture values, candidate independence, seed-order invariance, and a deterministic vector-overlay fixture. |
 | Vector safety | Profiles are byte/character/metadata bounded; secret-like, binary, generated, unsupported, symlink, and root-escaping sources contribute no body text; changed text/vectors are not persisted. |
 
+## Broken Reference Coverage
+
+`packages/cli/test/impact-references.test.mjs` covers missing Markdown/traceability files, same/cross-document broken anchors, encoded and duplicate-heading anchors, mixed valid/broken links, target deletion/restoration across compact cache shards, heading rename/restoration, and old-cache rebuilds.
+
+It also verifies request-local PPR exclusion without changing weights, consistent combined/per-seed/groups/compact filtering, slot refill, separate bounded warning counts, deleted-seed context, existing unindexed/directory targets, remote URLs, logical package resources, and uncertain filesystem access. CLI subprocess checks exercise default/compact/JSON/YAML warnings with warning-only success and no source repair; explorer HTTP checks enforce graph/list membership, no dangling edges, and accessible text-only warning rendering.
+
+Run the focused suite from any repository working directory:
+
+```bash
+node --test packages/cli/test/impact-references.test.mjs
+```
+
 ## Traceability-Key Cases
 
 - Default relations `implemented_by`, `verified_by`, `related_doc`, and `design_decision` retain weights `4`, `4`, `3`, and `3`.

@@ -36,6 +36,28 @@ Focused hardening suites cover:
 
 Pi typecheck and adapter package verification cover native imports, generated MCP/hook runtime drift, hook resources, manifests, and package allowlists. Pi keeps direct native context bindings, including the read-only doctor, rather than starting a context MCP child.
 
+## Pi Native And Codemode Workflows
+
+- `packages/pi/test/context-workflow.test.ts` exercises native tools through public Pi SDK sessions: small direct auto output, large auto/indexed retention and source search, file ingestion without raw bytes, source/scope isolation, no-match, discard, nonzero diagnostics, timeout, and policy-blocked calls.
+- `packages/pi/test/context-codemode.test.ts` runs real codemode scripts through the same SDK: tool discovery, JSON text parsing, execute/index/search chaining, bounded final projections, prepared model descriptions and prompt guidance, nonzero/no-match/malformed JSON distinctions, nested hook calls, policy rejection, and active-child abort.
+- `test/support/context-workflow.ts` uses an isolated resource loader, in-memory settings/session, and public faux stream. No live model, network, embeddings, or ambient user settings are needed. Fixture-only confirmed healing closes cached stores before temporary-root removal.
+- Development Pi SDK packages are pinned to `1.0.0`. Tests use public APIs, not a globally installed path. Existing extension tests remain required migration checks.
+- Deterministic streams prove workflow and guidance delivery, not actual model adoption. Evaluate real native/codemode tool choices separately with matched baseline/revised prompts, fixture answers, output-boundary measurements, and explicit model/settings records.
+
+```bash
+node --test --experimental-strip-types packages/pi/test/context-workflow.test.ts packages/pi/test/context-codemode.test.ts
+```
+
+## Opt-In Model Selection Evaluation
+
+`packages/pi/scripts/evaluate-context-tools.mjs` runs four disposable fixture tasks per invocation using the configured model and available credentials. It is not a CI test and may incur model usage charges. Supply `baseline|revised`, `native|codemode`, and repetition `1|2`; eight invocations cover 32 trials. It requires the ignored task baseline captures, uses isolated session settings, and never enables codemode globally. Raw local artifacts are written under `.dotdotgod/context/evaluation/`.
+
+Compare eligible command selection, source-scoped retrieval, fixture-answer correctness, and outer model-visible result bytes. Inner codemode results are not model-visible bytes. Baseline/revised trials use the same upgraded SDK and model; guidance is the changed condition. Small samples and sequential conditions do not establish guaranteed adoption, causality, token savings, or improved correctness. Failed retrieval must not be interpreted as absent diagnostics.
+
+## Failure Search Recovery
+
+`packages/context/test/search-recovery.test.mjs` checks middle failure retrieval and filtered, bounded `*` browsing. Public Pi tests check native/codemode calls and prompt guidance. See [recovery contract and cases](../spec/CONTEXT_SEARCH_RECOVERY.md); excerpts never prove absent diagnostics.
+
 ## Required Regression Cases
 
 Add or preserve focused cases for:

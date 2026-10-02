@@ -37,6 +37,10 @@ Keep these layers separate:
 
 Project Load can provide focus and paths to execution retrieval. Execution output does not automatically become graph evidence or maintained project truth.
 
+## Pi Codemode Boundary
+
+Development SDK pins Pi `1.0.0`; host peers/subagents remain unchanged. Codemode parses native JSON text. Descriptions/guidelines advise selection without routing or permission changes. Public SDK tests use real tools/QuickJS with a faux stream. See [Pi selection](../spec/PI_CONTEXT_TOOL_SELECTION.md).
+
 ## Storage
 
 The initial implementation uses Node's built-in `node:sqlite` `DatabaseSync` and FTS5. The database lives below `.dotdotgod/context/`, which is expected to remain ignored local state.
@@ -49,7 +53,9 @@ Provenance is additive metadata rather than a schema column. The indexing operat
 
 Format detection selects Markdown or JSON structural chunking; plain text retains overlapping character chunks. Structural paths apply one UTF-8 byte ceiling, preserve Markdown headings and fence metadata, and emit deterministic JSON key paths. Extractor and chunker versions make mixed legacy/new indexes observable without mandatory reindexing.
 
-Search keeps authorization filters at candidate selection time. Porter BM25 and bounded label/path lists use the same scope, session, and source predicates. Reciprocal-rank fusion combines the lists; title, path, and term-proximity signals rerank fused candidates with deterministic ties. Search responses add bounded ranking evidence and provenance without removing existing fields.
+Search keeps authorization filters at candidate selection time. Porter BM25 and bounded label/path lists use the same scope, session, and source predicates. Reciprocal-rank fusion combines the lists; title, path, and term-proximity signals rerank fused candidates with deterministic ties.
+
+Wildcard browsing bypasses keyword matching; see [search recovery](../spec/CONTEXT_SEARCH_RECOVERY.md).
 
 Transport adapters add a non-authoritative data notice. Retrieved content remains structured data with `instructionAuthority: "none"`; it is not promoted to system or developer instruction by the context runtime.
 

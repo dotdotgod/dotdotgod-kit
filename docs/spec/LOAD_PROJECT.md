@@ -62,6 +62,8 @@ Free-form Load arguments are query text, not mode switches. When arguments are p
 
 The query command searches shared documentation and excludes plan/archive bodies by default. Each result includes a path, heading, score, and bounded excerpt.
 
+On a failed Pi query, Load surfaces the CLI's `ok: false` string `error` from stdout JSON instead of hiding it behind an exit status. Process errors take precedence; malformed, oversized (over 64 KiB), or unsupported stdout falls back to stderr, then exit status. Each candidate diagnostic is capped at 1,000 characters plus a truncation marker; arbitrary stdout and structured error objects are not dumped. CLI candidate attempts and map-only fallback remain unchanged. `packages/pi/test/load-project-query.test.ts` covers these diagnostics and successful query consumption.
+
 ## Local Memory
 
 Local memory is not part of the shared documentation map:

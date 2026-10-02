@@ -1,7 +1,7 @@
 {
   "embedding": {
-    "provider": "ollama",
-    "model": "nomic-embed-text"
+    "provider": "local",
+    "model": "Xenova/multilingual-e5-small"
   },
   "memory": {
     "areas": [

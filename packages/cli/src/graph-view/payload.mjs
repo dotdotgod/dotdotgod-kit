@@ -45,7 +45,7 @@ function rootReachability(nodes, edges, seedIds) {
 }
 
 export function buildImpactGraphPayload(index, impact) {
-  const graph = index?.graph ?? { nodes: [], edges: [] };
+  const graph = impact.structuralGraph ?? index?.graph ?? { nodes: [], edges: [] };
   const config = index?.memoryConfig;
   const seedIds = new Set((impact.changedFiles ?? [impact.changed]).map((path) => `file:${path}`));
   const impactItems = new Map((impact.related ?? []).map((item) => [item.id, item]));

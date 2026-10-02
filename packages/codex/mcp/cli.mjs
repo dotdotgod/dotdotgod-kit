@@ -1718,7 +1718,7 @@ import { spawnSync } from "node:child_process";
 import { basename as basename3, extname as extname2, join as join5 } from "node:path";
 
 // packages/cli/src/index/constants.mjs
-var CACHE_VERSION = 14;
+var CACHE_VERSION = 15;
 var CACHE_DIR = ".dotdotgod";
 var MANIFEST_FILE = "manifest.json";
 
@@ -2094,8 +2094,16 @@ function addPackageResource(graph, fileId, packagePath, name, target, kind) {
   addNode(graph, id, "package_resource", { name, target, kind, path: packagePath });
   addEdge(graph, fileId, id, "includes_resource", { kind, confidence: "EXTRACTED" });
 }
+function addReferenceEvidence(graph, sourceId, reference) {
+  const source = graph.nodes.find((node2) => node2.id === sourceId);
+  if (!source) return;
+  source.references ??= [];
+  source.references.push(reference);
+}
 function addTraceabilityTarget(graph, sourceId, root, relation, targetPath, data = {}, config = defaultMemoryConfig()) {
-  if (!isLocalRelativeTraceabilityPath(targetPath) || !existsSync8(resolve5(root, targetPath))) return;
+  if (!isLocalRelativeTraceabilityPath(targetPath)) return;
+  addReferenceEvidence(graph, sourceId, { targetPath, href: targetPath, relation, data: { confidence: "CURATED_TRACEABILITY", ...data } });
+  if (!existsSync8(resolve5(root, targetPath))) return;
   const targetId = `file:${targetPath}`;
   addNode(graph, targetId, "file", fileNodeMetadata(targetPath, null, config));
   addEdge(graph, sourceId, targetId, relation, { confidence: "CURATED_TRACEABILITY", ...data });
@@ -2158,9 +2166,14 @@ function extractMarkdownGraph(root, file, graph, config = defaultMemoryConfig())
     addEdge(graph, fileId, id, "contains_heading", { confidence: "EXTRACTED" });
   }
   for (const { href, line } of extractLinks(content)) {
-    const pathPart = href.split("#")[0];
+    const hashIndex = href.indexOf("#");
+    const pathPart = hashIndex < 0 ? href : href.slice(0, hashIndex);
+    const anchor = hashIndex < 0 ? "" : href.slice(hashIndex + 1);
+    const targetPath = pathPart ? rel(root, resolve6(dirname4(file), pathPart)) : path;
+    const data = { line, confidence: "EXTRACTED" };
+    addReferenceEvidence(graph, fileId, { targetPath, href, anchor, relation: "links_to", data });
+    if (pathPart && isReadmeIndexPath(path)) addReferenceEvidence(graph, fileId, { targetPath, href, anchor, relation: "routes_to", data: { line, confidence: "CURATED_INDEX", sourceRole: "readme-index" } });
     if (!pathPart) continue;
-    const targetPath = rel(root, resolve6(dirname4(file), pathPart));
     const targetId = `file:${targetPath}`;
     addNode(graph, targetId, "file", fileNodeMetadata(targetPath, null, config));
     addEdge(graph, fileId, targetId, "links_to", { line, confidence: "EXTRACTED" });
@@ -3384,7 +3397,7 @@ function runMap(argv) {
 }
 
 // packages/cli/src/reference/resolve.mjs
-import { resolve as resolve15 } from "node:path";
+import { resolve as resolve16 } from "node:path";
 
 // node_modules/.pnpm/leiden-ts@0.1.0/node_modules/leiden-ts/dist/index.js
 var GraphValidationError = class extends Error {
@@ -4754,16 +4767,94 @@ function compareImpactItems(seeds) {
   };
 }
 
+// packages/cli/src/impact/references.mjs
+import { readFileSync as readFileSync13, statSync as statSync8 } from "node:fs";
+import { extname as extname5, resolve as resolve14 } from "node:path";
+var WARNING_LIMIT = 20;
+var edgeKey = (source, target, relation) => `${source}\0${target}\0${relation}`;
+function prepareImpactReferences(index, root, changedPaths) {
+  const graph = index?.graph ?? { nodes: [], edges: [] };
+  if (!root) return { index, warnings: { items: [], total: 0, omitted: 0 } };
+  const seeds = new Set(changedPaths.map((path) => `file:${path}`));
+  const checks = /* @__PURE__ */ new Map();
+  const inspect = (path) => {
+    if (checks.has(path)) return checks.get(path);
+    let result;
+    try {
+      const absolute = resolve14(root, path);
+      const stat = statSync8(absolute);
+      result = { status: "exists" };
+      if (stat.isFile() && extname5(absolute) === ".md") result.anchors = extractAnchors(readFileSync13(absolute, "utf8"));
+    } catch (error) {
+      result = { status: ["ENOENT", "ENOTDIR"].includes(error.code) ? "missing" : "unavailable" };
+    }
+    checks.set(path, result);
+    return result;
+  };
+  const references = graph.nodes.flatMap((node2) => (node2.references ?? []).map((reference) => ({ ...reference, source: node2.id, sourcePath: node2.path })));
+  const managedEdges = new Set(references.map((ref) => edgeKey(ref.source, `file:${ref.targetPath}`, ref.relation)));
+  const adjacency = /* @__PURE__ */ new Map();
+  const connect = (source, target) => {
+    if (!adjacency.has(source)) adjacency.set(source, /* @__PURE__ */ new Set());
+    if (!adjacency.has(target)) adjacency.set(target, /* @__PURE__ */ new Set());
+    adjacency.get(source).add(target);
+    adjacency.get(target).add(source);
+  };
+  for (const edge of graph.edges) connect(edge.source, edge.target);
+  for (const ref of references) connect(ref.source, `file:${ref.targetPath}`);
+  const reachable = new Set(seeds);
+  const queue = [...seeds];
+  for (let i = 0; i < queue.length; i += 1) for (const id of adjacency.get(queue[i]) ?? []) {
+    if (!reachable.has(id)) {
+      reachable.add(id);
+      queue.push(id);
+    }
+  }
+  const missing = new Set(graph.nodes.filter((node2) => node2.path && inspect(node2.path).status === "missing" && !seeds.has(node2.id)).map((node2) => node2.id));
+  const nodes = new Map(graph.nodes.filter((node2) => !missing.has(node2.id)).map((node2) => [node2.id, node2]));
+  const edges = graph.edges.filter((edge) => !missing.has(edge.source) && !missing.has(edge.target) && !managedEdges.has(edgeKey(edge.source, edge.target, edge.relation)));
+  for (const path of changedPaths) {
+    const id = `file:${path}`;
+    if (!nodes.has(id)) nodes.set(id, { id, type: "file", ...fileNodeMetadata(path, null, index?.memoryConfig) });
+  }
+  const warnings = /* @__PURE__ */ new Map();
+  for (const ref of references) {
+    if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(ref.href)) continue;
+    const targetId = `file:${ref.targetPath}`;
+    const check = inspect(ref.targetPath);
+    let reason = check.status === "missing" ? "MISSING_FILE" : check.status === "unavailable" ? "REFERENCE_UNAVAILABLE" : void 0;
+    if (!reason && ref.anchor && check.anchors) {
+      try {
+        if (!check.anchors.has(decodeURIComponent(ref.anchor))) reason = "BROKEN_ANCHOR";
+      } catch {
+        reason = "BROKEN_ANCHOR";
+      }
+    }
+    if (reason) {
+      if (reachable.has(ref.source) && !missing.has(ref.source)) {
+        const key = `${ref.source}\0${ref.href}\0${ref.data?.line ?? ""}\0${reason}`;
+        if (!warnings.has(key)) warnings.set(key, { source: ref.sourcePath ?? ref.source, target: ref.href, targetPath: ref.targetPath, relation: ref.relation, reason, ...ref.data?.line ? { line: ref.data.line } : {} });
+      }
+      if (reason !== "REFERENCE_UNAVAILABLE" && !(reason === "MISSING_FILE" && seeds.has(targetId))) continue;
+    }
+    if (missing.has(ref.source)) continue;
+    if (!nodes.has(targetId)) nodes.set(targetId, { id: targetId, type: "file", ...fileNodeMetadata(ref.targetPath, null, index?.memoryConfig) });
+    edges.push({ source: ref.source, target: targetId, relation: ref.relation, ...ref.data });
+  }
+  const items = [...warnings.values()].sort((a, b) => a.source.localeCompare(b.source) || (a.line ?? 0) - (b.line ?? 0) || a.target.localeCompare(b.target) || a.reason.localeCompare(b.reason));
+  return { index: { ...index, graph: { nodes: [...nodes.values()], edges: edges.filter((edge) => nodes.has(edge.source) && nodes.has(edge.target)) } }, warnings: { items: items.slice(0, WARNING_LIMIT), total: items.length, omitted: Math.max(0, items.length - WARNING_LIMIT) } };
+}
+
 // packages/cli/src/impact/vector-profile.mjs
-import { lstatSync, readFileSync as readFileSync13, realpathSync } from "node:fs";
-import { extname as extname5, relative as relative5, resolve as resolve14, sep } from "node:path";
+import { lstatSync, readFileSync as readFileSync14, realpathSync } from "node:fs";
+import { extname as extname6, relative as relative5, resolve as resolve15, sep } from "node:path";
 var MAX_VECTOR_PROFILE_FILE_BYTES = 64 * 1024;
 var MAX_VECTOR_PROFILE_CHARS = 4e3;
 var MAX_VECTOR_PROFILE_METADATA_ITEMS = 20;
 var TEXT_EXTENSIONS = /* @__PURE__ */ new Set([".c", ".cc", ".cpp", ".css", ".go", ".h", ".hpp", ".html", ".java", ".js", ".json", ".jsx", ".md", ".mjs", ".py", ".rb", ".rs", ".sh", ".ts", ".tsx", ".txt", ".yaml", ".yml"]);
 var GENERATED_SEGMENTS = /* @__PURE__ */ new Set([".dotdotgod", "build", "coverage", "dist", "node_modules"]);
 function insideRoot(root, absolute) {
-  const normalizedRoot = resolve14(root);
+  const normalizedRoot = resolve15(root);
   return absolute === normalizedRoot || absolute.startsWith(`${normalizedRoot}${sep}`);
 }
 function normalizeChangedPath(path) {
@@ -4774,8 +4865,8 @@ function normalizeChangedPath(path) {
 function canonicalizeChangedPath(root, path) {
   const normalized = normalizeChangedPath(path);
   if (!normalized) return null;
-  const rootAbsolute = resolve14(root);
-  const absolute = resolve14(rootAbsolute, normalized);
+  const rootAbsolute = resolve15(root);
+  const absolute = resolve15(rootAbsolute, normalized);
   if (!insideRoot(rootAbsolute, absolute)) return normalized;
   try {
     const canonicalRoot = realpathSync(rootAbsolute);
@@ -4804,17 +4895,17 @@ function graphMetadata(graph, seedId) {
   return values;
 }
 function safeTextPrefix(root, path) {
-  if (unsafeProfilePath(path) || !TEXT_EXTENSIONS.has(extname5(path).toLowerCase())) return "";
+  if (unsafeProfilePath(path) || !TEXT_EXTENSIONS.has(extname6(path).toLowerCase())) return "";
   try {
-    const absolute = resolve14(root, path);
+    const absolute = resolve15(root, path);
     if (!insideRoot(root, absolute)) return "";
     const canonicalAbsolute = realpathSync(absolute);
     if (!insideRoot(realpathSync(root), canonicalAbsolute)) return "";
     const canonicalPath = relative5(realpathSync(root), canonicalAbsolute).replaceAll("\\", "/");
-    if (canonicalPath !== path || unsafeProfilePath(canonicalPath) || !TEXT_EXTENSIONS.has(extname5(canonicalPath).toLowerCase())) return "";
+    if (canonicalPath !== path || unsafeProfilePath(canonicalPath) || !TEXT_EXTENSIONS.has(extname6(canonicalPath).toLowerCase())) return "";
     const stats = lstatSync(canonicalAbsolute);
     if (!stats.isFile() || stats.isSymbolicLink() || stats.size > MAX_VECTOR_PROFILE_FILE_BYTES) return "";
-    const buffer = readFileSync13(canonicalAbsolute);
+    const buffer = readFileSync14(canonicalAbsolute);
     if (buffer.includes(0)) return "";
     const text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
     return text.slice(0, MAX_VECTOR_PROFILE_CHARS);
@@ -4930,7 +5021,7 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
   const traceabilityWeights = traceabilityRelationWeights(config.traceability);
   policy.relationWeights = { ...policy.relationWeights, ...traceabilityWeights };
   const curatedRelations = new Set(Object.keys(traceabilityWeights));
-  const nodeById = new Map(graph.nodes.map((node2) => [node2.id, node2]));
+  const nodeById = new Map(graph.nodes.map(({ references, ...node2 }) => [node2.id, node2]));
   const seeds = changedPaths.map((path) => `file:${path}`);
   const seedSet = new Set(seeds);
   const maxRelated = Math.max(limits.related ?? 25, 0);
@@ -4969,7 +5060,8 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
     const scored = scoreImpactItem({ ...node2, reasons: reasonList, retrieval }, seedSet, changedPaths, policy, pprScores, config);
     return { ...node2, reasons: reasonList, hasCuratedEvidence, ...vectorEvidence.has(id) ? { vectorEvidence: vectorEvidence.get(id) } : {}, retrieval: { ...retrieval, signals: [.../* @__PURE__ */ new Set([...retrieval.signals ?? [], ...reasonSignals])] }, ...scored };
   }).sort(compareImpactItems(seeds));
-  const rankedRelated = relatedAll.filter((item) => !seedSet.has(item.id));
+  const excludedIds = new Set(limits.excludeRelatedIds ?? seeds);
+  const rankedRelated = relatedAll.filter((item) => !excludedIds.has(item.id));
   const related = selectImpactItems(rankedRelated, maxRelated, []);
   for (const item of related) {
     if (item.type === "file") {
@@ -4983,16 +5075,22 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
     else if (item.type === "event") addImpactItem(groups.events, item, limits.events ?? 10);
     else if (item.type === "package_resource") addImpactItem(groups.packageResources, item, limits.packageResources ?? 10);
   }
-  return { changed: changedPaths[0], changedFiles: changedPaths, semantic: { status: overlay.status ?? "disabled", ...limits.verboseSemantic ? { diagnostics: overlay.diagnostics } : {} }, ranking: { method: "weighted-personalized-pagerank+memory", configSource: index?.memoryConfig?.source ?? "default", connectionCap: policy.connectionCap, memoryCap: policy.memoryCap, pprReference: policy.ppr.reference }, related, groups, omittedRelated: Math.max(0, relatedAll.length - related.length) };
+  return { changed: changedPaths[0], changedFiles: changedPaths, semantic: { status: overlay.status ?? "disabled", ...limits.verboseSemantic ? { diagnostics: overlay.diagnostics } : {} }, ranking: { method: "weighted-personalized-pagerank+memory", configSource: index?.memoryConfig?.source ?? "default", connectionCap: policy.connectionCap, memoryCap: policy.memoryCap, pprReference: policy.ppr.reference }, related, groups, omittedRelated: Math.max(0, rankedRelated.length - related.length) };
 }
 function buildImpactReport(index, changedPaths, limits = {}) {
   const normalized = normalizeChangedPaths(changedPaths);
+  const prepared = prepareImpactReferences(index, limits.root, normalized);
+  index = prepared.index;
+  const validIds = new Set(index?.graph?.nodes.map((node2) => node2.id) ?? []);
+  if (limits.overlay) limits = { ...limits, overlay: { ...limits.overlay, edges: (limits.overlay.edges ?? []).filter((edge) => validIds.has(edge.target)) } };
   const aggregate2 = buildCombinedImpactReport(index, normalized, limits);
+  aggregate2.warnings = prepared.warnings;
+  Object.defineProperty(aggregate2, "structuralGraph", { value: index?.graph, enumerable: false });
   const perSeedLimit = limits.perSeed ?? 5;
   aggregate2.perSeed = normalized.map((changed) => {
     const seedId = `file:${changed}`;
     const seedOverlay = limits.overlay ? { ...limits.overlay, edges: (limits.overlay.edges ?? []).filter((edge) => edge.source === seedId) } : void 0;
-    const report = buildCombinedImpactReport(index, [changed], { ...limits, overlay: seedOverlay, related: Math.max(limits.related ?? 25, perSeedLimit) });
+    const report = buildCombinedImpactReport(index, [changed], { ...limits, excludeRelatedIds: normalized.map((path) => `file:${path}`), overlay: seedOverlay, related: Math.max(limits.related ?? 25, perSeedLimit) });
     const related = report.related.slice(0, perSeedLimit);
     return { changed, related, omittedRelated: Math.max(0, report.related.length - related.length) + report.omittedRelated };
   });
@@ -5023,11 +5121,11 @@ function buildCompactImpactReport(impact, limits = {}) {
   const groups = Object.fromEntries(groupNames.map((name) => [name, compactImpactGroup(impact.groups?.[name], groupLimit)]));
   const perSeed = (impact.perSeed ?? []).map((entry) => ({ changed: entry.changed, related: (entry.related ?? []).slice(0, limits.perSeed ?? 5).map(compactImpactItem), omittedRelated: entry.omittedRelated ?? 0 }));
   const top10 = (impact.related ?? []).filter((item) => !seedIds.has(item.id)).slice(0, 10);
-  return { changed: impact.changed, changedFiles, perSeed, semantic: impact.semantic, compact: true, ranking: { method: impact.ranking?.method, configSource: impact.ranking?.configSource, connectionCap: impact.ranking?.connectionCap, memoryCap: impact.ranking?.memoryCap, pprReference: impact.ranking?.pprReference }, related, groups, omittedRelated: (impact.omittedRelated ?? 0) + Math.max(0, (impact.related?.length ?? 0) - related.length), quality: { rawRelated: impact.related?.length ?? 0, compactRelated: related.length, semanticOnlyTop10: top10.filter((item) => isSemanticOnlyImpactItem(item)).length, curatedTop10: top10.filter((item) => hasCuratedImpactReason(item)).length, lowActionabilityTop10: top10.filter((item) => isLowActionabilityImpactItem(item)).length } };
+  return { changed: impact.changed, changedFiles, perSeed, warnings: impact.warnings, semantic: impact.semantic, compact: true, ranking: { method: impact.ranking?.method, configSource: impact.ranking?.configSource, connectionCap: impact.ranking?.connectionCap, memoryCap: impact.ranking?.memoryCap, pprReference: impact.ranking?.pprReference }, related, groups, omittedRelated: (impact.omittedRelated ?? 0) + Math.max(0, (impact.related?.length ?? 0) - related.length), quality: { rawRelated: impact.related?.length ?? 0, compactRelated: related.length, semanticOnlyTop10: top10.filter((item) => isSemanticOnlyImpactItem(item)).length, curatedTop10: top10.filter((item) => hasCuratedImpactReason(item)).length, lowActionabilityTop10: top10.filter((item) => isLowActionabilityImpactItem(item)).length } };
 }
 
 // packages/cli/src/reference/extract.mjs
-import { basename as basename8, dirname as dirname7, extname as extname6 } from "node:path";
+import { basename as basename8, dirname as dirname7, extname as extname7 } from "node:path";
 var DEFAULT_REFERENCE_LIMIT = 5;
 function extractBracketReferences(prompt = "") {
   const refs = [];
@@ -5072,7 +5170,7 @@ function isArchiveBodyPath(path = "", memoryConfig) {
 function aliasEntriesForPath(path = "") {
   const entries = [];
   const base = basename8(path);
-  const ext = extname6(base);
+  const ext = extname7(base);
   const stem = ext ? base.slice(0, -ext.length) : base;
   const withoutMd = path.replace(/\.md$/i, "");
   const parts = withoutMd.split("/").filter(Boolean);
@@ -5089,7 +5187,7 @@ function referenceCandidateAliases(node2) {
   const entries = [];
   if (node2.type === "file" && path) entries.push(...aliasEntriesForPath(path));
   if (node2.type === "heading") {
-    const fileStem = path ? basename8(path, extname6(path)) : "";
+    const fileStem = path ? basename8(path, extname7(path)) : "";
     const anchor = typeof node2.id === "string" && node2.id.includes("#") ? node2.id.split("#").pop() : "";
     for (const alias of [node2.title, anchor, fileStem && node2.title ? `${fileStem}#${node2.title}` : "", fileStem && anchor ? `${fileStem}#${anchor}` : "", path && node2.title ? `${path}#${node2.title}` : "", path && anchor ? `${path}#${anchor}` : ""]) entries.push({ alias, kind: "heading" });
   }
@@ -5208,7 +5306,7 @@ function parseReferenceOptions(argv, command) {
     else filtered.push(arg);
   }
   const operands = filtered.filter((arg) => !arg.startsWith("-"));
-  return { ...options, root: resolve15(operands[0] ?? "."), json: filtered.includes("--json"), rootArgv: operands.slice(1) };
+  return { ...options, root: resolve16(operands[0] ?? "."), json: filtered.includes("--json"), rootArgv: operands.slice(1) };
 }
 function formatReferenceOutput(payload) {
   const refreshNote = payload.metadata.cacheRefreshed ? ", refreshed" : "";
@@ -5248,8 +5346,8 @@ function runExpand(argv) {
   if (options.withImpact) refs = refs.map((item) => {
     const topPath = item.top?.path;
     if (!topPath) return item;
-    const impact = buildCompactImpactReport(buildImpactReport(index, topPath));
-    return { ...item, impact: { changed: topPath, related: impact.related, groups: impact.groups, omittedRelated: impact.omittedRelated, quality: impact.quality } };
+    const impact = buildCompactImpactReport(buildImpactReport(index, topPath, { root: options.root }));
+    return { ...item, impact: { changed: topPath, warnings: impact.warnings, related: impact.related, groups: impact.groups, omittedRelated: impact.omittedRelated, quality: impact.quality } };
   });
   const payload = { ok: status.ok, command: "expand", root: options.root, prompt, status, metadata, refs, omitted: refs.reduce((sum, item) => sum + item.omitted, 0) };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
@@ -5257,8 +5355,8 @@ function runExpand(argv) {
 }
 
 // packages/cli/src/commands/traceability.mjs
-import { existsSync as existsSync15, readFileSync as readFileSync14, readdirSync as readdirSync5, writeFileSync as writeFileSync6 } from "node:fs";
-import { join as join14, resolve as resolve16 } from "node:path";
+import { existsSync as existsSync15, readFileSync as readFileSync15, readdirSync as readdirSync5, writeFileSync as writeFileSync6 } from "node:fs";
+import { join as join14, resolve as resolve17 } from "node:path";
 function collectDocsMarkdownFiles(root) {
   const docs = join14(root, "docs");
   const files = [];
@@ -5290,7 +5388,7 @@ function parseTraceabilityOptions(argv) {
   }
   if (options.check && options.write) usage("Choose only one traceability links mode: --check or --write.", "traceability links");
   options.check = options.check || !options.write;
-  options.root = resolve16(options.root);
+  options.root = resolve17(options.root);
   return options;
 }
 function runTraceability(argv) {
@@ -5301,7 +5399,7 @@ function runTraceability(argv) {
   const errors = [...config.errors ?? []];
   for (const file of files) {
     if (options.write && errors.length > 0) break;
-    const content = readFileSync14(file, "utf8");
+    const content = readFileSync15(file, "utf8");
     for (const error of validateTraceabilityLinksRegion(content, options.root, file)) errors.push(error);
     const blocks = extractDotdotgodTraceabilityBlocks(content).filter((block) => !block.error);
     if (blocks.length === 0) continue;
@@ -5331,12 +5429,12 @@ function runTraceability(argv) {
 
 // packages/cli/src/graph-view/server.mjs
 import { createServer } from "node:http";
-import { readFileSync as readFileSync15 } from "node:fs";
-import { dirname as dirname8, extname as extname7, join as join15 } from "node:path";
+import { readFileSync as readFileSync16 } from "node:fs";
+import { dirname as dirname8, extname as extname8, join as join15 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // packages/cli/src/graph-view/payload.mjs
-function edgeKey(edge) {
+function edgeKey2(edge) {
   return `${edge.source}\0${edge.target}\0${edge.relation}`;
 }
 function labelForNode(node2) {
@@ -5377,7 +5475,7 @@ function rootReachability(nodes, edges, seedIds) {
   return { reachable, depthByNode, nearestRootByNode };
 }
 function buildImpactGraphPayload(index, impact) {
-  const graph = index?.graph ?? { nodes: [], edges: [] };
+  const graph = impact.structuralGraph ?? index?.graph ?? { nodes: [], edges: [] };
   const config = index?.memoryConfig;
   const seedIds = new Set((impact.changedFiles ?? [impact.changed]).map((path) => `file:${path}`));
   const impactItems = new Map((impact.related ?? []).map((item) => [item.id, item]));
@@ -5392,7 +5490,7 @@ function buildImpactGraphPayload(index, impact) {
   const edges = [];
   for (const edge of graph.edges ?? []) {
     if (!indexedNodes.has(edge.source) || !indexedNodes.has(edge.target)) continue;
-    const key = edgeKey(edge);
+    const key = edgeKey2(edge);
     if (seenEdges.has(key)) continue;
     seenEdges.add(key);
     edges.push({ source: edge.source, target: edge.target, relation: edge.relation, confidence: edge.confidence, weight: edge.weight ?? edge.relationWeight, score: edge.score, traceabilityKey: edge.traceabilityKey });
@@ -5457,8 +5555,8 @@ function json(response, status, value) {
 }
 function asset(response, file) {
   try {
-    const body = readFileSync15(file);
-    response.writeHead(200, { "content-type": CONTENT_TYPES[extname7(file)] ?? "application/octet-stream", "cache-control": "no-store" });
+    const body = readFileSync16(file);
+    response.writeHead(200, { "content-type": CONTENT_TYPES[extname8(file)] ?? "application/octet-stream", "cache-control": "no-store" });
     response.end(body);
   } catch {
     response.writeHead(404);
@@ -5469,7 +5567,7 @@ async function buildServedImpact(root, changedPaths) {
   const normalized = [...new Set(changedPaths.map((path) => canonicalizeChangedPath(root, path)).filter(Boolean))];
   const { status, index, metadata } = readFreshIndex(root);
   const overlay = await buildVectorImpactOverlay(root, index, normalized);
-  const impact = buildImpactReport(index, normalized, { overlay, verboseSemantic: false, related: 40 });
+  const impact = buildImpactReport(index, normalized, { root, overlay, verboseSemantic: false, related: 40 });
   const graph = buildImpactGraphPayload(index, impact);
   const graphIds = new Set(graph.nodes.map((node2) => node2.id));
   const explorerImpact = {
@@ -5501,9 +5599,9 @@ async function startImpactGraphServer({ root, changed, host = "127.0.0.1", port 
     }
     return asset(response, join15(ASSET_ROOT, relative6));
   });
-  await new Promise((resolve17, reject) => {
+  await new Promise((resolve18, reject) => {
     server.once("error", reject);
-    server.listen(port, host, resolve17);
+    server.listen(port, host, resolve18);
   });
   const address = server.address();
   const actualPort = typeof address === "object" && address ? address.port : port;
@@ -5511,6 +5609,13 @@ async function startImpactGraphServer({ root, changed, host = "127.0.0.1", port 
 }
 
 // packages/cli/src/impact/format.mjs
+function formatImpactWarnings(warnings) {
+  if (!warnings?.total) return [];
+  return [
+    `Reference warnings: ${warnings.total} (${warnings.omitted} omitted); broken references excluded from impact.`,
+    ...warnings.items.map((item) => `- ${item.source}${item.line ? `:${item.line}` : ""} -> ${item.target} [${item.reason}]${item.reason === "REFERENCE_UNAVAILABLE" ? " (access uncertain; not excluded)" : ""}`)
+  ];
+}
 function formatCompactImpactGroup(name, group) {
   const items = group?.items ?? [];
   if (items.length === 0) return [];
@@ -5526,6 +5631,7 @@ function formatCompactImpactGroup(name, group) {
 function formatCompactImpactOutput(payload, impact) {
   const refreshNote = payload.metadata.cacheRefreshed ? ", refreshed" : "";
   const lines = [`graph impact compact: ${impact.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${payload.status.status}${refreshNote} index)`, `changed files: ${(impact.changedFiles ?? [impact.changed]).join(", ")}`];
+  lines.push(...formatImpactWarnings(impact.warnings));
   for (const entry of impact.perSeed ?? []) lines.push(...formatCompactImpactGroup(`top for ${entry.changed}`, { items: entry.related }));
   for (const name of ["docs", "contracts", "tests", "files", "commands", "events", "packageResources", "symbols"]) lines.push(...formatCompactImpactGroup(name, impact.groups[name]));
   return lines.join("\n");
@@ -5589,6 +5695,13 @@ function formatYmlImpactOutput(payload, impact) {
   }
   lines.push("  groups:");
   for (const name of ["docs", "contracts", "tests", "files", "commands", "events", "packageResources", "symbols"]) lines.push(...formatYmlImpactGroup(name, impact.groups[name]));
+  lines.push("  warnings:");
+  lines.push(`    total: ${impact.warnings?.total ?? 0}`, `    omitted: ${impact.warnings?.omitted ?? 0}`, "    items:");
+  if (!impact.warnings?.items?.length) lines.push("      []");
+  else for (const item of impact.warnings.items) {
+    lines.push(`      - source: ${ymlScalar(item.source)}`, `        target: ${ymlScalar(item.target)}`, `        target_path: ${ymlScalar(item.targetPath)}`, `        relation: ${ymlScalar(item.relation)}`, `        reason: ${ymlScalar(item.reason)}`);
+    if (item.line) lines.push(`        line: ${item.line}`);
+  }
   lines.push("  recommended_actions:");
   lines.push('    - "review_related_docs"');
   lines.push('    - "run_related_tests"');
@@ -5692,14 +5805,14 @@ async function runGraph(argv) {
   if (isImpact) options.changed = [...new Set(options.changed.map((path) => canonicalizeChangedPath(options.root, path)).filter(Boolean))];
   const { status, index, metadata } = readFreshIndex(options.root);
   const overlay = isImpact ? await buildVectorImpactOverlay(options.root, index, options.changed) : void 0;
-  const rawImpact = isImpact ? buildImpactReport(index, options.changed, { overlay, verboseSemantic: options.json }) : void 0;
+  const rawImpact = isImpact ? buildImpactReport(index, options.changed, { root: options.root, overlay, verboseSemantic: options.json }) : void 0;
   const impact = isImpact && (options.compact || options.yml) ? buildCompactImpactReport(rawImpact) : rawImpact;
   const payload = isImpact ? { ok: status.ok, command: "graph impact", compact: options.compact || void 0, root: options.root, status, metadata, changed: options.changed[0], changedFiles: options.changed, related: impact.related, impact } : { ok: status.ok, command: "graph communities", root: options.root, status, metadata, graph: graphSummary(index), communities: buildCommunities(index) };
   const refreshNote = metadata.cacheRefreshed ? ", refreshed" : "";
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else if (isImpact && options.yml) console.log(formatYmlImpactOutput(payload, impact));
   else if (isImpact && options.compact) console.log(formatCompactImpactOutput(payload, impact));
-  else if (isImpact) console.log(`graph impact: ${payload.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${status.status}${refreshNote} index)`);
+  else if (isImpact) console.log([`graph impact: ${payload.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${status.status}${refreshNote} index)`, ...formatImpactWarnings(impact.warnings)].join("\n"));
   else console.log(`graph communities: ${payload.communities.communities.length}/${payload.communities.total} shown, ${payload.communities.omitted} omitted (${status.status}${refreshNote} index)`);
 }
 

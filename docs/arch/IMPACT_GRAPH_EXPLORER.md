@@ -9,7 +9,8 @@ The explorer renders the shared structural graph reachable from changed-file roo
 ```text
 changed paths
   -> fresh structural index + request-local semantic ranking overlay
-  -> buildImpactReport()
+  -> buildImpactReport() with root-aware request-local reference classification
+  -> filtered structural graph + bounded reference diagnostics
   -> filter local-memory nodes from indexed structure
   -> undirected structural reachability from changed-file roots
   -> root-connected payload with minimum-hop metadata
@@ -41,6 +42,16 @@ D3 computes coordinates, Graphology holds browser graph state, and Sigma renders
 A native reveal selector offers `Instant`, `By hop layer`, and `One by one`; its value persists in local storage. Layer mode stages breadth-first hop groups. Sequence mode uses deterministic depth-plus-ID ordering and compresses per-node delay as graph size increases so total waiting remains bounded. A visible skip action applies all final coordinates immediately.
 
 Nodes enter from their nearest root and morph toward final force-layout coordinates. Before re-rendering, current coordinates are retained so surviving nodes interpolate to their next positions during relation-filter or re-root updates. Animation uses `requestAnimationFrame` and existing browser/runtime dependencies. A generation token and frame cancellation prevent stale transitions from mutating newer graph state. `prefers-reduced-motion` resolves every mode to immediate final placement. Sigma/WebGL failure does not block ranked evidence or search.
+
+## Broken Reference Boundary
+
+Source file and contract nodes retain original reference evidence, including hrefs, fragments, relations, and available source lines. Compact graph shards preserve this source-owned metadata; cache schema 15 rebuilds older indexes. Traceability evidence is recorded even when shared extraction omits a missing target.
+
+`impact/references.mjs` memoizes filesystem and Markdown-anchor checks within a request. It reconstructs valid reference edges from source evidence, so incremental target deletion/restoration does not require rewriting referring documents. Existing Markdown anchor extraction and decoding determine fragment validity. Missing non-seed file nodes and invalid reference evidence cannot carry PPR; an invalid anchor does not invalidate its existing file or independent valid evidence.
+
+`buildImpactReport()` retains its request-local structural graph as a non-enumerable internal property consumed by payload construction. JSON does not duplicate the graph or expose raw source reference arrays in ranked items. Vector overlay edges whose targets were removed are filtered before scoring. Source documents and persisted graph membership are not destructively repaired.
+
+Warnings cover sources connected to seeds in the pre-filter structural graph, are deterministically deduplicated, and are capped at 20 with separate total/omitted counts. The explorer renders them using text nodes in an accessible, WebGL-independent evidence section. Unknown filesystem access is distinct from confirmed missing targets and retains its evidence.
 
 ## Integrity and Diagnostics
 

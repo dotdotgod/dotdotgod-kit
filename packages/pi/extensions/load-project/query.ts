@@ -2,6 +2,19 @@ import { spawnSync } from "node:child_process";
 import { buildDotdotgodCliCandidates } from "../shared/dotdotgod-cli.ts";
 import type { QueryRunResult } from "./prompt.ts";
 
+// Only surface the CLI's supported error field, never arbitrary stdout or JSON dumps.
+export function queryFailureDetail(result: { error?: { message: string }; stdout: string; stderr: string; status: number | null }): string {
+	let detail = result.error?.message;
+	if (!detail && result.stdout.length <= 64 * 1024) {
+		try {
+			const payload = JSON.parse(result.stdout);
+			if (payload?.ok === false && typeof payload.error === "string" && payload.error.trim()) detail = payload.error.trim();
+		} catch { /* Non-JSON failures use stderr or exit status below. */ }
+	}
+	detail ??= result.stderr.trim() || `exit ${String(result.status)}`;
+	return detail.length > 1000 ? `${detail.slice(0, 1000)}…` : detail;
+}
+
 export function runDotdotgodQuery(cwd: string, query: string): QueryRunResult {
 	const errors: string[] = [];
 	for (const candidate of buildDotdotgodCliCandidates(cwd, ["query", cwd, query, "--limit", "30", "--json"])) {
@@ -14,7 +27,7 @@ export function runDotdotgodQuery(cwd: string, query: string): QueryRunResult {
 				errors.push(`${candidate.label}: invalid JSON (${error instanceof Error ? error.message : String(error)})`);
 			}
 		} else {
-			const detail = result.error?.message ?? (result.stderr.trim() || `exit ${String(result.status)}`);
+			const detail = queryFailureDetail(result);
 			errors.push(`${candidate.label}: ${detail}`);
 		}
 	}

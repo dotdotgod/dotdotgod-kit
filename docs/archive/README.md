@@ -19,6 +19,10 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/context-tool-workflow/`: upgraded development Pi SDK to 1.0, verified native/codemode workflows, and improved selection guidance; 32 model trials showed higher execute adoption with one native correctness failure, documented in evaluation results.
+
+- `plan/broken-impact-references/`: added bounded missing-file and broken-heading-anchor warnings, filtered invalid impact evidence across CLI/explorer, and preserved incoming references to deleted seeds; automated verification passed, direct browser smoke remains manual.
+
 - `plan/root-connected-graph-morphing/`: restricted the explorer to structural nodes reachable from changed-file roots, added deterministic hop layers, and introduced bounded root-first morph transitions with reduced-motion support.
 - `plan/graph-integrity-and-cluster-ux/`: restored incremental/full graph parity, repaired heading relationships through cache migration, added isolate diagnostics, and replaced size-scaled cluster circles with fixed-size expandable aggregates.
 - `plan/shared-graph-headings-and-layout/`: restored shared headings and introduced packed, connected-structure-first graph layout while preserving local-memory exclusion.

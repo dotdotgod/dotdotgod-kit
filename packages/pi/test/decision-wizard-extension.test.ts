@@ -19,6 +19,8 @@ async function harness(run: (h: {
 	write: (text: string) => void;
 	messages: string[];
 	entries: Array<{ customType: string; data: unknown }>;
+	tools: Map<string, any>;
+	displays: Array<{ key: string; value: unknown }>;
 }) => Promise<void>) {
 	const cwd = mkdtempSync(join(tmpdir(), "wizard-extension-"));
 	mkdirSync(join(cwd, "docs/plan/task"), { recursive: true });
@@ -27,9 +29,11 @@ async function harness(run: (h: {
 	const messages: string[] = [];
 	const entries: Array<{ customType: string; data: unknown }> = [];
 	let activeTools: string[] = [];
+	const tools = new Map<string, any>();
+	const displays: Array<{ key: string; value: unknown }> = [];
 	install({
 		on: (name: string, handler: (event: never, ctx: ExtensionContext) => unknown) => handlers.set(name, handler),
-		registerFlag() {}, registerTool() {}, registerCommand() {}, registerShortcut() {},
+		registerFlag() {}, registerTool(tool: any) { tools.set(tool.name, tool); }, registerCommand() {}, registerShortcut() {},
 		getFlag: () => false,
 		getAllTools: () => ["read", "write", "edit", "bash"].map((name) => ({ name })),
 		getActiveTools: () => activeTools,
@@ -43,7 +47,7 @@ async function harness(run: (h: {
 	} as unknown as ExtensionAPI);
 	const ctx = {
 		cwd, mode: "rpc", hasUI: true,
-		ui: { theme: { fg: (_: string, text: string) => text }, notify() {}, setStatus() {}, setWidget() {}, select: async () => "Cancel" },
+		ui: { theme: { fg: (_: string, text: string) => text }, notify() {}, setStatus(key: string, value: unknown) { displays.push({ key, value }); }, setWidget(key: string, value: unknown) { displays.push({ key, value }); }, select: async () => "Cancel" },
 		sessionManager: { getEntries: () => [{ type: "custom", customType: "plan-mode", data: {
 			version: 2, mode: { mode: "planning", activeTools: ["read", "write"] },
 			artifact: { currentPlanPath: planPath, pendingReviewPath: planPath, suppressChoiceForInlineRequest: false, touchedPlanPaths: [] },
@@ -52,7 +56,7 @@ async function harness(run: (h: {
 	const emit = async (name: string, event: unknown = {}) => handlers.get(name)!(event as never, ctx);
 	try {
 		await emit("session_start");
-		await run({ ctx, emit, write: (text) => writeFileSync(join(cwd, planPath), text), messages, entries });
+		await run({ ctx, emit, write: (text) => writeFileSync(join(cwd, planPath), text), messages, entries, tools, displays });
 	} finally { rmSync(cwd, { recursive: true, force: true }); }
 }
 
@@ -94,6 +98,23 @@ it("rejects execute when the plan changes during execution review", () => harnes
 	ctx.ui.select = async (_title, choices) => { write(plan); return choices[0]; };
 	await emit("agent_end", { messages: [] });
 	assert.ok(!entries.some((entry) => entry.customType === "plan-mode-execute"));
+}));
+
+it("keeps pending impact UI hidden while exposing read-only session status", () => harness(async ({ ctx, emit, tools, displays }) => {
+	await emit("tool_result", { toolName: "write", input: { path: "src/example.ts" }, isError: false });
+	const tool = tools.get("dotdotgod_impact_status");
+	assert.ok(tool);
+	const result = await tool.execute("status", { limit: 1 });
+	assert.equal(result.details.count, 1);
+	assert.equal(result.details.pending[0].path, "src/example.ts");
+	result.details.pending[0].path = "mutated";
+	const again = await tool.execute("status", {});
+	assert.equal(again.details.pending[0].path, "src/example.ts");
+	assert.ok(displays.some((entry) => entry.key === "impact-check"));
+	assert.ok(displays.filter((entry) => entry.key === "impact-check").every((entry) => entry.value === undefined));
+	ctx.ui.confirm = async () => false;
+	const blocked = await emit("tool_call", { toolName: "bash", input: { command: "pnpm run verify" } }) as { block?: boolean };
+	assert.equal(blocked.block, true);
 }));
 
 it("invalidates pending answer batches on shutdown and branch changes", async () => {

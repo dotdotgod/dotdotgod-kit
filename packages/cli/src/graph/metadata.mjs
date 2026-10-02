@@ -62,8 +62,17 @@ export function addPackageResource(graph, fileId, packagePath, name, target, kin
   addEdge(graph, fileId, id, 'includes_resource', { kind, confidence: 'EXTRACTED' });
 }
 
+export function addReferenceEvidence(graph, sourceId, reference) {
+  const source = graph.nodes.find((node) => node.id === sourceId);
+  if (!source) return;
+  source.references ??= [];
+  source.references.push(reference);
+}
+
 function addTraceabilityTarget(graph, sourceId, root, relation, targetPath, data = {}, config = defaultMemoryConfig()) {
-  if (!isLocalRelativeTraceabilityPath(targetPath) || !existsSync(resolve(root, targetPath))) return;
+  if (!isLocalRelativeTraceabilityPath(targetPath)) return;
+  addReferenceEvidence(graph, sourceId, { targetPath, href: targetPath, relation, data: { confidence: 'CURATED_TRACEABILITY', ...data } });
+  if (!existsSync(resolve(root, targetPath))) return;
   const targetId = `file:${targetPath}`;
   addNode(graph, targetId, 'file', fileNodeMetadata(targetPath, null, config));
   addEdge(graph, sourceId, targetId, relation, { confidence: 'CURATED_TRACEABILITY', ...data });

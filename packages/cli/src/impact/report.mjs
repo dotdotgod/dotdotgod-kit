@@ -1,6 +1,7 @@
 import { DEFAULT_IMPACT_RANKING_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, defaultMemoryConfig, traceabilityRelationWeights } from '../memory/config.mjs';
 import { retrievalMetadataForPath } from '../graph/metadata.mjs';
 import { buildPersonalizedPageRank, compareImpactItems, docsArea, hasCuratedImpactReason, isLowActionabilityImpactItem, isSemanticOnlyImpactItem, isTestPath, scoreImpactItem } from './scoring.mjs';
+import { prepareImpactReferences } from './references.mjs';
 import { normalizeChangedPath } from './vector-profile.mjs';
 import { MAX_VECTOR_EVIDENCE_CHUNK_ID_CHARS, MAX_VECTOR_EVIDENCE_HEADING_CHARS } from './vector-overlay.mjs';
 
@@ -58,7 +59,7 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
   const traceabilityWeights = traceabilityRelationWeights(config.traceability);
   policy.relationWeights = { ...policy.relationWeights, ...traceabilityWeights };
   const curatedRelations = new Set(Object.keys(traceabilityWeights));
-  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const nodeById = new Map(graph.nodes.map(({ references, ...node }) => [node.id, node]));
   const seeds = changedPaths.map((path) => `file:${path}`);
   const seedSet = new Set(seeds);
   const maxRelated = Math.max(limits.related ?? 25, 0);
@@ -99,7 +100,8 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
     const scored = scoreImpactItem({ ...node, reasons: reasonList, retrieval }, seedSet, changedPaths, policy, pprScores, config);
     return { ...node, reasons: reasonList, hasCuratedEvidence, ...(vectorEvidence.has(id) ? { vectorEvidence: vectorEvidence.get(id) } : {}), retrieval: { ...retrieval, signals: [...new Set([...(retrieval.signals ?? []), ...reasonSignals])] }, ...scored };
   }).sort(compareImpactItems(seeds));
-  const rankedRelated = relatedAll.filter((item) => !seedSet.has(item.id));
+  const excludedIds = new Set(limits.excludeRelatedIds ?? seeds);
+  const rankedRelated = relatedAll.filter((item) => !excludedIds.has(item.id));
   const related = selectImpactItems(rankedRelated, maxRelated, []);
   for (const item of related) {
     if (item.type === 'file') {
@@ -113,17 +115,23 @@ function buildCombinedImpactReport(index, changedPaths, limits = {}) {
     else if (item.type === 'event') addImpactItem(groups.events, item, limits.events ?? 10);
     else if (item.type === 'package_resource') addImpactItem(groups.packageResources, item, limits.packageResources ?? 10);
   }
-  return { changed: changedPaths[0], changedFiles: changedPaths, semantic: { status: overlay.status ?? 'disabled', ...(limits.verboseSemantic ? { diagnostics: overlay.diagnostics } : {}) }, ranking: { method: 'weighted-personalized-pagerank+memory', configSource: index?.memoryConfig?.source ?? 'default', connectionCap: policy.connectionCap, memoryCap: policy.memoryCap, pprReference: policy.ppr.reference }, related, groups, omittedRelated: Math.max(0, relatedAll.length - related.length) };
+  return { changed: changedPaths[0], changedFiles: changedPaths, semantic: { status: overlay.status ?? 'disabled', ...(limits.verboseSemantic ? { diagnostics: overlay.diagnostics } : {}) }, ranking: { method: 'weighted-personalized-pagerank+memory', configSource: index?.memoryConfig?.source ?? 'default', connectionCap: policy.connectionCap, memoryCap: policy.memoryCap, pprReference: policy.ppr.reference }, related, groups, omittedRelated: Math.max(0, rankedRelated.length - related.length) };
 }
 
 export function buildImpactReport(index, changedPaths, limits = {}) {
   const normalized = normalizeChangedPaths(changedPaths);
+  const prepared = prepareImpactReferences(index, limits.root, normalized);
+  index = prepared.index;
+  const validIds = new Set(index?.graph?.nodes.map((node) => node.id) ?? []);
+  if (limits.overlay) limits = { ...limits, overlay: { ...limits.overlay, edges: (limits.overlay.edges ?? []).filter((edge) => validIds.has(edge.target)) } };
   const aggregate = buildCombinedImpactReport(index, normalized, limits);
+  aggregate.warnings = prepared.warnings;
+  Object.defineProperty(aggregate, 'structuralGraph', { value: index?.graph, enumerable: false });
   const perSeedLimit = limits.perSeed ?? 5;
   aggregate.perSeed = normalized.map((changed) => {
     const seedId = `file:${changed}`;
     const seedOverlay = limits.overlay ? { ...limits.overlay, edges: (limits.overlay.edges ?? []).filter((edge) => edge.source === seedId) } : undefined;
-    const report = buildCombinedImpactReport(index, [changed], { ...limits, overlay: seedOverlay, related: Math.max(limits.related ?? 25, perSeedLimit) });
+    const report = buildCombinedImpactReport(index, [changed], { ...limits, excludeRelatedIds: normalized.map((path) => `file:${path}`), overlay: seedOverlay, related: Math.max(limits.related ?? 25, perSeedLimit) });
     const related = report.related.slice(0, perSeedLimit);
     return { changed, related, omittedRelated: Math.max(0, report.related.length - related.length) + report.omittedRelated };
   });
@@ -158,5 +166,5 @@ export function buildCompactImpactReport(impact, limits = {}) {
   const groups = Object.fromEntries(groupNames.map((name) => [name, compactImpactGroup(impact.groups?.[name], groupLimit)]));
   const perSeed = (impact.perSeed ?? []).map((entry) => ({ changed: entry.changed, related: (entry.related ?? []).slice(0, limits.perSeed ?? 5).map(compactImpactItem), omittedRelated: entry.omittedRelated ?? 0 }));
   const top10 = (impact.related ?? []).filter((item) => !seedIds.has(item.id)).slice(0, 10);
-  return { changed: impact.changed, changedFiles, perSeed, semantic: impact.semantic, compact: true, ranking: { method: impact.ranking?.method, configSource: impact.ranking?.configSource, connectionCap: impact.ranking?.connectionCap, memoryCap: impact.ranking?.memoryCap, pprReference: impact.ranking?.pprReference }, related, groups, omittedRelated: (impact.omittedRelated ?? 0) + Math.max(0, (impact.related?.length ?? 0) - related.length), quality: { rawRelated: impact.related?.length ?? 0, compactRelated: related.length, semanticOnlyTop10: top10.filter((item) => isSemanticOnlyImpactItem(item)).length, curatedTop10: top10.filter((item) => hasCuratedImpactReason(item)).length, lowActionabilityTop10: top10.filter((item) => isLowActionabilityImpactItem(item)).length } };
+  return { changed: impact.changed, changedFiles, perSeed, warnings: impact.warnings, semantic: impact.semantic, compact: true, ranking: { method: impact.ranking?.method, configSource: impact.ranking?.configSource, connectionCap: impact.ranking?.connectionCap, memoryCap: impact.ranking?.memoryCap, pprReference: impact.ranking?.pprReference }, related, groups, omittedRelated: (impact.omittedRelated ?? 0) + Math.max(0, (impact.related?.length ?? 0) - related.length), quality: { rawRelated: impact.related?.length ?? 0, compactRelated: related.length, semanticOnlyTop10: top10.filter((item) => isSemanticOnlyImpactItem(item)).length, curatedTop10: top10.filter((item) => hasCuratedImpactReason(item)).length, lowActionabilityTop10: top10.filter((item) => isLowActionabilityImpactItem(item)).length } };
 }

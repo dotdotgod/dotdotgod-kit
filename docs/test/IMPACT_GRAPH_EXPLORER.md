@@ -17,6 +17,8 @@
 
 `packages/cli/test/e2e.test.mjs` verifies CLI output compatibility and server lifecycle. Served payload checks assert root-connected diagnostics, hop metadata, heading and structural relation inclusion, vector-edge exclusion, explorer evidence intersection, morph runtime hooks, and reduced-motion handling while standalone impact output remains unchanged.
 
+`packages/cli/test/impact-references.test.mjs` additionally verifies missing-file and anchor filtering, valid independent evidence, deleted roots, explorer API membership, rerooting, and accessible warning markup/text rendering. Browser interaction remains manual evidence, not claimed by the HTTP/asset checks.
+
 ## Manual Smoke
 
 Run:
@@ -26,6 +28,10 @@ node packages/cli/bin/dotdotgod.mjs graph serve . --changed packages/cli/src/imp
 ```
 
 Verify:
+
+- a temporary missing-file or broken-heading link produces a visible source/target/reason warning, without source-document repair;
+- warnings remain readable with WebGL disabled; rerooting updates or clears them;
+- invalid reference evidence cannot add graph/search/list entries, while independent valid links to the same existing file remain;
 
 - the changed file appears as a depth-zero root;
 - nodes grow outward in increasing structural-hop layers;

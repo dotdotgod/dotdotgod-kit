@@ -246,7 +246,13 @@ export class ContextStore {
     if (source) { filters.push('(s.id = ? OR s.label LIKE ?)'); filterParams.push(source, `%${source}%`); }
     const filterSql = filters.length ? ` AND ${filters.join(' AND ')}` : '';
     const select = 'SELECT c.source_id, c.ordinal, c.body, s.label, s.kind, s.scope, s.metadata';
-    const porterRows = this.db.prepare(`
+    const wildcard = String(query ?? '').trim() === '*';
+    const porterRows = wildcard ? this.db.prepare(`
+      ${select}, 0 AS rank
+      FROM chunks c JOIN sources s ON s.id = c.source_id
+      WHERE 1 = 1${filterSql}
+      ORDER BY s.created_at DESC, s.id, c.ordinal LIMIT ?
+    `).all(...filterParams, candidateLimit) : this.db.prepare(`
       ${select}, bm25(chunks) AS rank
       FROM chunks c JOIN sources s ON s.id = c.source_id
       WHERE chunks MATCH ?${filterSql}
@@ -265,7 +271,7 @@ export class ContextStore {
     `).all(...labelParams, ...filterParams, candidateLimit);
     const typoWindow = Math.min(500, candidateLimit * 5);
     const typoHalf = Math.max(1, Math.floor(typoWindow / 2));
-    const trigramRows = this.db.prepare(`
+    const trigramRows = wildcard ? [] : this.db.prepare(`
       SELECT * FROM (
         SELECT ${select.replace('SELECT ', '')}, 0 AS rank
         FROM chunks c JOIN sources s ON s.id = c.source_id
@@ -290,7 +296,7 @@ export class ContextStore {
       return { sourceId: row.source_id, ordinal: Number(row.ordinal), body: row.body, label: row.label, kind: row.kind, scope: row.scope, rank: row.rank, metadata: readProvenanceMetadata(storedMetadata) };
     };
     const fused = reciprocalRankFusion([
-      { name: 'porter-bm25', candidates: porterRows.map(toCandidate) },
+      { name: wildcard ? 'bounded-browse' : 'porter-bm25', candidates: porterRows.map(toCandidate) },
       { name: 'label-path', candidates: labelRows.map(toCandidate) },
       { name: 'trigram-v1', candidates: trigramRows.map(toCandidate) },
     ], { limit: candidateLimit });
@@ -303,7 +309,7 @@ export class ContextStore {
         scope: row.scope,
         ordinal: row.ordinal,
         rank: row.rank,
-        text: excerpt(row.body, query),
+        text: excerpt(row.body, wildcard ? '' : query),
         metadata: row.metadata,
         trust: row.metadata.trust,
         sourceType: row.metadata.sourceType,

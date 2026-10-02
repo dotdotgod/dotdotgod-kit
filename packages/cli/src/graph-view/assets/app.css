@@ -109,3 +109,7 @@ h3 { font-size: 1rem; }
   .evidence { min-height: 70vh; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+
+.reference-warnings { padding: 12px; border: 1px solid var(--border, #ddd); border-radius: 8px; }
+.reference-warnings h3 { margin: 0; }
+.reference-warnings ul { padding-left: 18px; overflow-wrap: anywhere; }

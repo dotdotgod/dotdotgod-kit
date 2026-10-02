@@ -36,7 +36,7 @@ export async function buildServedImpact(root, changedPaths) {
   const normalized = [...new Set(changedPaths.map((path) => canonicalizeChangedPath(root, path)).filter(Boolean))];
   const { status, index, metadata } = readFreshIndex(root);
   const overlay = await buildVectorImpactOverlay(root, index, normalized);
-  const impact = buildImpactReport(index, normalized, { overlay, verboseSemantic: false, related: 40 });
+  const impact = buildImpactReport(index, normalized, { root, overlay, verboseSemantic: false, related: 40 });
   const graph = buildImpactGraphPayload(index, impact);
   const graphIds = new Set(graph.nodes.map((node) => node.id));
   const explorerImpact = {

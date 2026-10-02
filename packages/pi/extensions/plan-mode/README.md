@@ -63,6 +63,7 @@ Allowed:
 - Plan/archive markdown updates under `docs/plan/` and `docs/archive/`: `edit`, `write`
 - Directory names under `docs/` must be kebab-case; markdown file names must be UPPER_SNAKE_CASE.md
 - Read-only bash commands: `rg`, `git status`, `git diff`, `yarn info`, `npm view`, etc.
+- Persistent impact file-list and pending-count displays are disabled. Ask the agent for the pending list through read-only `dotdotgod_impact_status`; this returns bounded session records without running checks or clearing gates. Hidden reminders and execution guards remain active.
 - `dotdotgod_graph_impact` is available as an LLM-callable tool for changed-file impact checks and returns compact text summaries by default. In the Pi TUI, outputs longer than 10 lines collapse to the first 10 lines with a remaining-line count and expand via the tool-output keybinding.
 - Plan/archive housekeeping bash commands when every affected path stays under `docs/plan/` or `docs/archive/`: `mkdir -p docs/archive/plan`, `mv docs/plan/<task-slug> docs/archive/plan/<task-slug>`, `rm -r docs/plan/<task-slug>`
 - Web/document research: `web_search`, `code_search`, `fetch_content`, `get_search_content`

@@ -141,6 +141,18 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   });
 
   pi.registerTool({
+    name: "dotdotgod_impact_status",
+    label: "dotdotgod impact status",
+    description: "Read the current Pi session's pending impact checks without running or clearing them. Use when asked to show the pending list; this is not a git worktree status query.",
+    parameters: Type.Object({ limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })) }),
+    async execute(_toolCallId, params) {
+      const pending = gates.pendingImpactItems.slice(0, params.limit ?? 50).map((item) => ({ ...item }));
+      const details = { ok: true, count: gates.pendingImpactItems.length, pending, truncated: pending.length < gates.pendingImpactItems.length };
+      return { content: [{ type: "text", text: JSON.stringify(details) }], details };
+    },
+  });
+
+  pi.registerTool({
     name: "dotdotgod_graph_impact",
     label: "dotdotgod graph impact",
     description:
@@ -221,23 +233,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   }
 
   function updateImpactStatus(ctx: ExtensionContext): void {
-    if (gates.pendingImpactItems.length === 0) {
-      ctx.ui.setStatus("impact-check", undefined);
-      ctx.ui.setWidget("impact-check", undefined);
-      return;
-    }
-    ctx.ui.setStatus(
-      "impact-check",
-      ctx.ui.theme.fg("warning", `🔎 ${gates.pendingImpactItems.length}`),
-    );
-    ctx.ui.setWidget("impact-check", [
-      "dotdotgod impact check pending:",
-      ...gates.pendingImpactItems.slice(0, 5).map((item) => `- ${item.path}`),
-      ...(gates.pendingImpactItems.length > 5
-        ? [`- ... ${gates.pendingImpactItems.length - 5} more`]
-        : []),
-      "Run /impact-check or dotdotgod_graph_impact before committing.",
-    ]);
+    // Clear any legacy display, including after session restoration.
+    ctx.ui.setStatus("impact-check", undefined);
+    ctx.ui.setWidget("impact-check", undefined);
   }
 
   function trackPendingImpact(

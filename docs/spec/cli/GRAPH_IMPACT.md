@@ -34,6 +34,18 @@
 - The same missing argument with `--yml` MUST return structured `ok: false` YML.
 - Incompatible graph impact output modes such as `--compact --json` or `--compact --yml` MUST exit `2` with `OUTPUT_MODE_CONFLICT`.
 
+## Broken Reference Warnings
+
+- Impact MUST classify confirmed missing local files and broken same/cross-document Markdown heading anchors before PPR and result limits. Anchor decoding and duplicate-heading rules MUST match the existing Markdown validator.
+- Missing non-seed files and their incident edges MUST be excluded from the request-local graph. Incoming references to explicit deleted seeds MUST remain so referring documents stay reviewable in combined/per-seed results and explorer membership; missing-file warnings MUST still explain those references. Broken anchors MUST exclude only invalid reference evidence; independently valid links or other structural evidence to an existing file MUST remain.
+- Combined, per-seed, grouped, and compact lists MUST share validity decisions and refill available slots with valid candidates. Explicit changed-file seeds MUST remain context, including deleted files, and MUST NOT count as ordinary omitted related results.
+- Diagnostics MUST preserve source, target, target path, relation, reason (`MISSING_FILE`, `BROKEN_ANCHOR`, or `REFERENCE_UNAVAILABLE`), and source line when available. README route duplicates MUST not duplicate ordinary-link warnings.
+- `impact.warnings` MUST expose deterministically ordered `items` (at most 20), `total`, and `omitted`, separately from ranking truncation counts. Warnings MUST cover sources structurally connected to changed roots in the pre-filter graph, including broken-reference evidence.
+- Default/compact output MUST explain exclusions; JSON and YAML MUST expose structured warnings. Broken references alone MUST NOT fail the command or rewrite source documents. Uncertain filesystem access MUST warn without claiming a confirmed broken reference or excluding its evidence.
+- Existing unindexed targets and directories MUST remain valid. Remote URLs MUST NOT be checked; logical commands, dependencies, and package glob declarations MUST NOT be interpreted as missing files.
+- The explorer MUST use the same filtered structural graph for membership, search, and ranked evidence, and MUST show a bounded accessible warning summary even without WebGL. Missing changed seeds MUST remain dedicated roots when shared-scope filtering allows them.
+- Original references MUST remain source-owned index evidence so target deletion/restoration or heading changes can be reclassified without editing an unchanged referring document. Old caches without this evidence MUST rebuild.
+
 ## Traceability
 
 
@@ -47,6 +59,9 @@
   - [packages/cli/src/core.mjs](../../../packages/cli/src/core.mjs)
   - [packages/cli/src/commands/graph.mjs](../../../packages/cli/src/commands/graph.mjs)
   - [packages/cli/src/impact/report.mjs](../../../packages/cli/src/impact/report.mjs)
+  - [packages/cli/src/impact/references.mjs](../../../packages/cli/src/impact/references.mjs)
+  - [packages/cli/src/graph/extract.mjs](../../../packages/cli/src/graph/extract.mjs)
+  - [packages/cli/src/graph/metadata.mjs](../../../packages/cli/src/graph/metadata.mjs)
   - [packages/cli/src/impact/scoring.mjs](../../../packages/cli/src/impact/scoring.mjs)
   - [packages/cli/src/impact/format.mjs](../../../packages/cli/src/impact/format.mjs)
   - [packages/cli/src/impact/vector-overlay.mjs](../../../packages/cli/src/impact/vector-overlay.mjs)
@@ -56,6 +71,7 @@
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../../packages/cli/test/e2e.test.mjs)
+  - [packages/cli/test/impact-references.test.mjs](../../../packages/cli/test/impact-references.test.mjs)
   - [docs/test/CLI_INTERFACE.md](../../test/CLI_INTERFACE.md)
   - [docs/test/IMPACT_RANKING_CONFIG.md](../../test/IMPACT_RANKING_CONFIG.md)
 - Related docs:
@@ -66,5 +82,5 @@
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/commands/graph.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/format.mjs","packages/cli/src/impact/vector-overlay.mjs","packages/cli/src/impact/vector-profile.mjs","packages/cli/src/graph-view/payload.mjs","packages/cli/src/graph-view/server.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CLI_INTERFACE.md","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/spec/IMPACT_RANKING_CONFIG.md","docs/test/README.md","packages/cli/README.md"],"designDecisions":[]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/commands/graph.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/references.mjs","packages/cli/src/graph/extract.mjs","packages/cli/src/graph/metadata.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/format.mjs","packages/cli/src/impact/vector-overlay.mjs","packages/cli/src/impact/vector-profile.mjs","packages/cli/src/graph-view/payload.mjs","packages/cli/src/graph-view/server.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/cli/test/impact-references.test.mjs","docs/test/CLI_INTERFACE.md","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/spec/IMPACT_RANKING_CONFIG.md","docs/test/README.md","packages/cli/README.md"],"designDecisions":[]}
 ```

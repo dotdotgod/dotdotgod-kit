@@ -4,7 +4,7 @@ import { rel } from '../common/paths.mjs';
 import { extractLinks } from '../docs/markdown.mjs';
 import { defaultMemoryConfig } from '../memory/config.mjs';
 import { addEdge, addNode } from './store.mjs';
-import { addMemoryAreaMembership, addPackageResource, addTraceabilityGraph, fileNodeMetadata, headingId, isReadmeIndexPath } from './metadata.mjs';
+import { addMemoryAreaMembership, addPackageResource, addReferenceEvidence, addTraceabilityGraph, fileNodeMetadata, headingId, isReadmeIndexPath } from './metadata.mjs';
 
 function extractMarkdownGraph(root, file, graph, config = defaultMemoryConfig()) {
   const path = rel(root, file);
@@ -19,9 +19,14 @@ function extractMarkdownGraph(root, file, graph, config = defaultMemoryConfig())
     addEdge(graph, fileId, id, 'contains_heading', { confidence: 'EXTRACTED' });
   }
   for (const { href, line } of extractLinks(content)) {
-    const pathPart = href.split('#')[0];
+    const hashIndex = href.indexOf('#');
+    const pathPart = hashIndex < 0 ? href : href.slice(0, hashIndex);
+    const anchor = hashIndex < 0 ? '' : href.slice(hashIndex + 1);
+    const targetPath = pathPart ? rel(root, resolve(dirname(file), pathPart)) : path;
+    const data = { line, confidence: 'EXTRACTED' };
+    addReferenceEvidence(graph, fileId, { targetPath, href, anchor, relation: 'links_to', data });
+    if (pathPart && isReadmeIndexPath(path)) addReferenceEvidence(graph, fileId, { targetPath, href, anchor, relation: 'routes_to', data: { line, confidence: 'CURATED_INDEX', sourceRole: 'readme-index' } });
     if (!pathPart) continue;
-    const targetPath = rel(root, resolve(dirname(file), pathPart));
     const targetId = `file:${targetPath}`;
     addNode(graph, targetId, 'file', fileNodeMetadata(targetPath, null, config));
     addEdge(graph, fileId, targetId, 'links_to', { line, confidence: 'EXTRACTED' });

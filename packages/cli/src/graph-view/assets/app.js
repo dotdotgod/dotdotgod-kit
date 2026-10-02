@@ -222,6 +222,15 @@
     const omitted = payload.graph.diagnostics?.disconnectedNodesOmitted ?? 0;
     const depth = payload.graph.diagnostics?.maximumDepth ?? 0;
     elements.summary.textContent = `${payload.graph.nodes.length} connected nodes · ${payload.graph.edges.length} relations · ${depth} hops · ${omitted} disconnected omitted`;
+    const warnings = payload.impact.warnings ?? { total: 0, omitted: 0, items: [] };
+    document.querySelector('#reference-warnings').hidden = warnings.total === 0;
+    document.querySelector('#reference-warning-summary').textContent = `${warnings.total} reference warning(s), ${warnings.omitted} omitted. Broken references are excluded; uncertain access is not proof of breakage.`;
+    const warningList = document.querySelector('#reference-warning-list');
+    warningList.replaceChildren(...warnings.items.map((warning) => {
+      const item = document.createElement('li');
+      item.textContent = `${warning.source}${warning.line ? `:${warning.line}` : ''} → ${warning.target} [${warning.reason}]`;
+      return item;
+    }));
     renderFilters(payload.graph.edges); renderGraph(); renderList(); renderSearch();
     if (state.selected && payload.graph.nodes.some((node) => node.id === state.selected)) renderInspection(payload.graph.nodes.find((node) => node.id === state.selected));
     else if (payload.graph.nodes.length === 0) elements.inspection.innerHTML = '<h3>No shared structural nodes</h3><p>Add indexable shared files or relations to populate this graph. Local memory and headings are intentionally hidden.</p>';

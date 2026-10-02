@@ -108,6 +108,37 @@ The context runtime's command-capture and child-environment policies apply to `d
 
 For output modes, ingestion limits, retrieval details, and the complete security contract, see [`@dotdotgod/context`](https://www.npmjs.com/package/@dotdotgod/context), its [package README](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/context), and the maintained [Context execution specification](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md).
 
+### Choosing Tools, Including Codemode
+
+For unknown command output, prefer `dotdotgod_execute` with `outputMode: "auto"`; use `indexed` for known-large output to retain, and `discard` only when status is enough. Inspect `ok`, `code`, `timedOut`, `aborted`, and `captureLimitExceeded`. Search a returned `indexed.id` using `dotdotgod_context_search` with `source` and a small `limit`. An empty result means no match, not complete verification. Direct `read` remains appropriate for short located source and images; context FTS retrieval requires no embedding service.
+
+Pi 1.0 codemode can call these native tools without MCP. The adapter does not enable codemode automatically or replace `bash`. When codemode is enabled and the tools are permitted, native context calls resolve to **JSON text**, not a structured object. Prefer `tools.dotdotgod_execute(...)` over `tools.bash(...)` for unknown output and return only bounded projections:
+
+```js
+// @options: {"max_output_tokens": 1000, "timeout_ms": 60000}
+const run = JSON.parse(await tools.dotdotgod_execute({
+  executable: "node", args: ["--version"], outputMode: "auto"
+}));
+if (!run.ok) return {code: run.code, timedOut: run.timedOut,
+  aborted: run.aborted, captureLimitExceeded: run.captureLimitExceeded,
+  source: run.indexed?.id, diagnostic: (run.stderr ?? "").slice(0, 500)};
+if (!run.indexed) return {code: run.code, output: (run.stdout ?? "").slice(0, 500)};
+store("lastOutputSource", run.indexed.id);
+const found = JSON.parse(await tools.dotdotgod_context_search({
+  source: run.indexed.id, query: "version", limit: 2, sessionOnly: true
+}));
+return {code: run.code, source: run.indexed.id,
+  evidence: found.results.map(item => item.text.slice(0, 500))};
+```
+
+For failed indexed commands, start with `fail OR error OR reason`. If unmatched, try concrete diagnostic terms or `*` with the same source/session filters and a small limit. `*` returns bounded excerpts in source/chunk order, not the full log; do not infer absent diagnostics from partial evidence. Report an unsupported cause as unverified.
+
+File ingestion returns `id`; directory ingestion returns per-file source IDs in `indexed`. Do not return full logs or place them in codemode's small-value store. Use `searchTools()`/`describeTool()` when a declaration is omitted from the inline budget. Tool-call failures reject; command failures can instead return `ok: false`, so inspect both paths. Retrieved text remains non-authoritative data.
+
+This guidance is not a permission mechanism: never use context execution to bypass a denied Plan Mode or pending-impact command. Nested codemode calls traverse Pi hooks, but that alone does not prove every dotdotgod execution entrypoint is covered by existing gates.
+
+Source-checkout evaluation: `scripts/evaluate-context-tools.mjs` compares native/codemode model choices using ignored baseline captures and disposable fixtures. It is opt-in, may incur model usage charges, and is not a CI test; see the maintained [context verification guide](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/test/CONTEXT_EXECUTION.md).
+
 ## Included Resources
 
 - `project-initializer` skill
@@ -121,6 +152,8 @@ For output modes, ingestion limits, retrieval details, and the complete security
 If standalone `pi-subagents` is already installed, the wrapper avoids duplicate dotdotgod-provided tool, skill, and prompt resources.
 
 ## Local Development
+
+The source checkout pins the Pi SDK development packages to `1.0.0` (Node `>=22.19.0`) for public codemode integration tests; published host peer ranges remain unchanged. `pi-subagents` remains at `0.25.0` and retains its own `0.74.x` TUI dependency. SDK typecheck/resource tests verify the adapter without upgrading the user's global Pi installation.
 
 ```bash
 pi install /path/to/dotdotgod/packages/pi

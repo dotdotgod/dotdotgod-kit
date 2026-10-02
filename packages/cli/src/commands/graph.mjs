@@ -5,7 +5,7 @@ import { buildCompactImpactReport, buildImpactReport } from '../impact/report.mj
 import { buildVectorImpactOverlay } from '../impact/vector-overlay.mjs';
 import { canonicalizeChangedPath } from '../impact/vector-profile.mjs';
 import { startImpactGraphServer } from '../graph-view/server.mjs';
-import { formatCompactImpactOutput, formatYmlGraphImpactError, formatYmlImpactOutput } from '../impact/format.mjs';
+import { formatCompactImpactOutput, formatImpactWarnings, formatYmlGraphImpactError, formatYmlImpactOutput } from '../impact/format.mjs';
 
 const MAX_CHANGED_FILES = 20;
 
@@ -86,7 +86,7 @@ export async function runGraph(argv) {
   if (isImpact) options.changed = [...new Set(options.changed.map((path) => canonicalizeChangedPath(options.root, path)).filter(Boolean))];
   const { status, index, metadata } = readFreshIndex(options.root);
   const overlay = isImpact ? await buildVectorImpactOverlay(options.root, index, options.changed) : undefined;
-  const rawImpact = isImpact ? buildImpactReport(index, options.changed, { overlay, verboseSemantic: options.json }) : undefined;
+  const rawImpact = isImpact ? buildImpactReport(index, options.changed, { root: options.root, overlay, verboseSemantic: options.json }) : undefined;
   const impact = isImpact && (options.compact || options.yml) ? buildCompactImpactReport(rawImpact) : rawImpact;
   const payload = isImpact
     ? { ok: status.ok, command: 'graph impact', compact: options.compact || undefined, root: options.root, status, metadata, changed: options.changed[0], changedFiles: options.changed, related: impact.related, impact }
@@ -95,6 +95,6 @@ export async function runGraph(argv) {
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else if (isImpact && options.yml) console.log(formatYmlImpactOutput(payload, impact));
   else if (isImpact && options.compact) console.log(formatCompactImpactOutput(payload, impact));
-  else if (isImpact) console.log(`graph impact: ${payload.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${status.status}${refreshNote} index)`);
+  else if (isImpact) console.log([`graph impact: ${payload.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${status.status}${refreshNote} index)`, ...formatImpactWarnings(impact.warnings)].join('\n'));
   else console.log(`graph communities: ${payload.communities.communities.length}/${payload.communities.total} shown, ${payload.communities.omitted} omitted (${status.status}${refreshNote} index)`);
 }

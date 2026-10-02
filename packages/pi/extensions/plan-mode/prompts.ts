@@ -2,6 +2,7 @@ const DEFAULT_PLAN_MODE_TOOLS = [
 	"read",
 	"bash",
 	"dotdotgod_graph_impact",
+	"dotdotgod_impact_status",
 	"edit",
 	"write",
 	"grep",

@@ -21745,7 +21745,13 @@ var ContextStore = class {
     }
     const filterSql = filters.length ? ` AND ${filters.join(" AND ")}` : "";
     const select = "SELECT c.source_id, c.ordinal, c.body, s.label, s.kind, s.scope, s.metadata";
-    const porterRows = this.db.prepare(`
+    const wildcard = String(query ?? "").trim() === "*";
+    const porterRows = wildcard ? this.db.prepare(`
+      ${select}, 0 AS rank
+      FROM chunks c JOIN sources s ON s.id = c.source_id
+      WHERE 1 = 1${filterSql}
+      ORDER BY s.created_at DESC, s.id, c.ordinal LIMIT ?
+    `).all(...filterParams, candidateLimit) : this.db.prepare(`
       ${select}, bm25(chunks) AS rank
       FROM chunks c JOIN sources s ON s.id = c.source_id
       WHERE chunks MATCH ?${filterSql}
@@ -21764,7 +21770,7 @@ var ContextStore = class {
     `).all(...labelParams, ...filterParams, candidateLimit);
     const typoWindow = Math.min(500, candidateLimit * 5);
     const typoHalf = Math.max(1, Math.floor(typoWindow / 2));
-    const trigramRows = this.db.prepare(`
+    const trigramRows = wildcard ? [] : this.db.prepare(`
       SELECT * FROM (
         SELECT ${select.replace("SELECT ", "")}, 0 AS rank
         FROM chunks c JOIN sources s ON s.id = c.source_id
@@ -21788,7 +21794,7 @@ var ContextStore = class {
       return { sourceId: row.source_id, ordinal: Number(row.ordinal), body: row.body, label: row.label, kind: row.kind, scope: row.scope, rank: row.rank, metadata: readProvenanceMetadata(storedMetadata) };
     };
     const fused = reciprocalRankFusion([
-      { name: "porter-bm25", candidates: porterRows.map(toCandidate) },
+      { name: wildcard ? "bounded-browse" : "porter-bm25", candidates: porterRows.map(toCandidate) },
       { name: "label-path", candidates: labelRows.map(toCandidate) },
       { name: "trigram-v1", candidates: trigramRows.map(toCandidate) }
     ], { limit: candidateLimit });
@@ -21801,7 +21807,7 @@ var ContextStore = class {
         scope: row.scope,
         ordinal: row.ordinal,
         rank: row.rank,
-        text: excerpt(row.body, query),
+        text: excerpt(row.body, wildcard ? "" : query),
         metadata: row.metadata,
         trust: row.metadata.trust,
         sourceType: row.metadata.sourceType,
@@ -23426,7 +23432,7 @@ register("index", "Index a local text file or bounded directory into the project
   maxFiles: external_exports.number().int().nonnegative().optional(),
   maxAggregateBytes: external_exports.number().int().nonnegative().optional()
 }, (input, extra) => ({ ok: true, ...indexFile(getStore(), { ...input, root }, sessionId, extra.signal) }), { readOnlyHint: true });
-register("search", "Search indexed command, file, and fetched content and return bounded excerpts.", {
+register("search", "Search indexed content for bounded excerpts. For failure diagnostics try fail OR error OR reason. Query * browses bounded excerpts with the same source/scope/session filters and limit; neither no matches nor partial excerpts prove diagnostics are absent.", {
   query: external_exports.string().min(1),
   scope: scopeSchema,
   source: external_exports.string().optional(),

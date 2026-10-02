@@ -32,7 +32,7 @@ Bounded dotdotgod context/status commands are auto-allowed when invoked directly
 
 ## Pending Impact Checks
 
-During execution and normal mode, successful source/config `edit` and `write` tool results create pending impact checks. Pi injects a hidden reminder, shows an impact status/widget, and requires `/impact-check`, `dotdotgod_graph_impact`, or successful manual `dotdotgod graph impact ... --changed <path>` before commit-like actions.
+During execution and normal mode, successful source/config `edit` and `write` tool results create pending impact checks. Pi injects a hidden reminder without a persistent impact status or widget. The read-only `dotdotgod_impact_status` tool exposes bounded pending session records on request without running checks or clearing gates. Pi requires `/impact-check`, `dotdotgod_graph_impact`, or successful manual `dotdotgod graph impact ... --changed <path>` before commit-like actions.
 
 `/impact-check` checks the union of tool-tracked pending paths and current git unstaged, staged, and untracked source/config paths. A successful impact check clears the matching pending path for the checked current file, including stale pending records whose stored fingerprint no longer matches the file. Long `dotdotgod_graph_impact` tool results stay complete for the agent and render compactly in Pi's TUI until expanded. Pending checks ignore plan/archive markdown, cache, vendor, build, and coverage paths. Broad verification may ask for confirmation; commit/push/publish commands are blocked until pending paths are checked.
 

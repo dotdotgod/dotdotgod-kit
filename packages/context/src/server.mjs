@@ -60,7 +60,7 @@ register('index', 'Index a local text file or bounded directory into the project
   includeExtensions: z.array(z.string()).max(100).optional(), excludePaths: z.array(z.string()).max(500).optional(), followFileSymlinks: z.boolean().optional(),
   maxDepth: z.number().int().nonnegative().optional(), maxVisitedEntries: z.number().int().nonnegative().optional(), maxFiles: z.number().int().nonnegative().optional(), maxAggregateBytes: z.number().int().nonnegative().optional(),
 }, (input, extra) => ({ ok: true, ...indexFile(getStore(), { ...input, root }, sessionId, extra.signal) }), { readOnlyHint: true });
-register('search', 'Search indexed command, file, and fetched content and return bounded excerpts.', {
+register('search', 'Search indexed content for bounded excerpts. For failure diagnostics try fail OR error OR reason. Query * browses bounded excerpts with the same source/scope/session filters and limit; neither no matches nor partial excerpts prove diagnostics are absent.', {
   query: z.string().min(1), scope: scopeSchema, source: z.string().optional(), limit: z.number().int().min(1).max(50).optional(), sessionOnly: z.boolean().optional(),
 }, (input) => ({
   ok: true,

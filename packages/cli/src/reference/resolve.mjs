@@ -117,8 +117,8 @@ export function runExpand(argv) {
   if (options.withImpact) refs = refs.map((item) => {
     const topPath = item.top?.path;
     if (!topPath) return item;
-    const impact = buildCompactImpactReport(buildImpactReport(index, topPath));
-    return { ...item, impact: { changed: topPath, related: impact.related, groups: impact.groups, omittedRelated: impact.omittedRelated, quality: impact.quality } };
+    const impact = buildCompactImpactReport(buildImpactReport(index, topPath, { root: options.root }));
+    return { ...item, impact: { changed: topPath, warnings: impact.warnings, related: impact.related, groups: impact.groups, omittedRelated: impact.omittedRelated, quality: impact.quality } };
   });
   const payload = { ok: status.ok, command: 'expand', root: options.root, prompt, status, metadata, refs, omitted: refs.reduce((sum, item) => sum + item.omitted, 0) };
   if (options.json) console.log(JSON.stringify(payload, null, 2));

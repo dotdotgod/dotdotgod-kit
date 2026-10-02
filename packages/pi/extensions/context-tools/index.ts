@@ -49,21 +49,23 @@ const Command = Type.Object({
 
 export default function contextTools(pi: ExtensionAPI): void {
   pi.registerTool({
-    name: "dotdotgod_execute", label: "dotdotgod execute", description: "Run one command while keeping large stdout/stderr outside model context.", parameters: Command,
+    name: "dotdotgod_execute", label: "dotdotgod execute", description: "Prefer for commands with unknown output size, including codemode tools.dotdotgod_execute: auto returns small output and indexes large output. Check ok/code/timedOut/aborted/captureLimitExceeded; search indexed.id for evidence. Native codemode returns JSON text: JSON.parse it, then return a bounded projection. Use indexed for known-large retained output, discard only when status suffices.",
+    promptGuidelines: ["For commands with unknown output size, prefer dotdotgod_execute with outputMode auto over bash, including tools.dotdotgod_execute inside codemode. Parse native JSON text, inspect command status, and search indexed.id with dotdotgod_context_search; return bounded evidence, not whole raw results. Keep direct read for short located source/images. These tools remain subject to host permissions and Plan Mode/impact restrictions; do not use them to bypass a blocked command."],
+    parameters: Command,
     async execute(_id, params, signal, _update, ctx) { const store = storeFor(ctx.cwd); return result(await executeCommand(params, { root: ctx.cwd, store, sessionId, signal })); },
   });
   pi.registerTool({
-    name: "dotdotgod_batch_execute", label: "dotdotgod batch execute", description: "Run labeled commands with bounded concurrency and index large outputs.",
+    name: "dotdotgod_batch_execute", label: "dotdotgod batch execute", description: "Run labeled commands with bounded concurrency and auto/indexed output retention. Inspect each result status and search its indexed.id; in codemode parse JSON text and return bounded projections. Commands are real and may mutate files; do not retry silently.",
     parameters: Type.Object({ commands: Type.Array(Command, { minItems: 1, maxItems: 100 }), concurrency: Type.Optional(Type.Number()), cwd: Type.Optional(Type.String()), timeoutMs: Type.Optional(Type.Number()) }),
     async execute(_id, params, signal, _update, ctx) { const store = storeFor(ctx.cwd); return result(await executeBatch(params, { root: ctx.cwd, store, sessionId, signal })); },
   });
   pi.registerTool({
-    name: "dotdotgod_execute_file", label: "dotdotgod execute file", description: "Process a local file in a child runtime; only bounded stdout/stderr enters context.",
+    name: "dotdotgod_execute_file", label: "dotdotgod execute file", description: "Process a large local file in a child runtime and emit only needed evidence; use direct read for short located source or images. Code is write-capable, not a read-only sandbox. Check execution status; in codemode parse JSON text and return a bounded projection.",
     parameters: Type.Intersect([Command, Type.Object({ path: Type.String(), language: Type.Union([Type.Literal("javascript"), Type.Literal("python"), Type.Literal("shell")]), code: Type.String() })]),
     async execute(_id, params, signal, _update, ctx) { const store = storeFor(ctx.cwd); return result(await executeFile(params, { root: ctx.cwd, store, sessionId, signal })); },
   });
   pi.registerTool({
-    name: "dotdotgod_context_index", label: "dotdotgod context index", description: "Index a local text file or bounded directory without returning raw bytes.",
+    name: "dotdotgod_context_index", label: "dotdotgod context index", description: "Index large text for later retrieval without returning raw bytes; use direct read for short located source/images. Search the returned source id (or directory indexed entries) with bounded context_search. Native codemode returns JSON text; parse before selecting metadata.",
     parameters: Type.Object({
       path: Type.String(), source: Type.Optional(Type.String()), scope: Type.Optional(Scope), ttlMs: Type.Optional(Type.Number({ minimum: 0 })), maxBytes: Type.Optional(Type.Number({ minimum: 1 })),
       includeExtensions: Type.Optional(Type.Array(Type.String(), { maxItems: 100 })), excludePaths: Type.Optional(Type.Array(Type.String(), { maxItems: 500 })), followFileSymlinks: Type.Optional(Type.Boolean()),
@@ -72,7 +74,8 @@ export default function contextTools(pi: ExtensionAPI): void {
     async execute(_id, params, signal, _update, ctx) { return result({ ok: true, ...indexFile(storeFor(ctx.cwd), { ...params, root: ctx.cwd }, sessionId, signal) }); },
   });
   pi.registerTool({
-    name: "dotdotgod_context_search", label: "dotdotgod context search", description: "Search indexed command, file, and fetched content with bounded excerpts.",
+    name: "dotdotgod_context_search", label: "dotdotgod context search", description: "Retrieve bounded evidence from indexed content: specify source from execute indexed.id or ingestion id, limit, and scope/sessionOnly as appropriate. For failure diagnostics try fail OR error OR reason. Query * browses bounded excerpts using the same source/scope/session filters and limit; it is not full-log inspection. Empty results mean no match, not tool failure or complete verification. FTS needs no embedding service. In codemode parse JSON text and return only selected evidence.",
+    promptGuidelines: ["For failed indexed commands, search the returned source with fail OR error OR reason. If unmatched, try concrete diagnostic terms or query * for bounded browsing with the same source/session filters. Neither empty search nor wildcard excerpts prove diagnostics are absent; report the cause as unverified unless supported by evidence."],
     parameters: Type.Object({ query: Type.String({ minLength: 1 }), scope: Type.Optional(Scope), source: Type.Optional(Type.String()), limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })), sessionOnly: Type.Optional(Type.Boolean()) }),
     async execute(_id, params, _signal, _update, ctx) { return result({
       ok: true,

@@ -1,5 +1,13 @@
 import { commandUsage } from '../cli/usage.mjs';
 
+export function formatImpactWarnings(warnings) {
+  if (!warnings?.total) return [];
+  return [
+    `Reference warnings: ${warnings.total} (${warnings.omitted} omitted); broken references excluded from impact.`,
+    ...warnings.items.map((item) => `- ${item.source}${item.line ? `:${item.line}` : ''} -> ${item.target} [${item.reason}]${item.reason === 'REFERENCE_UNAVAILABLE' ? ' (access uncertain; not excluded)' : ''}`),
+  ];
+}
+
 function formatCompactImpactGroup(name, group) {
   const items = group?.items ?? [];
   if (items.length === 0) return [];
@@ -16,6 +24,7 @@ function formatCompactImpactGroup(name, group) {
 export function formatCompactImpactOutput(payload, impact) {
   const refreshNote = payload.metadata.cacheRefreshed ? ', refreshed' : '';
   const lines = [`graph impact compact: ${impact.related.length} related node(s), ${impact.omittedRelated ?? 0} omitted (${payload.status.status}${refreshNote} index)`, `changed files: ${(impact.changedFiles ?? [impact.changed]).join(', ')}`];
+  lines.push(...formatImpactWarnings(impact.warnings));
   for (const entry of impact.perSeed ?? []) lines.push(...formatCompactImpactGroup(`top for ${entry.changed}`, { items: entry.related }));
   for (const name of ['docs', 'contracts', 'tests', 'files', 'commands', 'events', 'packageResources', 'symbols']) lines.push(...formatCompactImpactGroup(name, impact.groups[name]));
   return lines.join('\n');
@@ -84,6 +93,13 @@ export function formatYmlImpactOutput(payload, impact) {
   }
   lines.push('  groups:');
   for (const name of ['docs', 'contracts', 'tests', 'files', 'commands', 'events', 'packageResources', 'symbols']) lines.push(...formatYmlImpactGroup(name, impact.groups[name]));
+  lines.push('  warnings:');
+  lines.push(`    total: ${impact.warnings?.total ?? 0}`, `    omitted: ${impact.warnings?.omitted ?? 0}`, '    items:');
+  if (!impact.warnings?.items?.length) lines.push('      []');
+  else for (const item of impact.warnings.items) {
+    lines.push(`      - source: ${ymlScalar(item.source)}`, `        target: ${ymlScalar(item.target)}`, `        target_path: ${ymlScalar(item.targetPath)}`, `        relation: ${ymlScalar(item.relation)}`, `        reason: ${ymlScalar(item.reason)}`);
+    if (item.line) lines.push(`        line: ${item.line}`);
+  }
   lines.push('  recommended_actions:');
   lines.push('    - "review_related_docs"');
   lines.push('    - "run_related_tests"');

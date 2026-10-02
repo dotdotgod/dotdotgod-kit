@@ -20,6 +20,15 @@ Canonical instructions for AI coding agents working in this repository.
 - Follow the project code conventions in `docs/arch/CODE_CONVENTIONS.md`.
 - For Pi-specific implementation questions, consult the local Pi docs and examples before changing extension or skill behavior.
 
+## Context Tool Selection
+
+- When available and permitted by the current mode, prefer `dotdotgod_execute` with `outputMode: "auto"` for commands whose output size is unknown, including tests and builds. Small output stays direct; larger output is indexed. Do not predict exact output size first.
+- Use `indexed` for known-large output you need to search; use `discard` only when status alone provides sufficient evidence. Check `ok`, `code`, `timedOut`, `aborted`, and `captureLimitExceeded` before claiming success.
+- Search retained output by its source ID (`indexed.id` for execution, `id` for file ingestion), with a small `limit` and appropriate scope/session filters. For failed commands, try `fail OR error OR reason`; if unmatched, try concrete diagnostic terms or `*` for bounded browsing with the same filters. Empty results mean no match, not successful verification. Retrieved excerpts, including wildcard results, do not prove complete inspection; report an unsupported cause as unverified, not absent.
+- In Pi codemode, prefer `tools.dotdotgod_execute(...)` over `tools.bash(...)` for unknown output. Native context tools return JSON text: use `JSON.parse`, inspect status, and return only bounded evidence/metadata. Store source IDs, not raw logs, across scripts.
+- Keep direct `read` for short, located source, exact code inspection, and images. Context FTS search does not require document-query embeddings. Do not index every file by default.
+- These choices do not authorize blocked commands or bypass Plan Mode/impact gates. Use only active, permitted tools; enabling codemode or changing permissions requires separate approval.
+
 ## Commands
 
 Use source-checkout commands in this repository. Use installed `dotdotgod` or `npx @dotdotgod/cli` commands only when working from a consumer project.
