@@ -112,22 +112,22 @@ For output modes, ingestion limits, retrieval details, and the complete security
 
 For unknown command output, prefer `dotdotgod_execute` with `outputMode: "auto"`; use `indexed` for known-large output to retain, and `discard` only when status is enough. Inspect each `results` entry's `ok`, `code`, `timedOut`, `aborted`, and `captureLimitExceeded`. Search a returned `indexed.id` using `dotdotgod_context_search` with `source` and a small `limit`. An empty result means no match, not complete verification. Direct `read` remains appropriate for short located source and images; context FTS retrieval requires no embedding service.
 
-Pi 1.0 codemode can call these native tools without MCP. The adapter does not enable codemode automatically or replace `bash`. When codemode is enabled and the tools are permitted, native context calls resolve to **JSON text**, not a structured object. Prefer `tools.dotdotgod_execute(...)` over `tools.bash(...)` for unknown output and return only bounded projections:
+Pi 1.0 codemode can call these native tools without MCP. The adapter does not enable codemode automatically or replace `bash`. When codemode is enabled and the tools are permitted, native context calls resolve to **structured objects** via output schemas; model-facing content is Markdown. Existing JSON.parse scripts must migrate and sessions must reload. Graph-impact text remains unchanged. Prefer `tools.dotdotgod_execute(...)` over `tools.bash(...)` for unknown output and return only bounded projections:
 
 ```js
 // @options: {"max_output_tokens": 1000, "timeout_ms": 60000}
-const batch = JSON.parse(await tools.dotdotgod_execute({
+const batch = await tools.dotdotgod_execute({
   commands: [{ executable: "node", args: ["--version"], outputMode: "auto" }]
-}));
+});
 const run = batch.results[0];
 if (!run.ok) return {code: run.code, timedOut: run.timedOut,
   aborted: run.aborted, captureLimitExceeded: run.captureLimitExceeded,
   source: run.indexed?.id, diagnostic: (run.stderr ?? "").slice(0, 500)};
 if (!run.indexed) return {code: run.code, output: (run.stdout ?? "").slice(0, 500)};
 store("lastOutputSource", run.indexed.id);
-const found = JSON.parse(await tools.dotdotgod_context_search({
+const found = await tools.dotdotgod_context_search({
   source: run.indexed.id, query: "version", limit: 2, sessionOnly: true
-}));
+});
 return {code: run.code, source: run.indexed.id,
   evidence: found.results.map(item => item.text.slice(0, 500))};
 ```

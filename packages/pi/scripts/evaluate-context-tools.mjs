@@ -59,7 +59,7 @@ for (const task of tasks) {
     });
     pi.on('tool_result', (event) => {
       const text = (event.content ?? []).filter((c) => c.type === 'text').map((c) => c.text).join('\n');
-      let data; try { data = JSON.parse(text); } catch { /* Builtin output may be plain text. */ }
+      const data = event.structuredContent ?? event.details;
       records.push({ phase: 'result', tool: event.toolName, parent: event.parentToolCallId, isError: event.isError, text, details: data ? { ok: data.ok, code: data.code, indexed: data.indexed, stdoutBytes: data.stdoutBytes, stderrBytes: data.stderrBytes, truncated: data.truncated } : undefined });
     });
   };

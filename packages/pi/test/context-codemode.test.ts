@@ -7,7 +7,7 @@ import { fixtureOutput, nodeCommand, textContent, workflowSession } from "./supp
 
 const options = "// @options: {\"max_output_tokens\": 500, \"timeout_ms\": 10000}\n";
 
-test("public Pi codemode discovers native descriptions, parses text results, and retrieves bounded evidence", async () => {
+test("public Pi codemode discovers native descriptions, receives structured results, and retrieves bounded evidence", async () => {
   const f = await workflowSession();
   try {
     writeFileSync(join(f.root, "fixture.log"), "file-marker expected-file-evidence\n" + "padding\n".repeat(8000));
@@ -16,13 +16,13 @@ test("public Pi codemode discovers native descriptions, parses text results, and
       if (!discovered.some(t => t.name === "dotdotgod_execute")) throw new Error("execute not discoverable");
       const info = await describeTool("dotdotgod_execute");
       if (!JSON.stringify(info).includes("unknown output size")) throw new Error("missing selection guidance");
-      const smallBatch = JSON.parse(await tools.dotdotgod_execute(${JSON.stringify({ commands: [nodeCommand("console.log('small output')")] })}));
-      const largeBatch = JSON.parse(await tools.dotdotgod_execute(${JSON.stringify({ commands: [nodeCommand(fixtureOutput)] })}));
+      const smallBatch = await tools.dotdotgod_execute(${JSON.stringify({ commands: [nodeCommand("console.log('small output')")] })});
+      const largeBatch = await tools.dotdotgod_execute(${JSON.stringify({ commands: [nodeCommand(fixtureOutput)] })});
       const small = smallBatch.results[0], large = largeBatch.results[0];
       if (!large.ok || !large.indexed?.id || large.stdout) throw new Error("large result not indexed");
-      const found = JSON.parse(await tools.dotdotgod_context_search({query:"workflow-needle", source:large.indexed.id, limit:1, sessionOnly:true}));
-      const file = JSON.parse(await tools.dotdotgod_context_index({path:"fixture.log", scope:"project"}));
-      const fileFound = JSON.parse(await tools.dotdotgod_context_search({query:"file-marker", source:file.id, limit:1}));
+      const found = await tools.dotdotgod_context_search({query:"workflow-needle", source:large.indexed.id, limit:1, sessionOnly:true});
+      const file = await tools.dotdotgod_context_index({path:"fixture.log", scope:"project"});
+      const fileFound = await tools.dotdotgod_context_search({query:"file-marker", source:file.id, limit:1});
       return {small:small.stdout.trim(), code:large.code, indexed:true, evidence:found.results[0]?.text.slice(0,120), file:fileFound.results[0]?.text.slice(0,120)};
     `);
     assert.equal(result.isError, false, textContent(result));
@@ -41,7 +41,7 @@ test("public Pi codemode discovers native descriptions, parses text results, and
     // Actual prepared model declarations, not just the original registration object.
     const execute = f.session.agent.state.tools.find((tool) => tool.name === "dotdotgod_execute")!;
     assert.match(execute.description, /Codemode:/);
-    assert.match(execute.description, /JSON.parse/);
+    assert.match(execute.description, /structured object/);
     assert.match(f.session.systemPrompt, /unknown output size/);
     assert.match(f.session.systemPrompt, /fail OR error OR reason/);
     assert.match(f.session.systemPrompt, /cause as unverified/);
@@ -58,11 +58,11 @@ test("codemode handles nonzero status, no-match, malformed JSON, and blocked nes
   });
   try {
     const result = await f.call("codemode", options + `
-      const failureBatch = JSON.parse(await tools.dotdotgod_execute(${JSON.stringify({ commands: [{ ...nodeCommand("console.error('codemode-failure expected reason'); process.exitCode=9;"), outputMode: "indexed" }] })}));
+      const failureBatch = await tools.dotdotgod_execute(${JSON.stringify({ commands: [{ ...nodeCommand("console.error('codemode-failure expected reason'); process.exitCode=9;"), outputMode: "indexed" }] })});
       const failure = failureBatch.results[0];
-      const found = JSON.parse(await tools.dotdotgod_context_search({source:failure.indexed.id, query:"codemode-failure", limit:1}));
-      const absent = JSON.parse(await tools.dotdotgod_context_search({source:failure.indexed.id, query:"absent-marker", limit:1}));
-      const browsed = JSON.parse(await tools.dotdotgod_context_search({source:failure.indexed.id, query:"*", sessionOnly:true, limit:1}));
+      const found = await tools.dotdotgod_context_search({source:failure.indexed.id, query:"codemode-failure", limit:1});
+      const absent = await tools.dotdotgod_context_search({source:failure.indexed.id, query:"absent-marker", limit:1});
+      const browsed = await tools.dotdotgod_context_search({source:failure.indexed.id, query:"*", sessionOnly:true, limit:1});
       if (!browsed.ok || browsed.results.length !== 1 || browsed.results[0].sourceId !== failure.indexed.id) throw new Error("wildcard browse failed");
       let malformed=false, blocked=false;
       try { JSON.parse(await tools.fixture_malformed({})); } catch { malformed=true; }

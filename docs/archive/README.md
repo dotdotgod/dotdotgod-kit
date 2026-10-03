@@ -19,6 +19,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/tool-markdown-responses/`: converted non-graph-impact tool text to Markdown across Pi and MCP, retained structured data, migrated native codemode to object access, and verified 382 tests after review fixes.
+
 - `plan/context-tool-workflow/`: upgraded development Pi SDK to 1.0, verified native/codemode workflows, and improved selection guidance; 32 model trials showed higher execute adoption with one native correctness failure, documented in evaluation results.
 
 - `plan/broken-impact-references/`: added bounded missing-file and broken-heading-anchor warnings, filtered invalid impact evidence across CLI/explorer, and preserved incoming references to deleted seeds; automated verification passed, direct browser smoke remains manual.

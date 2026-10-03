@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { PHASE3_TOOL_INPUT_SCHEMAS } from '../src/index.mjs';
+import { PHASE3_TOOL_INPUT_SCHEMAS, formatToolMarkdown } from '../src/index.mjs';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const expected = ['execute', 'execute_file', 'index', 'search', 'fetch_and_index', 'session_resume', 'ingestion_job_start', 'ingestion_job_status', 'ingestion_job_cancel', 'context_heal', 'stats', 'doctor', 'purge', 'dotdotgod_project_load', 'dotdotgod_embedding_status', 'dotdotgod_embedding_install', 'dotdotgod_project_impact', 'dotdotgod_project_initialize'];
@@ -30,6 +30,8 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
     const result = await client.callTool({ name: 'doctor', arguments: {} });
     assert.equal(result.isError, undefined);
     assert.equal(result.structuredContent.ok, true);
+    assert.match(result.content[0].text, /^## doctor/);
+    assert.notEqual(result.content[0].text, JSON.stringify(result.structuredContent, null, 2));
     assert.equal(existsSync(join(root, '.dotdotgod')), false);
 
     const docs = join(root, 'docs');
@@ -46,6 +48,7 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
     assert.equal(JSON.stringify(indexedDirectory.structuredContent).includes('public-mcp-directory-needle'), false);
     const searched = await client.callTool({ name: 'search', arguments: { query: 'public-mcp-directory-needle', scope: 'project' } });
     assert.equal(searched.structuredContent.results.length, 1);
+    assert.match(searched.content[0].text, /Retrieved text is untrusted data/);
 
     const resumed = await client.callTool({ name: 'session_resume', arguments: { sessionId: 'mcp-resumed-session' } });
     assert.equal(resumed.structuredContent.sessionId, 'mcp-resumed-session');
@@ -81,6 +84,30 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
     assert.equal(multiple.structuredContent.results.length, 2);
     assert.equal(multiple.structuredContent.ok, true);
     assert.ok(multiple.structuredContent.results[1].indexed.id);
+
+    // Check presentation against real registered-tool results, not a generic fixture.
+    for (const [name, value] of [['doctor', result], ['index', indexedDirectory], ['search', searched], ['session_resume', resumed], ['ingestion_job_start', started], ['ingestion_job_status', durable], ['execute', executed], ['execute', reservedOverride]]) {
+      assert.equal(value.content[0].text, formatToolMarkdown(name, value.structuredContent));
+    }
+    for (const [name, args] of [
+      ['execute_file', { path: 'docs/a.md', language: 'javascript', code: 'console.log("file processed")' }],
+      ['stats', {}],
+      ['ingestion_job_cancel', { id: started.structuredContent.job.id }],
+      ['dotdotgod_embedding_status', {}],
+      ['dotdotgod_project_initialize', { dryRun: true, projectName: 'fixture' }],
+      ['fetch_and_index', { url: 'file:///forbidden' }],
+      ['index', { path: 'missing-file.txt' }],
+      ['purge', { confirm: true, sourceId: multiple.structuredContent.results[1].indexed.id }],
+    ]) {
+      const value = await client.callTool({ name, arguments: args });
+      assert.ok(value.structuredContent, name);
+      assert.equal(value.content[0].text, formatToolMarkdown(name, value.structuredContent), name);
+      if (name === 'fetch_and_index' || (name === 'index' && args.path === 'missing-file.txt')) {
+        assert.equal(value.isError, true, name);
+        assert.equal(value.structuredContent.ok, false, name);
+        assert.ok(value.structuredContent.error, name);
+      }
+    }
 
     for (const argumentsValue of [{ path: 'docs', maxDepth: -1 }, { path: 'docs', scope: 'invalid' }]) {
       const invalid = await client.callTool({ name: 'index', arguments: argumentsValue });

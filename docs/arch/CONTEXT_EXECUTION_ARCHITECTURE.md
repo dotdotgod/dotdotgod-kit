@@ -39,7 +39,7 @@ Project Load can provide focus and paths to execution retrieval. Execution outpu
 
 ## Pi Codemode Boundary
 
-Development SDK pins Pi `1.0.0`; host peers/subagents remain unchanged. Codemode parses native JSON text. Descriptions/guidelines advise selection without routing or permission changes. Public SDK tests use real tools/QuickJS with a faux stream. See [Pi selection](../spec/PI_CONTEXT_TOOL_SELECTION.md).
+Development SDK pins Pi `1.0.0`; host peers/subagents remain unchanged. Codemode uses native structuredContent. Descriptions/guidelines advise selection without routing or permission changes. Public SDK tests use real tools/QuickJS with a faux stream. See [Pi selection](../spec/PI_CONTEXT_TOOL_SELECTION.md).
 
 ## Storage
 

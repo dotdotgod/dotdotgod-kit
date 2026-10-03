@@ -14,7 +14,7 @@ Guide native Pi and codemode callers toward bounded execution and retrieval whil
 
 ## Native Results In Codemode
 
-Native context tools retain JSON text results without an output schema. Codemode callers MUST parse text before selecting fields and SHOULD return bounded metadata/evidence rather than complete results. Codemode's small-value store is for source IDs or cursors, not raw logs.
+Native context tools expose output schemas and structuredContent for direct object access in codemode. Model-facing content is Markdown; Pi details and MCP structuredContent preserve programmatic data. Codemode callers MUST access object fields directly, without JSON.parse, and SHOULD return bounded metadata/evidence rather than complete results. Existing external JSON.parse scripts require migration and sessions require reload. Graph-impact tools retain their existing text contracts; impact-status uses structured access. Codemode's small-value store is for source IDs or cursors, not raw logs.
 
 Execution failure can return `ok: false` without a thrown tool error. Callers inspect each `results` entry's `code`, `timedOut`, `aborted`, and `captureLimitExceeded`; tool-call errors may reject separately. Search uses the returned source ID and bounded limits. For failure diagnostics, guidance recommends `fail OR error OR reason`, followed by concrete diagnostic terms or bounded `*` browsing with the same filters when needed. Empty results mean no match, not tool failure or complete verification. Wildcard excerpts also do not prove full inspection; unsupported causes must be reported as unverified, not absent.
 

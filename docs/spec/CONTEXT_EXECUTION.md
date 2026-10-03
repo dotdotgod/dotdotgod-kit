@@ -29,7 +29,7 @@ Output modes are:
 
 The implementation MUST NOT place complete large output in a tool response before indexing or filtering. Batch results preserve input order. Execution entrypoints inherit a compatibility-oriented environment after removing runtime injection variables. Callers may add string overrides or delete inherited names, but cannot restore reserved variables. Results report policy and filtered names, never values. This filtering is defense in depth and does not isolate ordinary inherited credentials.
 
-See [Pi selection and codemode rules](PI_CONTEXT_TOOL_SELECTION.md).
+See [tool presentation](TOOL_RESPONSES.md) and [Pi selection](PI_CONTEXT_TOOL_SELECTION.md).
 
 ## Storage And Search
 

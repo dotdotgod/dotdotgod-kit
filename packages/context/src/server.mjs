@@ -1,3 +1,4 @@
+import { formatToolMarkdown } from './presentation.mjs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
@@ -31,19 +32,20 @@ const commandSchema = {
   env: z.record(z.string(), z.string().nullable()).optional(), environmentMode: z.enum(['inherit-filtered-v1', 'allowlist-v1']).optional(), allowedEnv: z.array(z.string()).max(100).optional(),
 };
 
-function success(value) {
-  return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }], structuredContent: value };
+function success(value, name) {
+  const text = name === 'dotdotgod_project_impact' ? JSON.stringify(value, null, 2) : formatToolMarkdown(name, value);
+  return { content: [{ type: 'text', text }], structuredContent: value };
 }
-function failure(error) {
+function failure(error, name) {
   const value = { ok: false, error: error instanceof Error ? error.message : String(error) };
-  return { isError: true, content: [{ type: 'text', text: JSON.stringify(value, null, 2) }], structuredContent: value };
+  return { ...success(value, name), isError: true };
 }
 function projectInput(input) {
   return { ...input, root: resolveWithinRoot(root, input.root || '.') };
 }
 function register(name, description, inputSchema, handler, annotations) {
   server.registerTool(name, { description, inputSchema, annotations }, async (input, extra) => {
-    try { return success(await handler(input, extra)); } catch (error) { return failure(error); }
+    try { return success(await handler(input, extra), name); } catch (error) { return failure(error, name); }
   });
 }
 

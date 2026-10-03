@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { fixtureOutput, nodeCommand, textContent, workflowSession } from "./support/context-workflow.ts";
 
-const data = (result: Parameters<typeof textContent>[0]) => { const value = JSON.parse(textContent(result)); return value.concurrency !== undefined ? value.results[0] : value; };
+const data = (result: Parameters<typeof textContent>[0] & { details?: any }) => { const value = result.details; return value.concurrency !== undefined ? value.results[0] : value; };
 const execute = (f: Awaited<ReturnType<typeof workflowSession>>, command: ReturnType<typeof nodeCommand> & { outputMode?: string; timeoutMs?: number; label?: string }) => f.call("dotdotgod_execute", { commands: [command] });
 
 test("native auto/indexed execution and file ingestion retain searchable source-scoped evidence", async () => {

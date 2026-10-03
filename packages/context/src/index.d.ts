@@ -1,3 +1,4 @@
+export function formatToolMarkdown(name: string, value: unknown): string;
 export type ContextScope = 'transient' | 'session' | 'project';
 export type DirectoryReason = 'excluded-path' | 'extension-filter' | 'file-byte-limit' | 'file-count-limit' | 'aggregate-byte-limit' | 'visited-entry-limit' | 'depth-limit' | 'file-symlink' | 'directory-symlink' | 'symlink-outside-root' | 'symlink-unresolvable' | 'special-file' | 'directory-read-failed' | 'entry-stat-failed' | 'index-failed';
 export interface EnvironmentPolicy { mode: 'inherit-filtered-v1' | 'allowlist-v1'; platform: 'win32' | 'darwin' | 'posix'; allowedNames?: string[]; filteredNames: string[] }

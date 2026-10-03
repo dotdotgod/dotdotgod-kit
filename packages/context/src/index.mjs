@@ -13,3 +13,4 @@ export { createProvenanceMetadata, readProvenanceMetadata, sha256Content } from 
 export { normalizeSearchTerms, reciprocalRankFusion, rerankCandidates } from './rank.mjs';
 export { projectEmbeddingInstall, projectEmbeddingStatus, projectImpact, projectInitialize, projectLoad } from './project.mjs';
 export { startServer } from './server.mjs';
+export { formatToolMarkdown } from './presentation.mjs';

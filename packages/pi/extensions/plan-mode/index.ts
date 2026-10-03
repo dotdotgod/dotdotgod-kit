@@ -13,6 +13,7 @@ import type {
 import { keyHint } from "@earendil-works/pi-coding-agent";
 import { Key, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { formatToolMarkdown } from "@dotdotgod/context";
 import { buildDecisionWizardFollowUp } from "./decision-wizard.ts";
 import { describePendingPlanDecisions } from "./controllers/decision-wizard.ts";
 import { recordContextMetric } from "../context-metrics/utils.js";
@@ -141,6 +142,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   });
 
   pi.registerTool({
+    outputSchema: Type.Record(Type.String(), Type.Any()),
     name: "dotdotgod_impact_status",
     label: "dotdotgod impact status",
     description: "Read the current Pi session's pending impact checks without running or clearing them. Use when asked to show the pending list; this is not a git worktree status query.",
@@ -148,7 +150,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     async execute(_toolCallId, params) {
       const pending = gates.pendingImpactItems.slice(0, params.limit ?? 50).map((item) => ({ ...item }));
       const details = { ok: true, count: gates.pendingImpactItems.length, pending, truncated: pending.length < gates.pendingImpactItems.length };
-      return { content: [{ type: "text", text: JSON.stringify(details) }], details };
+      return { content: [{ type: "text", text: formatToolMarkdown("impact status", details) }], details, structuredContent: details };
     },
   });
 

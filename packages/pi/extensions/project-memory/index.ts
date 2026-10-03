@@ -60,6 +60,7 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 		promptGuidelines: [
 			"When automatic project-memory loading is pending, call dotdotgod_project_load before substantive work. Generate a short semantic focus from the behavior, architecture, source areas, and verification knowledge needed for the current task; do not copy the full user request verbatim.",
 		],
+		outputSchema: Type.Record(Type.String(), Type.Any()),
 		parameters: ProjectMemoryLoadParams,
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			lifecycle.beginLoad();
@@ -87,9 +88,7 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 				});
 				persistState();
 				setToolActive(false);
-				return {
-					content: [{ type: "text", text: prompt }],
-					details: {
+				const details = {
 						ok: documentationMap.ok && (queryResult?.ok ?? true),
 						focus,
 						output: prompt,
@@ -97,8 +96,8 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 						query: queryResult
 							? { ok: queryResult.ok, command: queryResult.command, error: queryResult.error }
 							: undefined,
-					},
 				};
+				return { content: [{ type: "text", text: prompt }], details, structuredContent: JSON.parse(JSON.stringify(details)) };
 			} finally {
 				lifecycle.finishLoad();
 			}
