@@ -4,18 +4,19 @@ import { join } from "node:path";
 import test from "node:test";
 import { fixtureOutput, nodeCommand, textContent, workflowSession } from "./support/context-workflow.ts";
 
-const data = (result: Parameters<typeof textContent>[0]) => JSON.parse(textContent(result));
+const data = (result: Parameters<typeof textContent>[0]) => { const value = JSON.parse(textContent(result)); return value.concurrency !== undefined ? value.results[0] : value; };
+const execute = (f: Awaited<ReturnType<typeof workflowSession>>, command: ReturnType<typeof nodeCommand> & { outputMode?: string; timeoutMs?: number; label?: string }) => f.call("dotdotgod_execute", { commands: [command] });
 
 test("native auto/indexed execution and file ingestion retain searchable source-scoped evidence", async () => {
   const f = await workflowSession();
   try {
-    const small = data(await f.call("dotdotgod_execute", nodeCommand("console.log('small output')")));
+    const small = data(await execute(f, nodeCommand("console.log('small output')")));
     assert.equal(small.ok, true);
     assert.equal(small.code, 0);
     assert.match(small.stdout, /small output/);
     assert.equal(small.indexed, undefined);
     for (const outputMode of ["auto", "indexed"]) {
-      const largeResult = await f.call("dotdotgod_execute", { ...nodeCommand(fixtureOutput), outputMode });
+      const largeResult = await execute(f, { ...nodeCommand(fixtureOutput), outputMode });
       const large = data(largeResult);
       assert.equal(large.ok, true);
       assert.ok(large.stdoutBytes > 12000);
@@ -55,16 +56,16 @@ test("native auto/indexed execution and file ingestion retain searchable source-
 test("native discard/nonzero/timeout/policy rejection preserve distinct status and retained diagnostics", async () => {
   const f = await workflowSession((pi) => {
     pi.on("tool_call", (event) => {
-      if (event.toolName === "dotdotgod_execute" && event.input.label === "blocked-fixture") return { block: true, reason: "fixture policy" };
+      if (event.toolName === "dotdotgod_execute" && (event.input.commands as { label?: string }[]).some(command => command.label === "blocked-fixture")) return { block: true, reason: "fixture policy" };
     });
   });
   try {
     const before = data(await f.call("dotdotgod_context_stats", {}));
-    const discarded = data(await f.call("dotdotgod_execute", { ...nodeCommand(fixtureOutput), outputMode: "discard" }));
+    const discarded = data(await execute(f, { ...nodeCommand(fixtureOutput), outputMode: "discard" }));
     assert.equal(discarded.ok, true);
     for (const key of ["stdout", "stderr", "indexed"]) assert.equal(discarded[key], undefined);
     assert.equal(data(await f.call("dotdotgod_context_stats", {})).sources, before.sources);
-    const failed = data(await f.call("dotdotgod_execute", { ...nodeCommand("console.error('diagnostic-needle expected failure'); console.error('padding '.repeat(8000)); process.exitCode=7;"), outputMode: "indexed" }));
+    const failed = data(await execute(f, { ...nodeCommand("console.error('diagnostic-needle expected failure'); console.error('padding '.repeat(8000)); process.exitCode=7;"), outputMode: "indexed" }));
     assert.equal(failed.ok, false);
     assert.equal(failed.code, 7);
     assert.equal(failed.timedOut, false);
@@ -76,10 +77,10 @@ test("native discard/nonzero/timeout/policy rejection preserve distinct status a
     assert.equal(browsed.ok, true);
     assert.equal(browsed.results.length, 1);
     assert.equal(browsed.results[0].sourceId, failed.indexed.id);
-    const timed = data(await f.call("dotdotgod_execute", { ...nodeCommand("setInterval(()=>{},1000)"), timeoutMs: 20 }));
+    const timed = data(await execute(f, { ...nodeCommand("setInterval(()=>{},1000)"), timeoutMs: 20 }));
     assert.equal(timed.ok, false);
     assert.equal(timed.timedOut, true);
-    const blocked = await f.call("dotdotgod_execute", { ...nodeCommand("0"), label: "blocked-fixture" });
+    const blocked = await execute(f, { ...nodeCommand("0"), label: "blocked-fixture" });
     assert.equal(blocked.isError, true);
     assert.match(textContent(blocked), /fixture policy/);
   } finally { await f.close(); }

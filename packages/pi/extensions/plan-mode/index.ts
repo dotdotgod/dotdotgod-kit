@@ -405,16 +405,21 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   });
 
   pi.on("tool_call", async (event, ctx) => {
-    if (event.toolName === "bash") {
-      const command = event.input.command as string;
-      const commitBlockReason = gates.buildCommitBlockReason(command);
+    const executionCommands = event.toolName === "bash"
+      ? [event.input.command as string]
+      : event.toolName === "dotdotgod_execute"
+        ? (event.input.commands as { command?: string; executable?: string; args?: string[] }[] ?? []).map((entry) => entry.executable ? [entry.executable, ...(entry.args ?? [])].map((value) => /^[\w./:-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`).join(" ") : entry.command ?? "")
+        : [];
+    for (const command of executionCommands) {
+      const gateCommand = command.replace(/^\s*(?:[^\s]*[/\\])([^\s/\\]+)(?=\s|$)/, "$1");
+      const commitBlockReason = gates.buildCommitBlockReason(command) ?? gates.buildCommitBlockReason(gateCommand);
       if (commitBlockReason) {
         return {
           block: true,
           reason: commitBlockReason,
         };
       }
-      const broadVerificationPrompt = gates.buildBroadVerificationPrompt(command);
+      const broadVerificationPrompt = gates.buildBroadVerificationPrompt(command) ?? gates.buildBroadVerificationPrompt(gateCommand);
       if (broadVerificationPrompt && ctx.hasUI) {
         const approved = await ctx.ui.confirm(
           "Run broad verification before impact check?",
@@ -432,8 +437,10 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
     if (!modeLifecycle.restrictsMutation) return;
 
-    if (event.toolName === "bash") {
-      const command = event.input.command as string;
+    if (event.toolName === "dotdotgod_execute" && (event.input.cwd || (event.input.commands as { cwd?: string }[]).some(entry => entry.cwd))) {
+      return { block: true, reason: "Plan mode: execution cwd overrides require execution mode." };
+    }
+    for (const command of executionCommands) {
       const decision = await shouldAllowPlanModeBashCommand(command, {
         hasUI: ctx.hasUI,
         confirm: (title, message) => ctx.ui.confirm(title, message),
@@ -444,8 +451,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
           reason: decision.reason ?? "Plan mode: command blocked.",
         };
       }
-      return;
     }
+    if (executionCommands.length) return;
 
     if (event.toolName === "write" || event.toolName === "edit") {
       const path = getToolPath(event.input);

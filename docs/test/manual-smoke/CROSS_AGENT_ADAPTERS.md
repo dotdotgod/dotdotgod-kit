@@ -41,7 +41,7 @@ After updating either installed adapter, restart the host and confirm it referen
 
 ## Pi Context Tools
 
-Confirm Pi registers native `dotdotgod_execute`, `dotdotgod_batch_execute`, `dotdotgod_execute_file`, context index/search/fetch/stats/purge, and `dotdotgod_project_initialize` tools from the adapter. Confirm no dotdotgod stdio MCP child process starts. Verify large output uses `.dotdotgod/context/` and existing pending-only project load plus graph-impact reminder behavior remains unchanged.
+Confirm Pi registers native `dotdotgod_execute`, `dotdotgod_execute_file`, context index/search/fetch/stats/purge, and `dotdotgod_project_initialize` tools from the adapter. Confirm no dotdotgod stdio MCP child process starts. Verify large output uses `.dotdotgod/context/` and existing pending-only project load plus graph-impact reminder behavior remains unchanged.
 
 ## Pi Load Guidance
 

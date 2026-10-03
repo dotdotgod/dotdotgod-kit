@@ -7,7 +7,6 @@ import {
   IngestionJobRunner,
   validateSessionId,
   executeBatch,
-  executeCommand,
   executeFile,
   fetchAndIndex,
   indexFile,
@@ -49,13 +48,8 @@ const Command = Type.Object({
 
 export default function contextTools(pi: ExtensionAPI): void {
   pi.registerTool({
-    name: "dotdotgod_execute", label: "dotdotgod execute", description: "Prefer for commands with unknown output size, including codemode tools.dotdotgod_execute: auto returns small output and indexes large output. Check ok/code/timedOut/aborted/captureLimitExceeded; search indexed.id for evidence. Native codemode returns JSON text: JSON.parse it, then return a bounded projection. Use indexed for known-large retained output, discard only when status suffices.",
-    promptGuidelines: ["For commands with unknown output size, prefer dotdotgod_execute with outputMode auto over bash, including tools.dotdotgod_execute inside codemode. Parse native JSON text, inspect command status, and search indexed.id with dotdotgod_context_search; return bounded evidence, not whole raw results. Keep direct read for short located source/images. These tools remain subject to host permissions and Plan Mode/impact restrictions; do not use them to bypass a blocked command."],
-    parameters: Command,
-    async execute(_id, params, signal, _update, ctx) { const store = storeFor(ctx.cwd); return result(await executeCommand(params, { root: ctx.cwd, store, sessionId, signal })); },
-  });
-  pi.registerTool({
-    name: "dotdotgod_batch_execute", label: "dotdotgod batch execute", description: "Run labeled commands with bounded concurrency and auto/indexed output retention. Inspect each result status and search its indexed.id; in codemode parse JSON text and return bounded projections. Commands are real and may mutate files; do not retry silently.",
+    name: "dotdotgod_execute", label: "dotdotgod execute", description: "Run 1..100 commands in a required commands array; always returns ordered results. Group independent known commands; separate dependent commands. Prefer for commands with unknown output size, including codemode tools.dotdotgod_execute: auto returns small output and indexes large output. Check ok/code/timedOut/aborted/captureLimitExceeded; search indexed.id for evidence. Native codemode returns JSON text: JSON.parse it, then return a bounded projection. Use indexed for known-large retained output, discard only when status suffices.",
+    promptGuidelines: ["Use commands arrays even for one command; results is always an array. Group independent known commands in one call; separate commands dependent on prior results. Inspect each result status and indexed.id. Never bypass safety gates. For commands with unknown output size, prefer dotdotgod_execute with outputMode auto over bash, including tools.dotdotgod_execute inside codemode. Parse native JSON text, inspect command status, and search indexed.id with dotdotgod_context_search; return bounded evidence, not whole raw results. Keep direct read for short located source/images. These tools remain subject to host permissions and Plan Mode/impact restrictions; do not use them to bypass a blocked command."],
     parameters: Type.Object({ commands: Type.Array(Command, { minItems: 1, maxItems: 100 }), concurrency: Type.Optional(Type.Number()), cwd: Type.Optional(Type.String()), timeoutMs: Type.Optional(Type.Number()) }),
     async execute(_id, params, signal, _update, ctx) { const store = storeFor(ctx.cwd); return result(await executeBatch(params, { root: ctx.cwd, store, sessionId, signal })); },
   });

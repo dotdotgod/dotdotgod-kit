@@ -23,7 +23,7 @@ const userSettings = JSON.parse(readFileSync(join(homedir(), '.pi/agent/settings
 const modelRuntime = await ModelRuntime.create({ authPath: join(homedir(), '.pi/agent/auth.json'), modelsPath: join(homedir(), '.pi/agent/models.json'), modelsStorePath: join(outDir, 'models-cache.json'), refreshOnCreate: false });
 const model = modelRuntime.getModel(userSettings.defaultProvider, userSettings.defaultModel);
 if (!model || !(await modelRuntime.getAvailable()).some((m) => m.provider === model.provider && m.id === model.id)) throw new Error('Configured evaluation model unavailable; no fallback model selected');
-const allowed = ['read', 'bash', 'grep', 'find', 'ls', 'dotdotgod_execute', 'dotdotgod_batch_execute', 'dotdotgod_execute_file', 'dotdotgod_context_index', 'dotdotgod_context_search', ...(mode === 'codemode' ? ['codemode'] : [])];
+const allowed = ['read', 'bash', 'grep', 'find', 'ls', 'dotdotgod_execute', 'dotdotgod_execute_file', 'dotdotgod_context_index', 'dotdotgod_context_search', ...(mode === 'codemode' ? ['codemode'] : [])];
 const tasks = [
   { id: 'verbose', prompt: 'Run `node verbose.mjs` and report which test failed and its reason.', expected: ['orbit-case', 'expected 7', 'received 9'] },
   { id: 'log', prompt: 'Find the failure in fixture.log and report its identifier and reason.', expected: ['aurora-42', 'cache checksum mismatch'] },

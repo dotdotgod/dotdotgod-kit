@@ -22,7 +22,8 @@ Canonical instructions for AI coding agents working in this repository.
 
 ## Context Tool Selection
 
-- When available and permitted by the current mode, prefer `dotdotgod_execute` with `outputMode: "auto"` for commands whose output size is unknown, including tests and builds. Small output stays direct; larger output is indexed. Do not predict exact output size first.
+- When available and permitted by the current mode, prefer `dotdotgod_execute` with a `commands` array (1..100 entries) and per-command `outputMode: "auto"` for commands whose output size is unknown, including tests and builds. Small output stays direct; larger output is indexed. Do not predict exact output size first.
+- Group independent known commands in one execute call; separate commands dependent on earlier results. Single-command calls also return a batch: inspect each `results` entry and its `indexed.id`, not top-level command fields. Do not bypass permissions or safety gates.
 - Use `indexed` for known-large output you need to search; use `discard` only when status alone provides sufficient evidence. Check `ok`, `code`, `timedOut`, `aborted`, and `captureLimitExceeded` before claiming success.
 - Search retained output by its source ID (`indexed.id` for execution, `id` for file ingestion), with a small `limit` and appropriate scope/session filters. For failed commands, try `fail OR error OR reason`; if unmatched, try concrete diagnostic terms or `*` for bounded browsing with the same filters. Empty results mean no match, not successful verification. Retrieved excerpts, including wildcard results, do not prove complete inspection; report an unsupported cause as unverified, not absent.
 - In Pi codemode, prefer `tools.dotdotgod_execute(...)` over `tools.bash(...)` for unknown output. Native context tools return JSON text: use `JSON.parse`, inspect status, and return only bounded evidence/metadata. Store source IDs, not raw logs, across scripts.

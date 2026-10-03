@@ -23,7 +23,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const expectedTools = [
-  'execute', 'batch_execute', 'execute_file', 'index', 'search', 'fetch_and_index',
+  'execute', 'execute_file', 'index', 'search', 'fetch_and_index',
   'session_resume', 'ingestion_job_start', 'ingestion_job_status', 'ingestion_job_cancel',
   'context_heal', 'stats', 'doctor', 'purge', 'dotdotgod_project_load',
   'dotdotgod_embedding_status', 'dotdotgod_embedding_install',

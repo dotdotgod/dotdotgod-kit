@@ -8,7 +8,7 @@ Dotdotgod keeps large command, file, and fetched text outside model context unti
 
 Claude Code and Codex receive one local stdio MCP server with these tools:
 
-- `execute`, `batch_execute`, and `execute_file`;
+- `execute` and `execute_file`;
 - `index`, `search`, and `fetch_and_index`;
 - `stats`, `doctor`, and `purge`;
 - `dotdotgod_project_load`, `dotdotgod_project_impact`, and `dotdotgod_project_initialize`;

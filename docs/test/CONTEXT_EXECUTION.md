@@ -7,7 +7,7 @@
 - bounded overlapping generic chunks;
 - FTS5 indexing, ranked search, scope filters, and source purge;
 - small direct output and large indexed output;
-- ordered batch results under concurrency;
+- ordered single/multi execute results under concurrency, required arrays, and rejection of old inputs;
 - file processing without returning source bytes;
 - destructive purge selector validation.
 

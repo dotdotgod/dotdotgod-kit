@@ -16,8 +16,9 @@ test("public Pi codemode discovers native descriptions, parses text results, and
       if (!discovered.some(t => t.name === "dotdotgod_execute")) throw new Error("execute not discoverable");
       const info = await describeTool("dotdotgod_execute");
       if (!JSON.stringify(info).includes("unknown output size")) throw new Error("missing selection guidance");
-      const small = JSON.parse(await tools.dotdotgod_execute(${JSON.stringify(nodeCommand("console.log('small output')"))}));
-      const large = JSON.parse(await tools.dotdotgod_execute(${JSON.stringify(nodeCommand(fixtureOutput))}));
+      const smallBatch = JSON.parse(await tools.dotdotgod_execute(${JSON.stringify({ commands: [nodeCommand("console.log('small output')")] })}));
+      const largeBatch = JSON.parse(await tools.dotdotgod_execute(${JSON.stringify({ commands: [nodeCommand(fixtureOutput)] })}));
+      const small = smallBatch.results[0], large = largeBatch.results[0];
       if (!large.ok || !large.indexed?.id || large.stdout) throw new Error("large result not indexed");
       const found = JSON.parse(await tools.dotdotgod_context_search({query:"workflow-needle", source:large.indexed.id, limit:1, sessionOnly:true}));
       const file = JSON.parse(await tools.dotdotgod_context_index({path:"fixture.log", scope:"project"}));
@@ -52,19 +53,20 @@ test("codemode handles nonzero status, no-match, malformed JSON, and blocked nes
   const f = await workflowSession((pi) => {
     pi.registerTool({ name: "fixture_malformed", label: "Fixture", description: "Test-only malformed response", parameters: Type.Object({}), async execute() { return { content: [{ type: "text", text: "not JSON" }], details: undefined }; } });
     pi.on("tool_call", (event) => {
-      if (event.toolName === "dotdotgod_execute" && event.input.label === "blocked-fixture") return { block: true, reason: "fixture nested policy" };
+      if (event.toolName === "dotdotgod_execute" && (event.input.commands as { label?: string }[]).some(command => command.label === "blocked-fixture")) return { block: true, reason: "fixture nested policy" };
     });
   });
   try {
     const result = await f.call("codemode", options + `
-      const failure = JSON.parse(await tools.dotdotgod_execute(${JSON.stringify({ ...nodeCommand("console.error('codemode-failure expected reason'); process.exitCode=9;"), outputMode: "indexed" })}));
+      const failureBatch = JSON.parse(await tools.dotdotgod_execute(${JSON.stringify({ commands: [{ ...nodeCommand("console.error('codemode-failure expected reason'); process.exitCode=9;"), outputMode: "indexed" }] })}));
+      const failure = failureBatch.results[0];
       const found = JSON.parse(await tools.dotdotgod_context_search({source:failure.indexed.id, query:"codemode-failure", limit:1}));
       const absent = JSON.parse(await tools.dotdotgod_context_search({source:failure.indexed.id, query:"absent-marker", limit:1}));
       const browsed = JSON.parse(await tools.dotdotgod_context_search({source:failure.indexed.id, query:"*", sessionOnly:true, limit:1}));
       if (!browsed.ok || browsed.results.length !== 1 || browsed.results[0].sourceId !== failure.indexed.id) throw new Error("wildcard browse failed");
       let malformed=false, blocked=false;
       try { JSON.parse(await tools.fixture_malformed({})); } catch { malformed=true; }
-      try { await tools.dotdotgod_execute(${JSON.stringify({ ...nodeCommand("0"), label: "blocked-fixture" })}); } catch(e) { blocked=String(e).includes("fixture nested policy"); }
+      try { await tools.dotdotgod_execute(${JSON.stringify({ commands: [{ ...nodeCommand("0"), label: "blocked-fixture" }] })}); } catch(e) { blocked=String(e).includes("fixture nested policy"); }
       return {ok:failure.ok, code:failure.code, evidence:found.results[0]?.text.slice(0,100), noMatch:absent.ok && absent.results.length===0, malformed, blocked};
     `);
     assert.equal(result.isError, false, textContent(result));
@@ -85,7 +87,7 @@ test("aborting a codemode session cancels its active child command", async () =>
     if (event.type === "tool_execution_start" && event.toolName === "dotdotgod_execute") sawExecute();
   });
   try {
-    const running = f.call("codemode", `return await tools.dotdotgod_execute(${JSON.stringify(nodeCommand("setInterval(()=>{},1000)"))});`);
+    const running = f.call("codemode", `return await tools.dotdotgod_execute(${JSON.stringify({ commands: [nodeCommand("setInterval(()=>{},1000)")] })});`);
     await Promise.race([started, running.then((result) => { throw new Error(`command did not start: ${textContent(result)}`); })]);
     // Allow the real child to spawn before cancelling; avoid a pre-spawn-only assertion.
     await new Promise((resolve) => setTimeout(resolve, 100));

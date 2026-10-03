@@ -7,7 +7,7 @@ import { createAgentSession, createCodemodeExtension, DefaultResourceLoader, Mod
 import contextTools from "../../extensions/context-tools/index.ts";
 
 // Public SDK + deterministic stream: no model request, credentials, or ambient resources.
-export async function workflowSession(extra?: ExtensionFactory) {
+export async function workflowSession(extra?: ExtensionFactory, additionalExtensionPaths: string[] = []) {
   const root = mkdtempSync(join(tmpdir(), "dotdotgod-workflow-"));
   const agentDir = join(root, "agent");
   mkdirSync(agentDir);
@@ -16,6 +16,7 @@ export async function workflowSession(extra?: ExtensionFactory) {
   const resourceLoader = new DefaultResourceLoader({
     cwd: root, agentDir, settingsManager,
     noExtensions: true, noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true,
+    additionalExtensionPaths,
     extensionFactories: [contextTools, createCodemodeExtension({ models: false }), (pi) => {
       pi.on("tool_call", (event) => { hooks.push({ name: event.toolName, parent: event.parentToolCallId, phase: "call" }); });
       pi.on("tool_result", (event) => { hooks.push({ name: event.toolName, parent: event.parentToolCallId, phase: "result" }); });

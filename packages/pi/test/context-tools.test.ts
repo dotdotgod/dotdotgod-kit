@@ -22,7 +22,9 @@ function register() {
 
 test("Pi registers native context tools with bounded directory and scope schemas", () => {
   const tools = register();
-  assert.equal(tools.size, 15);
+  assert.equal(tools.size, 14);
+  assert.equal(tools.has("dotdotgod_batch_execute"), false);
+  assert.deepEqual(tools.get("dotdotgod_execute")?.parameters.required, ["commands"]);
   assert.ok(tools.has("dotdotgod_context_index"));
   assert.ok(tools.has("dotdotgod_execute"));
   assert.ok(tools.has("dotdotgod_context_session_resume"));

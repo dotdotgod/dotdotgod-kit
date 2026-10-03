@@ -2,10 +2,11 @@
 
 ## Purpose
 
-Guide native Pi and codemode callers toward bounded execution and retrieval without changing permissions, output schemas, or tool exposure.
+Guide native Pi and codemode callers toward bounded execution and retrieval while preserving host permissions.
 
 ## Selection Contract
 
+- `dotdotgod_execute` is the sole command tool. Input requires `commands` (1..100 entries), with optional `concurrency`, `cwd`, and `timeoutMs`. Group independent known commands; separate dependent commands. Results always contain ordered `results`, including single-command calls.
 - Pi descriptions and active-tool prompt guidance recommend `dotdotgod_execute` with `auto` for commands whose output size is unknown, including `tools.dotdotgod_execute` inside codemode.
 - Known-large output needed for retrieval uses `indexed`; `discard` is appropriate only when status suffices. Short located source and images remain direct-read cases.
 - Guidance MUST NOT force routing, enable codemode automatically, retry write-capable commands silently, or authorize a blocked command.
@@ -15,15 +16,15 @@ Guide native Pi and codemode callers toward bounded execution and retrieval with
 
 Native context tools retain JSON text results without an output schema. Codemode callers MUST parse text before selecting fields and SHOULD return bounded metadata/evidence rather than complete results. Codemode's small-value store is for source IDs or cursors, not raw logs.
 
-Execution failure can return `ok: false` without a thrown tool error. Callers inspect `code`, `timedOut`, `aborted`, and `captureLimitExceeded`; tool-call errors may reject separately. Search uses the returned source ID and bounded limits. For failure diagnostics, guidance recommends `fail OR error OR reason`, followed by concrete diagnostic terms or bounded `*` browsing with the same filters when needed. Empty results mean no match, not tool failure or complete verification. Wildcard excerpts also do not prove full inspection; unsupported causes must be reported as unverified, not absent.
+Execution failure can return `ok: false` without a thrown tool error. Callers inspect each `results` entry's `code`, `timedOut`, `aborted`, and `captureLimitExceeded`; tool-call errors may reject separately. Search uses the returned source ID and bounded limits. For failure diagnostics, guidance recommends `fail OR error OR reason`, followed by concrete diagnostic terms or bounded `*` browsing with the same filters when needed. Empty results mean no match, not tool failure or complete verification. Wildcard excerpts also do not prove full inspection; unsupported causes must be reported as unverified, not absent.
 
-The execution source is `indexed.id`; file ingestion returns `id`, while directory ingestion reports individual IDs in `indexed`. Scope/session/source filters constrain retrieval before ranking.
+The execution source is each result's `indexed.id`; file ingestion returns `id`, while directory ingestion reports individual IDs in `indexed`. Scope/session/source filters constrain retrieval before ranking.
 
 ## SDK And Safety Boundary
 
 The source checkout pins Pi agent-core, AI, coding-agent, and TUI development dependencies to `1.0.0` for public SDK codemode tests; these SDK packages require Node `>=22.19.0`. Published host peer ranges and `pi-subagents` remain unchanged.
 
-Codemode nested calls traverse Pi's tool pipeline. This does not establish complete Plan Mode/impact coverage for every execution entrypoint. Guidance does not authorize bypassing restrictions; schemas, return shapes, exposure, and gates remain unchanged.
+Codemode nested calls traverse Pi's tool pipeline. This does not establish complete Plan Mode/impact coverage for every execution entrypoint. Guidance does not authorize bypassing restrictions; each command in the array passes the existing Plan Mode allowlist and impact gates before the batch starts.
 
 Deterministic integration tests verify real SDK tools/scripts and guidance delivery, not real model adoption. Actual tool-choice evaluation requires separately observed model runs.
 

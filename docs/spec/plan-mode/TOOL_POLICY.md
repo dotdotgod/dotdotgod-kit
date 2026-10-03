@@ -6,7 +6,7 @@ While the authoritative lifecycle is `planning` or `reviewing`:
 
 - Reading files and searching the project are allowed.
 - The default active tool list is conservative; see [`../PLAN_MODE_TOOL_SETTINGS.md`](../PLAN_MODE_TOOL_SETTINGS.md) for optional extra installed tools.
-- Read-only bash commands are allowed through an allowlist.
+- Read-only bash commands are allowed through an allowlist. If `dotdotgod_execute` is active, every command in its required `commands` array passes the same allowlist and pending-impact gates before any command starts. Execution cwd overrides require execution mode.
 - `edit` and `write` are allowed only for markdown files under `docs/plan/` and `docs/archive/`.
 - Conservative plan/archive housekeeping bash commands are allowed only when every affected path stays under `docs/plan/` or `docs/archive/`.
 - Product/source/config changes outside those directories are blocked.
@@ -58,6 +58,7 @@ For `docs/plan/` and `docs/archive/` housekeeping, impact checks are not require
   - [packages/pi/extensions/plan-mode/utils.ts](../../../packages/pi/extensions/plan-mode/utils.ts)
 - Verified by:
   - [packages/pi/test/plan-mode-utils.test.ts](../../../packages/pi/test/plan-mode-utils.test.ts)
+  - [packages/pi/test/context-execution-gates.test.ts](../../../packages/pi/test/context-execution-gates.test.ts)
   - [docs/test/README.md](../../test/README.md)
 - Related docs:
   - [docs/spec/plan-mode/README.md](README.md)
@@ -70,5 +71,5 @@ For `docs/plan/` and `docs/archive/` housekeeping, impact checks are not require
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts"],"verifiedBy":["packages/pi/test/plan-mode-utils.test.ts","docs/test/README.md"],"relatedDocs":["docs/spec/plan-mode/README.md","docs/spec/PLAN_MODE_TOOL_SETTINGS.md","docs/spec/IMPACT_RANKING_CONFIG.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md","docs/arch/CODE_CONVENTIONS.md"]}
+{"kind":"spec","implementedBy":["packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts"],"verifiedBy":["packages/pi/test/plan-mode-utils.test.ts","packages/pi/test/context-execution-gates.test.ts","docs/test/README.md"],"relatedDocs":["docs/spec/plan-mode/README.md","docs/spec/PLAN_MODE_TOOL_SETTINGS.md","docs/spec/IMPACT_RANKING_CONFIG.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md","docs/arch/CODE_CONVENTIONS.md"]}
 ```

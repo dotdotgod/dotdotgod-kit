@@ -98,9 +98,9 @@ The automatic `dotdotgod_project_load` result keeps its complete content for the
 
 ## Native Context Tools
 
-Pi registers native `dotdotgod_execute`, `dotdotgod_batch_execute`, `dotdotgod_execute_file`, `dotdotgod_context_index`, `dotdotgod_context_search`, `dotdotgod_fetch_and_index`, session-resume, background-ingestion start/status/cancel, explicit context-heal, stats, doctor, purge, and project-initialize tools over `@dotdotgod/context`. Pi calls the shared library directly and does not start the Claude Code/Codex context MCP server.
+Pi registers native `dotdotgod_execute`, `dotdotgod_execute_file`, `dotdotgod_context_index`, `dotdotgod_context_search`, `dotdotgod_fetch_and_index`, session-resume, background-ingestion start/status/cancel, explicit context-heal, stats, doctor, purge, and project-initialize tools over `@dotdotgod/context`. Pi calls the shared library directly and does not start the Claude Code/Codex context MCP server.
 
-The context runtime's command-capture and child-environment policies apply to `dotdotgod_execute`, `dotdotgod_batch_execute`, and `dotdotgod_execute_file`. They return bounded small output directly and index larger output into the ignored project-local `.dotdotgod/context/context.sqlite` FTS5 database. A command's stdout and stderr share a 10 MiB capture ceiling, and direct excerpts are limited to 1 MiB per stream. Exceeding the shared ceiling terminates the command and reports `captureLimitExceeded`. Child environments preserve compatibility-oriented inheritance after filtering runtime injection variables; policy metadata reports names, not values, and ordinary inherited credentials remain ambient. Pi's ordinary shell tools are not transparently intercepted or redirected through this runtime.
+The context runtime's command-capture and child-environment policies apply to `dotdotgod_execute` and `dotdotgod_execute_file`. They return bounded small output directly and index larger output into the ignored project-local `.dotdotgod/context/context.sqlite` FTS5 database. A command's stdout and stderr share a 10 MiB capture ceiling, and direct excerpts are limited to 1 MiB per stream. Exceeding the shared ceiling terminates the command and reports `captureLimitExceeded`. Child environments preserve compatibility-oriented inheritance after filtering runtime injection variables; policy metadata reports names, not values, and ordinary inherited credentials remain ambient. Pi's ordinary shell tools are not transparently intercepted or redirected through this runtime.
 
 `dotdotgod_context_index` accepts project-contained files or bounded directories. Directory traversal has deterministic order, configurable depth/entry/file/byte limits, explicit extension and path exclusions, symlinks skipped by default, and partial-result reporting. It does not apply `.gitignore` semantics automatically. Indexed Markdown and JSON use structure-aware chunks. Search applies scope, session, and source filters before combining Porter FTS5 and label/path candidates with reciprocal-rank fusion and deterministic title, path, and proximity signals. Results return bounded excerpts with provenance and trust metadata; retrieved text has `instructionAuthority: "none"` and remains non-authoritative data. This is a defense-in-depth boundary, not a prompt-injection guarantee.
 
@@ -110,15 +110,16 @@ For output modes, ingestion limits, retrieval details, and the complete security
 
 ### Choosing Tools, Including Codemode
 
-For unknown command output, prefer `dotdotgod_execute` with `outputMode: "auto"`; use `indexed` for known-large output to retain, and `discard` only when status is enough. Inspect `ok`, `code`, `timedOut`, `aborted`, and `captureLimitExceeded`. Search a returned `indexed.id` using `dotdotgod_context_search` with `source` and a small `limit`. An empty result means no match, not complete verification. Direct `read` remains appropriate for short located source and images; context FTS retrieval requires no embedding service.
+For unknown command output, prefer `dotdotgod_execute` with `outputMode: "auto"`; use `indexed` for known-large output to retain, and `discard` only when status is enough. Inspect each `results` entry's `ok`, `code`, `timedOut`, `aborted`, and `captureLimitExceeded`. Search a returned `indexed.id` using `dotdotgod_context_search` with `source` and a small `limit`. An empty result means no match, not complete verification. Direct `read` remains appropriate for short located source and images; context FTS retrieval requires no embedding service.
 
 Pi 1.0 codemode can call these native tools without MCP. The adapter does not enable codemode automatically or replace `bash`. When codemode is enabled and the tools are permitted, native context calls resolve to **JSON text**, not a structured object. Prefer `tools.dotdotgod_execute(...)` over `tools.bash(...)` for unknown output and return only bounded projections:
 
 ```js
 // @options: {"max_output_tokens": 1000, "timeout_ms": 60000}
-const run = JSON.parse(await tools.dotdotgod_execute({
-  executable: "node", args: ["--version"], outputMode: "auto"
+const batch = JSON.parse(await tools.dotdotgod_execute({
+  commands: [{ executable: "node", args: ["--version"], outputMode: "auto" }]
 }));
+const run = batch.results[0];
 if (!run.ok) return {code: run.code, timedOut: run.timedOut,
   aborted: run.aborted, captureLimitExceeded: run.captureLimitExceeded,
   source: run.indexed?.id, diagnostic: (run.stderr ?? "").slice(0, 500)};

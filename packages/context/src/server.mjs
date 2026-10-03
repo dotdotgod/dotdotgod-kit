@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { ContextStore, contextDbPath, healContextDatabase } from './store.mjs';
-import { executeBatch, executeCommand, executeFile } from './execute.mjs';
+import { executeBatch, executeFile } from './execute.mjs';
 import { fetchAndIndex, indexFile } from './content.mjs';
 import { runDoctor } from './doctor.mjs';
 import { projectEmbeddingInstall, projectEmbeddingStatus, projectImpact, projectInitialize, projectLoad } from './project.mjs';
@@ -47,9 +47,7 @@ function register(name, description, inputSchema, handler, annotations) {
   });
 }
 
-register('execute', 'Run one local command while keeping large stdout/stderr outside model context.', commandSchema,
-  (input, extra) => executeCommand(input, { root, store: getStore(), sessionId, signal: extra.signal }), { openWorldHint: true, destructiveHint: true });
-register('batch_execute', 'Run labeled local commands sequentially or with bounded concurrency and index large outputs.', {
+register('execute', 'Run 1..100 labeled local commands with bounded concurrency. Group independent known commands; separate commands dependent on earlier results. Inspect every results entry status and indexed.id. Do not bypass permissions or safety gates.', {
   commands: z.array(z.object(commandSchema)).min(1).max(100), concurrency: z.number().int().min(1).max(8).optional(), cwd: z.string().optional(), timeoutMs: z.number().int().positive().optional(),
 }, (input, extra) => executeBatch(input, { root, store: getStore(), sessionId, signal: extra.signal }), { openWorldHint: true, destructiveHint: true });
 register('execute_file', 'Process a local file in an isolated child process; only bounded stdout/stderr is returned.', {

@@ -28,7 +28,7 @@ The runtime policies apply to dotdotgod execution and retrieval tools. Each host
 
 ## Tool Surface
 
-- `execute`, `batch_execute`, `execute_file`
+- `execute`, `execute_file`
 - `index`, `search`, `fetch_and_index`
 - `session_resume`, `ingestion_job_start`, `ingestion_job_status`, `ingestion_job_cancel`
 - `context_heal`, `stats`, `doctor`, `purge`
@@ -55,9 +55,9 @@ The dotdotgod execution tools support four output modes:
 
 Each command has one **10 MiB combined capture ceiling** shared by stdout and stderr. If either stream exceeds the remaining shared budget, the runtime terminates the process and reports `captureLimitExceeded`. A direct response is capped at **1 MiB per stream**, even if a caller requests more. Automatically indexed command output defaults to session scope and a 24-hour expiry.
 
-`batch_execute` accepts up to 100 commands, uses concurrency from 1 through 8, and preserves input order. Execution and explicit shell mode remain write-capable operations subject to the host's approval model.
+`execute` requires a `commands` array of 1..100 entries and always returns ordered `results`, even for one command. Group independent known commands and separate dependent commands without bypassing safety gates. It accepts up to 100 commands, uses concurrency from 1 through 8, and preserves input order. Execution and explicit shell mode remain write-capable operations subject to the host's approval model.
 
-`execute`, `batch_execute`, and `execute_file` share an `inherit-filtered-v1` child-environment policy. It preserves compatibility-oriented inheritance while filtering `NODE_OPTIONS`, `PYTHONPATH`, `RUBYOPT`, `LD_PRELOAD`, and supported-platform `DYLD_*` variables. Callers may provide string overrides or remove inherited variables with `null`, but cannot restore reserved variables. Results report filtered names without values. This policy applies only to these dotdotgod tools and does not isolate ordinary inherited credentials.
+`execute` and `execute_file` share an `inherit-filtered-v1` child-environment policy. It preserves compatibility-oriented inheritance while filtering `NODE_OPTIONS`, `PYTHONPATH`, `RUBYOPT`, `LD_PRELOAD`, and supported-platform `DYLD_*` variables. Callers may provide string overrides or remove inherited variables with `null`, but cannot restore reserved variables. Results report filtered names without values. This policy applies only to these dotdotgod tools and does not isolate ordinary inherited credentials.
 
 ## Local Storage And Retrieval
 

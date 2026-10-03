@@ -7,7 +7,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { PHASE3_TOOL_INPUT_SCHEMAS } from '../src/index.mjs';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
-const expected = ['execute', 'batch_execute', 'execute_file', 'index', 'search', 'fetch_and_index', 'session_resume', 'ingestion_job_start', 'ingestion_job_status', 'ingestion_job_cancel', 'context_heal', 'stats', 'doctor', 'purge', 'dotdotgod_project_load', 'dotdotgod_embedding_status', 'dotdotgod_embedding_install', 'dotdotgod_project_impact', 'dotdotgod_project_initialize'];
+const expected = ['execute', 'execute_file', 'index', 'search', 'fetch_and_index', 'session_resume', 'ingestion_job_start', 'ingestion_job_status', 'ingestion_job_cancel', 'context_heal', 'stats', 'doctor', 'purge', 'dotdotgod_project_load', 'dotdotgod_embedding_status', 'dotdotgod_embedding_install', 'dotdotgod_project_impact', 'dotdotgod_project_initialize'];
 
 test('stdio server lists the complete tool surface and calls doctor', async () => {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-mcp-test-'));
@@ -61,20 +61,26 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
 
     const executed = await client.callTool({
       name: 'execute',
-      arguments: {
+      arguments: { commands: [{
         executable: process.execPath,
         args: ['-e', "console.log(process.env.MCP_ENV_OVERRIDE); console.log(process.env.NODE_OPTIONS ?? 'reserved-filtered')"],
         shell: false,
         env: { MCP_ENV_OVERRIDE: 'visible' },
-      },
+      }] },
     });
     assert.equal(executed.isError, undefined);
-    assert.match(executed.structuredContent.stdout, /visible/);
-    assert.match(executed.structuredContent.stdout, /reserved-filtered/);
-    assert.equal(executed.structuredContent.environmentPolicy.mode, 'inherit-filtered-v1');
-    const reservedOverride = await client.callTool({ name: 'execute', arguments: { executable: process.execPath, args: ['-e', '0'], env: { NODE_OPTIONS: 'forbidden' } } });
-    assert.equal(reservedOverride.isError, true);
-    assert.match(reservedOverride.structuredContent.error, /reserved by the execution policy/);
+    assert.match(executed.structuredContent.results[0].stdout, /visible/);
+    assert.match(executed.structuredContent.results[0].stdout, /reserved-filtered/);
+    assert.equal(executed.structuredContent.results[0].environmentPolicy.mode, 'inherit-filtered-v1');
+    const reservedOverride = await client.callTool({ name: 'execute', arguments: { commands: [{ executable: process.execPath, args: ['-e', '0'], env: { NODE_OPTIONS: 'forbidden' } }] } });
+    assert.equal(reservedOverride.structuredContent.ok, false);
+    assert.match(reservedOverride.structuredContent.results[0].error, /reserved by the execution policy/);
+    const oldSchema = await client.callTool({ name: 'execute', arguments: { command: 'echo old' } });
+    assert.equal(oldSchema.isError, true);
+    const multiple = await client.callTool({ name: 'execute', arguments: { commands: [{ command: 'echo first' }, { command: 'echo second', outputMode: 'indexed' }], concurrency: 2 } });
+    assert.equal(multiple.structuredContent.results.length, 2);
+    assert.equal(multiple.structuredContent.ok, true);
+    assert.ok(multiple.structuredContent.results[1].indexed.id);
 
     for (const argumentsValue of [{ path: 'docs', maxDepth: -1 }, { path: 'docs', scope: 'invalid' }]) {
       const invalid = await client.callTool({ name: 'index', arguments: argumentsValue });

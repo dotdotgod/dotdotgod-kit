@@ -76,7 +76,7 @@ Projects can customize memory roles with `memory.areas`, select traceability-enf
 
 ## Bundled MCP And Hooks
 
-The plugin starts a local stdio MCP server. It exposes `execute`, `batch_execute`, and `execute_file`; context index, search, fetch, session resume, durable ingestion-job lifecycle, explicit healing, stats, doctor, and purge tools; plus `dotdotgod_project_load`, `dotdotgod_project_impact`, and `dotdotgod_project_initialize`.
+The plugin starts a local stdio MCP server. It exposes `execute` and `execute_file`; context index, search, fetch, session resume, durable ingestion-job lifecycle, explicit healing, stats, doctor, and purge tools; plus `dotdotgod_project_load`, `dotdotgod_project_impact`, and `dotdotgod_project_initialize`.
 
 Dotdotgod execution tools share a 10 MiB stdout/stderr capture ceiling per command. Crossing that ceiling terminates the child process and reports `captureLimitExceeded`; direct stdout and stderr excerpts are each capped at 1 MiB. Their child environments preserve compatibility-oriented inheritance after filtering runtime injection variables; this reports filtered names without values but does not isolate ordinary inherited credentials. Large output is indexed before retrieval in the ignored project-local `.dotdotgod/context/context.sqlite` FTS5 store, and searches return bounded excerpts. The store uses WAL, a bounded busy timeout, and transactional source replacement, expiry, and purge. Structural Markdown/JSON chunks, bounded typo-tolerant trigram candidates, reciprocal-rank fusion, and title/path/proximity signals improve retrieval while provenance and `instructionAuthority: "none"` identify retrieved text as non-authoritative data.
 

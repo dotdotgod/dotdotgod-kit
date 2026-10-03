@@ -23398,14 +23398,7 @@ function register(name, description, inputSchema, handler, annotations) {
     }
   });
 }
-register(
-  "execute",
-  "Run one local command while keeping large stdout/stderr outside model context.",
-  commandSchema,
-  (input, extra) => executeCommand(input, { root, store: getStore(), sessionId, signal: extra.signal }),
-  { openWorldHint: true, destructiveHint: true }
-);
-register("batch_execute", "Run labeled local commands sequentially or with bounded concurrency and index large outputs.", {
+register("execute", "Run 1..100 labeled local commands with bounded concurrency. Group independent known commands; separate commands dependent on earlier results. Inspect every results entry status and indexed.id. Do not bypass permissions or safety gates.", {
   commands: external_exports.array(external_exports.object(commandSchema)).min(1).max(100),
   concurrency: external_exports.number().int().min(1).max(8).optional(),
   cwd: external_exports.string().optional(),
