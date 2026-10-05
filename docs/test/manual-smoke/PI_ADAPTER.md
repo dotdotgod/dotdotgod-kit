@@ -46,19 +46,19 @@ Run `pi --help` and confirm dotdotgod contributes `--dd-plan` without contributi
 15. Trigger explicit execution review and choose stay/refine/cancel; confirm the same plan execution UI does not appear a second time at agent end.
 16. Test narrow/short terminals and resize with long Korean questions, options, and answers. The decision wizard must wrap and scroll via PgUp/PgDn without over-wide lines; all actions must remain keyboard-reachable. Confirm the separate saved-plan review screen still behaves as before.
 17. Confirm explanatory replies that do not touch `docs/plan/` do not show the action prompt or extract todos.
-18. Confirm no persistent `[plan-todo-list]` widget or dedicated todo command appears; extracted todo state remains available to review, execution, and compaction flows.
+18. Confirm no persistent `[plan-todo-list]` widget or dedicated todo command appears; extracted todo state remains available to review and execution flows.
 19. Confirm constrained housekeeping is allowed only under local memory.
 20. Confirm source/config mutation remains blocked.
-21. Confirm high-context compaction is checked after the first planning request, not immediately when `/dd:plan` is enabled.
-22. Confirm planning compaction preserves current work, active/touched plan paths, todos, verification, advisory impact context, and `[DONE:n]` markers. Submit request B immediately after request A and force first-request compaction; confirm the active run continues B exactly once without a Plan Mode synthetic resume message or replay of A.
-23. With the CLI available, confirm first-turn context shaping adds validation, documentation query, and graph impact; without the CLI, Plan Mode continues.
+21. Confirm high context usage does not cause Plan Mode to request compaction; Pi's own compaction settings remain unchanged.
+22. Submit request B immediately after request A; confirm advisory context uses B without a synthetic compaction-resume message or replay of A. Restore an old compaction snapshot and confirm planning is not blocked.
+23. With the CLI available, confirm first-turn context shaping adds bounded graph impact and reference expansion without running validate; without the CLI, Plan Mode continues.
 24. Confirm bounded dotdotgod context/status commands are allowed while `init`, `config init`, shell chaining, redirects, pipes, command substitution, and package-runner wrappers remain blocked or require approval.
 25. When automatic loading is needed, confirm the global extension leaves the initial user text and images unchanged and injects only a hidden `project-memory-context` custom message with `display: false`. Confirm no automatic-load marker renders as user-authored text, `dotdotgod_project_load` is available in that run and succeeds only after the hidden message is reachable, focused context returns, planning resumes without repetition, empty focus uses the depth-five fallback, and Plan Mode has no load framing or string classification.
-26. Confirm later planning turns do not automatically repeat load/compaction decisions.
+26. Confirm later planning turns do not automatically repeat the one-shot planning advisory context refresh; global project-memory assessment remains independently owned.
 27. Confirm first-turn and later-turn hidden prompts use full and compact forms respectively while source/config mutation stays blocked.
 28. Confirm `pi --dd-plan --plan-extra-tools ctx_search,ctx_execute_file` adds only installed tools and renders the resolved tool list.
 29. Choose execute with and without extracted todos; confirm normal tools, execution guidance, and a queued follow-up naming the plan path.
-30. With extracted todos, confirm execution context includes the active plan path and compaction preserves it.
+30. With extracted todos, confirm execution context includes the active plan path.
 31. Ask to execute an existing active plan path and confirm the queue-first review flow opens even if the plan was not edited in that turn; choose execute after the queue is clear and confirm execution starts through an explicitly queued follow-up.
 32. While multiple active plans exist and no current plan is selected, send a planning/proceed phrase such as `진행하자`, an advisory selector-policy request, and a non-plan command such as `run tests`; confirm Pi does not ask which active plan to execute. Then send an explicit plan execution request such as `실행하자` or mention a specific existing plan and confirm Pi asks or resolves the target before review.
 33. Confirm advisory questions remain lightweight and implementation-looking requests become durable plans first.

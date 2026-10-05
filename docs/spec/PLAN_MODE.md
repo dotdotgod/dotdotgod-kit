@@ -7,7 +7,7 @@ This file provides a stable route for links to the Plan Mode behavior contract w
 ## Domain Files
 
 - [`plan-mode/README.md`](plan-mode/README.md): purpose, commands, allowed work summary, and routing.
-- [`plan-mode/WORKFLOW.md`](plan-mode/WORKFLOW.md): context shaping, compaction, review choice, and execution workflow.
+- [`plan-mode/WORKFLOW.md`](plan-mode/WORKFLOW.md): advisory context shaping, review choice, and execution workflow.
 - [`plan-mode/TOOL_POLICY.md`](plan-mode/TOOL_POLICY.md): planning tool and command boundaries.
 - [`plan-mode/DEBUG_AND_ARCHIVE.md`](plan-mode/DEBUG_AND_ARCHIVE.md): debug measurement, archive policy, and traceability.
 

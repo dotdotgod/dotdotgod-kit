@@ -11,10 +11,7 @@ import { ModeLifecycleController } from "../extensions/plan-mode/controllers/mod
 import { PlanArtifactController } from "../extensions/plan-mode/controllers/plan-artifact.ts";
 import { configureDocumentationPaths, isActivePlanMarkdownPath, isManagedPlanMarkdownPath } from "../extensions/plan-mode/runtime/paths.ts";
 import {
-	PLAN_COMPACTION_PERCENT_THRESHOLD,
-	PLAN_MODE_COMPACTION_INSTRUCTIONS,
 	PLAN_REVIEW_MIN_BODY_LINES,
-	buildPlanCompactionInstructions,
 	buildPlanExecutionDecision,
 	buildPlanExecutionHandoff,
 	buildPlanReviewDisplayMarkdown,
@@ -30,7 +27,6 @@ import {
 	formatCompactImpactSummary,
 	formatExpandableToolOutput,
 	formatMultiImpactSummary,
-	formatPlanCompactionFocus,
 	formatReferenceExpansionSummary,
 	extractPathMentions,
 	extractPlanSlugMentions,
@@ -38,7 +34,6 @@ import {
 	getChangedPathFromDotdotgodImpactCommand,
 	getChangedPathsFromDotdotgodImpactCommand,
 	getNextPlanReviewActionIndex,
-	getPlanCompactionReason,
 	getPlanReviewActionChoice,
 	getPlanReviewBodyViewportLines,
 	getPlanReviewScrollState,
@@ -1002,16 +997,7 @@ describe("plan-mode tool settings", () => {
 	});
 });
 
-describe("plan-mode compaction helpers", () => {
-	it("builds planning-focused custom instructions with the reason", () => {
-		const instructions = buildPlanCompactionInstructions(`Plan Mode context exceeded ${PLAN_COMPACTION_PERCENT_THRESHOLD}% of the context window.`);
-		assert.match(instructions, new RegExp(`^Reason: Plan Mode context exceeded ${PLAN_COMPACTION_PERCENT_THRESHOLD}%`));
-		assert.match(instructions, /Preserve planning-critical context in this priority order/);
-		assert.match(instructions, /active plan path and status/);
-		assert.match(instructions, /\[DONE:n\]/);
-		assert.match(instructions, /Summarize older completed plans/);
-		assert.equal(buildPlanCompactionInstructions(), PLAN_MODE_COMPACTION_INSTRUCTIONS);
-	});
+describe("plan-mode context reminders", () => {
 
 	it("builds a compact Plan Mode reminder after the full prompt", () => {
 		const fullPrompt = buildPlanModeContextPrompt(false);
@@ -1028,42 +1014,25 @@ describe("plan-mode compaction helpers", () => {
 		assert.ok(compactPrompt.length < fullPrompt.length / 2);
 	});
 
-	it("builds current-work-focused custom instructions", () => {
-		const focus = formatPlanCompactionFocus({
-			task: "Integrate documentation query into /dd:load",
-			activePlanPaths: ["docs/plan/documentation-query-integration/README.md"],
-			touchedMemoryPaths: ["docs/plan/documentation-query-integration/README.md"],
-			todoSummary: "1/3 completed",
-			constraints: ["Use pnpm", "Exclude archive bodies"],
-		});
-		assert.match(focus ?? "", /Current work focus/);
-		assert.match(focus ?? "", /Integrate documentation query/);
-		assert.match(focus ?? "", /docs\/plan\/documentation-query-integration\/README\.md/);
-
-		const instructions = buildPlanCompactionInstructions("because", { task: "Do the current task" });
-		assert.match(instructions, /Reason: because/);
-		assert.match(instructions, /Current work focus/);
-		assert.match(instructions, /Do the current task/);
-	});
-
-	it("does not queue a synthetic user turn after hook-triggered compaction", () => {
-		const source = readFileSync(new URL("../extensions/plan-mode/controllers/context-orchestration.ts", import.meta.url), "utf8");
-		assert.doesNotMatch(source, /sendUserMessage|flushPendingPlanningResume|resume-after-compaction/);
-		assert.match(source, /onComplete:/);
-	});
 
 	it("drops legacy persisted compaction resume prompts instead of replaying them", () => {
 		const context = new ContextShapingController();
-		context.restore({
-			compactionInFlight: false,
+		const legacy = {
+			compactionInFlight: true,
+			lastCompactionEntryCount: 100,
 			pendingResumePrompt: "Continue the following Plan Mode request after planning-focused compaction.",
 			pendingResumeReason: "plan-mode-compaction-resume",
 			shapePending: false,
 			fullPromptInjected: true,
-			advisoryContextStatus: "pending",
-		});
-		assert.equal(context.snapshot().pendingResumePrompt, undefined);
-		assert.equal(context.snapshot().pendingResumeReason, undefined);
+			advisoryContextStatus: "pending" as const,
+		};
+		context.restore(legacy);
+		const snapshot = context.snapshot();
+		for (const key of ["compactionInFlight", "lastCompactionEntryCount", "pendingResumePrompt", "pendingResumeReason"]) {
+			assert.equal(Object.hasOwn(snapshot, key), false);
+		}
+		assert.equal(snapshot.advisoryContextStatus, "pending");
+		assert.equal(snapshot.fullPromptInjected, true);
 	});
 
 	it("uses the current hook prompt instead of a stale preceding transcript request", () => {
@@ -1108,18 +1077,6 @@ describe("plan-mode compaction helpers", () => {
 		);
 	});
 
-	it("detects token-based planning compaction reasons", () => {
-		assert.equal(
-			getPlanCompactionReason({ tokens: 60_000, contextWindow: 100_000, percent: 60 }),
-			`Plan Mode context exceeded ${PLAN_COMPACTION_PERCENT_THRESHOLD}% of the context window.`,
-		);
-		assert.equal(
-			getPlanCompactionReason({ tokens: 168_000, contextWindow: 200_000 }),
-			"Plan Mode context is within 32,000 tokens of the context window.",
-		);
-		assert.equal(getPlanCompactionReason({ tokens: 100_000 }), "Plan Mode context exceeded 100,000 tokens.");
-		assert.equal(getPlanCompactionReason({ tokens: 40_000, contextWindow: 200_000, percent: 20 }), undefined);
-	});
 });
 
 describe("plan-mode context shaping trigger", () => {
@@ -1211,9 +1168,6 @@ describe("resolved alternate-root plan execution policy", () => {
 			const artifact = new PlanArtifactController();
 			artifact.markTouched("project-memory/plan/task/README.md");
 			assert.equal(artifact.inferPlanPath(), "project-memory/plan/task/README.md");
-			const focus = new ContextShapingController().buildCurrentWorkFocus({ touchedPlanPaths: ["project-memory/plan/task/README.md"], todos: [] });
-			assert.deepEqual(focus.activePlanPaths, ["project-memory/plan/task/README.md"]);
-			assert.match(focus.constraints?.join("\n") ?? "", /project-memory\/archive\/README\.md/);
 		} finally {
 			configureDocumentationPaths("docs");
 		}

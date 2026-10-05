@@ -10,7 +10,7 @@ Workspace verification keeps dotdotgod changes safe before commits, package dry-
 
 - `pnpm run verify` runs generated-resource drift checks, package verify contract checks, and each package's `verify` script, including the context runtime's syntax, core, hook, and stdio MCP protocol tests. The CLI package runs its test files serially so embedding/provider and e2e fixtures do not contend for shared runtime resources.
 - `pnpm run verify:cache` runs docs validation, refreshes the local `.dotdotgod/` index, and checks cache freshness.
-- `.husky/pre-push` runs the workspace gate, cache gate, and package dry-runs before pushes.
+- `.husky/pre-push` runs workspace verification (including docs validation) once, then refreshes the index, checks cache freshness, and runs package dry-runs. It avoids the duplicate docs validation in standalone `verify:cache`, whose guarantees remain unchanged.
 - `publish:all` publishes `@dotdotgod/cli`, then `@dotdotgod/context`, then dependent Pi, Claude Code, and Codex adapters.
 - `scripts/check-package-verify-contract.mjs` fails packages that define quality scripts but omit them from package-level `verify`.
 
@@ -36,6 +36,7 @@ Workspace verification keeps dotdotgod changes safe before commits, package dry-
 - Verified by:
   - [docs/test/README.md](../test/README.md)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
+  - [packages/cli/test/pre-push.test.mjs](../../packages/cli/test/pre-push.test.mjs)
 - Related docs:
   - [docs/test/IMPACT_RANKING_CONFIG.md](../test/IMPACT_RANKING_CONFIG.md)
   - [docs/test/README.md](../test/README.md)
@@ -45,5 +46,5 @@ Workspace verification keeps dotdotgod changes safe before commits, package dry-
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["package.json",".husky/pre-push","scripts/check-package-verify-contract.mjs"],"verifiedBy":["docs/test/README.md","packages/cli/test/e2e.test.mjs"],"relatedDocs":["docs/test/IMPACT_RANKING_CONFIG.md","docs/test/README.md"],"designDecisions":["docs/arch/CODE_CONVENTIONS.md"]}
+{"kind":"spec","implementedBy":["package.json",".husky/pre-push","scripts/check-package-verify-contract.mjs"],"verifiedBy":["docs/test/README.md","packages/cli/test/e2e.test.mjs","packages/cli/test/pre-push.test.mjs"],"relatedDocs":["docs/test/IMPACT_RANKING_CONFIG.md","docs/test/README.md"],"designDecisions":["docs/arch/CODE_CONVENTIONS.md"]}
 ```

@@ -17,7 +17,7 @@ Completion hooks that refresh the index are optional. The default workflow relie
 
 Claude Code and Codex hook examples should prefer `dotdotgod status` for read-only stop-time cache reporting and `dotdotgod validate . --include-local-memory --check-index` for explicit docs validation plus markdown index-fingerprint checks. Hook examples that call `query`, `graph`, `index`, or `verify:cache` must describe the cache-refresh side effect or keep those commands opt-in.
 
-`pnpm run verify:cache` validates docs, runs `dotdotgod index`, and checks `dotdotgod status`; the Husky pre-push hook runs this gate and may update ignored cache files locally.
+`pnpm run verify:cache` validates docs, runs `dotdotgod index`, and checks `dotdotgod status`; the Husky pre-push hook validates docs through workspace verification, then runs index/status directly to avoid duplicate validation. Both workflows may update ignored cache files locally.
 
 Discovery is gitignore-aware through `git ls-files --cached --others --exclude-standard`, with a conservative directory-walk fallback. Supported files include common docs, package metadata, config, web, and infrastructure formats.
 

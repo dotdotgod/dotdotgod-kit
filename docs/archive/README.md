@@ -19,6 +19,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/remove-planning-compaction-and-audit-complexity/`: removed Plan Mode-owned compaction and automatic validation, retained and revised document-clarify, deduplicated pre-push docs validation, and passed automated verification; interactive reload smoke remains manual.
+
 - `plan/tool-markdown-responses/`: converted non-graph-impact tool text to Markdown across Pi and MCP, retained structured data, migrated native codemode to object access, and verified 382 tests after review fixes.
 
 - `plan/context-tool-workflow/`: upgraded development Pi SDK to 1.0, verified native/codemode workflows, and improved selection guidance; 32 model trials showed higher execute adoption with one native correctness failure, documented in evaluation results.

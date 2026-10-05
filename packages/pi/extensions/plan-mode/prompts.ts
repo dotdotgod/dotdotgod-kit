@@ -15,13 +15,6 @@ const DEFAULT_PLAN_MODE_TOOLS = [
 	"get_search_content",
 ];
 
-export const PLAN_COMPACTION_PERCENT_THRESHOLD = 60;
-const PLAN_COMPACTION_TOKEN_FALLBACK = 100_000;
-const PLAN_COMPACTION_CONTEXT_RESERVE = 32_000;
-
-export const PLAN_MODE_COMPACTION_INSTRUCTIONS =
-	"Preserve planning-critical context in this priority order: latest user request; active plan path and status; current targets; user decisions and constraints; implementation decisions; verification commands and results; unresolved risks and questions; next steps; completed [DONE:n] markers. Summarize older completed plans, repeated project loads, recoverable Plan Mode guidance, repeated tool output, stale alternatives, and unrelated history only when they affect current work. Produce a compact continuation-ready summary.";
-
 export function parsePlanModeExtraTools(value: unknown): string[] {
 	if (typeof value !== "string") return [];
 	const seen = new Set<string>();
@@ -86,20 +79,6 @@ export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAU
 	return compact ? buildPlanModeCompactContextPrompt(writablePaths) : buildPlanModeFullContextPrompt(allowedTools, writablePaths);
 }
 
-export interface PlanCompactionFocus {
-	task?: string;
-	activePlanPaths?: string[];
-	touchedMemoryPaths?: string[];
-	todoSummary?: string;
-	constraints?: string[];
-}
-
-export interface PlanContextUsage {
-	tokens?: number | null;
-	contextWindow?: number | null;
-	percent?: number | null;
-}
-
 export interface PlanningContextShapeTriggerState {
 	mode: "off" | "planning" | "reviewing" | "executing";
 	planningContextShapePending: boolean;
@@ -118,59 +97,4 @@ export interface PlanChoiceTriggerState {
 
 export function shouldPromptForPlanChoice(state: PlanChoiceTriggerState): boolean {
 	return state.mode === "planning" && state.hasUI && !state.suppressPlanChoice && Boolean(state.pendingPlanChoicePath);
-}
-
-function formatFocusList(label: string, values: string[] | undefined): string | undefined {
-	const cleaned = [...new Set(values?.map((value) => value.trim()).filter(Boolean) ?? [])];
-	if (cleaned.length === 0) return undefined;
-	return `- ${label}: ${cleaned.slice(0, 8).join(", ")}${cleaned.length > 8 ? `, +${cleaned.length - 8} more` : ""}`;
-}
-
-export function formatPlanCompactionFocus(focus?: PlanCompactionFocus): string | undefined {
-	if (!focus) return undefined;
-	const lines = [
-		focus.task?.trim() ? `- Task: ${focus.task.trim()}` : undefined,
-		formatFocusList("Active plan", focus.activePlanPaths),
-		formatFocusList("Touched plan/archive memory", focus.touchedMemoryPaths),
-		focus.todoSummary?.trim() ? `- Todo state: ${focus.todoSummary.trim()}` : undefined,
-		formatFocusList("Preserve constraints", focus.constraints),
-	].filter((line): line is string => Boolean(line));
-	if (lines.length === 0) return undefined;
-	return `Current work focus:\n${lines.join("\n")}`;
-}
-
-export function buildPlanCompactionInstructions(reason?: string, focus?: PlanCompactionFocus): string {
-	const sections = [];
-	const normalizedReason = reason?.trim();
-	if (normalizedReason) sections.push(`Reason: ${normalizedReason}`);
-	const formattedFocus = formatPlanCompactionFocus(focus);
-	if (formattedFocus) sections.push(formattedFocus);
-	sections.push(PLAN_MODE_COMPACTION_INSTRUCTIONS);
-	return sections.join("\n\n");
-}
-
-export function getPlanCompactionReason(usage: PlanContextUsage | null | undefined): string | undefined {
-	if (!usage) return undefined;
-
-	const percent = usage.percent ?? null;
-	if (typeof percent === "number") {
-		const normalizedPercent = percent <= 1 ? percent * 100 : percent;
-		if (normalizedPercent >= PLAN_COMPACTION_PERCENT_THRESHOLD) {
-			return `Plan Mode context exceeded ${PLAN_COMPACTION_PERCENT_THRESHOLD}% of the context window.`;
-		}
-	}
-
-	const tokens = usage.tokens ?? null;
-	if (typeof tokens !== "number") return undefined;
-
-	const contextWindow = usage.contextWindow ?? null;
-	if (typeof contextWindow === "number" && tokens >= contextWindow - PLAN_COMPACTION_CONTEXT_RESERVE) {
-		return `Plan Mode context is within ${PLAN_COMPACTION_CONTEXT_RESERVE.toLocaleString()} tokens of the context window.`;
-	}
-
-	if (tokens >= PLAN_COMPACTION_TOKEN_FALLBACK) {
-		return `Plan Mode context exceeded ${PLAN_COMPACTION_TOKEN_FALLBACK.toLocaleString()} tokens.`;
-	}
-
-	return undefined;
 }

@@ -25,30 +25,11 @@ Future tasks reuse archived memory
 3. **Resolve references and inspect impact.** `dotdotgod expand` resolves explicit `[[...]]` references, `expand --fuzzy` can resolve high-signal natural prompts, and `graph impact --changed <path>` uses maintained project links to surface related specs, tests, architecture, and source before broad scanning.
 4. **Plan in a durable file.** Current task intent is written to `docs/plan/<task-slug>/README.md` with scope, target files, risks, verification, and executable steps.
 5. **Keep planning separate from mutation.** In Pi, Plan Mode allows exploration and plan-file edits while blocking source/config changes until execution mode.
-6. **Compact planning context when needed.** If planning context grows large after the user has requested planning work, Plan Mode requests compaction with planning-specific instructions. If both load and compaction are needed, compaction happens first and curated project memory follows.
+6. **Refresh focused planning context.** Plan Mode adds bounded advisory impact and reference context. Compaction follows Pi's own settings; Plan Mode does not request it or automatically validate the entire documentation tree.
 7. **Execute explicit steps and verify.** Execution starts from the written plan, completed steps are marked with `[DONE:n]`, and verification follows project docs.
 8. **Archive the outcome.** Completed plans move to `docs/archive/plan/<task-slug>/`, leaving the archive directory's README as the history map for future targeted lookup and keeping future graph/load context useful.
 
-This workflow does not require every agent to remember every previous conversation. It gives agents stable places to find current intent, project rules, constraints, verification history, and completed decisions. Plan Mode shapes context in two directions after the user sends a planning request: load missing curated memory or compact noisy planning history before the agent writes or refines the plan.
-
-## How Plan Mode Compaction Helps Agents
-
-Plan Mode compaction is designed to preserve task-shaped context while shortening the conversation.
-
-When Plan Mode triggers compaction, it passes planning-specific instructions that preserve:
-
-- user decisions and constraints
-- active plan task slug, path, and status
-- touched `docs/plan` and `docs/archive` files
-- relevant `docs/spec`, `docs/test`, and `docs/arch` context
-- implementation decisions
-- verification results and command outcomes
-- unresolved risks, questions, and next steps
-- completed `[DONE:n]` markers when present
-
-It asks compaction to omit low-value discussion, repeated tool output, stale alternatives, generic chatter, and unrelated archive detail.
-
-This helps because long planning sessions often contain both useful decisions and noisy residue. Generic compaction can flatten away the shape of the work. Planning-focused compaction keeps the current task state explicit, so the agent can continue from a smaller summary that still knows what plan is active, what has been decided, and what remains unresolved.
+This workflow does not require every agent to remember every previous conversation. It gives agents stable places to find current intent, project rules, constraints, verification history, and completed decisions. After a planning request, Plan Mode refreshes focused advisory context; the independent project-memory extension loads missing curated memory.
 
 ## How Structure and Naming Rules Act on Agents
 
@@ -102,7 +83,7 @@ dotdotgod may add a small fixed overhead because loaders and workflow instructio
 
 The expected benefit is not always fewer total tokens in every turn. The more important goal is higher useful-context density: more of the context the agent sees should be relevant to current decisions, constraints, verification, and next steps.
 
-In long or complex work, curated memory can reduce wasted context by replacing repeated user explanation and raw conversation history with stable docs, active plans, targeted archive lookup, planning-focused compaction, and bounded graph summaries. In small tasks, the overhead may be more visible than the savings.
+In long or complex work, curated memory can reduce wasted context by replacing repeated user explanation and raw conversation history with stable docs, active plans, targeted archive lookup and bounded graph summaries. In small tasks, the overhead may be more visible than the savings.
 
 Actual token usage depends on:
 
@@ -112,6 +93,6 @@ Actual token usage depends on:
 - model and context window
 - agent behavior
 - whether the task needs historical archive lookup
-- whether Plan Mode compaction is triggered
+- whether host compaction is triggered
 
 Use [`MEASUREMENT_DESIGN.md`](MEASUREMENT_DESIGN.md) to measure token usage, useful-context density, compaction effects, and task outcomes before making numeric claims. For local debugging, run `pnpm run measure:context` or enable Pi with `--dd-context-debug` to record runtime context events under ignored archive reports.

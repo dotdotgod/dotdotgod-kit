@@ -37,18 +37,13 @@ export {
 	formatMultiImpactSummary,
 } from "./impact.ts";
 
-export type { PlanChoiceTriggerState, PlanCompactionFocus, PlanContextUsage, PlanningContextShapeTriggerState } from "./prompts.ts";
+export type { PlanChoiceTriggerState, PlanningContextShapeTriggerState } from "./prompts.ts";
 export {
-	PLAN_COMPACTION_PERCENT_THRESHOLD,
-	PLAN_MODE_COMPACTION_INSTRUCTIONS,
 	parsePlanModeExtraTools,
 	resolvePlanModeTools,
 	buildPlanModeContextPrompt,
 	shouldShapePlanningContextOnAgentStart,
 	shouldPromptForPlanChoice,
-	formatPlanCompactionFocus,
-	buildPlanCompactionInstructions,
-	getPlanCompactionReason,
 } from "./prompts.ts";
 
 export type { LatestPlanningRequestSelection, LatestPlanningRequestSelectionInput, PlanModeRequestKind } from "./context.ts";

@@ -26,6 +26,17 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `MANUAL_SMOKE.md`: compatibility route for manual smoke tests.
 - `manual-smoke/README.md`: adapter, Plan Mode, initializer, publishing, and README landing smoke checks.
 
+## Planning And Clarification Regressions
+
+- `packages/pi/test/planning-context.test.ts`: bounded impact/reference refresh,
+  no automatic validation or Plan Mode compaction, one-shot delivery, and CLI
+  failure/execution-mode handling. Plan Mode utilities also cover old snapshots.
+- `packages/cli/test/pre-push.test.mjs`: composed gate order and failure exits,
+  single documentation-validation path, and standalone cache-gate guarantees.
+- `packages/cli/test/document-clarify.test.mjs`: generated adapter parity and
+  removal of verified obsolete spec history while protecting current requirements
+  and historical archive meaning.
+
 ## Verification Command Cheat Sheet
 
 Use source-checkout commands in this repository. Installed `dotdotgod` or `npx @dotdotgod/cli` commands are for consumer projects.

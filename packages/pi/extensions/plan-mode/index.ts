@@ -107,7 +107,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     modeLifecycle,
     planArtifact,
     contextShaping,
-    executionProgress,
     {
       getFlag: (name) => pi.getFlag(name),
       persistState: () => persistState(),
@@ -545,13 +544,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
         { entryCount: ctx.sessionManager.getEntries().length },
       );
       if (modeLifecycle.planningEnabled && !modeLifecycle.executing) {
-        const reason = contextOrchestration.getPlanCompactionReason(ctx);
-        if (reason) {
-          contextOrchestration.requestPlanningCompaction(ctx, reason);
-          persistState();
-        } else {
-          contextOrchestration.refreshPlanningAdvisoryContext(ctx);
-        }
+        contextOrchestration.refreshPlanningAdvisoryContext(ctx);
       }
       persistState();
     }

@@ -27,7 +27,7 @@ Current adapter support.
 - Project loading: `project-load` skill and `/dd:load` command.
 - Planning workflow: `doc-first-planning` skill and `/dd:plan` command.
 - Impact review workflow: `impact-review` skill and `/dd:impact` command for post-edit graph-impact checks before broad verification or handoff.
-- Documentation clarity workflow: `document-clarify` skill loads resolved memory-area guidance with `dotdotgod config <root> --json`, then improves project documentation with direct prose while preserving established meaning and traceability.
+- Documentation clarity workflow: `document-clarify` skill loads resolved memory-area guidance with `dotdotgod config <root> --json`, then improves project documentation with direct prose, removes verified obsolete historical behavior and superseded conditions from current specs, and preserves current requirements, traceability, and historical archive meaning.
 - Bundled local stdio MCP tools for generic execution/retrieval and project load/impact/initialize operations.
 - Bundled lifecycle hooks for load-required and impact-pending deny/retry routing, plus maintained guidance for additional guardrails using documented Claude Code hook events.
 - `CLAUDE.md` remains a thin project entrypoint that imports or points to `AGENTS.md`.

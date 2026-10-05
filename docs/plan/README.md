@@ -29,6 +29,7 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 
 
 
+
 - `wizard-layout-smoke/` — active: live-session question and summary layout verification only; no implementation or commit authorization.
 
 - `plan-decision-wizard/` — active: sequential decision wizard implemented and automatically verified; awaiting review and completion confirmation before archive.

@@ -38,17 +38,9 @@ export function runDotdotgodCli(cwd: string, args: string[]): PlanCliCommandResu
 	return { ok: false, error: errors.join("; ") };
 }
 
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-	return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
-}
-
-export function formatPlanCliContextSummary(validate: PlanCliCommandResult, impacts: Array<{ path: string; result: PlanCliCommandResult }>): string {
+export function formatPlanCliContextSummary(impacts: Array<{ path: string; result: PlanCliCommandResult }>): string {
+	if (impacts.length === 0) return "";
 	const lines = ["dotdotgod CLI planning context:"];
-	if (!validate.ok) return "";
-	const validateData = asRecord(validate.data);
-	const errors = Array.isArray(validateData?.errors) ? validateData.errors.length : 0;
-	lines.push(`- Validate: source=${validate.label ?? "dotdotgod"}; ok=${String(validateData?.ok ?? true)}; errors=${errors}`);
-
 
 	for (const impact of impacts) {
 		lines.push(impact.result.ok ? formatCompactImpactSummary(impact.path, impact.result.data) : `- Impact: skipped or unavailable for ${impact.path}.`);
