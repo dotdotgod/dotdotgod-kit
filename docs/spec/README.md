@@ -44,5 +44,6 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 - `cli/README.md`: focused CLI specs for discovery/help, local multilingual query and vector cache, graph impact, traceability links, and plan commands.
 - `CLI_INTERFACE.md`: compatibility route for the legacy monolithic CLI interface spec; new behavior belongs under `cli/`.
 - `REFERENCE_EXPANSION.md`: CLI reference resolution and prompt-time expansion from the dotdotgod graph/index.
-- `CROSS_AGENT_SUPPORT.md`: cross-agent support contract for Pi, Claude Code, Codex, and shared docs workflows.
+- `CROSS_AGENT_SUPPORT.md`: cross-agent support contract for Pi, Claude Code, Codex, Hermes, and shared docs workflows.
+- `HERMES_ADAPTER.md`: native CLI/gateway adapter, per-session MCP routing, root authorization, load/impact lifecycle and limits without Plan Mode.
 - `WORKSPACE_VERIFICATION.md`: root verification, cache, pre-push, and package verify contract behavior.

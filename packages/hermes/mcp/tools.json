@@ -1,0 +1,749 @@
+[
+  {
+    "name": "execute",
+    "description": "Run 1..100 labeled local commands with bounded concurrency. Group independent known commands; separate commands dependent on earlier results. Inspect every results entry status and indexed.id. Do not bypass permissions or safety gates.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "command": {
+                "type": "string"
+              },
+              "executable": {
+                "type": "string"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "shell": {
+                "type": "boolean"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "timeoutMs": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "outputLimit": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "directLimit": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "outputMode": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "direct",
+                  "indexed",
+                  "discard"
+                ]
+              },
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "transient",
+                  "session",
+                  "project"
+                ]
+              },
+              "ttlMs": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "env": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "environmentMode": {
+                "type": "string",
+                "enum": [
+                  "inherit-filtered-v1",
+                  "allowlist-v1"
+                ]
+              },
+              "allowedEnv": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 100
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "commands"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "destructiveHint": true,
+      "openWorldHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "execute_file",
+    "description": "Process a local file in an isolated child process; only bounded stdout/stderr is returned.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string",
+          "enum": [
+            "javascript",
+            "python",
+            "shell"
+          ],
+          "default": "javascript"
+        },
+        "code": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        },
+        "executable": {
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "shell": {
+          "type": "boolean"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "outputLimit": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "directLimit": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "outputMode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "direct",
+            "indexed",
+            "discard"
+          ]
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "transient",
+            "session",
+            "project"
+          ]
+        },
+        "ttlMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "environmentMode": {
+          "type": "string",
+          "enum": [
+            "inherit-filtered-v1",
+            "allowlist-v1"
+          ]
+        },
+        "allowedEnv": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100
+        }
+      },
+      "required": [
+        "path",
+        "code"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "destructiveHint": true,
+      "openWorldHint": false
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "index",
+    "description": "Index a local text file or bounded directory into the project-local FTS5 store without returning raw bytes.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "transient",
+            "session",
+            "project"
+          ]
+        },
+        "ttlMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxBytes": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "includeExtensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100
+        },
+        "excludePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 500
+        },
+        "followFileSymlinks": {
+          "type": "boolean"
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxVisitedEntries": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxAggregateBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "search",
+    "description": "Search indexed content for bounded excerpts. For failure diagnostics try fail OR error OR reason. Query * browses bounded excerpts with the same source/scope/session filters and limit; neither no matches nor partial excerpts prove diagnostics are absent.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "transient",
+            "session",
+            "project"
+          ]
+        },
+        "source": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "sessionOnly": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "fetch_and_index",
+    "description": "Fetch an HTTP(S) URL locally, index bounded text, and return metadata only.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "source": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "transient",
+            "session",
+            "project"
+          ]
+        },
+        "ttlMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "maxBytes": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "browser": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "openWorldHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "session_resume",
+    "description": "Use an explicit opaque session ID for subsequent context operations; historical sessions are not listed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$"
+        }
+      },
+      "required": [
+        "sessionId"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "ingestion_job_start",
+    "description": "Queue one durable bounded background index or strict-fetch ingestion job.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "index",
+            "fetch"
+          ]
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "kind",
+        "input"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "ingestion_job_status",
+    "description": "Return bounded status for one background ingestion job.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "ingestion_job_cancel",
+    "description": "Cancel one queued or running background ingestion job.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "destructiveHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "context_heal",
+    "description": "Explicitly back up and migrate only a recognized recoverable context database.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "confirm": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "confirm"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "destructiveHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "stats",
+    "description": "Report local context store counts and location.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "doctor",
+    "description": "Run local read-only Node.js, SQLite FTS5, storage, schema, and fetch-policy checks without network or repair actions.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "purge",
+    "description": "Permanently delete one explicit context scope, session, or source.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "confirm": {
+          "type": "boolean",
+          "const": true
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "transient",
+            "session",
+            "project"
+          ]
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "sourceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "confirm"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "destructiveHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "dotdotgod_project_load",
+    "description": "Load a bounded documentation map and optional semantic project query.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string"
+        },
+        "focus": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "dotdotgod_embedding_status",
+    "description": "Inspect the optional persistent embedding runtime without installing or contacting a registry.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "dotdotgod_embedding_install",
+    "description": "After explicit user approval, install the fixed optional embedding runtime persistently. Uses network and dependency install scripts.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string"
+        },
+        "confirm": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "confirm"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "destructiveHint": true,
+      "openWorldHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "dotdotgod_project_impact",
+    "description": "Run bounded graph impact for up to 20 changed paths.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string"
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "maxItems": 20
+        }
+      },
+      "required": [
+        "paths"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "dotdotgod_project_initialize",
+    "description": "Initialize project memory; dry-run is default and writes require explicit confirmation.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string"
+        },
+        "dryRun": {
+          "type": "boolean"
+        },
+        "confirmWrite": {
+          "type": "boolean"
+        },
+        "projectName": {
+          "type": "string"
+        },
+        "template": {
+          "type": "string"
+        },
+        "dotdotSetting": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "destructiveHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  }
+]

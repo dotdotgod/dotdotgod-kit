@@ -11,6 +11,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `TRACEABILITY_CONFIG.md`: configurable traceability enforcement validation smoke checks.
 - `VALIDATION_CONFIG.md`: markdown validation budget and size-check exclusion coverage.
 - `CONTEXT_MEASUREMENT.md`: context measurement commands and runtime context debug smoke checks.
+- `HERMES_ADAPTER.md`: native registration, concurrent MCP routing, impact gates, packed pinned-host smoke and external messaging acceptance.
 - `CONTEXT_EXECUTION.md`: automated and manual coverage for local execution, FTS5 retrieval, MCP protocol, hooks, and adapter parity.
 - `COMMAND_GUIDANCE.md`: environment-aware query and project command guidance checks.
 - `IMPACT_RANKING_CONFIG.md`: fixed graph-impact scoring, non-blocking compatibility config, request-local vector overlay, compact output, and selection-noise checks.

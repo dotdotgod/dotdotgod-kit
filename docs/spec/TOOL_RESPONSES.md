@@ -28,6 +28,10 @@ must not be interpreted as complete inspection.
 
 Pi codemode callers access objects directly; legacy JSON.parse scripts must migrate
 and existing sessions must reload. MCP callers read structuredContent, not Markdown.
+Hermes native wrappers return a JSON envelope containing content and
+structuredContent, not Pi codemode objects; its project-load map/query result is
+host-specific. Shared context MCP payloads and graph-impact presentation remain
+unchanged. See [HERMES_ADAPTER.md](HERMES_ADAPTER.md).
 Graph-impact remains a text-returning call in native codemode. Host policy may
 expose structured fields as well; universal JSON invisibility is not guaranteed.
 

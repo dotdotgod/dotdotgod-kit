@@ -27,6 +27,10 @@ Every adapter follows the same loop:
 | [`@dotdotgod/claude-code`](packages/claude-code/README.md#start-here) | You use Claude Code and want `/dd:*` workflows plus local context MCP tools. | `/plugin marketplace add dotdotgod/dotdotgod-kit`, then `/plugin install dotdotgod@dotdotgod` |
 | [`@dotdotgod/codex`](packages/codex/README.md#start-here) | You use Codex and want dotdotgod skills, local context MCP tools, and reviewed hooks. | Register the plugin manifest through a trusted Codex plugin flow. |
 
+The source checkout also includes [`@dotdotgod/hermes`](packages/hermes/README.md)
+for Hermes CLI/gateway, with per-session MCP connections and no Plan Mode.
+Install its npm tarball into the native Hermes plugin directory; see its package README.
+
 ## Quick Start
 
 ### Pi
@@ -80,7 +84,7 @@ The structure provides:
 
 The adapters share a local runtime that keeps large command output, files, and fetched text useful without filling the model context. Small results return directly; larger results become locally searchable, bounded excerpts with provenance and trust metadata. Durable ingestion jobs and opaque session resume let longer processing survive individual turns.
 
-Pi calls this core through native `dotdotgod_*` tools. Claude Code and Codex use the local stdio MCP server. These policies apply to dotdotgod execution and retrieval tools, while each host's built-in shell keeps its native behavior. The default compatibility environment preserves ordinary inherited credentials; an opt-in allowlist mode provides a stricter child environment.
+Pi calls this core through native `dotdotgod_*` tools. Claude Code and Codex use the local stdio MCP server; Hermes native wrappers own a separate MCP connection per authorized repository/session. These policies apply to dotdotgod execution and retrieval tools, while each host's built-in shell keeps its native behavior. The default compatibility environment preserves ordinary inherited credentials; an opt-in allowlist mode provides a stricter child environment.
 
 The runtime applies bounded capture, storage, traversal, and HTTP(S) fetch policies. These controls provide defense in depth rather than a network sandbox or prompt-injection guarantee. See the [`@dotdotgod/context` npm landing page](packages/context/README.md), [behavior contract](docs/spec/CONTEXT_EXECUTION.md), [architecture](docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md), and [verification strategy](docs/test/CONTEXT_EXECUTION.md).
 

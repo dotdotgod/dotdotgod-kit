@@ -17,6 +17,11 @@ Pi also performs one mode-neutral automatic project-memory assessment at the beg
 
 Claude Code and Codex provide generated Load commands or skills from `packages/shared/workflows/load.md`. Their generated workflow runs `dotdotgod map <root> --depth <3|5> --json` for the configured documentation map and uses `dotdotgod query` for focused routing, with README and local tree fallback when CLI execution is unavailable.
 
+Hermes uses native lifecycle hooks and the registered project-load skill/tool,
+with canonical map/query routing, request-local dd:no-load and conservative
+restore assessment. Its delivery and gateway root-selection contract is defined
+in [HERMES_ADAPTER.md](HERMES_ADAPTER.md), not Pi TUI/branch API parity.
+
 ## CLI Discovery
 
 Explicit full Load and internal automatic compact Load expose exactly this optional discovery hint:

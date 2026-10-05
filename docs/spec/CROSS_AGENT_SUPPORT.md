@@ -44,6 +44,19 @@ Current adapter support.
 - Bundled lifecycle hooks, subject to Codex enablement/trust review, for load-required and impact-pending deny/retry routing.
 - `CODEX.md` remains a thin project entrypoint that points to `AGENTS.md`.
 
+### Hermes
+
+Native CLI and messaging-gateway adapter, without Plan Mode; see
+[HERMES_ADAPTER.md](HERMES_ADAPTER.md) for the pinned host and verification limits.
+
+- Package: @dotdotgod/hermes with native plugin.yaml, registered shared skills and tools.
+- Lifecycle hooks plus an adapter-owned stdio MCP client/server per authorized repository/session.
+- Operator-controlled gateway root labels/grants, explicit selection and reauthorization.
+- Automatic/explicit map-query load, reference expansion, initializer, clarification,
+  context operations, pending impact and covered release-command gates.
+- Native Hermes delegate_task, not a pi-subagents port; no planning wizard/compaction.
+- AGENTS.md remains canonical; no new agent-specific instruction file is introduced.
+
 ## Shared Contract
 
 All supported agents should share these conventions:
@@ -80,7 +93,7 @@ Required workflows:
 - initialize or normalize the project memory scaffold and complete editable default config
 - load project memory without modifying source, documentation, or project config; Claude Code and Codex always retain the bounded documentation map, use `dotdotgod query` for optional focused routing, and return structured query-unavailable evidence when cached/extracted adapters cannot resolve optional embeddings; standalone focused query may refresh ignored vector and model caches or retain its visible failure contract
 - expose `Help: dotdotgod --help` as optional Load guidance across native adapter mechanics without reporting installation status or blocking fallback when CLI or shell execution is unavailable
-- plan safely before source/config changes; Claude Code and Codex use explicit `dotdotgod query` guidance and resolve config when planning policy affects the task
+- where planning is supported, plan safely before source/config changes; Hermes intentionally excludes Plan Mode; Claude Code and Codex use explicit `dotdotgod query` guidance and resolve config when planning policy affects the task
 - review changed files with graph-impact evidence before broad verification, commits, pushes, publishing, or final handoff when the CLI or an equivalent project-local impact command is available; otherwise preserve the same review intent through targeted specs/tests/docs reads
 - preserve completed plans and temporary reports in the archive structure
 
@@ -105,6 +118,7 @@ Cross-agent support is distributed as npm workspace packages:
 - `@dotdotgod/context`: shared local execution, FTS5 retrieval, hooks, project workflow services, and stdio MCP runtime.
 - `@dotdotgod/claude-code`: Claude Code adapter with plugin commands and skills.
 - `@dotdotgod/codex`: Codex adapter with project memory skills.
+- `@dotdotgod/hermes`: native Hermes resources with per-session MCP routing, no Plan Mode; npm tarballs install into a native Hermes plugin directory; npm alone does not enable it.
 
 Extracted or cached Claude Code and Codex adapters must satisfy the mandatory project-load map contract without ancestor `node_modules`; unavailable optional semantic dependencies degrade only focused enrichment. Versions are fixed across packages initially. The root workspace package is private and is not published.
 

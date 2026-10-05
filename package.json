@@ -1,8 +1,8 @@
 {
   "name": "dotdotgod-workspace",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
-  "description": "Workspace for dotdotgod project memory packages across CLI, Pi, Claude Code, and Codex adapters.",
+  "description": "Workspace for dotdotgod project memory packages across CLI, Pi, Claude Code, Codex, and Hermes adapters.",
   "type": "module",
   "license": "Elastic-2.0",
   "packageManager": "pnpm@10.30.0",
@@ -22,7 +22,7 @@
     "thumbnail:terminal": "node scripts/generate-terminal-thumbnail.mjs",
     "pack:dry-run:packages": "pnpm -r --if-present run pack:dry-run",
     "pack:dry-run": "pnpm run verify:generated && pnpm run pack:dry-run:packages",
-    "publish:all": "pnpm --filter @dotdotgod/cli publish --access public && pnpm --filter @dotdotgod/context publish --access public && pnpm --filter @dotdotgod/pi publish --access public && pnpm --filter @dotdotgod/claude-code publish --access public && pnpm --filter @dotdotgod/codex publish --access public",
+    "publish:all": "pnpm --filter @dotdotgod/cli publish --access public && pnpm --filter @dotdotgod/context publish --access public && pnpm --filter @dotdotgod/pi publish --access public && pnpm --filter @dotdotgod/claude-code publish --access public && pnpm --filter @dotdotgod/codex publish --access public && pnpm --filter @dotdotgod/hermes publish --access public",
     "prepare": "husky"
   },
   "devDependencies": {

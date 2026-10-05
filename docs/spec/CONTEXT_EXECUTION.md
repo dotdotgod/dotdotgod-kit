@@ -6,7 +6,7 @@ Dotdotgod keeps large command, file, and fetched text outside model context unti
 
 ## Tool Contract
 
-Claude Code and Codex receive one local stdio MCP server with these tools:
+Claude/Codex expose these stdio MCP tools:
 
 - `execute` and `execute_file`;
 - `index`, `search`, and `fetch_and_index`;
@@ -14,7 +14,8 @@ Claude Code and Codex receive one local stdio MCP server with these tools:
 - `dotdotgod_project_load`, `dotdotgod_project_impact`, and `dotdotgod_project_initialize`;
 - `dotdotgod_embedding_status` and confirmation-gated `dotdotgod_embedding_install`.
 
-Pi uses native dotdotgod-prefixed tools over the shared core; its Load/impact lifecycle does not proxy through MCP.
+Pi exposes native dotdotgod_* wrappers; its load/impact lifecycle does not use MCP.
+Hermes: [per-session native-to-MCP routing](HERMES_ADAPTER.md).
 
 ## Output Handling
 

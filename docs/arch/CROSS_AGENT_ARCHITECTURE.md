@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines how dotdotgod provides a cross-agent project memory kit for Pi, Claude Code, and Codex.
+This document defines how dotdotgod provides a cross-agent project memory kit for Pi, Claude Code, Codex, and Hermes.
 
 ## Architectural Direction
 
@@ -16,10 +16,11 @@ dotdotgod
 ├── packages/pi/               # generated Pi skills plus Pi extensions
 ├── packages/claude-code/      # generated Claude Code plugin commands and skills
 ├── packages/codex/            # generated Codex plugin skills
+├── packages/hermes/           # native lifecycle and per-session MCP routing
 └── scripts/generate-adapters.mjs
 ```
 
-`packages/shared` is the source of truth for common workflow text and initializer resources. `packages/context` is the source of truth for executable context processing shared by MCP adapters and Pi-native wrappers. Adapter packages keep generated concrete files checked in so local installs and npm tarballs work without a consumer-side build; Claude and Codex generate self-contained core hook, MCP, and CLI artifacts during repository development.
+packages/shared owns common workflows/initializer resources; packages/context owns MCP/Pi-native processing. Checked-in generated files enable zero-build local/tarball installs. Claude/Codex bundle hooks/MCP/CLI; Hermes bundles its MCP client/server/CLI during development.
 
 ## Shared Source Responsibilities
 
@@ -124,11 +125,19 @@ Responsibilities:
 
 Codex adapter design should not depend on Pi-style command parity. Impact review parity is guidance-oriented: Codex should run graph-impact checks when asked or prompted by trusted hooks, but the adapter must not claim Pi's automatic pending-impact state or commit-blocking behavior.
 
+### Hermes Adapter
+
+packages/hermes owns Python lifecycle/root routing and a per-session Node MCP
+client over generated shared server/CLI artifacts; same-root SQLite stays shared.
+Operator gateway grants bind trusted host identities. No Plan Mode or memory
+engine is ported. See [Hermes behavior](../spec/HERMES_ADAPTER.md) and
+[verification](../test/HERMES_ADAPTER.md) for isolation, cleanup and gate limits.
+
 ## Hook Boundaries
 
 Claude Code and Codex hooks are optional workflow accelerators, not required setup and not Pi Plan Mode parity. Adapter packages may document hook examples for session start, prompt submission, tool boundaries, batch-level feedback, stop-time hygiene, failure logging, and session cleanup, but hooks must stay opt-in unless a future package deliberately ships a safe advisory default.
 
-Current platform evidence: Claude Code plugins can ship skills, command markdown, agents, hooks, MCP servers, LSP servers, and monitors, and plugin hooks can live at `hooks/hooks.json` or in the manifest. Codex plugins primarily bundle skills, apps, and MCP servers; current Codex hook docs also allow plugin-bundled hooks only when users enable `plugin_hooks`, and non-managed hooks require trust review. Dotdotgod therefore keeps hooks as documented opt-in guidance for now and uses skills/commands for default cross-agent parity.
+Claude Code plugins support skills, commands, agents, hooks, MCP, LSP and monitors; hooks use hooks/hooks.json or the manifest. Codex supports skills/apps/MCP and plugin hooks with plugin_hooks enabled; non-managed hooks require trust review. These adapters retain opt-in hook guidance and default skill/command parity.
 
 Default examples should be advisory or read-only. `dotdotgod status` is safe for stop-time cache reporting because it does not rebuild the cache. `dotdotgod validate . --include-local-memory --check-index` is appropriate as an explicit validation hook because it checks docs and markdown index fingerprints without refreshing the cache. `dotdotgod query` and `dotdotgod graph ...` are useful for context and impact, but they may refresh ignored `.dotdotgod/` caches, so hook docs must label them as cache-aware opt-ins.
 
@@ -145,6 +154,7 @@ packages/cli/
 packages/pi/
 packages/claude-code/
 packages/codex/
+packages/hermes/
 ```
 
 Published package names:
@@ -153,6 +163,9 @@ Published package names:
 - `@dotdotgod/pi`
 - `@dotdotgod/claude-code`
 - `@dotdotgod/codex`
+
+The @dotdotgod/hermes npm tarball installs as a native Hermes plugin; npm
+installation alone does not activate it.
 
 The root package is private and only orchestrates workspace verification and publishing.
 
@@ -170,29 +183,8 @@ Use fixed versions initially. Independent versions are only worth the overhead w
 
 ## Verification Strategy
 
-Generation and package verification:
-
-```bash
-pnpm run generate
-pnpm run verify:generated
-pnpm run verify
-pnpm run pack:dry-run
-```
-
-Pi verification:
-
-```bash
-pi install /path/to/dotdotgod/packages/pi
-pi install npm:@dotdotgod/pi
-```
-
-Claude Code verification should add:
-
-- Claude Code plugin schema/load test
-- local plugin smoke test for `/dd:load`, `/dd:plan`, `/dd:init`, and `/dd:impact`
-
-Codex verification should add:
-
-- Codex plugin discovery/load test
-- Codex skill trigger smoke tests for project loading, planning, initialization, and impact review
-- `dotdotgod init` dry-run and fallback initializer dry-run parity across adapters
+Run pnpm run generate, verify:generated, verify and pack:dry-run. Maintained
+[verification guidance](../test/README.md) and
+[cross-agent smoke](../test/manual-smoke/CROSS_AGENT_ADAPTERS.md) cover Pi local/npm
+installation, Claude plugin schemas/commands, Codex discovery/skill triggers and
+initializer dry-run/fallback parity. Hermes adds its isolated pinned-host smoke.
