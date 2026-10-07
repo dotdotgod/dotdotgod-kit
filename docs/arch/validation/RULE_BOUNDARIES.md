@@ -11,8 +11,8 @@ The validator owns dotdotgod-specific structure checks:
 - Local markdown links and anchors point to existing targets.
 - Ordinary shared-to-local Markdown links and concrete inline-code paths fail scope validation; local sources remain unrestricted by this new rule. Layout examples are allowed in inline code. A dedicated validator helper preserves line offsets without changing graph extraction. See `docs/spec/REFERENCE_SCOPE_VALIDATION.md` for the contract; traceability retains its separate stricter rules.
 - Optional config files use valid memory-area, traceability, validation, and impact-ranking settings.
-- `docs/plan`, `docs/archive/plan`, and `docs/archive/report` use expected task/report shapes.
-- `.gitignore` contains `docs/plan`, `docs/archive`, and `.dotdotgod`.
+- Active plans, completed plans, and temporary reports use the expected task/report directory shapes.
+- `.gitignore` excludes local plan/archive memory and `.dotdotgod`.
 
 The validator does not own general markdown style formatting. Use Prettier or markdownlint separately if a project wants style linting.
 

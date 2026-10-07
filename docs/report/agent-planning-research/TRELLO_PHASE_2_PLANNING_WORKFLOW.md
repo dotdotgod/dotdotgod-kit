@@ -102,7 +102,7 @@ Reviewers found Phase 2 gaps that were easy to miss in a single implementation p
 | --- | --- |
 | Local decision record | Locked behavior, endpoint, credential, marker, status, and error-message decisions. |
 | Local orchestration plan | Parent orchestration plan for Phase 2 subagents. |
-| `docs/plan/trello-docs-sync/phase-2/ROLE_*.md` | Role-specific subagent handoffs. |
+| Local role handoff documents | Role-specific subagent handoffs. |
 | Local test matrix | Condition-by-condition fixture and mock matrix. |
 | `docs/spec/TRELLO_DOCS_SYNC.md` | Durable behavior contract after synthesis. |
 | `docs/arch/TRELLO_DOCS_SYNC.md` | Durable architecture rationale after synthesis. |
@@ -142,14 +142,14 @@ node packages/cli/bin/dotdotgod.mjs validate . --check-index
 # passed for durable docs
 ```
 
-The include-local-memory validation command currently surfaces unrelated existing debt:
+At the time of this experiment, include-local-memory validation surfaced unrelated existing debt:
 
 ```bash
 node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index
-# fails because docs/plan/cli-core-module-split/README.md exceeds markdown size budget
+# failed because an unrelated local working plan exceeded the Markdown size budget
 ```
 
-Workspace verification reaches the same unrelated validation failure after package tests pass.
+Workspace verification reached the same unrelated validation failure after package tests passed.
 
 Graph impact was run for the Phase 2 docs, source, test, CLI, and bin entrypoint changes. The highest-impact related files were the Trello spec, architecture, test docs, focused Trello tests, core CLI tests, Trello source modules, and CLI usage routing.
 
