@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/hermes",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Hermes CLI and messaging-gateway adapter without Plan Mode.",
   "type": "module",
   "publishConfig": { "access": "public" },

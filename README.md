@@ -123,7 +123,7 @@ The explorer keeps only shared structural nodes connected to the changed-file ro
 
 - **Project memory:** durable files and metadata reused across sessions.
 - **Memory areas:** configured scopes for stable project knowledge, local active plans, and historical archives.
-- **Documentation load:** a depth-bounded project map with optional focused local query.
+- **Project load:** a depth-bounded documentation map with focused hybrid document/code-outline search; implementation bodies are read only when needed.
 - **Traceability:** an ordered registry of string-array keys with labels, path or command targets, graph relations, and PPR weights.
 - **Impact graph:** fixed weighted-PPR plus memory-policy ranking, optionally enriched by a request-local multilingual vector overlay.
 
@@ -135,6 +135,8 @@ Use source-checkout commands in this repository:
 
 ```bash
 pnpm install
+pnpm run generate
+node packages/cli/bin/dotdotgod.mjs index .
 node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index
 pnpm run verify
 ```

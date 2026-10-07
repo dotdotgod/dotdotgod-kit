@@ -19,6 +19,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/symbol-documentation-query/`: implemented multilingual document/code-outline hybrid query, shared structural metadata and read-only outline freshness; workspace, packaged adapters and isolated CLI checks passed. Real-model relevance/tokens remain unmeasured.
+
 - `plan/hermes-unselected-root/`: keep ordinary Hermes tools usable before repository selection; allow initialization only with empty labels, preserve selected-root checks, and pass adapter/package/docs verification; pinned-host smoke remains unverified.
 
 - `plan/hermes-plugin/`: implemented Hermes CLI/gateway native adapter without Plan Mode, per-session MCP proxy, load/reference/impact workflows, and passing automated/installed-host-hook verification; external messaging/model acceptance remains manual.

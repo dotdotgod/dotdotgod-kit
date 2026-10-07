@@ -23,6 +23,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `HOOKS.md`: optional Claude Code and Codex hook documentation and package-resource smoke checks.
 - `CLI_INTERFACE.md`: baseline CLI help/version and invalid invocation checks.
 - `CLI_MAP.md`: shared documentation-map command, depth, filtering, JSON, errors, side effects, and adapter parity checks.
+- `CODE_OUTLINE_QUERY.md`: multilingual extraction, hybrid retrieval, outline freshness and installed-parser smoke checks.
 - `REFERENCE_EXPANSION.md`: reference resolution and prompt-time expansion regression and smoke checks.
 - `MANUAL_SMOKE.md`: compatibility route for manual smoke tests.
 - `manual-smoke/README.md`: adapter, Plan Mode, initializer, publishing, and README landing smoke checks.

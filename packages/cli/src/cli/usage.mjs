@@ -33,9 +33,9 @@ Create dotdotgod.config.json from a bundled or user template. Without --template
   dotdotgod status <root> [--json]`;
     case 'query':
       return `Usage:
-  dotdotgod query <root> <query> [--limit n] [--json]
+  dotdotgod query <root> <query> [--limit n] [--scope docs|code|all] [--search hybrid|keyword|vector] [--allow-code-embedding] [--json]
 
-Search shared project documentation with the resolved local or remote embedding provider.`;
+Search full documentation and code outlines/comments. Default: hybrid docs+code. Remote code metadata requires explicit consent.`;
     case 'embedding':
       return `Usage:
   dotdotgod embedding status [<root>] [--json]

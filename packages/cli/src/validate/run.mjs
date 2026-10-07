@@ -9,6 +9,7 @@ import { cacheFile, collectIndexFiles, fingerprint } from '../index/files.mjs';
 import { CACHE_DIR, CACHE_VERSION } from '../index/constants.mjs';
 import { readIndex } from '../index/cache.mjs';
 import { sharedLocalReferences } from './references.mjs';
+import { outlineStatus, outlinePath } from '../symbols/store.mjs';
 
 export function runValidate(argv) {
   const options = { root: '.', includeLocalMemory: false, checkIndex: false, maxLines: null, maxChars: null, linkCheck: true, json: false };
@@ -173,6 +174,11 @@ export function runValidate(argv) {
     }
   }
   if (options.checkIndex) {
+    let outlines;
+    try { outlines = outlineStatus(root); }
+    catch (error) { outlines = { ok: false, reason: `inspection-unavailable: ${error instanceof Error ? error.message : String(error)}`, paths: [] }; }
+    if (!outlines.ok) addError(outlinePath(root), 'OUTLINE_INDEX_STALE', `Outline index: ${outlines.reason}${outlines.paths.length ? ` (${outlines.paths.join(', ')})` : ''}`, null, 'run `dotdotgod index <root>` to refresh outlines and graph metadata; validation does not parse, embed or repair.');
+    for (const path of outlines.unsupported ?? []) addWarning(join(root, path), 'OUTLINE_LANGUAGE_UNSUPPORTED', 'Source language is not supported by the current outline extraction matrix.');
     const index = readIndex(root);
     if (!index) addError(cacheFile(root), 'INDEX_MISSING', 'Expected .dotdotgod index cache.', null, 'run `dotdotgod index <root>` to build the graph index.');
     else {

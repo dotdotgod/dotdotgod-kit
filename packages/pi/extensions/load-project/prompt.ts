@@ -5,8 +5,8 @@ import { DEFAULT_DOCUMENTATION_SUMMARY_EXCLUDE } from "./snapshot.ts";
 export { DEFAULT_DOCUMENTATION_SUMMARY_EXCLUDE };
 export type LoadPromptMode = "full" | "compact";
 export interface LoadPromptOptions { mode?: LoadPromptMode; documentationMap?: DocumentationMapRunResult }
-export interface QueryResultItem { path: string; heading?: string; score?: number; text?: string }
-export interface QueryRunResult { ok: boolean; command?: string; error?: string; data?: { results?: QueryResultItem[] } }
+export interface QueryResultItem { path: string; heading?: string; score?: number; text?: string; kind?: string; startLine?: number; endLine?: number }
+export interface QueryRunResult { ok: boolean; command?: string; error?: string; data?: { results?: QueryResultItem[]; warnings?: string[] } }
 
 interface TreeNode { directories: Map<string, TreeNode>; files: string[] }
 
@@ -89,11 +89,11 @@ function formatQueryResults(result: QueryRunResult | undefined): string {
 	if (!result) return "Query results:\n- unavailable; continue with the documentation map and targeted README reads";
 	if (!result.ok) return `Query results:\n- unavailable: ${result.error ?? "unknown error"}`;
 	const items = result.data?.results?.slice(0, 30) ?? [];
-	if (items.length === 0) return "Query results:\n- no matching documentation chunks";
-	return `Query results:\n${items.map((item, index) => {
+	if (items.length === 0) return `Query results:\n- no matching documentation or code outlines${result.data?.warnings?.length ? `\n${result.data.warnings.join("\n")}` : ""}`;
+	return `Query results:\n${result.data?.warnings?.length ? `${result.data.warnings.join("\n")}\n` : ""}${items.map((item, index) => {
 		const score = typeof item.score === "number" ? ` (${item.score.toFixed(3)})` : "";
 		const excerpt = item.text?.replace(/\s+/g, " ").trim().slice(0, 180);
-		return `${index + 1}. ${item.path}${item.heading ? ` — ${item.heading}` : ""}${score}${excerpt ? `\n   ${excerpt}${(item.text?.length ?? 0) > 180 ? "…" : ""}` : ""}`;
+		return `${index + 1}. ${item.path}${item.startLine ? `:${item.startLine}–${item.endLine}` : ""}${item.kind === "symbol" ? " [code outline]" : ""}${item.heading ? ` — ${item.heading}` : ""}${score}${excerpt ? `\n   ${excerpt}${(item.text?.length ?? 0) > 180 ? "…" : ""}` : ""}`;
 	}).join("\n")}`;
 }
 

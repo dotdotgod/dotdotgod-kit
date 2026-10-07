@@ -4,13 +4,13 @@
 
 Command-line tools for dotdotgod project memory.
 
-Use this package when you want to initialize a docs-first project scaffold, validate project-memory docs, build a local graph/cache, search shared documentation locally, expand project references, or ask what should be checked after a file changes.
+Use this package when you want to initialize a docs-first project scaffold, validate project-memory docs, build a local graph/cache, search full documentation and code outlines locally, expand project references, or ask what should be checked after a file changes.
 
 These commands support dotdotgod's project-memory loop with initialization, documentation query, validation, and impact analysis for shells, scripts, CI, and agents that use the CLI directly.
 
 ## What Changes
 
-- **Repository knowledge becomes navigable memory.** Local multilingual query finds focused documentation evidence and keeps the cache under `.dotdotgod/`.
+- **Repository knowledge becomes navigable memory.** Hybrid query finds full-document and code-outline/comment evidence and keeps the cache under `.dotdotgod/`.
 - **Project references become actionable context.** `resolve` and `expand` connect explicit `[[...]]` references and high-signal natural-language requests to maintained files; `--with-impact` adds related evidence.
 - **Changes carry their verification neighborhood.** Multi-file graph impact combines structural, traceability, package, and optional semantic evidence while preserving a per-file explanation.
 - **Large repositories reveal natural domains.** `graph communities` groups the maintained project graph to help teams inspect documentation and source boundaries.
@@ -43,9 +43,9 @@ dotdotgod graph serve . --changed <path>
 ## What It Does
 
 - `init` creates `AGENTS.md`, thin agent entrypoints, docs indexes, active-plan space, archive map, local cache ignores, and the complete editable default config.
-- `validate` checks the dotdotgod docs/project-memory structure, local links, traceability blocks, config validity, and optional index freshness.
-- `index` builds `.dotdotgod/manifest.json` and compact graph shards from maintained project files.
-- `query` locally embeds shared Markdown with `Xenova/multilingual-e5-small`, incrementally stores vectors under `.dotdotgod/vectors/`, and returns the best-ranked chunk from each relevant Markdown file.
+- `validate` checks docs/project-memory rules; `--check-index` also checks graph and outline freshness without parsing, embedding or repair.
+- `index` builds graph shards and `.dotdotgod/outlines.json` with source hashes, declarations, comments and exact ranges.
+- `query` defaults to hybrid vector/keyword search over full Markdown and code outlines/comments, not implementation bodies. Use `--scope docs|code|all`, `--search hybrid|keyword|vector` and `--limit 30`. Keyword mode works without embeddings; hybrid reports vector failures and retains keyword results. Remote code-metadata embedding requires `--allow-code-embedding`. Local E5 remains the default when its optional runtime is installed. Tree-sitter coverage and boundaries: [CODE_OUTLINES.md](../../docs/spec/cli/CODE_OUTLINES.md).
 - `resolve` and `expand` map explicit or high-signal prompt references to project files and can include related impact evidence.
 - `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five. Non-seed scores use fixed weighted PPR connection `80` plus memory policy `20`. A bounded request-local multilingual vector overlay participates in PPR when the query cache is available; vector preparation failures degrade to structural-only results.
 - `graph serve` starts a local read-only explorer rooted at one or more changed files. It keeps only connected shared structural nodes, lays them out by minimum structural hop, and supports persisted instant, layer, or one-by-one reveal modes.

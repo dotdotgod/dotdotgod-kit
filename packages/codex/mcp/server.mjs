@@ -23240,28 +23240,33 @@ async function cliJson(args, cwd) {
     throw new Error(`Expected JSON from dotdotgod: ${out.slice(0, 500)}`);
   }
 }
+function embeddingRuntimeRecovery() {
+  return {
+    code: "EMBEDDING_RUNTIME_MISSING",
+    message: "Semantic vectors need an optional runtime; continue with keyword/map retrieval or ask before installation.",
+    recovery: { kind: "embedding-runtime-install", requiresConfirmation: true, statusTool: "dotdotgod_embedding_status", installTool: "dotdotgod_embedding_install", cliCommand: "dotdotgod embedding install --confirm" }
+  };
+}
 async function projectLoad(input) {
   const root2 = resolve5(input.root || process.cwd());
   const focus = input.focus?.trim() ?? "";
   const tree = markdownTree(root2, input.maxDepth ?? (focus ? 3 : 5));
   let query = null;
   let queryUnavailable;
+  let vectorUnavailable;
   if (focus) {
     try {
       query = await cliJson(["query", root2, focus, "--limit", String(Math.min(input.limit ?? 30, 30)), "--json"], root2);
+      if (query.warnings?.some((warning) => warning.includes("Optional local embedding runtime is not installed"))) vectorUnavailable = embeddingRuntimeRecovery();
     } catch (error2) {
       const missingRuntime = String(error2?.message ?? error2).includes("Optional local embedding runtime is not installed");
-      queryUnavailable = missingRuntime ? {
-        code: "EMBEDDING_RUNTIME_MISSING",
-        message: "Local semantic search requires an optional embedding runtime; continue with the documentation map or ask the user before installation.",
-        recovery: { kind: "embedding-runtime-install", requiresConfirmation: true, statusTool: "dotdotgod_embedding_status", installTool: "dotdotgod_embedding_install", cliCommand: "dotdotgod embedding install --confirm" }
-      } : {
+      queryUnavailable = missingRuntime ? embeddingRuntimeRecovery() : {
         code: "QUERY_UNAVAILABLE",
         message: "Semantic project query is unavailable; continue with the documentation map and targeted reads."
       };
     }
   }
-  return { ok: true, root: root2, focus, documentationTree: tree, query, ...queryUnavailable ? { queryUnavailable } : {} };
+  return { ok: true, root: root2, focus, documentationTree: tree, query, ...queryUnavailable ? { queryUnavailable } : {}, ...vectorUnavailable ? { vectorUnavailable } : {} };
 }
 async function projectEmbeddingStatus(input = {}) {
   const root2 = resolve5(input.root || process.cwd());

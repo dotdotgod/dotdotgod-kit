@@ -35,7 +35,7 @@ export { buildVectorImpactOverlay, VECTOR_RELATION_WEIGHT } from './impact/vecto
 export { formatCompactImpactOutput, formatYmlGraphImpactError, formatYmlImpactOutput } from './impact/format.mjs';
 export { runConfig } from './commands/config.mjs';
 export { runMap } from './commands/map.mjs';
-export { buildVectorIndex, cosineScore, parseQueryOptions, queryDocumentation, rankVectorFiles, runQuery } from './commands/query.mjs';
+export { buildVectorIndex, cosineScore, parseQueryOptions, queryDocumentation, queryProject, rankVectorFiles, runQuery } from './commands/query.mjs';
 export { runEmbedding } from './commands/embedding.mjs';
 export { EmbeddingRuntimeMissingError, embeddingRuntimeRoot, embeddingRuntimeStatus, installEmbeddingRuntime, resolvePersistentTransformers } from './query/embedding-runtime.mjs';
 export { chunkMarkdown, collectDocumentationChunks, collectDocumentationMarkdown, textFingerprint } from './query/chunks.mjs';
@@ -55,7 +55,7 @@ export async function runCli(argv = process.argv.slice(2)) {
   if (hasHelpToken(args)) usage('', helpCommandFromArgs([command, ...args]));
   if (command === 'validate') runValidate(args);
   else if (command === 'init') runInit(args, usage);
-  else if (command === 'index') runIndex(args);
+  else if (command === 'index') await runIndex(args);
   else if (command === 'config') runConfig(args);
   else if (command === 'status') runStatus(args);
   else if (command === 'query') await runQuery(args);

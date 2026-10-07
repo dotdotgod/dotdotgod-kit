@@ -1,7 +1,7 @@
 {
   "name": "@dotdotgod/cli",
-  "version": "0.6.1",
-  "description": "CLI for dotdotgod validation, local documentation search, and graph indexing.",
+  "version": "0.6.2",
+  "description": "CLI for dotdotgod validation, hybrid document/code-outline search, and graph indexing.",
   "type": "module",
   "license": "Elastic-2.0",
   "publishConfig": {
@@ -34,8 +34,10 @@
     "LICENSE"
   ],
   "dependencies": {
+    "@vscode/tree-sitter-wasm": "0.3.1",
     "d3": "^7.9.0",
     "graphology": "^0.26.0",
+    "ignore": "7.0.5",
     "leiden-ts": "^0.1.0",
     "sigma": "^3.0.3"
   },

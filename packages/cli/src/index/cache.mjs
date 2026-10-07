@@ -7,6 +7,9 @@ import { addEdge, addNode, compactGraph, expandGraph, graphStats, jsonSize, shar
 import { cacheFile, collectIndexFiles, fingerprint } from './files.mjs';
 import { CACHE_VERSION } from './constants.mjs';
 import { buildGraph } from '../graph/extract.mjs';
+import { buildOutlines, readOutlines } from '../symbols/store.mjs';
+import { outlinePolicy } from '../symbols/discovery.mjs';
+import { addOutlineGraph } from '../symbols/graph.mjs';
 
 function collectFingerprints(root, config = readMemoryConfig(root)) {
   return collectIndexFiles(root, config).map((file) => {
@@ -44,7 +47,17 @@ export function buildIndex(root, previous = readIndex(root)) {
   const fullRebuild = !previous?.graph || previous.version !== CACHE_VERSION;
   const refreshReason = !previous ? 'missing' : previous.version !== CACHE_VERSION ? 'schema-mismatch' : removedPaths.length > 0 ? 'content-removed' : changedPaths.length > 0 ? 'content-changed' : 'fresh';
   const rawGraph = fullRebuild ? buildGraph(root, files.map((file) => join(root, file.path)), memoryConfig) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles, memoryConfig), changedPaths);
-  const graph = rawGraph;
+  const graph = { nodes: rawGraph.nodes.filter((node) => !['symbol', 'unresolved_import'].includes(node.type)), edges: rawGraph.edges.filter((edge) => !['declares_symbol', 'contains_symbol', 'imports'].includes(edge.relation)) };
+  const outlines = readOutlines(root);
+  let outlinePolicyMatches = false;
+  if (outlines) {
+    try { outlinePolicyMatches = outlines.policy === outlinePolicy(root); }
+    catch { /* Outline runtime unavailable: preserve the existing structural graph path. */ }
+  }
+  if (outlinePolicyMatches) {
+    const hashes = new Map(files.map((file) => [file.path, file.sha256]));
+    addOutlineGraph(graph, { files: outlines.files.filter((file) => hashes.get(file.path) === file.hash && file.status === 'parsed') });
+  }
   const archiveBodiesIncluded = (memoryConfig.areas ?? []).some((area) => area.id === 'archive-body' && area.includeBodiesByDefault !== false);
   return { version: CACHE_VERSION, schemaVersion: CACHE_VERSION, generatedAt: new Date().toISOString(), archiveBodiesIncluded, memoryConfig: memoryConfigSummary(memoryConfig), files, graph, stats: graphStats(graph), incremental: { enabled: true, fullRebuild, changedFiles: changedPaths.length, refreshReason, elapsedMs: Date.now() - startedAt } };
 }
@@ -92,11 +105,12 @@ export function getStatus(root) {
   return { ok, status: ok ? 'fresh' : 'stale', cachePath: rel(root, cacheFile(root)), indexedFiles: index.files?.length ?? 0, currentFiles: currentFiles.length, staleFiles: staleFiles.length, examples: staleFiles.slice(0, 10), archiveBodiesIncluded: index.archiveBodiesIncluded === true, schemaVersion, expectedSchemaVersion: CACHE_VERSION, schemaOk, reason, graph: graphStats(index.graph ?? { nodes: [], edges: [] }) };
 }
 
-export function runIndex(argv) {
+export async function runIndex(argv) {
   const options = parseCommon(argv);
+  const outlines = await buildOutlines(options.root);
   const index = buildIndex(options.root);
   const manifest = writeIndex(options.root, index);
-  const result = { ok: true, cachePath: rel(options.root, cacheFile(options.root)), schemaVersion: CACHE_VERSION, indexedFiles: index.files.length, nodes: index.graph.nodes.length, edges: index.graph.edges.length, indexSizeBytes: manifest.indexSizeBytes, shards: manifest.graph.shards, incremental: index.incremental, archiveBodiesIncluded: index.archiveBodiesIncluded === true, memoryConfig: index.memoryConfig };
+  const result = { ok: true, cachePath: rel(options.root, cacheFile(options.root)), schemaVersion: CACHE_VERSION, indexedFiles: index.files.length, outlines: { refresh: outlines.refresh, unsupported: outlines.files.filter((file) => file.status === 'unsupported').map((file) => file.path), partial: outlines.files.filter((file) => file.status === 'partial').map((file) => file.path) }, nodes: index.graph.nodes.length, edges: index.graph.edges.length, indexSizeBytes: manifest.indexSizeBytes, shards: manifest.graph.shards, incremental: index.incremental, archiveBodiesIncluded: index.archiveBodiesIncluded === true, memoryConfig: index.memoryConfig };
   if (options.json) console.log(JSON.stringify(result, null, 2));
   else console.log(`✅ index written (${result.indexedFiles} files, ${result.nodes} nodes, ${result.edges} edges, ${(result.indexSizeBytes / 1024).toFixed(1)} KiB, cache: ${result.cachePath})`);
 }

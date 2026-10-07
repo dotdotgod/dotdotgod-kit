@@ -5,17 +5,22 @@ import { collectDocumentationChunks } from '../query/chunks.mjs';
 import { resolveEmbedder } from '../query/embedder.mjs';
 import { isValidNormalizedVectorValues, profileFingerprint, readVectorCache, writeVectorCache } from '../query/store.mjs';
 
+import { projectCorpus, keywordCandidates, fuseCandidates, attachRelationships, assertCodeEmbeddingConsent } from '../query/hybrid.mjs';
+
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 100;
 const EMBED_BATCH_SIZE = 16;
 
 export function parseQueryOptions(argv) {
-  const options = { root: '.', query: '', limit: DEFAULT_LIMIT, json: false };
+  const options = { root: '.', query: '', limit: DEFAULT_LIMIT, json: false, scope: 'all', search: 'hybrid', allowCodeEmbedding: false };
   let rootSet = false;
   const queryParts = [];
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--json') options.json = true;
+    else if (arg === '--scope') { options.scope = argv[++i]; if (!['docs', 'code', 'all'].includes(options.scope)) usage('--scope must be docs, code or all.', 'query'); }
+    else if (arg === '--search') { options.search = argv[++i]; if (!['hybrid', 'keyword', 'vector'].includes(options.search)) usage('--search must be hybrid, keyword or vector.', 'query'); }
+    else if (arg === '--allow-code-embedding') options.allowCodeEmbedding = true;
     else if (arg === '--limit') { const value = Number(argv[++i]); if (!Number.isInteger(value) || value < 1 || value > MAX_LIMIT) usage(`--limit must be an integer from 1 to ${MAX_LIMIT}.`, 'query'); options.limit = value; }
     else if (arg.startsWith('-')) usage(`Unknown option: ${arg}`, 'query');
     else if (!rootSet) { options.root = resolve(arg); rootSet = true; }
@@ -63,7 +68,7 @@ export async function buildVectorIndex(root, embedOrOptions = {}) {
   const resolved = await resolveEmbedder(root, options);
   const config = readMemoryConfig(root);
   const exclude = config.load?.documentationSummary?.exclude ?? ['docs/plan', 'docs/archive'];
-  const chunks = collectDocumentationChunks(root, exclude, config.documentation?.root ?? 'docs');
+  const chunks = options.chunks ?? collectDocumentationChunks(root, exclude, config.documentation?.root ?? 'docs');
   const cached = readVectorCache(root, resolved.identity);
   const cachedOffsets = new Map((cached?.chunks ?? []).map((chunk, index) => [chunk.fingerprint, index]));
   const rows = new Array(chunks.length);
@@ -95,14 +100,41 @@ export async function queryDocumentation(root, query, options = {}) {
   return { ok: true, command: 'query', root, query, provider: index.embedding.profile.provider, model: index.embedding.profile.model, embeddingSource: index.embedding.source, dimensions, limit, index: index.manifest, results };
 }
 
+export async function queryProject(root, query, options = {}) {
+  const scope = options.scope ?? 'all';
+  const search = options.search ?? 'hybrid';
+  const limit = options.limit ?? DEFAULT_LIMIT;
+  const corpus = await projectCorpus(root, scope);
+  const keyword = search === 'vector' ? [] : keywordCandidates(query, corpus.chunks);
+  let vector = []; let index; let vectorError;
+  if (search !== 'keyword' && corpus.chunks.length) {
+    try {
+      assertCodeEmbeddingConsent(root, options, corpus.chunks);
+      index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks });
+      const [queryVector] = await index.embedding.embed([`query: ${query}`]);
+      vector = index.chunks.map((chunk, position) => ({ ...chunk, vectorScore: cosineScore(queryVector, index.vectors, position * index.manifest.dimensions, index.manifest.dimensions) }))
+        .sort((a, b) => b.vectorScore - a.vectorScore || a.id.localeCompare(b.id));
+    } catch (error) {
+      if (search === 'vector') throw error;
+      vectorError = error instanceof Error ? error.message : String(error);
+    }
+  }
+  const results = attachRelationships(fuseCandidates(keyword, vector, limit), corpus.outlines).map(({ passage, ...result }) => result);
+  return { ok: true, command: 'query', root, query, scope, search, limit,
+    provider: index?.embedding.profile.provider ?? null, model: index?.embedding.profile.model ?? null,
+    embeddingSource: index?.embedding.source ?? 'not-used', dimensions: index?.manifest.dimensions ?? null,
+    index: index?.manifest ?? null, outlines: corpus.outlines ? { refresh: corpus.outlines.refresh, indexedFiles: corpus.outlines.files.length, diagnostics: corpus.outlines.files.filter((file) => file.status !== 'parsed').map(({ path, status }) => ({ path, status })) } : null,
+    warnings: [...(vectorError ? [`Vector retrieval unavailable; keyword results only: ${vectorError}`] : []), ...(corpus.outlines?.files.filter((file) => file.status !== 'parsed').map((file) => `Outline ${file.status}: ${file.path}`) ?? [])], results };
+}
+
 function formatQueryResult(payload) {
-  const lines = [`dotdotgod query: ${payload.query}`, `- embedding: ${payload.provider}/${payload.model} (${payload.embeddingSource})`, `- results: ${payload.results.length}`];
-  payload.results.forEach((result, index) => { lines.push(`${index + 1}. ${result.path}${result.heading ? ` — ${result.heading}` : ''} (${result.score.toFixed(3)})`); const excerpt = result.text.replace(/\s+/g, ' ').trim().slice(0, 240); if (excerpt) lines.push(`   ${excerpt}${result.text.length > 240 ? '…' : ''}`); });
+  const lines = [`dotdotgod query: ${payload.query}`, `- embedding: ${payload.provider ? `${payload.provider}/${payload.model}` : 'not used'} (${payload.embeddingSource})`, `- results: ${payload.results.length}`, ...(payload.warnings ?? [])];
+  payload.results.forEach((result, index) => { lines.push(`${index + 1}. ${result.path}${result.startLine ? `:${result.startLine}–${result.endLine}` : ''}${result.heading ? ` — ${result.heading}` : ''} (${result.score.toFixed(3)})`); const excerpt = result.text.replace(/\s+/g, ' ').trim().slice(0, 240); if (excerpt) lines.push(`   ${excerpt}${result.text.length > 240 ? '…' : ''}`); });
   return lines.join('\n');
 }
 
 export async function runQuery(argv) {
   const options = parseQueryOptions(argv);
-  try { const payload = await queryDocumentation(options.root, options.query, options); console.log(options.json ? JSON.stringify(payload, null, 2) : formatQueryResult(payload)); }
+  try { const payload = await queryProject(options.root, options.query, options); console.log(options.json ? JSON.stringify(payload, null, 2) : formatQueryResult(payload)); }
   catch (error) { const message = `dotdotgod query failed: ${error instanceof Error ? error.message : String(error)}`; if (options.json) console.log(JSON.stringify({ ok: false, command: 'query', root: options.root, query: options.query, error: message }, null, 2)); else console.error(message); process.exitCode = 1; }
 }

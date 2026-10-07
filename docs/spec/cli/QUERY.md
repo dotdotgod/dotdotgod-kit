@@ -1,70 +1,78 @@
 # Query Command
 
-## Purpose
+## Purpose And Interface
 
-`dotdotgod query` performs multilingual semantic retrieval over shared project documentation with the resolved local or explicitly configured remote embedding provider.
-
-## Interface
-
-```text
-dotdotgod query <root> <query> [--limit <n>] [--json]
-```
-
-- `<root>` is the repository root.
-- `<query>` is one or more free-form arguments joined with spaces.
-- `--limit` accepts an integer from 1 through 100, defaults to 30, and limits unique Markdown files rather than chunks.
-- `--json` returns structured output.
-- Missing query text, unknown options, and invalid limits exit with usage status 2.
-
-## Corpus
-
-The command indexes Markdown below `docs/` after applying `load.documentationSummary.exclude`. Default exclusions are `docs/plan` and `docs/archive`.
-
-Markdown is split by heading hierarchy and then into body pieces bounded to 1,600 characters before path and heading metadata are prepended. Indexed text includes path, heading hierarchy, and body. Secret-like, hidden, skipped-directory, and configured excluded paths must not be embedded.
-
-## Embeddings
-
-The zero-config default remains `Xenova/multilingual-e5-small` through local `@huggingface/transformers`. Runtime configuration may select an arbitrary local Hugging Face model, an OpenAI-compatible endpoint, or native Ollama. See [`../EMBEDDING_CONFIG.md`](../EMBEDDING_CONFIG.md).
-
-Query and passage inputs retain their retrieval prefixes. Provider output determines dimensions and is normalized and validated before use. Local model assets use the runtime's user-level cache. Selecting a remote provider explicitly authorizes sending embedding inputs to that endpoint.
-
-## Vector Cache
-
-Derived data is stored below ignored `.dotdotgod/vectors/`:
+Query searches full project documentation and code outlines/documentation comments.
+Code implementation bodies are not search passages. Default retrieval is hybrid
+keyword/vector over both corpora.
 
 ```text
-.dotdotgod/vectors/
-├── manifest.json
-├── chunks.jsonl
-└── embeddings.f32
+dotdotgod query <root> <query> [--limit <1..100>] [--scope docs|code|all]
+  [--search hybrid|keyword|vector] [--allow-code-embedding] [--json]
 ```
 
-The manifest identifies schema version, provider, model, dimensions, a secret-free profile fingerprint, exclusions, chunk count, and refresh statistics. Unchanged chunk fingerprints reuse stored vectors; changed and new chunks are embedded, and deleted chunks are omitted from the rewritten index.
+- Root is the repository root; remaining free-form arguments form the query.
+- Default scope is all, search is hybrid, limit is 30.
+- Limit counts documentation files and individual code symbols; multiple methods
+  from one file can appear. Missing query/invalid flags exit with usage status 2.
+- Explicit docs scope retains documentation-only retrieval. Keyword mode does not
+  initialize an embedder, download a model or contact an embedding provider.
 
-A corrupt, incomplete, model-mismatched, or schema-mismatched cache is rebuilt. Cache writes use temporary files and atomic rename per artifact.
+## Corpus And Index
 
-## Ranking and Output
+Documentation follows documentation.root and load.documentationSummary.exclude,
+excluding plan/archive bodies by default. Full Markdown content is split by heading
+and into 1,600-character body pieces; path/heading metadata is prepended.
 
-The command performs an exact cosine scan of normalized vectors and adds a small bounded lexical boost for query terms found in result paths or headings. Chunks are sorted by final score and stable path order, then deduplicated by Markdown path. The highest-ranked chunk represents each file, so every returned result has a different path and `--limit` is the maximum file count.
+Code records come from the shared outline cache, with name, ownership, syntactic
+signature, real doc comment, source hash and one-based inclusive declaration/body
+ranges. See [CODE_OUTLINES.md](CODE_OUTLINES.md) for extraction, coverage and safety.
+Original code doc comments are retained without generated summaries or inferred types.
 
-Each result includes:
+Search and index refresh outlines incrementally. Validation only checks freshness.
+Unchanged searchable passages reuse vectors even when source ranges change.
+Vector cache stays under ignored .dotdotgod/vectors with schema/provider/model/
+dimension/profile identities and normalized float vectors. Missing/corrupt or
+incompatible caches rebuild. Writes use temporary files and atomic artifact rename.
 
-- chunk ID
-- repository-relative Markdown path
-- heading hierarchy
-- bounded text excerpt
-- final score
-- raw vector score
+## Retrieval
 
-Human output is concise. JSON output includes command, root, query, provider, model, embedding source, dimensions, limit, index metadata, and ranked results.
+- Keyword candidates independently match names, signatures, original comments and
+  complete documentation chunk text. Camel-case identifiers are tokenized; an exact
+  symbol name/qualified-name match has priority.
+- Vector mode scans normalized vectors by exact cosine similarity.
+- Hybrid combines independently ranked candidates by reciprocal-rank fusion
+  (constant 60), with stable ID ties, then deduplicates docs by path and code by ID.
+- Hybrid embedding failure returns keyword results with an explicit warning.
+  Vector-only failure remains fatal; missing remote-code consent is fatal rather
+  than silently uploading or dropping the code corpus.
+- This is lexical candidate ranking, not a full BM25 engine or inferred call graph.
 
-## Safety and Failure
+Local multilingual E5 remains the default. Configured OpenAI-compatible and Ollama
+providers remain supported. Remote embedding of code metadata additionally requires
+--allow-code-embedding; prior documentation-provider consent does not cover code.
+See [../EMBEDDING_CONFIG.md](../EMBEDDING_CONFIG.md). Tests inject deterministic vectors.
 
-The command may write only ignored `.dotdotgod/vectors/` cache files and the user-level model cache. It does not modify source, docs, or project config.
+## Output And Relationships
 
-Model download, offline, inference, invalid-shape, filesystem, and cache-write failures produce an actionable error and non-zero status. Tests inject a deterministic embedder and must not download the model.
+Human output shows path, optional symbol range, heading, score and a short excerpt.
+JSON retains typed results, original metadata and retrieval evidence. It includes
+scope/search, provider/model when used, index information, outline refresh counts,
+non-parsed/unsupported file diagnostics and vector fallback warnings.
 
-The index preparation, exact-cosine, and unique-file aggregation primitives are also reused by `graph impact`. This does not change query behavior: query failures remain fatal, while graph impact catches vector failures and returns structural-only results.
+Code results include bounded structural/file-import relationship evidence (up to
+10 edges per result), derived from the same outline metadata. Unresolved imports
+are syntax evidence, not resolved dependencies. No call edges are inferred.
+
+Query writes only derived caches; it never edits source/docs/config or installs
+an LSP server. Unsupported files and partial parses are reported, not claimed as
+fully extracted. Source ranges must be hash-verified before implementation reads.
+
+## Internal Compatibility
+
+queryDocumentation/buildVectorIndex remain documentation-first internal APIs.
+Graph impact's vector overlay continues its documentation candidate semantics;
+CLI runQuery uses queryProject for the expanded default contract.
 
 ## Traceability
 
@@ -77,15 +85,17 @@ The index preparation, exact-cosine, and unique-file aggregation primitives are 
 
 - Implemented by:
   - [packages/cli/src/commands/query.mjs](../../../packages/cli/src/commands/query.mjs)
+  - [packages/cli/src/query/hybrid.mjs](../../../packages/cli/src/query/hybrid.mjs)
   - [packages/cli/src/query/chunks.mjs](../../../packages/cli/src/query/chunks.mjs)
-  - [packages/cli/src/query/embedder.mjs](../../../packages/cli/src/query/embedder.mjs)
   - [packages/cli/src/query/store.mjs](../../../packages/cli/src/query/store.mjs)
   - [packages/cli/src/core.mjs](../../../packages/cli/src/core.mjs)
 - Verified by:
+  - [packages/cli/test/symbol-query.test.mjs](../../../packages/cli/test/symbol-query.test.mjs)
   - [packages/cli/test/core.test.mjs](../../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../../packages/cli/test/e2e.test.mjs)
   - [packages/pi/test/load-project-utils.test.ts](../../../packages/pi/test/load-project-utils.test.ts)
 - Related docs:
+  - [docs/spec/cli/CODE_OUTLINES.md](CODE_OUTLINES.md)
   - [docs/spec/LOAD_PROJECT.md](../LOAD_PROJECT.md)
   - [docs/spec/cli/DISCOVERY.md](DISCOVERY.md)
 - Design decisions:
@@ -94,5 +104,5 @@ The index preparation, exact-cosine, and unique-file aggregation primitives are 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/commands/query.mjs","packages/cli/src/query/chunks.mjs","packages/cli/src/query/embedder.mjs","packages/cli/src/query/store.mjs","packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/pi/test/load-project-utils.test.ts"],"relatedDocs":["docs/spec/LOAD_PROJECT.md","docs/spec/cli/DISCOVERY.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/commands/query.mjs","packages/cli/src/query/hybrid.mjs","packages/cli/src/query/chunks.mjs","packages/cli/src/query/store.mjs","packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/symbol-query.test.mjs","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/pi/test/load-project-utils.test.ts"],"relatedDocs":["docs/spec/cli/CODE_OUTLINES.md","docs/spec/LOAD_PROJECT.md","docs/spec/cli/DISCOVERY.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
 ```

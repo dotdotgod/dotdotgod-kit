@@ -1,5 +1,7 @@
 # Cross-Agent Architecture
 
+Code query/graph/validation share [outline metadata](../spec/cli/CODE_OUTLINES.md).
+
 ## Purpose
 
 This document defines how dotdotgod provides a cross-agent project memory kit for Pi, Claude Code, Codex, and Hermes.
@@ -20,7 +22,7 @@ dotdotgod
 └── scripts/generate-adapters.mjs
 ```
 
-packages/shared owns common workflows/initializer resources; packages/context owns MCP/Pi-native processing. Checked-in generated files enable zero-build local/tarball installs. Claude/Codex bundle hooks/MCP/CLI; Hermes bundles its MCP client/server/CLI during development.
+Shared owns workflows, context processing. Adapters bundle CLI/MCP; Claude/Codex add hooks, Hermes a client. Generate parser assets before source-local installs/packing; tarballs need no build.
 
 ## Shared Source Responsibilities
 
@@ -139,7 +141,7 @@ Claude Code and Codex hooks are optional workflow accelerators, not required set
 
 Claude Code plugins support skills, commands, agents, hooks, MCP, LSP and monitors; hooks use hooks/hooks.json or the manifest. Codex supports skills/apps/MCP and plugin hooks with plugin_hooks enabled; non-managed hooks require trust review. These adapters retain opt-in hook guidance and default skill/command parity.
 
-Default examples should be advisory or read-only. `dotdotgod status` is safe for stop-time cache reporting because it does not rebuild the cache. `dotdotgod validate . --include-local-memory --check-index` is appropriate as an explicit validation hook because it checks docs and markdown index fingerprints without refreshing the cache. `dotdotgod query` and `dotdotgod graph ...` are useful for context and impact, but they may refresh ignored `.dotdotgod/` caches, so hook docs must label them as cache-aware opt-ins.
+Default examples should be advisory or read-only. `dotdotgod status` is safe for stop-time cache reporting because it does not rebuild the cache. `dotdotgod validate . --include-local-memory --check-index` is appropriate as an explicit validation hook because it checks docs and Markdown/outline fingerprints without rebuilding. `dotdotgod query` and `dotdotgod graph ...` are useful for context and impact, but they may refresh ignored `.dotdotgod/` caches, so hook docs must label them as cache-aware opt-ins.
 
 Claude Code hook guidance may reference current lifecycle events such as `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolBatch`, `Stop`, `StopFailure`, and `SessionEnd` when useful. It must not present undocumented plan-mode transition hooks such as `PrePlanMode`, `PostPlanMode`, plan accept, or plan reject as available unless Claude Code officially documents them. SDLC guidance should frame hooks as optional guardrails around plan, implement, verify, review, and archive phases, with `AGENTS.md` remaining the cross-agent project brain.
 
@@ -176,7 +178,7 @@ Use fixed versions initially. Independent versions are only worth the overhead w
 - Keep current Pi behavior compatible after resources live under `packages/pi/`.
 - Use `dd` for new namespaces and command prefixes.
 - Edit common workflow text in `packages/shared`, then run `pnpm run generate`.
-- Keep generated adapter files checked in for zero-build local installs.
+- Keep generated text tracked; run generate for ignored parser assets before source-local plugin installs/packing.
 - Use `pnpm run verify:generated` to catch drift when generated files are edited directly.
 - Keep `AGENTS.md` and docs scaffold stable across adapters.
 - Keep platform-specific UX enforcement in adapter code, but keep cross-agent quality contracts such as plan validation in the shared CLI.

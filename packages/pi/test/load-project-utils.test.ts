@@ -124,6 +124,15 @@ describe("documentation tree", () => {
 		assert.doesNotMatch(prompt, /CLI status:/);
 	});
 
+	it("preserves code outline ranges and retrieval warnings in focused loads", () => {
+		const prompt = buildLoadPrompt("/project", "run", snapshot, {
+			ok: true, data: { warnings: ["Vector retrieval unavailable; keyword results only"], results: [{ kind: "symbol", path: "src/service.ts", heading: "Example.run", startLine: 3, endLine: 9, text: "Run widgets." }] },
+		});
+		assert.match(prompt, /src\/service\.ts:3–9 \[code outline\]/);
+		assert.match(prompt, /Example\.run/);
+		assert.match(prompt, /keyword results only/);
+	});
+
 	it("uses depth five without arguments and does not run a query", () => {
 		const prompt = buildLoadPrompt("/project", "", snapshot, undefined, { mode: "full" });
 		assert.match(prompt, /Documentation map \(directory depth 5\)/);

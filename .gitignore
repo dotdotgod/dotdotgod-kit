@@ -9,3 +9,6 @@ docs/archive
 .pi-subagents/
 
 .DS_Store
+
+# Generated parser binaries are verified/rebuilt, not tracked.
+packages/*/mcp/parsers/

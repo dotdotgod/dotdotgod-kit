@@ -156,6 +156,8 @@ for (const adapter of ['claude-code', 'codex']) {
     mkdirSync(project);
     mkdirSync(join(project, 'docs'));
     writeFileSync(join(project, 'docs', 'README.md'), '# Project docs\n\nPackaged focused Load fixture.\n');
+    mkdirSync(join(project, 'src'));
+    writeFileSync(join(project, 'src', 'service.ts'), '/** Packaged focused project memory. */\nexport class Service {\n/** Packaged focused project memory. */\nrun() { return "implementation_only_marker"; }\n}\n');
     mkdirSync(join(root, 'home'));
     const stubBin = createNetworkStubs(root);
     const env = isolatedEnvironment(root, project, stubBin);
@@ -217,10 +219,13 @@ for (const adapter of ['claude-code', 'codex']) {
       assert.equal(loaded.isError, undefined, JSON.stringify(loaded.structuredContent));
       assert.equal(loaded.structuredContent.ok, true);
       assert.ok(loaded.structuredContent.documentationTree.some((line) => line.includes('docs/README.md')));
-      assert.equal(loaded.structuredContent.query, null);
-      assert.equal(loaded.structuredContent.queryUnavailable.code, 'EMBEDDING_RUNTIME_MISSING');
-      assert.equal(loaded.structuredContent.queryUnavailable.recovery.requiresConfirmation, true);
-      assert.equal(loaded.structuredContent.queryUnavailable.recovery.installTool, 'dotdotgod_embedding_install');
+      assert.equal(loaded.structuredContent.query.ok, true);
+      assert.ok(loaded.structuredContent.query.results.some((result) => result.path === 'docs/README.md' && result.kind === 'document'));
+      assert.ok(loaded.structuredContent.query.results.some((result) => result.kind === 'symbol' && result.path === 'src/service.ts'));
+      assert.ok(!JSON.stringify(loaded.structuredContent.query.results).includes('implementation_only_marker'));
+      assert.equal(loaded.structuredContent.vectorUnavailable.code, 'EMBEDDING_RUNTIME_MISSING');
+      assert.equal(loaded.structuredContent.vectorUnavailable.recovery.requiresConfirmation, true);
+      assert.equal(loaded.structuredContent.vectorUnavailable.recovery.installTool, 'dotdotgod_embedding_install');
       const serializedLoad = JSON.stringify(loaded);
       assert.doesNotMatch(serializedLoad, /ERR_MODULE_NOT_FOUND|plugins\/cache|package_json_reader/u);
 
