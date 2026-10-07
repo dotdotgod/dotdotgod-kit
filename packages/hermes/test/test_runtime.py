@@ -103,6 +103,72 @@ class RuntimeTest(unittest.TestCase):
         with self.assertRaises(PermissionError):
             self.runtime.call("stats", {}, "A")
 
+    def test_unselected_host_tools_and_dotdotgod_guards(self):
+        cases = [{}, {"roots": {"a": str(self.a)}}, self.ctx.config]
+        for config in cases:
+            with self.subTest(config=config):
+                runtime = Runtime(Context(config))
+                self.addCleanup(runtime.close_all)
+                context = runtime.before_llm("unselected", "hello", platform="telegram", sender_id="alice")["context"]
+                self.assertIn("inactive", context)
+                self.assertNotIn("Call dotdotgod_project_load", context)
+                if not runtime.allowed(runtime.sessions["unselected"]):
+                    self.assertNotIn("dotdotgod_select_root", context)
+                    with self.assertRaises(PermissionError):
+                        runtime.call("dotdotgod_select_root", {"label": "a"}, "unselected")
+                with patch.object(runtime, "pending", side_effect=AssertionError("must not scan")):
+                    for name in ["web_search", "web_extract", "skill_view", "tool_describe", "terminal", "read_file", "write_file", "delegate_task", "process"]:
+                        args = {"command": "git push", "path": str(self.b), "workdir": str(self.b)}
+                        original = dict(args)
+                        self.assertIsNone(runtime.before_tool(name, args, session_id="unselected"))
+                        self.assertEqual(args, original)
+                    self.assertIsNone(runtime.before_tool("dotdotgod_project_initialize", {}, session_id="unselected"))
+                    for name in ["dotdotgod_context_doctor", "dotdotgod_execute", "dotdotgod_project_load"]:
+                        self.assertEqual(runtime.before_tool(name, {}, session_id="unselected")["action"], "block")
+                for name in ["stats", "execute", "dotdotgod_project_load"]:
+                    with self.assertRaises(ValueError):
+                        runtime.call(name, {}, "unselected")
+                self.assertEqual(runtime.before_tool("web_search", {}, session_id="missing")["action"], "block")
+
+    def test_unselected_initialization_is_one_shot(self):
+        self.ctx.config["roots"] = {}
+        self.ctx.config["gateway_access"] = {}
+        self.enter()
+        args = {"root": str(self.b)}
+        dry = self.runtime.call("dotdotgod_project_initialize", args, "A")
+        self.assertTrue(dry["structuredContent"]["ok"])
+        self.assertFalse((self.b / "AGENTS.md").exists())
+        denied = self.runtime.call("dotdotgod_project_initialize", {**args, "dryRun": False}, "A")
+        self.assertTrue(denied["isError"])
+        self.assertFalse((self.b / "AGENTS.md").exists())
+        written = self.runtime.call("dotdotgod_project_initialize", {**args, "dryRun": False, "confirmWrite": True}, "A")
+        self.assertTrue(written["structuredContent"]["ok"])
+        self.assertTrue((self.b / "AGENTS.md").exists())
+        session = self.runtime.sessions["A"]
+        self.assertIsNone(session.root)
+        self.assertIsNone(session.proxy)
+        self.assertFalse(session.loaded)
+        self.assertEqual(self.ctx.state, {})
+        for target in [None, "relative", str(self.b / "missing"), str(self.b / "AGENTS.md")]:
+            with self.assertRaises((ValueError, FileNotFoundError)):
+                self.runtime.call("dotdotgod_project_initialize", {"root": target}, "A")
+        with patch("dd_hermes.runtime.Proxy") as proxy:
+            proxy.return_value.call.side_effect = RuntimeError("initialization failed")
+            with self.assertRaises(RuntimeError):
+                self.runtime.call("dotdotgod_project_initialize", args, "A")
+            proxy.return_value.close.assert_called_once()
+        with self.assertRaises(ValueError):
+            self.runtime.call("stats", {}, "A")
+        self.ctx.config["roots"] = {"b": str(self.b)}
+        self.ctx.config["gateway_access"] = {"telegram:alice": ["b"]}
+        self.runtime.call("dotdotgod_select_root", {"label": "b"}, "A")
+        self.assertEqual(self.runtime.session("A").root, self.b)
+        self.ctx.config["gateway_access"] = {}
+        for name in ["web_search", "dotdotgod_project_initialize"]:
+            self.assertEqual(self.runtime.before_tool(name, args, session_id="A")["action"], "block")
+        with self.assertRaises(PermissionError):
+            self.runtime.call("dotdotgod_project_initialize", args, "A")
+
     def test_same_root_session_search_and_reconnect(self):
         self.ctx.config["gateway_access"]["telegram:bob"] = ["a"]
         for sid, sender in [("A", "alice"), ("B", "bob")]:

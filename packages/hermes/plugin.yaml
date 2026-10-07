@@ -1,5 +1,5 @@
 name: dotdotgod
-version: 0.6.0
+version: 0.6.1
 description: Project memory, isolated context tools and impact checks for Hermes CLI and messaging gateway; no Plan Mode.
 author: dotdotgod
 license: Elastic-2.0

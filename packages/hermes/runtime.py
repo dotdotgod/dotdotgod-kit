@@ -52,10 +52,13 @@ class Runtime:
         labels = access.get(session.principal, []) if isinstance(access, dict) else []
         return {label: roots[label] for label in labels if label in roots} if isinstance(labels, list) else {}
 
-    def session(self, session_id):
+    def trusted_session(self, session_id):
         if not session_id or session_id not in self.sessions:
             raise ValueError("No trusted host session; start a turn before using dotdotgod")
-        session = self.sessions[session_id]
+        return self.sessions[session_id]
+
+    def session(self, session_id):
+        session = self.trusted_session(session_id)
         if session.root is None:
             raise ValueError("Select an authorized repository with dotdotgod_select_root first")
         if session.parent_id:
@@ -122,8 +125,23 @@ class Runtime:
 
     def call(self, name, args, session_id):
         with self.lock:
+            session = self.trusted_session(session_id)
             if name == "dotdotgod_select_root":
-                return self.select(self.sessions[session_id], args.get("label"))
+                if not self.allowed(session):
+                    raise PermissionError("No authorized repository labels; only dotdotgod_project_initialize is available")
+                return self.select(session, args.get("label"))
+            if session.root is None and not session.parent_id and name == "dotdotgod_project_initialize":
+                target = args.get("root")
+                if not isinstance(target, str) or not Path(target).is_absolute():
+                    raise ValueError("Initialization without selection requires an explicit absolute root directory")
+                root = Path(target).resolve(strict=True)
+                if not root.is_dir():
+                    raise ValueError("Initialization root must be a directory")
+                proxy = Proxy(root, digest(session.principal + "\0" + session.id + "\0initialize"))
+                try:
+                    return proxy.call(name, {**args, "root": str(root)})
+                finally:
+                    proxy.close()
             session = self.session(session_id)
         if name == "dotdotgod_impact_status":
             return envelope({"ok": True, "pending": list(self.pending(session))})
@@ -160,6 +178,13 @@ class Runtime:
 
     def before_tool(self, tool_name, args, session_id="", **kwargs):
         try:
+            session = self.trusted_session(session_id)
+            if session.root is None and not session.parent_id:
+                if not tool_name.startswith("dotdotgod_") or tool_name == "dotdotgod_project_initialize":
+                    return None
+                if tool_name == "dotdotgod_select_root" and self.allowed(session):
+                    return None
+                return {"action": "block", "message": "dotdotgod is inactive without a selected repository; only initialization is available (selection requires authorized labels)"}
             if tool_name == "dotdotgod_select_root":
                 return None
             session = self.session(session_id)
@@ -194,7 +219,11 @@ class Runtime:
                 elif platform in {"", "cli"}:
                     session.root = Path(self.ctx.get_config("cli_root", "") or self.launch_root).resolve(strict=True)
         if session.root is None:
-            return {"context": "Select a repository using dotdotgod_select_root. Authorized labels: " + json.dumps(list(self.allowed(session)))}
+            labels = list(self.allowed(session))
+            context = "dotdotgod is inactive; ordinary host tools remain available. Only dotdotgod_project_initialize may run without selection, with an explicit absolute root and existing write confirmation. Initialization does not select or authorize a repository."
+            if labels:
+                context += " Optionally select a repository using dotdotgod_select_root. Authorized labels: " + json.dumps(labels)
+            return {"context": context}
         try:
             self.session(session_id)
             parts = []

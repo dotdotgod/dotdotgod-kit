@@ -19,6 +19,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/hermes-unselected-root/`: keep ordinary Hermes tools usable before repository selection; allow initialization only with empty labels, preserve selected-root checks, and pass adapter/package/docs verification; pinned-host smoke remains unverified.
+
 - `plan/hermes-plugin/`: implemented Hermes CLI/gateway native adapter without Plan Mode, per-session MCP proxy, load/reference/impact workflows, and passing automated/installed-host-hook verification; external messaging/model acceptance remains manual.
 
 - `plan/remove-planning-compaction-and-audit-complexity/`: removed Plan Mode-owned compaction and automatic validation, retained and revised document-clarify, deduplicated pre-push docs validation, and passed automated verification; interactive reload smoke remains manual.

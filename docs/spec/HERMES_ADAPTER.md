@@ -19,8 +19,17 @@ Generated server/client/CLI artifacts work without ancestor node_modules or
 Python MCP packages. No profile-wide mcp.json server declaration is installed.
 
 Operator roots map labels to absolute local directories. Gateway access maps
-platform:sender_id principals to labels. Gateway sessions require explicit
-selection via dotdotgod_select_root; missing or changed grants deny access.
+platform:sender_id principals to labels. Gateway repository operations require
+explicit selection via dotdotgod_select_root; changed grants deny access.
+Before selection, dotdotgod is inactive and ordinary host tools remain available
+under host permissions without dotdotgod path rewriting or impact gates. There
+is no mandatory selection/load instruction. With no authorized labels, only
+dotdotgod_project_initialize is available among dotdotgod tools; with labels,
+selection is also available. Initialization requires an explicit absolute path to
+an existing directory, defaults to dry-run and requires confirmWrite for writes.
+It uses a disposable client and does not persist selection, create a grant or
+enable other dotdotgod tools. Missing host sessions, revoked selected grants and
+invalid delegated sessions do not receive this unselected-session exception.
 The selected label persists in profile-owned plugin state and is reauthorized on
 restore. CLI uses cli_root or the launch directory. Raw request arguments cannot
 change trusted host-session routing. Native file path arguments and terminal

@@ -56,9 +56,19 @@ with tempfile.TemporaryDirectory(prefix="dd-hermes-host-") as tmp:
         hook("pre_llm_call", session_id="cli", platform="cli", sender_id="", user_message="review", turn_id="1")
         cli = call("dotdotgod_context_doctor", {}, "cli")
         assert cli["structuredContent"]["ok"], cli
+        inactive = hook("pre_llm_call", session_id="unbound", platform="telegram", sender_id="no-grants", user_message="search", turn_id="1")
+        assert all("Select a repository" not in item.get("context", "") for item in inactive), inactive
+        for name in ("web_search", "web_extract", "skill_view", "tool_describe", "terminal", "read_file", "write_file"):
+            result = hook("pre_tool_call", session_id="unbound", tool_name=name, args={"command": "git push", "path": "/tmp/outside"})
+            assert all(item.get("action") not in {"block", "modify"} for item in result), result
+        assert call("dotdotgod_context_doctor", {}, "unbound")["ok"] is False
+        assert call("dotdotgod_select_root", {"label": "a"}, "unbound")["ok"] is False
+        initialized = call("dotdotgod_project_initialize", {"root": roots["a"]}, "unbound")
+        assert initialized["structuredContent"]["ok"], initialized
+        assert call("dotdotgod_context_doctor", {}, "unbound")["ok"] is False
         for sid, sender, label in [("A", "alice", "a"), ("B", "bob", "b")]:
             prompt = hook("pre_llm_call", session_id=sid, platform="telegram", sender_id=sender, user_message="review", turn_id="1")
-            assert prompt and "Select a repository" in prompt[0]["context"], prompt
+            assert prompt and "Optionally select a repository" in prompt[0]["context"], prompt
             result = call("dotdotgod_select_root", {"label": label}, sid)
             assert result["structuredContent"]["ok"], result
         assert call("dotdotgod_select_root", {"label": "b"}, "A")["ok"] is False
@@ -90,5 +100,5 @@ with tempfile.TemporaryDirectory(prefix="dd-hermes-host-") as tmp:
                           "concurrentRootsAndSessions": "passed", "impactDenyClearReedit": "passed",
                           "externalMessagingAndModelCalls": "not performed"}, indent=2))
     finally:
-        for sid in ("child", "cli", "A", "B"):
+        for sid in ("child", "cli", "A", "B", "unbound"):
             hook("on_session_finalize", session_id=sid)

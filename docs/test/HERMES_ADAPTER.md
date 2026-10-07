@@ -15,7 +15,10 @@ version for compatibility smoke. No Python MCP dependency is needed by the plugi
 - test_runtime.py: registration, operator grants/revocation, concurrent repositories,
   same-root session search isolation, explicit resume/reconnect, load opt-out and
   conservative restore, explicit references, CLI fallback, failed/subset impact,
-  re-edit, batch/file/process/delegation gates and cancellation.
+  re-edit, batch/file/process/delegation gates and cancellation. Unselected-session
+  checks cover empty roots/grants, optional selection, ordinary host tools without
+  path rewriting or impact scans, blocked dotdotgod calls, one-shot initialization,
+  absolute targets, dry-run/write confirmation, failure cleanup and revocation.
 - resources.test.mjs: 18 shared tools plus two local tools, four generated skills,
   batch schemas, self-contained artifacts, absent profile-wide MCP declaration
   and no planning resources.
@@ -59,7 +62,9 @@ With an authorized test profile and user-provided credentials:
 2. CLI: dry-run initialization, explicitly confirm writes, load once, focused load,
    dd:no-load for one request, explicit/fuzzy references and document clarification.
 3. Gateway: operator-configure roots and platform:sender grants. Reject unauthorized
-   labels and unbound work. Select roots explicitly in two concurrent chats.
+   labels and unbound dotdotgod repository work. Before selection, verify ordinary
+   tools remain available; with empty grants only dotdotgod initialization works,
+   without enabling other dotdotgod tools. Select roots in two concurrent chats.
 4. Confirm separate context session IDs; resume one without changing the other.
    Same-root sessions may share project DB data but not mutable connection IDs.
 5. Edit a disposable file; verify a covered commit/test command is denied. Check
