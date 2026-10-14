@@ -19,6 +19,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Completed plans
 
+- `plan/remove-session-access-checks/`: removed host-session admission checks, retained optional routing/search state, and passed package/workspace/docs verification plus independent review; live Desktop smoke remains unverified.
+
 - `plan/symbol-documentation-query/`: implemented multilingual document/code-outline hybrid query, shared structural metadata and read-only outline freshness; workspace, packaged adapters and isolated CLI checks passed. Real-model relevance/tokens remain unmeasured.
 
 - `plan/hermes-unselected-root/`: keep ordinary Hermes tools usable before repository selection; allow initialization only with empty labels, preserve selected-root checks, and pass adapter/package/docs verification; pinned-host smoke remains unverified.

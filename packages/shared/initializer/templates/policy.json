@@ -237,10 +237,5 @@
       ]
     }
   },
-  "planMode": {
-    "writablePaths": [
-      "docs/plan/**",
-      "docs/archive/**"
-    ]
-  }
+  "planMode": {}
 }

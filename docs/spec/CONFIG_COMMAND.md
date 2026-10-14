@@ -51,7 +51,7 @@ The config command surfaces the same policy families that validation, Load/query
 - `referenceExpansion.fuzzy.lowSignal`: `add`/`remove` term lists that tune low-signal fuzzy prompt matching without replacing built-in defaults.
 - `load.documentationSummary.exclude`: docs directories omitted from the Pi load prompt's documentation summary, independently from memory-area scope.
 - `load.pinnedPaths` and `load.pinnedBodies`: legacy non-blocking compatibility fields that no longer alter Load output.
-- `planMode.writablePaths`: fail-closed documentation subtrees where Plan Mode may create or modify valid Markdown and perform constrained directory operations.
+- Legacy `planMode.writablePaths` is deprecated and ignored; normalized output removes it. Markdown planning writes are location-independent.
 
 ## Init Command
 
@@ -67,7 +67,7 @@ The init command creates `dotdotgod.config.json` from the explicitly selected te
 - `impactRanking.semantic` only; fixed scoring policy is not serialized
 - `referenceExpansion.fuzzy.lowSignal.add/remove`
 - `load.documentationSummary.exclude` with `docs/plan` and `docs/archive`, plus empty `load.pinnedPaths` and `load.pinnedBodies` arrays
-- `planMode.writablePaths` with `docs/plan/**` and `docs/archive/**`
+- Plan/archive locations follow the documentation root as routing conventions, not writable-path permissions.
 
 The generated file must validate with `dotdotgod validate`. It includes the four default `traceability.keys` definitions. Any existing `impactRanking` value is non-blocking; retired and unknown fields are accepted but ignored and omitted from show/init serialization. Legacy `load.pinnedPaths` and `load.pinnedBodies` values are also non-blocking. `dotdotgod init` and generated adapter fallback templates use the same serializer, so their config data is structurally identical to `config init`. The generated memory areas omit optional `description` and `clarify` metadata so the template stays concise; projects can add those fields when custom document areas need role or clarity guidance. The generated reference-expansion section uses empty `add` and `remove` arrays; the resolved defaults remain visible in `dotdotgod config <root> --json` output.
 

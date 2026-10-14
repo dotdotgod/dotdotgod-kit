@@ -72,7 +72,7 @@ function renderLoadBody(platform) {
 
 function renderPlanBody(platform) {
   if (platform === "pi") return planBody;
-  const queryGuidance = `## CLI Context\n\nFor focused documentation routing, run \`dotdotgod query <root> "<focus>" --limit 30 --json\`. Run \`dotdotgod config <root> --json\` when memory-area policy, documentation exclusions, or Plan Mode writable paths affect the plan. If the CLI is unavailable, continue from README indexes and focused file reads.`;
+  const queryGuidance = `## CLI Context\n\nFor focused documentation routing, run \`dotdotgod query <root> "<focus>" --limit 30 --json\`. Run \`dotdotgod config <root> --json\` when memory-area policy or documentation routing/exclusions affect the plan. If the CLI is unavailable, continue from README indexes and focused file reads.`;
   return `${queryGuidance}\n\n${planBody}`;
 }
 

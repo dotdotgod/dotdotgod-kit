@@ -50,7 +50,7 @@ Native CLI and messaging-gateway adapter, without Plan Mode; see
 [HERMES_ADAPTER.md](HERMES_ADAPTER.md) for the pinned host and verification limits.
 
 - Package: @dotdotgod/hermes with native plugin.yaml, registered shared skills and tools.
-- Lifecycle hooks plus an adapter-owned stdio MCP client/server per authorized repository/session.
+- Lifecycle hooks plus an adapter-owned stdio MCP client/server per selected project/session; project labels do not authorize filesystem access.
 - Operator-controlled gateway root labels/grants, explicit selection and reauthorization.
 - Automatic/explicit map-query load, reference expansion, initializer, clarification,
   context operations, pending impact and covered release-command gates.

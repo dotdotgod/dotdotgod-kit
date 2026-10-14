@@ -70,6 +70,41 @@ class RuntimeTest(unittest.TestCase):
     def enter(self, sid="A", sender="alice"):
         return self.runtime.before_llm(session_id=sid, user_message="review src/api.ts", platform="telegram", sender_id=sender)
 
+    def test_optional_host_identity_and_deterministic_routing(self):
+        for sid in ["", None, "unknown"]:
+            for name in ["read_file", "terminal", "dotdotgod_project_load"]:
+                args = {"path": "relative.txt", "command": "pwd"}
+                self.assertIsNone(self.runtime.before_tool(name, args, session_id=sid))
+                self.assertEqual(args["path"], "relative.txt")
+        self.runtime.call("dotdotgod_select_root", {"label": str(self.b)}, "known")
+        result = self.runtime.call("dotdotgod_project_load", {"root": str(self.b)}, "")
+        self.assertEqual(result["structuredContent"]["root"], str(self.b))
+        self.assertNotIn("", self.runtime.sessions)
+        default = self.runtime.call("dotdotgod_project_load", {}, "fresh")
+        self.assertEqual(default["structuredContent"]["root"], str(self.a))
+        self.assertEqual(self.runtime.session("known").root, self.b)
+        self.runtime.before_llm("known", "dd:no-load", platform="desktop", sender_id="changed")
+        self.assertEqual(self.runtime.session("known").root, self.b)
+        self.runtime.before_llm("orphan", "hello", platform="subagent", parent_session_id="absent")
+        self.assertIsNone(self.runtime.before_tool("read_file", {"path": "x"}, session_id="orphan"))
+        self.runtime.finalize()
+        self.runtime.end_turn(interrupted=True)
+        self.assertEqual(self.runtime.session("known").root, self.b)
+        self.runtime.finalize("known")
+        self.assertNotIn("known", self.runtime.sessions)
+
+    def test_anonymous_client_cleanup_and_nested_hook(self):
+        module.register(self.ctx)
+        # execute_code nested dispatch supplies task_id but no host session_id.
+        self.assertIsNone(self.ctx.hooks["pre_tool_call"]("read_file", {"path": "relative.txt"}, task_id="nested"))
+        result = json.loads(self.ctx.tools["dotdotgod_project_load"]["handler"]({"root": str(self.b)}, task_id="nested"))
+        self.assertEqual(result["structuredContent"]["root"], str(self.b))
+        with patch("dd_hermes.runtime.Proxy") as proxy:
+            proxy.return_value.call.return_value = {"ok": True}
+            self.runtime.call("stats", {}, "")
+            proxy.return_value.close.assert_called_once()
+        self.assertNotIn("", self.runtime.sessions)
+
     def test_registration_and_no_planning(self):
         module.register(self.ctx)
         self.addCleanup(self.ctx.hooks["on_session_finalize"], session_id="registered")
@@ -82,10 +117,9 @@ class RuntimeTest(unittest.TestCase):
         self.assertIn("## doctor", response["content"][0]["text"])
         self.assertEqual(self.ctx.hooks["pre_tool_call"]("terminal", {"command": "git status"}, session_id="registered")["args"]["workdir"], str(self.a))
 
-    def test_gateway_authorization_and_concurrent_mcp(self):
+    def test_gateway_routing_and_concurrent_mcp(self):
         self.assertIn('"a"', self.enter()["context"])
-        with self.assertRaises(PermissionError):
-            self.runtime.call("dotdotgod_select_root", {"label": "b"}, "A")
+        self.runtime.call("dotdotgod_select_root", {"label": "b"}, "A")
         self.runtime.call("dotdotgod_select_root", {"label": "a"}, "A")
         self.enter("B", "bob")
         self.runtime.call("dotdotgod_select_root", {"label": "b"}, "B")
@@ -97,11 +131,25 @@ class RuntimeTest(unittest.TestCase):
         self.assertNotEqual(self.runtime.sessions["A"].proxy.process.pid, self.runtime.sessions["B"].proxy.process.pid)
         self.runtime.call("session_resume", {"sessionId": "explicit-own-context"}, "A")
         self.assertEqual(self.runtime.call("stats", {}, "B")["structuredContent"]["sessionId"], second["structuredContent"]["sessionId"])
-        with self.assertRaises(ValueError):
-            self.runtime.call("dotdotgod_project_load", {"root": str(self.b)}, "A")
+        self.runtime.call("dotdotgod_project_load", {"root": str(self.b)}, "A")
+        self.assertEqual(self.runtime.session("A").root, self.b)
         self.ctx.config["gateway_access"]["telegram:alice"] = []
-        with self.assertRaises(PermissionError):
-            self.runtime.call("stats", {}, "A")
+        self.runtime.call("stats", {}, "A")
+
+    def test_absolute_root_selection_without_labels_or_grants(self):
+        self.ctx.config["roots"] = {}
+        self.ctx.config["gateway_access"] = {}
+        self.enter()
+        self.runtime.call("dotdotgod_select_root", {"label": str(self.a)}, "A")
+        self.assertEqual(self.runtime.session("A").root, self.a)
+        self.runtime.before_llm("child", "review", platform="subagent", parent_session_id="A")
+        self.runtime.call("dotdotgod_select_root", {"label": str(self.b)}, "child")
+        self.assertEqual(self.runtime.session("child").root, self.b)
+        self.assertEqual(self.runtime.session("A").root, self.a)
+        self.runtime.call("dotdotgod_project_load", {"root": str(self.b)}, "A")
+        result = self.runtime.call("execute", {"commands": [{"command": "pwd", "cwd": str(self.a)}]}, "A")
+        self.assertTrue(result["structuredContent"]["results"][0]["ok"])
+        self.assertEqual(self.runtime.session("A").root, self.b)
 
     def test_unselected_host_tools_and_dotdotgod_guards(self):
         cases = [{}, {"roots": {"a": str(self.a)}}, self.ctx.config]
@@ -112,10 +160,8 @@ class RuntimeTest(unittest.TestCase):
                 context = runtime.before_llm("unselected", "hello", platform="telegram", sender_id="alice")["context"]
                 self.assertIn("inactive", context)
                 self.assertNotIn("Call dotdotgod_project_load", context)
-                if not runtime.allowed(runtime.sessions["unselected"]):
-                    self.assertNotIn("dotdotgod_select_root", context)
-                    with self.assertRaises(PermissionError):
-                        runtime.call("dotdotgod_select_root", {"label": "a"}, "unselected")
+                self.assertIn("dotdotgod_select_root", context)
+                self.assertIsNone(runtime.before_tool("dotdotgod_select_root", {"label": str(self.a)}, session_id="unselected"))
                 with patch.object(runtime, "pending", side_effect=AssertionError("must not scan")):
                     for name in ["web_search", "web_extract", "skill_view", "tool_describe", "terminal", "read_file", "write_file", "delegate_task", "process"]:
                         args = {"command": "git push", "path": str(self.b), "workdir": str(self.b)}
@@ -124,11 +170,8 @@ class RuntimeTest(unittest.TestCase):
                         self.assertEqual(args, original)
                     self.assertIsNone(runtime.before_tool("dotdotgod_project_initialize", {}, session_id="unselected"))
                     for name in ["dotdotgod_context_doctor", "dotdotgod_execute", "dotdotgod_project_load"]:
-                        self.assertEqual(runtime.before_tool(name, {}, session_id="unselected")["action"], "block")
-                for name in ["stats", "execute", "dotdotgod_project_load"]:
-                    with self.assertRaises(ValueError):
-                        runtime.call(name, {}, "unselected")
-                self.assertEqual(runtime.before_tool("web_search", {}, session_id="missing")["action"], "block")
+                        self.assertIsNone(runtime.before_tool(name, {}, session_id="unselected"))
+                self.assertIsNone(runtime.before_tool("web_search", {}, session_id="missing"))
 
     def test_unselected_initialization_is_one_shot(self):
         self.ctx.config["roots"] = {}
@@ -157,17 +200,15 @@ class RuntimeTest(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 self.runtime.call("dotdotgod_project_initialize", args, "A")
             proxy.return_value.close.assert_called_once()
-        with self.assertRaises(ValueError):
-            self.runtime.call("stats", {}, "A")
+        self.assertTrue(self.runtime.call("stats", {}, "A")["structuredContent"]["sessionId"])
         self.ctx.config["roots"] = {"b": str(self.b)}
         self.ctx.config["gateway_access"] = {"telegram:alice": ["b"]}
         self.runtime.call("dotdotgod_select_root", {"label": "b"}, "A")
         self.assertEqual(self.runtime.session("A").root, self.b)
         self.ctx.config["gateway_access"] = {}
         for name in ["web_search", "dotdotgod_project_initialize"]:
-            self.assertEqual(self.runtime.before_tool(name, args, session_id="A")["action"], "block")
-        with self.assertRaises(PermissionError):
-            self.runtime.call("dotdotgod_project_initialize", args, "A")
+            self.assertIsNone(self.runtime.before_tool(name, args, session_id="A"))
+        self.assertTrue(self.runtime.call("dotdotgod_project_initialize", args, "A")["structuredContent"]["ok"])
 
     def test_same_root_session_search_and_reconnect(self):
         self.ctx.config["gateway_access"]["telegram:bob"] = ["a"]
@@ -244,7 +285,12 @@ class RuntimeTest(unittest.TestCase):
         invalid = self.runtime.call("fetch_and_index", {"url": "file:///forbidden"}, "cli")
         self.assertTrue(invalid["isError"])
         escaped = self.runtime.call("index", {"path": str(self.b / "src/api.ts")}, "cli")
-        self.assertTrue(escaped["isError"])
+        self.assertFalse(escaped.get("isError", False))
+        for name in ["read_file", "write_file"]:
+            routed = self.runtime.before_tool(name, {"path": str(self.b / "src/api.ts")}, session_id="cli")
+            self.assertIsNone(routed)
+        routed = self.runtime.before_tool("terminal", {"command": "pwd", "workdir": str(self.b)}, session_id="cli")
+        self.assertIsNone(routed)
         dry = self.runtime.call("dotdotgod_project_initialize", {"dryRun": True}, "cli")
         self.assertTrue(dry["structuredContent"]["ok"])
         self.assertFalse((self.a / "AGENTS.md").exists())
@@ -259,7 +305,7 @@ class RuntimeTest(unittest.TestCase):
         self.runtime.before_llm(session_id="child", parent_session_id="A", platform="subagent", user_message="review")
         self.assertEqual(self.runtime.session("child").root, self.a)
         self.assertIsNot(self.runtime.client(self.runtime.session("A")), self.runtime.client(self.runtime.session("child")))
-        self.assertEqual(self.runtime.before_tool("terminal", {"command": "pwd"}, session_id="unknown")["action"], "block")
+        self.assertIsNone(self.runtime.before_tool("terminal", {"command": "pwd"}, session_id="unknown"))
         proxy = self.runtime.client(self.runtime.session("child"))
         errors = []
         def run():
@@ -285,8 +331,7 @@ class RuntimeTest(unittest.TestCase):
         self.ctx.config["gateway_access"]["telegram:bob"] = ["a"]
         self.enter("A", "bob")
         self.runtime.call("dotdotgod_select_root", {"label": "a"}, "A")
-        with self.assertRaises(PermissionError):
-            self.runtime.call("stats", {}, "child")
+        self.assertTrue(self.runtime.call("stats", {}, "child")["structuredContent"]["sessionId"])
 
 
 if __name__ == '__main__':

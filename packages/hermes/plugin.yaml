@@ -8,10 +8,6 @@ config_schema:
     type: dict
     default: {}
     description: Repository labels mapped to absolute local paths, configured by the operator.
-  gateway_access:
-    type: dict
-    default: {}
-    description: 'Allowed repository labels per platform:sender_id principal; no wildcard grants.'
   cli_root:
     type: str
     default: ''

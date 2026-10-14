@@ -29,9 +29,9 @@ Do not enable a separate profile-wide dotdotgod MCP server for these tools.
 Optional semantic embeddings use the existing explicit installation workflow;
 map/README routing works without them. Do not automatically install dependencies.
 
-## Gateway Repository Access
+## Project Routing
 
-The operator configures labels and principal-specific grants in config.yaml:
+Optional project labels can be configured in config.yaml:
 
 ```yaml
 plugins:
@@ -42,27 +42,31 @@ plugins:
         roots:
           app: /absolute/path/to/app
           docs: /absolute/path/to/docs-project
-        gateway_access:
-          "telegram:123456": [app]
-          "discord:987654": [docs]
 ```
 
-Use the trusted sender ID supplied by your Hermes gateway, not a display name.
-The model cannot grant itself a root or choose arbitrary filesystem paths.
-On an unbound gateway session the adapter requests dotdotgod_select_root with an
-authorized label before substantive work. Missing/changed grants deny access.
+Host session IDs are optional bookkeeping, not permissions. Tools work before
+pre-LLM registration. Without an ID, dotdotgod uses a disposable connection with
+an explicit load root or cli_root/launch-directory default, never another chat's
+selection. Ordinary host tools without known routing state pass through unchanged.
+Missing parents and changed senders do not deny tools. Impact interception needs
+known project state; nested host calls omitting it cannot be attributed reliably.
+
+Any host session may select a configured label or an existing absolute directory
+using dotdotgod_select_root. Legacy gateway_access settings are ignored.
+Dotdotgod imposes no filesystem-area restrictions. Gateway operators must rely
+on host permissions and OS isolation, not plugin labels, for access control.
 CLI starts at the launch directory; optional cli_root sets its repository.
 
-One bridge and MCP server are created lazily per authorized repository/host
+One bridge and MCP server are created lazily per selected project/host
 session. Same-repository connections share the project SQLite DB, not mutable
 connection-session identity. Explicit context session_resume affects only the
 caller's connection; its last resumed ID survives transport reconnects.
-Selections persist in profile-owned plugin state and are reauthorized on restore.
+Selections persist in profile-owned plugin state and are resolved on restore.
 Startup/restored sessions conservatively reassess project memory; abandoned
 sibling completion is not inherited.
 
 This is routing isolation, not multi-tenant OS isolation. Hermes and enabled
-plugins retain host permissions. Authorized users of the same repository share
+plugins retain host permissions. Sessions using the same repository share
 project data; context scope/session filters are not access-control lists.
 
 ## Features
@@ -82,7 +86,7 @@ project data; context scope/session filters are not access-control lists.
   checked fingerprints. Successful checks clear only checked, unchanged paths.
   Source edits reopen pending state; reads and impact checks remain available.
 - Native Hermes delegate_task is the delegation mechanism. Child hooks inherit
-  only an already authorized matching-principal parent repository, with a separate
+  an active matching-principal parent's project by default, with a separate
   context connection; impact covers their changes in the shared worktree.
 
 No dedicated planning state, wizard, source-edit approval UI, compaction feature,
@@ -95,8 +99,8 @@ Python/Node test commands are blocked while impact is pending. Execute batches
 are checked inside the adapter too. Opaque execute_file calls are blocked while
 pending because their effects cannot be inferred safely.
 
-Native file path arguments and terminal workdir are rooted to the selected local
-repository; reads may also access the installed bundled skill resources. This adapter targets local host worktrees, not remote/container path
+Relative native file paths and terminal workdir default to the selected project;
+explicit paths may refer anywhere accessible to the host. This adapter targets local host worktrees, not remote/container path
 translation. Shell paths, patch bodies, arbitrary programs and other plugins are
 not a filesystem sandbox; keep Hermes's own approvals and OS isolation.
 Shell mutations hidden inside one combined mutation/release command are not fully

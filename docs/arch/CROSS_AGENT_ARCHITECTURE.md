@@ -131,9 +131,10 @@ Codex adapter design should not depend on Pi-style command parity. Impact review
 
 packages/hermes owns Python lifecycle/root routing and a per-session Node MCP
 client over generated shared server/CLI artifacts; same-root SQLite stays shared.
-Operator gateway grants bind trusted host identities. No Plan Mode or memory
-engine is ported. See [Hermes behavior](../spec/HERMES_ADAPTER.md) and
-[verification](../test/HERMES_ADAPTER.md) for isolation, cleanup and gate limits.
+Labels route projects, not access grants; host/OS permissions control access.
+Session IDs are optional, not permissions.
+No Plan Mode is ported. See [Hermes behavior](../spec/HERMES_ADAPTER.md) and
+[verification](../test/HERMES_ADAPTER.md).
 
 ## Hook Boundaries
 

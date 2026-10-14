@@ -21,16 +21,16 @@ Behavior:
 - Tool names that are not installed in the current Pi session are ignored.
 - The resolved active tool list is used both for `pi.setActiveTools()` and for the hidden full Plan Mode prompt.
 
-This lets users opt into external read-oriented tools, such as context-mode tools, without making external plugins part of the default Plan Mode surface. Extra tools remain subject to Plan Mode path, command, and mutation guards.
+This lets users opt into external read-oriented tools, such as context-mode tools, without making external plugins part of the default Plan Mode surface. Extra tools remain subject to Plan Mode command and mutation guards.
 
-## Writable Documentation Paths
+## Planning Document Writes
 
-Project config may define `planMode.writablePaths` as an array of repository-relative exact paths or `/**` subtree patterns contained by the resolved `documentation.root`. The default is `docs/plan/**` and `docs/archive/**`; the defaults follow the configured root; an explicit array replaces that default without rebasing, and an empty array disables general Plan Mode document mutation.
+Markdown planning documents may be written at any location. Non-Markdown source/config writes and implementation edits require execution mode. This is a workflow guard, not a filesystem sandbox. Legacy `planMode.writablePaths` is deprecated: accepted for compatibility, ignored on load, and omitted from normalized configuration. Plan/archive paths remain routing conventions, not authorization.
 
 
 ## Prompt Requirements
 
-The full Plan Mode prompt must render the resolved active tool list and writable documentation paths from current settings. The compact prompt must also name the resolved writable paths.
+The full Plan Mode prompt renders the resolved active tool list; both prompts explain the location-independent planning-document exception and use the configured documentation root for durable plan routing.
 
 The prompt must not contradict Plan Mode permissions. It should clearly distinguish forbidden source/code/config mutation from allowed durable plan/archive markdown updates.
 
@@ -48,9 +48,13 @@ The prompt should prefer already-loaded project memory and documentation maps be
 - Implemented by:
   - [packages/pi/extensions/plan-mode/index.ts](../../packages/pi/extensions/plan-mode/index.ts)
   - [packages/pi/extensions/plan-mode/utils.ts](../../packages/pi/extensions/plan-mode/utils.ts)
+  - [packages/pi/extensions/plan-mode/runtime/paths.ts](../../packages/pi/extensions/plan-mode/runtime/paths.ts)
+  - [packages/pi/extensions/plan-mode/tools.ts](../../packages/pi/extensions/plan-mode/tools.ts)
+  - [packages/pi/extensions/plan-mode/prompts.ts](../../packages/pi/extensions/plan-mode/prompts.ts)
 - Verified by:
   - [packages/pi/test/plan-mode-extension.test.ts](../../packages/pi/test/plan-mode-extension.test.ts)
   - [packages/pi/test/plan-mode-utils.test.ts](../../packages/pi/test/plan-mode-utils.test.ts)
+  - [packages/pi/test/context-execution-gates.test.ts](../../packages/pi/test/context-execution-gates.test.ts)
   - [docs/test/README.md](../test/README.md)
 - Related docs:
   - [docs/spec/PLAN_MODE.md](PLAN_MODE.md)
@@ -60,5 +64,5 @@ The prompt should prefer already-loaded project memory and documentation maps be
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts"],"verifiedBy":["packages/pi/test/plan-mode-extension.test.ts","packages/pi/test/plan-mode-utils.test.ts","docs/test/README.md"],"relatedDocs":["docs/spec/PLAN_MODE.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts","packages/pi/extensions/plan-mode/runtime/paths.ts","packages/pi/extensions/plan-mode/tools.ts","packages/pi/extensions/plan-mode/prompts.ts"],"verifiedBy":["packages/pi/test/plan-mode-extension.test.ts","packages/pi/test/plan-mode-utils.test.ts","packages/pi/test/context-execution-gates.test.ts","docs/test/README.md"],"relatedDocs":["docs/spec/PLAN_MODE.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
 ```

@@ -46,7 +46,7 @@ Markdown chunking preserves heading/fence metadata; JSON emits deterministic key
 
 Search applies scope/session/source predicates before building bounded Porter and label/path lists, then uses reciprocal-rank fusion and deterministic title/path/proximity signals. Existing result fields remain; provenance, `instructionAuthority: "none"`, and bounded ranking evidence are additive. Retrieved text is non-authoritative data; this boundary is defense in depth, not a prompt-injection guarantee.
 
-`index` accepts one project-contained regular file or directory. Directory traversal is deterministic and bounded by depth, entries, file count, per-file bytes, and aggregate bytes. Symlinks are skipped by default; followed file symlinks must resolve inside the project. Responses contain path/status metadata, not file content, and report partial success, skips, failures, truncation, and cancellation.
+`index` accepts one file or explicit directory, including external paths. Root sets path defaults and storage, not access rights. Traversal bounds depth, entries, files and bytes. Symlinks default to skipped; enabled file symlinks may be external. Directory aliases are resolved only when explicitly requested, not recursively followed. Responses report paths, partial success, skips, failures, truncation and cancellation, not file content.
 
 Fetched HTML is normalized without a browser, JavaScript, subresources, or link following. The bounded extractor removes active and hidden content, preserves basic structure, records metadata, and keeps the source `external-untrusted`. It is not a complete HTML renderer or prompt-injection defense.
 
@@ -60,7 +60,7 @@ Writable database connections use WAL and a bounded busy timeout. Source replace
 - Commands accept either an explicit executable/arguments pair or an explicit shell command string.
 - Concurrency is bounded to eight and batch size to one hundred commands.
 - Timeouts are bounded and terminate the process group where supported.
-- File and directory indexing enforce project containment and per-operation resource bounds; explicit filters do not imply `.gitignore` processing.
+- Indexing limits resource use, not accessible filesystem areas; filters do not imply `.gitignore` processing.
 - URL fetching accepts credential-free HTTP(S), validates DNS answers, the selected peer, and every redirect against a private/reserved network deny policy.
 - Redirect, timeout, wire-byte, and decoded-byte limits apply; unsupported MIME types and encodings fail closed. This is application validation, not network isolation.
 - `doctor` performs local read-only runtime, storage, SQLite/FTS5, schema, and fetch-policy checks without npm access, repair, migration, or command execution.

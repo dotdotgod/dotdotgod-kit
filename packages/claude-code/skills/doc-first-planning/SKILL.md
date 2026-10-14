@@ -10,7 +10,7 @@ version: 1.0.0
 
 ## CLI Context
 
-For focused documentation routing, run `dotdotgod query <root> "<focus>" --limit 30 --json`. Run `dotdotgod config <root> --json` when memory-area policy, documentation exclusions, or Plan Mode writable paths affect the plan. If the CLI is unavailable, continue from README indexes and focused file reads.
+For focused documentation routing, run `dotdotgod query <root> "<focus>" --limit 30 --json`. Run `dotdotgod config <root> --json` when memory-area policy or documentation routing/exclusions affect the plan. If the CLI is unavailable, continue from README indexes and focused file reads.
 
 ## Goal
 

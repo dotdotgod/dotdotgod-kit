@@ -1,5 +1,5 @@
 import { closeSync, constants, fstatSync, lstatSync, openSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
-import { isAbsolute, relative, resolve, sep } from 'node:path';
+import { relative, resolve, sep } from 'node:path';
 
 const DEFAULT_LIMITS = Object.freeze({
   maxDepth: 16,
@@ -8,11 +8,6 @@ const DEFAULT_LIMITS = Object.freeze({
   maxFileBytes: 25 * 1024 * 1024,
   maxAggregateBytes: 100 * 1024 * 1024,
 });
-
-function inside(base, target) {
-  const rel = relative(base, target);
-  return rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
-}
 
 function relativePath(base, target) {
   return relative(base, target).split(sep).join('/');
@@ -72,10 +67,7 @@ function snapshot(path, target, stat, symlink) {
 export function walkDirectoryManifest(options = {}) {
   const root = realpathSync(resolve(options.root || process.cwd()));
   const requested = resolve(root, options.path ?? '.');
-  if (!inside(root, requested)) throw new Error(`Directory escapes project root: ${options.path}`);
-  if (lstatSync(requested).isSymbolicLink()) throw new Error(`Directory symlinks are not followed: ${options.path ?? '.'}`);
   const directory = realpathSync(requested);
-  if (!inside(root, directory)) throw new Error(`Directory escapes project root: ${options.path}`);
   if (!statSync(directory).isDirectory()) throw new Error(`Not a directory: ${options.path ?? '.'}`);
 
   const policy = normalizeOptions(options);
@@ -113,7 +105,6 @@ export function walkDirectoryManifest(options = {}) {
         let targetStat;
         try {
           target = realpathSync(absolutePath);
-          if (!inside(root, target)) { skip(path, 'symlink-outside-root'); continue; }
           targetStat = statSync(target);
         } catch { skip(path, 'symlink-unresolvable'); continue; }
         if (targetStat.isDirectory()) { skip(path, 'directory-symlink'); continue; }
@@ -152,9 +143,7 @@ function matchesIdentity(stat, identity) {
 }
 
 export function verifyManifestFile(entry, root) {
-  const base = realpathSync(resolve(root));
   const target = realpathSync(entry.absolutePath);
-  if (!inside(base, target)) throw new Error(`Manifest file escapes project root: ${entry.path}`);
   const stat = statSync(target);
   if (!stat.isFile()) throw new Error(`Manifest entry is not a regular file: ${entry.path}`);
   if (!matchesIdentity(stat, entry.identity ?? {})) throw new Error(`Manifest file changed before indexing: ${entry.path}`);

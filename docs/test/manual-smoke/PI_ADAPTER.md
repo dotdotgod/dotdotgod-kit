@@ -47,8 +47,8 @@ Run `pi --help` and confirm dotdotgod contributes `--dd-plan` without contributi
 16. Test narrow/short terminals and resize with long Korean questions, options, and answers. The decision wizard must wrap and scroll via PgUp/PgDn without over-wide lines; all actions must remain keyboard-reachable. Confirm the separate saved-plan review screen still behaves as before.
 17. Confirm explanatory replies that do not touch `docs/plan/` do not show the action prompt or extract todos.
 18. Confirm no persistent `[plan-todo-list]` widget or dedicated todo command appears; extracted todo state remains available to review and execution flows.
-19. Confirm constrained housekeeping is allowed only under local memory.
-20. Confirm source/config mutation remains blocked.
+19. Verify external cwd reads and external Markdown planning writes. Shell moves/deletions require execution mode everywhere.
+20. Block non-Markdown source/config writes; planning instructions prohibit Markdown implementation edits, not as a sandbox.
 21. Confirm high context usage does not cause Plan Mode to request compaction; Pi's own compaction settings remain unchanged.
 22. Submit request B immediately after request A; confirm advisory context uses B without a synthetic compaction-resume message or replay of A. Restore an old compaction snapshot and confirm planning is not blocked.
 23. With the CLI available, confirm first-turn context shaping adds bounded graph impact and reference expansion without running validate; without the CLI, Plan Mode continues.

@@ -6,10 +6,10 @@ While the authoritative lifecycle is `planning` or `reviewing`:
 
 - Reading files and searching the project are allowed.
 - The default active tool list is conservative; see [`../PLAN_MODE_TOOL_SETTINGS.md`](../PLAN_MODE_TOOL_SETTINGS.md) for optional extra installed tools.
-- Read-only bash commands are allowed through an allowlist. If `dotdotgod_execute` is active, every command in its required `commands` array passes the same allowlist and pending-impact gates before any command starts. Execution cwd overrides require execution mode.
-- `edit` and `write` are allowed only for markdown files under `docs/plan/` and `docs/archive/`.
-- Conservative plan/archive housekeeping bash commands are allowed only when every affected path stays under `docs/plan/` or `docs/archive/`.
-- Product/source/config changes outside those directories are blocked.
+- Read-only bash commands are allowed through an allowlist. If `dotdotgod_execute` is active, every command in its required `commands` array passes the same allowlist and pending-impact gates before any command starts. Explicit execution cwd is allowed; command safety applies regardless of location.
+- `edit` and `write` allow Markdown planning documents at any location, not implementation edits. Non-Markdown source/config writes require execution mode.
+- Moving, deleting, or creating directories through shell commands requires execution mode everywhere, including plan/archive paths.
+- These planning workflow guards do not provide a filesystem sandbox.
 
 The `executing` and `off` states do not apply these planning-only mutation restrictions. Todo presence or count never grants or revokes mutation permission; only the lifecycle state does.
 

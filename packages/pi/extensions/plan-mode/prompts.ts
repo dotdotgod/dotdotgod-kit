@@ -41,20 +41,18 @@ export function resolvePlanModeTools(extraTools: unknown, availableTools?: reado
 	});
 }
 
-function documentationRootFor(writablePaths: readonly string[]): string { return writablePaths[0]?.replaceAll("\\", "/").split("/")[0] || "docs"; }
 
 const PLAN_DECISION_GUIDANCE = `For saved plans, put user-owned open decisions under a ## Discussion Queue heading. Use rows like - [ ] Q1 scope blocks-execute-review: <question>, with indented - Why:, - Affects:, - Options: (nested - A: <choice> rows), - Recommended: A, - Verification impact:, and - Status: open fields. IDs must be unique. Required decisions use blocks-execute-review; deferring them does not authorize execution. The decision wizard collects options or custom answers and confirms them together before a single follow-up. Record confirmed answers with Status: answered and revise affected plan steps; preserve new or unresolved questions. Answer confirmation is not execution approval. Without interactive UI, surface unresolved questions in the final response and remain in planning.`;
 
-function buildPlanModeFullContextPrompt(allowedTools = DEFAULT_PLAN_MODE_TOOLS, writablePaths: readonly string[] = ["docs/plan/**", "docs/archive/**"]): string {
-	const documentationRoot = documentationRootFor(writablePaths);
+function buildPlanModeFullContextPrompt(allowedTools = DEFAULT_PLAN_MODE_TOOLS, documentationRoot = "docs"): string {
 	return `[PLAN MODE ACTIVE]
 You are in Plan Mode. This is a planning-only exploration and design phase before code changes.
 
 Restrictions:
 - Allowed tools: ${allowedTools.join(", ")}
-- edit/write are allowed only for valid markdown files matching the configured documentation paths: ${writablePaths.join(", ") || "none"}.
+- edit/write are allowed only for Markdown planning documents at any location.
 - Under ${documentationRoot}/, directories must use kebab-case and markdown file names must use UPPER_SNAKE_CASE.md, including README.md.
-- Forbidden: source/code/config mutation; configured writable paths remain limited to documentation markdown.
+- Forbidden: source/code/config mutation, including Markdown implementation edits. This planning policy is not a filesystem sandbox.
 - Bash is restricted to read-only allowlisted commands.
 
 Workflow:
@@ -69,14 +67,13 @@ ${PLAN_DECISION_GUIDANCE}
 Use questionnaire for clarification before a saved plan exists and web tools only for required external evidence. Use a Plan: section only for concrete executable steps.`;
 }
 
-function buildPlanModeCompactContextPrompt(writablePaths: readonly string[]): string {
-	const documentationRoot = documentationRootFor(writablePaths);
+function buildPlanModeCompactContextPrompt(documentationRoot: string): string {
 	return `[PLAN MODE ACTIVE]
-Compact reminder: remain in planning-only mode until execution approval. Keep source, code, and config unchanged. edit/write are limited to valid documentation markdown matching: ${writablePaths.join(", ") || "none"}; bash remains read-only apart from safe directory operations there. Reuse loaded memory and the documentation map, route focused requests through query and README indexes, verify selected docs, and run impact review after likely targets are known. Maintain ${documentationRoot}/plan/<task-slug>/README.md for durable work or use a short in-chat checklist for bounded work. Reserve the Plan: section for concrete executable steps. Keep user decisions in Discussion Queue; required deferred items still block execution. The wizard confirms answers together, not execution. Record confirmed answers and preserve new questions.`;
+Compact reminder: remain in planning-only mode until execution approval. Keep source, code, and config unchanged. edit/write are limited to Markdown planning documents anywhere; bash remains read-only, with moving/deleting files requiring execution mode. Reuse loaded memory and the documentation map, route focused requests through query and README indexes, verify selected docs, and run impact review after likely targets are known. Maintain ${documentationRoot}/plan/<task-slug>/README.md for durable work or use a short in-chat checklist for bounded work. Reserve the Plan: section for concrete executable steps. Keep user decisions in Discussion Queue; required deferred items still block execution. The wizard confirms answers together, not execution. Record confirmed answers and preserve new questions.`;
 }
 
-export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS, writablePaths: readonly string[] = ["docs/plan/**", "docs/archive/**"]): string {
-	return compact ? buildPlanModeCompactContextPrompt(writablePaths) : buildPlanModeFullContextPrompt(allowedTools, writablePaths);
+export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS, documentationRoot = "docs"): string {
+	return compact ? buildPlanModeCompactContextPrompt(documentationRoot) : buildPlanModeFullContextPrompt(allowedTools, documentationRoot);
 }
 
 export interface PlanningContextShapeTriggerState {

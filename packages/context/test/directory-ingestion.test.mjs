@@ -32,17 +32,20 @@ test('walkDirectoryManifest returns stable lexical relative paths without conten
   } finally { f.close(); }
 });
 
-test('walkDirectoryManifest rejects requested paths outside the real project root', () => {
+test('walkDirectoryManifest accepts requested external directories and directory aliases', () => {
   const f = fixture();
   const outside = fixture();
   try {
-    assert.throws(() => walkDirectoryManifest({ root: f.root, path: '..' }), /escapes project root/);
+    write(outside.root, 'external.txt', 'external');
+    const manifest = walkDirectoryManifest({ root: f.root, path: outside.root });
+    assert.equal(manifest.files.length, 1);
+    assert.equal(verifyManifestFile(manifest.files[0], f.root), realpathSync(join(outside.root, 'external.txt')));
     symlinkSync(outside.root, join(f.root, 'outside'));
-    assert.throws(() => walkDirectoryManifest({ root: f.root, path: 'outside' }), /Directory symlinks are not followed/);
+    assert.equal(walkDirectoryManifest({ root: f.root, path: 'outside' }).files.length, 1);
   } finally { f.close(); outside.close(); }
 });
 
-test('symlinks are skipped by default and optional file symlinks stay inside root', () => {
+test('symlinks are skipped by default and optional file symlinks may be external', () => {
   const f = fixture();
   const outside = fixture();
   try {
@@ -60,11 +63,11 @@ test('symlinks are skipped by default and optional file symlinks stay inside roo
       'alias.txt': 'file-symlink',
       'broken.txt': 'symlink-unresolvable',
       'dir-link': 'directory-symlink',
-      'external.txt': 'symlink-outside-root',
+      'external.txt': 'file-symlink',
     });
 
     const followed = walkDirectoryManifest({ root: f.root, followFileSymlinks: true });
-    assert.deepEqual(followed.files.map((entry) => entry.path), ['alias.txt', 'real.txt']);
+    assert.deepEqual(followed.files.map((entry) => entry.path), ['alias.txt', 'external.txt', 'real.txt']);
     assert.equal(followed.files[0].symlink, true);
   } finally { f.close(); outside.close(); }
 });

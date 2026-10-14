@@ -4,7 +4,6 @@ import { isAbsolute, relative, resolve } from "node:path";
 export let DOCUMENTATION_ROOT = "docs";
 export let PLAN_DIRECTORY = "docs/plan";
 export let ARCHIVE_DIRECTORY = "docs/archive";
-export const DEFAULT_PLAN_MODE_WRITABLE_PATHS = ["docs/plan/**", "docs/archive/**"] as const;
 
 export function configureDocumentationPaths(documentationRoot = "docs"): void {
 	DOCUMENTATION_ROOT = documentationRoot;
@@ -53,24 +52,9 @@ function isMarkdownPathInside(cwd: string, path: string, directory: string): boo
 	return segments.slice(0, -1).every(isKebabCaseDirectory);
 }
 
-function writableDirectory(pattern: string): string | undefined {
-	const normalized = pattern.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
-	if (!normalized || normalized.startsWith("/") || /^[A-Za-z]:/.test(normalized) || normalized.includes("..") || normalized.split("/").some((part) => part.startsWith("."))) return undefined;
-	if (normalized.includes("*") && !normalized.endsWith("/**")) return undefined;
-	return normalized.endsWith("/**") ? normalized.slice(0, -3) : normalized;
-}
-
-export function isManagedPlanMarkdownPath(cwd: string, path: string, writablePaths: readonly string[] = DEFAULT_PLAN_MODE_WRITABLE_PATHS): boolean {
-	return writablePaths.some((pattern) => {
-		const directory = writableDirectory(pattern);
-		if (!directory) return false;
-		if (pattern.replaceAll("\\", "/").replace(/\/+$/, "").endsWith("/**")) return isMarkdownPathInside(cwd, path, directory);
-		const target = resolve(cwd, normalizeToolPath(path));
-		if (target !== resolve(cwd, directory)) return false;
-		const segments = directory.split("/");
-		const fileName = segments.pop();
-		return Boolean(fileName && isPlanMarkdownFile(fileName) && segments.slice(1).every(isKebabCaseDirectory));
-	});
+// Planning-document exception, not a filesystem permission boundary or sandbox.
+export function isManagedPlanMarkdownPath(_cwd: string, path: string): boolean {
+	return /\.md$/i.test(normalizeToolPath(path));
 }
 
 export function isActivePlanMarkdownPath(cwd: string, path: string): boolean {

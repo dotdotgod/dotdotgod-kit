@@ -54,7 +54,6 @@ import {
 	isAutoAllowedDotdotgodPlanModeCommand,
 	isDotdotgodCliCommand,
 	isSafeCommand,
-	isSafePlanArchiveCommand,
 	markCompletedSteps,
 	resolvePlanModeTools,
 	selectPlanImpactPaths,
@@ -323,37 +322,9 @@ describe("plan-mode command safety", () => {
 		}
 	});
 
-	it("allows constrained plan/archive housekeeping commands", () => {
-		for (const command of [
-			"mkdir -p docs/archive/plan",
-			"mv docs/plan/old-task docs/archive/plan/old-task",
-			"rm -rf docs/plan/stale-task",
-			"rm docs/archive/plan/stale-task/README.md",
-		]) {
-			assert.equal(isSafePlanArchiveCommand(command), true, command);
-			assert.equal(isSafeCommand(command), true, command);
-		}
-	});
-
-	it("uses configured writable documentation paths for safe housekeeping", () => {
-		const paths = ["docs/proposals/**"];
-		assert.equal(isSafePlanArchiveCommand("mkdir -p docs/proposals/new-design", paths), true);
-		assert.equal(isSafePlanArchiveCommand("mkdir -p docs/plan/new-design", paths), false);
-		assert.equal(isSafePlanArchiveCommand("rm -rf docs/proposals", paths), false);
-	});
-
-	it("blocks plan/archive housekeeping commands that escape local memory", () => {
-		for (const command of [
-			"rm -rf docs/plan",
-			"rm package.json",
-			"mv packages/pi docs/archive/plan/pi",
-			"mv docs/plan/task packages/task",
-			"rm -rf docs/plan/task && rm package.json",
-			"rm -rf docs/plan/../spec",
-		]) {
-			assert.equal(isSafePlanArchiveCommand(command), false, command);
-		}
-	});
+	it("requires execution for housekeeping at every location", () => {
+        for (const command of ["rm -rf docs/plan/task", "mv docs/plan/task docs/archive/task", "rm /tmp/task.md", "mkdir -p /tmp/plan"]) assert.equal(isSafeCommand(command), false, command);
+    });
 
 	it("detects dotdotgod CLI commands for explicit Plan Mode approval", () => {
 		for (const command of [
@@ -984,9 +955,10 @@ describe("plan-mode tool settings", () => {
 	});
 
 	it("injects the resolved Plan Mode tool list into the full prompt", () => {
-		const prompt = buildPlanModeContextPrompt(false, ["read", "bash", "ctx_search"], ["docs/proposals/**"]);
+		const prompt = buildPlanModeContextPrompt(false, ["read", "bash", "ctx_search"], "project-memory");
 		assert.match(prompt, /Allowed tools: read, bash, ctx_search/);
-		assert.match(prompt, /docs\/proposals\/\*\*/);
+		assert.match(prompt, /Markdown planning documents at any location/);
+		assert.match(prompt, /project-memory\/plan/);
 		assert.match(prompt, /questionnaire/);
 		assert.match(prompt, /focused query and README indexes/);
 		assert.match(prompt, /Run impact review/);
@@ -1148,9 +1120,9 @@ describe("plan-mode done markers", () => {
 describe("alternate documentation root Plan Mode policy", () => {
 	it("accepts safe configured-root markdown and renders the durable path", () => {
 		const root = mkdtempSync(join(tmpdir(), "dotdotgod-plan-root-"));
-		assert.equal(isManagedPlanMarkdownPath(root, "project-memory/plan/task/README.md", ["project-memory/plan/**"]), true);
-		assert.equal(isManagedPlanMarkdownPath(root, "../project-memory/plan/task/README.md", ["project-memory/plan/**"]), false);
-		const prompt = buildPlanModeContextPrompt(false, undefined, ["project-memory/plan/**", "project-memory/archive/**"]);
+		assert.equal(isManagedPlanMarkdownPath(root, "project-memory/plan/task/README.md"), true);
+		assert.equal(isManagedPlanMarkdownPath(root, "../project-memory/plan/task/README.md"), true);
+		const prompt = buildPlanModeContextPrompt(false, undefined, "project-memory");
 		assert.match(prompt, /project-memory\/plan\/<task-slug>\/README\.md/);
 		assert.doesNotMatch(prompt, /docs\/plan\/<task-slug>/);
 	});
@@ -1164,7 +1136,6 @@ describe("resolved alternate-root plan execution policy", () => {
 			assert.deepEqual(extractPlanSlugMentions("Execute project-memory/plan/task/README.md"), ["task"]);
 			assert.match(buildPlanModeRequestFraming("Execute the active plan"), /project-memory\/plan/);
 			assert.equal(shouldTrackImpactPath("project-memory/plan/task/README.md"), false);
-			assert.equal(isSafePlanArchiveCommand("mkdir -p project-memory/archive/plan", ["project-memory/archive/**"]), true);
 			const artifact = new PlanArtifactController();
 			artifact.markTouched("project-memory/plan/task/README.md");
 			assert.equal(artifact.inferPlanPath(), "project-memory/plan/task/README.md");

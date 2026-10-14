@@ -61,17 +61,22 @@ with tempfile.TemporaryDirectory(prefix="dd-hermes-host-") as tmp:
         for name in ("web_search", "web_extract", "skill_view", "tool_describe", "terminal", "read_file", "write_file"):
             result = hook("pre_tool_call", session_id="unbound", tool_name=name, args={"command": "git push", "path": "/tmp/outside"})
             assert all(item.get("action") not in {"block", "modify"} for item in result), result
-        assert call("dotdotgod_context_doctor", {}, "unbound")["ok"] is False
-        assert call("dotdotgod_select_root", {"label": "a"}, "unbound")["ok"] is False
+        assert call("dotdotgod_context_doctor", {}, "unbound")["structuredContent"]["ok"]
         initialized = call("dotdotgod_project_initialize", {"root": roots["a"]}, "unbound")
         assert initialized["structuredContent"]["ok"], initialized
-        assert call("dotdotgod_context_doctor", {}, "unbound")["ok"] is False
+        assert call("dotdotgod_context_doctor", {}, "unbound")["structuredContent"]["ok"]
+        nested = hook("pre_tool_call", tool_name="read_file", args={"path": "relative.txt"}, task_id="nested")
+        assert all(item.get("action") not in {"block", "modify"} for item in nested), nested
+        anonymous = json.loads(registry.dispatch("dotdotgod_project_load", {"root": roots["b"]}, scope=manager.scope_key))
+        assert anonymous["structuredContent"]["root"] == roots["b"], anonymous
+        assert call("dotdotgod_select_root", {"label": roots["a"]}, "unbound")["structuredContent"]["ok"]
         for sid, sender, label in [("A", "alice", "a"), ("B", "bob", "b")]:
             prompt = hook("pre_llm_call", session_id=sid, platform="telegram", sender_id=sender, user_message="review", turn_id="1")
-            assert prompt and "Optionally select a repository" in prompt[0]["context"], prompt
+            assert prompt and "Configured project labels" in prompt[0]["context"], prompt
             result = call("dotdotgod_select_root", {"label": label}, sid)
             assert result["structuredContent"]["ok"], result
-        assert call("dotdotgod_select_root", {"label": "b"}, "A")["ok"] is False
+        assert call("dotdotgod_select_root", {"label": "b"}, "A")["structuredContent"]["ok"]
+        assert call("dotdotgod_select_root", {"label": "a"}, "A")["structuredContent"]["ok"]
         with ThreadPoolExecutor() as pool:
             a = pool.submit(call, "dotdotgod_context_stats", {}, "A")
             b = pool.submit(call, "dotdotgod_context_stats", {}, "B")

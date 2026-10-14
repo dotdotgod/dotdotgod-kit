@@ -1,6 +1,6 @@
 export function formatToolMarkdown(name: string, value: unknown): string;
 export type ContextScope = 'transient' | 'session' | 'project';
-export type DirectoryReason = 'excluded-path' | 'extension-filter' | 'file-byte-limit' | 'file-count-limit' | 'aggregate-byte-limit' | 'visited-entry-limit' | 'depth-limit' | 'file-symlink' | 'directory-symlink' | 'symlink-outside-root' | 'symlink-unresolvable' | 'special-file' | 'directory-read-failed' | 'entry-stat-failed' | 'index-failed';
+export type DirectoryReason = 'excluded-path' | 'extension-filter' | 'file-byte-limit' | 'file-count-limit' | 'aggregate-byte-limit' | 'visited-entry-limit' | 'depth-limit' | 'file-symlink' | 'directory-symlink' | 'symlink-unresolvable' | 'special-file' | 'directory-read-failed' | 'entry-stat-failed' | 'index-failed';
 export interface EnvironmentPolicy { mode: 'inherit-filtered-v1' | 'allowlist-v1'; platform: 'win32' | 'darwin' | 'posix'; allowedNames?: string[]; filteredNames: string[] }
 export interface DirectoryManifestEntry { path: string; absolutePath: string; size: number; identity: { dev: number; ino: number; size: number; mtimeMs: number }; symlink: boolean }
 export interface DirectoryManifest { root: string; directory: string; files: DirectoryManifestEntry[]; skipped: Array<{ path: string; reason: DirectoryReason }>; failed: Array<{ path: string; reason: DirectoryReason; error?: string }>; aborted: boolean; truncated: boolean; visitedEntries: number; aggregateBytes: number }

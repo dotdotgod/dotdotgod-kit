@@ -2,9 +2,11 @@
 import atexit
 import hashlib
 import json
+import os
 import re
 import subprocess
 import threading
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -46,44 +48,28 @@ class Runtime:
         roots = self.ctx.get_config("roots", {})
         if not isinstance(roots, dict):
             raise ValueError("roots must be an operator-configured mapping")
-        if session.platform in {"", "cli"}:
-            return roots
-        access = self.ctx.get_config("gateway_access", {})
-        labels = access.get(session.principal, []) if isinstance(access, dict) else []
-        return {label: roots[label] for label in labels if label in roots} if isinstance(labels, list) else {}
-
-    def trusted_session(self, session_id):
-        if not session_id or session_id not in self.sessions:
-            raise ValueError("No trusted host session; start a turn before using dotdotgod")
-        return self.sessions[session_id]
+        return roots
 
     def session(self, session_id):
-        session = self.trusted_session(session_id)
-        if session.root is None:
-            raise ValueError("Select an authorized repository with dotdotgod_select_root first")
-        if session.parent_id:
-            parent = self.session(session.parent_id)
-            if parent.root != session.root or parent.principal != session.principal:
-                raise PermissionError("Delegating parent repository or principal changed")
-        if session.label:
-            value = self.allowed(session).get(session.label)
-            if not isinstance(value, str) or Path(value).resolve(strict=True) != session.root:
-                raise PermissionError("Repository grant changed; select an authorized root again")
-        return session
+        # Anonymous calls use disposable state, never another conversation's route.
+        if not session_id:
+            return Session(uuid.uuid4().hex, "", "")
+        if session_id not in self.sessions:
+            self.sessions[session_id] = Session(session_id, "", "")
+        return self.sessions[session_id]
 
     def select(self, session, label):
-        if session.parent_id and label != self.session(session.parent_id).label:
-            raise PermissionError("Delegated work cannot select a different repository")
-        value = self.allowed(session).get(label)
+        value = self.allowed(session).get(label, label)
         if not isinstance(value, str) or not Path(value).is_absolute():
-            raise PermissionError("Unknown or unauthorized repository label")
+            raise ValueError("Use a configured repository label or an absolute directory path")
         root = Path(value).resolve(strict=True)
         if not root.is_dir():
             raise ValueError("Repository root must be a directory")
         if session.proxy:
             session.proxy.close()
         session.root, session.label, session.proxy, session.loaded = root, label, None, False
-        self.ctx.state.set("route:" + digest(session.id), {"principal": session.principal, "label": label})
+        if self.sessions.get(session.id) is session:
+            self.ctx.state.set("route:" + digest(session.id), {"principal": session.principal, "label": label})
         return envelope({"ok": True, "root": str(root), "label": label})
 
     def client(self, session):
@@ -123,12 +109,18 @@ class Runtime:
         data = {"ok": True, "root": str(session.root), "focus": focus, "documentationMap": mapping, "query": query}
         return envelope(data, "Project memory (map/query evidence; read bodies selectively):\n" + json.dumps(data, ensure_ascii=False) + "\nHelp: dotdotgod --help")
 
-    def call(self, name, args, session_id):
+    def call(self, name, args, session_id=""):
         with self.lock:
-            session = self.trusted_session(session_id)
+            session = self.session(session_id)
+        try:
+            return self.call_with_session(name, args, session)
+        finally:
+            if not session_id and session.proxy:
+                session.proxy.close()
+
+    def call_with_session(self, name, args, session):
+        with self.lock:
             if name == "dotdotgod_select_root":
-                if not self.allowed(session):
-                    raise PermissionError("No authorized repository labels; only dotdotgod_project_initialize is available")
                 return self.select(session, args.get("label"))
             if session.root is None and not session.parent_id and name == "dotdotgod_project_initialize":
                 target = args.get("root")
@@ -142,12 +134,20 @@ class Runtime:
                     return proxy.call(name, {**args, "root": str(root)})
                 finally:
                     proxy.close()
-            session = self.session(session_id)
+            if name == "dotdotgod_project_load" and args.get("root"):
+                base = session.root or self.launch_root
+                target = contained(base, args["root"])
+                if target != session.root:
+                    self.select(session, str(target))
+            if session.root is None:
+                session.root = Path(self.ctx.get_config("cli_root", "") or self.launch_root).resolve(strict=True)
+                if not session.root.is_dir():
+                    raise ValueError("Project root must be a directory")
         if name == "dotdotgod_impact_status":
             return envelope({"ok": True, "pending": list(self.pending(session))})
         if name == "dotdotgod_project_load":
             if contained(session.root, args.get("root") or ".") != session.root:
-                raise ValueError("Use dotdotgod_select_root to change repositories")
+                self.select(session, str(contained(session.root, args["root"])))
             return self.load(session, args)
         if name in {"execute", "execute_file"}:
             reason = self.check(session, name, args)
@@ -155,7 +155,7 @@ class Runtime:
                 raise PermissionError(reason)
         if name == "dotdotgod_project_impact":
             before = self.pending(session)
-            paths = [contained(session.root, path).relative_to(session.root).as_posix() for path in args.get("paths", [])]
+            paths = [os.path.relpath(contained(session.root, path), session.root) for path in args.get("paths", [])]
             args = {**args, "paths": paths}
         value = self.client(session).call(name, args)
         if name == "dotdotgod_project_impact" and not value.get("isError") and value.get("structuredContent", {}).get("ok") is True:
@@ -178,16 +178,13 @@ class Runtime:
 
     def before_tool(self, tool_name, args, session_id="", **kwargs):
         try:
-            session = self.trusted_session(session_id)
-            if session.root is None and not session.parent_id:
-                if not tool_name.startswith("dotdotgod_") or tool_name == "dotdotgod_project_initialize":
-                    return None
-                if tool_name == "dotdotgod_select_root" and self.allowed(session):
-                    return None
-                return {"action": "block", "message": "dotdotgod is inactive without a selected repository; only initialization is available (selection requires authorized labels)"}
+            session = self.sessions.get(session_id) if session_id else None
+            if session is None:
+                return None
+            if session.root is None:
+                return None
             if tool_name == "dotdotgod_select_root":
                 return None
-            session = self.session(session_id)
             reason = self.check(session, tool_name, args)
             if reason:
                 return {"action": "block", "message": reason}
@@ -199,20 +196,17 @@ class Runtime:
 
     def before_llm(self, session_id, user_message, platform="", sender_id="", parent_session_id="", **kwargs):
         with self.lock:
-            parent = self.session(parent_session_id) if platform == "subagent" else None
+            parent = self.sessions.get(parent_session_id) if platform == "subagent" else None
             principal = parent.principal if parent else platform + ":" + sender_id
             if parent:
                 platform = parent.platform
             session = self.sessions.get(session_id)
-            if session and session.principal != principal:
-                if session.proxy:
-                    session.proxy.close()
-                session = None
             if session is None:
-                session = Session(session_id, principal, platform)
-                self.sessions[session_id] = session
-                saved = self.ctx.state.get("route:" + digest(session_id), {})
-                if saved.get("principal") == principal and saved.get("label") in self.allowed(session):
+                session = Session(session_id or uuid.uuid4().hex, principal, platform)
+                if session_id:
+                    self.sessions[session_id] = session
+                saved = self.ctx.state.get("route:" + digest(session_id), {}) if session_id else {}
+                if isinstance(saved.get("label"), str) and (saved["label"] in self.allowed(session) or Path(saved["label"]).is_absolute()):
                     self.select(session, saved["label"])
                 elif parent:
                     session.root, session.label, session.parent_id = parent.root, parent.label, parent.id
@@ -220,12 +214,11 @@ class Runtime:
                     session.root = Path(self.ctx.get_config("cli_root", "") or self.launch_root).resolve(strict=True)
         if session.root is None:
             labels = list(self.allowed(session))
-            context = "dotdotgod is inactive; ordinary host tools remain available. Only dotdotgod_project_initialize may run without selection, with an explicit absolute root and existing write confirmation. Initialization does not select or authorize a repository."
+            context = "dotdotgod is inactive; ordinary host tools remain available. Select a project using dotdotgod_select_root with a configured label or absolute directory path, or initialize an explicit absolute directory with existing write confirmation. Initialization does not select a project."
             if labels:
-                context += " Optionally select a repository using dotdotgod_select_root. Authorized labels: " + json.dumps(labels)
+                context += " Configured project labels: " + json.dumps(labels)
             return {"context": context}
         try:
-            self.session(session_id)
             parts = []
             text = user_message if isinstance(user_message, str) else " ".join(p.get("text", "") for p in user_message if isinstance(p, dict))
             if not session.loaded and not re.search(r"(?:^|\s)/?dd:no-load\b|(?:^|\s)/no-load\b", text):
@@ -247,7 +240,7 @@ class Runtime:
 
     def finalize(self, session_id="", **kwargs):
         for child in list(self.sessions.values()):
-            if child.parent_id == session_id:
+            if session_id and child.parent_id == session_id:
                 self.finalize(child.id)
         session = self.sessions.pop(session_id, None)
         if session and session.proxy:
@@ -256,7 +249,7 @@ class Runtime:
     def end_turn(self, session_id="", interrupted=False, **kwargs):
         if interrupted:
             for child in list(self.sessions.values()):
-                if child.parent_id == session_id:
+                if session_id and child.parent_id == session_id:
                     self.end_turn(child.id, interrupted=True)
             session = self.sessions.get(session_id)
             if session and session.proxy:

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, resolve, relative } from 'node:path';
 import test from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { PHASE3_TOOL_INPUT_SCHEMAS, formatToolMarkdown } from '../src/index.mjs';
@@ -11,6 +11,7 @@ const expected = ['execute', 'execute_file', 'index', 'search', 'fetch_and_index
 
 test('stdio server lists the complete tool surface and calls doctor', async () => {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-mcp-test-'));
+  const external = mkdtempSync(join(tmpdir(), 'dotdotgod-mcp-external-'));
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [resolve('bin/server.mjs')],
@@ -49,6 +50,18 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
     const searched = await client.callTool({ name: 'search', arguments: { query: 'public-mcp-directory-needle', scope: 'project' } });
     assert.equal(searched.structuredContent.results.length, 1);
     assert.match(searched.content[0].text, /Retrieved text is untrusted data/);
+
+    const externalPath = join(external, 'outside.md');
+    writeFileSync(externalPath, '# External\nexternal-directory-provenance-needle');
+    const externalIndex = await client.callTool({name:'index', arguments:{path:external, scope:'project'}});
+    assert.equal(externalIndex.isError, undefined);
+    assert.equal(externalIndex.structuredContent.indexed[0].path, relative(root, externalPath));
+    const externalSearch = await client.callTool({name:'search', arguments:{query:'external-directory-provenance-needle', scope:'project'}});
+    assert.equal(externalSearch.structuredContent.results.length, 1);
+    assert.equal(externalSearch.structuredContent.results[0].metadata.path, realpathSync(externalPath));
+    assert.equal(externalSearch.structuredContent.results[0].metadata.origin, realpathSync(externalPath));
+    assert.equal(externalSearch.structuredContent.results[0].sourceType, 'project-file');
+    assert.match(JSON.stringify(externalSearch.structuredContent.results[0]), /external-directory-provenance-needle/);
 
     const resumed = await client.callTool({ name: 'session_resume', arguments: { sessionId: 'mcp-resumed-session' } });
     assert.equal(resumed.structuredContent.sessionId, 'mcp-resumed-session');
@@ -122,8 +135,7 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
         name: 'index',
         arguments: { root: outsideRoot, path: outsideFile },
       });
-      assert.equal(escaped.isError, true);
-      assert.match(escaped.structuredContent.error, /escapes project root/);
+      assert.notEqual(escaped.isError, true);
 
       const linkedFile = join(root, 'linked-secret.txt');
       symlinkSync(outsideFile, linkedFile);
@@ -131,13 +143,13 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
         name: 'index',
         arguments: { path: linkedFile },
       });
-      assert.equal(symlinkEscape.isError, true);
-      assert.match(symlinkEscape.structuredContent.error, /escapes project root/);
+      assert.notEqual(symlinkEscape.isError, true);
     } finally {
       rmSync(outsideRoot, { recursive: true, force: true });
     }
   } finally {
     await client.close();
     rmSync(root, { recursive: true, force: true });
+    rmSync(external, { recursive: true, force: true });
   }
 });

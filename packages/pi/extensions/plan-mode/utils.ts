@@ -9,9 +9,6 @@ export { extractTodoItems, markCompletedSteps } from "./todos.ts";
 export {
 	normalizePlanCommandRequest,
 	tokenizeShellCommand,
-	isPlanArchivePath,
-	isProtectedPlanArchiveRoot,
-	isSafePlanArchiveCommand,
 	isSafeCommand,
 	getDotdotgodCliArgs,
 	isDotdotgodCliCommand,

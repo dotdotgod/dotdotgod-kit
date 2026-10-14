@@ -1,4 +1,4 @@
-"""Root-contained changed-file fingerprints and deliberately limited command gates."""
+"""Project changed-file fingerprints and deliberately limited command gates."""
 import hashlib
 import re
 import subprocess
@@ -11,10 +11,8 @@ EXCLUDED = (".dotdotgod/", "node_modules/", "dist/", "build/", "coverage/", "doc
 
 
 def contained(root, value):
-    path = (root / value).resolve()
-    if not path.is_relative_to(root):
-        raise ValueError("Path escapes selected repository")
-    return path
+    # Legacy helper name: root supplies relative-path defaults only.
+    return (root / value).resolve()
 
 
 def tracked(path):
@@ -66,13 +64,7 @@ def file_arguments(root, name, args):
     if name in {"read_file", "write_file", "file_edit", "file_write", "file_read"}:
         for key in ("path", "file_path"):
             if isinstance(args.get(key), str):
-                try:
-                    target = contained(root, args[key])
-                except ValueError:
-                    target = Path(args[key]).resolve()
-                    if name not in {"read_file", "file_read"} or not target.is_relative_to(Path(__file__).parent.resolve() / "skills"):
-                        raise
-                args[key] = str(target)
+                args[key] = str(contained(root, args[key]))
     if name == "terminal":
         args["workdir"] = str(contained(root, args.get("workdir") or "."))
     return args

@@ -37,9 +37,7 @@ export const DEFAULT_LOAD_POLICY = {
     exclude: ['docs/plan', 'docs/archive'],
   },
 };
-export const DEFAULT_PLAN_MODE_POLICY = {
-  writablePaths: ['docs/plan/**', 'docs/archive/**'],
-};
+export const DEFAULT_PLAN_MODE_POLICY = {};
 export const DEFAULT_IMPACT_RANKING_POLICY = {
   connectionCap: 80,
   memoryCap: 20,
@@ -199,8 +197,8 @@ export function cloneLoadPolicy(policy = DEFAULT_LOAD_POLICY) {
   };
 }
 
-export function clonePlanModePolicy(policy = DEFAULT_PLAN_MODE_POLICY) {
-  return { writablePaths: [...(policy.writablePaths ?? DEFAULT_PLAN_MODE_POLICY.writablePaths)] };
+export function clonePlanModePolicy() {
+  return {};
 }
 
 export function normalizeDocumentationRoot(value = DEFAULT_DOCUMENTATION_ROOT) {
@@ -215,7 +213,7 @@ export function isValidDocumentationRoot(value) {
 }
 export function defaultMemoryConfig({ documentationRoot = DEFAULT_DOCUMENTATION_ROOT } = {}) {
   const root = normalizeDocumentationRoot(documentationRoot);
-  return { source: 'default', documentation: { root }, areas: memoryAreasForRoot(root).map(cloneArea), traceability: cloneTraceabilityPolicy({ ...DEFAULT_TRACEABILITY_POLICY, required: [`${root}/spec/**`] }), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), load: cloneLoadPolicy({ ...DEFAULT_LOAD_POLICY, documentationSummary: { exclude: [`${root}/plan`, `${root}/archive`] } }), planMode: clonePlanModePolicy({ writablePaths: [`${root}/plan/**`, `${root}/archive/**`] }) };
+  return { source: 'default', documentation: { root }, areas: memoryAreasForRoot(root).map(cloneArea), traceability: cloneTraceabilityPolicy({ ...DEFAULT_TRACEABILITY_POLICY, required: [`${root}/spec/**`] }), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), load: cloneLoadPolicy({ ...DEFAULT_LOAD_POLICY, documentationSummary: { exclude: [`${root}/plan`, `${root}/archive`] } }), planMode: clonePlanModePolicy() };
 }
 
 export function normalizePathPattern(value = '') {
@@ -289,12 +287,9 @@ export function isSecretLikePathPattern(value = '') {
   return /(^|\/)(\.env|\.npmrc|\.pypirc|id_rsa|id_dsa|id_ed25519|credentials?|secrets?)(\.|\/|$)/i.test(normalized);
 }
 
-function normalizePlanModePolicy(raw) {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return clonePlanModePolicy();
-  const writablePaths = raw.writablePaths === undefined
-    ? DEFAULT_PLAN_MODE_POLICY.writablePaths
-    : [...new Set((Array.isArray(raw.writablePaths) ? raw.writablePaths : []).map(normalizePathPattern))];
-  return clonePlanModePolicy({ writablePaths });
+// Legacy planMode.writablePaths is accepted but discarded on normalization.
+function normalizePlanModePolicy(_raw) {
+  return clonePlanModePolicy();
 }
 
 function normalizeLoadPolicy(raw) {
@@ -437,10 +432,6 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
   if (planMode !== undefined) {
     if (!planMode || typeof planMode !== 'object' || Array.isArray(planMode)) {
       add('PLAN_MODE_CONFIG_INVALID', 'planMode', 'Expected an object.');
-    } else if (planMode.writablePaths !== undefined) {
-      const paths = planMode.writablePaths;
-      if (!Array.isArray(paths)) add('PLAN_MODE_CONFIG_INVALID_WRITABLE_PATHS', 'planMode.writablePaths', 'Expected an array of documentation path strings.');
-      else if (paths.some((value) => !isValidPathPattern(value) || typeof value !== 'string' || value.trim().startsWith('/') || (!normalizePathPattern(value).startsWith(`${normalizeDocumentationRoot(data.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT)}/`)) || normalizePathPattern(value).startsWith(`${normalizeDocumentationRoot(data.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT)}/.`) || isSecretLikePathPattern(value))) add('PLAN_MODE_CONFIG_INVALID_WRITABLE_PATHS', 'planMode.writablePaths', 'Expected safe repository-relative paths under documentation.root using exact paths or /** subtree patterns.');
     }
   }
   const referenceExpansion = data.referenceExpansion;

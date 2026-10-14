@@ -938,9 +938,6 @@ var DEFAULT_LOAD_POLICY = {
     exclude: ["docs/plan", "docs/archive"]
   }
 };
-var DEFAULT_PLAN_MODE_POLICY = {
-  writablePaths: ["docs/plan/**", "docs/archive/**"]
-};
 var DEFAULT_IMPACT_RANKING_POLICY = {
   connectionCap: 80,
   memoryCap: 20,
@@ -1115,8 +1112,8 @@ function cloneLoadPolicy(policy = DEFAULT_LOAD_POLICY) {
     }
   };
 }
-function clonePlanModePolicy(policy = DEFAULT_PLAN_MODE_POLICY) {
-  return { writablePaths: [...policy.writablePaths ?? DEFAULT_PLAN_MODE_POLICY.writablePaths] };
+function clonePlanModePolicy() {
+  return {};
 }
 function normalizeDocumentationRoot(value = DEFAULT_DOCUMENTATION_ROOT) {
   return String(value).trim().replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/{2,}/g, "/").replace(/^\/+|\/+$/g, "");
@@ -1130,7 +1127,7 @@ function isValidDocumentationRoot(value) {
 }
 function defaultMemoryConfig({ documentationRoot = DEFAULT_DOCUMENTATION_ROOT } = {}) {
   const root = normalizeDocumentationRoot(documentationRoot);
-  return { source: "default", documentation: { root }, areas: memoryAreasForRoot(root).map(cloneArea), traceability: cloneTraceabilityPolicy({ ...DEFAULT_TRACEABILITY_POLICY, required: [`${root}/spec/**`] }), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), load: cloneLoadPolicy({ ...DEFAULT_LOAD_POLICY, documentationSummary: { exclude: [`${root}/plan`, `${root}/archive`] } }), planMode: clonePlanModePolicy({ writablePaths: [`${root}/plan/**`, `${root}/archive/**`] }) };
+  return { source: "default", documentation: { root }, areas: memoryAreasForRoot(root).map(cloneArea), traceability: cloneTraceabilityPolicy({ ...DEFAULT_TRACEABILITY_POLICY, required: [`${root}/spec/**`] }), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), load: cloneLoadPolicy({ ...DEFAULT_LOAD_POLICY, documentationSummary: { exclude: [`${root}/plan`, `${root}/archive`] } }), planMode: clonePlanModePolicy() };
 }
 function normalizePathPattern(value = "") {
   return value.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$|^\/+/, "");
@@ -1191,10 +1188,8 @@ function isSecretLikePathPattern(value = "") {
   const normalized = normalizePathPattern(value);
   return /(^|\/)(\.env|\.npmrc|\.pypirc|id_rsa|id_dsa|id_ed25519|credentials?|secrets?)(\.|\/|$)/i.test(normalized);
 }
-function normalizePlanModePolicy(raw) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return clonePlanModePolicy();
-  const writablePaths = raw.writablePaths === void 0 ? DEFAULT_PLAN_MODE_POLICY.writablePaths : [...new Set((Array.isArray(raw.writablePaths) ? raw.writablePaths : []).map(normalizePathPattern))];
-  return clonePlanModePolicy({ writablePaths });
+function normalizePlanModePolicy(_raw) {
+  return clonePlanModePolicy();
 }
 function normalizeLoadPolicy(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return cloneLoadPolicy();
@@ -1339,10 +1334,6 @@ Fix: ${fix ?? `update ${field2 ?? "this config"} in ${file} to match the expecte
   if (planMode !== void 0) {
     if (!planMode || typeof planMode !== "object" || Array.isArray(planMode)) {
       add("PLAN_MODE_CONFIG_INVALID", "planMode", "Expected an object.");
-    } else if (planMode.writablePaths !== void 0) {
-      const paths = planMode.writablePaths;
-      if (!Array.isArray(paths)) add("PLAN_MODE_CONFIG_INVALID_WRITABLE_PATHS", "planMode.writablePaths", "Expected an array of documentation path strings.");
-      else if (paths.some((value) => !isValidPathPattern(value) || typeof value !== "string" || value.trim().startsWith("/") || !normalizePathPattern(value).startsWith(`${normalizeDocumentationRoot(data.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT)}/`) || normalizePathPattern(value).startsWith(`${normalizeDocumentationRoot(data.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT)}/.`) || isSecretLikePathPattern(value))) add("PLAN_MODE_CONFIG_INVALID_WRITABLE_PATHS", "planMode.writablePaths", "Expected safe repository-relative paths under documentation.root using exact paths or /** subtree patterns.");
     }
   }
   const referenceExpansion = data.referenceExpansion;
@@ -3804,7 +3795,6 @@ function formatConfigOutput(payload) {
   lines.push(`- load pinned paths: ${(payload.config.load?.pinnedPaths ?? []).join(", ") || "none"}`);
   lines.push(`- load pinned bodies: ${(payload.config.load?.pinnedBodies ?? []).join(", ") || "none"}`);
   lines.push(`- load documentation summary exclude: ${(payload.config.load?.documentationSummary?.exclude ?? []).join(", ") || "none"}`);
-  lines.push(`- plan mode writable paths: ${(payload.config.planMode?.writablePaths ?? []).join(", ") || "none"}`);
   const lowSignal = payload.config.referenceExpansion?.fuzzy?.lowSignal ?? { terms: [], add: [], remove: [] };
   lines.push(`- fuzzy low-signal terms: ${(lowSignal.terms ?? []).join(", ") || "none"} (add: ${(lowSignal.add ?? []).join(", ") || "none"}; remove: ${(lowSignal.remove ?? []).join(", ") || "none"})`);
   if (errors.length > 0) {

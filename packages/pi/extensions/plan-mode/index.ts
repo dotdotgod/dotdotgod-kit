@@ -1,7 +1,7 @@
 /**
  * Customized Plan Mode Extension
  *
- * Safe exploration mode for code analysis and configured plan-file management.
+ * Planning-only exploration and document management without filesystem-area ACLs.
  */
 
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
@@ -39,8 +39,8 @@ import {
 } from "./runtime/messages.js";
 import {
   ARCHIVE_DIRECTORY,
-  DEFAULT_PLAN_MODE_WRITABLE_PATHS,
   configureDocumentationPaths,
+  DOCUMENTATION_ROOT,
   getToolPath,
   isActivePlanMarkdownPath,
   isManagedPlanMarkdownPath,
@@ -91,17 +91,12 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   const contextShaping = new ContextShapingController();
   const gates = new GateController();
   const executionProgress = new ExecutionProgressController();
-  let writablePaths: readonly string[] = DEFAULT_PLAN_MODE_WRITABLE_PATHS;
 
   function refreshPlanModePolicy(cwd: string): void {
     const result = runDotdotgodCli(cwd, ["config", cwd, "--json"]);
-    const data = result.data as { config?: { documentation?: { root?: unknown }; planMode?: { writablePaths?: unknown } } } | undefined;
+    const data = result.data as { config?: { documentation?: { root?: unknown } } } | undefined;
     const documentationRoot = data?.config?.documentation?.root;
     configureDocumentationPaths(typeof documentationRoot === "string" ? documentationRoot : "docs");
-    const configured = data?.config?.planMode?.writablePaths;
-    writablePaths = Array.isArray(configured) && configured.every((value) => typeof value === "string")
-      ? configured as string[]
-      : DEFAULT_PLAN_MODE_WRITABLE_PATHS;
   }
   const contextOrchestration = new ContextOrchestrationController(
     modeLifecycle,
@@ -438,14 +433,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
     if (!modeLifecycle.restrictsMutation) return;
 
-    if (event.toolName === "dotdotgod_execute" && (event.input.cwd || (event.input.commands as { cwd?: string }[]).some(entry => entry.cwd))) {
-      return { block: true, reason: "Plan mode: execution cwd overrides require execution mode." };
-    }
     for (const command of executionCommands) {
       const decision = await shouldAllowPlanModeBashCommand(command, {
         hasUI: ctx.hasUI,
         confirm: (title, message) => ctx.ui.confirm(title, message),
-      }, writablePaths);
+      });
       if (!decision.allow) {
         return {
           block: true,
@@ -457,10 +449,10 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
     if (event.toolName === "write" || event.toolName === "edit") {
       const path = getToolPath(event.input);
-      if (!path || !isManagedPlanMarkdownPath(ctx.cwd, path, writablePaths)) {
+      if (!path || !isManagedPlanMarkdownPath(ctx.cwd, path)) {
         return {
           block: true,
-          reason: `Plan mode: ${event.toolName} is only allowed for documentation markdown matching ${writablePaths.join(", ") || "no configured paths"}. Directories must be kebab-case and markdown file names must be UPPER_SNAKE_CASE.md. Use execution mode for source changes.`,
+          reason: `Plan mode: ${event.toolName} is only allowed for Markdown planning documents, regardless of location. Keep source and config unchanged; use execution mode for implementation.`,
         };
       }
       const normalizedPath = normalizeToolPath(path).replace(/\\/g, "/");
@@ -557,7 +549,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       const baseContent = buildPlanModeContextPrompt(
         contextShaping.fullPromptInjected,
         modeLifecycle.activeTools,
-        writablePaths,
+        DOCUMENTATION_ROOT,
       );
       const requestFraming = buildPlanModeRequestFraming(planArtifact.lastPlanningRequest);
       const content = [

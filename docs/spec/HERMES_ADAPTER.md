@@ -4,7 +4,7 @@
 
 The Hermes adapter supports CLI and messaging-gateway project memory without
 Plan Mode. Native plugin tools and hooks route context operations through an
-adapter-owned stdio MCP client per authorized repository/host session.
+adapter-owned stdio MCP client per selected project/host session.
 
 Host pin: 19b57f11d6eefb17e3e8a58e40b0b16aeb8b83b9. Compatibility evidence covers
 the real loader/registry/hooks and generated runtime; external messaging/model
@@ -18,27 +18,30 @@ project-initializer, project-load, impact-review and document-clarify.
 Generated server/client/CLI artifacts work without ancestor node_modules or
 Python MCP packages. No profile-wide mcp.json server declaration is installed.
 
-Operator roots map labels to absolute local directories. Gateway access maps
-platform:sender_id principals to labels. Gateway repository operations require
-explicit selection via dotdotgod_select_root; changed grants deny access.
+Configured roots map convenient labels to absolute local directories. Every
+platform may select a configured label or any existing absolute directory through
+dotdotgod_select_root. Legacy gateway_access is ignored: dotdotgod does not
+provide repository or filesystem-area authorization. Host permissions and OS
+isolation are responsible for access, including gateway deployments.
 Before selection, dotdotgod is inactive and ordinary host tools remain available
 under host permissions without dotdotgod path rewriting or impact gates. There
-is no mandatory selection/load instruction. With no authorized labels, only
-dotdotgod_project_initialize is available among dotdotgod tools; with labels,
-selection is also available. Initialization requires an explicit absolute path to
+is no mandatory selection/load instruction. Selection and initialization are available without a selected project, even
+without configured labels; other project/context tools need a routing root. Initialization requires an explicit absolute path to
 an existing directory, defaults to dry-run and requires confirmWrite for writes.
-It uses a disposable client and does not persist selection, create a grant or
-enable other dotdotgod tools. Missing host sessions, revoked selected grants and
-invalid delegated sessions do not receive this unselected-session exception.
-The selected label persists in profile-owned plugin state and is reauthorized on
-restore. CLI uses cli_root or the launch directory. Raw request arguments cannot
-change trusted host-session routing. Native file path arguments and terminal
-workdir are checked against the selected root; read tools also allow installed
-bundled skill resources. Host shell policy remains separate.
+It uses a disposable client and does not persist selection. Host session IDs
+are optional bookkeeping, not admission credentials. Unknown IDs create routing
+state on demand; missing IDs use disposable clients and never inherit another
+conversation's selection. Tools may run before a pre-LLM event. Explicit load
+roots take precedence; otherwise cli_root or the launch directory supplies the
+default for unbound dotdotgod calls. Anonymous selections are not persisted.
+The selected label or absolute path persists for identified conversations and
+is resolved on restore without a sender/principal authorization check. Relative native file paths and terminal workdir default to the selected root;
+explicit external paths are allowed. Host shell policy remains separate.
 
 Each host session gets a lazily opened client/server pair. Same-repository SQLite
 storage is shared, but mutable connection session IDs are not. Explicit context
-session_resume affects only that connection, including its reconnect identity.
+session_resume affects only that connection, including its reconnect identity. Explicit project-load root changes replace
+that session's routing connection and reset load assessment.
 These IDs and scope filters are not authentication or project-data ACLs.
 
 ## Load And References
@@ -86,14 +89,17 @@ pending. dotdotgod_impact_status is read-only and does not clear state.
 
 Known release/test commands are blocked while pending; execute batches check
 inside the adapter too. Opaque execute_file and interactive process write/submit
-calls are blocked while pending. File paths/terminal workdir are rooted.
+calls are blocked while pending. Relative file paths/workdir default to the project;
+external paths remain allowed.
 Unavailable impact state blocks covered release paths rather than authorizing
 unchecked handoff; reads, load, initialization and impact review remain usable.
 
-Hermes delegate_task remains host-owned. A trusted subagent pre-LLM event can
-inherit the active parent's authorized root/principal, with a separate client;
-children cannot select a different root. Parent revocation/root changes deny
-subsequent child access. Shared-worktree fingerprints include delegated edits.
+Hermes delegate_task remains host-owned. A subagent pre-LLM event may inherit
+an available parent's root, with a separate client; missing parents and changed
+sender identities do not deny calls. Children may select their own routing root.
+Ordinary host tools without known project state pass through unchanged, including
+nested calls with task_id but no session_id. Impact interception cannot infer a
+project in that case; host policy remains authoritative. Shared-worktree fingerprints include delegated edits.
 
 Hooks and command recognition are not an OS sandbox. Arbitrary programs, shell
 paths, patch bodies, other plugins and combined mutation/release commands do not
@@ -103,7 +109,7 @@ No host memory, compaction, planning UI or pi-subagents implementation is replac
 
 ## Verification
 
-Python stdlib regressions exercise registration, root authorization, concurrent
+Python stdlib regressions exercise registration, unrestricted project routing, concurrent
 clients, same-root session filtering, explicit resume/reconnect, conservative load
 restore/opt-out, reference fallback, impact failure/subsets/re-edits, delegation
 identity, nested gates and interruption with real generated Node processes.
@@ -143,11 +149,11 @@ shared-result channels and impact deny/clear/re-edit without remote mutations.
 - Design decisions:
   - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../arch/CROSS_AGENT_ARCHITECTURE.md)
 - Contracts:
-  - `HERMES-ROUTING-001` — CLI and gateway sessions use authorized repository-isolated MCP connections without Plan Mode (sections: 2, implementedBy: 3, verifiedBy: 2)
+  - `HERMES-ROUTING-001` — CLI and gateway sessions use project-routed MCP connections without filesystem-area authorization or Plan Mode (sections: 2, implementedBy: 3, verifiedBy: 2)
   - `HERMES-IMPACT-001` — Supported release paths require successful current-fingerprint impact checks (sections: 1, implementedBy: 2, verifiedBy: 2)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/hermes/__init__.py","packages/hermes/plugin.yaml","packages/hermes/runtime.py","packages/hermes/proxy.py","packages/hermes/policy.py","packages/hermes/mcp/bridge-entry.mjs","scripts/generate-adapters.mjs","scripts/build-adapter-runtime.mjs"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/resources.test.mjs","packages/hermes/test/pinned_host_smoke.py","docs/test/HERMES_ADAPTER.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/LOAD_PROJECT.md","docs/spec/CONTEXT_EXECUTION.md","docs/spec/TOOL_RESPONSES.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"],"contracts":[{"id":"HERMES-ROUTING-001","title":"CLI and gateway sessions use authorized repository-isolated MCP connections without Plan Mode","sections":["Installation And Routing","Context Results And Lifecycle"],"implementedBy":["packages/hermes/__init__.py","packages/hermes/runtime.py","packages/hermes/proxy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]},{"id":"HERMES-IMPACT-001","title":"Supported release paths require successful current-fingerprint impact checks","sections":["Impact And Delegation"],"implementedBy":["packages/hermes/runtime.py","packages/hermes/policy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]}]}
+{"kind":"spec","implementedBy":["packages/hermes/__init__.py","packages/hermes/plugin.yaml","packages/hermes/runtime.py","packages/hermes/proxy.py","packages/hermes/policy.py","packages/hermes/mcp/bridge-entry.mjs","scripts/generate-adapters.mjs","scripts/build-adapter-runtime.mjs"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/resources.test.mjs","packages/hermes/test/pinned_host_smoke.py","docs/test/HERMES_ADAPTER.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/LOAD_PROJECT.md","docs/spec/CONTEXT_EXECUTION.md","docs/spec/TOOL_RESPONSES.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"],"contracts":[{"id":"HERMES-ROUTING-001","title":"CLI and gateway sessions use project-routed MCP connections without filesystem-area authorization or Plan Mode","sections":["Installation And Routing","Context Results And Lifecycle"],"implementedBy":["packages/hermes/__init__.py","packages/hermes/runtime.py","packages/hermes/proxy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]},{"id":"HERMES-IMPACT-001","title":"Supported release paths require successful current-fingerprint impact checks","sections":["Impact And Delegation"],"implementedBy":["packages/hermes/runtime.py","packages/hermes/policy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]}]}
 ```

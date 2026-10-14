@@ -21,7 +21,7 @@ Focused hardening suites cover:
 - `package-audit.test.mjs`: package exports, declared files, license, and absence of a `context-mode` dependency or known copied artifact;
 - `store-operations.test.mjs`: WAL, busy timeout, reopen, concurrent access, transactional failure rollback, incompatible/corrupt databases, and privacy-safe statistics;
 - `environment-policy.test.mjs`: platform-specific reserved variables, overrides, deletion, validation, deterministic metadata, and value secrecy;
-- `directory-ingestion.test.mjs`: containment, symlinks, special files, deterministic filters, cancellation, replacement checks, and every traversal budget;
+- `directory-ingestion.test.mjs`: external directory/file access, symlinks, special files, deterministic filters, cancellation, replacement checks, and every traversal budget;
 - `html-normalize.test.mjs`: structural extraction, active/hidden content removal, MIME/charset policy, malformed input, and UTF-8 byte bounds.
 
 `packages/context/test/mcp.test.mjs` starts the real stdio server and verifies:

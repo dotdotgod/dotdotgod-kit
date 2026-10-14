@@ -31,7 +31,7 @@ def register(ctx):
         }, handler=handle, description=tool["description"])
 
     for name, schema, description in [
-        ("dotdotgod_select_root", {"type": "object", "properties": {"label": {"type": "string"}}, "required": ["label"], "additionalProperties": False}, "Select an operator-authorized repository for this host session."),
+        ("dotdotgod_select_root", {"type": "object", "properties": {"label": {"type": "string"}}, "required": ["label"], "additionalProperties": False}, "Select a project for this host session using a configured label or absolute directory path."),
         ("dotdotgod_impact_status", {"type": "object", "properties": {}, "additionalProperties": False}, "Read pending impact paths for the selected repository; does not clear them."),
     ]:
         def handle_local(args, session_id="", _name=name, **kwargs):

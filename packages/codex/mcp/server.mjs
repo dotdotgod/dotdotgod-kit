@@ -3650,49 +3650,49 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative4, options, skipNormalization) {
+    function resolveComponent(base, relative3, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative4 = parse3(serialize(relative4, options), options);
+        relative3 = parse3(serialize(relative3, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative4.scheme) {
-        target.scheme = relative4.scheme;
-        target.userinfo = relative4.userinfo;
-        target.host = relative4.host;
-        target.port = relative4.port;
-        target.path = removeDotSegments(relative4.path || "");
-        target.query = relative4.query;
+      if (!options.tolerant && relative3.scheme) {
+        target.scheme = relative3.scheme;
+        target.userinfo = relative3.userinfo;
+        target.host = relative3.host;
+        target.port = relative3.port;
+        target.path = removeDotSegments(relative3.path || "");
+        target.query = relative3.query;
       } else {
-        if (relative4.userinfo !== void 0 || relative4.host !== void 0 || relative4.port !== void 0) {
-          target.userinfo = relative4.userinfo;
-          target.host = relative4.host;
-          target.port = relative4.port;
-          target.path = removeDotSegments(relative4.path || "");
-          target.query = relative4.query;
+        if (relative3.userinfo !== void 0 || relative3.host !== void 0 || relative3.port !== void 0) {
+          target.userinfo = relative3.userinfo;
+          target.host = relative3.host;
+          target.port = relative3.port;
+          target.path = removeDotSegments(relative3.path || "");
+          target.query = relative3.query;
         } else {
-          if (!relative4.path) {
+          if (!relative3.path) {
             target.path = base.path;
-            if (relative4.query !== void 0) {
-              target.query = relative4.query;
+            if (relative3.query !== void 0) {
+              target.query = relative3.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative4.path[0] === "/") {
-              target.path = removeDotSegments(relative4.path);
+            if (relative3.path[0] === "/") {
+              target.path = removeDotSegments(relative3.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative4.path;
+                target.path = "/" + relative3.path;
               } else if (!base.path) {
-                target.path = relative4.path;
+                target.path = relative3.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative4.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative3.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative4.query;
+            target.query = relative3.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3700,7 +3700,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative4.fragment;
+      target.fragment = relative3.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -21959,23 +21959,15 @@ import { finished } from "node:stream/promises";
 
 // packages/context/src/paths.mjs
 import { realpathSync } from "node:fs";
-import { isAbsolute, relative, resolve as resolve2 } from "node:path";
-function assertWithinRoot(base, target, candidate) {
-  const rel = relative(base, target);
-  if (rel === ".." || rel.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) || isAbsolute(rel)) {
-    throw new Error(`Path escapes project root: ${candidate}`);
-  }
-}
+import { resolve as resolve2 } from "node:path";
 function resolveWithinRoot(root2, candidate = ".") {
   const base = resolve2(root2 || process.cwd());
   const target = resolve2(base, candidate);
-  assertWithinRoot(base, target, candidate);
   return target;
 }
 function resolveExistingWithinRoot(root2, candidate = ".") {
   const base = realpathSync(resolve2(root2 || process.cwd()));
   const target = realpathSync(resolveWithinRoot(base, candidate));
-  assertWithinRoot(base, target, candidate);
   return target;
 }
 
@@ -22271,7 +22263,7 @@ import { readFileSync as readFileSync3, statSync as statSync4 } from "node:fs";
 
 // packages/context/src/directory-ingestion.mjs
 import { closeSync, constants, fstatSync, lstatSync, openSync, readFileSync as readFileSync2, readdirSync, realpathSync as realpathSync2, statSync as statSync3 } from "node:fs";
-import { isAbsolute as isAbsolute2, relative as relative2, resolve as resolve3, sep } from "node:path";
+import { relative, resolve as resolve3, sep } from "node:path";
 var DEFAULT_LIMITS = Object.freeze({
   maxDepth: 16,
   maxVisitedEntries: 1e4,
@@ -22279,12 +22271,8 @@ var DEFAULT_LIMITS = Object.freeze({
   maxFileBytes: 25 * 1024 * 1024,
   maxAggregateBytes: 100 * 1024 * 1024
 });
-function inside(base, target) {
-  const rel = relative2(base, target);
-  return rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute2(rel);
-}
 function relativePath(base, target) {
-  return relative2(base, target).split(sep).join("/");
+  return relative(base, target).split(sep).join("/");
 }
 function boundedInteger(value, fallback, name) {
   const selected = value ?? fallback;
@@ -22335,10 +22323,7 @@ function snapshot(path, target, stat, symlink) {
 function walkDirectoryManifest(options = {}) {
   const root2 = realpathSync2(resolve3(options.root || process.cwd()));
   const requested = resolve3(root2, options.path ?? ".");
-  if (!inside(root2, requested)) throw new Error(`Directory escapes project root: ${options.path}`);
-  if (lstatSync(requested).isSymbolicLink()) throw new Error(`Directory symlinks are not followed: ${options.path ?? "."}`);
   const directory = realpathSync2(requested);
-  if (!inside(root2, directory)) throw new Error(`Directory escapes project root: ${options.path}`);
   if (!statSync3(directory).isDirectory()) throw new Error(`Not a directory: ${options.path ?? "."}`);
   const policy = normalizeOptions(options);
   const files = [];
@@ -22395,10 +22380,6 @@ function walkDirectoryManifest(options = {}) {
         let targetStat;
         try {
           target = realpathSync2(absolutePath);
-          if (!inside(root2, target)) {
-            skip(path, "symlink-outside-root");
-            continue;
-          }
           targetStat = statSync3(target);
         } catch {
           skip(path, "symlink-unresolvable");
@@ -22462,9 +22443,7 @@ function matchesIdentity(stat, identity) {
   return stat.dev === identity.dev && stat.ino === identity.ino && stat.size === identity.size && stat.mtimeMs === identity.mtimeMs;
 }
 function verifyManifestFile(entry, root2) {
-  const base = realpathSync2(resolve3(root2));
   const target = realpathSync2(entry.absolutePath);
-  if (!inside(base, target)) throw new Error(`Manifest file escapes project root: ${entry.path}`);
   const stat = statSync3(target);
   if (!stat.isFile()) throw new Error(`Manifest entry is not a regular file: ${entry.path}`);
   if (!matchesIdentity(stat, entry.identity ?? {})) throw new Error(`Manifest file changed before indexing: ${entry.path}`);
@@ -23197,7 +23176,7 @@ function runDoctor(options = {}) {
 // packages/context/src/project.mjs
 import { existsSync as existsSync3, readdirSync as readdirSync2 } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { relative as relative3, resolve as resolve5 } from "node:path";
+import { relative as relative2, resolve as resolve5 } from "node:path";
 import { spawn as spawn2 } from "node:child_process";
 var cli = fileURLToPath(new URL("./cli.mjs", import.meta.url));
 function markdownTree(root2, maxDepth = 5) {
@@ -23209,9 +23188,9 @@ function markdownTree(root2, maxDepth = 5) {
     for (const entry of readdirSync2(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       const path = resolve5(dir, entry.name);
       if (entry.isDirectory()) {
-        output.push(`${"  ".repeat(depth - 1)}- ${relative3(root2, path)}/`);
+        output.push(`${"  ".repeat(depth - 1)}- ${relative2(root2, path)}/`);
         walk(path, depth + 1);
-      } else if (entry.isFile() && entry.name.endsWith(".md")) output.push(`${"  ".repeat(depth - 1)}- ${relative3(root2, path)}`);
+      } else if (entry.isFile() && entry.name.endsWith(".md")) output.push(`${"  ".repeat(depth - 1)}- ${relative2(root2, path)}`);
     }
   }
   walk(docs, 1);

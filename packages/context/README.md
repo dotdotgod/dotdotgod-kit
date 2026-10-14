@@ -79,7 +79,7 @@ This bounded retrieval keeps indexed runtime material separate from maintained p
 
 ## Structural Ingestion
 
-Local `index` accepts one project-contained regular text file or directory. A file is limited to **25 MiB**. Directory defaults allow at most depth 16, 10,000 visited entries, 1,000 indexed files, 25 MiB per file, and 100 MiB in aggregate; callers may configure the traversal limits explicitly.
+Local `index` accepts one regular text file or explicitly requested directory, including external paths. Project roots are defaults, not access boundaries. A file is limited to **25 MiB**. Directory defaults allow at most depth 16, 10,000 visited entries, 1,000 indexed files, 25 MiB per file, and 100 MiB in aggregate; callers may configure the traversal limits explicitly.
 
 Directory ingestion:
 

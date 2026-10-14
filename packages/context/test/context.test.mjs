@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 import { chunkText } from '../src/chunks.mjs';
@@ -108,10 +108,12 @@ test('execution honors pre-aborted signals and executeFile resolves selectors fr
   } finally { f.close(); }
 });
 
-test('executeCommand enforces project paths and timeout', async () => {
+test('executeCommand accepts external workdirs and enforces timeout', async () => {
   const f = fixture();
   try {
-    await assert.rejects(() => executeCommand({ executable: process.execPath, args: ['-e', '0'], cwd: '..' }, { root: f.root }), /escapes project root/);
+    const external = await executeCommand({ executable: process.execPath, args: ['-e', 'console.log(process.cwd())'], cwd: '..' }, { root: f.root });
+    assert.equal(external.ok, true);
+    assert.equal(external.stdout.trim(), realpathSync(resolve(f.root, "..")));
     const timed = await executeCommand({ executable: process.execPath, args: ['-e', 'setInterval(()=>{},1000)'], timeoutMs: 20 }, { root: f.root });
     assert.equal(timed.ok, false);
     assert.equal(timed.timedOut, true);

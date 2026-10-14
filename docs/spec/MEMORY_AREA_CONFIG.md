@@ -96,7 +96,7 @@ Behavior contract:
 - exact duplicate path patterns that are not excluded by the subsequent area
 - malformed `referenceExpansion.fuzzy.lowSignal.add` or `remove` arrays
 - non-object `load`; invalid `load.documentationSummary` objects; and non-array or invalid `load.documentationSummary.exclude` patterns
-- invalid `planMode.writablePaths`; entries must be safe repository-relative exact or `/**` documentation paths under `docs/`
+- invalid non-object `planMode`; legacy `planMode.writablePaths` is accepted but ignored and discarded during normalization
 
 Invalid memory config does not make the CLI crash. Runtime commands fall back to the default memory config while validation reports repairable errors.
 
@@ -109,7 +109,7 @@ Pi Load applies `load.documentationSummary.exclude` before rendering the Markdow
 
 `documentation.root` selects the safe repository-relative directory that anchors managed documentation. It defaults to `docs`. The value is normalized to forward slashes and must not be absolute, empty, traversing, globbed, secret-like, or overlap `.dotdotgod` or `dotdotgod.config.json`.
 
-Root-derived defaults cover documentation memory areas, required spec traceability, Load plan/archive exclusions, and Plan Mode writable paths. Explicit policy arrays remain complete authoritative values and are not rebased. An invalid config falls back to the default root and policies while reporting `DOCUMENTATION_CONFIG_INVALID_ROOT`.
+Root-derived defaults cover documentation memory areas, required spec traceability, and Load plan/archive exclusions. Plan/archive locations are routing conventions, not write permissions. Explicit policy arrays remain complete authoritative values and are not rebased. An invalid config falls back to the default root and policies while reporting `DOCUMENTATION_CONFIG_INVALID_ROOT`.
 
 ## Traceability
 
