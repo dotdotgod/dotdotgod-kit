@@ -74,6 +74,8 @@ it("submits one answer batch, reopens new decisions, then requires separate exec
 	await emit("agent_end", { messages: [] });
 	assert.equal(messages.length, 1);
 	assert.match(messages[0]!, /confirmed answers/);
+	assert.ok(messages[0]!.endsWith("## Confirmed answers\n\n### Q1: Pick storage?\n- Selected option: A\n- Answer:\n  > Markdown"));
+	assert.match(messages[0]!, /not execution authorization/);
 	assert.ok(!entries.some((entry) => entry.customType === "plan-mode-execute"));
 
 	write(plan.replace("Q1", "Q2"));

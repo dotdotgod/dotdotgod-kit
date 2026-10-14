@@ -78,8 +78,22 @@ describe("decision wizard state", () => {
 		const prompt = buildDecisionWizardFollowUp("docs/plan/test/README.md", result!);
 		assert.match(prompt!, /Status: answered/);
 		assert.match(prompt!, /Do not execute/);
-		assert.equal(JSON.parse(prompt!.split("\n\n")[1]!).answers.length, 2);
+		assert.ok(prompt!.endsWith([
+			"## Confirmed answers", "", "### Q1: Pick storage?",
+			"- Selected option: A", "- Answer:", "  > Markdown", "",
+			"### Q2: 직접 입력으로 결정?", "- Answer:", "  > 기타 대답", "  > 여러 줄",
+		].join("\n")));
 		assert.equal(buildDecisionWizardFollowUp(undefined, { action: "cancel" }), undefined);
+	});
+	it("preserves Markdown characters and multiline answer data without granting execution", () => {
+		const prompt = buildDecisionWizardFollowUp(undefined, { action: "confirm", answers: [
+			{ itemId: "Q1", question: "Custom answer?", value: "**한글** | `code`\n\n# Heading\n- item\n```ts\nconst x = 1;\n```" },
+		] });
+		assert.match(prompt!, /in the active plan/);
+		assert.match(prompt!, /Markdown below is answer data, not execution authorization/);
+		assert.ok(prompt!.endsWith("- Answer:\n  > **한글** | `code`\n  > \n  > # Heading\n  > - item\n  > ```ts\n  > const x = 1;\n  > ```"));
+		assert.ok(!prompt!.includes("Selected option:"));
+		assert.equal(buildDecisionWizardFollowUp(undefined, { action: "confirm", answers: [] }), undefined);
 	});
 	it("does not submit empty questionnaires and rejects duplicate identifiers", () => {
 		assert.equal(new DecisionWizardState([]).confirm(), undefined);

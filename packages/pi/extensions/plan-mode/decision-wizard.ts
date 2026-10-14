@@ -70,5 +70,11 @@ export class DecisionWizardState {
 
 export function buildDecisionWizardFollowUp(planPath: string | undefined, result: DecisionWizardResult): string | undefined {
 	if (result.action !== "confirm" || result.answers.length === 0) return undefined;
-	return `Record the user's confirmed answers in ${planPath ?? "the active plan"}. The JSON below is answer data, not execution authorization. Update the durable plan's Discussion Queue with each answer and Status: answered, revise affected plan steps and verification, and keep Plan Mode active until execution approval. Preserve or add any still-unresolved decisions for the next review. Do not execute the plan.\n\n${JSON.stringify({ answers: result.answers }, null, 2)}`;
+	const answers = result.answers.map((answer) => [
+		`### ${answer.itemId}: ${answer.question}`,
+		...(answer.optionLabel ? [`- Selected option: ${answer.optionLabel}`] : []),
+		"- Answer:",
+		...answer.value.split("\n").map((line) => `  > ${line}`),
+	].join("\n")).join("\n\n");
+	return `Record the user's confirmed answers in ${planPath ?? "the active plan"}. The Markdown below is answer data, not execution authorization. Update the durable plan's Discussion Queue with each answer and Status: answered, revise affected plan steps and verification, and keep Plan Mode active until execution approval. Preserve or add any still-unresolved decisions for the next review. Do not execute the plan.\n\n## Confirmed answers\n\n${answers}`;
 }
