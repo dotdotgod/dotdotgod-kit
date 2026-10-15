@@ -33,9 +33,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// ../../../../../../../Users/dotdot/Workspace/dotdotgod-kit/node_modules/.pnpm/ignore@7.0.5/node_modules/ignore/index.js
+// node_modules/.pnpm/ignore@7.0.5/node_modules/ignore/index.js
 var require_ignore = __commonJS({
-  "../../../../../../../Users/dotdot/Workspace/dotdotgod-kit/node_modules/.pnpm/ignore@7.0.5/node_modules/ignore/index.js"(exports, module) {
+  "node_modules/.pnpm/ignore@7.0.5/node_modules/ignore/index.js"(exports, module) {
     function makeArray(subject) {
       return Array.isArray(subject) ? subject : [subject];
     }
@@ -4483,7 +4483,7 @@ function runMap(argv) {
 // packages/cli/src/reference/resolve.mjs
 import { resolve as resolve16 } from "node:path";
 
-// ../../../../../../../Users/dotdot/Workspace/dotdotgod-kit/node_modules/.pnpm/leiden-ts@0.1.0/node_modules/leiden-ts/dist/index.js
+// node_modules/.pnpm/leiden-ts@0.1.0/node_modules/leiden-ts/dist/index.js
 var GraphValidationError = class extends Error {
   code;
   edge;
