@@ -42,7 +42,7 @@ If the project config is invalid, `ok` is `false`, errors use the same validatio
 
 ## Policy Families
 
-The config command surfaces the same policy families that validation, Load/query routing, reference expansion, and graph impact use. It also reports the sanitized effective embedding provider, model, and source. Existing project policy output includes:
+The config command surfaces the same policy families that validation, Load/query routing, reference expansion, and graph impact use. It also reports the sanitized effective embedding provider, model, source and configured inputFormat prefixes. Omitted inputFormat uses legacy E5 defaults; both literal prefixes are required when explicitly configured. See [embedding configuration](EMBEDDING_CONFIG.md). Existing project policy output includes:
 
 - `memory.areas`: ordered path classifiers for shared/local and fresh/stale project memory, including optional `description` and `clarify` metadata when a project defines document-area guidance.
 - `traceability.required`, `traceability.exclude`, and `traceability.keys`: enforcement paths plus the ordered complete-list definition of traceability string arrays, targets, graph relations, and PPR weights.

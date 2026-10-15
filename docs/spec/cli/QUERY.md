@@ -49,7 +49,10 @@ incompatible caches rebuild. Writes use temporary files and atomic artifact rena
 - This is lexical candidate ranking, not a full BM25 engine or inferred call graph.
 
 Local multilingual E5 remains the default. Configured OpenAI-compatible and Ollama
-providers remain supported. Remote embedding of code metadata additionally requires
+providers remain supported. Query and document/code inputs use their respective
+embedding.inputFormat prefixes at the shared embedder boundary; format changes
+invalidate vector reuse. Omitted formatting preserves E5 prefixes.
+Remote embedding of code metadata additionally requires
 --allow-code-embedding; prior documentation-provider consent does not cover code.
 See [../EMBEDDING_CONFIG.md](../EMBEDDING_CONFIG.md). Tests inject deterministic vectors.
 

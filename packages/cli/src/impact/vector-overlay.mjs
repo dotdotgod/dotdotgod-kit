@@ -24,7 +24,7 @@ export async function buildVectorImpactOverlay(root, index, changedPaths, option
       if (!profile) continue;
       const embed = vectorIndex.embedding?.embed ?? options.embed;
       if (!embed) throw new Error('Vector index did not provide an embedder.');
-      const [queryVector] = await embed([`query: ${profile.text}`]);
+      const [queryVector] = await embed([profile.text], 'query');
       if (!queryVector) throw new Error('Changed-file embedding was empty.');
       const matches = rankVectorFiles(queryVector, vectorIndex)
         .filter((match) => match.path !== changed && match.vectorScore >= threshold)

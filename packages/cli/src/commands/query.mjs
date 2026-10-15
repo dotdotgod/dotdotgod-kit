@@ -76,7 +76,7 @@ export async function buildVectorIndex(root, embedOrOptions = {}) {
   chunks.forEach((chunk, index) => { const oldIndex = cachedOffsets.get(chunk.fingerprint); if (oldIndex === undefined || !cached) missing.push({ chunk, index }); else { const d = cached.manifest.dimensions; rows[index] = Array.from(cached.vectors.subarray(oldIndex * d, (oldIndex + 1) * d)); reused += 1; } });
   for (let offset = 0; offset < missing.length; offset += EMBED_BATCH_SIZE) {
     const batch = missing.slice(offset, offset + EMBED_BATCH_SIZE);
-    const embedded = await resolved.embed(batch.map(({ chunk }) => `passage: ${chunk.passage}`));
+    const embedded = await resolved.embed(batch.map(({ chunk }) => chunk.passage), 'document');
     embedded.forEach((vector, index) => { rows[batch[index].index] = vector; });
   }
   const dimensions = rows[0]?.length ?? cached?.manifest?.dimensions;
@@ -92,7 +92,7 @@ export async function buildVectorIndex(root, embedOrOptions = {}) {
 export async function queryDocumentation(root, query, options = {}) {
   const limit = options.limit ?? DEFAULT_LIMIT;
   const index = await buildVectorIndex(root, options);
-  const [queryVector] = await index.embedding.embed([`query: ${query}`]);
+  const [queryVector] = await index.embedding.embed([query], 'query');
   const dimensions = index.manifest.dimensions;
   assertVector(queryVector, dimensions, 'Query vector');
   const results = rankVectorFiles(queryVector, index).map((chunk) => ({ ...chunk, score: Number((chunk.vectorScore + lexicalBoost(query, chunk)).toFixed(6)), vectorScore: Number(chunk.vectorScore.toFixed(6)) }))
@@ -111,7 +111,7 @@ export async function queryProject(root, query, options = {}) {
     try {
       assertCodeEmbeddingConsent(root, options, corpus.chunks);
       index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks });
-      const [queryVector] = await index.embedding.embed([`query: ${query}`]);
+      const [queryVector] = await index.embedding.embed([query], 'query');
       vector = index.chunks.map((chunk, position) => ({ ...chunk, vectorScore: cosineScore(queryVector, index.vectors, position * index.manifest.dimensions, index.manifest.dimensions) }))
         .sort((a, b) => b.vectorScore - a.vectorScore || a.id.localeCompare(b.id));
     } catch (error) {

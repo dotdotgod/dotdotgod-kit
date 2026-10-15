@@ -4,6 +4,18 @@ import { join } from 'node:path';
 
 export const DEFAULT_EMBEDDING_PROFILE = Object.freeze({ provider: 'local', model: 'Xenova/multilingual-e5-small' });
 export const EMBEDDING_PROVIDERS = Object.freeze(['local', 'openai-compatible', 'ollama']);
+const DEFAULT_INPUT_FORMAT = Object.freeze({ queryPrefix: 'query: ', documentPrefix: 'passage: ' });
+
+export function embeddingInputFormat(profile, label = 'embedding') {
+  if (profile.inputFormat === undefined) return { ...DEFAULT_INPUT_FORMAT };
+  const format = profile.inputFormat;
+  if (!format || typeof format !== 'object' || Array.isArray(format)
+    || Object.keys(format).some((key) => !Object.hasOwn(DEFAULT_INPUT_FORMAT, key))
+    || Object.keys(DEFAULT_INPUT_FORMAT).some((key) => typeof format[key] !== 'string')) {
+    throw new Error(`${label}.inputFormat must contain exactly queryPrefix and documentPrefix strings.`);
+  }
+  return { queryPrefix: format.queryPrefix, documentPrefix: format.documentPrefix };
+}
 
 function readJson(path, label) {
   if (!existsSync(path)) return null;
@@ -13,7 +25,7 @@ function readJson(path, label) {
 
 export function validateEmbeddingProfile(profile, label = 'embedding') {
   if (!profile || typeof profile !== 'object' || Array.isArray(profile)) throw new Error(`${label} must be an object.`);
-  const allowed = new Set(['provider', 'model', 'baseUrl', 'apiKey', 'apiKeyEnv']);
+  const allowed = new Set(['provider', 'model', 'baseUrl', 'apiKey', 'apiKeyEnv', 'inputFormat']);
   const unknown = Object.keys(profile).find((key) => !allowed.has(key));
   if (unknown) throw new Error(`${label}.${unknown} is not supported.`);
   if (!EMBEDDING_PROVIDERS.includes(profile.provider)) throw new Error(`${label}.provider must be local, openai-compatible, or ollama.`);
@@ -27,6 +39,7 @@ export function validateEmbeddingProfile(profile, label = 'embedding') {
     if (!['http:', 'https:'].includes(url.protocol)) throw new Error(`${label}.baseUrl must use HTTP or HTTPS.`);
     if (url.username || url.password) throw new Error(`${label}.baseUrl must not contain credentials.`);
   }
+  embeddingInputFormat(profile, label);
   return { ...profile, model: profile.model.trim(), ...(profile.baseUrl ? { baseUrl: profile.baseUrl.replace(/\/$/, '') } : {}) };
 }
 
@@ -36,8 +49,11 @@ export function sanitizeEmbeddingProfile(profile) {
 }
 
 export function embeddingProfileIdentity(profile) {
-  const { apiKey, apiKeyEnv, ...identity } = profile;
-  return identity;
+  return {
+    provider: profile.provider, model: profile.model,
+    ...(profile.baseUrl !== undefined ? { baseUrl: profile.baseUrl } : {}),
+    inputFormatVersion: 1, inputFormat: embeddingInputFormat(profile),
+  };
 }
 
 export function resolveEmbeddingProfile(root = '.', options = {}) {

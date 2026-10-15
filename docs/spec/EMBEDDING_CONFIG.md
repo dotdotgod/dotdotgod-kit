@@ -33,6 +33,37 @@ Remote profiles may set `baseUrl` and one of mutually exclusive `apiKey` or `api
 
 Ollama defaults to `http://localhost:11434` and uses its native `/api/embed` endpoint. OpenAI-compatible providers default to `https://api.openai.com/v1` and use `/embeddings`.
 
+## Input Formatting
+
+Optional `embedding.inputFormat` specifies literal query/document prefixes for
+all three providers. If present, it must contain exactly two strings:
+`queryPrefix` and `documentPrefix`. Empty strings are valid; whitespace and
+newlines are preserved. Unknown fields, partial objects and nonstrings fail
+validation. Project profiles still replace global profiles as a whole.
+
+For EmbeddingGemma, add this object inside the selected embedding profile:
+
+```json
+{
+  "inputFormat": {
+    "queryPrefix": "task: search result | query: ",
+    "documentPrefix": "title: none | text: "
+  }
+}
+```
+
+Omission preserves E5 formatting (`query: ` and `passage: `), regardless of model
+name. For raw-input models or server-owned formatting, explicitly set both
+prefixes to empty strings. No model-name guessing or server role fields are used.
+Qwen3 users can set queryPrefix to an instruction followed by `\nQuery:` and
+use an empty documentPrefix. Consult the actual model/server documentation.
+
+Query, document/code indexing and changed-file impact inputs supply their role
+to one embedder boundary. It prefixes once before transport and batch splitting;
+existing content is never stripped. Low-level embedder calls without a role
+retain raw-input behavior. Dynamic titles, suffixes and templates are unsupported.
+Do not configure client prefixes if the server already applies the same format.
+
 ## Credentials and Consent
 
 Direct `apiKey` values are supported, but `apiKeyEnv` is recommended for committed projects. Credentials are excluded from output, diagnostics, cache manifests, and profile fingerprints.
@@ -47,7 +78,7 @@ Local embeddings first use an ordinarily installed `@huggingface/transformers` p
 
 ## Cache and Failures
 
-The vector manifest records provider, model, dimensions, and a secret-free profile fingerprint. Schema version 2 invalidates all schema-1 caches. Output-affecting profile changes rebuild the index.
+The vector manifest records provider, model, dimensions, and a secret-free profile fingerprint. Schema version 2 invalidates all schema-1 caches. Output-affecting profile changes rebuild the index. Cache identity includes effective prefixes and a formatting version. Omitted and explicit equivalent E5 formats share identity; object key order does not matter. Query- or document-prefix changes invalidate the cache, and legacy identities without formatting information rebuild once. Credentials remain excluded.
 
 Documentation indexing starts with batches of 16 inputs. Remote HTTP 400/413 token-limit responses split the failed batch in half recursively, preserving input order. A single oversized input fails without further retry; unrelated errors are not retried. Provider response bodies are not exposed in diagnostics.
 

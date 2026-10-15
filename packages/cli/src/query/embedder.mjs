@@ -1,4 +1,4 @@
-import { embeddingProfileIdentity, resolveEmbeddingProfile } from './embedding-config.mjs';
+import { embeddingInputFormat, embeddingProfileIdentity, resolveEmbeddingProfile } from './embedding-config.mjs';
 import { importTransformers } from './embedding-runtime.mjs';
 
 const localPipelines = new Map();
@@ -65,9 +65,17 @@ function remoteEmbedder(profile) {
   };
 }
 
+function withInputFormat(embed, profile) {
+  const format = embeddingInputFormat(profile);
+  return (texts, role) => {
+    if (role !== undefined && role !== 'query' && role !== 'document') throw new Error('Embedding role must be query or document.');
+    return embed(role === undefined ? texts : texts.map((text) => format[`${role}Prefix`] + text));
+  };
+}
+
 export async function createEmbedder(profile) {
   const embed = profile.provider === 'local' ? await localEmbedder(profile) : remoteEmbedder(profile);
-  return async function embedBatch(texts) {
+  async function embedBatch(texts) {
     if (texts.length === 0) return [];
     let rows;
     try { rows = await embed(texts); }
@@ -80,12 +88,13 @@ export async function createEmbedder(profile) {
     const dimensions = rows[0]?.length;
     if (!dimensions || rows.some((row) => row.length !== dimensions)) throw new Error('Embedding provider returned inconsistent vector dimensions.');
     return rows;
-  };
+  }
+  return withInputFormat(embedBatch, profile);
 }
 
 export async function resolveEmbedder(root, options = {}) {
   const resolved = options.profile ? { profile: options.profile, source: options.source ?? 'injected', path: null } : resolveEmbeddingProfile(root, options);
-  return { ...resolved, identity: embeddingProfileIdentity(resolved.profile), embed: options.embed ?? await createEmbedder(resolved.profile) };
+  return { ...resolved, identity: embeddingProfileIdentity(resolved.profile), embed: options.embed ? withInputFormat(options.embed, resolved.profile) : await createEmbedder(resolved.profile) };
 }
 
 export async function embedTexts(texts) {

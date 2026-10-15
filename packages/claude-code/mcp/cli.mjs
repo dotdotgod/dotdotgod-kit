@@ -855,6 +855,15 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 var DEFAULT_EMBEDDING_PROFILE = Object.freeze({ provider: "local", model: "Xenova/multilingual-e5-small" });
 var EMBEDDING_PROVIDERS = Object.freeze(["local", "openai-compatible", "ollama"]);
+var DEFAULT_INPUT_FORMAT = Object.freeze({ queryPrefix: "query: ", documentPrefix: "passage: " });
+function embeddingInputFormat(profile, label = "embedding") {
+  if (profile.inputFormat === void 0) return { ...DEFAULT_INPUT_FORMAT };
+  const format = profile.inputFormat;
+  if (!format || typeof format !== "object" || Array.isArray(format) || Object.keys(format).some((key) => !Object.hasOwn(DEFAULT_INPUT_FORMAT, key)) || Object.keys(DEFAULT_INPUT_FORMAT).some((key) => typeof format[key] !== "string")) {
+    throw new Error(`${label}.inputFormat must contain exactly queryPrefix and documentPrefix strings.`);
+  }
+  return { queryPrefix: format.queryPrefix, documentPrefix: format.documentPrefix };
+}
 function readJson(path, label) {
   if (!existsSync(path)) return null;
   try {
@@ -865,7 +874,7 @@ function readJson(path, label) {
 }
 function validateEmbeddingProfile(profile, label = "embedding") {
   if (!profile || typeof profile !== "object" || Array.isArray(profile)) throw new Error(`${label} must be an object.`);
-  const allowed = /* @__PURE__ */ new Set(["provider", "model", "baseUrl", "apiKey", "apiKeyEnv"]);
+  const allowed = /* @__PURE__ */ new Set(["provider", "model", "baseUrl", "apiKey", "apiKeyEnv", "inputFormat"]);
   const unknown = Object.keys(profile).find((key) => !allowed.has(key));
   if (unknown) throw new Error(`${label}.${unknown} is not supported.`);
   if (!EMBEDDING_PROVIDERS.includes(profile.provider)) throw new Error(`${label}.provider must be local, openai-compatible, or ollama.`);
@@ -883,6 +892,7 @@ function validateEmbeddingProfile(profile, label = "embedding") {
     if (!["http:", "https:"].includes(url.protocol)) throw new Error(`${label}.baseUrl must use HTTP or HTTPS.`);
     if (url.username || url.password) throw new Error(`${label}.baseUrl must not contain credentials.`);
   }
+  embeddingInputFormat(profile, label);
   return { ...profile, model: profile.model.trim(), ...profile.baseUrl ? { baseUrl: profile.baseUrl.replace(/\/$/, "") } : {} };
 }
 function sanitizeEmbeddingProfile(profile) {
@@ -890,8 +900,13 @@ function sanitizeEmbeddingProfile(profile) {
   return { ...safe, ...apiKey ? { apiKey: "[redacted]" } : {} };
 }
 function embeddingProfileIdentity(profile) {
-  const { apiKey, apiKeyEnv, ...identity2 } = profile;
-  return identity2;
+  return {
+    provider: profile.provider,
+    model: profile.model,
+    ...profile.baseUrl !== void 0 ? { baseUrl: profile.baseUrl } : {},
+    inputFormatVersion: 1,
+    inputFormat: embeddingInputFormat(profile)
+  };
 }
 function resolveEmbeddingProfile(root = ".", options = {}) {
   const home = options.home ?? homedir();
@@ -3976,9 +3991,16 @@ function remoteEmbedder(profile) {
     return ordered.map(normalize);
   };
 }
+function withInputFormat(embed, profile) {
+  const format = embeddingInputFormat(profile);
+  return (texts, role) => {
+    if (role !== void 0 && role !== "query" && role !== "document") throw new Error("Embedding role must be query or document.");
+    return embed(role === void 0 ? texts : texts.map((text) => format[`${role}Prefix`] + text));
+  };
+}
 async function createEmbedder(profile) {
   const embed = profile.provider === "local" ? await localEmbedder(profile) : remoteEmbedder(profile);
-  return async function embedBatch(texts) {
+  async function embedBatch(texts) {
     if (texts.length === 0) return [];
     let rows;
     try {
@@ -3992,11 +4014,12 @@ async function createEmbedder(profile) {
     const dimensions = rows[0]?.length;
     if (!dimensions || rows.some((row) => row.length !== dimensions)) throw new Error("Embedding provider returned inconsistent vector dimensions.");
     return rows;
-  };
+  }
+  return withInputFormat(embedBatch, profile);
 }
 async function resolveEmbedder(root, options = {}) {
   const resolved = options.profile ? { profile: options.profile, source: options.source ?? "injected", path: null } : resolveEmbeddingProfile(root, options);
-  return { ...resolved, identity: embeddingProfileIdentity(resolved.profile), embed: options.embed ?? await createEmbedder(resolved.profile) };
+  return { ...resolved, identity: embeddingProfileIdentity(resolved.profile), embed: options.embed ? withInputFormat(options.embed, resolved.profile) : await createEmbedder(resolved.profile) };
 }
 
 // packages/cli/src/query/store.mjs
@@ -4202,7 +4225,7 @@ async function buildVectorIndex(root, embedOrOptions = {}) {
   });
   for (let offset = 0; offset < missing.length; offset += EMBED_BATCH_SIZE) {
     const batch = missing.slice(offset, offset + EMBED_BATCH_SIZE);
-    const embedded = await resolved.embed(batch.map(({ chunk }) => `passage: ${chunk.passage}`));
+    const embedded = await resolved.embed(batch.map(({ chunk }) => chunk.passage), "document");
     embedded.forEach((vector, index) => {
       rows[batch[index].index] = vector;
     });
@@ -4232,7 +4255,7 @@ async function queryProject(root, query, options = {}) {
     try {
       assertCodeEmbeddingConsent(root, options, corpus.chunks);
       index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks });
-      const [queryVector] = await index.embedding.embed([`query: ${query}`]);
+      const [queryVector] = await index.embedding.embed([query], "query");
       vector = index.chunks.map((chunk, position) => ({ ...chunk, vectorScore: cosineScore(queryVector, index.vectors, position * index.manifest.dimensions, index.manifest.dimensions) })).sort((a, b) => b.vectorScore - a.vectorScore || a.id.localeCompare(b.id));
     } catch (error) {
       if (search === "vector") throw error;
@@ -6008,7 +6031,7 @@ async function buildVectorImpactOverlay(root, index, changedPaths, options = {})
       if (!profile) continue;
       const embed = vectorIndex.embedding?.embed ?? options.embed;
       if (!embed) throw new Error("Vector index did not provide an embedder.");
-      const [queryVector] = await embed([`query: ${profile.text}`]);
+      const [queryVector] = await embed([profile.text], "query");
       if (!queryVector) throw new Error("Changed-file embedding was empty.");
       const matches = rankVectorFiles(queryVector, vectorIndex).filter((match) => match.path !== changed && match.vectorScore >= threshold).slice(0, topK);
       for (const match of matches) {
