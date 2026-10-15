@@ -49,6 +49,8 @@ Local embeddings first use an ordinarily installed `@huggingface/transformers` p
 
 The vector manifest records provider, model, dimensions, and a secret-free profile fingerprint. Schema version 2 invalidates all schema-1 caches. Output-affecting profile changes rebuild the index.
 
+Documentation indexing starts with batches of 16 inputs. Remote HTTP 400/413 token-limit responses split the failed batch in half recursively, preserving input order. A single oversized input fails without further retry; unrelated errors are not retried. Provider response bodies are not exposed in diagnostics.
+
 `query` fails when embedding fails. Graph impact reports semantic retrieval as unavailable and continues with structural evidence. Remote authentication, rate-limit, timeout, malformed JSON, count, dimensions, and vector validity errors must be actionable and sanitized.
 
 ## Traceability

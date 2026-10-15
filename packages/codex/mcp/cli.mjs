@@ -33,9 +33,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// node_modules/.pnpm/ignore@7.0.5/node_modules/ignore/index.js
+// ../../../../../../../Users/dotdot/Workspace/dotdotgod-kit/node_modules/.pnpm/ignore@7.0.5/node_modules/ignore/index.js
 var require_ignore = __commonJS({
-  "node_modules/.pnpm/ignore@7.0.5/node_modules/ignore/index.js"(exports, module) {
+  "../../../../../../../Users/dotdot/Workspace/dotdotgod-kit/node_modules/.pnpm/ignore@7.0.5/node_modules/ignore/index.js"(exports, module) {
     function makeArray(subject) {
       return Array.isArray(subject) ? subject : [subject];
     }
@@ -3944,7 +3944,12 @@ async function postJson(url, body, profile) {
     const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json", ...key ? { authorization: `Bearer ${key}` } : {} }, body: JSON.stringify(body), signal: controller.signal });
     if (!response.ok) {
       const category = response.status === 401 || response.status === 403 ? "authentication" : response.status === 429 ? "rate limit" : `HTTP ${response.status}`;
-      throw new Error(`Remote embedding ${category} failure.`);
+      const error = new Error(`Remote embedding ${category} failure.`);
+      if (response.status === 400 || response.status === 413) {
+        const body2 = (await response.text()).slice(0, 8192);
+        error.tokenLimit = /(?:exceed\w*[\s\S]{0,120}tokens?|tokens?[\s\S]{0,120}(?:exceed|limit|too (?:long|many))|maximum context length)/i.test(body2);
+      }
+      throw error;
     }
     try {
       return await response.json();
@@ -3973,9 +3978,16 @@ function remoteEmbedder(profile) {
 }
 async function createEmbedder(profile) {
   const embed = profile.provider === "local" ? await localEmbedder(profile) : remoteEmbedder(profile);
-  return async (texts) => {
+  return async function embedBatch(texts) {
     if (texts.length === 0) return [];
-    const rows = await embed(texts);
+    let rows;
+    try {
+      rows = await embed(texts);
+    } catch (error) {
+      if (!error.tokenLimit || texts.length === 1) throw error;
+      const middle = Math.ceil(texts.length / 2);
+      rows = [...await embedBatch(texts.slice(0, middle)), ...await embedBatch(texts.slice(middle))];
+    }
     if (!Array.isArray(rows) || rows.length !== texts.length) throw new Error("Embedding provider returned an unexpected vector count.");
     const dimensions = rows[0]?.length;
     if (!dimensions || rows.some((row) => row.length !== dimensions)) throw new Error("Embedding provider returned inconsistent vector dimensions.");
@@ -4448,7 +4460,7 @@ function runMap(argv) {
 // packages/cli/src/reference/resolve.mjs
 import { resolve as resolve16 } from "node:path";
 
-// node_modules/.pnpm/leiden-ts@0.1.0/node_modules/leiden-ts/dist/index.js
+// ../../../../../../../Users/dotdot/Workspace/dotdotgod-kit/node_modules/.pnpm/leiden-ts@0.1.0/node_modules/leiden-ts/dist/index.js
 var GraphValidationError = class extends Error {
   code;
   edge;

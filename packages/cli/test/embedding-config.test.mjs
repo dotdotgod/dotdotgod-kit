@@ -49,6 +49,34 @@ describe('embedding configuration and providers', () => {
     } finally { remote.instance.close(); }
   });
 
+  it('halves token-limited batches in order without retrying other errors or single inputs', async () => {
+    const sizes = []; const received = [];
+    let failure = 'tokens';
+    const remote = await server(async (request, response) => {
+      let body = ''; for await (const chunk of request) body += chunk;
+      const { input } = JSON.parse(body); sizes.push(input.length); received.push(...input);
+      response.setHeader('content-type', 'application/json');
+      if (failure !== 'tokens' || input.length > 2 || input[0] === 'oversized') {
+        response.statusCode = failure === 'auth' ? 401 : 400;
+        response.end(JSON.stringify({ error: { message: failure === 'tokens' ? 'Embedding input exceeds 4096 tokens in total, including special tokens' : 'invalid model secret' } }));
+      } else response.end(JSON.stringify({ data: input.map((text, index) => ({ index, embedding: unitVector(Number(text.replace(/^D\|/, '')) % 3) })) }));
+    });
+    try {
+      const embed = await createEmbedder({ provider: 'openai-compatible', model: 'm', baseUrl: remote.url });
+      const texts = Array.from({ length: 16 }, (_, index) => String(index));
+      assert.deepEqual(await embed(texts), texts.map((text) => unitVector(Number(text) % 3)));
+      assert.deepEqual(sizes, [16, 8, 4, 2, 2, 4, 2, 2, 8, 4, 2, 2, 4, 2, 2]);
+      sizes.length = 0;
+      await assert.rejects(() => embed(['oversized']), /HTTP 400 failure/);
+      assert.deepEqual(sizes, [1]);
+      for (failure of ['auth', 'invalid']) {
+        sizes.length = 0;
+        await assert.rejects(() => embed(texts), failure === 'auth' ? /authentication failure/ : /HTTP 400 failure/);
+        assert.deepEqual(sizes, [16]);
+      }
+    } finally { remote.instance.close(); }
+  });
+
   it('supports native Ollama responses and sanitizes remote failures', async () => {
     const remote = await server(async (request, response) => { if (request.url === '/api/embed') { let body = ''; for await (const chunk of request) body += chunk; const parsed = JSON.parse(body); response.setHeader('content-type', 'application/json'); response.end(JSON.stringify({ embeddings: parsed.input.map(() => unitVector(0)) })); } else if (request.url === '/bad/embeddings') { response.statusCode = 401; response.end('secret response body'); } else { response.setHeader('content-type', 'application/json'); response.end('{bad json'); } });
     try {

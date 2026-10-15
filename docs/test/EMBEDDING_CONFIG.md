@@ -8,6 +8,7 @@
 - arbitrary local model identifiers
 - direct and environment credential validation and redaction
 - OpenAI-compatible ordered responses
+- token-limit batch halving preserves order, terminates on single inputs and does not retry unrelated failures
 - native Ollama responses
 - dynamic dimensions and normalized vectors
 - schema-1 cache invalidation and schema-2 persistence
