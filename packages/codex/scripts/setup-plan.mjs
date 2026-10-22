@@ -20,7 +20,7 @@ async function main() {
     } else throw new Error(`Unknown or incomplete option: ${args[i]}`);
   }
   const version = spawnSync(binary, ['--version'], { encoding: 'utf8' });
-  if (version.status !== 0 || version.stdout.trim() !== `codex-cli ${CODEX_PLAN_VERSION}`) throw new Error(`Native plan setup requires Codex ${CODEX_PLAN_VERSION}.`);
+  if (version.status !== 0 || version.stdout?.trim() !== `codex-cli ${CODEX_PLAN_VERSION}`) throw new Error(`Native plan setup requires Codex ${CODEX_PLAN_VERSION}.`);
   const rpc = codexRpc(binary, { cwd: root });
   let config;
   try {

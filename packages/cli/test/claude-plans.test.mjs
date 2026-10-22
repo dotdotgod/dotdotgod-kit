@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { prepareClaudePlans, applyClaudePlans } from '../src/claude-plans.mjs';
 
 const cli = new URL('../bin/dotdotgod.mjs', import.meta.url);
 function init(root, ...args) {
@@ -54,5 +55,18 @@ test('invalid settings and symlinks fail before scaffolding; documentation-root 
     rmSync(path);
     assert.equal(init(root, '--claude-plans').status, 0);
     assert.equal(JSON.parse(readFileSync(path)).plansDirectory, './knowledge/plan');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('settings changes between preview and apply are preserved', () => {
+  const root = mkdtempSync(join(tmpdir(), 'claude-plan-concurrent-'));
+  try {
+    mkdirSync(join(root, '.claude'));
+    const path = join(root, '.claude/settings.json');
+    writeFileSync(path, '{}');
+    const prepared = prepareClaudePlans(root, 'docs');
+    writeFileSync(path, '{"model":"user edit"}');
+    assert.throws(() => applyClaudePlans(prepared, false), /changed during/);
+    assert.equal(readFileSync(path, 'utf8'), '{"model":"user edit"}');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

@@ -6,9 +6,11 @@ export function codexRpc(binary, { cwd, env = process.env, args = [], onNotifica
   const pending = new Map();
   let id = 0;
   let errors = '';
+  let closedError;
   child.stderr.on('data', chunk => { errors = (errors + chunk).slice(-2000); });
-  const fail = error => { for (const item of pending.values()) { clearTimeout(item.timer); item.reject(error); } pending.clear(); };
+  const fail = error => { closedError = error; for (const item of pending.values()) { clearTimeout(item.timer); item.reject(error); } pending.clear(); };
   child.on('error', fail);
+  child.stdin.on('error', fail);
   child.on('exit', code => fail(new Error(`Codex app-server exited ${code}: ${errors}`)));
   const lines = createInterface({ input: child.stdout });
   lines.on('line', line => {
@@ -22,6 +24,7 @@ export function codexRpc(binary, { cwd, env = process.env, args = [], onNotifica
     else item.resolve(message.result);
   });
   function call(method, params) {
+    if (closedError) return Promise.reject(closedError);
     return new Promise((resolve, reject) => {
       const key = ++id;
       const timer = setTimeout(() => { pending.delete(key); reject(new Error(`Codex ${method} timed out`)); }, 15000);

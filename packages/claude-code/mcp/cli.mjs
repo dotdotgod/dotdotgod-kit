@@ -1748,6 +1748,13 @@ function applyClaudePlans(prepared, dryRun) {
   const { content, current, ...result } = prepared;
   if (!content) return result;
   if (dryRun) return { ...result, status: `would_${result.status === "created" ? "create" : "update"}` };
+  for (const target of [dirname(prepared.path), prepared.path]) {
+    try {
+      if (lstatSync(target).isSymbolicLink()) throw new Error(`Refusing symlink: ${target}`);
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+  }
   const latest = existsSync4(prepared.path) ? readFileSync4(prepared.path, "utf8") : null;
   if (latest !== current) throw new Error("Claude settings changed during initialization; retry without overwriting them.");
   mkdirSync(dirname(prepared.path), { recursive: true });
