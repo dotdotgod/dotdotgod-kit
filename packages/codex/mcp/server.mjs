@@ -23545,7 +23545,7 @@ function getJobs() {
   jobRunner ??= new IngestionJobRunner(getStore());
   return jobRunner;
 }
-var server = new McpServer({ name: "dotdotgod-context", version: "0.2.27" });
+var server = new McpServer({ name: "dotdotgod-context", version: "0.6.6" });
 var scopeSchema = external_exports.enum(["transient", "session", "project"]).optional();
 var outputModeSchema = external_exports.enum(["auto", "direct", "indexed", "discard"]).optional();
 var commandSchema = {

@@ -8,6 +8,12 @@ Use it to carry project knowledge across sessions while keeping plans, verificat
 
 Repository: <https://github.com/dotdotgod/dotdotgod-kit>
 
+## 0.6.6 Upgrade
+
+See [release and migration notes](docs/report/RELEASE_0_6_6.md) for renamed tools,
+fixed 24-hour context storage, explicit embedding configuration, and opt-in
+Claude Code/Codex native project-plan files. Restart agent sessions after updating.
+
 ## The Working Loop
 
 Every adapter follows the same loop:
