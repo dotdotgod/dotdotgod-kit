@@ -84,13 +84,40 @@ Projects can customize memory roles with `memory.areas`, select traceability-enf
 
 ## Bundled MCP And Hooks
 
-The local stdio MCP server exposes generic execution/retrieval tools plus `project_load`, `project_impact`, and `project_initialize`. These dotdotgod execution tools share a 10 MiB stdout/stderr capture ceiling per command; exceeding it terminates the process and reports `captureLimitExceeded`. Direct stdout and stderr excerpts are each capped at 1 MiB. Child environments preserve compatibility-oriented inheritance after filtering runtime injection variables; filtered names are reported without values, but ordinary inherited credentials remain ambient. Larger output is indexed in the ignored project-local `.dotdotgod/context/` SQLite FTS5 store and retrieved as bounded excerpts. The store uses WAL, a bounded busy timeout, and transactional source replacement, expiry, and purge.
+The local stdio MCP server exposes generic execution/retrieval tools plus `project_load`, `project_impact`, `impact_status`, `project_initialize`, `embedding_status`, and confirmation-gated `embedding_install`. Individual names have no `dotdotgod_` prefix; discover host-qualified names and reload sessions after upgrading. Legacy names are not aliases. Execution tools share a 10 MiB stdout/stderr capture ceiling per command; exceeding it terminates the process and reports `captureLimitExceeded`. Direct stdout and stderr excerpts are each capped at 1 MiB. Child environments preserve compatibility-oriented inheritance after filtering runtime injection variables; filtered names are reported without values, but ordinary inherited credentials remain ambient. Larger output is indexed in the ignored project-local `.dotdotgod/context/` SQLite FTS5 store and retrieved as bounded excerpts. The store uses WAL, a bounded busy timeout, and transactional source replacement, expiry, and purge.
 
 The MCP `index` tool accepts files or explicitly requested bounded directories, including external paths, with deterministic traversal, configurable depth/entry/file/byte limits, explicit extension/path exclusions, and symlinks skipped by default. Indexed Markdown and JSON use structure-aware chunks. Search combines bounded Porter and label/path candidates with reciprocal-rank fusion plus deterministic title, path, and proximity signals. Results include operation-owned provenance and trust metadata and mark retrieved text as non-authoritative data with `instructionAuthority: "none"`; this is defense in depth, not a prompt-injection guarantee. URL fetching accepts credential-free HTTP(S), validates DNS answers, connected addresses, and every redirect, and applies separate wire and decoded-body limits. Accepted HTML is normalized as bounded untrusted text without browser rendering, JavaScript, subresource loading, or link following by default. The server bundles no browser renderer, so browser opt-in fails unless a host injects that capability. These controls provide application-level validation and defense in depth rather than a network sandbox or prompt-injection guarantee.
 
 This behavior applies only when Codex calls the `dotdotgod-context` MCP execution, indexing, search, fetch, or diagnostic tools. It does not intercept or rewrite Codex's ordinary built-in shell calls. See the [`@dotdotgod/context` npm package](https://www.npmjs.com/package/@dotdotgod/context), its [GitHub README](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/context#readme), and the [maintained context execution contract](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md) for the complete tool and limit definitions.
 
 Bundled hooks become active only after Codex's applicable plugin trust/review flow. They mark project load as required, record successful source/config edits, and deny broad verification or handoff commands until matching graph impact succeeds. Codex then calls the named MCP tool and retries the original operation; hooks do not silently change a shell call into an MCP call. See [`hooks/README.md`](https://github.com/dotdotgod/dotdotgod-kit/blob/main/packages/codex/hooks/README.md).
+
+## Opt-In Native Plan Files
+
+Codex 0.163.0 can use a project-specific read-only profile with `docs/plan/`
+writable and matching native Plan Mode instructions. Plugin installation alone
+does not activate it. Preview setup first:
+
+```bash
+node <plugin>/scripts/setup-plan.mjs /path/to/project --catalog /path/to/full/models.json
+node <plugin>/scripts/setup-plan.mjs /path/to/project --catalog /path/to/full/models.json --confirm
+```
+
+Without `--catalog`, setup uses a configured catalog or `$CODEX_HOME/models_cache.json`.
+It preserves model/provider metadata and refuses existing permission/profile
+choices, custom plan text and generated-file conflicts instead of replacing them.
+It creates a project catalog and a named user profile, never changes base config,
+and prints `codex --no-daemon --profile <name> --cd <project>`. Enter `/plan`.
+
+Concrete plans auto-save to `docs/plan/<task-slug>/README.md`. Native tools can
+write the whole plan subtree; other project files stay read-only. Leaving Plan
+Mode does not expand permissions: select implementation access yourself. Existing
+managed constraints remain. MCP/hooks have separate boundaries and must not be
+used to bypass restrictions. Unmodified Plan Mode stays conversational.
+
+The integration is pinned to 0.163.0 and verified on macOS with a local model
+fixture, native apply_patch, sandbox denies, symlink rejection and restart/resume.
+Live model quality and other platforms/versions are not implied by that smoke.
 
 ## Local Development
 

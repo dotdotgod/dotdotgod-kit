@@ -11,6 +11,10 @@ description: Plan implementation work from dotdotgod project docs before source 
 
 For focused documentation routing, run `dotdotgod query <root> "<focus>" --limit 30 --json`. Run `dotdotgod config <root> --json` when memory-area policy or documentation routing/exclusions affect the plan. If the CLI is unavailable, continue from README indexes and focused file reads.
 
+## Native Plan Mode
+
+In unmodified native Plan Mode, present the plan in <proposed_plan> and do not write files. Automatic project-plan saving requires the explicitly selected, verified dotdotgod native-plan profile and its matching native instructions; a skill alone grants no permission. With that profile active, save concrete plans to docs/plan/<task-slug>/README.md and update the same task. Preserve denies and stay in Plan Mode. Otherwise save after the user switches modes. See the adapter README for opt-in setup and supported versions.
+
 ## Goal
 
 Create an implementation plan from maintained repository documentation before substantial source or configuration changes.
@@ -23,7 +27,7 @@ Use `docs/plan/<task-slug>/README.md` for substantial, risky, or resumable work;
 2. Reuse loaded memory and the documentation map, then use focused query and README indexes to select maintained docs and verify conclusions in them.
 3. Inspect the source needed to confirm targets and constraints.
 4. Run impact review on likely changed files and refine targets, risks, and verification.
-5. For durable work, write and present the task README with scope, targets, executable steps, verification, and required completion gates.
+5. When the active mode and permissions allow it, write and present the task README with scope, targets, executable steps, verification, and required completion gates.
 6. Resolve blocking decisions and stop until the user asks to execute the plan.
 
 ## Quality Rules

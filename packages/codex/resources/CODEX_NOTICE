@@ -1,0 +1,5 @@
+OpenAI Codex
+Copyright 2025 OpenAI
+
+The native Plan Mode template is derived from OpenAI Codex rust-v0.163.0.
+Dotdotgod modifies its mutation rules at setup time and adds project-plan guidance.

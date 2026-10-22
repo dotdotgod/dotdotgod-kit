@@ -85,8 +85,10 @@ function renderPlanBody(platform) {
     .replace('For durable work, write and present', 'Write and present')
     .replace('Resolve blocking decisions and stop until the user asks to execute the plan.', 'Resolve blocking decisions; stay in the native plan agent until the user switches agents. Saving is not execution approval.');
   const queryGuidance = `## CLI Context\n\nFor focused documentation routing, run \`dotdotgod query <root> "<focus>" --limit 30 --json\`. Run \`dotdotgod config <root> --json\` when memory-area policy or documentation routing/exclusions affect the plan. If the CLI is unavailable, continue from README indexes and focused file reads.`;
-  if (platform === "claude") return `${queryGuidance}\n\n## Native Plan Mode\n\nClaude Code owns its native plan file and naming. An opt-in plansDirectory setting can place native files under the project documentation plan directory; it does not grant arbitrary task README writes in native Plan Mode. Follow the native allowed path and permissions. Create the shared task README when the active mode permits it; never bypass restrictions through MCP or hooks.\n\n${planBody.replace('For durable work, write and present', 'When the active mode and permissions allow it, write and present')}`;
-  return `${queryGuidance}\n\n${planBody}`;
+  const modeGuidance = platform === "codex"
+    ? '## Native Plan Mode\n\nIn unmodified native Plan Mode, present the plan in <proposed_plan> and do not write files. Automatic project-plan saving requires the explicitly selected, verified dotdotgod native-plan profile and its matching native instructions; a skill alone grants no permission. With that profile active, save concrete plans to docs/plan/<task-slug>/README.md and update the same task. Preserve denies and stay in Plan Mode. Otherwise save after the user switches modes. See the adapter README for opt-in setup and supported versions.'
+    : '## Native Plan Mode\n\nClaude Code owns its native plan file and naming. An opt-in plansDirectory setting can place native files under the project documentation plan directory; it does not grant arbitrary task README writes in native Plan Mode. Follow the native allowed path and permissions. Create the shared task README when the active mode permits it; never bypass restrictions through MCP or hooks.';
+  return `${queryGuidance}\n\n${modeGuidance}\n\n${planBody.replace('For durable work, write and present', 'When the active mode and permissions allow it, write and present')}`;
 }
 
 function renderDocClarifyBody() {
