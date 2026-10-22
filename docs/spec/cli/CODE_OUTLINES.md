@@ -1,5 +1,9 @@
 # Code Outline Index
 
+TS/TSX use pinned patched grammars for generic typeof-import calls and qualified
+import-type arrays. Other language grammars are unchanged; tree-sitter error nodes
+still produce partial status. Grammar/runtime hashes invalidate prior outlines.
+
 ## Ownership
 
 Existing index refreshes code outlines and merges parsed declarations/containment

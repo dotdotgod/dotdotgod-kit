@@ -538,7 +538,7 @@ var init_languages = __esm({
       ".zsh",
       ".fish"
     ]);
-    EXTRACTOR_ID = "outline-v3:vscode-tree-sitter-wasm-0.3.1";
+    EXTRACTOR_ID = "outline-v4:vscode-0.3.1:typescript-import-types-1";
     DECLARATIONS = {
       function_declaration: "function",
       generator_function_declaration: "function",
@@ -580,6 +580,10 @@ import { existsSync as existsSync9, readFileSync as readFileSync9 } from "node:f
 import { dirname as dirname5, join as join8 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash as createHash4 } from "node:crypto";
+function languageAsset(language) {
+  const patched = fileURLToPath(new URL(`./parsers/tree-sitter-${language}.wasm`, import.meta.url));
+  return existsSync9(patched) ? patched : join8(dirname5(parserEntry()), `tree-sitter-${language}.wasm`);
+}
 function parserEntry() {
   const bundled = fileURLToPath(new URL("./parsers/tree-sitter.cjs", import.meta.url));
   return existsSync9(bundled) ? bundled : require2.resolve("@vscode/tree-sitter-wasm");
@@ -588,7 +592,8 @@ function parserIdentity() {
   if (!identity) {
     const entry = parserEntry();
     const hash2 = createHash4("sha256").update(readFileSync9(entry));
-    for (const name of ["tree-sitter.wasm", ...Object.keys(LANGUAGE_EXTENSIONS).map((language) => `tree-sitter-${language}.wasm`)]) hash2.update(name).update(readFileSync9(join8(dirname5(entry), name)));
+    hash2.update(readFileSync9(join8(dirname5(entry), "tree-sitter.wasm")));
+    for (const language of Object.keys(LANGUAGE_EXTENSIONS)) hash2.update(language).update(readFileSync9(languageAsset(language)));
     identity = hash2.digest("hex");
   }
   return identity;
@@ -609,7 +614,7 @@ var parser_exports = {};
 __export(parser_exports, {
   extractSymbols: () => extractSymbols
 });
-import { dirname as dirname6, join as join10 } from "node:path";
+import { dirname as dirname6 } from "node:path";
 import { createHash as createHash5 } from "node:crypto";
 async function parserFor(language) {
   if (!runtime) runtime = (async () => {
@@ -619,7 +624,7 @@ async function parserFor(language) {
     return { api: api2, directory: dirname6(entry) };
   })();
   const { api, directory } = await runtime;
-  if (!languages.has(language)) languages.set(language, api.Language.load(join10(directory, `tree-sitter-${language}.wasm`)));
+  if (!languages.has(language)) languages.set(language, api.Language.load(languageAsset(language)));
   const loaded = await languages.get(language);
   const parser = new api.Parser();
   parser.setLanguage(loaded);
@@ -2202,7 +2207,7 @@ function parseCommon(argv) {
 
 // packages/cli/src/validate/run.mjs
 import { existsSync as existsSync13, readFileSync as readFileSync13, readdirSync as readdirSync3 } from "node:fs";
-import { basename as basename7, dirname as dirname10, extname as extname6, join as join13, resolve as resolve8 } from "node:path";
+import { basename as basename7, dirname as dirname10, extname as extname6, join as join12, resolve as resolve8 } from "node:path";
 
 // packages/cli/src/docs/traceability.mjs
 import { existsSync as existsSync5 } from "node:fs";
@@ -2694,7 +2699,7 @@ function cacheFile(root) {
 
 // packages/cli/src/index/cache.mjs
 import { existsSync as existsSync12, readFileSync as readFileSync12, statSync as statSync4 } from "node:fs";
-import { basename as basename6, join as join12 } from "node:path";
+import { basename as basename6, join as join11 } from "node:path";
 
 // packages/cli/src/graph/store.mjs
 import { existsSync as existsSync7, mkdirSync as mkdirSync2, statSync as statSync3, writeFileSync as writeFileSync2 } from "node:fs";
@@ -2995,7 +3000,7 @@ function buildGraph(root, files, config = defaultMemoryConfig()) {
 // packages/cli/src/symbols/store.mjs
 import { existsSync as existsSync11, lstatSync as lstatSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync11, renameSync, writeFileSync as writeFileSync3 } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { dirname as dirname7, join as join11 } from "node:path";
+import { dirname as dirname7, join as join10 } from "node:path";
 
 // packages/cli/src/symbols/discovery.mjs
 var import_ignore = __toESM(require_ignore(), 1);
@@ -3144,7 +3149,7 @@ function outlinePolicy(root) {
 // packages/cli/src/symbols/store.mjs
 init_languages();
 var OUTLINE_SCHEMA = 1;
-var outlinePath = (root) => join11(root, ".dotdotgod", "outlines.json");
+var outlinePath = (root) => join10(root, ".dotdotgod", "outlines.json");
 function assertCachePath(root) {
   for (const path of [dirname7(outlinePath(root)), outlinePath(root)]) {
     let stat;
@@ -3221,9 +3226,9 @@ async function buildOutlines(root) {
       continue;
     }
     const { extractSymbols: extractSymbols2 } = await Promise.resolve().then(() => (init_parser(), parser_exports));
-    const source = readFileSync11(join11(root, file.path), "utf8");
+    const source = readFileSync11(join10(root, file.path), "utf8");
     const extracted = await extractSymbols2(file.path, source, file.language);
-    if (fingerprint(join11(root, file.path)) !== file.hash) throw new Error(`Source changed during outline extraction: ${file.path}`);
+    if (fingerprint(join10(root, file.path)) !== file.hash) throw new Error(`Source changed during outline extraction: ${file.path}`);
     records.push({ ...file, ...extracted });
     parsed += 1;
   }
@@ -3306,10 +3311,10 @@ function buildIndex(root, previous = readIndex(root)) {
   const currentPaths = new Set(files.map((file) => file.path));
   const removedPaths = (previous?.files ?? []).filter((file) => !currentPaths.has(file.path)).map((file) => file.path);
   const changedPaths = [...files.filter((file) => indexed.get(file.path) !== file.sha256).map((file) => file.path), ...removedPaths];
-  const changedFiles = files.filter((file) => changedPaths.includes(file.path)).map((file) => join12(root, file.path));
+  const changedFiles = files.filter((file) => changedPaths.includes(file.path)).map((file) => join11(root, file.path));
   const fullRebuild = !previous?.graph || previous.version !== CACHE_VERSION;
   const refreshReason = !previous ? "missing" : previous.version !== CACHE_VERSION ? "schema-mismatch" : removedPaths.length > 0 ? "content-removed" : changedPaths.length > 0 ? "content-changed" : "fresh";
-  const rawGraph = fullRebuild ? buildGraph(root, files.map((file) => join12(root, file.path)), memoryConfig) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles, memoryConfig), changedPaths);
+  const rawGraph = fullRebuild ? buildGraph(root, files.map((file) => join11(root, file.path)), memoryConfig) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles, memoryConfig), changedPaths);
   const graph = { nodes: rawGraph.nodes.filter((node2) => !["symbol", "unresolved_import"].includes(node2.type)), edges: rawGraph.edges.filter((edge) => !["declares_symbol", "contains_symbol", "imports"].includes(edge.relation)) };
   const outlines = readOutlines(root);
   let outlinePolicyMatches = false;
@@ -3333,7 +3338,7 @@ function writeIndex(root, index) {
   const graphShards = { nodes: Object.fromEntries(Object.keys(compact.nodes).map((name) => [name, rel(root, shardFile(root, "nodes", name))])), edges: Object.fromEntries(Object.keys(compact.edges).map((name) => [name, rel(root, shardFile(root, "edges", name))])) };
   const manifest = { version: index.version, schemaVersion: index.schemaVersion ?? index.version, generatedAt: index.generatedAt, archiveBodiesIncluded: index.archiveBodiesIncluded, memoryConfig: index.memoryConfig, files: index.files, graph: { ...graphStats(index.graph), compactSchema: true, shards: graphShards }, incremental: index.incremental };
   writeJson(cacheFile(root), manifest);
-  const shardBytes = [...Object.values(graphShards.nodes), ...Object.values(graphShards.edges)].reduce((sum, path) => sum + jsonSize(join12(root, path)), 0);
+  const shardBytes = [...Object.values(graphShards.nodes), ...Object.values(graphShards.edges)].reduce((sum, path) => sum + jsonSize(join11(root, path)), 0);
   const manifestBytes = jsonSize(cacheFile(root));
   return { ...manifest, indexSizeBytes: manifestBytes + shardBytes, manifestBytes, shardBytes };
 }
@@ -3345,8 +3350,8 @@ function readIndex(root) {
     const shards = manifest.graph?.shards;
     if (!shards) return manifest;
     const compact = { nodes: {}, edges: {} };
-    for (const [name, path] of Object.entries(shards.nodes ?? {})) compact.nodes[name] = existsSync12(join12(root, path)) ? JSON.parse(readFileSync12(join12(root, path), "utf8")) : [];
-    for (const [name, path] of Object.entries(shards.edges ?? {})) compact.edges[name] = existsSync12(join12(root, path)) ? JSON.parse(readFileSync12(join12(root, path), "utf8")) : [];
+    for (const [name, path] of Object.entries(shards.nodes ?? {})) compact.nodes[name] = existsSync12(join11(root, path)) ? JSON.parse(readFileSync12(join11(root, path), "utf8")) : [];
+    for (const [name, path] of Object.entries(shards.edges ?? {})) compact.edges[name] = existsSync12(join11(root, path)) ? JSON.parse(readFileSync12(join11(root, path), "utf8")) : [];
     return { ...manifest, graph: expandGraph(compact) };
   } catch {
     return null;
@@ -3549,7 +3554,7 @@ function runValidate(argv) {
   const root = resolve8(options.root);
   const memoryConfig = readMemoryConfig(root);
   const documentationRoot = memoryConfig.documentation?.root ?? "docs";
-  const docs = join13(root, documentationRoot);
+  const docs = join12(root, documentationRoot);
   const errors = [];
   const warnings = [];
   const markdownFiles = [];
@@ -3569,7 +3574,7 @@ Fix: ${fix}` : message, ...prompt ? { prompt } : {} });
   const walk = (dir) => {
     if (!existsSync13(dir) || shouldSkipDir(dir)) return;
     for (const entry of readdirSync3(dir, { withFileTypes: true })) {
-      const path = join13(dir, entry.name);
+      const path = join12(dir, entry.name);
       if (entry.isDirectory()) {
         const docsRel = rel(docs, path);
         if (docsRel && !docsRel.startsWith("..")) {
@@ -3704,7 +3709,7 @@ ${traceabilityExample()}`, block.line);
       outlines = { ok: false, reason: `inspection-unavailable: ${error instanceof Error ? error.message : String(error)}`, paths: [] };
     }
     if (!outlines.ok) addError(outlinePath(root), "OUTLINE_INDEX_STALE", `Outline index: ${outlines.reason}${outlines.paths.length ? ` (${outlines.paths.join(", ")})` : ""}`, null, "run `dotdotgod index <root>` to refresh outlines and graph metadata; validation does not parse, embed or repair.");
-    for (const path of outlines.unsupported ?? []) addWarning(join13(root, path), "OUTLINE_LANGUAGE_UNSUPPORTED", "Source language is not supported by the current outline extraction matrix.");
+    for (const path of outlines.unsupported ?? []) addWarning(join12(root, path), "OUTLINE_LANGUAGE_UNSUPPORTED", "Source language is not supported by the current outline extraction matrix.");
     const index = readIndex(root);
     if (!index) addError(cacheFile(root), "INDEX_MISSING", "Expected .dotdotgod index cache.", null, "run `dotdotgod index <root>` to build the graph index.");
     else {
@@ -3724,17 +3729,17 @@ ${traceabilityExample()}`, block.line);
   }
   if (options.includeLocalMemory) {
     for (const area2 of ["plan", "archive/plan", "archive/report"]) {
-      const areaRoot = join13(docs, area2);
+      const areaRoot = join12(docs, area2);
       if (!existsSync13(areaRoot)) continue;
       for (const entry of readdirSync3(areaRoot, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue;
-        if (!isKebabCase(entry.name)) addError(join13(areaRoot, entry.name), "SLUG_NAMING", `Archive/plan/report slug must be kebab-case: ${entry.name}`, null, "rename the task/report directory to kebab-case and update any README index links that reference it.");
-        const readme = join13(areaRoot, entry.name, "README.md");
+        if (!isKebabCase(entry.name)) addError(join12(areaRoot, entry.name), "SLUG_NAMING", `Archive/plan/report slug must be kebab-case: ${entry.name}`, null, "rename the task/report directory to kebab-case and update any README index links that reference it.");
+        const readme = join12(areaRoot, entry.name, "README.md");
         if (!existsSync13(readme)) addError(readme, "MISSING_README", `Expected README.md in ${documentationRoot}/${area2}/${entry.name}/`, null, "add a README.md that summarizes the task/report and links any supporting files.");
       }
     }
   }
-  const gitignore = join13(root, ".gitignore");
+  const gitignore = join12(root, ".gitignore");
   if (!existsSync13(gitignore)) addError(gitignore, "MISSING_GITIGNORE", "Expected .gitignore", null, `create .gitignore and include ${documentationRoot}/plan, ${documentationRoot}/archive, and .dotdotgod entries.`);
   else {
     const content = readFileSync13(gitignore, "utf8").split("\n").map((line) => line.trim());
@@ -3763,7 +3768,7 @@ Prompt: ${error.prompt}` : ""}`);
 
 // packages/cli/src/commands/config.mjs
 import { existsSync as existsSync14, statSync as statSync6, writeFileSync as writeFileSync4 } from "node:fs";
-import { join as join14, resolve as resolve9 } from "node:path";
+import { join as join13, resolve as resolve9 } from "node:path";
 function parseConfigOptions(argv, usageKey = "config") {
   const options = { root: ".", json: false, template: null };
   let rootSet = false;
@@ -3829,7 +3834,7 @@ function runConfig(argv) {
     } catch {
       configInitError(options, "ROOT_NOT_FOUND", `Project root not found: ${options.root}`);
     }
-    const target = join14(options.root, "dotdotgod.config.json");
+    const target = join13(options.root, "dotdotgod.config.json");
     if (existsSync14(target)) configInitError(options, "CONFIG_EXISTS", "dotdotgod.config.json already exists.", target);
     const template = resolveInitializationTemplate(options.template);
     if (!template.ok) configInitError(options, template.error.code, template.error.message, template.error.path ?? target);
@@ -3849,7 +3854,7 @@ function runConfig(argv) {
     errors.push({ file: "embedding config", code: "EMBEDDING_CONFIG_INVALID", message: error instanceof Error ? error.message : String(error) });
     embedding = { source: "invalid", path: null, profile: null };
   }
-  const payload = { ok: errors.length === 0, command: "config", root: options.root, source: config.source ?? "default", path: config.source && config.source !== "default" ? join14(options.root, config.source) : null, embedding, config: memoryConfigSummary(config), errors };
+  const payload = { ok: errors.length === 0, command: "config", root: options.root, source: config.source ?? "default", path: config.source && config.source !== "default" ? join13(options.root, config.source) : null, embedding, config: memoryConfigSummary(config), errors };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else console.log(formatConfigOutput(payload));
   if (errors.length > 0) process.exit(1);
@@ -3863,7 +3868,7 @@ import { existsSync as existsSync15, mkdirSync as mkdirSync4, readFileSync as re
 import { spawnSync as spawnSync2 } from "node:child_process";
 import { createRequire as createRequire2 } from "node:module";
 import { homedir as homedir3 } from "node:os";
-import { join as join15 } from "node:path";
+import { join as join14 } from "node:path";
 import { pathToFileURL } from "node:url";
 var EMBEDDING_RUNTIME_PACKAGE = "@huggingface/transformers";
 var EMBEDDING_RUNTIME_VERSION = "4.2.0";
@@ -3875,12 +3880,12 @@ var EmbeddingRuntimeMissingError = class extends Error {
   }
 };
 function embeddingRuntimeRoot(options = {}) {
-  return join15(options.home ?? homedir3(), ".dotdotgod", "runtime", "embedding");
+  return join14(options.home ?? homedir3(), ".dotdotgod", "runtime", "embedding");
 }
 function resolvePersistentTransformers(options = {}) {
   const root = embeddingRuntimeRoot(options);
   try {
-    const require3 = createRequire2(join15(root, "package.json"));
+    const require3 = createRequire2(join14(root, "package.json"));
     return require3.resolve(EMBEDDING_RUNTIME_PACKAGE);
   } catch {
     throw new EmbeddingRuntimeMissingError();
@@ -3889,9 +3894,9 @@ function resolvePersistentTransformers(options = {}) {
 function embeddingRuntimeStatus(options = {}) {
   const root = embeddingRuntimeRoot(options);
   try {
-    const require3 = createRequire2(join15(root, "package.json"));
+    const require3 = createRequire2(join14(root, "package.json"));
     require3.resolve(EMBEDDING_RUNTIME_PACKAGE);
-    const packagePath = join15(root, "node_modules", ...EMBEDDING_RUNTIME_PACKAGE.split("/"), "package.json");
+    const packagePath = join14(root, "node_modules", ...EMBEDDING_RUNTIME_PACKAGE.split("/"), "package.json");
     const version = JSON.parse(readFileSync14(packagePath, "utf8")).version;
     return { ok: true, installed: true, installAvailable: true, package: EMBEDDING_RUNTIME_PACKAGE, requiredVersion: EMBEDDING_RUNTIME_VERSION, packageVersion: version, location: root };
   } catch {
@@ -3901,7 +3906,7 @@ function embeddingRuntimeStatus(options = {}) {
 function installEmbeddingRuntime(options = {}) {
   if (options.confirm !== true) throw new Error("Embedding runtime installation requires explicit confirmation.");
   const root = embeddingRuntimeRoot(options);
-  const lock = join15(root, ".installing");
+  const lock = join14(root, ".installing");
   if (existsSync15(lock)) throw new Error("Embedding runtime installation is already in progress.");
   mkdirSync4(root, { recursive: true });
   writeFileSync5(lock, `${process.pid}
@@ -4027,7 +4032,7 @@ async function resolveEmbedder(root, options = {}) {
 // packages/cli/src/query/store.mjs
 import { createHash as createHash6 } from "node:crypto";
 import { existsSync as existsSync16, mkdirSync as mkdirSync5, readFileSync as readFileSync15, renameSync as renameSync2, rmSync as rmSync2, writeFileSync as writeFileSync6 } from "node:fs";
-import { join as join16 } from "node:path";
+import { join as join15 } from "node:path";
 var VECTOR_SCHEMA_VERSION = 2;
 var VECTOR_DIMENSIONS = 384;
 function profileFingerprint(identity2) {
@@ -4047,8 +4052,8 @@ function isValidNormalizedVectorValues(values, dimensions = VECTOR_DIMENSIONS) {
   return true;
 }
 function vectorCachePaths(root) {
-  const directory = join16(root, ".dotdotgod", "vectors");
-  return { directory, manifest: join16(directory, "manifest.json"), chunks: join16(directory, "chunks.jsonl"), embeddings: join16(directory, "embeddings.f32") };
+  const directory = join15(root, ".dotdotgod", "vectors");
+  return { directory, manifest: join15(directory, "manifest.json"), chunks: join15(directory, "chunks.jsonl"), embeddings: join15(directory, "embeddings.f32") };
 }
 function readVectorCache(root, identity2 = null) {
   const paths = vectorCachePaths(root);
@@ -4351,7 +4356,7 @@ import { resolve as resolve13 } from "node:path";
 
 // packages/cli/src/memory/documentation-map.mjs
 import { existsSync as existsSync17, readdirSync as readdirSync4, statSync as statSync7 } from "node:fs";
-import { join as join17, resolve as resolve12 } from "node:path";
+import { join as join16, resolve as resolve12 } from "node:path";
 var SKIPPED_DIRECTORIES2 = /* @__PURE__ */ new Set(["node_modules", "dist", "build", "coverage", ".git", ".dotdotgod"]);
 function node() {
   return { directories: /* @__PURE__ */ new Map(), files: [] };
@@ -4414,7 +4419,7 @@ function discoverMarkdown(root, documentationRoot, exclude) {
   const walk = (relativeDirectory) => {
     let entries;
     try {
-      entries = readdirSync4(join17(root, relativeDirectory), { withFileTypes: true, encoding: "utf8" });
+      entries = readdirSync4(join16(root, relativeDirectory), { withFileTypes: true, encoding: "utf8" });
     } catch {
       return;
     }
@@ -6452,14 +6457,14 @@ function runExpand(argv) {
 
 // packages/cli/src/commands/traceability.mjs
 import { existsSync as existsSync18, readFileSync as readFileSync18, readdirSync as readdirSync5, writeFileSync as writeFileSync7 } from "node:fs";
-import { join as join18, resolve as resolve17 } from "node:path";
+import { join as join17, resolve as resolve17 } from "node:path";
 function collectDocsMarkdownFiles(root) {
-  const docs = join18(root, "docs");
+  const docs = join17(root, "docs");
   const files = [];
   const walk = (dir) => {
     if (!existsSync18(dir)) return;
     for (const entry of readdirSync5(dir, { withFileTypes: true })) {
-      const path = join18(dir, entry.name);
+      const path = join17(dir, entry.name);
       if (entry.isDirectory()) walk(path);
       else if (entry.isFile() && entry.name.endsWith(".md")) files.push(path);
     }
@@ -6526,7 +6531,7 @@ function runTraceability(argv) {
 // packages/cli/src/graph-view/server.mjs
 import { createServer } from "node:http";
 import { readFileSync as readFileSync19 } from "node:fs";
-import { dirname as dirname12, extname as extname10, join as join19 } from "node:path";
+import { dirname as dirname12, extname as extname10, join as join18 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // packages/cli/src/graph-view/payload.mjs
@@ -6638,7 +6643,7 @@ function buildImpactGraphPayload(index, impact) {
 }
 
 // packages/cli/src/graph-view/server.mjs
-var ASSET_ROOT = join19(dirname12(fileURLToPath2(import.meta.url)), "assets");
+var ASSET_ROOT = join18(dirname12(fileURLToPath2(import.meta.url)), "assets");
 var CONTENT_TYPES = { ".css": "text/css; charset=utf-8", ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".map": "application/json; charset=utf-8" };
 var VENDOR_FILES = {
   "/vendor/sigma.js": new URL("../../node_modules/sigma/dist/sigma.min.js", import.meta.url),
@@ -6693,7 +6698,7 @@ async function startImpactGraphServer({ root, changed, host = "127.0.0.1", port 
       response.writeHead(404);
       return response.end("Not found");
     }
-    return asset(response, join19(ASSET_ROOT, relative7));
+    return asset(response, join18(ASSET_ROOT, relative7));
   });
   await new Promise((resolve18, reject) => {
     server.once("error", reject);

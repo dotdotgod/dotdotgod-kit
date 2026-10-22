@@ -2,6 +2,11 @@
 
 ## Automated Coverage
 
+`packages/cli/test/typescript-import-types.test.mjs` covers TS/TSX generic
+typeof-import calls, qualified import-type arrays, real syntax errors, symbol
+locations and nineteen-file indexing without exclusions. Patched WASM sources,
+toolchain and regeneration are documented in the CLI parser asset README.
+
 Run node --test packages/cli/test/symbol-query.test.mjs for parser-backed fixtures
 and pnpm --filter @dotdotgod/pi run test for focused-load formatting regressions.
 
@@ -13,7 +18,8 @@ expanding the documented supported-form matrix.
 
 Retrieval checks cover full documentation-body keywords, same-file multiple methods,
 body exclusion, deterministic vectors, keyword-only independence, hybrid failure
-warnings, exact-name ranking and explicit remote-code consent. Existing documentation
+warnings, exact-name ranking and remote code-metadata embedding authorized by provider
+selection without an additional consent flag (with implementation bodies excluded). Existing documentation
 vector and graph-impact tests retain their document-first internal APIs.
 
 Freshness tests cover missing/invalid caches, source addition/edit/deletion, line-only

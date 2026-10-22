@@ -1,5 +1,5 @@
-import { dirname, join } from 'node:path';
-import { parserEntry, loadParserApi } from './runtime.mjs';
+import { dirname } from 'node:path';
+import { parserEntry, loadParserApi, languageAsset } from './runtime.mjs';
 import { createHash } from 'node:crypto';
 import { COMMENT_TYPES, DECLARATIONS } from './languages.mjs';
 
@@ -13,7 +13,7 @@ async function parserFor(language) {
     return { api, directory: dirname(entry) };
   })();
   const { api, directory } = await runtime;
-  if (!languages.has(language)) languages.set(language, api.Language.load(join(directory, `tree-sitter-${language}.wasm`)));
+  if (!languages.has(language)) languages.set(language, api.Language.load(languageAsset(language)));
   const loaded = await languages.get(language);
   const parser = new api.Parser();
   parser.setLanguage(loaded);
