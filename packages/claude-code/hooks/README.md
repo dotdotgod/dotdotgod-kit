@@ -2,6 +2,11 @@
 
 ## Packaged Defaults
 
+Local planning Markdown under the configured documentation plan directory does
+not create source-impact pending state. Native plan paths and permissions remain
+host-owned; hooks do not grant plan writes. Hook runtime state and MCP caches
+have separate process permissions from the model's native tools.
+
 The adapter packages `hooks/hooks.json` and `hooks/runtime.mjs`. They inject a bounded project-load requirement at session start, record successful `Edit`/`Write` paths, and deny broad verification or handoff shell commands while graph impact is pending. A denial names the required dotdotgod MCP tool; Claude calls it and retries the original operation. MCP tools bypass their own guards to prevent recursion.
 
 Runtime state is local to `.dotdotgod/context/runtime/`. A successful impact call clears only paths whose current fingerprints match recorded edit state. Hooks run local commands with user permissions; review plugin resources before enabling them.

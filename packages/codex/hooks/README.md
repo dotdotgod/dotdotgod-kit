@@ -1,5 +1,10 @@
 # Codex Hooks
 
+Local planning Markdown under the configured documentation plan directory does
+not create source-impact pending state. The opt-in native plan profile restricts
+native files/commands, not hook processes or MCP servers. Hooks never grant plan
+write permissions or override the active native collaboration mode.
+
 ## Packaged Defaults
 
 The adapter packages `hooks/hooks.json` and `hooks/runtime.mjs`. After Codex's applicable plugin-hook enablement and trust review, they inject a bounded project-load requirement, record successful `apply_patch`/`Edit`/`Write` paths, and deny broad verification or handoff shell commands while graph impact is pending. A denial names the required dotdotgod MCP tool; Codex calls it and retries the original operation. Hooks do not transform a shell tool call into an MCP call.

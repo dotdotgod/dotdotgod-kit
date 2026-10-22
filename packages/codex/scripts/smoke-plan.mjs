@@ -5,8 +5,11 @@ import { createServer } from 'node:http';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { codexRpc } from '../src/rpc.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const plugin = process.argv[2] ? resolve(process.argv[2]) : fileURLToPath(new URL('../', import.meta.url));
+const { codexRpc } = await import(pathToFileURL(join(plugin, 'src/rpc.mjs')));
+const setupPath = join(plugin, 'scripts/setup-plan.mjs');
 
 const binary = process.env.CODEX_BINARY || 'codex';
 const catalog = process.env.CODEX_CATALOG;
@@ -59,7 +62,7 @@ try {
   chosen.tool_mode = 'function_tools';
   const fixtureCatalog = join(scratch, 'models.json');
   writeFileSync(fixtureCatalog, JSON.stringify({ models: [chosen] }));
-  const setup = spawnSync(process.execPath, [fileURLToPath(new URL('./setup-plan.mjs', import.meta.url)), root,
+  const setup = spawnSync(process.execPath, [setupPath, root,
     '--codex', binary, '--catalog', fixtureCatalog, '--confirm'], { env, encoding: 'utf8' });
   assert.equal(setup.status, 0, setup.stderr);
   const prepared = JSON.parse(setup.stdout);
@@ -111,7 +114,7 @@ try {
   await rpc.call('thread/settings/update', { threadId, collaborationMode: { mode: 'default', settings: { model: chosen.slug, reasoning_effort: 'medium', developer_instructions: null } } });
   assert.equal(sandbox('require("fs").appendFileSync("docs/plan/task/README.md","\\nResumed")').status, 0);
   assert.notEqual(sandbox('require("fs").writeFileSync("source.ts","blocked")').status, 0);
-  const conflict = spawnSync(process.execPath, [fileURLToPath(new URL('./setup-plan.mjs', import.meta.url)), root,
+  const conflict = spawnSync(process.execPath, [setupPath, root,
     '--codex', binary, '--catalog', fixtureCatalog, '--confirm'], { env, encoding: 'utf8' });
   assert.notEqual(conflict.status, 0);
   assert.match(conflict.stderr, /Existing (default_permissions|permissions)/);

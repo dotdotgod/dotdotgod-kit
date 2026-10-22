@@ -34,6 +34,8 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 
 ## Planning And Clarification Regressions
 
+- `packages/cli/test/embedding-opt-in.test.mjs`: unconfigured keyword/structural retrieval, vector-request errors and explicit keyword override without embeddings.
+
 - `packages/pi/test/planning-context.test.ts`: bounded impact/reference refresh,
   no automatic validation or Plan Mode compaction, one-shot delivery, and CLI
   failure/execution-mode handling. Plan Mode utilities also cover old snapshots.

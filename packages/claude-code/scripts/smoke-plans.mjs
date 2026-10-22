@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const binary = process.env.CLAUDE_BINARY || 'claude';
@@ -37,7 +37,7 @@ const server = createServer(async (req, res) => {
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 try {
-  const cli = fileURLToPath(new URL('../mcp/cli.mjs', import.meta.url));
+  const cli = process.argv[2] ? join(resolve(process.argv[2]), 'mcp/cli.mjs') : fileURLToPath(new URL('../mcp/cli.mjs', import.meta.url));
   const initialized = spawnSync(process.execPath, [cli, 'init', root, '--claude-plans', '--json'], { encoding: 'utf8', env: { ...process.env, HOME: home } });
   assert.equal(initialized.status, 0, initialized.stderr);
   const child = spawn(binary, ['-p', '--permission-mode', 'plan', '--permission-prompts', 'none', '--model', 'claude-sonnet-4-5', '--tools', 'Read,Write,Edit', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', 'project', '--no-session-persistence', '--output-format', 'json', 'Plan a focused change and save the native plan.'], {
