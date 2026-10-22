@@ -23223,7 +23223,7 @@ function embeddingRuntimeRecovery() {
   return {
     code: "EMBEDDING_RUNTIME_MISSING",
     message: "Semantic vectors need an optional runtime; continue with keyword/map retrieval or ask before installation.",
-    recovery: { kind: "embedding-runtime-install", requiresConfirmation: true, statusTool: "dotdotgod_embedding_status", installTool: "dotdotgod_embedding_install", cliCommand: "dotdotgod embedding install --confirm" }
+    recovery: { kind: "embedding-runtime-install", requiresConfirmation: true, statusTool: "embedding_status", installTool: "embedding_install", cliCommand: "dotdotgod embedding install --confirm" }
   };
 }
 async function projectLoad(input) {
@@ -23418,7 +23418,7 @@ var commandSchema = {
   allowedEnv: external_exports.array(external_exports.string()).max(100).optional()
 };
 function success(value, name) {
-  const text = name === "dotdotgod_project_impact" ? JSON.stringify(value, null, 2) : formatToolMarkdown(name, value);
+  const text = name === "project_impact" ? JSON.stringify(value, null, 2) : formatToolMarkdown(name, value);
   return { content: [{ type: "text", text }], structuredContent: value };
 }
 function failure(error2, name) {
@@ -23526,19 +23526,19 @@ register("purge", "Permanently delete one explicit context scope, session, or so
   sessionId: external_exports.string().optional(),
   sourceId: external_exports.string().optional()
 }, (input) => ({ ok: true, ...getStore().purge(input) }), { destructiveHint: true });
-register("dotdotgod_project_load", "Load a bounded documentation map and optional semantic project query.", {
+register("project_load", "Load a bounded documentation map and optional semantic project query.", {
   root: external_exports.string().optional(),
   focus: external_exports.string().max(500).optional(),
   limit: external_exports.number().int().min(1).max(30).optional(),
   maxDepth: external_exports.number().int().min(1).max(5).optional()
 }, (input) => projectLoad(projectInput(input)), { readOnlyHint: true });
-register("dotdotgod_embedding_status", "Inspect the optional persistent embedding runtime without installing or contacting a registry.", { root: external_exports.string().optional() }, (input) => projectEmbeddingStatus(projectInput(input)), { readOnlyHint: true });
-register("dotdotgod_embedding_install", "After explicit user approval, install the fixed optional embedding runtime persistently. Uses network and dependency install scripts.", { root: external_exports.string().optional(), confirm: external_exports.literal(true) }, (input) => projectEmbeddingInstall(projectInput(input)), { destructiveHint: true, openWorldHint: true });
-register("dotdotgod_project_impact", "Run bounded graph impact for up to 20 changed paths.", {
+register("embedding_status", "Inspect the optional persistent embedding runtime without installing or contacting a registry.", { root: external_exports.string().optional() }, (input) => projectEmbeddingStatus(projectInput(input)), { readOnlyHint: true });
+register("embedding_install", "After explicit user approval, install the fixed optional embedding runtime persistently. Uses network and dependency install scripts.", { root: external_exports.string().optional(), confirm: external_exports.literal(true) }, (input) => projectEmbeddingInstall(projectInput(input)), { destructiveHint: true, openWorldHint: true });
+register("project_impact", "Run bounded graph impact for up to 20 changed paths.", {
   root: external_exports.string().optional(),
   paths: external_exports.array(external_exports.string()).min(1).max(20)
 }, (input) => projectImpact(projectInput(input)), { readOnlyHint: true });
-register("dotdotgod_project_initialize", "Initialize project memory; dry-run is default and writes require explicit confirmation.", {
+register("project_initialize", "Initialize project memory; dry-run is default and writes require explicit confirmation.", {
   root: external_exports.string().optional(),
   dryRun: external_exports.boolean().optional(),
   confirmWrite: external_exports.boolean().optional(),

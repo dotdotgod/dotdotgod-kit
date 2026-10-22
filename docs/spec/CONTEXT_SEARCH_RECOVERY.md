@@ -16,11 +16,11 @@ No matches mean no match for that query, not that diagnostics are absent. Partia
 - Each result is a bounded excerpt from the beginning of a chunk, not the full chunk or log. There is no pagination or complete-inspection guarantee.
 - Missing matching sources return empty results. Other punctuation-only queries remain invalid.
 - This does not enable arbitrary FTS syntax, general glob matching, or prefix wildcard queries.
-- Pi native tools, codemode nested calls, and MCP use the same shared store behavior. Permissions and exposure do not change.
+- Pi direct and codemode MCP calls use the shared store behavior. Search recovery changes neither permissions nor exposure; legacy native aliases are removed.
 
 ## Verification And Limits
 
-`packages/context/test/search-recovery.test.mjs` verifies retrieval of a middle `FAIL quota exceeded` diagnostic in long retained nonzero stderr, plus wildcard limits, filtering, expiry, ordering, and provenance. Public Pi SDK tests verify native/codemode wildcard calls and delivery of recovery guidance.
+`packages/context/test/search-recovery.test.mjs` verifies retrieval of a middle `FAIL quota exceeded` diagnostic in long retained nonzero stderr, plus wildcard limits, filtering, expiry, ordering, and provenance. Public Pi SDK tests verify direct/codemode MCP wildcard calls and namespace recovery guidance.
 
 These are deterministic integration checks, not proof that a live model always follows the guidance. The previous model evaluation remains historical; it has not been rerun for this change.
 

@@ -3,6 +3,38 @@ version: 0.6.5
 description: Project memory, isolated context tools and impact checks for Hermes CLI and messaging gateway; no Plan Mode.
 author: dotdotgod
 license: Elastic-2.0
+provides_tools:
+  - doctor
+  - context_heal
+  - index
+  - purge
+  - search
+  - session_resume
+  - stats
+  - embedding_install
+  - embedding_status
+  - execute
+  - execute_file
+  - fetch_and_index
+  - impact_status
+  - ingestion_job_cancel
+  - ingestion_job_start
+  - ingestion_job_status
+  - project_impact
+  - project_initialize
+  - project_load
+  - select_root
+provides_hooks:
+  - pre_llm_call
+  - pre_tool_call
+  - on_session_finalize
+  - on_session_reset
+  - on_session_end
+provides_skills:
+  - project-initializer
+  - project-load
+  - impact-review
+  - document-clarify
 config_schema:
   roots:
     type: dict

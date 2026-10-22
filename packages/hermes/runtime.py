@@ -120,9 +120,9 @@ class Runtime:
 
     def call_with_session(self, name, args, session):
         with self.lock:
-            if name == "dotdotgod_select_root":
+            if name == "select_root":
                 return self.select(session, args.get("label"))
-            if session.root is None and not session.parent_id and name == "dotdotgod_project_initialize":
+            if session.root is None and not session.parent_id and name == "project_initialize":
                 target = args.get("root")
                 if not isinstance(target, str) or not Path(target).is_absolute():
                     raise ValueError("Initialization without selection requires an explicit absolute root directory")
@@ -134,7 +134,7 @@ class Runtime:
                     return proxy.call(name, {**args, "root": str(root)})
                 finally:
                     proxy.close()
-            if name == "dotdotgod_project_load" and args.get("root"):
+            if name == "project_load" and args.get("root"):
                 base = session.root or self.launch_root
                 target = contained(base, args["root"])
                 if target != session.root:
@@ -143,9 +143,9 @@ class Runtime:
                 session.root = Path(self.ctx.get_config("cli_root", "") or self.launch_root).resolve(strict=True)
                 if not session.root.is_dir():
                     raise ValueError("Project root must be a directory")
-        if name == "dotdotgod_impact_status":
+        if name == "impact_status":
             return envelope({"ok": True, "pending": list(self.pending(session))})
-        if name == "dotdotgod_project_load":
+        if name == "project_load":
             if contained(session.root, args.get("root") or ".") != session.root:
                 self.select(session, str(contained(session.root, args["root"])))
             return self.load(session, args)
@@ -153,12 +153,12 @@ class Runtime:
             reason = self.check(session, name, args)
             if reason:
                 raise PermissionError(reason)
-        if name == "dotdotgod_project_impact":
+        if name == "project_impact":
             before = self.pending(session)
             paths = [os.path.relpath(contained(session.root, path), session.root) for path in args.get("paths", [])]
             args = {**args, "paths": paths}
         value = self.client(session).call(name, args)
-        if name == "dotdotgod_project_impact" and not value.get("isError") and value.get("structuredContent", {}).get("ok") is True:
+        if name == "project_impact" and not value.get("isError") and value.get("structuredContent", {}).get("ok") is True:
             with self.lock:
                 after = self.pending(session)
                 key = "impact:" + digest(str(session.root))
@@ -183,7 +183,7 @@ class Runtime:
                 return None
             if session.root is None:
                 return None
-            if tool_name == "dotdotgod_select_root":
+            if tool_name == "select_root":
                 return None
             reason = self.check(session, tool_name, args)
             if reason:
@@ -214,7 +214,7 @@ class Runtime:
                     session.root = Path(self.ctx.get_config("cli_root", "") or self.launch_root).resolve(strict=True)
         if session.root is None:
             labels = list(self.allowed(session))
-            context = "dotdotgod is inactive; ordinary host tools remain available. Select a project using dotdotgod_select_root with a configured label or absolute directory path, or initialize an explicit absolute directory with existing write confirmation. Initialization does not select a project."
+            context = "dotdotgod is inactive; ordinary host tools remain available. Select a project using select_root with a configured label or absolute directory path, or initialize an explicit absolute directory with existing write confirmation. Initialization does not select a project."
             if labels:
                 context += " Configured project labels: " + json.dumps(labels)
             return {"context": context}
@@ -222,7 +222,7 @@ class Runtime:
             parts = []
             text = user_message if isinstance(user_message, str) else " ".join(p.get("text", "") for p in user_message if isinstance(p, dict))
             if not session.loaded and not re.search(r"(?:^|\s)/?dd:no-load\b|(?:^|\s)/no-load\b", text):
-                parts.append("Call dotdotgod_project_load once with an agent-selected focus, then continue the original request. Read AGENTS.md and maintained README indexes selectively.")
+                parts.append("Call project_load once with an agent-selected focus, then continue the original request. Read AGENTS.md and maintained README indexes selectively.")
             if text.strip():
                 try:
                     expanded = self.cli(session, ["expand", str(session.root), text, "--json", "--with-impact", "--fuzzy"])
@@ -233,7 +233,7 @@ class Runtime:
                     parts.append("Reference expansion unavailable; use README routing and explicit targeted reads.")
             pending = self.pending(session)
             if pending:
-                parts.append("Impact pending: " + ", ".join(list(pending)[:8]) + ". Run dotdotgod_project_impact before broad tests or release commands.")
+                parts.append("Impact pending: " + ", ".join(list(pending)[:8]) + ". Run project_impact before broad tests or release commands.")
             return {"context": "\n\n".join(parts)} if parts else None
         except Exception as error:
             return {"context": "dotdotgod context unavailable: " + str(error) + "; do not bypass root/impact checks."}

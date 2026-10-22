@@ -20,7 +20,7 @@ Python MCP packages. No profile-wide mcp.json server declaration is installed.
 
 Configured roots map convenient labels to absolute local directories. Every
 platform may select a configured label or any existing absolute directory through
-dotdotgod_select_root. Legacy gateway_access is ignored: dotdotgod does not
+select_root. Legacy gateway_access is ignored: dotdotgod does not
 provide repository or filesystem-area authorization. Host permissions and OS
 isolation are responsible for access, including gateway deployments.
 Before selection, dotdotgod is inactive and ordinary host tools remain available
@@ -59,10 +59,10 @@ Hermes does not claim Pi's hidden TUI-message or codemode delivery mechanics.
 
 ## Context Results And Lifecycle
 
-The adapter exposes the shared 18-tool context/project surface through native
-names, plus root selection and pending impact status. Generic MCP tool names map
-to dotdotgod names; index/search/stats/doctor/purge/session resume use the
-context-prefixed native names. There are no public compatibility aliases.
+The adapter exposes the shared 19-tool context/project catalog names in the
+dotdotgod toolset, plus select_root: twenty unique native registrations. Hermes
+provides its selected-repository impact_status instead of registering the shared
+catalog entry twice. Names have no dotdotgod_ prefix or compatibility aliases.
 
 Native handlers return a JSON envelope with content and structuredContent. Shared
 MCP responses remain unchanged; native project-load uses the canonical map/query
@@ -85,7 +85,7 @@ Dirty/untracked Git file fingerprints, excluding ignored caches and local
 plan/archive bodies, determine pending impact. Durable checked fingerprints are
 shared for the selected worktree. Successful checks clear only requested paths
 whose fingerprints still match. Failure, unrequested paths and re-edits remain
-pending. dotdotgod_impact_status is read-only and does not clear state.
+pending. impact_status is read-only and does not clear state.
 
 Known release/test commands are blocked while pending; execute batches check
 inside the adapter too. Opaque execute_file and interactive process write/submit

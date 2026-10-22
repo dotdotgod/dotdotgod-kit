@@ -19,7 +19,7 @@ function payload(root, event, extra = {}) {
 }
 
 const bash = { tool_name: 'Bash', tool_input: { command: 'npm test' } };
-const load = { tool_name: 'mcp__dotdotgod_project_load', tool_input: {} };
+const load = { tool_name: 'mcp__project_load', tool_input: {} };
 
 test('hooks gate load and acknowledgement-based impact without recursion', () => {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-test-'));
@@ -36,7 +36,7 @@ test('hooks gate load and acknowledgement-based impact without recursion', () =>
     const deniedImpact = payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'pnpm test' } });
     assert.equal(deniedImpact.hookSpecificOutput.permissionDecision, 'deny');
     assert.match(deniedImpact.hookSpecificOutput.permissionDecisionReason, /project_impact/);
-    const impact = { tool_name: 'mcp__dotdotgod_project_impact', tool_input: { paths: [file] } };
+    const impact = { tool_name: 'mcp__project_impact', tool_input: { paths: [file] } };
     assert.deepEqual(payload(root, 'pretooluse', impact), {});
     payload(root, 'posttooluse', impact);
     assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'pnpm test' } }), {});
@@ -93,7 +93,7 @@ test('impact paths resolve against the canonical project root', () => {
     hook('posttooluse', { project_dir: root, cwd: nested, session_id: 'impact', tool_name: 'Write', tool_input: { file_path: 'source.ts' } });
     const verify = { tool_name: 'Bash', tool_input: { command: 'pnpm test' } };
     assert.match(hook('pretooluse', { project_dir: root, session_id: 'impact', ...verify }).hookSpecificOutput.permissionDecisionReason, /project_impact/);
-    hook('posttooluse', { project_dir: root, cwd: nested, session_id: 'impact', tool_name: 'mcp__dotdotgod_project_impact', tool_input: { paths: ['source.ts'] } });
+    hook('posttooluse', { project_dir: root, cwd: nested, session_id: 'impact', tool_name: 'mcp__project_impact', tool_input: { paths: ['source.ts'] } });
     assert.deepEqual(hook('pretooluse', { project_dir: root, session_id: 'impact', ...verify }), {});
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -142,7 +142,7 @@ test('impact posttooluse clears requested pending paths even when result reports
     writeFileSync(file, 'export const value = 1;\n');
     payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
     assert.equal(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } }).hookSpecificOutput.permissionDecision, 'deny');
-    const impact = { tool_name: 'mcp__dotdotgod_project_impact', tool_input: { paths: [file] }, tool_response: { ok: false, error: 'diagnostic failure' } };
+    const impact = { tool_name: 'mcp__project_impact', tool_input: { paths: [file] }, tool_response: { ok: false, error: 'diagnostic failure' } };
     const warning = payload(root, 'posttooluse', impact);
     assert.match(warning.hookSpecificOutput.additionalContext, /cleared pending graph impact/i);
     assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } }), {});
@@ -157,7 +157,7 @@ test('re-edit after impact acknowledgement creates a fresh pending gate', () => 
     const file = join(root, 'source.ts');
     writeFileSync(file, 'export const value = 1;\n');
     payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
-    payload(root, 'posttooluse', { tool_name: 'mcp__dotdotgod_project_impact', tool_input: { paths: [file] } });
+    payload(root, 'posttooluse', { tool_name: 'mcp__project_impact', tool_input: { paths: [file] } });
     assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'pnpm test' } }), {});
     writeFileSync(file, 'export const value = 2;\n');
     payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });

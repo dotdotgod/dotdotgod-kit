@@ -25,9 +25,9 @@ const workspace = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const expectedTools = [
   'execute', 'execute_file', 'index', 'search', 'fetch_and_index',
   'session_resume', 'ingestion_job_start', 'ingestion_job_status', 'ingestion_job_cancel',
-  'context_heal', 'stats', 'doctor', 'purge', 'dotdotgod_project_load',
-  'dotdotgod_embedding_status', 'dotdotgod_embedding_install',
-  'dotdotgod_project_impact', 'dotdotgod_project_initialize',
+  'context_heal', 'stats', 'doctor', 'purge', 'project_load',
+  'embedding_status', 'embedding_install',
+  'project_impact', 'project_initialize',
 ];
 const blockedCommands = ['npm', 'npx', 'pnpm', 'yarn', 'bun', 'curl', 'wget'];
 
@@ -139,7 +139,7 @@ function withTimeout(promise, milliseconds, label) {
 
 function assertClaudeMcpHookMatchers(packageRoot) {
   const config = JSON.parse(readFileSync(join(packageRoot, 'hooks', 'hooks.json'), 'utf8'));
-  const pluginQualifiedLoad = 'mcp__plugin_dotdotgod_dotdotgod-context__dotdotgod_project_load';
+  const pluginQualifiedLoad = 'mcp__plugin_dotdotgod_dotdotgod-context__project_load';
   for (const event of ['PreToolUse', 'PostToolUse']) {
     const matcher = config.hooks[event]?.[0]?.matcher;
     assert.equal(typeof matcher, 'string', `${event} must declare a matcher`);
@@ -177,7 +177,7 @@ for (const adapter of ['claude-code', 'codex']) {
     assert.equal(lines.length, 1, `hook must emit one JSON line: ${started.stdout}`);
     const hookOutput = JSON.parse(lines[0]);
     assert.equal(hookOutput.hookSpecificOutput.hookEventName, 'SessionStart');
-    assert.match(hookOutput.hookSpecificOutput.additionalContext, /dotdotgod_project_load/u);
+    assert.match(hookOutput.hookSpecificOutput.additionalContext, /project_load/u);
     assert.equal(existsSync(join(project, '.dotdotgod', 'context', 'runtime', `packed-${adapter}.json`)), true);
     const substantive = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'Bash', tool_input: { command: 'git status --short' } });
     const deniedBeforeLoad = JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout);
@@ -202,7 +202,7 @@ for (const adapter of ['claude-code', 'codex']) {
       const listed = await withTimeout(client.listTools(), 10_000, `${adapter} MCP listTools`);
       assert.deepEqual(listed.tools.map((tool) => tool.name).sort(), [...expectedTools].sort());
       const failed = await withTimeout(client.callTool({
-        name: 'dotdotgod_project_load',
+        name: 'project_load',
         arguments: { root: '.', focus: 'x'.repeat(501), limit: 3, maxDepth: 2 },
       }), 10_000, `${adapter} rejected project load`);
       assert.equal(failed.isError, true);
@@ -213,7 +213,7 @@ for (const adapter of ['claude-code', 'codex']) {
       assert.equal(JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout).hookSpecificOutput.permissionDecision, 'deny');
 
       const loaded = await withTimeout(client.callTool({
-        name: 'dotdotgod_project_load',
+        name: 'project_load',
         arguments: { root: '.', focus: 'packaged focused project memory', limit: 3, maxDepth: 2 },
       }), 10_000, `${adapter} focused project load`);
       assert.equal(loaded.isError, undefined, JSON.stringify(loaded.structuredContent));
@@ -225,11 +225,11 @@ for (const adapter of ['claude-code', 'codex']) {
       assert.ok(!JSON.stringify(loaded.structuredContent.query.results).includes('implementation_only_marker'));
       assert.equal(loaded.structuredContent.vectorUnavailable.code, 'EMBEDDING_RUNTIME_MISSING');
       assert.equal(loaded.structuredContent.vectorUnavailable.recovery.requiresConfirmation, true);
-      assert.equal(loaded.structuredContent.vectorUnavailable.recovery.installTool, 'dotdotgod_embedding_install');
+      assert.equal(loaded.structuredContent.vectorUnavailable.recovery.installTool, 'embedding_install');
       const serializedLoad = JSON.stringify(loaded);
       assert.doesNotMatch(serializedLoad, /ERR_MODULE_NOT_FOUND|plugins\/cache|package_json_reader/u);
 
-      const completedLoad = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'mcp__plugin_dotdotgod_dotdotgod-context__dotdotgod_project_load', tool_input: { root: '.', focus: 'packaged focused project memory' } });
+      const completedLoad = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'mcp__plugin_dotdotgod_dotdotgod-context__project_load', tool_input: { root: '.', focus: 'packaged focused project memory' } });
       assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', completedLoad, { cwd: project, env }).stdout), {});
       assert.deepEqual(JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout), {});
 

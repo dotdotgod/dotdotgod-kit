@@ -55,7 +55,7 @@ def gate(name, args, pending):
         return None
     opaque = name.endswith("execute_file") or (name == "process" and args.get("action") in {"write", "submit"})
     if opaque or any(GATE.search(text) for text in commands(name, args)):
-        return "Run dotdotgod_project_impact for pending paths before verification/commit/push/publish: " + ", ".join(sorted(pending)[:8])
+        return "Run project_impact for pending paths before verification/commit/push/publish: " + ", ".join(sorted(pending)[:8])
     return None
 
 

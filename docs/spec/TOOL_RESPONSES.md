@@ -2,16 +2,16 @@
 
 ## Contract
 
-Non-graph-impact dotdotgod tool text is Markdown across Pi and both MCP adapters.
-Pi details preserve original data; Pi structuredContent and output schemas expose
-JSON-compatible data directly to codemode. MCP structuredContent preserves original
-programmatic fields, with existing isError behavior for failures.
+Non-graph-impact shared tool text is Markdown across MCP adapters.
+MCP structuredContent preserves original programmatic fields, with existing
+isError behavior for failures. Pi's host MCP tools expose the complete MCP envelope
+through their structuredContent to codemode; transcript details are host metadata.
 
-Impact-status participates. Native graph-impact and MCP project-impact retain
-existing text and metadata contracts. Already-readable native project-load text
-retains its guidance and lifecycle behavior.
+Impact-status participates. MCP project-impact retains its text and metadata
+contract. Pi has no native graph-impact/status forwarding tools. Native
+project_memory_load retains compact Load text, guidance, and lifecycle behavior.
 
-Inputs, tool names, permissions, confirmations, and operation limits do not change.
+Presentation does not change inputs, permissions, confirmations, or operation limits.
 No new Markdown size budget or format-selection argument is introduced.
 Structured data retains all original fields, result ordering, null values, and
 status flags. Markdown is a summary: short metadata values appear inline; empty
@@ -26,14 +26,15 @@ shortened or newly capped. Command and retrieved text use payload-safe fenced
 blocks; retrieved data is not authoritative, and partial evidence or no matches
 must not be interpreted as complete inspection.
 
-Pi codemode callers access objects directly; legacy JSON.parse scripts must migrate
-and existing sessions must reload. MCP callers read structuredContent, not Markdown.
+Pi/OpenCode MCP callers inspect isError and structuredContent on the MCP envelope,
+not Markdown. Individual shared tool names are unprefixed; Pi forwarding aliases
+are removed. Reload existing sessions after upgrading.
 Hermes native wrappers return a JSON envelope containing content and
 structuredContent, not Pi codemode objects; its project-load map/query result is
 host-specific. Shared context MCP payloads and graph-impact presentation remain
 unchanged. See [HERMES_ADAPTER.md](HERMES_ADAPTER.md).
-Graph-impact remains a text-returning call in native codemode. Host policy may
-expose structured fields as well; universal JSON invisibility is not guaranteed.
+Pi project-impact also returns the MCP envelope in codemode; tool validation or
+permission failures may reject separately from server-reported isError responses.
 
 ## Verification
 
@@ -42,8 +43,8 @@ expose structured fields as well; universal JSON invisibility is not guaranteed.
   immutability, smaller representative execution text than JSON, and absence of
   new presentation limits. Character-size comparisons are not token measurements.
 - MCP integration verifies Markdown text and separate structured content.
-- Public Pi SDK tests prove direct native object access and unchanged graph-impact
-  text in the same real codemode script.
+- Public Pi SDK tests prove native structured-value access and raw MCP envelopes
+  in the same real codemode script, including schema-failure rejection.
 
 
 

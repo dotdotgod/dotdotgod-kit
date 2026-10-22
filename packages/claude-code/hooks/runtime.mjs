@@ -132,19 +132,19 @@ function runHook(event) {
     if (!context) return {};
     state.loadRequired = true;
     writeState(context.path, state);
-    return { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: "Dotdotgod project memory has not been loaded for this session. Before substantive shell or write work, call dotdotgod_project_load once with a concise task-specific focus." } };
+    return { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: "Dotdotgod project memory has not been loaded for this session. Before substantive shell or write work, call project_load once with a concise task-specific focus." } };
   }
   if (event === "pretooluse") {
-    if (mcpTool(name, "dotdotgod_project_load") || mcpTool(name, "dotdotgod_project_impact")) return {};
-    if (state.loadRequired && isSubstantive(name)) return deny("Project memory is required first. Call dotdotgod_project_load with the current project root and a concise task-specific focus, then retry this tool.");
+    if (mcpTool(name, "project_load") || mcpTool(name, "project_impact")) return {};
+    if (state.loadRequired && isSubstantive(name)) return deny("Project memory is required first. Call project_load with the current project root and a concise task-specific focus, then retry this tool.");
     const pendingPaths = Object.keys(state.pending);
-    if (pendingPaths.length && isImpactGate(name, input)) return deny(`Graph impact is pending. Call dotdotgod_project_impact with paths=${JSON.stringify(pendingPaths)} and then retry this tool.`);
+    if (pendingPaths.length && isImpactGate(name, input)) return deny(`Graph impact is pending. Call project_impact with paths=${JSON.stringify(pendingPaths)} and then retry this tool.`);
     return {};
   }
   if (event === "posttooluse") {
     if (!context) return {};
-    if (mcpTool(name, "dotdotgod_project_load")) state.loadRequired = false;
-    else if (mcpTool(name, "dotdotgod_project_impact")) {
+    if (mcpTool(name, "project_load")) state.loadRequired = false;
+    else if (mcpTool(name, "project_impact")) {
       const checked = toolInput(input).paths;
       let cleared = 0;
       if (Array.isArray(checked)) for (const path of checked) {
@@ -155,7 +155,7 @@ function runHook(event) {
         }
       }
       writeState(context.path, state);
-      if (cleared > 0 && hasFailedToolResult(input)) return { hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: `dotdotgod_project_impact reported a failure, but dotdotgod cleared pending graph impact for ${cleared} requested path(s) to avoid a blocking retry loop. Review the impact error before broad operations.` } };
+      if (cleared > 0 && hasFailedToolResult(input)) return { hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: `project_impact reported a failure, but dotdotgod cleared pending graph impact for ${cleared} requested path(s) to avoid a blocking retry loop. Review the impact error before broad operations.` } };
       return {};
     } else if (/^(Edit|Write|apply_patch)$/i.test(name)) {
       const path = changedPath(input, context.root);

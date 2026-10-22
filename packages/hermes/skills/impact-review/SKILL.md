@@ -7,7 +7,7 @@ description: Impact Review for dotdotgod project memory in Hermes CLI and messag
 
 # Impact Review
 
-Use the operator-authorized selected repository. Prefer the native dotdotgod_project_initialize, dotdotgod_project_load and dotdotgod_project_impact tools for their respective workflows. Context tools use dotdotgod_ names; results contain content and structuredContent, not Pi codemode objects. Do not bypass host permissions or pending impact gates. Hermes native delegate_task handles delegation; this adapter has no Plan Mode.
+Use the operator-authorized selected repository. Prefer project_initialize, project_load and project_impact from the dotdotgod toolset for their respective workflows. Context tools use the shared MCP catalog names without adapter aliases; inspect content, structuredContent and isError. Do not bypass host permissions or pending impact gates. Hermes native delegate_task handles delegation; this adapter has no Plan Mode.
 
 ## Goal
 

@@ -52,7 +52,7 @@ Missing parents and changed senders do not deny tools. Impact interception needs
 known project state; nested host calls omitting it cannot be attributed reliably.
 
 Any host session may select a configured label or an existing absolute directory
-using dotdotgod_select_root. Legacy gateway_access settings are ignored.
+using select_root. Legacy gateway_access settings are ignored.
 Dotdotgod imposes no filesystem-area restrictions. Gateway operators must rely
 on host permissions and OS isolation, not plugin labels, for access control.
 CLI starts at the launch directory; optional cli_root sets its repository.
@@ -73,15 +73,18 @@ project data; context scope/session filters are not access-control lists.
 
 - Generated project-initializer, project-load, impact-review and document-clarify
   skills from canonical shared sources.
-- Automatic load-required instructions; call dotdotgod_project_load once with an
+- Automatic load-required instructions; call project_load once with an
   agent-selected focus and continue the original request. Explicit load uses the
   same tool/skill; full map depth is 5, focused map depth 3 with up to 30 query hits.
 - `dd:no-load` in a request skips only that request's automatic load instruction.
 - Explicit/fuzzy reference evidence via the bundled CLI; no full auto-validation.
-- Native dotdotgod execution/context/operations tools backed by per-session MCP.
+- Native execution/context/operations tools backed by per-session MCP, with shared
+  unprefixed catalog names in the dotdotgod toolset and no forwarding aliases.
   They return a JSON envelope with content and structuredContent. Do not parse the
-  Markdown content as JSON or assume Pi's codemode object-return contract.
-- dotdotgod_select_root and dotdotgod_impact_status are adapter-local tools.
+  Markdown content as JSON or assume an unwrapped service-object contract.
+- select_root and impact_status are adapter-local tools; the shared impact_status
+  entry is not registered twice. There are twenty unique tools. Reload the plugin
+  after upgrading and update saved calls; old prefixed names are unsupported.
 - Pending impact is derived from Git dirty/untracked fingerprints and durable
   checked fingerprints. Successful checks clear only checked, unchanged paths.
   Source edits reopen pending state; reads and impact checks remain available.

@@ -599,7 +599,7 @@
     }
   },
   {
-    "name": "dotdotgod_project_load",
+    "name": "project_load",
     "description": "Load a bounded documentation map and optional semantic project query.",
     "inputSchema": {
       "type": "object",
@@ -633,7 +633,7 @@
     }
   },
   {
-    "name": "dotdotgod_embedding_status",
+    "name": "embedding_status",
     "description": "Inspect the optional persistent embedding runtime without installing or contacting a registry.",
     "inputSchema": {
       "type": "object",
@@ -653,7 +653,7 @@
     }
   },
   {
-    "name": "dotdotgod_embedding_install",
+    "name": "embedding_install",
     "description": "After explicit user approval, install the fixed optional embedding runtime persistently. Uses network and dependency install scripts.",
     "inputSchema": {
       "type": "object",
@@ -681,7 +681,7 @@
     }
   },
   {
-    "name": "dotdotgod_project_impact",
+    "name": "project_impact",
     "description": "Run bounded graph impact for up to 20 changed paths.",
     "inputSchema": {
       "type": "object",
@@ -712,7 +712,7 @@
     }
   },
   {
-    "name": "dotdotgod_project_initialize",
+    "name": "project_initialize",
     "description": "Initialize project memory; dry-run is default and writes require explicit confirmation.",
     "inputSchema": {
       "type": "object",

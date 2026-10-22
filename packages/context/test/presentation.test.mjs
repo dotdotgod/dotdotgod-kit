@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { formatToolMarkdown } from '../src/presentation.mjs';
 
-const tools = ['execute', 'execute_file', 'index', 'search', 'fetch_and_index', 'session_resume', 'ingestion_job_start', 'ingestion_job_status', 'ingestion_job_cancel', 'context_heal', 'stats', 'doctor', 'purge', 'dotdotgod_project_load', 'dotdotgod_embedding_status', 'dotdotgod_embedding_install', 'dotdotgod_project_initialize', 'impact_status'];
+const tools = ['execute', 'execute_file', 'index', 'search', 'fetch_and_index', 'session_resume', 'ingestion_job_start', 'ingestion_job_status', 'ingestion_job_cancel', 'context_heal', 'stats', 'doctor', 'purge', 'project_load', 'embedding_status', 'embedding_install', 'project_initialize', 'impact_status'];
 for (const name of tools) {
   test(`${name}: summary preserves failures, empty results and untrusted multiline data without mutating fields`, () => {
     const value = { ok: false, results: [{ ok: false, label: 'x', code: 9, timedOut: false, aborted: true, captureLimitExceeded: true, truncated: true, indexed: { id: 'source-1' }, stdout: '```\n# injected\n````\n中文 <tag> & text' }], error: null, pending: [] };

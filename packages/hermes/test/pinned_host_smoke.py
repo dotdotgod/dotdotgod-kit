@@ -54,47 +54,47 @@ with tempfile.TemporaryDirectory(prefix="dd-hermes-host-") as tmp:
 
     try:
         hook("pre_llm_call", session_id="cli", platform="cli", sender_id="", user_message="review", turn_id="1")
-        cli = call("dotdotgod_context_doctor", {}, "cli")
+        cli = call("doctor", {}, "cli")
         assert cli["structuredContent"]["ok"], cli
         inactive = hook("pre_llm_call", session_id="unbound", platform="telegram", sender_id="no-grants", user_message="search", turn_id="1")
         assert all("Select a repository" not in item.get("context", "") for item in inactive), inactive
         for name in ("web_search", "web_extract", "skill_view", "tool_describe", "terminal", "read_file", "write_file"):
             result = hook("pre_tool_call", session_id="unbound", tool_name=name, args={"command": "git push", "path": "/tmp/outside"})
             assert all(item.get("action") not in {"block", "modify"} for item in result), result
-        assert call("dotdotgod_context_doctor", {}, "unbound")["structuredContent"]["ok"]
-        initialized = call("dotdotgod_project_initialize", {"root": roots["a"]}, "unbound")
+        assert call("doctor", {}, "unbound")["structuredContent"]["ok"]
+        initialized = call("project_initialize", {"root": roots["a"]}, "unbound")
         assert initialized["structuredContent"]["ok"], initialized
-        assert call("dotdotgod_context_doctor", {}, "unbound")["structuredContent"]["ok"]
+        assert call("doctor", {}, "unbound")["structuredContent"]["ok"]
         nested = hook("pre_tool_call", tool_name="read_file", args={"path": "relative.txt"}, task_id="nested")
         assert all(item.get("action") not in {"block", "modify"} for item in nested), nested
-        anonymous = json.loads(registry.dispatch("dotdotgod_project_load", {"root": roots["b"]}, scope=manager.scope_key))
+        anonymous = json.loads(registry.dispatch("project_load", {"root": roots["b"]}, scope=manager.scope_key))
         assert anonymous["structuredContent"]["root"] == roots["b"], anonymous
-        assert call("dotdotgod_select_root", {"label": roots["a"]}, "unbound")["structuredContent"]["ok"]
+        assert call("select_root", {"label": roots["a"]}, "unbound")["structuredContent"]["ok"]
         for sid, sender, label in [("A", "alice", "a"), ("B", "bob", "b")]:
             prompt = hook("pre_llm_call", session_id=sid, platform="telegram", sender_id=sender, user_message="review", turn_id="1")
             assert prompt and "Configured project labels" in prompt[0]["context"], prompt
-            result = call("dotdotgod_select_root", {"label": label}, sid)
+            result = call("select_root", {"label": label}, sid)
             assert result["structuredContent"]["ok"], result
-        assert call("dotdotgod_select_root", {"label": "b"}, "A")["structuredContent"]["ok"]
-        assert call("dotdotgod_select_root", {"label": "a"}, "A")["structuredContent"]["ok"]
+        assert call("select_root", {"label": "b"}, "A")["structuredContent"]["ok"]
+        assert call("select_root", {"label": "a"}, "A")["structuredContent"]["ok"]
         with ThreadPoolExecutor() as pool:
-            a = pool.submit(call, "dotdotgod_context_stats", {}, "A")
-            b = pool.submit(call, "dotdotgod_context_stats", {}, "B")
+            a = pool.submit(call, "stats", {}, "A")
+            b = pool.submit(call, "stats", {}, "B")
             values = [a.result(), b.result()]
         ids = [v["structuredContent"]["sessionId"] for v in values]
         assert ids[0] != ids[1]
-        call("dotdotgod_context_session_resume", {"sessionId": "own-context"}, "A")
-        assert call("dotdotgod_context_stats", {}, "B")["structuredContent"]["sessionId"] == ids[1]
+        call("session_resume", {"sessionId": "own-context"}, "A")
+        assert call("stats", {}, "B")["structuredContent"]["sessionId"] == ids[1]
         hook("pre_llm_call", session_id="child", platform="subagent", parent_session_id="A", user_message="review")
-        assert call("dotdotgod_context_doctor", {}, "child")["structuredContent"]["ok"]
-        load = call("dotdotgod_project_load", {}, "A")
+        assert call("doctor", {}, "child")["structuredContent"]["ok"]
+        load = call("project_load", {}, "A")
         assert load["structuredContent"]["ok"], load
         again = hook("pre_llm_call", session_id="A", platform="telegram", sender_id="alice", user_message="continue", turn_id="2")
-        assert all("Call dotdotgod_project_load once" not in item.get("context", "") for item in again)
+        assert all("Call project_load once" not in item.get("context", "") for item in again)
         Path(roots["a"], "src/api.ts").write_text("changed\n")
         blocked = hook("pre_tool_call", session_id="A", tool_name="terminal", args={"command": "git push"}, task_id="A")
         assert any(item.get("action") == "block" for item in blocked), blocked
-        impact = call("dotdotgod_project_impact", {"paths": ["src/api.ts"]}, "A")
+        impact = call("project_impact", {"paths": ["src/api.ts"]}, "A")
         assert impact["structuredContent"]["ok"], impact
         allowed = hook("pre_tool_call", session_id="A", tool_name="terminal", args={"command": "git push"}, task_id="A")
         assert all(item.get("action") != "block" for item in allowed), allowed

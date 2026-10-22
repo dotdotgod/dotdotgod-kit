@@ -47,7 +47,7 @@ function embeddingRuntimeRecovery() {
   return {
     code: 'EMBEDDING_RUNTIME_MISSING',
     message: 'Semantic vectors need an optional runtime; continue with keyword/map retrieval or ask before installation.',
-    recovery: { kind: 'embedding-runtime-install', requiresConfirmation: true, statusTool: 'dotdotgod_embedding_status', installTool: 'dotdotgod_embedding_install', cliCommand: 'dotdotgod embedding install --confirm' },
+    recovery: { kind: 'embedding-runtime-install', requiresConfirmation: true, statusTool: 'embedding_status', installTool: 'embedding_install', cliCommand: 'dotdotgod embedding install --confirm' },
   };
 }
 

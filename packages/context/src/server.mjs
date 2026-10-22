@@ -33,7 +33,7 @@ const commandSchema = {
 };
 
 function success(value, name) {
-  const text = name === 'dotdotgod_project_impact' ? JSON.stringify(value, null, 2) : formatToolMarkdown(name, value);
+  const text = name === 'project_impact' ? JSON.stringify(value, null, 2) : formatToolMarkdown(name, value);
   return { content: [{ type: 'text', text }], structuredContent: value };
 }
 function failure(error, name) {
@@ -99,15 +99,15 @@ register('doctor', 'Run local read-only Node.js, SQLite FTS5, storage, schema, a
 register('purge', 'Permanently delete one explicit context scope, session, or source.', {
   confirm: z.literal(true), scope: scopeSchema, sessionId: z.string().optional(), sourceId: z.string().optional(),
 }, (input) => ({ ok: true, ...getStore().purge(input) }), { destructiveHint: true });
-register('dotdotgod_project_load', 'Load a bounded documentation map and optional semantic project query.', {
+register('project_load', 'Load a bounded documentation map and optional semantic project query.', {
   root: z.string().optional(), focus: z.string().max(500).optional(), limit: z.number().int().min(1).max(30).optional(), maxDepth: z.number().int().min(1).max(5).optional(),
 }, (input) => projectLoad(projectInput(input)), { readOnlyHint: true });
-register('dotdotgod_embedding_status', 'Inspect the optional persistent embedding runtime without installing or contacting a registry.', { root: z.string().optional() }, (input) => projectEmbeddingStatus(projectInput(input)), { readOnlyHint: true });
-register('dotdotgod_embedding_install', 'After explicit user approval, install the fixed optional embedding runtime persistently. Uses network and dependency install scripts.', { root: z.string().optional(), confirm: z.literal(true) }, (input) => projectEmbeddingInstall(projectInput(input)), { destructiveHint: true, openWorldHint: true });
-register('dotdotgod_project_impact', 'Run bounded graph impact for up to 20 changed paths.', {
+register('embedding_status', 'Inspect the optional persistent embedding runtime without installing or contacting a registry.', { root: z.string().optional() }, (input) => projectEmbeddingStatus(projectInput(input)), { readOnlyHint: true });
+register('embedding_install', 'After explicit user approval, install the fixed optional embedding runtime persistently. Uses network and dependency install scripts.', { root: z.string().optional(), confirm: z.literal(true) }, (input) => projectEmbeddingInstall(projectInput(input)), { destructiveHint: true, openWorldHint: true });
+register('project_impact', 'Run bounded graph impact for up to 20 changed paths.', {
   root: z.string().optional(), paths: z.array(z.string()).min(1).max(20),
 }, (input) => projectImpact(projectInput(input)), { readOnlyHint: true });
-register('dotdotgod_project_initialize', 'Initialize project memory; dry-run is default and writes require explicit confirmation.', {
+register('project_initialize', 'Initialize project memory; dry-run is default and writes require explicit confirmation.', {
   root: z.string().optional(), dryRun: z.boolean().optional(), confirmWrite: z.boolean().optional(), projectName: z.string().optional(), template: z.string().optional(), dotdotSetting: z.boolean().optional(),
 }, (input) => projectInitialize(projectInput(input)), { destructiveHint: true });
 

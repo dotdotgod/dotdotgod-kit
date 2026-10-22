@@ -4,12 +4,6 @@ from pathlib import Path
 
 from .runtime import Runtime
 
-NAMES = {
-    "index": "dotdotgod_context_index", "search": "dotdotgod_context_search",
-    "stats": "dotdotgod_context_stats", "doctor": "dotdotgod_context_doctor",
-    "purge": "dotdotgod_context_purge", "session_resume": "dotdotgod_context_session_resume",
-}
-
 
 def register(ctx):
     runtime = Runtime(ctx)
@@ -18,7 +12,9 @@ def register(ctx):
     tools = json.loads((Path(__file__).parent / "mcp" / "tools.json").read_text())
     for tool in tools:
         remote = tool["name"]
-        name = NAMES.get(remote, remote if remote.startswith("dotdotgod_") else "dotdotgod_" + remote)
+        name = remote
+        if name == "impact_status":
+            continue  # Hermes owns its selected-repository impact status below.
 
         def handle(args, session_id="", _remote=remote, **kwargs):
             try:
@@ -31,8 +27,8 @@ def register(ctx):
         }, handler=handle, description=tool["description"])
 
     for name, schema, description in [
-        ("dotdotgod_select_root", {"type": "object", "properties": {"label": {"type": "string"}}, "required": ["label"], "additionalProperties": False}, "Select a project for this host session using a configured label or absolute directory path."),
-        ("dotdotgod_impact_status", {"type": "object", "properties": {}, "additionalProperties": False}, "Read pending impact paths for the selected repository; does not clear them."),
+        ("select_root", {"type": "object", "properties": {"label": {"type": "string"}}, "required": ["label"], "additionalProperties": False}, "Select a project for this host session using a configured label or absolute directory path."),
+        ("impact_status", {"type": "object", "properties": {}, "additionalProperties": False}, "Read pending impact paths for the selected repository; does not clear them."),
     ]:
         def handle_local(args, session_id="", _name=name, **kwargs):
             try:
