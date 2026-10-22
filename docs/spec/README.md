@@ -29,6 +29,8 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 
 ## Index
 
+- `NATIVE_PLAN_STORAGE.md`: opt-in native plan storage and host permission boundaries.
+
 - `OPENCODE_ADAPTER.md`: OpenCode V2 native planning, MCP and advisory impact contract.
 
 - `ADVISORY_IMPACT.md`: shared host-session pending revisions and successful review acknowledgement.

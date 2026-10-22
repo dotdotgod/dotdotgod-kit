@@ -4,6 +4,8 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 
 ## Index
 
+- `NATIVE_PLAN_STORAGE.md`: opt-in native plan settings and actual host verification.
+
 - `OPENCODE_ADAPTER.md`: OpenCode native plan, registry, packaged MCP and advisory impact checks.
 
 - `REFERENCE_SCOPE_VALIDATION.md`: reference extraction, scope combinations, layout examples, and traceability isolation regressions.

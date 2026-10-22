@@ -1,5 +1,7 @@
 # Architecture
 
+- `NATIVE_PLAN_INTEGRATION.md`: native planning settings and permission boundaries.
+
 Use this area for architecture decisions, code conventions, module boundaries, data flow notes, infrastructure/runtime dependencies, integration boundaries, and migration design.
 
 ## Index

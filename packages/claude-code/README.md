@@ -76,13 +76,23 @@ Projects can customize memory roles with `memory.areas`, select traceability-enf
 
 ## Bundled MCP And Hooks
 
-The plugin starts a local stdio MCP server. It exposes `execute` and `execute_file`; context index, search, fetch, session resume, durable ingestion-job lifecycle, explicit healing, stats, doctor, and purge tools; plus `project_load`, `project_impact`, and `project_initialize`.
+The plugin starts a local stdio MCP server. It exposes `execute` and `execute_file`; context index, search, fetch, session resume, durable ingestion-job lifecycle, explicit healing, stats, doctor, and purge tools; plus `project_load`, `project_impact`, `impact_status`, `project_initialize`, `embedding_status`, and confirmation-gated `embedding_install`. Individual names have no `dotdotgod_` prefix; discover the host-qualified names. Reload existing sessions after upgrading; legacy names are not aliases.
 
 Dotdotgod execution tools share a 10 MiB stdout/stderr capture ceiling per command. Crossing that ceiling terminates the child process and reports `captureLimitExceeded`; direct stdout and stderr excerpts are each capped at 1 MiB. Their child environments preserve compatibility-oriented inheritance after filtering runtime injection variables; this reports filtered names without values but does not isolate ordinary inherited credentials. Large output is indexed before retrieval in the ignored project-local `.dotdotgod/context/context.sqlite` FTS5 store, and searches return bounded excerpts. The store uses WAL, a bounded busy timeout, and transactional source replacement, expiry, and purge. Structural Markdown/JSON chunks, bounded typo-tolerant trigram candidates, reciprocal-rank fusion, and title/path/proximity signals improve retrieval while provenance and `instructionAuthority: "none"` identify retrieved text as non-authoritative data.
 
 The MCP `index` tool accepts files or explicitly requested bounded directories, including external paths, with deterministic traversal, configurable resource limits, explicit extension/path exclusions, and symlinks skipped by default. These capture and retrieval rules apply when Claude calls the dotdotgod MCP tools; Claude Code's built-in Bash tool keeps its native behavior. URL indexing performs application-level HTTP(S), DNS/address, connected-peer, redirect, and byte-limit validation. Accepted HTML is normalized as bounded untrusted text without browser rendering, JavaScript, subresource loading, or link following by default. The server bundles no browser renderer, so browser opt-in fails unless a host injects that capability. These controls are not a network sandbox or complete prompt-injection prevention. See the [`@dotdotgod/context` npm package](https://www.npmjs.com/package/@dotdotgod/context), its [GitHub README](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/context), and the [maintained execution contract](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md) for the complete runtime behavior.
 
 Bundled hooks mark project load as required at session start, record successful source/config edits, and deny broad verification or handoff commands until matching graph impact succeeds. Denial asks Claude to call the required MCP tool and retry; hooks do not silently change one tool type into another. See [`hooks/README.md`](https://github.com/dotdotgod/dotdotgod-kit/blob/main/packages/claude-code/hooks/README.md) for lifecycle and trust boundaries.
+
+## Native Plan Directory
+
+After opting in, run `dotdotgod init . --claude-plans --dry-run`, then repeat
+without `--dry-run` to add project `.claude/settings.json` `plansDirectory`.
+Use `node <plugin>/mcp/cli.mjs init . --claude-plans` if the CLI is unavailable.
+Existing values and other settings are preserved; global settings and permissions
+are untouched. Native filenames remain Claude Code-owned, while shared task plans
+use `docs/plan/<task-slug>/README.md` when the mode permits. No Mods are required.
+Actual native storage was verified on Claude Code 2.1.308 with an offline fixture.
 
 ## Local Development
 

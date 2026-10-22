@@ -90,7 +90,12 @@ function toolInput(input) {
   return input.tool_input || input.toolInput || {};
 }
 function mcpTool(name, suffix) {
-  return name === suffix || name.endsWith(`__${suffix}`) || name.endsWith(`_${suffix}`);
+  return name === suffix || [
+    "mcp__dotdotgod_context__",
+    "mcp__dotdotgod-context__",
+    "mcp__plugin_dotdotgod_dotdotgod-context__",
+    "mcp__plugin_dotdotgod_dotdotgod_context__"
+  ].some((prefix) => name === `${prefix}${suffix}`);
 }
 function deny(reason) {
   return { hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason } };
@@ -110,6 +115,16 @@ function changedPath(input, root) {
   const value = toolInput(input);
   const path = value.file_path || value.path;
   return normalizeProjectPath(root, path);
+}
+function isPlanDocument(root, path) {
+  let documentationRoot = "docs";
+  try {
+    const config = JSON.parse(readFileSync(join(root, "dotdotgod.config.json"), "utf8"));
+    if (typeof config.documentation?.root === "string") documentationRoot = config.documentation.root;
+  } catch {
+  }
+  const plan = normalizeProjectPath(root, join(documentationRoot, "plan"));
+  return plan && isInsideRoot(plan, path) && /\.md$/i.test(path);
 }
 function hasFailedToolResult(input) {
   const response = input.tool_response || input.toolResponse || input.tool_result || input.toolResult || input.result;
@@ -132,13 +147,13 @@ function runHook(event) {
     if (!context) return {};
     state.loadRequired = true;
     writeState(context.path, state);
-    return { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: "Dotdotgod project memory has not been loaded for this session. Before substantive shell or write work, call project_load once with a concise task-specific focus." } };
+    return { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: "Dotdotgod project memory has not been loaded for this session. Before substantive shell or write work, call project_load from the dotdotgod-context MCP server once with a concise task-specific focus." } };
   }
   if (event === "pretooluse") {
     if (mcpTool(name, "project_load") || mcpTool(name, "project_impact")) return {};
-    if (state.loadRequired && isSubstantive(name)) return deny("Project memory is required first. Call project_load with the current project root and a concise task-specific focus, then retry this tool.");
+    if (state.loadRequired && isSubstantive(name)) return deny("Project memory is required first. Call project_load from the dotdotgod-context MCP server with the current project root and a concise task-specific focus, then retry this tool.");
     const pendingPaths = Object.keys(state.pending);
-    if (pendingPaths.length && isImpactGate(name, input)) return deny(`Graph impact is pending. Call project_impact with paths=${JSON.stringify(pendingPaths)} and then retry this tool.`);
+    if (pendingPaths.length && isImpactGate(name, input)) return deny(`Graph impact is pending. Call project_impact from the dotdotgod-context MCP server with paths=${JSON.stringify(pendingPaths)} and then retry this tool.`);
     return {};
   }
   if (event === "posttooluse") {
@@ -159,7 +174,7 @@ function runHook(event) {
       return {};
     } else if (/^(Edit|Write|apply_patch)$/i.test(name)) {
       const path = changedPath(input, context.root);
-      if (path) state.pending[path] = fileHash(path);
+      if (path && !isPlanDocument(context.root, path)) state.pending[path] = fileHash(path);
     }
     writeState(context.path, state);
     return {};

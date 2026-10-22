@@ -1,6 +1,6 @@
 ---
 description: Initialize dotdotgod project memory and config
-argument-hint: [project-root] [--dotdot-setting] [--dry-run]
+argument-hint: [project-root] [--dotdot-setting] [--claude-plans] [--dry-run]
 allowed-tools: [Read, Glob, Grep, Bash, Write, Edit]
 ---
 
@@ -38,3 +38,8 @@ Create a non-destructive dotdotgod baseline with canonical agent instructions, t
 3. The POSIX fallback supports bundled templates only. If a custom template was selected and the CLI is unavailable, stop and explain that custom templates require the CLI; do not silently substitute another template.
 4. Validate the initialized project with `dotdotgod validate <project-root>` when available.
 5. Report created and skipped files, the selected template, validation failures, and unresolved instruction conflicts.
+
+
+## Native Plan Storage
+
+Only after the user opts in, add `--claude-plans` to the CLI initialization command. It adds project-local `plansDirectory` without replacing an existing value or changing permissions. Preview with `--dry-run`. The shell fallback does not support this option: use the bundled CLI at `$CLAUDE_PLUGIN_ROOT/mcp/cli.mjs` instead. Native file names remain Claude Code-owned; shared task plans still use task directories and README.md.

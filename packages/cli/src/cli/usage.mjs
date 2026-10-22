@@ -11,9 +11,10 @@ export function commandUsage(command = 'root') {
   dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]`;
     case 'init':
       return `Usage:
-  dotdotgod init <root> [--project-name NAME] [--template NAME] [--documentation-root PATH] [--dotdot-setting] [--dry-run] [--json]
+  dotdotgod init <root> [--project-name NAME] [--template NAME] [--documentation-root PATH] [--dotdot-setting] [--claude-plans] [--dry-run] [--json]
 
-Create AGENTS.md, agent entrypoints, docs indexes, a project config from an initialization template, and local memory gitignore entries.`;
+Create AGENTS.md, agent entrypoints, docs indexes, a project config from an initialization template, and local memory gitignore entries.
+Use --claude-plans only after opting into project-local native plan storage; existing Claude settings are preserved.`;
     case 'index':
       return `Usage:
   dotdotgod index <root> [--json]`;

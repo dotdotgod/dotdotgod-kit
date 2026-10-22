@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'no
 import { basename, dirname, join, resolve } from 'node:path';
 import { builtInTemplateData, builtInTemplateScaffold, resolveInitializationTemplate } from './config/templates.mjs';
 import { isValidDocumentationRoot, normalizeDocumentationRoot, readMemoryConfig } from './memory/config.mjs';
+import { prepareClaudePlans, applyClaudePlans } from './claude-plans.mjs';
 
 function action(status, path, extra = {}) {
   return { status, path, ...extra };
@@ -19,6 +20,7 @@ function parseInitOptions(argv) {
     if (arg === '--json') options.json = true;
     else if (arg === '--dotdot-setting') options.dotdotSetting = true;
     else if (arg === '--dry-run') options.dryRun = true;
+    else if (arg === '--claude-plans') options.claudePlans = true;
     else if (arg === '--project-name' || arg === '--template' || arg === '--documentation-root') {
       const value = argv[i + 1];
       if (!value || value.startsWith('-')) throw new Error(`${arg} requires a value`);
@@ -310,6 +312,15 @@ export function runInit(argv, usage) {
     }
   }
 
+  if (options.claudePlans && !options.documentationRootExplicit && existsSync(join(options.root, 'dotdotgod.config.json'))) {
+    options.documentationRoot = readMemoryConfig(options.root).documentation.root;
+  }
+  let claudePlans;
+  if (options.claudePlans) {
+    try { claudePlans = prepareClaudePlans(options.root, options.documentationRoot); }
+    catch (error) { initError(options, 'CLAUDE_SETTINGS_INVALID', error.message); }
+  }
+
   if (!options.dryRun) mkdirSync(options.root, { recursive: true });
 
   const configExists = existsSync(join(options.root, 'dotdotgod.config.json'));
@@ -334,6 +345,11 @@ export function runInit(argv, usage) {
   writeInitFile(options, 'dotdotgod.config.json', template?.text ?? '', actions);
 
   for (const entry of [`${options.documentationRoot}/plan`, `${options.documentationRoot}/archive`, '.dotdotgod']) ensureGitignoreEntry(options, entry, actions);
+
+  if (claudePlans) {
+    try { actions.push(applyClaudePlans(claudePlans, options.dryRun)); }
+    catch (error) { initError(options, 'CLAUDE_SETTINGS_CHANGED', error.message); }
+  }
 
   const payload = { ok: true, command: 'init', root: options.root, projectName: options.projectName, documentationRoot: options.documentationRoot, dryRun: options.dryRun, dotdotSetting: options.dotdotSetting, template: template ? { name: template.name, source: template.source, selectedBy: template.selectedBy } : null, actions };
   if (options.json) console.log(JSON.stringify(payload, null, 2));

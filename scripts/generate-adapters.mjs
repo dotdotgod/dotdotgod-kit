@@ -63,6 +63,7 @@ const generatedNotice = "<!-- Generated from packages/shared resources by script
 
 function renderInitBody(platform) {
   const body = initBody.replace("{{INIT_SCRIPT_COMMAND}}", initCommands[platform]);
+  if (platform === "claude") return `${body}\n\n## Native Plan Storage\n\nOnly after the user opts in, add \`--claude-plans\` to the CLI initialization command. It adds project-local \`plansDirectory\` without replacing an existing value or changing permissions. Preview with \`--dry-run\`. The shell fallback does not support this option: use the bundled CLI at \`$CLAUDE_PLUGIN_ROOT/mcp/cli.mjs\` instead. Native file names remain Claude Code-owned; shared task plans still use task directories and README.md.`;
   if (platform !== "opencode") return body;
   return body.replace(/^2\. Run `dotdotgod init.*$/m, '2. Call the shared MCP project_initialize tool with the selected template. Keep dryRun true initially; after explicit write approval call with dryRun false and confirmWrite true. Existing files are skipped, never replaced. Switch out of the native plan agent before initialization.')
     .replace(/^3\. The POSIX fallback.*$/m, '3. Use bundled scripts only as an explicit fallback when MCP is unavailable. Custom templates require the CLI; do not silently substitute a bundled template.');
@@ -84,6 +85,7 @@ function renderPlanBody(platform) {
     .replace('For durable work, write and present', 'Write and present')
     .replace('Resolve blocking decisions and stop until the user asks to execute the plan.', 'Resolve blocking decisions; stay in the native plan agent until the user switches agents. Saving is not execution approval.');
   const queryGuidance = `## CLI Context\n\nFor focused documentation routing, run \`dotdotgod query <root> "<focus>" --limit 30 --json\`. Run \`dotdotgod config <root> --json\` when memory-area policy or documentation routing/exclusions affect the plan. If the CLI is unavailable, continue from README indexes and focused file reads.`;
+  if (platform === "claude") return `${queryGuidance}\n\n## Native Plan Mode\n\nClaude Code owns its native plan file and naming. An opt-in plansDirectory setting can place native files under the project documentation plan directory; it does not grant arbitrary task README writes in native Plan Mode. Follow the native allowed path and permissions. Create the shared task README when the active mode permits it; never bypass restrictions through MCP or hooks.\n\n${planBody.replace('For durable work, write and present', 'When the active mode and permissions allow it, write and present')}`;
   return `${queryGuidance}\n\n${planBody}`;
 }
 
@@ -151,7 +153,7 @@ write(
 write(
   "packages/claude-code/commands/dd/init.md",
   command(
-    `description: Initialize dotdotgod project memory and config\nargument-hint: [project-root] [--dotdot-setting] [--dry-run]\nallowed-tools: [Read, Glob, Grep, Bash, Write, Edit]`,
+    `description: Initialize dotdotgod project memory and config\nargument-hint: [project-root] [--dotdot-setting] [--claude-plans] [--dry-run]\nallowed-tools: [Read, Glob, Grep, Bash, Write, Edit]`,
     "/dd:init - Initialize Project Memory",
     "Initialize or normalize a repository with dotdotgod project memory and the complete default config.\n\nArguments: `$ARGUMENTS`",
     renderInitBody("claude"),

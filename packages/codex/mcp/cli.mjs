@@ -576,24 +576,24 @@ var init_languages = __esm({
 
 // packages/cli/src/symbols/runtime.mjs
 import { createRequire } from "node:module";
-import { existsSync as existsSync9, readFileSync as readFileSync9 } from "node:fs";
-import { dirname as dirname5, join as join8 } from "node:path";
+import { existsSync as existsSync10, readFileSync as readFileSync10 } from "node:fs";
+import { dirname as dirname6, join as join9 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash as createHash4 } from "node:crypto";
 function languageAsset(language) {
   const patched = fileURLToPath(new URL(`./parsers/tree-sitter-${language}.wasm`, import.meta.url));
-  return existsSync9(patched) ? patched : join8(dirname5(parserEntry()), `tree-sitter-${language}.wasm`);
+  return existsSync10(patched) ? patched : join9(dirname6(parserEntry()), `tree-sitter-${language}.wasm`);
 }
 function parserEntry() {
   const bundled = fileURLToPath(new URL("./parsers/tree-sitter.cjs", import.meta.url));
-  return existsSync9(bundled) ? bundled : require2.resolve("@vscode/tree-sitter-wasm");
+  return existsSync10(bundled) ? bundled : require2.resolve("@vscode/tree-sitter-wasm");
 }
 function parserIdentity() {
   if (!identity) {
     const entry = parserEntry();
-    const hash2 = createHash4("sha256").update(readFileSync9(entry));
-    hash2.update(readFileSync9(join8(dirname5(entry), "tree-sitter.wasm")));
-    for (const language of Object.keys(LANGUAGE_EXTENSIONS)) hash2.update(language).update(readFileSync9(languageAsset(language)));
+    const hash2 = createHash4("sha256").update(readFileSync10(entry));
+    hash2.update(readFileSync10(join9(dirname6(entry), "tree-sitter.wasm")));
+    for (const language of Object.keys(LANGUAGE_EXTENSIONS)) hash2.update(language).update(readFileSync10(languageAsset(language)));
     identity = hash2.digest("hex");
   }
   return identity;
@@ -614,14 +614,14 @@ var parser_exports = {};
 __export(parser_exports, {
   extractSymbols: () => extractSymbols
 });
-import { dirname as dirname6 } from "node:path";
+import { dirname as dirname7 } from "node:path";
 import { createHash as createHash5 } from "node:crypto";
 async function parserFor(language) {
   if (!runtime) runtime = (async () => {
     const entry = parserEntry();
     const api2 = loadParserApi();
     await api2.Parser.init();
-    return { api: api2, directory: dirname6(entry) };
+    return { api: api2, directory: dirname7(entry) };
   })();
   const { api, directory } = await runtime;
   if (!languages.has(language)) languages.set(language, api.Language.load(languageAsset(language)));
@@ -761,8 +761,8 @@ var init_parser = __esm({
 });
 
 // packages/cli/src/init.mjs
-import { existsSync as existsSync4, mkdirSync, readFileSync as readFileSync4, statSync, writeFileSync } from "node:fs";
-import { basename, dirname, join as join4, resolve as resolve2 } from "node:path";
+import { existsSync as existsSync5, mkdirSync as mkdirSync2, readFileSync as readFileSync5, statSync, writeFileSync as writeFileSync2 } from "node:fs";
+import { basename, dirname as dirname2, join as join5, resolve as resolve3 } from "node:path";
 
 // packages/cli/src/config/templates.mjs
 import { existsSync as existsSync3, readFileSync as readFileSync3 } from "node:fs";
@@ -1708,6 +1708,53 @@ function resolveInitializationTemplate(explicitName = null, home = dotdotgodHome
 ` };
 }
 
+// packages/cli/src/claude-plans.mjs
+import { existsSync as existsSync4, lstatSync, readFileSync as readFileSync4, realpathSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname, join as join4, relative as relative2, resolve as resolve2, isAbsolute } from "node:path";
+function prepareClaudePlans(root, documentationRoot) {
+  const path = join4(root, ".claude", "settings.json");
+  for (const target of [join4(root, ".claude"), path]) {
+    try {
+      if (lstatSync(target).isSymbolicLink()) throw new Error(`Refusing symlink: ${target}`);
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+  }
+  const base = resolve2(root);
+  if (existsSync4(dirname(path))) {
+    const rel2 = relative2(realpathSync(base), realpathSync(dirname(path)));
+    if (rel2.startsWith("..") || isAbsolute(rel2)) throw new Error("Claude settings must stay inside the project.");
+  }
+  const current = existsSync4(path) ? readFileSync4(path, "utf8") : null;
+  const settings = current === null ? {} : JSON.parse(current);
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) throw new Error("Claude settings must be a JSON object.");
+  const value = `./${documentationRoot}/plan`;
+  if (Object.hasOwn(settings, "plansDirectory")) return {
+    status: "skipped",
+    path,
+    reason: "Existing plansDirectory preserved.",
+    value: settings.plansDirectory
+  };
+  return {
+    status: current === null ? "created" : "updated",
+    path,
+    value,
+    current,
+    content: `${JSON.stringify({ ...settings, plansDirectory: value }, null, 2)}
+`
+  };
+}
+function applyClaudePlans(prepared, dryRun) {
+  const { content, current, ...result } = prepared;
+  if (!content) return result;
+  if (dryRun) return { ...result, status: `would_${result.status === "created" ? "create" : "update"}` };
+  const latest = existsSync4(prepared.path) ? readFileSync4(prepared.path, "utf8") : null;
+  if (latest !== current) throw new Error("Claude settings changed during initialization; retry without overwriting them.");
+  mkdirSync(dirname(prepared.path), { recursive: true });
+  writeFileSync(prepared.path, content, { flag: current === null ? "wx" : "w" });
+  return result;
+}
+
 // packages/cli/src/init.mjs
 function action(status, path, extra = {}) {
   return { status, path, ...extra };
@@ -1723,6 +1770,7 @@ function parseInitOptions(argv) {
     if (arg === "--json") options.json = true;
     else if (arg === "--dotdot-setting") options.dotdotSetting = true;
     else if (arg === "--dry-run") options.dryRun = true;
+    else if (arg === "--claude-plans") options.claudePlans = true;
     else if (arg === "--project-name" || arg === "--template" || arg === "--documentation-root") {
       const value = argv[i + 1];
       if (!value || value.startsWith("-")) throw new Error(`${arg} requires a value`);
@@ -1743,7 +1791,7 @@ function parseInitOptions(argv) {
   }
   if (!options.root) throw new Error("Missing required argument: <root>");
   if (!isValidDocumentationRoot(options.documentationRoot)) throw new Error("Invalid --documentation-root: expected a safe repository-relative directory");
-  options.root = resolve2(options.root);
+  options.root = resolve3(options.root);
   if (!options.projectName) options.projectName = basename(options.root);
   return options;
 }
@@ -1756,8 +1804,8 @@ function initError(options, code, message) {
   process.exit(2);
 }
 function writeInitFile(options, relativePath, content, actions) {
-  const target = join4(options.root, relativePath);
-  if (existsSync4(target)) {
+  const target = join5(options.root, relativePath);
+  if (existsSync5(target)) {
     actions.push(action("skipped", target));
     return;
   }
@@ -1765,14 +1813,14 @@ function writeInitFile(options, relativePath, content, actions) {
     actions.push(action("would_create", target));
     return;
   }
-  mkdirSync(dirname(target), { recursive: true });
-  writeFileSync(target, content.endsWith("\n") ? content : `${content}
+  mkdirSync2(dirname2(target), { recursive: true });
+  writeFileSync2(target, content.endsWith("\n") ? content : `${content}
 `);
   actions.push(action("created", target));
 }
 function ensureInitDirectory(options, relativePath, actions) {
-  const target = join4(options.root, relativePath);
-  if (existsSync4(target)) {
+  const target = join5(options.root, relativePath);
+  if (existsSync5(target)) {
     actions.push(action("skipped", target));
     return;
   }
@@ -1780,22 +1828,22 @@ function ensureInitDirectory(options, relativePath, actions) {
     actions.push(action("would_create", target));
     return;
   }
-  mkdirSync(target, { recursive: true });
+  mkdirSync2(target, { recursive: true });
   actions.push(action("created", target));
 }
 function ensureGitignoreEntry(options, entry, actions) {
-  const target = join4(options.root, ".gitignore");
-  const existed = existsSync4(target);
-  let current = existed ? readFileSync4(target, "utf8") : "";
+  const target = join5(options.root, ".gitignore");
+  const existed = existsSync5(target);
+  let current = existed ? readFileSync5(target, "utf8") : "";
   if (current.split(/\r?\n/).includes(entry)) return;
   if (options.dryRun) {
     actions.push(action(existed ? "would_update" : "would_create", target, { add: entry }));
     return;
   }
-  mkdirSync(options.root, { recursive: true });
+  mkdirSync2(options.root, { recursive: true });
   if (current.length > 0 && !current.endsWith("\n")) current = `${current}
 `;
-  writeFileSync(target, `${current}${entry}
+  writeFileSync2(target, `${current}${entry}
 `);
   actions.push(action(existed ? "updated" : "created", target, { add: entry }));
 }
@@ -1999,15 +2047,26 @@ function runInit(argv, usage2) {
     usage2(error instanceof Error ? error.message : String(error), "init");
     return;
   }
-  if (!options.dryRun && existsSync4(options.root)) {
+  if (!options.dryRun && existsSync5(options.root)) {
     try {
       if (!statSync(options.root).isDirectory()) initError(options, "ROOT_NOT_DIRECTORY", `Project root is not a directory: ${options.root}`);
     } catch {
       initError(options, "ROOT_NOT_FOUND", `Project root not found: ${options.root}`);
     }
   }
-  if (!options.dryRun) mkdirSync(options.root, { recursive: true });
-  const configExists = existsSync4(join4(options.root, "dotdotgod.config.json"));
+  if (options.claudePlans && !options.documentationRootExplicit && existsSync5(join5(options.root, "dotdotgod.config.json"))) {
+    options.documentationRoot = readMemoryConfig(options.root).documentation.root;
+  }
+  let claudePlans;
+  if (options.claudePlans) {
+    try {
+      claudePlans = prepareClaudePlans(options.root, options.documentationRoot);
+    } catch (error) {
+      initError(options, "CLAUDE_SETTINGS_INVALID", error.message);
+    }
+  }
+  if (!options.dryRun) mkdirSync2(options.root, { recursive: true });
+  const configExists = existsSync5(join5(options.root, "dotdotgod.config.json"));
   if (configExists && options.documentationRootExplicit) {
     const existingRoot = readMemoryConfig(options.root).documentation.root;
     if (existingRoot !== options.documentationRoot) initError(options, "DOCUMENTATION_ROOT_CONFLICT", `Existing config uses documentation root ${existingRoot}; initialization does not migrate documentation.`);
@@ -2030,6 +2089,13 @@ function runInit(argv, usage2) {
   }
   writeInitFile(options, "dotdotgod.config.json", template?.text ?? "", actions);
   for (const entry of [`${options.documentationRoot}/plan`, `${options.documentationRoot}/archive`, ".dotdotgod"]) ensureGitignoreEntry(options, entry, actions);
+  if (claudePlans) {
+    try {
+      actions.push(applyClaudePlans(claudePlans, options.dryRun));
+    } catch (error) {
+      initError(options, "CLAUDE_SETTINGS_CHANGED", error.message);
+    }
+  }
   const payload = { ok: true, command: "init", root: options.root, projectName: options.projectName, documentationRoot: options.documentationRoot, dryRun: options.dryRun, dotdotSetting: options.dotdotSetting, template: template ? { name: template.name, source: template.source, selectedBy: template.selectedBy } : null, actions };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else {
@@ -2039,8 +2105,8 @@ function runInit(argv, usage2) {
 }
 
 // packages/cli/src/cli/usage.mjs
-import { readFileSync as readFileSync5 } from "node:fs";
-import { resolve as resolve3 } from "node:path";
+import { readFileSync as readFileSync6 } from "node:fs";
+import { resolve as resolve4 } from "node:path";
 var HELP_TOKENS = /* @__PURE__ */ new Set(["help", "--help", "-h"]);
 var VERSION_TOKENS = /* @__PURE__ */ new Set(["version", "--version", "-v"]);
 function commandUsage(command = "root") {
@@ -2050,9 +2116,10 @@ function commandUsage(command = "root") {
   dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]`;
     case "init":
       return `Usage:
-  dotdotgod init <root> [--project-name NAME] [--template NAME] [--documentation-root PATH] [--dotdot-setting] [--dry-run] [--json]
+  dotdotgod init <root> [--project-name NAME] [--template NAME] [--documentation-root PATH] [--dotdot-setting] [--claude-plans] [--dry-run] [--json]
 
-Create AGENTS.md, agent entrypoints, docs indexes, a project config from an initialization template, and local memory gitignore entries.`;
+Create AGENTS.md, agent entrypoints, docs indexes, a project config from an initialization template, and local memory gitignore entries.
+Use --claude-plans only after opting into project-local native plan storage; existing Claude settings are preserved.`;
     case "index":
       return `Usage:
   dotdotgod index <root> [--json]`;
@@ -2179,7 +2246,7 @@ function isVersionToken(value) {
 function printVersion() {
   let version = "unknown";
   try {
-    const data = JSON.parse(readFileSync5(new URL("../../package.json", import.meta.url), "utf8"));
+    const data = JSON.parse(readFileSync6(new URL("../../package.json", import.meta.url), "utf8"));
     if (typeof data.version === "string") version = data.version;
   } catch {
   }
@@ -2201,17 +2268,17 @@ function parseCommon(argv) {
     if (arg === "--json") options.json = true;
     else if (!arg.startsWith("-") && options.root === ".") options.root = arg;
   }
-  options.root = resolve3(options.root);
+  options.root = resolve4(options.root);
   return options;
 }
 
 // packages/cli/src/validate/run.mjs
-import { existsSync as existsSync13, readFileSync as readFileSync13, readdirSync as readdirSync3 } from "node:fs";
-import { basename as basename7, dirname as dirname10, extname as extname6, join as join12, resolve as resolve8 } from "node:path";
+import { existsSync as existsSync14, readFileSync as readFileSync14, readdirSync as readdirSync3 } from "node:fs";
+import { basename as basename7, dirname as dirname11, extname as extname6, join as join13, resolve as resolve9 } from "node:path";
 
 // packages/cli/src/docs/traceability.mjs
-import { existsSync as existsSync5 } from "node:fs";
-import { basename as basename2, dirname as dirname2, extname, relative as relative2, resolve as resolve4 } from "node:path";
+import { existsSync as existsSync6 } from "node:fs";
+import { basename as basename2, dirname as dirname3, extname, relative as relative3, resolve as resolve5 } from "node:path";
 function isSecretIndexPath(path) {
   return /(^|\/)(\.env|\.npmrc|\.pypirc|id_rsa|id_dsa|id_ed25519|credentials|secrets?)(\.|\/|$)/i.test(path);
 }
@@ -2310,9 +2377,9 @@ function stripTraceabilityLinksRegion(content) {
   return stripped.replace(/(?:^[ \t]*\r?\n)*^##[ \t]+Traceability[ \t]*\r?(?:\n(?:[ \t]*\r?\n)*|$)/gm, "");
 }
 function markdownLinkPath(root, file, target) {
-  const fromDir = dirname2(file);
-  const absoluteTarget = resolve4(root, target);
-  let link = relative2(fromDir, absoluteTarget).split("\\").join("/");
+  const fromDir = dirname3(file);
+  const absoluteTarget = resolve5(root, target);
+  let link = relative3(fromDir, absoluteTarget).split("\\").join("/");
   if (!link.startsWith(".") && !link.startsWith("/")) link = link || basename2(target);
   return link;
 }
@@ -2411,7 +2478,7 @@ function validateTraceabilityPathArray(data, field2, add, root, config, { requir
       add("TRACEABILITY_LOCAL_MEMORY_TARGET", displayField, `target points to local memory area "${area2.id}": ${value}. Traceability must point to shared durable files, not active plans or archive memory.`);
       continue;
     }
-    if (!existsSync5(resolve4(root, value))) add("TRACEABILITY_MISSING_TARGET", displayField, `target does not exist: ${value}.`);
+    if (!existsSync6(resolve5(root, value))) add("TRACEABILITY_MISSING_TARGET", displayField, `target does not exist: ${value}.`);
   }
 }
 function validateTraceabilityCommandArray(data, field2, add, { required = true, displayField = field2 } = {}) {
@@ -2479,9 +2546,9 @@ function validateTraceabilityBlock(data, root, file, line = null, config = defau
 
 // packages/cli/src/index/files.mjs
 import { createHash } from "node:crypto";
-import { existsSync as existsSync6, readFileSync as readFileSync6, readdirSync, statSync as statSync2 } from "node:fs";
+import { existsSync as existsSync7, readFileSync as readFileSync7, readdirSync, statSync as statSync2 } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { basename as basename3, extname as extname2, join as join5 } from "node:path";
+import { basename as basename3, extname as extname2, join as join6 } from "node:path";
 
 // packages/cli/src/index/constants.mjs
 var CACHE_VERSION = 15;
@@ -2642,7 +2709,7 @@ function walkIndexCandidates(root, config = readMemoryConfig(root)) {
   const files = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const path = join5(dir, entry.name);
+      const path = join6(dir, entry.name);
       const pathRel = rel(root, path);
       if (entry.isDirectory()) {
         const area2 = resolveMemoryArea(pathRel, config);
@@ -2656,7 +2723,7 @@ function walkIndexCandidates(root, config = readMemoryConfig(root)) {
 function addConfiguredLocalMemoryCandidates(root, candidates, config, limit = 5e3) {
   let added = 0;
   const addPath = (path) => {
-    if (added >= limit || !existsSync6(path)) return;
+    if (added >= limit || !existsSync7(path)) return;
     let stat;
     try {
       stat = statSync2(path);
@@ -2672,7 +2739,7 @@ function addConfiguredLocalMemoryCandidates(root, candidates, config, limit = 5e
     if (!stat.isDirectory() || isExcludedIndexDir(pathRel)) return;
     for (const entry of readdirSync(path, { withFileTypes: true })) {
       if (added >= limit) return;
-      addPath(join5(path, entry.name));
+      addPath(join6(path, entry.name));
     }
   };
   for (const area2 of config.areas ?? []) {
@@ -2680,30 +2747,30 @@ function addConfiguredLocalMemoryCandidates(root, candidates, config, limit = 5e
     for (const pattern of area2.paths ?? []) {
       if (pattern.startsWith("**/")) continue;
       const base = pattern.endsWith("/**") ? pattern.slice(0, -3) : pattern;
-      addPath(join5(root, base));
+      addPath(join6(root, base));
     }
   }
 }
 function collectIndexFiles(root, config = readMemoryConfig(root)) {
   const candidates = new Set(gitIndexCandidates(root) ?? walkIndexCandidates(root, config));
   addConfiguredLocalMemoryCandidates(root, candidates, config);
-  return [...candidates].filter((path) => shouldIndexPath(path, config)).map((path) => join5(root, path)).filter(existsSync6).sort();
+  return [...candidates].filter((path) => shouldIndexPath(path, config)).map((path) => join6(root, path)).filter(existsSync7).sort();
 }
 function fingerprint(file) {
-  const content = readFileSync6(file);
+  const content = readFileSync7(file);
   return createHash("sha256").update(content).digest("hex");
 }
 function cacheFile(root) {
-  return join5(root, CACHE_DIR, MANIFEST_FILE);
+  return join6(root, CACHE_DIR, MANIFEST_FILE);
 }
 
 // packages/cli/src/index/cache.mjs
-import { existsSync as existsSync12, readFileSync as readFileSync12, statSync as statSync4 } from "node:fs";
-import { basename as basename6, join as join11 } from "node:path";
+import { existsSync as existsSync13, readFileSync as readFileSync13, statSync as statSync4 } from "node:fs";
+import { basename as basename6, join as join12 } from "node:path";
 
 // packages/cli/src/graph/store.mjs
-import { existsSync as existsSync7, mkdirSync as mkdirSync2, statSync as statSync3, writeFileSync as writeFileSync2 } from "node:fs";
-import { dirname as dirname3, join as join6 } from "node:path";
+import { existsSync as existsSync8, mkdirSync as mkdirSync3, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { dirname as dirname4, join as join7 } from "node:path";
 var GRAPH_NODE_SHARDS = ["docs", "packages", "source"];
 var GRAPH_EDGE_SHARDS = ["docs-links", "packages", "other"];
 function graphNodeShard(node2) {
@@ -2734,14 +2801,14 @@ function expandEdge(row) {
   return { source, target, relation, ...data };
 }
 function shardFile(root, kind, name) {
-  return join6(root, CACHE_DIR, "graph", kind, `${name}.json`);
+  return join7(root, CACHE_DIR, "graph", kind, `${name}.json`);
 }
 function jsonSize(file) {
-  return existsSync7(file) ? statSync3(file).size : 0;
+  return existsSync8(file) ? statSync3(file).size : 0;
 }
 function writeJson(file, value) {
-  mkdirSync2(dirname3(file), { recursive: true });
-  writeFileSync2(file, `${JSON.stringify(value)}
+  mkdirSync3(dirname4(file), { recursive: true });
+  writeFileSync3(file, `${JSON.stringify(value)}
 `);
 }
 function compactGraph(graph) {
@@ -2804,13 +2871,13 @@ function addEdge(graph, source, target, relation, data = {}) {
 }
 
 // packages/cli/src/graph/extract.mjs
-import { readFileSync as readFileSync7 } from "node:fs";
-import { basename as basename5, dirname as dirname4, resolve as resolve6 } from "node:path";
+import { readFileSync as readFileSync8 } from "node:fs";
+import { basename as basename5, dirname as dirname5, resolve as resolve7 } from "node:path";
 
 // packages/cli/src/graph/metadata.mjs
 import { createHash as createHash2 } from "node:crypto";
-import { existsSync as existsSync8 } from "node:fs";
-import { basename as basename4, extname as extname3, resolve as resolve5 } from "node:path";
+import { existsSync as existsSync9 } from "node:fs";
+import { basename as basename4, extname as extname3, resolve as resolve6 } from "node:path";
 function isReadmeIndexPath(path = "") {
   return basename4(path) === "README.md";
 }
@@ -2869,7 +2936,7 @@ function addReferenceEvidence(graph, sourceId, reference) {
 function addTraceabilityTarget(graph, sourceId, root, relation, targetPath, data = {}, config = defaultMemoryConfig()) {
   if (!isLocalRelativeTraceabilityPath(targetPath)) return;
   addReferenceEvidence(graph, sourceId, { targetPath, href: targetPath, relation, data: { confidence: "CURATED_TRACEABILITY", ...data } });
-  if (!existsSync8(resolve5(root, targetPath))) return;
+  if (!existsSync9(resolve6(root, targetPath))) return;
   const targetId = `file:${targetPath}`;
   addNode(graph, targetId, "file", fileNodeMetadata(targetPath, null, config));
   addEdge(graph, sourceId, targetId, relation, { confidence: "CURATED_TRACEABILITY", ...data });
@@ -2921,7 +2988,7 @@ function headingId(path, title) {
 // packages/cli/src/graph/extract.mjs
 function extractMarkdownGraph(root, file, graph, config = defaultMemoryConfig()) {
   const path = rel(root, file);
-  const content = readFileSync7(file, "utf8");
+  const content = readFileSync8(file, "utf8");
   const fileId = `file:${path}`;
   const headingRe = /^(#{1,6})\s+(.+)$/gm;
   let match;
@@ -2935,7 +3002,7 @@ function extractMarkdownGraph(root, file, graph, config = defaultMemoryConfig())
     const hashIndex = href.indexOf("#");
     const pathPart = hashIndex < 0 ? href : href.slice(0, hashIndex);
     const anchor = hashIndex < 0 ? "" : href.slice(hashIndex + 1);
-    const targetPath = pathPart ? rel(root, resolve6(dirname4(file), pathPart)) : path;
+    const targetPath = pathPart ? rel(root, resolve7(dirname5(file), pathPart)) : path;
     const data = { line, confidence: "EXTRACTED" };
     addReferenceEvidence(graph, fileId, { targetPath, href, anchor, relation: "links_to", data });
     if (pathPart && isReadmeIndexPath(path)) addReferenceEvidence(graph, fileId, { targetPath, href, anchor, relation: "routes_to", data: { line, confidence: "CURATED_INDEX", sourceRole: "readme-index" } });
@@ -2952,7 +3019,7 @@ function extractPackageGraph(root, file, graph) {
   const fileId = `file:${path}`;
   let pkg;
   try {
-    pkg = JSON.parse(readFileSync7(file, "utf8"));
+    pkg = JSON.parse(readFileSync8(file, "utf8"));
   } catch {
     return;
   }
@@ -2998,18 +3065,18 @@ function buildGraph(root, files, config = defaultMemoryConfig()) {
 }
 
 // packages/cli/src/symbols/store.mjs
-import { existsSync as existsSync11, lstatSync as lstatSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync11, renameSync, writeFileSync as writeFileSync3 } from "node:fs";
+import { existsSync as existsSync12, lstatSync as lstatSync3, mkdirSync as mkdirSync4, readFileSync as readFileSync12, renameSync, writeFileSync as writeFileSync4 } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { dirname as dirname7, join as join10 } from "node:path";
+import { dirname as dirname8, join as join11 } from "node:path";
 
 // packages/cli/src/symbols/discovery.mjs
 var import_ignore = __toESM(require_ignore(), 1);
-import { existsSync as existsSync10, lstatSync, readFileSync as readFileSync10, realpathSync } from "node:fs";
-import { extname as extname5, join as join9, relative as relative4, isAbsolute } from "node:path";
+import { existsSync as existsSync11, lstatSync as lstatSync2, readFileSync as readFileSync11, realpathSync as realpathSync2 } from "node:fs";
+import { extname as extname5, join as join10, relative as relative5, isAbsolute as isAbsolute2 } from "node:path";
 
 // packages/cli/src/query/chunks.mjs
-import { readFileSync as readFileSync8, readdirSync as readdirSync2 } from "node:fs";
-import { join as join7, relative as relative3 } from "node:path";
+import { readFileSync as readFileSync9, readdirSync as readdirSync2 } from "node:fs";
+import { join as join8, relative as relative4 } from "node:path";
 import { createHash as createHash3 } from "node:crypto";
 var MAX_CHUNK_CHARS = 1600;
 var SKIPPED_DIRECTORIES = /* @__PURE__ */ new Set(["node_modules", "dist", "build", "coverage", ".git", ".dotdotgod"]);
@@ -3017,7 +3084,7 @@ function textFingerprint(text) {
   return createHash3("sha256").update(text).digest("hex");
 }
 function collectDocumentationMarkdown(root, exclude = ["docs/plan", "docs/archive"], documentationRoot = "docs") {
-  const docsRoot = join7(root, documentationRoot);
+  const docsRoot = join8(root, documentationRoot);
   const files = [];
   const walk = (directory) => {
     let entries;
@@ -3029,8 +3096,8 @@ function collectDocumentationMarkdown(root, exclude = ["docs/plan", "docs/archiv
     entries.sort((a, b) => a.name.localeCompare(b.name));
     for (const entry of entries) {
       if (entry.name.startsWith(".")) continue;
-      const absolute = join7(directory, entry.name);
-      const path = relative3(root, absolute).replaceAll("\\", "/");
+      const absolute = join8(directory, entry.name);
+      const path = relative4(root, absolute).replaceAll("\\", "/");
       if (isSecretLikePathPattern(path) || exclude.some((pattern) => matchPathPattern(path, pattern) || path === pattern || path.startsWith(`${pattern}/`))) continue;
       if (entry.isDirectory()) {
         if (!SKIPPED_DIRECTORIES.has(entry.name)) walk(absolute);
@@ -3092,7 +3159,7 @@ ${piece}`;
 }
 function collectDocumentationChunks(root, exclude, documentationRoot = "docs") {
   return collectDocumentationMarkdown(root, exclude, documentationRoot).flatMap((path) => {
-    const content = readFileSync8(join7(root, path), "utf8");
+    const content = readFileSync9(join8(root, path), "utf8");
     return chunkMarkdown(path, content);
   });
 }
@@ -3101,14 +3168,14 @@ function collectDocumentationChunks(root, exclude, documentationRoot = "docs") {
 init_languages();
 init_runtime();
 function inside(root, file) {
-  if (!lstatSync(file).isFile()) return false;
-  const path = relative4(realpathSync(root), realpathSync(file));
-  return !path.startsWith("..") && !isAbsolute(path);
+  if (!lstatSync2(file).isFile()) return false;
+  const path = relative5(realpathSync2(root), realpathSync2(file));
+  return !path.startsWith("..") && !isAbsolute2(path);
 }
 function ignoreRules(root, directory, cache) {
   if (!cache.has(directory)) {
-    const file = join9(root, directory, ".gitignore");
-    cache.set(directory, (0, import_ignore.default)().add(existsSync10(file) && inside(root, file) ? readFileSync10(file, "utf8") : ""));
+    const file = join10(root, directory, ".gitignore");
+    cache.set(directory, (0, import_ignore.default)().add(existsSync11(file) && inside(root, file) ? readFileSync11(file, "utf8") : ""));
   }
   return cache.get(directory);
 }
@@ -3131,30 +3198,30 @@ function ignored(root, path, cache) {
 function sourceFiles(root) {
   const cache = /* @__PURE__ */ new Map();
   return collectIndexFiles(root).filter((file) => {
-    const path = relative4(root, file).replaceAll("\\", "/");
+    const path = relative5(root, file).replaceAll("\\", "/");
     if (!SOURCE_EXTENSIONS.has(extname5(path)) || path.split("/").some((part) => part.startsWith(".")) || isSecretLikePathPattern(path)) return false;
     if (!inside(root, file) || ignored(root, path, cache)) return false;
-    return !/^#![^\n]*\n\/\/ Generated|^\/\/ Generated|@generated/m.test(readFileSync10(file, "utf8").slice(0, 256));
+    return !/^#![^\n]*\n\/\/ Generated|^\/\/ Generated|@generated/m.test(readFileSync11(file, "utf8").slice(0, 256));
   }).map((file) => {
-    const source = readFileSync10(file, "utf8");
-    return { path: relative4(root, file).replaceAll("\\", "/"), hash: fingerprint(file), language: languageForPath(file), sourceLength: source.length, lineCount: source.split("\n").length };
+    const source = readFileSync11(file, "utf8");
+    return { path: relative5(root, file).replaceAll("\\", "/"), hash: fingerprint(file), language: languageForPath(file), sourceLength: source.length, lineCount: source.split("\n").length };
   });
 }
 function outlinePolicy(root) {
   const config = readMemoryConfig(root);
-  const ignores = collectIndexFiles(root).filter((file) => file.endsWith("/.gitignore") && inside(root, file)).map((file) => [relative4(root, file), fingerprint(file)]);
+  const ignores = collectIndexFiles(root).filter((file) => file.endsWith("/.gitignore") && inside(root, file)).map((file) => [relative5(root, file), fingerprint(file)]);
   return textFingerprint(JSON.stringify({ areas: config.areas, ignores, extractor: EXTRACTOR_ID, declarations: DECLARATIONS, extensions: LANGUAGE_EXTENSIONS, parser: parserIdentity() }));
 }
 
 // packages/cli/src/symbols/store.mjs
 init_languages();
 var OUTLINE_SCHEMA = 1;
-var outlinePath = (root) => join10(root, ".dotdotgod", "outlines.json");
+var outlinePath = (root) => join11(root, ".dotdotgod", "outlines.json");
 function assertCachePath(root) {
-  for (const path of [dirname7(outlinePath(root)), outlinePath(root)]) {
+  for (const path of [dirname8(outlinePath(root)), outlinePath(root)]) {
     let stat;
     try {
-      stat = lstatSync2(path);
+      stat = lstatSync3(path);
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
@@ -3164,7 +3231,7 @@ function assertCachePath(root) {
 function readOutlines(root) {
   try {
     assertCachePath(root);
-    const index = JSON.parse(readFileSync11(outlinePath(root), "utf8"));
+    const index = JSON.parse(readFileSync12(outlinePath(root), "utf8"));
     if (index.schema !== OUTLINE_SCHEMA || index.extractor !== EXTRACTOR_ID || !Array.isArray(index.files)) return null;
     const paths = /* @__PURE__ */ new Set();
     const ids = /* @__PURE__ */ new Set();
@@ -3197,7 +3264,7 @@ function outlineStatus(root) {
   assertCachePath(root);
   const files = sourceFiles(root);
   const index = readOutlines(root);
-  if (!index) return { ok: files.length === 0 && !existsSync11(outlinePath(root)), reason: existsSync11(outlinePath(root)) ? "missing-or-invalid" : "missing", paths: files.map((file) => file.path) };
+  if (!index) return { ok: files.length === 0 && !existsSync12(outlinePath(root)), reason: existsSync12(outlinePath(root)) ? "missing-or-invalid" : "missing", paths: files.map((file) => file.path) };
   const old = new Map(index.files.map((file) => [file.path, file]));
   const current = new Set(files.map((file) => file.path));
   const changed = files.filter((file) => old.get(file.path)?.hash !== file.hash || old.get(file.path)?.sourceLength !== file.sourceLength || old.get(file.path)?.lineCount !== file.lineCount).map((file) => file.path);
@@ -3226,17 +3293,17 @@ async function buildOutlines(root) {
       continue;
     }
     const { extractSymbols: extractSymbols2 } = await Promise.resolve().then(() => (init_parser(), parser_exports));
-    const source = readFileSync11(join10(root, file.path), "utf8");
+    const source = readFileSync12(join11(root, file.path), "utf8");
     const extracted = await extractSymbols2(file.path, source, file.language);
-    if (fingerprint(join10(root, file.path)) !== file.hash) throw new Error(`Source changed during outline extraction: ${file.path}`);
+    if (fingerprint(join11(root, file.path)) !== file.hash) throw new Error(`Source changed during outline extraction: ${file.path}`);
     records.push({ ...file, ...extracted });
     parsed += 1;
   }
   const index = { schema: OUTLINE_SCHEMA, extractor: EXTRACTOR_ID, policy: outlinePolicy(root), files: records, refresh: { parsed, reused } };
   const target = outlinePath(root);
-  mkdirSync3(dirname7(target), { recursive: true });
+  mkdirSync4(dirname8(target), { recursive: true });
   const temporary = `${target}.tmp-${process.pid}-${randomUUID()}`;
-  writeFileSync3(temporary, JSON.stringify(index), { flag: "wx" });
+  writeFileSync4(temporary, JSON.stringify(index), { flag: "wx" });
   renameSync(temporary, target);
   return index;
 }
@@ -3254,10 +3321,10 @@ ${text}`;
 }
 
 // packages/cli/src/symbols/graph.mjs
-import { dirname as dirname8, posix } from "node:path";
+import { dirname as dirname9, posix } from "node:path";
 function importTarget(file, specifier, paths) {
   if (!specifier.startsWith(".")) return null;
-  const base = posix.normalize(posix.join(dirname8(file).replaceAll("\\", "/"), specifier));
+  const base = posix.normalize(posix.join(dirname9(file).replaceAll("\\", "/"), specifier));
   if (base.startsWith("../")) return null;
   const stem = base.replace(/\.(js|jsx|mjs|cjs)$/, "");
   const candidates = [base, ...[".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py"].map((extension) => `${stem}${extension}`), ...[".ts", ".js", ".py"].map((extension) => `${base}/index${extension}`)];
@@ -3311,10 +3378,10 @@ function buildIndex(root, previous = readIndex(root)) {
   const currentPaths = new Set(files.map((file) => file.path));
   const removedPaths = (previous?.files ?? []).filter((file) => !currentPaths.has(file.path)).map((file) => file.path);
   const changedPaths = [...files.filter((file) => indexed.get(file.path) !== file.sha256).map((file) => file.path), ...removedPaths];
-  const changedFiles = files.filter((file) => changedPaths.includes(file.path)).map((file) => join11(root, file.path));
+  const changedFiles = files.filter((file) => changedPaths.includes(file.path)).map((file) => join12(root, file.path));
   const fullRebuild = !previous?.graph || previous.version !== CACHE_VERSION;
   const refreshReason = !previous ? "missing" : previous.version !== CACHE_VERSION ? "schema-mismatch" : removedPaths.length > 0 ? "content-removed" : changedPaths.length > 0 ? "content-changed" : "fresh";
-  const rawGraph = fullRebuild ? buildGraph(root, files.map((file) => join11(root, file.path)), memoryConfig) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles, memoryConfig), changedPaths);
+  const rawGraph = fullRebuild ? buildGraph(root, files.map((file) => join12(root, file.path)), memoryConfig) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles, memoryConfig), changedPaths);
   const graph = { nodes: rawGraph.nodes.filter((node2) => !["symbol", "unresolved_import"].includes(node2.type)), edges: rawGraph.edges.filter((edge) => !["declares_symbol", "contains_symbol", "imports"].includes(edge.relation)) };
   const outlines = readOutlines(root);
   let outlinePolicyMatches = false;
@@ -3338,20 +3405,20 @@ function writeIndex(root, index) {
   const graphShards = { nodes: Object.fromEntries(Object.keys(compact.nodes).map((name) => [name, rel(root, shardFile(root, "nodes", name))])), edges: Object.fromEntries(Object.keys(compact.edges).map((name) => [name, rel(root, shardFile(root, "edges", name))])) };
   const manifest = { version: index.version, schemaVersion: index.schemaVersion ?? index.version, generatedAt: index.generatedAt, archiveBodiesIncluded: index.archiveBodiesIncluded, memoryConfig: index.memoryConfig, files: index.files, graph: { ...graphStats(index.graph), compactSchema: true, shards: graphShards }, incremental: index.incremental };
   writeJson(cacheFile(root), manifest);
-  const shardBytes = [...Object.values(graphShards.nodes), ...Object.values(graphShards.edges)].reduce((sum, path) => sum + jsonSize(join11(root, path)), 0);
+  const shardBytes = [...Object.values(graphShards.nodes), ...Object.values(graphShards.edges)].reduce((sum, path) => sum + jsonSize(join12(root, path)), 0);
   const manifestBytes = jsonSize(cacheFile(root));
   return { ...manifest, indexSizeBytes: manifestBytes + shardBytes, manifestBytes, shardBytes };
 }
 function readIndex(root) {
   const file = cacheFile(root);
-  if (!existsSync12(file)) return null;
+  if (!existsSync13(file)) return null;
   try {
-    const manifest = JSON.parse(readFileSync12(file, "utf8"));
+    const manifest = JSON.parse(readFileSync13(file, "utf8"));
     const shards = manifest.graph?.shards;
     if (!shards) return manifest;
     const compact = { nodes: {}, edges: {} };
-    for (const [name, path] of Object.entries(shards.nodes ?? {})) compact.nodes[name] = existsSync12(join11(root, path)) ? JSON.parse(readFileSync12(join11(root, path), "utf8")) : [];
-    for (const [name, path] of Object.entries(shards.edges ?? {})) compact.edges[name] = existsSync12(join11(root, path)) ? JSON.parse(readFileSync12(join11(root, path), "utf8")) : [];
+    for (const [name, path] of Object.entries(shards.nodes ?? {})) compact.nodes[name] = existsSync13(join12(root, path)) ? JSON.parse(readFileSync13(join12(root, path), "utf8")) : [];
+    for (const [name, path] of Object.entries(shards.edges ?? {})) compact.edges[name] = existsSync13(join12(root, path)) ? JSON.parse(readFileSync13(join12(root, path), "utf8")) : [];
     return { ...manifest, graph: expandGraph(compact) };
   } catch {
     return null;
@@ -3407,7 +3474,7 @@ function graphSummary(index) {
 
 // packages/cli/src/validate/references.mjs
 import { statSync as statSync5 } from "node:fs";
-import { dirname as dirname9, relative as relative5, resolve as resolve7 } from "node:path";
+import { dirname as dirname10, relative as relative6, resolve as resolve8 } from "node:path";
 var blank = (text) => text.replace(/[^\n\r]/g, " ");
 var unescape = (text) => text.replace(/\\([!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~])/g, "$1");
 var labelKey = (text) => unescape(text).trim().replace(/\s+/g, " ").toLowerCase();
@@ -3507,7 +3574,7 @@ function extractMemoryReferences(content) {
   return references;
 }
 function sharedLocalReferences(content, root, file, config) {
-  const source = resolveMemoryArea(relative5(root, file).split("\\").join("/"), config);
+  const source = resolveMemoryArea(relative6(root, file).split("\\").join("/"), config);
   if (source?.scope !== "shared") return [];
   const errors = [];
   for (const item of extractMemoryReferences(content)) {
@@ -3519,14 +3586,14 @@ function sharedLocalReferences(content, root, file, config) {
       continue;
     }
     if (!path) continue;
-    const base = item.kind === "markdown-link" || /^\.\.?\//.test(path) ? dirname9(file) : root;
-    const target = relative5(root, resolve7(base, path)).split("\\").join("/");
+    const base = item.kind === "markdown-link" || /^\.\.?\//.test(path) ? dirname10(file) : root;
+    const target = relative6(root, resolve8(base, path)).split("\\").join("/");
     if (target === ".." || target.startsWith("../")) continue;
     if (item.kind === "inline-code") {
       const configuredDirectory = (config.areas ?? []).some((area3) => (area3.paths ?? []).some((pattern) => pattern === `${target}/**`));
       let directory = configuredDirectory;
       try {
-        directory ||= statSync5(resolve7(root, target)).isDirectory();
+        directory ||= statSync5(resolve8(root, target)).isDirectory();
       } catch {
       }
       if (directory) continue;
@@ -3551,10 +3618,10 @@ function runValidate(argv) {
     else if (!arg.startsWith("-")) options.root = arg;
     else usage(`Unknown option: ${arg}`, "validate");
   }
-  const root = resolve8(options.root);
+  const root = resolve9(options.root);
   const memoryConfig = readMemoryConfig(root);
   const documentationRoot = memoryConfig.documentation?.root ?? "docs";
-  const docs = join12(root, documentationRoot);
+  const docs = join13(root, documentationRoot);
   const errors = [];
   const warnings = [];
   const markdownFiles = [];
@@ -3572,9 +3639,9 @@ Fix: ${fix}` : message, ...prompt ? { prompt } : {} });
     return false;
   };
   const walk = (dir) => {
-    if (!existsSync13(dir) || shouldSkipDir(dir)) return;
+    if (!existsSync14(dir) || shouldSkipDir(dir)) return;
     for (const entry of readdirSync3(dir, { withFileTypes: true })) {
-      const path = join12(dir, entry.name);
+      const path = join13(dir, entry.name);
       if (entry.isDirectory()) {
         const docsRel = rel(docs, path);
         if (docsRel && !docsRel.startsWith("..")) {
@@ -3584,7 +3651,7 @@ Fix: ${fix}` : message, ...prompt ? { prompt } : {} });
       } else if (entry.isFile() && entry.name.endsWith(".md")) markdownFiles.push(path);
     }
   };
-  if (!existsSync13(docs)) usage(`docs directory not found: ${docs}`);
+  if (!existsSync14(docs)) usage(`docs directory not found: ${docs}`);
   const validationPolicy = cloneValidationPolicy(memoryConfig.validation ?? DEFAULT_VALIDATION_POLICY);
   const maxLines = options.maxLines ?? validationPolicy.markdown.maxLines;
   const maxChars = options.maxChars ?? validationPolicy.markdown.maxChars;
@@ -3615,7 +3682,7 @@ README.md directory indexes, clear HTTP-status filenames such as RESPONSE_200_OK
   walk(docs);
   const dirSiblingMap = /* @__PURE__ */ new Map();
   for (const f of markdownFiles) {
-    const dir = dirname10(f);
+    const dir = dirname11(f);
     if (!dirSiblingMap.has(dir)) dirSiblingMap.set(dir, []);
     dirSiblingMap.get(dir).push(basename7(f));
   }
@@ -3624,14 +3691,14 @@ README.md directory indexes, clear HTTP-status filenames such as RESPONSE_200_OK
     const docsRel = rel(docs, file);
     const rootRel = rel(root, file);
     if (docsRel && !docsRel.startsWith("..") && !isUpperSnakeMarkdown(name)) addError(file, "FILE_NAMING", `Markdown file must be UPPER_SNAKE_CASE.md or README.md: ${name}`, null, "rename the markdown file to UPPER_SNAKE_CASE.md or README.md and update any links that reference it.");
-    const content = readFileSync13(file, "utf8");
+    const content = readFileSync14(file, "utf8");
     fileCache.set(file, content);
     const docArea = docsRel?.split("/")[0];
     if (name !== "README.md" && isUpperSnakeMarkdown(name) && FILENAME_QUALITY_AREAS.has(docArea)) {
       const fp = validationPolicy.markdown?.filename ?? {};
       const allow = fp.allow ?? [];
       if (!allow.some((p) => matchPathPattern(rootRel, p)) && (fp.warnNumberedSeries ?? true)) {
-        const siblings = dirSiblingMap.get(dirname10(file)) ?? [];
+        const siblings = dirSiblingMap.get(dirname11(file)) ?? [];
         if (isNumberedSeriesFilename(name, siblings)) {
           const heading = extractFirstHeading(content);
           const suggestion = suggestFilenameFromHeading(heading);
@@ -3673,7 +3740,7 @@ ${traceabilityExample()}`, block.line);
     }
   }
   const byDir = /* @__PURE__ */ new Map();
-  for (const file of markdownFiles) byDir.set(dirname10(file), [...byDir.get(dirname10(file)) ?? [], file]);
+  for (const file of markdownFiles) byDir.set(dirname11(file), [...byDir.get(dirname11(file)) ?? [], file]);
   for (const [dir, files] of byDir) {
     if (files.length > 1 && !files.some((file) => basename7(file) === "README.md")) addError(dir, "MISSING_README", "Directory with multiple markdown files must include README.md", null, "add a README.md in this directory that indexes the important markdown files and their purpose.");
   }
@@ -3684,18 +3751,18 @@ ${traceabilityExample()}`, block.line);
   }
   if (options.linkCheck) {
     for (const [file, content] of fileCache) {
-      const fileDir = dirname10(file);
+      const fileDir = dirname11(file);
       for (const { href, line } of extractLinks(content)) {
         const hashIndex = href.indexOf("#");
         const pathPart = hashIndex === -1 ? href : href.slice(0, hashIndex);
         const anchor = hashIndex === -1 ? "" : href.slice(hashIndex + 1);
-        const target = pathPart ? resolve8(fileDir, pathPart) : file;
-        if (pathPart && !existsSync13(target)) {
+        const target = pathPart ? resolve9(fileDir, pathPart) : file;
+        if (pathPart && !existsSync14(target)) {
           addError(file, "BROKEN_LINK", `Local link target does not exist: ${pathPart}`, line, "update the link target to an existing local file, create the intended file, or remove the stale link.");
           continue;
         }
         if (anchor && extname6(target) === ".md") {
-          const targetContent = fileCache.get(target) ?? (existsSync13(target) ? readFileSync13(target, "utf8") : "");
+          const targetContent = fileCache.get(target) ?? (existsSync14(target) ? readFileSync14(target, "utf8") : "");
           if (targetContent && !extractAnchors(targetContent).has(decodeURIComponent(anchor))) addError(file, "BROKEN_ANCHOR", `Local anchor target does not exist: ${href}`, line, "update the fragment to a heading that exists in the target markdown file, or add the missing heading.");
         }
       }
@@ -3709,7 +3776,7 @@ ${traceabilityExample()}`, block.line);
       outlines = { ok: false, reason: `inspection-unavailable: ${error instanceof Error ? error.message : String(error)}`, paths: [] };
     }
     if (!outlines.ok) addError(outlinePath(root), "OUTLINE_INDEX_STALE", `Outline index: ${outlines.reason}${outlines.paths.length ? ` (${outlines.paths.join(", ")})` : ""}`, null, "run `dotdotgod index <root>` to refresh outlines and graph metadata; validation does not parse, embed or repair.");
-    for (const path of outlines.unsupported ?? []) addWarning(join12(root, path), "OUTLINE_LANGUAGE_UNSUPPORTED", "Source language is not supported by the current outline extraction matrix.");
+    for (const path of outlines.unsupported ?? []) addWarning(join13(root, path), "OUTLINE_LANGUAGE_UNSUPPORTED", "Source language is not supported by the current outline extraction matrix.");
     const index = readIndex(root);
     if (!index) addError(cacheFile(root), "INDEX_MISSING", "Expected .dotdotgod index cache.", null, "run `dotdotgod index <root>` to build the graph index.");
     else {
@@ -3729,20 +3796,20 @@ ${traceabilityExample()}`, block.line);
   }
   if (options.includeLocalMemory) {
     for (const area2 of ["plan", "archive/plan", "archive/report"]) {
-      const areaRoot = join12(docs, area2);
-      if (!existsSync13(areaRoot)) continue;
+      const areaRoot = join13(docs, area2);
+      if (!existsSync14(areaRoot)) continue;
       for (const entry of readdirSync3(areaRoot, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue;
-        if (!isKebabCase(entry.name)) addError(join12(areaRoot, entry.name), "SLUG_NAMING", `Archive/plan/report slug must be kebab-case: ${entry.name}`, null, "rename the task/report directory to kebab-case and update any README index links that reference it.");
-        const readme = join12(areaRoot, entry.name, "README.md");
-        if (!existsSync13(readme)) addError(readme, "MISSING_README", `Expected README.md in ${documentationRoot}/${area2}/${entry.name}/`, null, "add a README.md that summarizes the task/report and links any supporting files.");
+        if (!isKebabCase(entry.name)) addError(join13(areaRoot, entry.name), "SLUG_NAMING", `Archive/plan/report slug must be kebab-case: ${entry.name}`, null, "rename the task/report directory to kebab-case and update any README index links that reference it.");
+        const readme = join13(areaRoot, entry.name, "README.md");
+        if (!existsSync14(readme)) addError(readme, "MISSING_README", `Expected README.md in ${documentationRoot}/${area2}/${entry.name}/`, null, "add a README.md that summarizes the task/report and links any supporting files.");
       }
     }
   }
-  const gitignore = join12(root, ".gitignore");
-  if (!existsSync13(gitignore)) addError(gitignore, "MISSING_GITIGNORE", "Expected .gitignore", null, `create .gitignore and include ${documentationRoot}/plan, ${documentationRoot}/archive, and .dotdotgod entries.`);
+  const gitignore = join13(root, ".gitignore");
+  if (!existsSync14(gitignore)) addError(gitignore, "MISSING_GITIGNORE", "Expected .gitignore", null, `create .gitignore and include ${documentationRoot}/plan, ${documentationRoot}/archive, and .dotdotgod entries.`);
   else {
-    const content = readFileSync13(gitignore, "utf8").split("\n").map((line) => line.trim());
+    const content = readFileSync14(gitignore, "utf8").split("\n").map((line) => line.trim());
     for (const required of [`${documentationRoot}/plan`, `${documentationRoot}/archive`, CACHE_DIR]) if (!content.includes(required)) addError(gitignore, "MISSING_GITIGNORE_ENTRY", `Expected .gitignore entry: ${required}`, null, `add ${required} to .gitignore so local plans, archives, and cache files stay untracked.`);
   }
   if (options.json) console.log(JSON.stringify({ ok: errors.length === 0, errors, warnings }, null, 2));
@@ -3767,8 +3834,8 @@ Prompt: ${error.prompt}` : ""}`);
 }
 
 // packages/cli/src/commands/config.mjs
-import { existsSync as existsSync14, statSync as statSync6, writeFileSync as writeFileSync4 } from "node:fs";
-import { join as join13, resolve as resolve9 } from "node:path";
+import { existsSync as existsSync15, statSync as statSync6, writeFileSync as writeFileSync5 } from "node:fs";
+import { join as join14, resolve as resolve10 } from "node:path";
 function parseConfigOptions(argv, usageKey = "config") {
   const options = { root: ".", json: false, template: null };
   let rootSet = false;
@@ -3786,7 +3853,7 @@ function parseConfigOptions(argv, usageKey = "config") {
     } else if (!arg.startsWith("-")) usage(`Unexpected argument: ${arg}`, usageKey);
     else usage(`Unknown option: ${arg}`, usageKey);
   }
-  options.root = resolve9(options.root);
+  options.root = resolve10(options.root);
   return options;
 }
 function configInitError(options, code, message, path = null) {
@@ -3828,17 +3895,17 @@ function runConfig(argv) {
   const isInit = argv[0] === "init";
   const options = parseConfigOptions(isInit ? argv.slice(1) : argv, isInit ? "config init" : "config");
   if (isInit) {
-    if (!existsSync14(options.root)) configInitError(options, "ROOT_NOT_FOUND", `Project root not found: ${options.root}`);
+    if (!existsSync15(options.root)) configInitError(options, "ROOT_NOT_FOUND", `Project root not found: ${options.root}`);
     try {
       if (!statSync6(options.root).isDirectory()) configInitError(options, "ROOT_NOT_DIRECTORY", `Project root is not a directory: ${options.root}`);
     } catch {
       configInitError(options, "ROOT_NOT_FOUND", `Project root not found: ${options.root}`);
     }
-    const target = join13(options.root, "dotdotgod.config.json");
-    if (existsSync14(target)) configInitError(options, "CONFIG_EXISTS", "dotdotgod.config.json already exists.", target);
+    const target = join14(options.root, "dotdotgod.config.json");
+    if (existsSync15(target)) configInitError(options, "CONFIG_EXISTS", "dotdotgod.config.json already exists.", target);
     const template = resolveInitializationTemplate(options.template);
     if (!template.ok) configInitError(options, template.error.code, template.error.message, template.error.path ?? target);
-    writeFileSync4(target, template.text);
+    writeFileSync5(target, template.text);
     const payload2 = { ok: true, command: "config init", root: options.root, path: target, created: true, template: { name: template.name, source: template.source, selectedBy: template.selectedBy } };
     if (options.json) console.log(JSON.stringify(payload2, null, 2));
     else console.log(`dotdotgod config init: created ${target} from ${template.source}:${template.name} (${template.selectedBy})`);
@@ -3854,21 +3921,21 @@ function runConfig(argv) {
     errors.push({ file: "embedding config", code: "EMBEDDING_CONFIG_INVALID", message: error instanceof Error ? error.message : String(error) });
     embedding = { source: "invalid", path: null, profile: null };
   }
-  const payload = { ok: errors.length === 0, command: "config", root: options.root, source: config.source ?? "default", path: config.source && config.source !== "default" ? join13(options.root, config.source) : null, embedding, config: memoryConfigSummary(config), errors };
+  const payload = { ok: errors.length === 0, command: "config", root: options.root, source: config.source ?? "default", path: config.source && config.source !== "default" ? join14(options.root, config.source) : null, embedding, config: memoryConfigSummary(config), errors };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else console.log(formatConfigOutput(payload));
   if (errors.length > 0) process.exit(1);
 }
 
 // packages/cli/src/commands/query.mjs
-import { resolve as resolve10 } from "node:path";
+import { resolve as resolve11 } from "node:path";
 
 // packages/cli/src/query/embedding-runtime.mjs
-import { existsSync as existsSync15, mkdirSync as mkdirSync4, readFileSync as readFileSync14, rmSync, writeFileSync as writeFileSync5 } from "node:fs";
+import { existsSync as existsSync16, mkdirSync as mkdirSync5, readFileSync as readFileSync15, rmSync, writeFileSync as writeFileSync6 } from "node:fs";
 import { spawnSync as spawnSync2 } from "node:child_process";
 import { createRequire as createRequire2 } from "node:module";
 import { homedir as homedir3 } from "node:os";
-import { join as join14 } from "node:path";
+import { join as join15 } from "node:path";
 import { pathToFileURL } from "node:url";
 var EMBEDDING_RUNTIME_PACKAGE = "@huggingface/transformers";
 var EMBEDDING_RUNTIME_VERSION = "4.2.0";
@@ -3880,12 +3947,12 @@ var EmbeddingRuntimeMissingError = class extends Error {
   }
 };
 function embeddingRuntimeRoot(options = {}) {
-  return join14(options.home ?? homedir3(), ".dotdotgod", "runtime", "embedding");
+  return join15(options.home ?? homedir3(), ".dotdotgod", "runtime", "embedding");
 }
 function resolvePersistentTransformers(options = {}) {
   const root = embeddingRuntimeRoot(options);
   try {
-    const require3 = createRequire2(join14(root, "package.json"));
+    const require3 = createRequire2(join15(root, "package.json"));
     return require3.resolve(EMBEDDING_RUNTIME_PACKAGE);
   } catch {
     throw new EmbeddingRuntimeMissingError();
@@ -3894,10 +3961,10 @@ function resolvePersistentTransformers(options = {}) {
 function embeddingRuntimeStatus(options = {}) {
   const root = embeddingRuntimeRoot(options);
   try {
-    const require3 = createRequire2(join14(root, "package.json"));
+    const require3 = createRequire2(join15(root, "package.json"));
     require3.resolve(EMBEDDING_RUNTIME_PACKAGE);
-    const packagePath = join14(root, "node_modules", ...EMBEDDING_RUNTIME_PACKAGE.split("/"), "package.json");
-    const version = JSON.parse(readFileSync14(packagePath, "utf8")).version;
+    const packagePath = join15(root, "node_modules", ...EMBEDDING_RUNTIME_PACKAGE.split("/"), "package.json");
+    const version = JSON.parse(readFileSync15(packagePath, "utf8")).version;
     return { ok: true, installed: true, installAvailable: true, package: EMBEDDING_RUNTIME_PACKAGE, requiredVersion: EMBEDDING_RUNTIME_VERSION, packageVersion: version, location: root };
   } catch {
     return { ok: true, installed: false, installAvailable: true, package: EMBEDDING_RUNTIME_PACKAGE, requiredVersion: EMBEDDING_RUNTIME_VERSION, packageVersion: null, location: root };
@@ -3906,10 +3973,10 @@ function embeddingRuntimeStatus(options = {}) {
 function installEmbeddingRuntime(options = {}) {
   if (options.confirm !== true) throw new Error("Embedding runtime installation requires explicit confirmation.");
   const root = embeddingRuntimeRoot(options);
-  const lock = join14(root, ".installing");
-  if (existsSync15(lock)) throw new Error("Embedding runtime installation is already in progress.");
-  mkdirSync4(root, { recursive: true });
-  writeFileSync5(lock, `${process.pid}
+  const lock = join15(root, ".installing");
+  if (existsSync16(lock)) throw new Error("Embedding runtime installation is already in progress.");
+  mkdirSync5(root, { recursive: true });
+  writeFileSync6(lock, `${process.pid}
 `, { flag: "wx" });
   try {
     const spawn = options.spawnImpl ?? spawnSync2;
@@ -4031,8 +4098,8 @@ async function resolveEmbedder(root, options = {}) {
 
 // packages/cli/src/query/store.mjs
 import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync16, mkdirSync as mkdirSync5, readFileSync as readFileSync15, renameSync as renameSync2, rmSync as rmSync2, writeFileSync as writeFileSync6 } from "node:fs";
-import { join as join15 } from "node:path";
+import { existsSync as existsSync17, mkdirSync as mkdirSync6, readFileSync as readFileSync16, renameSync as renameSync2, rmSync as rmSync2, writeFileSync as writeFileSync7 } from "node:fs";
+import { join as join16 } from "node:path";
 var VECTOR_SCHEMA_VERSION = 2;
 var VECTOR_DIMENSIONS = 384;
 function profileFingerprint(identity2) {
@@ -4052,18 +4119,18 @@ function isValidNormalizedVectorValues(values, dimensions = VECTOR_DIMENSIONS) {
   return true;
 }
 function vectorCachePaths(root) {
-  const directory = join15(root, ".dotdotgod", "vectors");
-  return { directory, manifest: join15(directory, "manifest.json"), chunks: join15(directory, "chunks.jsonl"), embeddings: join15(directory, "embeddings.f32") };
+  const directory = join16(root, ".dotdotgod", "vectors");
+  return { directory, manifest: join16(directory, "manifest.json"), chunks: join16(directory, "chunks.jsonl"), embeddings: join16(directory, "embeddings.f32") };
 }
 function readVectorCache(root, identity2 = null) {
   const paths = vectorCachePaths(root);
-  if (!existsSync16(paths.manifest) || !existsSync16(paths.chunks) || !existsSync16(paths.embeddings)) return null;
+  if (!existsSync17(paths.manifest) || !existsSync17(paths.chunks) || !existsSync17(paths.embeddings)) return null;
   try {
-    const manifest = JSON.parse(readFileSync15(paths.manifest, "utf8"));
+    const manifest = JSON.parse(readFileSync16(paths.manifest, "utf8"));
     if (manifest.schemaVersion !== VECTOR_SCHEMA_VERSION || !Number.isInteger(manifest.dimensions) || manifest.dimensions < 1) return null;
     if (identity2 && manifest.profileFingerprint !== profileFingerprint(identity2)) return null;
-    const chunks = readFileSync15(paths.chunks, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
-    const buffer = readFileSync15(paths.embeddings);
+    const chunks = readFileSync16(paths.chunks, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
+    const buffer = readFileSync16(paths.embeddings);
     if (buffer.byteLength !== chunks.length * manifest.dimensions * 4) return null;
     const vectors = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4);
     if (!isValidNormalizedVectorValues(vectors, manifest.dimensions)) return null;
@@ -4074,14 +4141,14 @@ function readVectorCache(root, identity2 = null) {
 }
 function atomicWrite(path, data) {
   const temporary = `${path}.tmp-${process.pid}`;
-  writeFileSync6(temporary, data);
+  writeFileSync7(temporary, data);
   renameSync2(temporary, path);
 }
 function writeVectorCache(root, chunks, vectors, metadata = {}) {
   const paths = vectorCachePaths(root);
   const dimensions = metadata.dimensions;
   if (!Number.isInteger(dimensions) || dimensions < 1) throw new Error("Vector dimensions must be a positive integer.");
-  mkdirSync5(paths.directory, { recursive: true });
+  mkdirSync6(paths.directory, { recursive: true });
   if (vectors.length !== chunks.length * dimensions) throw new Error("Vector count does not match chunk metadata.");
   if (!isValidNormalizedVectorValues(vectors, dimensions)) throw new Error("Vectors must contain finite normalized values.");
   const manifest = { schemaVersion: VECTOR_SCHEMA_VERSION, chunks: chunks.length, generatedAt: (/* @__PURE__ */ new Date()).toISOString(), ...metadata };
@@ -4172,7 +4239,7 @@ function parseQueryOptions(argv) {
       options.limit = value;
     } else if (arg.startsWith("-")) usage(`Unknown option: ${arg}`, "query");
     else if (!rootSet) {
-      options.root = resolve10(arg);
+      options.root = resolve11(arg);
       rootSet = true;
     } else queryParts.push(arg);
   }
@@ -4314,7 +4381,7 @@ async function runQuery(argv) {
 }
 
 // packages/cli/src/commands/embedding.mjs
-import { resolve as resolve11 } from "node:path";
+import { resolve as resolve12 } from "node:path";
 function parse(argv) {
   const [action2 = "status", ...rest] = argv;
   let root = ".";
@@ -4326,7 +4393,7 @@ function parse(argv) {
     else if (!arg.startsWith("-") && root === ".") root = arg;
     else usage(`Unknown embedding option: ${arg}`, `embedding ${action2}`);
   }
-  return { action: action2, root: resolve11(root), json: json2, confirm };
+  return { action: action2, root: resolve12(root), json: json2, confirm };
 }
 function runEmbedding(argv, options = {}) {
   const parsed = parse(argv);
@@ -4352,11 +4419,11 @@ function runEmbedding(argv, options = {}) {
 }
 
 // packages/cli/src/commands/map.mjs
-import { resolve as resolve13 } from "node:path";
+import { resolve as resolve14 } from "node:path";
 
 // packages/cli/src/memory/documentation-map.mjs
-import { existsSync as existsSync17, readdirSync as readdirSync4, statSync as statSync7 } from "node:fs";
-import { join as join16, resolve as resolve12 } from "node:path";
+import { existsSync as existsSync18, readdirSync as readdirSync4, statSync as statSync7 } from "node:fs";
+import { join as join17, resolve as resolve13 } from "node:path";
 var SKIPPED_DIRECTORIES2 = /* @__PURE__ */ new Set(["node_modules", "dist", "build", "coverage", ".git", ".dotdotgod"]);
 function node() {
   return { directories: /* @__PURE__ */ new Map(), files: [] };
@@ -4419,7 +4486,7 @@ function discoverMarkdown(root, documentationRoot, exclude) {
   const walk = (relativeDirectory) => {
     let entries;
     try {
-      entries = readdirSync4(join16(root, relativeDirectory), { withFileTypes: true, encoding: "utf8" });
+      entries = readdirSync4(join17(root, relativeDirectory), { withFileTypes: true, encoding: "utf8" });
     } catch {
       return;
     }
@@ -4436,8 +4503,8 @@ function discoverMarkdown(root, documentationRoot, exclude) {
   return paths.sort();
 }
 function buildDocumentationMap(projectRoot = ".", { depth = 5 } = {}) {
-  const root = resolve12(projectRoot);
-  if (!existsSync17(root)) return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
+  const root = resolve13(projectRoot);
+  if (!existsSync18(root)) return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
   try {
     if (!statSync7(root).isDirectory()) return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
   } catch {
@@ -4485,7 +4552,7 @@ function parseMapOptions(argv) {
     } else if (!arg.startsWith("-")) fail(options.json, "UNEXPECTED_ARGUMENT", `Unexpected argument: ${arg}`);
     else fail(options.json, "UNKNOWN_OPTION", `Unknown option: ${arg}`);
   }
-  options.root = resolve13(options.root);
+  options.root = resolve14(options.root);
   return options;
 }
 function runMap(argv) {
@@ -4497,7 +4564,7 @@ function runMap(argv) {
 }
 
 // packages/cli/src/reference/resolve.mjs
-import { resolve as resolve16 } from "node:path";
+import { resolve as resolve17 } from "node:path";
 
 // node_modules/.pnpm/leiden-ts@0.1.0/node_modules/leiden-ts/dist/index.js
 var GraphValidationError = class extends Error {
@@ -5868,8 +5935,8 @@ function compareImpactItems(seeds) {
 }
 
 // packages/cli/src/impact/references.mjs
-import { readFileSync as readFileSync16, statSync as statSync8 } from "node:fs";
-import { extname as extname7, resolve as resolve14 } from "node:path";
+import { readFileSync as readFileSync17, statSync as statSync8 } from "node:fs";
+import { extname as extname7, resolve as resolve15 } from "node:path";
 var WARNING_LIMIT = 20;
 var edgeKey = (source, target, relation) => `${source}\0${target}\0${relation}`;
 function prepareImpactReferences(index, root, changedPaths) {
@@ -5881,10 +5948,10 @@ function prepareImpactReferences(index, root, changedPaths) {
     if (checks.has(path)) return checks.get(path);
     let result;
     try {
-      const absolute = resolve14(root, path);
+      const absolute = resolve15(root, path);
       const stat = statSync8(absolute);
       result = { status: "exists" };
-      if (stat.isFile() && extname7(absolute) === ".md") result.anchors = extractAnchors(readFileSync16(absolute, "utf8"));
+      if (stat.isFile() && extname7(absolute) === ".md") result.anchors = extractAnchors(readFileSync17(absolute, "utf8"));
     } catch (error) {
       result = { status: ["ENOENT", "ENOTDIR"].includes(error.code) ? "missing" : "unavailable" };
     }
@@ -5946,15 +6013,15 @@ function prepareImpactReferences(index, root, changedPaths) {
 }
 
 // packages/cli/src/impact/vector-profile.mjs
-import { lstatSync as lstatSync3, readFileSync as readFileSync17, realpathSync as realpathSync2 } from "node:fs";
-import { extname as extname8, relative as relative6, resolve as resolve15, sep } from "node:path";
+import { lstatSync as lstatSync4, readFileSync as readFileSync18, realpathSync as realpathSync3 } from "node:fs";
+import { extname as extname8, relative as relative7, resolve as resolve16, sep } from "node:path";
 var MAX_VECTOR_PROFILE_FILE_BYTES = 64 * 1024;
 var MAX_VECTOR_PROFILE_CHARS = 4e3;
 var MAX_VECTOR_PROFILE_METADATA_ITEMS = 20;
 var TEXT_EXTENSIONS = /* @__PURE__ */ new Set([".c", ".cc", ".cpp", ".css", ".go", ".h", ".hpp", ".html", ".java", ".js", ".json", ".jsx", ".md", ".mjs", ".py", ".rb", ".rs", ".sh", ".ts", ".tsx", ".txt", ".yaml", ".yml"]);
 var GENERATED_SEGMENTS = /* @__PURE__ */ new Set([".dotdotgod", "build", "coverage", "dist", "node_modules"]);
 function insideRoot(root, absolute) {
-  const normalizedRoot = resolve15(root);
+  const normalizedRoot = resolve16(root);
   return absolute === normalizedRoot || absolute.startsWith(`${normalizedRoot}${sep}`);
 }
 function normalizeChangedPath(path) {
@@ -5965,17 +6032,17 @@ function normalizeChangedPath(path) {
 function canonicalizeChangedPath(root, path) {
   const normalized = normalizeChangedPath(path);
   if (!normalized) return null;
-  const rootAbsolute = resolve15(root);
-  const absolute = resolve15(rootAbsolute, normalized);
+  const rootAbsolute = resolve16(root);
+  const absolute = resolve16(rootAbsolute, normalized);
   if (!insideRoot(rootAbsolute, absolute)) return normalized;
   try {
-    const canonicalRoot = realpathSync2(rootAbsolute);
-    const canonicalAbsolute = realpathSync2(absolute);
+    const canonicalRoot = realpathSync3(rootAbsolute);
+    const canonicalAbsolute = realpathSync3(absolute);
     if (!insideRoot(canonicalRoot, canonicalAbsolute)) return normalized;
-    const canonical = relative6(canonicalRoot, canonicalAbsolute).replaceAll("\\", "/");
+    const canonical = relative7(canonicalRoot, canonicalAbsolute).replaceAll("\\", "/");
     return canonical || normalized;
   } catch {
-    return relative6(rootAbsolute, absolute).replaceAll("\\", "/") || normalized;
+    return relative7(rootAbsolute, absolute).replaceAll("\\", "/") || normalized;
   }
 }
 function unsafeProfilePath(path) {
@@ -5997,15 +6064,15 @@ function graphMetadata(graph, seedId) {
 function safeTextPrefix(root, path) {
   if (unsafeProfilePath(path) || !TEXT_EXTENSIONS.has(extname8(path).toLowerCase())) return "";
   try {
-    const absolute = resolve15(root, path);
+    const absolute = resolve16(root, path);
     if (!insideRoot(root, absolute)) return "";
-    const canonicalAbsolute = realpathSync2(absolute);
-    if (!insideRoot(realpathSync2(root), canonicalAbsolute)) return "";
-    const canonicalPath = relative6(realpathSync2(root), canonicalAbsolute).replaceAll("\\", "/");
+    const canonicalAbsolute = realpathSync3(absolute);
+    if (!insideRoot(realpathSync3(root), canonicalAbsolute)) return "";
+    const canonicalPath = relative7(realpathSync3(root), canonicalAbsolute).replaceAll("\\", "/");
     if (canonicalPath !== path || unsafeProfilePath(canonicalPath) || !TEXT_EXTENSIONS.has(extname8(canonicalPath).toLowerCase())) return "";
-    const stats = lstatSync3(canonicalAbsolute);
+    const stats = lstatSync4(canonicalAbsolute);
     if (!stats.isFile() || stats.isSymbolicLink() || stats.size > MAX_VECTOR_PROFILE_FILE_BYTES) return "";
-    const buffer = readFileSync17(canonicalAbsolute);
+    const buffer = readFileSync18(canonicalAbsolute);
     if (buffer.includes(0)) return "";
     const text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
     return text.slice(0, MAX_VECTOR_PROFILE_CHARS);
@@ -6226,7 +6293,7 @@ function buildCompactImpactReport(impact, limits = {}) {
 }
 
 // packages/cli/src/reference/extract.mjs
-import { basename as basename8, dirname as dirname11, extname as extname9 } from "node:path";
+import { basename as basename8, dirname as dirname12, extname as extname9 } from "node:path";
 var DEFAULT_REFERENCE_LIMIT = 5;
 function extractBracketReferences(prompt = "") {
   const refs = [];
@@ -6277,7 +6344,7 @@ function aliasEntriesForPath(path = "") {
   const parts = withoutMd.split("/").filter(Boolean);
   for (let i = 0; i < parts.length; i += 1) entries.push({ alias: parts.slice(i).join("/"), kind: "path-suffix" });
   if (base === "README.md") {
-    const dir = dirname11(path).replace(/\\/g, "/");
+    const dir = dirname12(path).replace(/\\/g, "/");
     entries.push({ alias: basename8(dir), kind: "path" });
   }
   for (const alias of [path, withoutMd, base, stem]) entries.push({ alias, kind: "path" });
@@ -6407,7 +6474,7 @@ function parseReferenceOptions(argv, command) {
     else filtered.push(arg);
   }
   const operands = filtered.filter((arg) => !arg.startsWith("-"));
-  return { ...options, root: resolve16(operands[0] ?? "."), json: filtered.includes("--json"), rootArgv: operands.slice(1) };
+  return { ...options, root: resolve17(operands[0] ?? "."), json: filtered.includes("--json"), rootArgv: operands.slice(1) };
 }
 function formatReferenceOutput(payload) {
   const refreshNote = payload.metadata.cacheRefreshed ? ", refreshed" : "";
@@ -6456,15 +6523,15 @@ function runExpand(argv) {
 }
 
 // packages/cli/src/commands/traceability.mjs
-import { existsSync as existsSync18, readFileSync as readFileSync18, readdirSync as readdirSync5, writeFileSync as writeFileSync7 } from "node:fs";
-import { join as join17, resolve as resolve17 } from "node:path";
+import { existsSync as existsSync19, readFileSync as readFileSync19, readdirSync as readdirSync5, writeFileSync as writeFileSync8 } from "node:fs";
+import { join as join18, resolve as resolve18 } from "node:path";
 function collectDocsMarkdownFiles(root) {
-  const docs = join17(root, "docs");
+  const docs = join18(root, "docs");
   const files = [];
   const walk = (dir) => {
-    if (!existsSync18(dir)) return;
+    if (!existsSync19(dir)) return;
     for (const entry of readdirSync5(dir, { withFileTypes: true })) {
-      const path = join17(dir, entry.name);
+      const path = join18(dir, entry.name);
       if (entry.isDirectory()) walk(path);
       else if (entry.isFile() && entry.name.endsWith(".md")) files.push(path);
     }
@@ -6489,7 +6556,7 @@ function parseTraceabilityOptions(argv) {
   }
   if (options.check && options.write) usage("Choose only one traceability links mode: --check or --write.", "traceability links");
   options.check = options.check || !options.write;
-  options.root = resolve17(options.root);
+  options.root = resolve18(options.root);
   return options;
 }
 function runTraceability(argv) {
@@ -6500,7 +6567,7 @@ function runTraceability(argv) {
   const errors = [...config.errors ?? []];
   for (const file of files) {
     if (options.write && errors.length > 0) break;
-    const content = readFileSync18(file, "utf8");
+    const content = readFileSync19(file, "utf8");
     for (const error of validateTraceabilityLinksRegion(content, options.root, file)) errors.push(error);
     const blocks = extractDotdotgodTraceabilityBlocks(content).filter((block) => !block.error);
     if (blocks.length === 0) continue;
@@ -6509,7 +6576,7 @@ function runTraceability(argv) {
       for (const error of result.errors ?? []) errors.push(error);
       continue;
     }
-    if (options.write && result.changed) writeFileSync7(file, result.content);
+    if (options.write && result.changed) writeFileSync8(file, result.content);
     if (result.changed) results.push({ file: rel(options.root, file), changed: true });
   }
   const ok = errors.length === 0 && (!options.check || results.length === 0);
@@ -6530,8 +6597,8 @@ function runTraceability(argv) {
 
 // packages/cli/src/graph-view/server.mjs
 import { createServer } from "node:http";
-import { readFileSync as readFileSync19 } from "node:fs";
-import { dirname as dirname12, extname as extname10, join as join18 } from "node:path";
+import { readFileSync as readFileSync20 } from "node:fs";
+import { dirname as dirname13, extname as extname10, join as join19 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // packages/cli/src/graph-view/payload.mjs
@@ -6643,7 +6710,7 @@ function buildImpactGraphPayload(index, impact) {
 }
 
 // packages/cli/src/graph-view/server.mjs
-var ASSET_ROOT = join18(dirname12(fileURLToPath2(import.meta.url)), "assets");
+var ASSET_ROOT = join19(dirname13(fileURLToPath2(import.meta.url)), "assets");
 var CONTENT_TYPES = { ".css": "text/css; charset=utf-8", ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".map": "application/json; charset=utf-8" };
 var VENDOR_FILES = {
   "/vendor/sigma.js": new URL("../../node_modules/sigma/dist/sigma.min.js", import.meta.url),
@@ -6656,7 +6723,7 @@ function json(response, status, value) {
 }
 function asset(response, file) {
   try {
-    const body = readFileSync19(file);
+    const body = readFileSync20(file);
     response.writeHead(200, { "content-type": CONTENT_TYPES[extname10(file)] ?? "application/octet-stream", "cache-control": "no-store" });
     response.end(body);
   } catch {
@@ -6693,16 +6760,16 @@ async function startImpactGraphServer({ root, changed, host = "127.0.0.1", port 
       }
     }
     if (VENDOR_FILES[url.pathname]) return asset(response, fileURLToPath2(VENDOR_FILES[url.pathname]));
-    const relative7 = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
-    if (!["index.html", "app.css", "app.js"].includes(relative7)) {
+    const relative8 = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
+    if (!["index.html", "app.css", "app.js"].includes(relative8)) {
       response.writeHead(404);
       return response.end("Not found");
     }
-    return asset(response, join18(ASSET_ROOT, relative7));
+    return asset(response, join19(ASSET_ROOT, relative8));
   });
-  await new Promise((resolve18, reject) => {
+  await new Promise((resolve19, reject) => {
     server.once("error", reject);
-    server.listen(port, host, resolve18);
+    server.listen(port, host, resolve19);
   });
   const address = server.address();
   const actualPort = typeof address === "object" && address ? address.port : port;

@@ -9,7 +9,7 @@ The `dotdotgod init` CLI command and bundled POSIX fallback produce the same bas
 ## CLI Contract
 
 ```bash
-dotdotgod init <project-root> [--project-name NAME] [--template NAME] [--dotdot-setting] [--dry-run] [--json]
+dotdotgod init <project-root> [--project-name NAME] [--template NAME] [--dotdot-setting] [--claude-plans] [--dry-run] [--json]
 ```
 
 Fallback script contract, used when `dotdotgod` is unavailable or not executable:
@@ -65,7 +65,7 @@ The full command catalog remains owned by CLI Help. `CLAUDE.md` and `CODEX.md` s
 
 ## Existing-File Policy
 
-- Files already present are always preserved and skipped.
+- Scaffold files already present are preserved and skipped. Explicit `--claude-plans` may add a missing `plansDirectory` key to project Claude settings while preserving existing values; see `NATIVE_PLAN_STORAGE.md`.
 - `--dry-run` reports intended create and update actions without writing files.
 - `--json` is supported by `dotdotgod init` for structured action reporting.
 
@@ -103,7 +103,7 @@ Generated docs follow these conventions:
 
 ## Non-Goals
 
-- The initializer does not merge into or replace files already present.
+- The initializer does not replace scaffold files already present. The opt-in Claude settings merge is the only agent-settings exception.
 - The initializer does not infer project stack beyond the project name.
 - The initializer does not materialize arbitrary custom-template globs or create placeholder content for file-specific memory areas.
 - `docs/plan`, `docs/archive`, and `.dotdotgod` are local working/cache areas by default and are ignored by git unless a project deliberately changes that policy.

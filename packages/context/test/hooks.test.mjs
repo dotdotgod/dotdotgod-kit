@@ -19,7 +19,23 @@ function payload(root, event, extra = {}) {
 }
 
 const bash = { tool_name: 'Bash', tool_input: { command: 'npm test' } };
-const load = { tool_name: 'mcp__project_load', tool_input: {} };
+const load = { tool_name: 'mcp__dotdotgod_context__project_load', tool_input: {} };
+
+test('local plan Markdown does not create source-impact gates; maintained docs still do', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-plan-'));
+  try {
+    payload(root, 'sessionstart'); payload(root, 'posttooluse', load);
+    for (const documentationRoot of ['docs', 'knowledge']) {
+      writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({ documentation: { root: documentationRoot } }));
+      const file = join(root, documentationRoot, 'plan/task/README.md');
+      mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, '# Plan');
+      payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
+      assert.deepEqual(payload(root, 'pretooluse', bash), {});
+    }
+    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: join(root, 'docs/SPEC.md') } });
+    assert.equal(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
 
 test('hooks gate load and acknowledgement-based impact without recursion', () => {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-test-'));
@@ -36,7 +52,7 @@ test('hooks gate load and acknowledgement-based impact without recursion', () =>
     const deniedImpact = payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'pnpm test' } });
     assert.equal(deniedImpact.hookSpecificOutput.permissionDecision, 'deny');
     assert.match(deniedImpact.hookSpecificOutput.permissionDecisionReason, /project_impact/);
-    const impact = { tool_name: 'mcp__project_impact', tool_input: { paths: [file] } };
+    const impact = { tool_name: 'mcp__dotdotgod_context__project_impact', tool_input: { paths: [file] } };
     assert.deepEqual(payload(root, 'pretooluse', impact), {});
     payload(root, 'posttooluse', impact);
     assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'pnpm test' } }), {});
@@ -93,7 +109,7 @@ test('impact paths resolve against the canonical project root', () => {
     hook('posttooluse', { project_dir: root, cwd: nested, session_id: 'impact', tool_name: 'Write', tool_input: { file_path: 'source.ts' } });
     const verify = { tool_name: 'Bash', tool_input: { command: 'pnpm test' } };
     assert.match(hook('pretooluse', { project_dir: root, session_id: 'impact', ...verify }).hookSpecificOutput.permissionDecisionReason, /project_impact/);
-    hook('posttooluse', { project_dir: root, cwd: nested, session_id: 'impact', tool_name: 'mcp__project_impact', tool_input: { paths: ['source.ts'] } });
+    hook('posttooluse', { project_dir: root, cwd: nested, session_id: 'impact', tool_name: 'mcp__dotdotgod_context__project_impact', tool_input: { paths: ['source.ts'] } });
     assert.deepEqual(hook('pretooluse', { project_dir: root, session_id: 'impact', ...verify }), {});
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -142,7 +158,7 @@ test('impact posttooluse clears requested pending paths even when result reports
     writeFileSync(file, 'export const value = 1;\n');
     payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
     assert.equal(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } }).hookSpecificOutput.permissionDecision, 'deny');
-    const impact = { tool_name: 'mcp__project_impact', tool_input: { paths: [file] }, tool_response: { ok: false, error: 'diagnostic failure' } };
+    const impact = { tool_name: 'mcp__dotdotgod_context__project_impact', tool_input: { paths: [file] }, tool_response: { ok: false, error: 'diagnostic failure' } };
     const warning = payload(root, 'posttooluse', impact);
     assert.match(warning.hookSpecificOutput.additionalContext, /cleared pending graph impact/i);
     assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } }), {});
@@ -157,7 +173,7 @@ test('re-edit after impact acknowledgement creates a fresh pending gate', () => 
     const file = join(root, 'source.ts');
     writeFileSync(file, 'export const value = 1;\n');
     payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
-    payload(root, 'posttooluse', { tool_name: 'mcp__project_impact', tool_input: { paths: [file] } });
+    payload(root, 'posttooluse', { tool_name: 'mcp__dotdotgod_context__project_impact', tool_input: { paths: [file] } });
     assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'pnpm test' } }), {});
     writeFileSync(file, 'export const value = 2;\n');
     payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
@@ -177,4 +193,19 @@ test('unrelated or unidentified hook inputs fail open', () => {
     rmSync(rootA, { recursive: true, force: true });
     rmSync(rootB, { recursive: true, force: true });
   }
+});
+
+test('unrelated MCP tools with shared short names cannot acknowledge load or impact', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-name-isolation-'));
+  try {
+    payload(root, 'sessionstart');
+    payload(root, 'posttooluse', { tool_name: 'mcp__other_server__project_load', tool_input: {} });
+    assert.equal(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
+    payload(root, 'posttooluse', load);
+    const file = join(root, 'source.ts');
+    writeFileSync(file, 'export const value = 1;');
+    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { path: file } });
+    payload(root, 'posttooluse', { tool_name: 'mcp__other_server__project_impact', tool_input: { paths: [file] } });
+    assert.equal(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
