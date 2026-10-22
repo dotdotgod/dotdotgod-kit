@@ -146,6 +146,12 @@ test('project workflows preserve bounded load, impact, and dry-run initializatio
     const load = await projectLoad({ root });
     assert.equal(load.ok, true);
     assert.deepEqual(load.documentationTree, []);
+    mkdirSync(join(root, 'memory'), { recursive: true });
+    writeFileSync(join(root, 'memory/README.md'), '# Configured docs');
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({ documentation: { root: 'memory' } }));
+    const configuredLoad = await projectLoad({ root });
+    assert.equal(configuredLoad.documentationRoot, 'memory');
+    assert.match(configuredLoad.documentationTree.join('\n'), /memory\/|README.md/);
     await assert.rejects(() => projectImpact({ root, paths: [] }), /at least one/);
     await assert.rejects(() => projectImpact({ root, paths: Array.from({ length: 21 }, (_, i) => `f${i}`) }), /limited to 20/);
     const initialized = await projectInitialize({ root });

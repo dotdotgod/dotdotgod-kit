@@ -25,6 +25,11 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
     await client.connect(transport);
     const listed = await client.listTools();
     assert.deepEqual(listed.tools.map((tool) => tool.name).sort(), expected.sort());
+    for (const name of ['index', 'fetch_and_index', 'execute_file']) {
+      assert.equal(listed.tools.find(tool => tool.name === name).inputSchema.properties.ttlMs, undefined);
+    }
+    const customTtl = await client.callTool({ name: 'index', arguments: { path: 'missing', ttlMs: 1 } });
+    assert.equal(customTtl.isError, true, 'removed ttlMs must fail validation, not silently disappear');
     assert.ok(listed.tools.every(tool => !tool.name.startsWith('dotdotgod_')));
     assert.equal((await client.callTool({ name: 'dotdotgod_project_load', arguments: {} })).isError, true, 'removed names must not remain aliases');
     for (const [name, schema] of Object.entries(PHASE3_TOOL_INPUT_SCHEMAS)) {

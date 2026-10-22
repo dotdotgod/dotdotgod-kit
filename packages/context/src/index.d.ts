@@ -5,12 +5,12 @@ export interface EnvironmentPolicy { mode: 'inherit-filtered-v1' | 'allowlist-v1
 export interface DirectoryManifestEntry { path: string; absolutePath: string; size: number; identity: { dev: number; ino: number; size: number; mtimeMs: number }; symlink: boolean }
 export interface DirectoryManifest { root: string; directory: string; files: DirectoryManifestEntry[]; skipped: Array<{ path: string; reason: DirectoryReason }>; failed: Array<{ path: string; reason: DirectoryReason; error?: string }>; aborted: boolean; truncated: boolean; visitedEntries: number; aggregateBytes: number }
 export interface HtmlNormalization { text: string; title: string | null; links: Array<{ text: string; href: string }>; extractor: 'html-v1'; fallbackReason: 'malformed-html' | null; mimeType: 'text/html' | 'application/xhtml+xml'; charset: 'utf-8' | 'us-ascii'; inputBytes: number; outputBytes: number; truncated: boolean }
-export interface ExecutionInput { label?: string; command?: string; executable?: string; args?: string[]; shell?: boolean; cwd?: string; timeoutMs?: number; outputLimit?: number; directLimit?: number; outputMode?: 'auto' | 'direct' | 'indexed' | 'discard'; scope?: ContextScope; ttlMs?: number; env?: Record<string, string | null>; environmentMode?: 'inherit-filtered-v1' | 'allowlist-v1'; allowedEnv?: string[] }
-export interface IndexInput { path: string; root?: string; source?: string; scope?: ContextScope; ttlMs?: number; maxBytes?: number; includeExtensions?: string[]; excludePaths?: string[]; followFileSymlinks?: boolean; maxDepth?: number; maxVisitedEntries?: number; maxFiles?: number; maxAggregateBytes?: number }
-export interface FetchInput { url: string; source?: string; scope?: ContextScope; ttlMs?: number; timeoutMs?: number; maxBytes?: number; browser?: boolean }
-export interface IndexResult { id: string; chunks: number; bytes: number; scope: ContextScope; expiresAt: number | null }
+export interface ExecutionInput { label?: string; command?: string; executable?: string; args?: string[]; shell?: boolean; cwd?: string; timeoutMs?: number; outputLimit?: number; directLimit?: number; outputMode?: 'auto' | 'direct' | 'indexed' | 'discard'; scope?: ContextScope; env?: Record<string, string | null>; environmentMode?: 'inherit-filtered-v1' | 'allowlist-v1'; allowedEnv?: string[] }
+export interface IndexInput { path: string; root?: string; source?: string; scope?: ContextScope; maxBytes?: number; includeExtensions?: string[]; excludePaths?: string[]; followFileSymlinks?: boolean; maxDepth?: number; maxVisitedEntries?: number; maxFiles?: number; maxAggregateBytes?: number }
+export interface FetchInput { url: string; source?: string; scope?: ContextScope; timeoutMs?: number; maxBytes?: number; browser?: boolean }
+export interface IndexResult { id: string; chunks: number; bytes: number; scope: ContextScope; expiresAt: number }
 export interface FetchResult extends IndexResult {}
-export interface IngestionJob { id: string; state: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'; kind: 'index' | 'fetch'; input: Record<string, unknown>; sessionId: string | null; result: unknown; error: string | null; createdAt: number; updatedAt: number }
+export interface IngestionJob { id: string; state: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'; kind: 'index' | 'fetch'; input: Record<string, unknown>; sessionId: string | null; result: unknown; error: string | null; createdAt: number; updatedAt: number; expiresAt: number }
 export interface DoctorResult { ok: boolean; status: 'OK' | 'WARN' | 'FAIL'; node: string; platform: string; root: string; dbPath: string; checks: Array<{ id: string; status: 'OK' | 'WARN' | 'FAIL'; message: string; details?: unknown }> }
 
 export function contextDbPath(root?: string): string;
@@ -19,7 +19,7 @@ export class ContextStore {
   root: string;
   path: string;
   close(): void;
-  index(input: { id?: string; scope?: ContextScope; sessionId?: string | null; label?: string; kind?: string; text: string; metadata?: Record<string, unknown>; ttlMs?: number | null; provenance?: Record<string, unknown> }): Record<string, unknown>;
+  index(input: { id?: string; scope?: ContextScope; sessionId?: string | null; label?: string; kind?: string; text: string; metadata?: Record<string, unknown>; provenance?: Record<string, unknown> }): Record<string, unknown>;
   search(input: { query: string; scope?: ContextScope; sessionId?: string; source?: string; limit?: number }): unknown[];
   stats(): { path: string; sources: number; chunks: number; byScope: Array<{ scope: ContextScope; count: number }> };
   purge(input: { scope?: ContextScope; sessionId?: string; sourceId?: string }): { removed: number };

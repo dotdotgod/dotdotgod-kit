@@ -35,7 +35,7 @@ const outputModeSchema = z.enum(['auto', 'direct', 'indexed', 'discard']).option
 const commandSchema = {
   label: z.string().optional(), command: z.string().optional(), executable: z.string().optional(), args: z.array(z.string()).optional(),
   shell: z.boolean().optional(), cwd: z.string().optional(), timeoutMs: z.number().int().positive().optional(), outputLimit: z.number().int().positive().optional(),
-  directLimit: z.number().int().positive().optional(), outputMode: outputModeSchema, scope: scopeSchema, ttlMs: z.number().int().nonnegative().optional(),
+  directLimit: z.number().int().positive().optional(), outputMode: outputModeSchema, scope: scopeSchema,
   env: z.record(z.string(), z.string().nullable()).optional(), environmentMode: z.enum(['inherit-filtered-v1', 'allowlist-v1']).optional(), allowedEnv: z.array(z.string()).max(100).optional(),
 };
 
@@ -68,7 +68,7 @@ register('execute_file', 'Process a local file in an isolated child process; onl
   path: z.string(), language: z.enum(['javascript', 'python', 'shell']).default('javascript'), code: z.string(), ...commandSchema,
 }, (input, extra) => executeFile(input, { root, store: getStore(), sessionId: currentSession(), signal: extra.signal }), { openWorldHint: false, destructiveHint: true });
 register('index', 'Index a local text file or bounded directory into the project-local FTS5 store without returning raw bytes.', {
-  path: z.string(), root: z.string().optional(), source: z.string().optional(), scope: scopeSchema, ttlMs: z.number().int().nonnegative().optional(), maxBytes: z.number().int().positive().optional(),
+  path: z.string(), root: z.string().optional(), source: z.string().optional(), scope: scopeSchema, maxBytes: z.number().int().positive().optional(),
   includeExtensions: z.array(z.string()).max(100).optional(), excludePaths: z.array(z.string()).max(500).optional(), followFileSymlinks: z.boolean().optional(),
   maxDepth: z.number().int().nonnegative().optional(), maxVisitedEntries: z.number().int().nonnegative().optional(), maxFiles: z.number().int().nonnegative().optional(), maxAggregateBytes: z.number().int().nonnegative().optional(),
 }, (input, extra) => ({ ok: true, ...indexFile(getStore(), { ...input, root }, currentSession(), extra.signal) }), { readOnlyHint: true });
@@ -80,7 +80,7 @@ register('search', 'Search indexed content for bounded excerpts. For failure dia
   results: getStore().search({ ...input, sessionId: input.sessionOnly ? currentSession() : undefined }),
 }), { readOnlyHint: true });
 register('fetch_and_index', 'Fetch an HTTP(S) URL locally, index bounded text, and return metadata only.', {
-  url: z.string().url(), source: z.string().optional(), scope: scopeSchema, ttlMs: z.number().int().nonnegative().optional(), timeoutMs: z.number().int().positive().optional(), maxBytes: z.number().int().positive().optional(), browser: z.boolean().optional(),
+  url: z.string().url(), source: z.string().optional(), scope: scopeSchema, timeoutMs: z.number().int().positive().optional(), maxBytes: z.number().int().positive().optional(), browser: z.boolean().optional(),
 }, (input, extra) => fetchAndIndex(getStore(), input, currentSession(), extra.signal).then((value) => ({ ok: true, ...value })), { openWorldHint: true, readOnlyHint: true });
 function zodFromContract(schema) {
   if (schema.const !== undefined) return z.literal(schema.const);

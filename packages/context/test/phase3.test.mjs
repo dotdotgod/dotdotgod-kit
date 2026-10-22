@@ -27,7 +27,7 @@ test('schema migration ledger is versioned and restart recovery requeues running
     assert.equal(store.getJob(job.id).state, 'queued');
     assert.throws(() => store.createJob({ kind: 'index', input: { value: 'x'.repeat(70 * 1024) } }), /64 KiB/);
     const db = new DatabaseSync(store.path, { readOnly: true });
-    assert.deepEqual(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map((r) => r.version), [1, 2, 3]); db.close();
+    assert.deepEqual(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all().map((r) => r.version), [1, 2, 3, 4]); db.close();
   } finally { store.destroy(); }
 });
 

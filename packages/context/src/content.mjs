@@ -3,6 +3,7 @@ import { readManifestFile, walkDirectoryManifest } from './directory-ingestion.m
 import { normalizeHtml } from './html-normalize.mjs';
 import { resolveExistingWithinRoot } from './paths.mjs';
 import { safeFetch } from './safe-fetch.mjs';
+import { rejectCustomTtl } from './retention.mjs';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_FETCH_BYTES = 10 * 1024 * 1024;
@@ -19,7 +20,6 @@ function indexRegularFile(store, input, sessionId, path, stat, label = input.sou
     kind: 'file',
     text: content.toString('utf8'),
     metadata: { path, size: stat.size },
-    ttlMs: input.ttlMs ?? null,
   });
 }
 
@@ -67,6 +67,7 @@ function indexDirectory(store, input, sessionId, signal) {
 }
 
 export function indexFile(store, input, sessionId, signal) {
+  rejectCustomTtl(input);
   const path = resolveExistingWithinRoot(input.root || process.cwd(), input.path);
   const stat = statSync(path);
   if (stat.isDirectory()) return indexDirectory(store, input, sessionId, signal);
@@ -75,6 +76,7 @@ export function indexFile(store, input, sessionId, signal) {
 }
 
 export async function fetchAndIndex(store, input, sessionId, signal, capabilities = {}) {
+  rejectCustomTtl(input);
   const maxBytes = Math.min(input.maxBytes ?? MAX_FETCH_BYTES, MAX_FETCH_BYTES);
   let fetched;
   if (input.browser === true) {
@@ -117,6 +119,7 @@ export async function fetchAndIndex(store, input, sessionId, signal, capabilitie
     maxInputBytes: maxBytes,
     maxOutputBytes: maxBytes,
   }) : null;
+  signal?.throwIfAborted();
   const text = normalized?.text ?? fetched.text;
   return store.index({
     scope: input.scope ?? 'project',
@@ -149,6 +152,5 @@ export async function fetchAndIndex(store, input, sessionId, signal, capabilitie
       contentType: normalized ? 'text/markdown' : fetched.contentType,
       extractor: normalized?.extractor,
     },
-    ttlMs: input.ttlMs ?? 24 * 60 * 60 * 1000,
   });
 }

@@ -6,7 +6,7 @@ Local-first execution, ingestion, and retrieval runtime for dotdotgod adapters.
 
 Use this package to keep large command output, project files, and fetched text available as bounded local evidence across agent turns. Small results return directly; larger results become searchable excerpts with source provenance. Durable ingestion jobs and opaque session resume support work that outlives one tool call.
 
-Claude Code and Codex start the bundled stdio MCP server through their adapter packages. Pi calls the same core through native extension tools. Direct integrators can use the server, hooks, and typed core exports on Node.js 22.5 or newer.
+Pi registers this stdio MCP server with its host; OpenCode, Claude Code and Codex bundle it. Pi's existing tool names forward through MCP. Direct integrators can use the server, hooks, and typed core exports on Node.js 22.5 or newer.
 
 ```bash
 npm install @dotdotgod/context
@@ -24,15 +24,23 @@ The runtime policies apply to dotdotgod execution and retrieval tools. Each host
 - **Evidence keeps its identity.** Project files, command output, and fetched resources carry distinct provenance and trust metadata.
 - **Longer processing becomes resumable.** Durable ingestion jobs expose bounded queue, status, cancellation, and restart recovery.
 - **Retrieved text stays evidence.** Search marks indexed content with `instructionAuthority: "none"` so callers can treat it as data rather than project instructions.
-- **One core supports different agent hosts.** MCP adapters and Pi-native tools share the same execution, storage, retrieval, fetch, and diagnostic behavior.
+- **One core supports different agent hosts.** All adapters use the same MCP execution, storage, retrieval, fetch, and diagnostic behavior.
 
 ## Tool Surface
+
+All SQLite content, job records and pending impact expire 24 hours after storage.
+Reads/restarts do not renew them; cleanup runs on access, not a background daemon.
+Custom `ttlMs` is unsupported. Existing dated rows use their original creation
+time; legacy undated impact gets one day from migration. Empty pending is not
+proof of review. Schema metadata and backup files do not expire; deletion does
+not guarantee file-size shrinkage. Reload adapters after upgrading.
 
 - `execute`, `execute_file`
 - `index`, `search`, `fetch_and_index`
 - `session_resume`, `ingestion_job_start`, `ingestion_job_status`, `ingestion_job_cancel`
 - `context_heal`, `stats`, `doctor`, `purge`
-- `dotdotgod_project_load`, `dotdotgod_project_impact`, `dotdotgod_project_initialize`
+- `project_load`, `project_impact`, `impact_status`, `project_initialize`
+- `embedding_status`, confirmation-gated `embedding_install`
 
 Run the stdio MCP server directly with:
 
@@ -67,7 +75,7 @@ Indexed content is stored in the project-local SQLite FTS5 database:
 .dotdotgod/context/context.sqlite
 ```
 
-The store is local ignored state, not maintained project truth. Sources can use transient, session, or project scope and carry optional expiry metadata. Writable connections use WAL and a 1-second busy timeout. Source replacement, expiry, and purge update source and FTS rows transactionally. Recognized older schemas migrate transactionally through a version ledger; unknown, newer, incomplete, or corrupt schemas fail closed before explicit healing. Search applies scope, session, and source predicates before candidate fusion, then:
+The store is local ignored state, not maintained project truth. Sources can use transient, session, or project scope and carry fixed 24-hour expiry metadata. Writable connections use WAL and a 1-second busy timeout. Source replacement, expiry, and purge update source and FTS rows transactionally. Recognized older schemas migrate transactionally through a version ledger; unknown, newer, incomplete, or corrupt schemas fail closed before explicit healing. Search applies scope, session, and source predicates before candidate fusion, then:
 
 1. retrieves bounded Porter-tokenized FTS5 candidates;
 2. retrieves bounded label/path candidates;
@@ -145,7 +153,7 @@ Doctor does not create the database, execute commands, contact npm or other netw
 
 The MCP server also exposes bounded project load, graph impact, and initializer services. Project initialization defaults to dry-run and requires both `dryRun: false` and `confirmWrite: true` before writing.
 
-Claude Code and Codex adapter hooks may tell the model to call these MCP tools and retry a denied operation. Hooks do not transform an ordinary host shell call into an MCP call. Pi retains its native project-memory lifecycle and calls the shared runtime directly.
+Claude/Codex hooks may request an MCP call and retry a denied operation. Pi retains its native lifecycle/UI but shared operations use host-managed MCP directly, without forwarding aliases or duplicated schemas. Pi/OpenCode share durable advisory impact records; successful reviews clear covered unchanged revisions, failures retain pending state, and pending never blocks tools. Adapters supply contextSessionId per call on shared connections. MCP results are envelopes: inspect isError and structuredContent. All nineteen catalog names are unprefixed; discover host-qualified names and reload sessions after upgrading. Removed names are intentionally unsupported. Pi's pending-only project_memory_load retains its own lifecycle and unwraps project_load internally.
 
 ## Advanced Runtime Capabilities
 

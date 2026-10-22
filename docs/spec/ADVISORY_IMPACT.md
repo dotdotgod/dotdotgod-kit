@@ -15,6 +15,9 @@ Pending state is advisory for adopting Pi/OpenCode integrations. Host permission
 and planning restrictions remain independent. Claude/Codex/Hermes retain their
 adapter lifecycle policies.
 
+Pending records expire under the fixed 24-hour context retention policy.
+Expiry does not prove that a review succeeded. See `CONTEXT_RETENTION.md`.
+
 ## Traceability
 
 

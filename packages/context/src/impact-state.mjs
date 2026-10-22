@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { validateSessionId } from './session.mjs';
+import { RETENTION_MS } from './retention.mjs';
 
 export function impactPath(root, path) {
   if (typeof path !== 'string' || !path.trim() || path.includes('\0')) return undefined;
@@ -39,6 +40,17 @@ export class ImpactState {
     const db = new DatabaseSync(this.path);
     db.exec('PRAGMA busy_timeout=5000');
     db.exec('CREATE TABLE IF NOT EXISTS pending (session TEXT NOT NULL, path TEXT NOT NULL, revision TEXT NOT NULL, fingerprint TEXT, PRIMARY KEY(session,path))');
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const columns = db.prepare('PRAGMA table_info(pending)').all();
+      if (!columns.some(column => column.name === 'expires_at')) {
+        db.exec('ALTER TABLE pending ADD COLUMN created_at INTEGER; ALTER TABLE pending ADD COLUMN expires_at INTEGER;');
+        const now = Date.now();
+        db.prepare('UPDATE pending SET created_at = ?, expires_at = ?').run(now, now + RETENTION_MS);
+      }
+      db.prepare('DELETE FROM pending WHERE expires_at <= ?').run(Date.now());
+      db.exec('COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
     return db;
   }
 
@@ -47,9 +59,10 @@ export class ImpactState {
     if (!names.length) return;
     const db = this.database(true);
     try {
-      const insert = db.prepare('INSERT OR REPLACE INTO pending (session,path,revision,fingerprint) VALUES (?, ?, ?, ?)');
+      const insert = db.prepare('INSERT OR REPLACE INTO pending (session,path,revision,fingerprint,created_at,expires_at) VALUES (?, ?, ?, ?, ?, ?)');
       db.exec('BEGIN IMMEDIATE');
-      for (const path of names) insert.run(this.sessionId, path, randomUUID(), impactFingerprint(this.root, path) ?? null);
+      const now = Date.now();
+      for (const path of names) insert.run(this.sessionId, path, randomUUID(), impactFingerprint(this.root, path) ?? null, now, now + RETENTION_MS);
       db.exec('COMMIT');
     } finally { db.close(); }
   }

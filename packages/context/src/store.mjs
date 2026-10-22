@@ -5,6 +5,7 @@ import { extname } from 'node:path';
 import { chunkContent, chunkText, excerpt } from './chunks.mjs';
 import { createProvenanceMetadata, readProvenanceMetadata } from './provenance.mjs';
 import { normalizeSearchTerms, reciprocalRankFusion, rerankCandidates } from './rank.mjs';
+import { RETENTION_MS, rejectCustomTtl } from './retention.mjs';
 
 function ftsQuery(value) {
   const terms = String(value ?? '').match(/[\p{L}\p{N}_./:@-]+/gu) ?? [];
@@ -20,7 +21,7 @@ export function contextDbPath(root) {
   return join(safeRoot(root), '.dotdotgod', 'context', 'context.sqlite');
 }
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const MAX_PENDING_JOBS = 100;
 
 function inspectSchema(db) {
@@ -72,6 +73,13 @@ function migrate(db, fromVersion) {
       if (!columns.some((row) => row.name === 'session_id')) db.exec('ALTER TABLE ingestion_jobs ADD COLUMN session_id TEXT;');
       db.prepare('INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (3, ?)').run(Date.now());
     }
+    if (fromVersion < 4) {
+      db.prepare('UPDATE sources SET expires_at = created_at + ?').run(RETENTION_MS);
+      db.exec('ALTER TABLE ingestion_jobs ADD COLUMN expires_at INTEGER;');
+      db.prepare('UPDATE ingestion_jobs SET expires_at = created_at + ?').run(RETENTION_MS);
+      db.exec('CREATE INDEX ingestion_jobs_expiry ON ingestion_jobs(expires_at); CREATE INDEX sources_expiry ON sources(expires_at);');
+      db.prepare('INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (4, ?)').run(Date.now());
+    }
     db.exec('COMMIT');
   } catch (error) { db.exec('ROLLBACK'); throw error; }
 }
@@ -120,7 +128,7 @@ export function healContextDatabase(root = process.cwd()) {
   try {
     db.exec('PRAGMA busy_timeout=1000; PRAGMA wal_checkpoint(FULL);');
     inspection = inspectSchema(db);
-    if (!inspection.compatible || ![1, 2, 3].includes(inspection.schemaProfile)) {
+    if (!inspection.compatible || ![1, 2, 3, 4].includes(inspection.schemaProfile)) {
       throw new Error('Schema is not a recognized recoverable context database; no rebuild performed.');
     }
     copyFileSync(path, backupPath, 0);
@@ -184,6 +192,7 @@ export class ContextStore {
         );
       `);
       migrate(this.db, schemaVersion);
+      this.expire();
       this.db.prepare("UPDATE ingestion_jobs SET state = 'queued', updated_at = ? WHERE state = 'running'").run(Date.now());
     } catch (error) {
       this.db.close();
@@ -193,9 +202,12 @@ export class ContextStore {
 
   close() { this.db.close(); }
 
-  index({ id = crypto.randomUUID(), scope = 'session', sessionId = null, label, kind = 'text', text, metadata = {}, ttlMs = null, provenance = {} }) {
+  index(input) {
+    rejectCustomTtl(input);
+    this.expire();
+    const { id = crypto.randomUUID(), scope = 'session', sessionId = null, label, kind = 'text', text, metadata = {}, provenance = {} } = input;
     const createdAt = Date.now();
-    const expiresAt = ttlMs == null ? null : createdAt + Math.max(0, ttlMs);
+    const expiresAt = createdAt + RETENTION_MS;
     const sourceType = provenance.sourceType ?? (kind === 'file' ? 'project-file' : kind === 'command' ? 'command-output' : kind === 'url' ? 'fetched-url' : 'unknown');
     const origin = provenance.origin ?? metadata.path ?? metadata.url ?? label ?? id;
     const contentType = String(provenance.contentType ?? metadata.contentType ?? '').toLowerCase();
@@ -220,13 +232,15 @@ export class ContextStore {
   }
 
   expire() {
-    const ids = this.db.prepare('SELECT id FROM sources WHERE expires_at IS NOT NULL AND expires_at <= ?').all(Date.now()).map((row) => row.id);
-    if (ids.length === 0) return 0;
+    const now = Date.now();
+    const ids = this.db.prepare('SELECT id FROM sources WHERE expires_at <= ?').all(now).map((row) => row.id);
+    if (!ids.length && !this.db.prepare('SELECT 1 FROM ingestion_jobs WHERE expires_at <= ? LIMIT 1').get(now)) return 0;
     const removeChunks = this.db.prepare('DELETE FROM chunks WHERE source_id = ?');
     const removeSource = this.db.prepare('DELETE FROM sources WHERE id = ?');
     this.db.exec('BEGIN IMMEDIATE');
     try {
       for (const id of ids) { removeChunks.run(id); removeSource.run(id); }
+      this.db.prepare('DELETE FROM ingestion_jobs WHERE expires_at <= ?').run(now);
       this.db.exec('COMMIT');
       return ids.length;
     } catch (error) {
@@ -321,6 +335,8 @@ export class ContextStore {
   }
 
   createJob({ id = crypto.randomUUID(), kind, input, sessionId = null }) {
+    rejectCustomTtl(input);
+    this.expire();
     const now = Date.now();
     const serializedInput = JSON.stringify(input);
     if (Buffer.byteLength(serializedInput) > 64 * 1024) throw new Error('Background ingestion job input exceeds 64 KiB.');
@@ -328,20 +344,22 @@ export class ContextStore {
     try {
       const pending = Number(this.db.prepare("SELECT count(*) AS count FROM ingestion_jobs WHERE state IN ('queued','running')").get().count);
       if (pending >= MAX_PENDING_JOBS) throw new Error('Background ingestion queue is full.');
-      this.db.prepare('INSERT INTO ingestion_jobs(id, state, kind, input, session_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(id, 'queued', kind, serializedInput, sessionId, now, now);
+      this.db.prepare('INSERT INTO ingestion_jobs(id, state, kind, input, session_id, created_at, updated_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(id, 'queued', kind, serializedInput, sessionId, now, now, now + RETENTION_MS);
       this.db.exec('COMMIT');
     } catch (error) { this.db.exec('ROLLBACK'); throw error; }
     return this.getJob(id);
   }
 
   getJob(id) {
+    this.expire();
     const row = this.db.prepare('SELECT * FROM ingestion_jobs WHERE id = ?').get(id);
     if (!row) return null;
-    return { id: row.id, state: row.state, kind: row.kind, input: JSON.parse(row.input), sessionId: row.session_id ?? null, result: row.result ? JSON.parse(row.result) : null, error: row.error, createdAt: row.created_at, updatedAt: row.updated_at };
+    return { id: row.id, state: row.state, kind: row.kind, input: JSON.parse(row.input), sessionId: row.session_id ?? null, result: row.result ? JSON.parse(row.result) : null, error: row.error, createdAt: row.created_at, updatedAt: row.updated_at, expiresAt: row.expires_at };
   }
 
   claimNextJob() {
+    this.expire();
     const row = this.db.prepare("SELECT id FROM ingestion_jobs WHERE state = 'queued' ORDER BY created_at, id LIMIT 1").get();
     if (!row) return null;
     const changed = this.db.prepare("UPDATE ingestion_jobs SET state = 'running', updated_at = ? WHERE id = ? AND state = 'queued'").run(Date.now(), row.id).changes;
@@ -349,6 +367,7 @@ export class ContextStore {
   }
 
   finishJob(id, state, value = null) {
+    this.expire();
     if (!['completed', 'failed', 'cancelled'].includes(state)) throw new Error('Invalid terminal job state.');
     let result = state === 'completed' ? JSON.stringify(value) : null;
     if (result && Buffer.byteLength(result) > 256 * 1024) result = JSON.stringify({ truncated: true, message: 'Completed result exceeded the durable status limit.' });
@@ -359,11 +378,13 @@ export class ContextStore {
   }
 
   cancelJob(id) {
+    this.expire();
     const changed = this.db.prepare("UPDATE ingestion_jobs SET state = 'cancelled', updated_at = ? WHERE id = ? AND state IN ('queued','running')").run(Date.now(), id).changes;
     return { changed: Number(changed), job: this.getJob(id) };
   }
 
   listPendingJobs(limit = 20) {
+    this.expire();
     return this.db.prepare("SELECT id FROM ingestion_jobs WHERE state IN ('queued','running') ORDER BY created_at, id LIMIT ?").all(Math.min(100, Math.max(1, limit))).map((row) => this.getJob(row.id));
   }
 
@@ -376,6 +397,7 @@ export class ContextStore {
   }
 
   purge({ scope, sessionId, sourceId }) {
+    this.expire();
     const selectors = [scope != null, sessionId != null, sourceId != null].filter(Boolean).length;
     if (selectors !== 1) throw new Error('Choose exactly one purge selector: scope, sessionId, or sourceId.');
     let ids;

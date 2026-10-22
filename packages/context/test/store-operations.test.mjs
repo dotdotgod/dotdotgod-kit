@@ -156,7 +156,8 @@ test('expiry is atomic when deleting one expired source fails', () => {
   const root = rootFixture();
   const store = new ContextStore(root);
   try {
-    indexSentinel(store, { text: 'atomic expiry searchable body', ttlMs: 0 });
+    indexSentinel(store, { text: 'atomic expiry searchable body' });
+    store.db.prepare('UPDATE sources SET expires_at = ?').run(Date.now());
     store.db.exec(`
       CREATE TRIGGER fail_expired_source_delete
       BEFORE DELETE ON sources

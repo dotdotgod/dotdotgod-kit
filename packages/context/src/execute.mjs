@@ -6,6 +6,7 @@ import { Transform } from 'node:stream';
 import { finished } from 'node:stream/promises';
 import { resolveWithinRoot } from './paths.mjs';
 import { composeEnvironment } from './environment-policy.mjs';
+import { rejectCustomTtl } from './retention.mjs';
 
 const DIRECT_LIMIT = 12_000;
 const MAX_DIRECT_RETURN = 1024 * 1024;
@@ -34,6 +35,7 @@ function killProcess(child) {
 }
 
 export async function executeCommand(input, options = {}) {
+  rejectCustomTtl(input);
   if (options.signal?.aborted) throw options.signal.reason ?? new Error('Execution aborted.');
   const spec = commandSpec(input);
   const cwd = resolveWithinRoot(options.root || process.cwd(), input.cwd || '.');
@@ -131,7 +133,6 @@ export async function executeCommand(input, options = {}) {
         kind: 'command',
         text: `# stdout\n${stdoutText}\n\n# stderr\n${stderrText}`,
         metadata,
-        ttlMs: input.ttlMs ?? 24 * 60 * 60 * 1000,
       });
     }
     return {
@@ -145,6 +146,7 @@ export async function executeCommand(input, options = {}) {
 }
 
 export async function executeFile(input, options = {}) {
+  rejectCustomTtl(input);
   const path = resolveWithinRoot(options.root || process.cwd(), input.path);
   const selectorEnvironment = composeEnvironment({ inherited: options.env ?? process.env, overrides: input.env ?? {}, mode: input.environmentMode ?? 'inherit-filtered-v1', allow: input.allowedEnv ?? [] }).env;
   const dir = mkdtempSync(join(tmpdir(), 'dotdotgod-context-file-'));

@@ -60,10 +60,6 @@
                   "project"
                 ]
               },
-              "ttlMs": {
-                "type": "integer",
-                "minimum": 0
-              },
               "env": {
                 "type": "object",
                 "additionalProperties": {
@@ -195,10 +191,6 @@
             "project"
           ]
         },
-        "ttlMs": {
-          "type": "integer",
-          "minimum": 0
-        },
         "env": {
           "type": "object",
           "additionalProperties": {
@@ -264,10 +256,6 @@
             "session",
             "project"
           ]
-        },
-        "ttlMs": {
-          "type": "integer",
-          "minimum": 0
         },
         "maxBytes": {
           "type": "integer",
@@ -391,10 +379,6 @@
             "session",
             "project"
           ]
-        },
-        "ttlMs": {
-          "type": "integer",
-          "minimum": 0
         },
         "timeoutMs": {
           "type": "integer",

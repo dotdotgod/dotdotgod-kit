@@ -36,7 +36,8 @@ test('wildcard browsing is bounded, stable, filtered, and retains provenance', (
     f.store.index({ id: 'target', scope: 'session', sessionId: 'ours', label: 'target-log', kind: 'command', text: 'a'.repeat(900000) });
     f.store.index({ id: 'foreign', scope: 'session', sessionId: 'theirs', label: 'foreign-log', text: 'secret' });
     f.store.index({ id: 'project', scope: 'project', label: 'project-log', text: 'project' });
-    f.store.index({ id: 'expired', scope: 'session', sessionId: 'ours', label: 'expired-log', text: 'gone', ttlMs: 0 });
+    f.store.index({ id: 'expired', scope: 'session', sessionId: 'ours', label: 'expired-log', text: 'gone' });
+    f.store.db.prepare('UPDATE sources SET expires_at = ? WHERE id = ?').run(Date.now(), 'expired');
     const args = { query: ' * ', source: 'target', scope: 'session', sessionId: 'ours', limit: 2 };
     const results = f.store.search(args);
     assert.equal(results.length, 2);

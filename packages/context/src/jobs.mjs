@@ -62,6 +62,8 @@ export class IngestionJobRunner {
         const job = this.store.claimNextJob();
         if (!job) break;
         const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(new Error('Ingestion job expired after 24 hours.')), Math.max(0, job.expiresAt - Date.now()));
+        timer.unref();
         this.controllers.set(job.id, controller);
         try {
           const value = job.kind === 'index'
@@ -72,7 +74,7 @@ export class IngestionJobRunner {
         } catch (error) {
           const current = this.store.getJob(job.id);
           if (current?.state === 'running') this.store.finishJob(job.id, controller.signal.aborted ? 'cancelled' : 'failed', error instanceof Error ? error.message : String(error));
-        } finally { this.controllers.delete(job.id); }
+        } finally { clearTimeout(timer); this.controllers.delete(job.id); }
         if (!this.closed) await new Promise((resolve) => setImmediate(resolve));
       }
     } finally { this.running = false; }

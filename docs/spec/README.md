@@ -1,5 +1,7 @@
 # Specs
 
+- `CONTEXT_RETENTION.md`: fixed 24-hour SQLite content/job/impact lifetime, migration and cleanup contract.
+
 Use this area for behavior specs, API contracts, and product requirements.
 
 Start here when you need the behavior contract for a command, adapter workflow, config field, or validation rule. Use `docs/test/` for how behavior is verified and `docs/arch/` for why it is implemented that way.

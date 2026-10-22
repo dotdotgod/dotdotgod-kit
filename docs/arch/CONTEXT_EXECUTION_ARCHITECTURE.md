@@ -16,12 +16,13 @@ Use one shared runtime package, thin transport/adapter wrappers, and platform-na
 
 Claude Code ── local stdio MCP + hooks
 Codex      ── local stdio MCP + hooks
-Pi         ── native extension tools over shared core
+Pi         ── host-managed MCP + native plan/load lifecycle
+OpenCode   ── plugin-registered MCP + plan/impact integration
 ```
 
 ## Runtime Boundary
 
-`packages/context` owns reusable behavior. Adapter packages own registration, host path variables, approvals, lifecycle state, and user-facing naming.
+`packages/context` owns shared behavior; adapters own host registration, paths, approvals, lifecycle and naming.
 
 The server writes only JSON-RPC to stdout. Child stdout/stderr flows to temporary files. Small bounded output may be returned directly; larger output is chunked and written to the project-local FTS5 database before excerpts are returned.
 
@@ -39,9 +40,11 @@ Project Load can provide focus and paths to execution retrieval. Execution outpu
 
 ## Pi Codemode Boundary
 
-Development SDK pins Pi `1.0.0`; host peers/subagents remain unchanged. Codemode uses native structuredContent. Descriptions/guidelines advise selection without routing or permission changes. Public SDK tests use real tools/QuickJS with a faux stream. See [Pi selection](../spec/PI_CONTEXT_TOOL_SELECTION.md).
+Pi 1.0.0 owns MCP discovery, connections, cancellation and cleanup. Calls return envelopes through host hooks without aliases or duplicate schemas. Native project_memory_load unwraps ctx.executeTool internally. SDK tests use MCP/QuickJS and a faux stream; see [Pi selection](../spec/PI_CONTEXT_TOOL_SELECTION.md).
 
 ## Storage
+
+Storage enforces [24-hour retention](../spec/CONTEXT_RETENTION.md), including jobs and impact.
 
 The initial implementation uses Node's built-in `node:sqlite` `DatabaseSync` and FTS5. The database lives below `.dotdotgod/context/`, which is expected to remain ignored local state.
 
@@ -61,9 +64,9 @@ Transport adapters add a non-authoritative data notice. Retrieved content remain
 
 ## Directory And HTML Acquisition
 
-Directory indexing first builds a deterministic metadata-only manifest. It resolves the requested directory and every accepted file against the real project root, skips symlinks by default, rejects special files, and applies depth, entry, file-count, per-file, and aggregate-byte limits. Each manifest entry is verified again immediately before reading to reduce replacement races. Successfully indexed files remain independent sources; the operation returns bounded success, skip, and failure records.
+Directory ingestion builds a deterministic metadata manifest, skips symlinks by default, rejects special files, bounds depth/entries/files/bytes, and verifies file identity before reading. Explicit external paths are supported. Each indexed file remains an independent source; results report success, skips, failures and truncation without source bodies.
 
-HTML normalization runs only after safe fetch has accepted and bounded the response. A dependency-free extractor removes active, hidden, and non-content elements and preserves basic headings, paragraphs, lists, tables, links, and code as bounded text. It does not execute scripts, load subresources, follow links, or provide browser-grade parsing. Normalized content retains fetched-URL provenance and external-untrusted authority.
+After safe fetch, a dependency-free HTML extractor removes active/hidden/non-content elements and preserves basic structure as bounded external-untrusted text. It neither executes scripts nor loads subresources, follows links or provides browser-grade parsing.
 
 ## Safe Fetch Boundary
 
@@ -95,9 +98,9 @@ Batch workers share no shell state. Result order follows input order, not comple
 
 ## Hook State Machine
 
-Hooks store session state separately from indexed content. `loadRequired` gates substantive work; `pending[path] = fingerprint` gates broad operations. State identity combines canonical project root and sanitized session ID. Resolution prefers a host-declared root, then nearest same-session ancestor state, then a new SessionStart cwd. One invocation shares this identity across state and fingerprints. Lookup remains project-local; unidentified events fail open.
+Claude/Codex hooks keep separate loadRequired/pending state. Root resolution prefers a host-declared root, then nearest same-session ancestor state, then SessionStart cwd. One invocation uses that root for state and fingerprints. Unidentified events fail open.
 
-A denied host tool is not transformed. The denial tells the model which MCP tool to call. Successful MCP PostToolUse updates state, and the model retries the original operation. MCP project tools bypass PreToolUse guards to prevent loops.
+Denials name an MCP recovery tool, not a transformed call. PostToolUse updates state before model retry; project tools bypass their own guards.
 
 This is tested interception coverage, not a claim that every external file mutation is observable.
 
@@ -109,7 +112,11 @@ This is tested interception coverage, not a claim that every external file mutat
 - Optional semantic embeddings remain outside generated JavaScript. Project Load requires the filesystem map but not semantic routing: unresolved embeddings in an extracted plugin return the map with bounded query-unavailable evidence. Raw module paths stay hidden, and standalone query failure behavior is unchanged.
 - Claude uses `${CLAUDE_PLUGIN_ROOT}` for its server and hook scripts.
 - Codex references root `.mcp.json` and `hooks/hooks.json` through its plugin manifest.
-- Pi depends on the runtime package but starts no MCP process.
+- Pi depends on the runtime package and registers its server entry with the host MCP API. OpenCode bundles server/CLI plus the small shared impact-state module without runtime dependencies.
+
+## Advisory Impact State
+
+Pi/OpenCode share impact.sqlite keyed by host session/path. Observed edits assign revisions; MCP snapshots revision/current content and clears unchanged rows only on success. SQLite serializes writers; AsyncLocalStorage isolates per-call host identity. Pending never blocks tools. Shell/external edits are not automatically attributed. Claude/Codex gates remain separate. See [contract](../spec/ADVISORY_IMPACT.md).
 
 ## Phase 3 Components
 
@@ -117,7 +124,7 @@ This is tested interception coverage, not a claim that every external file mutat
 
 `IngestionJobRunner` is a process-local, concurrency-one dispatcher over durable rows. It delegates to the same bounded file/directory and fetch functions as synchronous tools. Its asynchronous `close()` boundary stops scheduling, aborts active work, and settles the pump before an adapter closes or heals the backing store. Session IDs are opaque validated routing values and are never discovered through a listing API.
 
-Environment composition has a compatibility default and an opt-in allowlist. Both report variable names only. Browser acquisition is a capability injection into `fetchAndIndex`; MCP and Pi ship without a renderer, so strict fetch is the operational default. A host-provided renderer must honor timeout, abort, and byte limits; dotdotgod makes no process-isolation or sandbox claim.
+Environment policies report names only. Browser rendering requires an injected capability; none is shipped. Renderers must honor timeout, abort and byte limits. Neither environment filtering nor fetching provides process isolation.
 
 ## Related Behavior And Verification
 

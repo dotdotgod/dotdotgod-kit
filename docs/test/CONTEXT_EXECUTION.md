@@ -34,13 +34,14 @@ Focused hardening suites cover:
 
 `packages/context/test/adapter-packaging.test.mjs` packs and extracts both adapters outside workspace dependency ancestry, audits links and local-path leakage, blocks runtime package-manager/network commands, executes valid and malformed hook input, initializes MCP, lists the complete tool surface, calls project load, executes the packaged CLI entry, and reports compressed and unpacked sizes.
 
-Pi typecheck and adapter package verification cover native imports, generated MCP/hook runtime drift, hook resources, manifests, and package allowlists. Pi keeps direct native context bindings, including the read-only doctor, rather than starting a context MCP child.
+Pi verification covers alias-free MCP registration, envelopes and nested calls. The host owns child lifecycle and cancellation. Shared state coverage uses packages/context/test/impact-state.test.mjs.
 
 ## Pi Native And Codemode Workflows
 
-- `packages/pi/test/context-workflow.test.ts` exercises native tools through public Pi SDK sessions: small direct auto output, large auto/indexed retention and source search, file ingestion without raw bytes, source/scope isolation, no-match, discard, nonzero diagnostics, timeout, and policy-blocked calls.
-- `packages/pi/test/context-codemode.test.ts` runs real codemode scripts through the same SDK: tool discovery, direct structured-object access, execute/index/search chaining, bounded final projections, prepared model descriptions and prompt guidance, nonzero/no-match/malformed JSON distinctions, nested hook calls, policy rejection, and active-child abort.
-- `test/support/context-workflow.ts` uses an isolated resource loader, in-memory settings/session, and public faux stream. No live model, network, embeddings, or ambient user settings are needed. Fixture-only confirmed healing closes cached stores before temporary-root removal.
+- `packages/pi/test/context-workflow.test.ts` exercises MCP tools through public Pi SDK sessions: small direct auto output, large auto/indexed retention and source search, file ingestion without raw bytes, source/scope isolation, no-match, discard, nonzero diagnostics, timeout, and policy-blocked calls.
+- `packages/pi/test/context-codemode.test.ts` runs real codemode scripts through the same SDK: MCP tool/namespace discovery, envelope access, execute/index/search chaining, bounded final projections, namespace guidance, nonzero/no-match/malformed JSON distinctions, nested hook calls, policy rejection, and active-child abort.
+- `test/support/context-workflow.ts` uses an isolated loader, real host MCP extension, in-memory session and faux stream. No paid model or ambient settings are needed. The fixture explicitly awaits the MCP shutdown hook because SDK dispose alone does not dispatch it.
+- `context-tools.test.ts`: automatic-load retry, exactly-once completion, compact narrative, baseline routing and Help guidance.
 - Development Pi SDK packages are pinned to `1.0.0`. Tests use public APIs, not a globally installed path. Existing extension tests remain required migration checks.
 - Deterministic streams prove workflow and guidance delivery, not actual model adoption. Evaluate real native/codemode tool choices separately with matched baseline/revised prompts, fixture answers, output-boundary measurements, and explicit model/settings records.
 
@@ -52,13 +53,15 @@ node --test --experimental-strip-types packages/pi/test/context-workflow.test.ts
 
 `packages/pi/scripts/evaluate-context-tools.mjs` runs four disposable fixture tasks per invocation using the configured model and available credentials. It is not a CI test and may incur model usage charges. Supply `baseline|revised`, `native|codemode`, and repetition `1|2`; eight invocations cover 32 trials. It requires the ignored task baseline captures, uses isolated session settings, and never enables codemode globally. Raw local artifacts are written under `.dotdotgod/context/evaluation/`.
 
-Compare eligible command selection, source-scoped retrieval, fixture-answer correctness, and outer model-visible result bytes. Inner codemode results are not model-visible bytes. Baseline/revised trials use the same upgraded SDK and model; guidance is the changed condition. Small samples and sequential conditions do not establish guaranteed adoption, causality, token savings, or improved correctness. Failed retrieval must not be interpreted as absent diagnostics.
+Compare eligible command selection, source-scoped retrieval, fixture-answer correctness, and outer model-visible result bytes. Inner codemode results are not model-visible bytes. Baseline/revised trials use the same upgraded SDK, host-managed MCP transport, current names/envelopes, and model; guidance is the changed condition. Historical captures are not rewritten or directly comparable to this transport. Small samples and sequential conditions do not establish guaranteed adoption, causality, token savings, or improved correctness. Failed retrieval must not be interpreted as absent diagnostics.
 
 ## Failure Search Recovery
 
 `packages/context/test/search-recovery.test.mjs` checks middle failure retrieval and filtered, bounded `*` browsing. Public Pi tests check native/codemode calls and prompt guidance. See [recovery contract and cases](../spec/CONTEXT_SEARCH_RECOVERY.md); excerpts never prove absent diagnostics.
 
 ## Required Regression Cases
+
+- `packages/context/test/retention.test.mjs`: fixed-day boundaries, jobs and migration.
 
 Add or preserve focused cases for:
 
@@ -84,9 +87,9 @@ Add or preserve focused cases for:
 
 Follow [`manual-smoke/CROSS_AGENT_ADAPTERS.md`](manual-smoke/CROSS_AGENT_ADAPTERS.md).
 
-Verify Claude Code and Codex from working directories different from the installed plugin path. Within one session, also vary project-relative hook cwd values and confirm a successful load clears the original root's denial state. Confirm the local MCP server starts, hooks follow host trust rules, large output is indexed without appearing in full, and denial messages lead to a successful MCP call followed by retry. For Claude, do not treat direct `runtime.mjs posttooluse` execution as proof of host dispatch: use an installed plugin and confirm the plugin-qualified Load tool triggers the configured PostToolUse matcher before the retry succeeds.
+Verify Claude/Codex outside the plugin directory and with varying hook cwd values. Confirm Load clears the original root's denial state, MCP starts, hooks respect host trust, and large output is indexed. For Claude, verify actual plugin-qualified PostToolUse dispatch; direct runtime execution alone is not evidence of host dispatch.
 
-Verify Pi registers native tools and does not start a dotdotgod MCP child process. Confirm search output marks retrieved text as data with no instruction authority, existing database records surface safe `unknown` defaults, and doctor performs no repair or network activity.
+Verify Pi's host-managed MCP connects, no forwarding aliases remain, raw Code Mode envelopes work, and shutdown reaps the child. Confirm pending impact is advisory while Plan Mode restrictions remain. Retrieved text remains data, legacy provenance remains unknown, and doctor performs no repair or network activity.
 
 Safe-fetch integration tests must use controlled fixtures with an explicit private-network test override. Production defaults must continue to reject private and reserved destinations.
 
