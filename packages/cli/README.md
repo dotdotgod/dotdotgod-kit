@@ -1,5 +1,10 @@
 # @dotdotgod/cli
 
+Without an explicit project or global `embedding` profile, search uses keywords
+without loading/downloading models or creating vector indexes. Configured profiles
+enable hybrid retrieval; `--search keyword` always skips embeddings and unconfigured
+`--search vector` fails with setup guidance. Graph impact follows the same opt-in.
+
 [![npm version](https://img.shields.io/npm/v/@dotdotgod/cli.svg)](https://www.npmjs.com/package/@dotdotgod/cli) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod--kit-181717?logo=github)](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/cli) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](https://github.com/dotdotgod/dotdotgod-kit/blob/main/LICENSE)
 
 Command-line tools for dotdotgod project memory.
@@ -45,7 +50,7 @@ dotdotgod graph serve . --changed <path>
 - `init` creates `AGENTS.md`, thin agent entrypoints, docs indexes, active-plan space, archive map, local cache ignores, and the complete editable default config.
 - `validate` checks docs/project-memory rules; `--check-index` also checks graph and outline freshness without parsing, embedding or repair.
 - `index` builds graph shards and `.dotdotgod/outlines.json` with source hashes, declarations, comments and exact ranges.
-- `query` defaults to hybrid vector/keyword search over full Markdown and code outlines/comments, not implementation bodies. Use `--scope docs|code|all`, `--search hybrid|keyword|vector` and `--limit 30`. Keyword mode works without embeddings; hybrid reports vector failures and retains keyword results. Remote code-metadata embedding requires `--allow-code-embedding`. Local E5 remains the default when its optional runtime is installed. Tree-sitter coverage and boundaries: [CODE_OUTLINES.md](../../docs/spec/cli/CODE_OUTLINES.md).
+- `query` defaults to hybrid vector/keyword search over full Markdown and code outlines/comments, not implementation bodies. Use `--scope docs|code|all`, `--search hybrid|keyword|vector` and `--limit 30`. Keyword mode works without embeddings; hybrid reports vector failures and retains keyword results. Selecting a remote embedding provider authorizes sending documentation and code metadata (names, signatures, and comments), without implementation bodies or an additional consent flag. Local E5 remains the default when its optional runtime is installed. Tree-sitter coverage and boundaries: [CODE_OUTLINES.md](../../docs/spec/cli/CODE_OUTLINES.md).
 - `resolve` and `expand` map explicit or high-signal prompt references to project files and can include related impact evidence.
 - `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five. Non-seed scores use fixed weighted PPR connection `80` plus memory policy `20`. A bounded request-local multilingual vector overlay participates in PPR when the query cache is available; vector preparation failures degrade to structural-only results.
 - `graph serve` starts a local read-only explorer rooted at one or more changed files. It keeps only connected shared structural nodes, lays them out by minimum structural hop, and supports persisted instant, layer, or one-by-one reveal modes.

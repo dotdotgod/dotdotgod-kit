@@ -1,4 +1,4 @@
-import { embeddingInputFormat, embeddingProfileIdentity, resolveEmbeddingProfile } from './embedding-config.mjs';
+import { DEFAULT_EMBEDDING_PROFILE, embeddingInputFormat, embeddingProfileIdentity, resolveEmbeddingProfile } from './embedding-config.mjs';
 import { importTransformers } from './embedding-runtime.mjs';
 
 const localPipelines = new Map();
@@ -93,7 +93,8 @@ export async function createEmbedder(profile) {
 }
 
 export async function resolveEmbedder(root, options = {}) {
-  const resolved = options.profile ? { profile: options.profile, source: options.source ?? 'injected', path: null } : resolveEmbeddingProfile(root, options);
+  const resolved = options.profile || options.embed ? { profile: options.profile ?? DEFAULT_EMBEDDING_PROFILE, source: options.source ?? 'injected', path: null } : resolveEmbeddingProfile(root, options);
+  if (!resolved.profile) throw new Error('Embedding is not configured. Set embedding in project or global configuration to use vector search.');
   return { ...resolved, identity: embeddingProfileIdentity(resolved.profile), embed: options.embed ? withInputFormat(options.embed, resolved.profile) : await createEmbedder(resolved.profile) };
 }
 

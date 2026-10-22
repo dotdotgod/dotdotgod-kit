@@ -3,6 +3,7 @@ import { usage } from '../cli/usage.mjs';
 import { readMemoryConfig } from '../memory/config.mjs';
 import { collectDocumentationChunks } from '../query/chunks.mjs';
 import { resolveEmbedder } from '../query/embedder.mjs';
+import { resolveEmbeddingProfile } from '../query/embedding-config.mjs';
 import { isValidNormalizedVectorValues, profileFingerprint, readVectorCache, writeVectorCache } from '../query/store.mjs';
 
 import { projectCorpus, keywordCandidates, fuseCandidates, attachRelationships } from '../query/hybrid.mjs';
@@ -106,7 +107,13 @@ export async function queryProject(root, query, options = {}) {
   const corpus = await projectCorpus(root, scope);
   const keyword = search === 'vector' ? [] : keywordCandidates(query, corpus.chunks);
   let vector = []; let index; let vectorError;
-  if (search !== 'keyword' && corpus.chunks.length) {
+  let configured = false;
+  if (search !== 'keyword') {
+    try { configured = Boolean(options.profile || options.embed || resolveEmbeddingProfile(root, options).profile); }
+    catch (error) { if (search === 'vector') throw error; vectorError = error.message; }
+    if (!configured && !vectorError && search === 'vector') throw new Error('Embedding is not configured. Set embedding in project or global configuration to use vector search.');
+  }
+  if (search !== 'keyword' && configured && corpus.chunks.length) {
     try {
       index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks });
       const [queryVector] = await index.embedding.embed([query], 'query');

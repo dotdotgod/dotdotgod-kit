@@ -17,7 +17,7 @@ async function server(handler) { const instance = createServer(handler); await n
 describe('embedding configuration and providers', () => {
   it('resolves default, global, and whole-project profiles', () => {
     const root = fixture(); const home = mkdtempSync(join(tmpdir(), 'dotdotgod-home-')); mkdirSync(join(home, '.dotdotgod'), { recursive: true });
-    assert.equal(resolveEmbeddingProfile(root, { home }).source, 'default');
+    assert.deepEqual(resolveEmbeddingProfile(root, { home }), { profile: null, source: 'not-configured', path: null });
     writeFileSync(join(home, '.dotdotgod/config.json'), JSON.stringify({ embedding: { provider: 'ollama', model: 'nomic-embed-text' } }));
     assert.equal(resolveEmbeddingProfile(root, { home }).profile.provider, 'ollama');
     writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({ embedding: { provider: 'local', model: 'arbitrary/model' } }));

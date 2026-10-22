@@ -1,8 +1,4 @@
 {
-  "embedding": {
-    "provider": "local",
-    "model": "Xenova/multilingual-e5-small"
-  },
   "memory": {
     "areas": [
       { "id": "rules", "label": "Agent Rules", "paths": ["AGENTS.md"], "scope": "shared", "freshness": "fresh", "role": "agent-working-rules", "priority": 100, "includeBodiesByDefault": true },

@@ -44,6 +44,7 @@ export function validateEmbeddingProfile(profile, label = 'embedding') {
 }
 
 export function sanitizeEmbeddingProfile(profile) {
+  if (!profile) return null;
   const { apiKey, ...safe } = profile;
   return { ...safe, ...(apiKey ? { apiKey: '[redacted]' } : {}) };
 }
@@ -64,5 +65,5 @@ export function resolveEmbeddingProfile(root = '.', options = {}) {
   if (projectConfig && Object.hasOwn(projectConfig, 'embedding')) return { profile: validateEmbeddingProfile(projectConfig.embedding, 'project embedding'), source: 'project', path: projectPath };
   const globalConfig = readJson(globalPath, 'global config');
   if (globalConfig && Object.hasOwn(globalConfig, 'embedding')) return { profile: validateEmbeddingProfile(globalConfig.embedding, 'global embedding'), source: 'global', path: globalPath };
-  return { profile: { ...DEFAULT_EMBEDDING_PROFILE }, source: 'default', path: null };
+  return { profile: null, source: 'not-configured', path: null };
 }

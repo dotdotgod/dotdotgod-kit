@@ -10,9 +10,19 @@ One complete profile is selected in this order:
 
 1. `embedding` in project `dotdotgod.config.json`
 2. `embedding` in `~/.dotdotgod/config.json`
-3. built-in `{ "provider": "local", "model": "Xenova/multilingual-e5-small" }`
+3. no profile: keyword-only retrieval; no automatic local model selection
 
 Project profiles replace global profiles completely. Profiles are not deep-merged. The global file also retains initialization-time `defaultTemplate`.
+
+Without either profile, query/Load skip model loading, downloads, endpoint calls
+and vector indexing without warnings or installation offers. Existing vector
+caches do not opt in. Explicit vector search fails with configuration guidance.
+Keyword search always skips embeddings. Configured hybrid search retains keyword
+fallback with a warning on embedding failure; vector-only search fails visibly.
+Graph impact keeps structural evidence and disables its vector overlay when
+unconfigured. No relationship expansion or ranking changes are introduced.
+Config/status report not-configured with a null profile/provider. Local runtime
+installation requires an explicit local profile; installation alone is not opt-in.
 
 ## Schema
 
@@ -82,7 +92,7 @@ The vector manifest records provider, model, dimensions, and a secret-free profi
 
 Documentation indexing starts with batches of 16 inputs. Remote HTTP 400/413 token-limit responses split the failed batch in half recursively, preserving input order. A single oversized input fails without further retry; unrelated errors are not retried. Provider response bodies are not exposed in diagnostics.
 
-`query` fails when embedding fails. Graph impact reports semantic retrieval as unavailable and continues with structural evidence. Remote authentication, rate-limit, timeout, malformed JSON, count, dimensions, and vector validity errors must be actionable and sanitized.
+Vector-only query fails when embedding fails; configured hybrid falls back with a warning. Graph impact reports configured semantic failures as unavailable and continues structurally. Provider errors remain actionable and sanitized.
 
 ## Traceability
 

@@ -19,6 +19,12 @@ export function runEmbedding(argv, options = {}) {
   const parsed = parse(argv);
   if (!['status', 'install'].includes(parsed.action)) usage(`Unknown embedding command: ${parsed.action}`, 'embedding');
   const resolved = resolveEmbeddingProfile(parsed.root, options);
+  if (!resolved.profile) {
+    if (parsed.action === 'install') throw new Error('Configure an explicit local embedding profile before installing its runtime.');
+    const result = { ok: true, command: 'embedding status', provider: null, required: false, installed: false, installAvailable: false, source: 'not-configured' };
+    console.log(parsed.json ? JSON.stringify(result, null, 2) : 'Embedding is not configured; keyword search is used.');
+    return result;
+  }
   if (resolved.profile.provider !== 'local') {
     const result = { ok: true, command: `embedding ${parsed.action}`, provider: resolved.profile.provider, required: false, installed: false, installAvailable: false };
     console.log(parsed.json ? JSON.stringify(result, null, 2) : 'Local embedding runtime is not required for the configured remote provider.');

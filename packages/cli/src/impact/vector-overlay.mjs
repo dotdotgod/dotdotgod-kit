@@ -1,4 +1,5 @@
 import { buildVectorIndex, rankVectorFiles } from '../commands/query.mjs';
+import { resolveEmbeddingProfile } from '../query/embedding-config.mjs';
 
 import { buildChangedFileProfile, canonicalizeChangedPath } from './vector-profile.mjs';
 
@@ -16,6 +17,7 @@ export async function buildVectorImpactOverlay(root, index, changedPaths, option
   const threshold = semantic.threshold ?? 0.5;
   const topK = semantic.topKPerFile ?? 5;
   try {
+    if (!options.profile && !options.embed && !options.buildIndex && !resolveEmbeddingProfile(root, options).profile) return { status: 'disabled', edges: [], diagnostics: { enabled: false, reason: 'Embedding is not configured.' } };
     const vectorIndex = await (options.buildIndex ?? buildVectorIndex)(root, options);
     const edges = [];
     const normalizedChangedPaths = [...new Set(changedPaths.map((path) => canonicalizeChangedPath(root, path)).filter(Boolean))];

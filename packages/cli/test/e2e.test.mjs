@@ -719,7 +719,7 @@ describe('dotdotgod CLI e2e', () => {
     const spec = itemById(impact, 'file:docs/spec/APP.md');
     assert(spec);
     assert(spec.scoreBreakdown.connection.ppr > 0);
-    assert(['available', 'unavailable'].includes(impact.impact.semantic.status));
+    assert(['available', 'unavailable', 'disabled'].includes(impact.impact.semantic.status));
     assert(impact.impact.groups.docs.items.some((item) => item.id === 'file:docs/spec/APP.md'));
     assert(impact.impact.groups.tests.items.some((item) => item.id === 'file:packages/app/index.test.mjs'));
     const contract = itemById(impact, 'contract:docs/spec/APP.md#APP-ROUTING-001');
@@ -821,7 +821,7 @@ describe('dotdotgod CLI e2e', () => {
     assert(itemById(fixed, 'file:docs/spec/APP.md').scoreBreakdown.connection.ppr > 0);
 
     const semanticDefault = json(run(['graph', 'impact', createFixture(), '--changed', 'packages/app/index.mjs', '--json']));
-    assert(['available', 'unavailable'].includes(semanticDefault.impact.semantic.status));
+    assert(['available', 'unavailable', 'disabled'].includes(semanticDefault.impact.semantic.status));
     const semanticDisabled = impactWithConfig({ impactRanking: { semantic: { enabled: false } } });
     assert.equal(semanticDisabled.impact.semantic.status, 'disabled');
 

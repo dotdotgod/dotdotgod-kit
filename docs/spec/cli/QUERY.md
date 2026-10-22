@@ -47,8 +47,9 @@ incompatible caches rebuild. Writes use temporary files and atomic artifact rena
   Vector-only failure remains fatal.
 - This is lexical candidate ranking, not a full BM25 engine or inferred call graph.
 
-Local multilingual E5 remains the default. OpenAI-compatible and Ollama profiles
-remain supported. Inputs use their respective
+Embeddings require an explicit project/global profile; unconfigured hybrid uses
+keywords silently and vector-only requests fail. No automatic model is selected.
+Local, OpenAI-compatible and Ollama profiles remain supported. Inputs use their respective
 embedding.inputFormat prefixes at the shared embedder boundary; format changes
 invalidate vector reuse. Omitted formatting preserves E5 prefixes. Selecting a remote provider authorizes embedding both
 documentation and code metadata without additional per-query consent. Code metadata

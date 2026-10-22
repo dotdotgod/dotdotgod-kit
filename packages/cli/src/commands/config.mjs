@@ -42,7 +42,7 @@ function formatConfigOutput(payload) {
   lines.push(`- path: ${payload.path ?? 'none'}`);
   lines.push(`- documentation root: ${payload.config.documentation.root}`);
   lines.push(`- memory areas: ${payload.config.areas.length}`);
-  lines.push(`- embedding: ${payload.embedding.profile.provider}/${payload.embedding.profile.model} (${payload.embedding.source})`);
+  lines.push(`- embedding: ${payload.embedding.profile ? `${payload.embedding.profile.provider}/${payload.embedding.profile.model}` : 'not configured; keyword search'} (${payload.embedding.source})`);
   lines.push(`- traceability required: ${(payload.config.traceability.required ?? []).join(', ') || 'none'}`);
   lines.push(`- traceability exclude: ${(payload.config.traceability.exclude ?? []).join(', ') || 'none'}`);
   lines.push('- traceability keys:');
@@ -92,7 +92,7 @@ export function runConfig(argv) {
     embedding = { source: resolved.source, path: resolved.path, profile: sanitizeEmbeddingProfile(resolved.profile) };
   } catch (error) {
     errors.push({ file: 'embedding config', code: 'EMBEDDING_CONFIG_INVALID', message: error instanceof Error ? error.message : String(error) });
-    embedding = { source: 'invalid', path: null, profile: sanitizeEmbeddingProfile({ provider: 'local', model: 'Xenova/multilingual-e5-small' }) };
+    embedding = { source: 'invalid', path: null, profile: null };
   }
   const payload = { ok: errors.length === 0, command: 'config', root: options.root, source: config.source ?? 'default', path: config.source && config.source !== 'default' ? join(options.root, config.source) : null, embedding, config: memoryConfigSummary(config), errors };
   if (options.json) console.log(JSON.stringify(payload, null, 2));

@@ -896,6 +896,7 @@ function validateEmbeddingProfile(profile, label = "embedding") {
   return { ...profile, model: profile.model.trim(), ...profile.baseUrl ? { baseUrl: profile.baseUrl.replace(/\/$/, "") } : {} };
 }
 function sanitizeEmbeddingProfile(profile) {
+  if (!profile) return null;
   const { apiKey, ...safe } = profile;
   return { ...safe, ...apiKey ? { apiKey: "[redacted]" } : {} };
 }
@@ -916,7 +917,7 @@ function resolveEmbeddingProfile(root = ".", options = {}) {
   if (projectConfig && Object.hasOwn(projectConfig, "embedding")) return { profile: validateEmbeddingProfile(projectConfig.embedding, "project embedding"), source: "project", path: projectPath };
   const globalConfig = readJson(globalPath, "global config");
   if (globalConfig && Object.hasOwn(globalConfig, "embedding")) return { profile: validateEmbeddingProfile(globalConfig.embedding, "global embedding"), source: "global", path: globalPath };
-  return { profile: { ...DEFAULT_EMBEDDING_PROFILE }, source: "default", path: null };
+  return { profile: null, source: "not-configured", path: null };
 }
 
 // packages/cli/src/memory/config.mjs
@@ -3798,7 +3799,7 @@ function formatConfigOutput(payload) {
   lines.push(`- path: ${payload.path ?? "none"}`);
   lines.push(`- documentation root: ${payload.config.documentation.root}`);
   lines.push(`- memory areas: ${payload.config.areas.length}`);
-  lines.push(`- embedding: ${payload.embedding.profile.provider}/${payload.embedding.profile.model} (${payload.embedding.source})`);
+  lines.push(`- embedding: ${payload.embedding.profile ? `${payload.embedding.profile.provider}/${payload.embedding.profile.model}` : "not configured; keyword search"} (${payload.embedding.source})`);
   lines.push(`- traceability required: ${(payload.config.traceability.required ?? []).join(", ") || "none"}`);
   lines.push(`- traceability exclude: ${(payload.config.traceability.exclude ?? []).join(", ") || "none"}`);
   lines.push("- traceability keys:");
@@ -3846,7 +3847,7 @@ function runConfig(argv) {
     embedding = { source: resolved.source, path: resolved.path, profile: sanitizeEmbeddingProfile(resolved.profile) };
   } catch (error) {
     errors.push({ file: "embedding config", code: "EMBEDDING_CONFIG_INVALID", message: error instanceof Error ? error.message : String(error) });
-    embedding = { source: "invalid", path: null, profile: sanitizeEmbeddingProfile({ provider: "local", model: "Xenova/multilingual-e5-small" }) };
+    embedding = { source: "invalid", path: null, profile: null };
   }
   const payload = { ok: errors.length === 0, command: "config", root: options.root, source: config.source ?? "default", path: config.source && config.source !== "default" ? join14(options.root, config.source) : null, embedding, config: memoryConfigSummary(config), errors };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
@@ -4018,7 +4019,8 @@ async function createEmbedder(profile) {
   return withInputFormat(embedBatch, profile);
 }
 async function resolveEmbedder(root, options = {}) {
-  const resolved = options.profile ? { profile: options.profile, source: options.source ?? "injected", path: null } : resolveEmbeddingProfile(root, options);
+  const resolved = options.profile || options.embed ? { profile: options.profile ?? DEFAULT_EMBEDDING_PROFILE, source: options.source ?? "injected", path: null } : resolveEmbeddingProfile(root, options);
+  if (!resolved.profile) throw new Error("Embedding is not configured. Set embedding in project or global configuration to use vector search.");
   return { ...resolved, identity: embeddingProfileIdentity(resolved.profile), embed: options.embed ? withInputFormat(options.embed, resolved.profile) : await createEmbedder(resolved.profile) };
 }
 
@@ -4245,7 +4247,17 @@ async function queryProject(root, query, options = {}) {
   let vector = [];
   let index;
   let vectorError;
-  if (search !== "keyword" && corpus.chunks.length) {
+  let configured = false;
+  if (search !== "keyword") {
+    try {
+      configured = Boolean(options.profile || options.embed || resolveEmbeddingProfile(root, options).profile);
+    } catch (error) {
+      if (search === "vector") throw error;
+      vectorError = error.message;
+    }
+    if (!configured && !vectorError && search === "vector") throw new Error("Embedding is not configured. Set embedding in project or global configuration to use vector search.");
+  }
+  if (search !== "keyword" && configured && corpus.chunks.length) {
     try {
       index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks });
       const [queryVector] = await index.embedding.embed([query], "query");
@@ -4315,6 +4327,12 @@ function runEmbedding(argv, options = {}) {
   const parsed = parse(argv);
   if (!["status", "install"].includes(parsed.action)) usage(`Unknown embedding command: ${parsed.action}`, "embedding");
   const resolved = resolveEmbeddingProfile(parsed.root, options);
+  if (!resolved.profile) {
+    if (parsed.action === "install") throw new Error("Configure an explicit local embedding profile before installing its runtime.");
+    const result2 = { ok: true, command: "embedding status", provider: null, required: false, installed: false, installAvailable: false, source: "not-configured" };
+    console.log(parsed.json ? JSON.stringify(result2, null, 2) : "Embedding is not configured; keyword search is used.");
+    return result2;
+  }
   if (resolved.profile.provider !== "local") {
     const result2 = { ok: true, command: `embedding ${parsed.action}`, provider: resolved.profile.provider, required: false, installed: false, installAvailable: false };
     console.log(parsed.json ? JSON.stringify(result2, null, 2) : "Local embedding runtime is not required for the configured remote provider.");
@@ -6016,6 +6034,7 @@ async function buildVectorImpactOverlay(root, index, changedPaths, options = {})
   const threshold = semantic.threshold ?? 0.5;
   const topK = semantic.topKPerFile ?? 5;
   try {
+    if (!options.profile && !options.embed && !options.buildIndex && !resolveEmbeddingProfile(root, options).profile) return { status: "disabled", edges: [], diagnostics: { enabled: false, reason: "Embedding is not configured." } };
     const vectorIndex = await (options.buildIndex ?? buildVectorIndex)(root, options);
     const edges = [];
     const normalizedChangedPaths = [...new Set(changedPaths.map((path) => canonicalizeChangedPath(root, path)).filter(Boolean))];
