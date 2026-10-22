@@ -104,6 +104,10 @@
         "timeoutMs": {
           "type": "integer",
           "exclusiveMinimum": 0
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "required": [
@@ -217,6 +221,10 @@
             "type": "string"
           },
           "maxItems": 100
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "required": [
@@ -297,6 +305,10 @@
         "maxAggregateBytes": {
           "type": "integer",
           "minimum": 0
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "required": [
@@ -340,6 +352,10 @@
         },
         "sessionOnly": {
           "type": "boolean"
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "required": [
@@ -390,6 +406,10 @@
         },
         "browser": {
           "type": "boolean"
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "required": [
@@ -408,7 +428,7 @@
   },
   {
     "name": "session_resume",
-    "description": "Use an explicit opaque session ID for subsequent context operations; historical sessions are not listed.",
+    "description": "Use an explicit opaque session ID for subsequent context operations on a dedicated connection; historical sessions are not listed. Shared connections should supply contextSessionId per call instead.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -417,6 +437,10 @@
           "minLength": 1,
           "maxLength": 128,
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$"
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "required": [
@@ -445,6 +469,10 @@
         "input": {
           "type": "object",
           "additionalProperties": {}
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "required": [
@@ -467,6 +495,10 @@
         "id": {
           "type": "string",
           "format": "uuid"
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "required": [
@@ -491,6 +523,10 @@
         "id": {
           "type": "string",
           "format": "uuid"
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "required": [
@@ -515,6 +551,10 @@
         "confirm": {
           "type": "boolean",
           "const": true
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "required": [
@@ -535,7 +575,13 @@
     "description": "Report local context store counts and location.",
     "inputSchema": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
+        }
+      },
+      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     },
     "annotations": {
@@ -550,7 +596,13 @@
     "description": "Run local read-only Node.js, SQLite FTS5, storage, schema, and fetch-policy checks without network or repair actions.",
     "inputSchema": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
+        }
+      },
+      "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     },
     "annotations": {
@@ -583,6 +635,10 @@
         },
         "sourceId": {
           "type": "string"
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "required": [
@@ -620,6 +676,10 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 5
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "additionalProperties": false,
@@ -640,6 +700,10 @@
       "properties": {
         "root": {
           "type": "string"
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "additionalProperties": false,
@@ -664,6 +728,10 @@
         "confirm": {
           "type": "boolean",
           "const": true
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "required": [
@@ -696,11 +764,41 @@
           },
           "minItems": 1,
           "maxItems": 20
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "required": [
         "paths"
       ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "execution": {
+      "taskSupport": "forbidden"
+    }
+  },
+  {
+    "name": "impact_status",
+    "description": "Read this host session's advisory pending impact paths. Does not run reviews or clear pending state.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
+        }
+      },
       "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     },
@@ -734,6 +832,10 @@
         },
         "dotdotSetting": {
           "type": "boolean"
+        },
+        "contextSessionId": {
+          "type": "string",
+          "description": "Host session identity; adapters supply this for shared MCP connections."
         }
       },
       "additionalProperties": false,

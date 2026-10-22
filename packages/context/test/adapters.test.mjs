@@ -9,7 +9,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
-for (const adapter of ['claude-code', 'codex']) {
+for (const adapter of ['claude-code', 'codex', 'opencode']) {
   test(`${adapter} MCP wrapper starts outside the plugin directory`, async () => {
     const root = mkdtempSync(join(tmpdir(), `dotdotgod-${adapter}-smoke-`));
     const transport = new StdioClientTransport({
@@ -23,7 +23,7 @@ for (const adapter of ['claude-code', 'codex']) {
     try {
       await client.connect(transport);
       const listed = await client.listTools();
-      assert.equal(listed.tools.length, 18);
+      assert.equal(listed.tools.length, 19);
       const doctor = await client.callTool({ name: 'doctor', arguments: {} });
       assert.equal(doctor.structuredContent.ok, true);
     } finally {

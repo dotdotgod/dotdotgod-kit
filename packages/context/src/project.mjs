@@ -22,9 +22,9 @@ function markdownTree(root, maxDepth = 5) {
   return output;
 }
 
-async function cliText(args, cwd) {
+async function cliText(args, cwd, signal) {
   return await new Promise((resolvePromise, reject) => {
-    const child = spawn(process.execPath, [cli, ...args], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, [cli, ...args], { cwd, signal, stdio: ['ignore', 'pipe', 'pipe'] });
     const stdout = [];
     const stderr = [];
     child.stdout.on('data', (chunk) => stdout.push(chunk));
@@ -54,7 +54,10 @@ function embeddingRuntimeRecovery() {
 export async function projectLoad(input) {
   const root = resolve(input.root || process.cwd());
   const focus = input.focus?.trim() ?? '';
-  const tree = markdownTree(root, input.maxDepth ?? (focus ? 3 : 5));
+  let documentationMap;
+  try { documentationMap = await cliJson(['map', root, '--depth', String(input.maxDepth ?? (focus ? 3 : 5)), '--json'], root); }
+  catch { /* Preserve filesystem fallback when CLI navigation is unavailable. */ }
+  const tree = documentationMap ? (documentationMap.paths?.length ? documentationMap.tree.split('\n') : []) : markdownTree(root, input.maxDepth ?? (focus ? 3 : 5));
   let query = null;
   let queryUnavailable;
   let vectorUnavailable;
@@ -70,7 +73,7 @@ export async function projectLoad(input) {
       };
     }
   }
-  return { ok: true, root, focus, documentationTree: tree, query, ...(queryUnavailable ? { queryUnavailable } : {}), ...(vectorUnavailable ? { vectorUnavailable } : {}) };
+  return { ok: true, root, focus, documentationTree: tree, ...(documentationMap ? { documentationRoot: documentationMap.documentationRoot } : {}), query, ...(queryUnavailable ? { queryUnavailable } : {}), ...(vectorUnavailable ? { vectorUnavailable } : {}) };
 }
 
 export async function projectEmbeddingStatus(input = {}) {
@@ -94,7 +97,7 @@ export async function projectImpact(input) {
   const args = ['graph', 'impact', root];
   for (const path of paths) args.push('--changed', path);
   args.push('--compact');
-  return { ok: true, summary: (await cliText(args, root)).trim() };
+  return { ok: true, summary: (await cliText(args, root, input.signal)).trim() };
 }
 
 export async function projectInitialize(input) {

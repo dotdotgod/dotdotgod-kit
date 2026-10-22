@@ -14,3 +14,4 @@ export { normalizeSearchTerms, reciprocalRankFusion, rerankCandidates } from './
 export { projectEmbeddingInstall, projectEmbeddingStatus, projectImpact, projectInitialize, projectLoad } from './project.mjs';
 export { startServer } from './server.mjs';
 export { formatToolMarkdown } from './presentation.mjs';
+export { ImpactState, impactPath, impactFingerprint, impactReminder, withImpactReview } from './impact-state.mjs';

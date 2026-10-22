@@ -28,6 +28,7 @@ const expectedTools = [
   'context_heal', 'stats', 'doctor', 'purge', 'project_load',
   'embedding_status', 'embedding_install',
   'project_impact', 'project_initialize',
+  'impact_status',
 ];
 const blockedCommands = ['npm', 'npx', 'pnpm', 'yarn', 'bun', 'curl', 'wget'];
 
@@ -218,14 +219,16 @@ for (const adapter of ['claude-code', 'codex']) {
       }), 10_000, `${adapter} focused project load`);
       assert.equal(loaded.isError, undefined, JSON.stringify(loaded.structuredContent));
       assert.equal(loaded.structuredContent.ok, true);
-      assert.ok(loaded.structuredContent.documentationTree.some((line) => line.includes('docs/README.md')));
+      assert.equal(loaded.structuredContent.documentationRoot, 'docs');
+      assert.match(loaded.structuredContent.documentationTree.join('\n'), /^docs\/\n  - README.md/m);
       assert.equal(loaded.structuredContent.query.ok, true);
       assert.ok(loaded.structuredContent.query.results.some((result) => result.path === 'docs/README.md' && result.kind === 'document'));
       assert.ok(loaded.structuredContent.query.results.some((result) => result.kind === 'symbol' && result.path === 'src/service.ts'));
       assert.ok(!JSON.stringify(loaded.structuredContent.query.results).includes('implementation_only_marker'));
-      assert.equal(loaded.structuredContent.vectorUnavailable.code, 'EMBEDDING_RUNTIME_MISSING');
-      assert.equal(loaded.structuredContent.vectorUnavailable.recovery.requiresConfirmation, true);
-      assert.equal(loaded.structuredContent.vectorUnavailable.recovery.installTool, 'embedding_install');
+      assert.equal(loaded.structuredContent.vectorUnavailable, undefined);
+      assert.equal(loaded.structuredContent.query.embeddingSource, 'not-used');
+      assert.equal(loaded.structuredContent.query.provider, null);
+      assert.deepEqual(loaded.structuredContent.query.warnings, []);
       const serializedLoad = JSON.stringify(loaded);
       assert.doesNotMatch(serializedLoad, /ERR_MODULE_NOT_FOUND|plugins\/cache|package_json_reader/u);
 

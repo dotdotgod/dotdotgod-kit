@@ -6,8 +6,9 @@ import test from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { PHASE3_TOOL_INPUT_SCHEMAS, formatToolMarkdown } from '../src/index.mjs';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { ImpactState } from '../src/impact-state.mjs';
 
-const expected = ['execute', 'execute_file', 'index', 'search', 'fetch_and_index', 'session_resume', 'ingestion_job_start', 'ingestion_job_status', 'ingestion_job_cancel', 'context_heal', 'stats', 'doctor', 'purge', 'project_load', 'embedding_status', 'embedding_install', 'project_impact', 'project_initialize'];
+const expected = ['execute', 'execute_file', 'index', 'search', 'fetch_and_index', 'session_resume', 'ingestion_job_start', 'ingestion_job_status', 'ingestion_job_cancel', 'context_heal', 'stats', 'doctor', 'purge', 'project_load', 'embedding_status', 'embedding_install', 'project_impact', 'project_initialize', 'impact_status'];
 
 test('stdio server lists the complete tool surface and calls doctor', async () => {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-mcp-test-'));
@@ -24,8 +25,12 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
     await client.connect(transport);
     const listed = await client.listTools();
     assert.deepEqual(listed.tools.map((tool) => tool.name).sort(), expected.sort());
+    assert.ok(listed.tools.every(tool => !tool.name.startsWith('dotdotgod_')));
+    assert.equal((await client.callTool({ name: 'dotdotgod_project_load', arguments: {} })).isError, true, 'removed names must not remain aliases');
     for (const [name, schema] of Object.entries(PHASE3_TOOL_INPUT_SCHEMAS)) {
-      assert.deepEqual(listed.tools.find((tool) => tool.name === name)?.inputSchema, schema, `${name} schema must match shared adapter contract`);
+      const actual = structuredClone(listed.tools.find((tool) => tool.name === name)?.inputSchema);
+      delete actual.properties.contextSessionId;
+      assert.deepEqual(actual, schema, `${name} schema must match shared adapter contract`);
     }
     assert.equal(existsSync(join(root, '.dotdotgod')), false);
     const result = await client.callTool({ name: 'doctor', arguments: {} });
@@ -39,6 +44,17 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
     mkdirSync(docs);
     writeFileSync(join(docs, 'a.md'), '# Alpha\npublic-mcp-directory-needle');
     writeFileSync(join(docs, 'skip.txt'), 'must-not-be-indexed');
+    const concurrent = await Promise.all(['host-one', 'host-two'].map(contextSessionId => client.callTool({ name: 'stats', arguments: { contextSessionId } })));
+    assert.deepEqual(concurrent.map(result => result.structuredContent.sessionId), ['host-one', 'host-two']);
+    const pending = new ImpactState(root, 'host-one');
+    pending.mark(['docs/a.md', 'docs/skip.txt']);
+    const failedReview = await client.callTool({ name: 'project_impact', arguments: { contextSessionId: 'host-one', paths: [] } });
+    assert.equal(failedReview.isError, true);
+    assert.equal(pending.status().count, 2);
+    const reviewed = await client.callTool({ name: 'project_impact', arguments: { contextSessionId: 'host-one', paths: ['docs/a.md'] } });
+    assert.equal(reviewed.isError, undefined, JSON.stringify(reviewed));
+    assert.deepEqual(pending.status().pending, [{ path: 'docs/skip.txt' }]);
+    assert.equal((await client.callTool({ name: 'impact_status', arguments: { contextSessionId: 'host-two' } })).structuredContent.count, 0);
     const indexedDirectory = await client.callTool({
       name: 'index',
       arguments: { path: 'docs', scope: 'project', includeExtensions: ['.md'], maxFiles: 2, maxAggregateBytes: 4096 },

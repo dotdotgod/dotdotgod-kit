@@ -54,3 +54,16 @@ export function projectLoad(input: Record<string, any>): Promise<Record<string, 
 export function projectImpact(input: Record<string, any>): Promise<Record<string, any>>;
 export function projectInitialize(input: Record<string, any>): Promise<Record<string, any>>;
 export function startServer(): Promise<void>;
+export interface ImpactSnapshot { path: string; revision: string; fingerprint: string | null }
+export interface ImpactStatus { ok: true; count: number; pending: Array<{ path: string }>; truncated: boolean }
+export class ImpactState {
+  constructor(root: string, sessionId: string);
+  mark(paths: string[]): void;
+  snapshot(paths?: string[]): ImpactSnapshot[];
+  complete(snapshot: ImpactSnapshot[]): void;
+  status(limit?: number): ImpactStatus;
+}
+export function impactReminder(status: ImpactStatus): string | undefined;
+export function impactPath(root: string, path: string): string | undefined;
+export function impactFingerprint(root: string, path: string): string | undefined;
+export function withImpactReview<T extends { ok?: boolean }>(root: string, sessionId: string, paths: string[], review: () => Promise<T>, signal?: AbortSignal): Promise<T & { checked: string[]; impactStatus: ImpactStatus }>;

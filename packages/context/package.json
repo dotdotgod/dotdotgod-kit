@@ -17,7 +17,9 @@
       "import": "./src/index.mjs"
     },
     "./server": "./src/server.mjs",
-    "./hooks": "./src/hooks.mjs"
+    "./bin/server.mjs": "./bin/server.mjs",
+    "./hooks": "./src/hooks.mjs",
+    "./impact": "./src/impact-state.mjs"
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
