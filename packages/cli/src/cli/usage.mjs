@@ -33,9 +33,9 @@ Create dotdotgod.config.json from a bundled or user template. Without --template
   dotdotgod status <root> [--json]`;
     case 'query':
       return `Usage:
-  dotdotgod query <root> <query> [--limit n] [--scope docs|code|all] [--search hybrid|keyword|vector] [--allow-code-embedding] [--json]
+  dotdotgod query <root> <query> [--limit n] [--scope docs|code|all] [--search hybrid|keyword|vector] [--json]
 
-Search full documentation and code outlines/comments. Default: hybrid docs+code. Remote code metadata requires explicit consent.`;
+Search full documentation and code outlines/comments. Default: hybrid docs+code. Selecting a remote embedding profile authorizes code metadata transmission.`;
     case 'embedding':
       return `Usage:
   dotdotgod embedding status [<root>] [--json]
@@ -167,4 +167,3 @@ export function parseCommon(argv) {
   options.root = resolve(options.root);
   return options;
 }
-

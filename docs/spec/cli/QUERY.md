@@ -8,7 +8,7 @@ keyword/vector over both corpora.
 
 ```text
 dotdotgod query <root> <query> [--limit <1..100>] [--scope docs|code|all]
-  [--search hybrid|keyword|vector] [--allow-code-embedding] [--json]
+  [--search hybrid|keyword|vector] [--json]
 ```
 
 - Root is the repository root; remaining free-form arguments form the query.
@@ -44,16 +44,15 @@ incompatible caches rebuild. Writes use temporary files and atomic artifact rena
 - Hybrid combines independently ranked candidates by reciprocal-rank fusion
   (constant 60), with stable ID ties, then deduplicates docs by path and code by ID.
 - Hybrid embedding failure returns keyword results with an explicit warning.
-  Vector-only failure remains fatal; missing remote-code consent is fatal rather
-  than silently uploading or dropping the code corpus.
+  Vector-only failure remains fatal.
 - This is lexical candidate ranking, not a full BM25 engine or inferred call graph.
 
-Local multilingual E5 remains the default. Configured OpenAI-compatible and Ollama
-providers remain supported. Query and document/code inputs use their respective
+Local multilingual E5 remains the default. OpenAI-compatible and Ollama profiles
+remain supported. Inputs use their respective
 embedding.inputFormat prefixes at the shared embedder boundary; format changes
-invalidate vector reuse. Omitted formatting preserves E5 prefixes.
-Remote embedding of code metadata additionally requires
---allow-code-embedding; prior documentation-provider consent does not cover code.
+invalidate vector reuse. Omitted formatting preserves E5 prefixes. Selecting a remote provider authorizes embedding both
+documentation and code metadata without additional per-query consent. Code metadata
+includes names, signatures, and original documentation comments, not implementation bodies.
 See [../EMBEDDING_CONFIG.md](../EMBEDDING_CONFIG.md). Tests inject deterministic vectors.
 
 ## Output And Relationships

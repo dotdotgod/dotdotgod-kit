@@ -2066,9 +2066,9 @@ Create dotdotgod.config.json from a bundled or user template. Without --template
   dotdotgod status <root> [--json]`;
     case "query":
       return `Usage:
-  dotdotgod query <root> <query> [--limit n] [--scope docs|code|all] [--search hybrid|keyword|vector] [--allow-code-embedding] [--json]
+  dotdotgod query <root> <query> [--limit n] [--scope docs|code|all] [--search hybrid|keyword|vector] [--json]
 
-Search full documentation and code outlines/comments. Default: hybrid docs+code. Remote code metadata requires explicit consent.`;
+Search full documentation and code outlines/comments. Default: hybrid docs+code. Selecting a remote embedding profile authorizes code metadata transmission.`;
     case "embedding":
       return `Usage:
   dotdotgod embedding status [<root>] [--json]
@@ -4133,11 +4133,6 @@ async function projectCorpus(root, scope) {
   const outlines = scope === "docs" ? null : await buildOutlines(root);
   return { chunks: [...docs, ...outlines ? outlineChunks(outlines) : []], outlines };
 }
-function assertCodeEmbeddingConsent(root, options, chunks) {
-  if (!chunks.some((chunk) => chunk.kind === "symbol")) return;
-  const profile = options.profile ?? resolveEmbeddingProfile(root).profile;
-  if (profile.provider !== "local" && options.allowCodeEmbedding !== true) throw new Error("Remote code-metadata embedding requires --allow-code-embedding; use --search keyword or --scope docs instead.");
-}
 function attachRelationships(results, outlines) {
   if (!outlines) return results;
   const graph = addOutlineGraph({ nodes: [], edges: [] }, outlines);
@@ -4152,7 +4147,7 @@ var DEFAULT_LIMIT = 30;
 var MAX_LIMIT = 100;
 var EMBED_BATCH_SIZE = 16;
 function parseQueryOptions(argv) {
-  const options = { root: ".", query: "", limit: DEFAULT_LIMIT, json: false, scope: "all", search: "hybrid", allowCodeEmbedding: false };
+  const options = { root: ".", query: "", limit: DEFAULT_LIMIT, json: false, scope: "all", search: "hybrid" };
   let rootSet = false;
   const queryParts = [];
   for (let i = 0; i < argv.length; i += 1) {
@@ -4164,8 +4159,7 @@ function parseQueryOptions(argv) {
     } else if (arg === "--search") {
       options.search = argv[++i];
       if (!["hybrid", "keyword", "vector"].includes(options.search)) usage("--search must be hybrid, keyword or vector.", "query");
-    } else if (arg === "--allow-code-embedding") options.allowCodeEmbedding = true;
-    else if (arg === "--limit") {
+    } else if (arg === "--limit") {
       const value = Number(argv[++i]);
       if (!Number.isInteger(value) || value < 1 || value > MAX_LIMIT) usage(`--limit must be an integer from 1 to ${MAX_LIMIT}.`, "query");
       options.limit = value;
@@ -4253,7 +4247,6 @@ async function queryProject(root, query, options = {}) {
   let vectorError;
   if (search !== "keyword" && corpus.chunks.length) {
     try {
-      assertCodeEmbeddingConsent(root, options, corpus.chunks);
       index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks });
       const [queryVector] = await index.embedding.embed([query], "query");
       vector = index.chunks.map((chunk, position) => ({ ...chunk, vectorScore: cosineScore(queryVector, index.vectors, position * index.manifest.dimensions, index.manifest.dimensions) })).sort((a, b) => b.vectorScore - a.vectorScore || a.id.localeCompare(b.id));

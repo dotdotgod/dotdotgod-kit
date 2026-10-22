@@ -60,12 +60,19 @@ test('mixed retrieval, same-file methods, body exclusion and offline keyword ind
     const fallback = await queryProject(root, 'widgets', { embed: async () => { throw new Error('offline'); } });
     assert.ok(fallback.warnings[0].includes('offline'));
     assert.ok(fallback.results.length);
-    await assert.rejects(queryProject(root, 'run', { search: 'vector', profile: { provider: 'openai-compatible', model: 'test' }, embed }), /consent|allow-code-embedding/);
-    const denied = await queryProject(root, 'run', { profile: { provider: 'openai-compatible', model: 'test' }, embed: async () => { throw new Error('must not contact provider'); } });
-    assert.ok(denied.results.length);
-    assert.match(denied.warnings[0], /consent|allow-code-embedding/);
-    const allowed = await queryProject(root, 'run', { profile: { provider: 'openai-compatible', model: 'test' }, embed, allowCodeEmbedding: true });
-    assert.ok(allowed.results.length);
+    for (const search of ['vector', 'hybrid']) {
+      const passages = [];
+      const remote = await queryProject(root, 'run', {
+        search, profile: { provider: 'openai-compatible', model: 'test' },
+        embed: async (texts) => { passages.push(...texts); return embed(texts); },
+      });
+      assert.ok(remote.results.some((result) => result.kind === 'symbol' && result.retrieval.includes('vector')));
+      assert.deepEqual(remote.warnings, []);
+      if (search === 'vector') {
+        assert.ok(passages.some((text) => text.includes('Run retrieves widgets.')));
+        assert.ok(passages.every((text) => !text.includes('return 1')));
+      }
+    }
     assert.equal(parseQueryOptions([root, 'run']).scope, 'all');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

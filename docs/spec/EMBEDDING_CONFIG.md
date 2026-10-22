@@ -68,7 +68,7 @@ Do not configure client prefixes if the server already applies the same format.
 
 Direct `apiKey` values are supported, but `apiKeyEnv` is recommended for committed projects. Credentials are excluded from output, diagnostics, cache manifests, and profile fingerprints.
 
-Selecting a remote provider authorizes sending documentation chunks, queries, and changed-file profiles to its endpoint. No additional consent flag is required.
+Selecting a remote provider in project or global embedding configuration authorizes sending documentation chunks, code metadata (names, signatures, and original documentation comments), queries, and changed-file profiles to its endpoint. No additional per-query consent flag is required. Code implementation bodies are not embedding passages; metadata and comments may still contain sensitive repository information. Use a local provider or keyword-only search when this transmission is not acceptable.
 
 ## Optional Local Runtime Installation
 

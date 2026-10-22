@@ -18,6 +18,6 @@ The cache fingerprint canonically orders provider/model/endpoint and includes ef
 
 ## Remote Safety
 
-Remote providers receive repository-derived text only after explicit profile selection. Transport uses a bounded timeout and does not include response bodies in surfaced errors. Authentication values are consumed only for request construction and are never returned by config inspection.
+Remote providers receive repository-derived text only after explicit profile selection. Project or global remote profile selection authorizes documentation, code metadata (names, signatures, and original documentation comments), queries, and changed-file profiles without separate per-query consent. Code implementation bodies are not embedding passages. Transport uses a bounded timeout and does not include response bodies in surfaced errors. Authentication values are consumed only for request construction and are never returned by config inspection.
 
 Model-specific literal prefixes are configured in embedding.inputFormat. Product callers send raw texts with a query/document role; the embedder applies prefixes once before transport or token-limit splitting. Low-level calls without roles stay raw. Empty prefixes support raw/server-formatted inputs; model aliases never select implicit presets. Public configuration still excludes arbitrary headers, request templates, normalization switches and batch tuning. Server-side preprocessing must not duplicate client prefixes.

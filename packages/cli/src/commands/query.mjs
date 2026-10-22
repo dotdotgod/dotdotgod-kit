@@ -5,14 +5,14 @@ import { collectDocumentationChunks } from '../query/chunks.mjs';
 import { resolveEmbedder } from '../query/embedder.mjs';
 import { isValidNormalizedVectorValues, profileFingerprint, readVectorCache, writeVectorCache } from '../query/store.mjs';
 
-import { projectCorpus, keywordCandidates, fuseCandidates, attachRelationships, assertCodeEmbeddingConsent } from '../query/hybrid.mjs';
+import { projectCorpus, keywordCandidates, fuseCandidates, attachRelationships } from '../query/hybrid.mjs';
 
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 100;
 const EMBED_BATCH_SIZE = 16;
 
 export function parseQueryOptions(argv) {
-  const options = { root: '.', query: '', limit: DEFAULT_LIMIT, json: false, scope: 'all', search: 'hybrid', allowCodeEmbedding: false };
+  const options = { root: '.', query: '', limit: DEFAULT_LIMIT, json: false, scope: 'all', search: 'hybrid' };
   let rootSet = false;
   const queryParts = [];
   for (let i = 0; i < argv.length; i += 1) {
@@ -20,7 +20,6 @@ export function parseQueryOptions(argv) {
     if (arg === '--json') options.json = true;
     else if (arg === '--scope') { options.scope = argv[++i]; if (!['docs', 'code', 'all'].includes(options.scope)) usage('--scope must be docs, code or all.', 'query'); }
     else if (arg === '--search') { options.search = argv[++i]; if (!['hybrid', 'keyword', 'vector'].includes(options.search)) usage('--search must be hybrid, keyword or vector.', 'query'); }
-    else if (arg === '--allow-code-embedding') options.allowCodeEmbedding = true;
     else if (arg === '--limit') { const value = Number(argv[++i]); if (!Number.isInteger(value) || value < 1 || value > MAX_LIMIT) usage(`--limit must be an integer from 1 to ${MAX_LIMIT}.`, 'query'); options.limit = value; }
     else if (arg.startsWith('-')) usage(`Unknown option: ${arg}`, 'query');
     else if (!rootSet) { options.root = resolve(arg); rootSet = true; }
@@ -109,7 +108,6 @@ export async function queryProject(root, query, options = {}) {
   let vector = []; let index; let vectorError;
   if (search !== 'keyword' && corpus.chunks.length) {
     try {
-      assertCodeEmbeddingConsent(root, options, corpus.chunks);
       index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks });
       const [queryVector] = await index.embedding.embed([query], 'query');
       vector = index.chunks.map((chunk, position) => ({ ...chunk, vectorScore: cosineScore(queryVector, index.vectors, position * index.manifest.dimensions, index.manifest.dimensions) }))

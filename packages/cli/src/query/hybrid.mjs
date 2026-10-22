@@ -1,6 +1,5 @@
 import { collectDocumentationChunks } from './chunks.mjs';
 import { readMemoryConfig } from '../memory/config.mjs';
-import { resolveEmbeddingProfile } from './embedding-config.mjs';
 import { buildOutlines, outlineChunks } from '../symbols/store.mjs';
 import { addOutlineGraph } from '../symbols/graph.mjs';
 
@@ -46,11 +45,6 @@ export async function projectCorpus(root, scope) {
   const docs = scope === 'code' ? [] : collectDocumentationChunks(root, config.load?.documentationSummary?.exclude, config.documentation?.root ?? 'docs').map((chunk) => ({ ...chunk, kind: 'document' }));
   const outlines = scope === 'docs' ? null : await buildOutlines(root);
   return { chunks: [...docs, ...(outlines ? outlineChunks(outlines) : [])], outlines };
-}
-export function assertCodeEmbeddingConsent(root, options, chunks) {
-  if (!chunks.some((chunk) => chunk.kind === 'symbol')) return;
-  const profile = options.profile ?? resolveEmbeddingProfile(root).profile;
-  if (profile.provider !== 'local' && options.allowCodeEmbedding !== true) throw new Error('Remote code-metadata embedding requires --allow-code-embedding; use --search keyword or --scope docs instead.');
 }
 export function attachRelationships(results, outlines) {
   if (!outlines) return results;
