@@ -30,7 +30,7 @@ describe("plan-mode command registration", () => {
 	});
 
 	it("does not own automatic project-memory loading", () => {
-		assert.doesNotMatch(extensionSource, /dotdotgod_project_load/);
+		assert.doesNotMatch(extensionSource, /name: "project_memory_load"/);
 		assert.doesNotMatch(extensionSource, /pendingAgentLoad/);
 		assert.doesNotMatch(extensionSource, /requestPlanningLoadIfNeeded/);
 		assert.doesNotMatch(contextSource, /memory_load|SyntheticProjectMemoryLoad|project-memory load request/);

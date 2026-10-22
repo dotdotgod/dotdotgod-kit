@@ -9,7 +9,7 @@ Plan Mode keeps a conservative default tool surface, but users can opt into addi
 `--plan-extra-tools` accepts a comma-separated list of extra tool names:
 
 ```bash
-pi --dd-plan --plan-extra-tools ctx_search,ctx_execute_file
+pi --dd-plan --plan-extra-tools mcp__dotdotgod_context__search,mcp__dotdotgod_context__stats
 ```
 
 Behavior:
@@ -21,7 +21,7 @@ Behavior:
 - Tool names that are not installed in the current Pi session are ignored.
 - The resolved active tool list is used both for `pi.setActiveTools()` and for the hidden full Plan Mode prompt.
 
-This lets users opt into external read-oriented tools, such as context-mode tools, without making external plugins part of the default Plan Mode surface. Extra tools remain subject to Plan Mode command and mutation guards.
+This lets users opt into installed read-oriented tools without expanding the default surface. Discover exact host-qualified MCP names; forwarding aliases are not registered. Extra tools remain subject to Plan Mode command and mutation guards; adding execute_file does not authorize it while planning.
 
 ## Planning Document Writes
 

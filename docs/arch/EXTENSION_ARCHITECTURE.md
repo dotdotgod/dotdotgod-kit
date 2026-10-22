@@ -28,7 +28,7 @@ Distribution metadata:
 - Tarballs contain dotdotgod-owned `skills/`, `extensions/`, package metadata, and license files; runtime dependency bodies are installed by the package manager from declared dependencies.
 - Pi peer dependencies remain unbundled and are resolved by the host Pi installation.
 - `@dotdotgod/cli` is a package dependency used by Pi extensions as a source-checkout, package-local, then global CLI fallback chain.
-- `@dotdotgod/context` provides process capture, local FTS5 retrieval, fetch/index operations, and safe initializer services. Pi registers native tools over this library and does not start the Claude/Codex MCP server.
+- `@dotdotgod/context` provides the shared stdio MCP server. Pi registers it through the host MCP API without forwarding aliases or duplicate schemas; plan/UI and load lifecycle remain in-process.
 - `pi-subagents` is a pinned package dependency whose skill and prompts are resolved by the dotdotgod wrapper through Node package resolution. The wrapper defers duplicate tool detection until `session_start`; when a standalone `subagent` tool already exists it suppresses package-local tool, skill, and prompt resources, and when dotdotgod owns registration it exposes the dependency resources during `resources_discover`. This lets hoisted, package-local, and local development installs coexist with standalone `pi-subagents` without duplicate resource warnings or runtime action calls during extension loading.
 
 
@@ -56,7 +56,7 @@ The script owns scaffold generation, overwrite policy, dry-run reporting, and op
 - Entry points: `pi --dd-plan` at startup, `/dd:plan`, `/dd:plan <request>`, and `Ctrl+Alt+P`; the namespaced startup flag avoids collisions with extensions that own `--plan`.
 - Runtime state: one authoritative `off`/`planning`/`reviewing`/`executing` lifecycle plus subordinate internal todos, active plan README, touched plan/archive paths, latest planning request including pending inline `/dd:plan <request>` delivery, advisory/execution request framing, and pending source/config impact-check records. Lifecycle-derived capabilities alone select mutation restrictions, Plan Mode-owned tools, hidden prompts, and status; todo and UI state do not independently select permissions. It contains no automatic project-memory load state or load-prompt classification.
 - Context shaping: first-request bounded advisory graph impact and reference expansion when the CLI is available, without automatic project-wide validation. Compaction remains owned by Pi and its settings. Mode-neutral automatic project-memory prompt scheduling and loading are owned separately and apply equally to Plan Mode and ordinary mode.
-- Impact-check integration: structured `graph impact --yml` runtime summaries, short pending-impact reminders after source/config edits, pending-path plus git source/config union checks, and stale pending-record cleanup after successful checks.
+- Impact-check integration: shared MCP compact graph reviews, durable advisory pending revisions after observed edits, bounded status/reminders, and failure/re-edit retention. Impact pending does not block commands; Plan Mode safety remains independent.
 - UX: queue-first Plan Decision Wizard with sequential questions, local Back/Next drafts, native custom text entry, and editable batch confirmation; then separate saved-plan execute/stay/refine/cancel review only after the agent records answers and the durable queue clears. Explicit execution requests use the same queue-first review flow. Plan Mode suppresses review for generator-authored or actively generating plans, but it does not run generator stage validation. Generator status overlays restore the underlying Plan Mode status when cleared.
 - Prompt ownership: first-turn safety/workflow prompt, compact reminder, per-request framing, active tool list, impact-plan refinement and project validation guidance, discussion-queue follow-ups that update durable plan markdown.
 
@@ -82,7 +82,7 @@ The mode-neutral `project-memory` extension owns automatic project-memory assess
 - baseline-marker detection from bounded active-branch transcript evidence, so startup `contextFiles` alone do not suppress the focused Load that earlier Plan Mode sessions requested
 - active-branch persistence of automatic assessment, pending-load, and hidden-instruction delivery state without copying the original request into extension state
 - pass-through `input` handling that leaves the user's text and images unchanged, followed by a persistent `before_agent_start` custom instruction with `display: false` for model-only guidance
-- pending-only availability of `dotdotgod_project_load` in the current agent loop, with hidden-instruction delivery recorded when `before_agent_start` schedules the message so the model's immediate tool call is accepted without a session-branch visibility race
+- pending-only availability of `project_memory_load` in the current agent loop, with hidden-instruction delivery recorded when `before_agent_start` schedules the message so the model's immediate tool call is accepted without a session-branch visibility race
 - compact focused Load/query output, completion recording, retryable delivery failure, and duplicate prevention
 
 A small pure active-tool composition helper is the boundary between project-memory ownership and Plan Mode transitions. Each owner replaces only its own tools, preserving the pending load tool and third-party active tools without a shared mutable registry or callback-order dependency.
@@ -101,7 +101,7 @@ A small pure active-tool composition helper is the boundary between project-memo
 - lightweight detection of baseline memory files and narrative loader prompt generation
 - command-conflict guidance for `/load`
 
-The shared CLI owns deterministic documentation-map discovery/rendering, validation, graph cache/index management, bounded graph-impact reports, and local multilingual documentation query. The explicit load extension and global automatic loader reuse the same map command, baseline snapshot, prompt, and focused query helpers without injecting graph statistics into the Load narrative. Pi retains a bounded CLI-unavailable map fallback and preserves the README directly under `docs/archive/` as the archive routing map while keeping archive bodies excluded by default.
+The CLI owns map/query/graph behavior. Explicit full-load commands retain CLI helpers; automatic load forwards service calls to MCP and retains its pending-only lifecycle and compact narrative. The shared service consumes the configured map and optional query, falling back to a filesystem map when unavailable. Neither Load path includes graph statistics.
 
 ## Prompt Layer
 

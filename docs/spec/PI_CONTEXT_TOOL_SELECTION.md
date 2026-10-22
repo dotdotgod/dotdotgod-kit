@@ -6,15 +6,15 @@ Guide native Pi and codemode callers toward bounded execution and retrieval whil
 
 ## Selection Contract
 
-- `dotdotgod_execute` is the sole command tool. Input requires `commands` (1..100 entries), with optional `concurrency`, `cwd`, and `timeoutMs`. Group independent known commands; separate dependent commands. Results always contain ordered `results`, including single-command calls.
-- Pi descriptions and active-tool prompt guidance recommend `dotdotgod_execute` with `auto` for commands whose output size is unknown, including `tools.dotdotgod_execute` inside codemode.
+- MCP `execute` is the shared command tool; Pi's ordinary `bash` is not replaced. Input requires `commands` (1..100 entries), with optional `concurrency`, `cwd`, and `timeoutMs`. Group independent known commands; separate dependent commands. Results always contain ordered `results`, including single-command calls.
+- MCP namespace guidance recommends `execute` with `auto` for commands whose output size is unknown, including `tools.mcp__dotdotgod_context__execute` inside codemode.
 - Known-large output needed for retrieval uses `indexed`; `discard` is appropriate only when status suffices. Short located source and images remain direct-read cases.
-- Guidance MUST NOT force routing, enable codemode automatically, retry write-capable commands silently, or authorize a blocked command.
+- Guidance MUST NOT force routing, retry write-capable commands silently, or authorize a blocked command. Pi's host MCP support may activate codemode according to its own exposure settings.
 - Context FTS retrieval does not require document-query embeddings.
 
-## Native Results In Codemode
+## MCP Results In Codemode
 
-Native context tools expose output schemas and structuredContent for direct object access in codemode. Model-facing content is Markdown; Pi details and MCP structuredContent preserve programmatic data. Codemode callers MUST access object fields directly, without JSON.parse, and SHOULD return bounded metadata/evidence rather than complete results. Existing external JSON.parse scripts require migration and sessions require reload. Graph-impact tools retain their existing text contracts; impact-status uses structured access. Codemode's small-value store is for source IDs or cursors, not raw logs.
+Pi registers `dotdotgod_context` through the host API, with no forwarding aliases or duplicate schemas. Individual catalog names have no `dotdotgod_` prefix. Calls such as `tools.mcp__dotdotgod_context__execute` return MCP envelopes with `isError` and `structuredContent`. Inspect those fields without parsing Markdown. Return bounded evidence, not complete logs. `project_impact` and `impact_status` are directly exposed MCP tools. The only native Load tool is pending-only `project_memory_load`, which preserves its compact UI/lifecycle and calls MCP `project_load`. Reload existing sessions after upgrading; removed names are not compatibility aliases.
 
 Execution failure can return `ok: false` without a thrown tool error. Callers inspect each `results` entry's `code`, `timedOut`, `aborted`, and `captureLimitExceeded`; tool-call errors may reject separately. Search uses the returned source ID and bounded limits. For failure diagnostics, guidance recommends `fail OR error OR reason`, followed by concrete diagnostic terms or bounded `*` browsing with the same filters when needed. Empty results mean no match, not tool failure or complete verification. Wildcard excerpts also do not prove full inspection; unsupported causes must be reported as unverified, not absent.
 
@@ -24,7 +24,7 @@ The execution source is each result's `indexed.id`; file ingestion returns `id`,
 
 The source checkout pins Pi agent-core, AI, coding-agent, and TUI development dependencies to `1.0.0` for public SDK codemode tests; these SDK packages require Node `>=22.19.0`. Published host peer ranges and `pi-subagents` remain unchanged.
 
-Codemode nested calls traverse Pi's tool pipeline. This does not establish complete Plan Mode/impact coverage for every execution entrypoint. Guidance does not authorize bypassing restrictions; each command in the array passes the existing Plan Mode allowlist and impact gates before the batch starts.
+Codemode nested MCP calls traverse Pi's tool pipeline. Every execute entry passes the Plan Mode allowlist before the batch starts; write-capable file processing and mutation operations remain restricted while planning. Impact pending is tracked and reported but never blocks execution. This is not a sandbox or complete observation of shell/external writes.
 
 Deterministic integration tests verify real SDK tools/scripts and guidance delivery, not real model adoption. Actual tool-choice evaluation requires separately observed model runs.
 

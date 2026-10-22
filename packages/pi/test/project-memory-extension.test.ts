@@ -66,7 +66,7 @@ describe("global project-memory orchestration", () => {
 		assert.match(globalSource, /event\.toolName !== PROJECT_MEMORY_LOAD_TOOL\) return/);
 		assert.doesNotMatch(globalSource, /pi\.on\("turn_end"|pi\.on\("agent_end"|sendUserMessage/);
 		assert.match(globalSource, /pi\.on\("session_tree"/);
-		assert.match(globalSource, /mode: "compact"/);
+		assert.match(globalSource, /callProjectTool\(ctx, "project_load"/);
 		assert.match(globalSource, /promptSnippet:/);
 		assert.match(globalSource, /promptGuidelines:/);
 		assert.match(globalSource, /renderResult\(result, \{ expanded, isPartial \}, theme\)/);
@@ -120,24 +120,24 @@ describe("global project-memory orchestration", () => {
 		);
 		const pendingTools = composeActiveTools(
 			["read", "third_party"],
-			["dotdotgod_project_load"],
+			["project_memory_load"],
 			lifecycle.state.pending && lifecycle.state.promptDelivered
-				? ["dotdotgod_project_load"]
+				? ["project_memory_load"]
 				: [],
 		);
-		assert.deepEqual(pendingTools, ["read", "third_party", "dotdotgod_project_load"]);
+		assert.deepEqual(pendingTools, ["read", "third_party", "project_memory_load"]);
 
 		const planningTools = composeActiveTools(
 			pendingTools,
 			["read", "bash", "edit"],
 			["read"],
 		);
-		assert.deepEqual(planningTools, ["third_party", "dotdotgod_project_load", "read"]);
+		assert.deepEqual(planningTools, ["third_party", "project_memory_load", "read"]);
 		assert.deepEqual(
 			composeActiveTools(
 				planningTools,
-				["dotdotgod_project_load"],
-				["dotdotgod_project_load"],
+				["project_memory_load"],
+				["project_memory_load"],
 			).sort(),
 			[...planningTools].sort(),
 		);
@@ -177,8 +177,8 @@ describe("global project-memory orchestration", () => {
 		assert.throws(() => lifecycle.beginLoad(), /No automatic project-memory load is pending/);
 		assert.deepEqual(
 			composeActiveTools(
-				["read", "third_party", "dotdotgod_project_load"],
-				["dotdotgod_project_load"],
+				["read", "third_party", "project_memory_load"],
+				["project_memory_load"],
 				[],
 			),
 			["read", "third_party"],
@@ -212,7 +212,7 @@ describe("global project-memory orchestration", () => {
 		lifecycle.assess(true);
 
 		const instruction = buildPendingProjectMemoryLoadPrompt(lifecycle.state.pending);
-		assert.match(instruction ?? "", /call dotdotgod_project_load exactly once/);
+		assert.match(instruction ?? "", /call project_memory_load exactly once/);
 		lifecycle.confirmPromptDelivered();
 
 		assert.doesNotThrow(() => lifecycle.beginLoad());
@@ -272,7 +272,7 @@ describe("global project-memory orchestration", () => {
 	it("builds hidden automatic-load guidance without synthetic user content", () => {
 		assert.equal(buildPendingProjectMemoryLoadPrompt(false), undefined);
 		const delivered = buildPendingProjectMemoryLoadPrompt(true) ?? "";
-		assert.match(delivered, /call dotdotgod_project_load exactly once/);
+		assert.match(delivered, /call project_memory_load exactly once/);
 		assert.match(delivered, /Continue the original request/);
 		assert.doesNotMatch(delivered, /PROJECT MEMORY AUTO LOAD/);
 		assert.doesNotMatch(globalSource, /originalRequest|buildProjectMemorySyntheticUserPrompt/);

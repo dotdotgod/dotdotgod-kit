@@ -1,5 +1,4 @@
 import { isAbsolute, relative, resolve } from "node:path";
-import { getDotdotgodCliArgs } from "./tools.ts";
 import { isActivePlanPath, isArchivePath } from "./runtime/paths.ts";
 
 function formatCandidatePath(candidate: Record<string, unknown>): string | undefined {
@@ -98,74 +97,4 @@ export function shouldTrackImpactPath(path: string): boolean {
 	if (!normalized || isActivePlanPath(normalized) || isArchivePath(normalized)) return false;
 	if (normalized.startsWith(".dotdotgod/") || normalized.startsWith("node_modules/") || normalized.startsWith("dist/") || normalized.startsWith("build/") || normalized.startsWith("coverage/")) return false;
 	return /[.][A-Za-z0-9]+$/.test(normalized);
-}
-
-export function upsertPendingImpact(items: readonly PendingImpactItem[], item: PendingImpactItem, maxItems = 20): PendingImpactItem[] {
-	const next = items.filter((existing) => existing.path !== item.path);
-	next.push(item);
-	return next.slice(-maxItems);
-}
-
-export function clearPendingImpactForPath(items: readonly PendingImpactItem[], path: string): PendingImpactItem[] {
-	return items.filter((item) => item.path !== path);
-}
-
-export function mergeImpactCheckPaths(cwd: string, pendingItems: readonly PendingImpactItem[], gitChangedPaths: readonly string[]): string[] {
-	const paths = [...pendingItems.map((item) => item.path), ...gitChangedPaths];
-	return [...new Set(paths.map((path) => normalizeImpactPath(cwd, path)).filter((path): path is string => Boolean(path)).filter(shouldTrackImpactPath))];
-}
-
-export function pendingImpactSummary(items: readonly PendingImpactItem[], limit = 8): string {
-	const shown = items.slice(0, limit).map((item) => `- ${item.path}`);
-	const omitted = items.length > limit ? [`- ... ${items.length - limit} more`] : [];
-	return [...shown, ...omitted].join("\n");
-}
-
-export function getChangedPathsFromDotdotgodImpactCommand(command: string): string[] {
-	const args = getDotdotgodCliArgs(command);
-	if (!args || args[0] !== "graph" || args[1] !== "impact") return [];
-	const changed: string[] = [];
-	for (let i = 2; i < args.length; i += 1) {
-		const arg = args[i];
-		if (arg === "--changed" && args[i + 1]) {
-			changed.push(args[i + 1]!);
-			i += 1;
-		} else if (arg?.startsWith("--changed=")) {
-			changed.push(arg.slice("--changed=".length));
-		}
-	}
-	return [...new Set(changed.filter(Boolean))];
-}
-
-export function getChangedPathFromDotdotgodImpactCommand(command: string): string | undefined {
-	return getChangedPathsFromDotdotgodImpactCommand(command)[0];
-}
-
-export function isCommitLikeCommand(command: string): boolean {
-	return /^\s*git\s+(commit|push)\b/i.test(command) || /^\s*(npm|pnpm|yarn)\s+publish\b/i.test(command);
-}
-
-export function isBroadVerificationCommand(command: string): boolean {
-	return /^\s*(pnpm\s+run\s+verify|npm\s+test|pnpm\s+test|yarn\s+test|pytest\b|\.\/run-tests\.sh\b)/i.test(command);
-}
-
-export function formatExpandableToolOutput(text: string, expanded: boolean, expandHint: string, maxLines = 10): string {
-	if (expanded) return text;
-	const lines = text.split(/\r?\n/);
-	if (lines.length <= maxLines) return text;
-	const omitted = lines.length - maxLines;
-	return [...lines.slice(0, maxLines), `... (${omitted} more lines, ${expandHint})`].join("\n");
-}
-
-export function formatMultiImpactSummary(results: Array<{ path: string; data?: unknown; error?: string; summary?: string }>, topLimit = 5): string {
-	const structuredSummaries = results.map((result) => result.summary?.trim()).filter((summary): summary is string => Boolean(summary));
-	if (structuredSummaries.length === results.length && results.every((result) => !result.error)) return structuredSummaries.join("\n---\n");
-
-	const lines = ["dotdotgod graph impact summary:"];
-	for (const result of results) {
-		if (result.error) lines.push(`- Impact: failed for ${result.path}: ${result.error}`);
-		else if (result.summary?.trim()) lines.push(result.summary.trim());
-		else lines.push(formatCompactImpactSummary(result.path, result.data, topLimit));
-	}
-	return lines.join("\n");
 }

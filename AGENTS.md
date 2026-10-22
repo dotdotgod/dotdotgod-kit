@@ -22,11 +22,11 @@ Canonical instructions for AI coding agents working in this repository.
 
 ## Context Tool Selection
 
-- When available and permitted by the current mode, prefer `dotdotgod_execute` with a `commands` array (1..100 entries) and per-command `outputMode: "auto"` for commands whose output size is unknown, including tests and builds. Small output stays direct; larger output is indexed. Do not predict exact output size first.
+- When available and permitted by the current mode, prefer `execute` from the `dotdotgod_context` MCP server with a `commands` array (1..100 entries) and per-command `outputMode: "auto"` for commands whose output size is unknown, including tests and builds. Discover the exact host-qualified name; do not confuse it with a host Code Mode executor. Small output stays direct; larger output is indexed. Do not predict exact output size first.
 - Group independent known commands in one execute call; separate commands dependent on earlier results. Single-command calls also return a batch: inspect each `results` entry and its `indexed.id`, not top-level command fields. Do not bypass permissions or safety gates.
 - Use `indexed` for known-large output you need to search; use `discard` only when status alone provides sufficient evidence. Check `ok`, `code`, `timedOut`, `aborted`, and `captureLimitExceeded` before claiming success.
 - Search retained output by its source ID (`indexed.id` for execution, `id` for file ingestion), with a small `limit` and appropriate scope/session filters. For failed commands, try `fail OR error OR reason`; if unmatched, try concrete diagnostic terms or `*` for bounded browsing with the same filters. Empty results mean no match, not successful verification. Retrieved excerpts, including wildcard results, do not prove complete inspection; report an unsupported cause as unverified, not absent.
-- In Pi codemode, prefer `tools.dotdotgod_execute(...)` over `tools.bash(...)` for unknown output. Native non-graph-impact dotdotgod tools return structured objects: access fields directly (do not use `JSON.parse`), inspect status, and return only bounded evidence/metadata. Store source IDs, not raw logs, across scripts.
+- In Pi codemode, prefer `tools.mcp__dotdotgod_context__execute(...)` over `tools.bash(...)` for unknown output. MCP calls return envelopes: inspect `isError` and `structuredContent` without `JSON.parse`, then command status, and return only bounded evidence/metadata. Pi's pending-only `project_memory_load` retains its adapter lifecycle; there are no native forwarding aliases. Store source IDs, not raw logs, across scripts.
 - Keep direct `read` for short, located source, exact code inspection, and images. Context FTS search does not require document-query embeddings. Do not index every file by default.
 - These choices do not authorize blocked commands or bypass Plan Mode/impact gates. Use only active, permitted tools; enabling codemode or changing permissions requires separate approval.
 
@@ -72,5 +72,6 @@ For the fuller command matrix, see `docs/test/README.md`.
 
 - `CLAUDE.md` imports this file with `@AGENTS.md`.
 - `CODEX.md` points users to this file.
+- OpenCode reads `AGENTS.md` natively; no `OPENCODE.md` is needed.
 
 Keep long-lived instructions here so agent-specific files do not drift.

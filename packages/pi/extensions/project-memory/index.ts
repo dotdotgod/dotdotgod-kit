@@ -3,7 +3,6 @@ import { keyHint } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { recordContextMetric } from "../context-metrics/utils.js";
-import { buildLoadPrompt, collectSnapshot, runDotdotgodMap, runDotdotgodQuery } from "../load-project/utils.js";
 import { composeActiveTools } from "../shared/active-tools.js";
 import {
 	buildPendingProjectMemoryLoadPrompt,
@@ -18,6 +17,9 @@ import {
 	stripExplicitProjectMemoryLoadMarker,
 } from "./context.js";
 import { ProjectMemoryLifecycle } from "./lifecycle.js";
+import { callProjectTool } from "../shared/mcp.ts";
+import { buildLoadPrompt, collectSnapshot } from "../load-project/utils.js";
+import type { QueryRunResult } from "../load-project/prompt.ts";
 
 const ProjectMemoryLoadParams = Type.Object({
 	focus: Type.String({
@@ -58,18 +60,26 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 		promptSnippet:
 			"Load curated project memory with a concise task-specific semantic focus when automatic project-memory loading is pending.",
 		promptGuidelines: [
-			"When automatic project-memory loading is pending, call dotdotgod_project_load before substantive work. Generate a short semantic focus from the behavior, architecture, source areas, and verification knowledge needed for the current task; do not copy the full user request verbatim.",
+			"When automatic project-memory loading is pending, call project_memory_load before substantive work. Generate a short semantic focus from the behavior, architecture, source areas, and verification knowledge needed for the current task; do not copy the full user request verbatim.",
 		],
 		outputSchema: Type.Record(Type.String(), Type.Any()),
 		parameters: ProjectMemoryLoadParams,
-		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 			lifecycle.beginLoad();
 
 			const focus = params.focus.replace(/\s+/g, " ").trim();
 			try {
+				const loaded = await callProjectTool(ctx, "project_load", { focus }, signal);
+				if (loaded.isError) return loaded;
+				const payload = loaded.details as { ok?: boolean; documentationTree?: string[]; documentationRoot?: string; queryUnavailable?: { message?: string }; query?: QueryRunResult["data"] } | undefined;
+				if (payload?.ok !== true || !Array.isArray(payload.documentationTree)) return { ...loaded, isError: true };
+				// Keep Pi's compact narrative/UI; only service execution moves to MCP.
 				const snapshot = collectSnapshot(ctx.cwd);
-				const documentationMap = runDotdotgodMap(ctx.cwd, focus ? 3 : 5);
-				const queryResult = focus ? runDotdotgodQuery(ctx.cwd, focus) : undefined;
+				const documentationMap = { ok: true as const, command: "MCP project_load", data: {
+					ok: true as const, root: ctx.cwd, documentationRoot: payload.documentationRoot ?? snapshot.documentationRoot ?? "docs",
+					depth: focus ? 3 : 5, exclude: snapshot.exclude ?? [], paths: [], tree: payload.documentationTree.join("\n"),
+				} };
+				const queryResult = focus ? { ok: !payload.queryUnavailable, command: documentationMap.command, ...(payload.queryUnavailable?.message ? { error: payload.queryUnavailable.message } : {}), ...(payload.query ? { data: payload.query } : {}) } : undefined;
 				const prompt = buildLoadPrompt(ctx.cwd, focus, snapshot, queryResult, { mode: "compact", documentationMap });
 				lifecycle.completeLoad();
 				const entryCount = ctx.sessionManager.getBranch().length;
@@ -92,7 +102,7 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 						ok: documentationMap.ok && (queryResult?.ok ?? true),
 						focus,
 						output: prompt,
-						map: { ok: documentationMap.ok, command: documentationMap.command, error: documentationMap.error },
+						map: { ok: documentationMap.ok, command: documentationMap.command },
 						query: queryResult
 							? { ok: queryResult.ok, command: queryResult.command, error: queryResult.error }
 							: undefined,
@@ -198,7 +208,7 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 			return {
 				block: true,
 				reason:
-					"Wait for the hidden automatic-load instruction before calling dotdotgod_project_load.",
+					"Wait for the hidden automatic-load instruction before calling project_memory_load.",
 			};
 		}
 	});

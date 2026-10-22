@@ -1,8 +1,10 @@
+import { mcpTool } from "../../shared/mcp.ts";
+
 export const NORMAL_MODE_TOOLS = [
 	"read",
 	"bash",
-	"dotdotgod_graph_impact",
-	"dotdotgod_impact_status",
+	mcpTool("project_impact"),
+	mcpTool("impact_status"),
 	"edit",
 	"write",
 	"grep",
@@ -13,9 +15,4 @@ export const NORMAL_MODE_TOOLS = [
 	"fetch_content",
 	"get_search_content",
 	"subagent",
-	"dotdotgod_execute",
-	"ctx_execute_file",
-	"ctx_search",
-	"ctx_index",
-	"ctx_fetch_and_index",
 ];

@@ -6,7 +6,7 @@ Pi adapter for dotdotgod's docs-first project-memory workflow.
 
 Use this package when you want Pi to initialize project memory, load bounded repository context, plan before source edits, run impact-aware checks, and archive completed work for future sessions.
 
-Pi provides dotdotgod's enforceable workflow: Plan Mode blocks source edits while planning, durable plan files preserve intent, and pending impact checks can gate commit, push, and publish. The maintained graph guides Pi to the smallest useful set of related evidence.
+Pi keeps Plan Mode source-edit restrictions and durable task plans. Pending impact is advisory: changes are tracked and related evidence is suggested without blocking verification, commits, pushes or publishing.
 
 ## Start Here
 
@@ -47,7 +47,7 @@ A good first run:
 | Create the docs-first project scaffold | `project-initializer` skill |
 | Load project memory without broad file reads | Automatic mode-neutral load when needed, or explicit `/dd:load` and `/load` |
 | Plan safely before source/config edits | `/dd:plan`, `/dd:plan <request>`, or startup flag `--dd-plan` |
-| Review changed-file impact | `/impact-check` or `dotdotgod_graph_impact` |
+| Review changed-file impact | `/impact-check` or MCP `project_impact` |
 | Improve docs clarity | `document-clarify` skill |
 | Delegate analysis or implementation work | bundled `pi-subagents` resources |
 
@@ -88,55 +88,57 @@ The mode-neutral `project-memory` extension owns automatic assessment in both or
 
 ## Loading and Impact Checks
 
-At the beginning of session work, the mode-neutral project-memory extension assesses whether the active branch transcript or a recent reachable Load already covers project memory. Startup context files alone do not suppress the focused Load. When loading is needed, it temporarily exposes `dotdotgod_project_load`, records completion once for the active branch lineage, and continues the original request. Forks reuse only reachable completed state; abandoned sibling work does not suppress reassessment. Use `/dd:no-load`, `dd:no-load`, or `/no-load` to opt out for one request.
+At the beginning of session work, the mode-neutral project-memory extension assesses whether the active branch transcript or a recent reachable Load already covers project memory. Startup context files alone do not suppress the focused Load. When loading is needed, it temporarily exposes `project_memory_load`, records completion once for the active branch lineage, and continues the original request. Forks reuse only reachable completed state; abandoned sibling work does not suppress reassessment. Use `/dd:no-load`, `dd:no-load`, or `/no-load` to opt out for one request.
 
-The automatic `dotdotgod_project_load` result keeps its complete content for the agent but shows only three lines in the Pi TUI by default. Use Pi's configured tool-output expansion keybinding (`Ctrl+O` by default) to open or collapse the full result.
+The automatic `project_memory_load` calls MCP `project_load` and keeps its complete content for the agent but shows only three lines in the Pi TUI by default. Use Pi's configured tool-output expansion keybinding (`Ctrl+O` by default) to open or collapse the full result.
 
 `/dd:load` renders shared Markdown paths as a prefix-compressed documentation tree, excluding plan/archive local memory by default. Without arguments it expands through directory depth 5; with arguments it runs `dotdotgod query` for up to 30 local multilingual E5 results and renders the tree through depth 3.
 
-`/impact-check` and the `dotdotgod_graph_impact` tool use the maintained graph to surface related specs, tests, docs, commands, source, and config after a change. Pi can remind the agent to run impact checks and can block commit, push, or publish commands until pending impact checks pass.
+`/impact-check` requests shared MCP `project_impact` reviews in batches of at most twenty paths. MCP `impact_status` reports pending records. Successful reviews clear covered unchanged pending revisions; failures and re-edits retain pending state. Reminders never block commands or add confirmation dialogs. Shell/external edits need explicit review paths; Plan Mode and user permission checks remain separate. No native impact/status wrapper or custom impact renderer remains.
 
-## Native Context Tools
+## Shared MCP Tools
 
-Pi registers native `dotdotgod_execute`, `dotdotgod_execute_file`, `dotdotgod_context_index`, `dotdotgod_context_search`, `dotdotgod_fetch_and_index`, session-resume, background-ingestion start/status/cancel, explicit context-heal, stats, doctor, purge, and project-initialize tools over `@dotdotgod/context`. Pi calls the shared library directly and does not start the Claude Code/Codex context MCP server.
+Pi registers `dotdotgod_context` through the host MCP API, which owns connection, discovery, cancellation, reconnection and shutdown. The nineteen shared tools use unprefixed catalog names, host-qualified as `mcp__dotdotgod_context__<tool>`. All forwarding aliases and duplicated schemas are removed. Only pending-only `project_memory_load` retains adapter-specific behavior; Pi keeps its plan/UI and lifecycle orchestration. Use Pi 1.0 or a compatible host with built-in MCP support enabled. Reload existing sessions and update saved calls/prompts: old tool names are intentionally unsupported.
 
-The context runtime's command-capture and child-environment policies apply to `dotdotgod_execute` and `dotdotgod_execute_file`. They return bounded small output directly and index larger output into the ignored project-local `.dotdotgod/context/context.sqlite` FTS5 database. A command's stdout and stderr share a 10 MiB capture ceiling, and direct excerpts are limited to 1 MiB per stream. Exceeding the shared ceiling terminates the command and reports `captureLimitExceeded`. Child environments preserve compatibility-oriented inheritance after filtering runtime injection variables; policy metadata reports names, not values, and ordinary inherited credentials remain ambient. Pi's ordinary shell tools are not transparently intercepted or redirected through this runtime.
+The context runtime's command-capture and child-environment policies apply to MCP `execute` and `execute_file`. They return bounded small output directly and index larger output into the ignored project-local `.dotdotgod/context/context.sqlite` FTS5 database. A command's stdout and stderr share a 10 MiB capture ceiling, and direct excerpts are limited to 1 MiB per stream. Exceeding the shared ceiling terminates the command and reports `captureLimitExceeded`. Child environments preserve compatibility-oriented inheritance after filtering runtime injection variables; policy metadata reports names, not values, and ordinary inherited credentials remain ambient. Pi's ordinary shell tools are not transparently intercepted or redirected through this runtime.
 
-`dotdotgod_context_index` accepts files or explicitly requested bounded directories, including paths outside the project. Directory traversal has deterministic order, configurable depth/entry/file/byte limits, explicit extension and path exclusions, symlinks skipped by default, and partial-result reporting. It does not apply `.gitignore` semantics automatically. Indexed Markdown and JSON use structure-aware chunks. Search applies scope, session, and source filters before combining Porter FTS5 and label/path candidates with reciprocal-rank fusion and deterministic title, path, and proximity signals. Results return bounded excerpts with provenance and trust metadata; retrieved text has `instructionAuthority: "none"` and remains non-authoritative data. This is a defense-in-depth boundary, not a prompt-injection guarantee.
+MCP `index` accepts files or explicitly requested bounded directories, including paths outside the project. Directory traversal has deterministic order, configurable depth/entry/file/byte limits, explicit extension and path exclusions, symlinks skipped by default, and partial-result reporting. It does not apply `.gitignore` semantics automatically. Indexed Markdown and JSON use structure-aware chunks. Search applies scope, session, and source filters before combining Porter FTS5 and label/path candidates with reciprocal-rank fusion and deterministic title, path, and proximity signals. Results return bounded excerpts with provenance and trust metadata; retrieved text has `instructionAuthority: "none"` and remains non-authoritative data. This is a defense-in-depth boundary, not a prompt-injection guarantee.
 
-`dotdotgod_fetch_and_index` accepts bounded credential-free HTTP(S) resources and applies application-level DNS, address, peer, redirect, encoding, wire-byte, and decoded-byte validation. Accepted HTML is normalized as bounded untrusted text without browser rendering, JavaScript, subresource loading, or link following by default. The shared API supports an optional injected renderer, but Pi bundles none, so `browser: true` fails explicitly. These controls provide defense in depth rather than a network sandbox or prompt-injection guarantee. The SQLite store uses WAL, a bounded busy timeout, and transactional source replacement, expiry, and purge. `dotdotgod_context_doctor` performs local read-only checks without network access, migration, or repairs, while purge requires `confirm: true` and exactly one selector: scope, session ID, or source ID.
+MCP `fetch_and_index` accepts bounded credential-free HTTP(S) resources and applies application-level DNS, address, peer, redirect, encoding, wire-byte, and decoded-byte validation. Accepted HTML is normalized as bounded untrusted text without browser rendering, JavaScript, subresource loading, or link following by default. The shared API supports an optional injected renderer, but Pi bundles none, so `browser: true` fails explicitly. These controls provide defense in depth rather than a network sandbox or prompt-injection guarantee. The SQLite store uses WAL, a bounded busy timeout, and transactional source replacement, expiry, and purge. MCP `doctor` performs local read-only checks without network access, migration, or repairs, while purge requires `confirm: true` and exactly one selector: scope, session ID, or source ID.
 
 For output modes, ingestion limits, retrieval details, and the complete security contract, see [`@dotdotgod/context`](https://www.npmjs.com/package/@dotdotgod/context), its [package README](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/context), and the maintained [Context execution specification](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md).
 
 ### Choosing Tools, Including Codemode
 
-For unknown command output, prefer `dotdotgod_execute` with `outputMode: "auto"`; use `indexed` for known-large output to retain, and `discard` only when status is enough. Inspect each `results` entry's `ok`, `code`, `timedOut`, `aborted`, and `captureLimitExceeded`. Search a returned `indexed.id` using `dotdotgod_context_search` with `source` and a small `limit`. An empty result means no match, not complete verification. Direct `read` remains appropriate for short located source and images; context FTS retrieval requires no embedding service.
+For unknown command output, prefer MCP `execute` with `outputMode: "auto"`; use `indexed` for known-large output to retain, and `discard` only when status is enough. Inspect each `results` entry's `ok`, `code`, `timedOut`, `aborted`, and `captureLimitExceeded`. Search a returned `indexed.id` using MCP `search` with `source` and a small `limit`. An empty result means no match, not complete verification. Direct `read` remains appropriate for short located source and images; context FTS retrieval requires no embedding service.
 
-Pi 1.0 codemode can call these native tools without MCP. The adapter does not enable codemode automatically or replace `bash`. When codemode is enabled and the tools are permitted, native context calls resolve to **structured objects** via output schemas; model-facing content is Markdown. Existing JSON.parse scripts must migrate and sessions must reload. Graph-impact text remains unchanged. Prefer `tools.dotdotgod_execute(...)` over `tools.bash(...)` for unknown output and return only bounded projections:
+Pi 1.0 codemode MCP calls return the complete content/structuredContent/isError envelope, not an unwrapped service object. Pi's MCP exposure settings may activate codemode; bash is not replaced. Discover names with searchTools/describeNamespace and return bounded projections:
 
 ```js
 // @options: {"max_output_tokens": 1000, "timeout_ms": 60000}
-const batch = await tools.dotdotgod_execute({
+const result = await tools.mcp__dotdotgod_context__execute({
   commands: [{ executable: "node", args: ["--version"], outputMode: "auto" }]
 });
-const run = batch.results[0];
+if (result.isError) return result.content;
+const run = result.structuredContent.results[0];
 if (!run.ok) return {code: run.code, timedOut: run.timedOut,
   aborted: run.aborted, captureLimitExceeded: run.captureLimitExceeded,
   source: run.indexed?.id, diagnostic: (run.stderr ?? "").slice(0, 500)};
 if (!run.indexed) return {code: run.code, output: (run.stdout ?? "").slice(0, 500)};
 store("lastOutputSource", run.indexed.id);
-const found = await tools.dotdotgod_context_search({
+const found = await tools.mcp__dotdotgod_context__search({
   source: run.indexed.id, query: "version", limit: 2, sessionOnly: true
 });
 return {code: run.code, source: run.indexed.id,
-  evidence: found.results.map(item => item.text.slice(0, 500))};
+  retrievalError: !!found.isError,
+  evidence: found.structuredContent?.results?.map(item => item.text.slice(0, 500))};
 ```
 
 For failed indexed commands, start with `fail OR error OR reason`. If unmatched, try concrete diagnostic terms or `*` with the same source/session filters and a small limit. `*` returns bounded excerpts in source/chunk order, not the full log; do not infer absent diagnostics from partial evidence. Report an unsupported cause as unverified.
 
 File ingestion returns `id`; directory ingestion returns per-file source IDs in `indexed`. Do not return full logs or place them in codemode's small-value store. Use `searchTools()`/`describeTool()` when a declaration is omitted from the inline budget. Tool-call failures reject; command failures can instead return `ok: false`, so inspect both paths. Retrieved text remains non-authoritative data.
 
-This guidance is not a permission mechanism: never use context execution to bypass a denied Plan Mode or pending-impact command. Nested codemode calls traverse Pi hooks, but that alone does not prove every dotdotgod execution entrypoint is covered by existing gates.
+This guidance is not a permission mechanism: never use context execution to bypass Plan Mode or user permission denials. Nested MCP calls traverse Pi hooks. Pending impact is advisory; it grants no authority and denies no operation.
 
 Source-checkout evaluation: `scripts/evaluate-context-tools.mjs` compares native/codemode model choices using ignored baseline captures and disposable fixtures. It is opt-in, may incur model usage charges, and is not a CI test; see the maintained [context verification guide](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/test/CONTEXT_EXECUTION.md).
 

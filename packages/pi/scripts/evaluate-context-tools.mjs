@@ -3,8 +3,9 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync
 import { tmpdir, homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createAgentSession, createCodemodeExtension, DefaultResourceLoader, ModelRuntime, SessionManager, SettingsManager } from '@earendil-works/pi-coding-agent';
+import { createAgentSession, createCodemodeExtension, createMcpExtension, DefaultResourceLoader, ModelRuntime, SessionManager, SettingsManager } from '@earendil-works/pi-coding-agent';
 import contextTools from '../extensions/context-tools/index.ts';
+import { isMcpTool, mcpTool, MCP_PREFIX } from '../extensions/shared/mcp.ts';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const activePlan = join(repo, 'docs/plan/context-tool-workflow');
@@ -16,14 +17,15 @@ const mode = process.argv[3];
 const repetition = Number(process.argv[4] ?? 1);
 if (!['baseline', 'revised'].includes(condition) || !['native', 'codemode'].includes(mode) || ![1, 2].includes(repetition)) throw new Error('Usage: node packages/pi/scripts/evaluate-context-tools.mjs baseline|revised native|codemode 1|2');
 const original = readFileSync(join(plan, 'BASELINE.md'), 'utf8');
-const descriptions = new Map([...original.matchAll(/^\| `([^`]+)` \| (.+) \|$/gm)].map((m) => [m[1], m[2]]));
-if (!descriptions.has('dotdotgod_execute')) throw new Error('Missing baseline descriptions');
+// Historical captures stay unchanged; normalize their keys, never register aliases.
+const descriptions = new Map([...original.matchAll(/^\| `([^`]+)` \| (.+) \|$/gm)].map((m) => [m[1].replace(/^dotdotgod_context_/, '').replace(/^dotdotgod_/, ''), m[2]]));
+if (!descriptions.has('execute')) throw new Error('Missing baseline descriptions');
 const guidance = readFileSync(condition === 'baseline' ? join(plan, 'baseline/AGENTS.txt') : join(repo, 'AGENTS.md'), 'utf8');
 const userSettings = JSON.parse(readFileSync(join(homedir(), '.pi/agent/settings.json'), 'utf8'));
 const modelRuntime = await ModelRuntime.create({ authPath: join(homedir(), '.pi/agent/auth.json'), modelsPath: join(homedir(), '.pi/agent/models.json'), modelsStorePath: join(outDir, 'models-cache.json'), refreshOnCreate: false });
 const model = modelRuntime.getModel(userSettings.defaultProvider, userSettings.defaultModel);
 if (!model || !(await modelRuntime.getAvailable()).some((m) => m.provider === model.provider && m.id === model.id)) throw new Error('Configured evaluation model unavailable; no fallback model selected');
-const allowed = ['read', 'bash', 'grep', 'find', 'ls', 'dotdotgod_execute', 'dotdotgod_execute_file', 'dotdotgod_context_index', 'dotdotgod_context_search', ...(mode === 'codemode' ? ['codemode'] : [])];
+const allowed = ['read', 'bash', 'grep', 'find', 'ls', ...['execute', 'execute_file', 'index', 'search'].map(mcpTool), ...(mode === 'codemode' ? ['codemode'] : [])];
 const tasks = [
   { id: 'verbose', prompt: 'Run `node verbose.mjs` and report which test failed and its reason.', expected: ['orbit-case', 'expected 7', 'received 9'] },
   { id: 'log', prompt: 'Find the failure in fixture.log and report its identifier and reason.', expected: ['aurora-42', 'cache checksum mismatch'] },
@@ -40,26 +42,35 @@ for (const task of tasks) {
   writeFileSync(join(root, 'fixture.log'), padding + '\nFAIL aurora-42: cache checksum mismatch\n' + padding);
   writeFileSync(join(root, 'short.mjs'), 'export const fixtureAnswer = 41;\n');
   const records = [];
-  let cleanup;
+  let shutdownMcp;
   const toolsFactory = (pi) => {
-    const proxy = new Proxy(pi, { get(target, key) {
+    contextTools(new Proxy(pi, { get(target, key) {
+      if (key !== 'registerMcpServer') return Reflect.get(target, key);
+      return (name, config) => target.registerMcpServer(name, { ...config, exposure: mode === 'native' ? 'direct' : 'codemode', toolExposure: {}, ...(condition === 'baseline' ? { description: 'Historical baseline descriptions over the current MCP transport.' } : {}) });
+    } }));
+    pi.registerCommand('fixture-close-mcp', { description: 'Evaluation cleanup', handler: async (_args, ctx) => { await shutdownMcp?.({}, ctx); } });
+    const mcpApi = new Proxy(pi, { get(target, key) {
+      if (key === 'on') return (name, handler) => { if (name === 'session_shutdown') shutdownMcp = handler; return target.on(name, handler); };
       if (key !== 'registerTool') return Reflect.get(target, key);
       return (tool) => {
-        if (tool.name === 'dotdotgod_context_heal') cleanup = () => tool.execute('fixture-cleanup', { confirm: true }, undefined, () => {}, { cwd: root });
-        if (condition === 'baseline' && descriptions.has(tool.name)) {
+        const name = tool.name.slice(MCP_PREFIX.length);
+        if (condition === 'baseline' && isMcpTool(tool.name) && descriptions.has(name)) {
           const { promptGuidelines, ...rest } = tool;
-          target.registerTool({ ...rest, description: descriptions.get(tool.name) });
+          target.registerTool({ ...rest, description: descriptions.get(name) });
         } else target.registerTool(tool);
       };
     } });
-    contextTools(proxy);
+    createMcpExtension()(mcpApi);
+    pi.on('before_agent_start', () => { pi.setActiveTools(allowed); });
     pi.on('tool_call', (event) => {
       records.push({ phase: 'call', tool: event.toolName, parent: event.parentToolCallId, input: event.input });
-      if (['edit', 'write', 'dotdotgod_fetch_and_index', 'dotdotgod_project_initialize'].includes(event.toolName)) return { block: true, reason: 'Evaluation fixtures are read-only and network fetches are forbidden.' };
+      if (!allowed.includes(event.toolName)) return { block: true, reason: 'Evaluation fixtures are read-only; only the selected execution and retrieval tools are allowed.' };
     });
     pi.on('tool_result', (event) => {
       const text = (event.content ?? []).filter((c) => c.type === 'text').map((c) => c.text).join('\n');
-      const data = event.structuredContent ?? event.details;
+      const value = event.structuredContent ?? event.details;
+      const batch = value?.structuredContent ?? value;
+      const data = batch?.results?.[0] ?? batch;
       records.push({ phase: 'result', tool: event.toolName, parent: event.parentToolCallId, isError: event.isError, text, details: data ? { ok: data.ok, code: data.code, indexed: data.indexed, stdoutBytes: data.stdoutBytes, stderrBytes: data.stderrBytes, truncated: data.truncated } : undefined });
     });
   };
@@ -98,15 +109,15 @@ for (const task of tasks) {
   const usage = assistant.reduce((a, m) => ({ input: a.input + (m.usage?.input ?? 0), output: a.output + (m.usage?.output ?? 0), cost: a.cost + (m.usage?.cost?.total ?? 0) }), { input: 0, output: 0, cost: 0 });
   const summary = { condition, mode, repetition, task: task.id, model: { provider: model.provider, id: model.id }, thinking: 'off', durationMs: Date.now() - start, timedOut, error,
     correct: !error && !timedOut && task.expected.every((term) => answer.replace(/[`*_]/g, '').toLowerCase().includes(term.toLowerCase())), answer,
-    calls: calls.map((c) => ({ tool: c.tool, parent: !!c.parent })), executeCalls: calls.filter((c) => c.tool === 'dotdotgod_execute').length, bashCalls: calls.filter((c) => c.tool === 'bash').length,
-    searchCalls: calls.filter((c) => c.tool === 'dotdotgod_context_search').length, indexCalls: calls.filter((c) => c.tool === 'dotdotgod_context_index').length,
+    transport: 'host-managed-mcp', calls: calls.map((c) => ({ tool: c.tool, parent: !!c.parent })), executeCalls: calls.filter((c) => c.tool === mcpTool('execute')).length, bashCalls: calls.filter((c) => c.tool === 'bash').length,
+    searchCalls: calls.filter((c) => c.tool === mcpTool('search')).length, indexCalls: calls.filter((c) => c.tool === mcpTool('index')).length,
     indexedResults: results.filter((r) => r.details?.indexed?.id).length, modelVisibleResultBytes: modelResults.reduce((n, r) => n + Buffer.byteLength(r.text), 0), contextGeneratedBytes: generatedBytes, usage,
   };
   summaries.push(summary);
   writeFileSync(join(outDir, `${condition}-${mode}-${repetition}-${task.id}.json`), JSON.stringify({ summary, records }, null, 2));
   console.log(JSON.stringify(summary));
-  try { session?.dispose(); if (results.some((r) => r.tool.startsWith('dotdotgod_'))) await cleanup?.(); }
-  finally { rmSync(root, { recursive: true, force: true }); }
+  try { if (session) await session.prompt('/fixture-close-mcp'); }
+  finally { session?.dispose(); rmSync(root, { recursive: true, force: true }); }
   if (error || timedOut) { console.log(JSON.stringify({ stopped: true, reason: 'Infrastructure failure or trial budget exceeded; no remaining trials started.' })); break; }
 }
 writeFileSync(join(outDir, `${condition}-${mode}-${repetition}-summary.json`), JSON.stringify(summaries, null, 2));

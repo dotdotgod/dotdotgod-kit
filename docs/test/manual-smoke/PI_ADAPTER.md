@@ -53,7 +53,7 @@ Run `pi --help` and confirm dotdotgod contributes `--dd-plan` without contributi
 22. Submit request B immediately after request A; confirm advisory context uses B without a synthetic compaction-resume message or replay of A. Restore an old compaction snapshot and confirm planning is not blocked.
 23. With the CLI available, confirm first-turn context shaping adds bounded graph impact and reference expansion without running validate; without the CLI, Plan Mode continues.
 24. Confirm bounded dotdotgod context/status commands are allowed while `init`, `config init`, shell chaining, redirects, pipes, command substitution, and package-runner wrappers remain blocked or require approval.
-25. When automatic loading is needed, confirm the global extension leaves the initial user text and images unchanged and injects only a hidden `project-memory-context` custom message with `display: false`. Confirm no automatic-load marker renders as user-authored text, `dotdotgod_project_load` is available in that run and succeeds only after the hidden message is reachable, focused context returns, planning resumes without repetition, empty focus uses the depth-five fallback, and Plan Mode has no load framing or string classification.
+25. When automatic loading is needed, confirm the global extension leaves the initial user text and images unchanged and injects only a hidden `project-memory-context` custom message with `display: false`. Confirm no automatic-load marker renders as user-authored text, `project_memory_load` is available in that run and succeeds after the hidden instruction is scheduled, focused context returns, planning resumes without repetition, empty focus uses the depth-five fallback, and Plan Mode has no load framing or string classification.
 26. Confirm later planning turns do not automatically repeat the one-shot planning advisory context refresh; global project-memory assessment remains independently owned.
 27. Confirm first-turn and later-turn hidden prompts use full and compact forms respectively while source/config mutation stays blocked.
 28. Confirm `pi --dd-plan --plan-extra-tools ctx_search,ctx_execute_file` adds only installed tools and renders the resolved tool list.
@@ -68,11 +68,11 @@ Run `pi --help` and confirm dotdotgod contributes `--dd-plan` without contributi
 ## Pending Impact Checks
 
 1. In execution or normal mode, make a source/config edit.
-2. Confirm neither an impact list widget nor a pending-count status appears. Ask the agent for pending impact checks; `dotdotgod_impact_status` must return current session records without clearing them. Hidden context still reminds the agent to run `/impact-check` or `dotdotgod_graph_impact`.
+2. Confirm neither an impact list widget nor a pending-count status appears. Ask the agent for pending impact checks; MCP `impact_status` must return current session records without clearing them. Hidden context still reminds the agent to run `/impact-check` or MCP `project_impact`.
 3. Confirm `/impact-check` runs compact graph impact for pending files plus current git unstaged, staged, and untracked source/config files, then status query returns no pending records after success.
 4. Change a pending file again before impact and confirm a successful `/impact-check` clears the stale pending record for that path.
 5. Stage a source/config file without an unstaged diff and confirm `/impact-check` includes it.
-6. With pending impact checks, confirm `git commit`, `git push`, and package publish commands are blocked.
-7. Confirm successful manual `dotdotgod graph impact ... --changed <path>` clears the matching pending file.
-8. Run `dotdotgod_graph_impact` for enough paths to produce more than 10 lines, confirm the collapsed TUI result shows 10 lines plus `... (<n> more lines, ctrl+o to expand)` or the configured keybinding equivalent, then press `ctrl+o` and confirm the full output appears.
+6. Pending impact must not block normal-mode verification or safe commit/publish dry-runs. Preserve Plan Mode/user permissions; failed reviews and concurrent re-edits retain state.
+7. Confirm shell text claiming a successful `dotdotgod graph impact ... --changed <path>` does not clear pending; successful MCP `project_impact` is required.
+8. Run MCP `project_impact` with up to twenty paths; inspect `isError`, `structuredContent`, and host rendering. No custom ten-line impact renderer remains. Failures, cancellation and concurrent re-edits retain pending.
 9. After modification or coding work, confirm execution guidance requires `dotdotgod validate` before final completion.

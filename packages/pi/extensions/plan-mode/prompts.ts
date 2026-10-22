@@ -1,8 +1,10 @@
+import { mcpTool } from "../shared/mcp.ts";
+
 const DEFAULT_PLAN_MODE_TOOLS = [
 	"read",
 	"bash",
-	"dotdotgod_graph_impact",
-	"dotdotgod_impact_status",
+	mcpTool("project_impact"),
+	mcpTool("impact_status"),
 	"edit",
 	"write",
 	"grep",

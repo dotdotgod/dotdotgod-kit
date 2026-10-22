@@ -28,7 +28,8 @@ test("Pi 1.0 public loader starts existing plan/project-memory/subagents extensi
     await session.bindExtensions({ onError: (error) => { errors.push(error); } });
     assert.deepEqual(errors, []);
     const names = session.getAllTools().map((tool) => tool.name);
-    assert.ok(names.includes("dotdotgod_graph_impact"));
+    assert.ok(names.includes("project_memory_load"));
+    assert.ok(names.every(name => !name.startsWith("dotdotgod_")));
     // A delegated worker deliberately receives no subagent tool; do not bypass that boundary.
     if (process.env.PI_SUBAGENT_CHILD === "1" && process.env.PI_SUBAGENT_FANOUT_CHILD !== "1") assert.equal(names.includes("subagent"), false);
     else {

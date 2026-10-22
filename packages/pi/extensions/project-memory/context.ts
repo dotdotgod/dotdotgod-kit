@@ -2,7 +2,7 @@ import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { TextContent } from "@earendil-works/pi-ai";
 
-export const PROJECT_MEMORY_LOAD_TOOL = "dotdotgod_project_load";
+export const PROJECT_MEMORY_LOAD_TOOL = "project_memory_load";
 export const PROJECT_MEMORY_CONTEXT_TYPE = "project-memory-context";
 export const PROJECT_MEMORY_EXPLICIT_LOAD_MARKER = "[PROJECT MEMORY EXPLICIT LOAD]";
 
@@ -105,7 +105,7 @@ export function buildPendingProjectMemoryLoadPrompt(
 ): string | undefined {
 	if (!pending) return undefined;
 	return `[PROJECT MEMORY LOAD REQUIRED]
-This is the globally generated automatic-load turn. Before substantive work, call dotdotgod_project_load exactly once. Generate a concise semantic focus covering the task's relevant behavior, architecture, source areas, documentation, and verification needs. Express the focus as a task-specific synthesis rather than copied request text or extracted keywords; use an empty focus when a broad baseline map is more useful. Continue the original request after the tool result arrives.`;
+This is the globally generated automatic-load turn. Before substantive work, call project_memory_load exactly once. Generate a concise semantic focus covering the task's relevant behavior, architecture, source areas, documentation, and verification needs. Express the focus as a task-specific synthesis rather than copied request text or extracted keywords; use an empty focus when a broad baseline map is more useful. Continue the original request after the tool result arrives.`;
 }
 
 export function isExplicitProjectMemoryLoadInput(text: string | undefined): boolean {

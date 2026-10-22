@@ -10,10 +10,9 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { keyHint } from "@earendil-works/pi-coding-agent";
-import { Key, Text } from "@earendil-works/pi-tui";
-import { Type } from "typebox";
-import { formatToolMarkdown } from "@dotdotgod/context";
+import { Key } from "@earendil-works/pi-tui";
+import { ImpactState, impactReminder } from "@dotdotgod/context";
+import { isMcpTool, mcpTool } from "../shared/mcp.ts";
 import { buildDecisionWizardFollowUp } from "./decision-wizard.ts";
 import { describePendingPlanDecisions } from "./controllers/decision-wizard.ts";
 import { recordContextMetric } from "../context-metrics/utils.js";
@@ -22,7 +21,6 @@ import { ContextOrchestrationController } from "./controllers/context-orchestrat
 import { ContextShapingController, type ContextShapingSnapshot } from "./controllers/context-shaping.js";
 import { ExecutionFlowController } from "./controllers/execution-flow.js";
 import { ExecutionProgressController, type ExecutionProgressSnapshot } from "./controllers/execution-progress.js";
-import { GateController, type GateSnapshot } from "./controllers/gates.js";
 import { ModeLifecycleController, type ModeLifecycleSnapshot } from "./controllers/mode-lifecycle.js";
 import { PlanArtifactController, type PlanArtifactSnapshot } from "./controllers/plan-artifact.js";
 import { ReviewGateController } from "./controllers/review-gates.js";
@@ -33,7 +31,6 @@ import {
 } from "./runtime/dotdotgod-cli.js";
 import {
   getMessageText,
-  getTextContent,
   isAssistantMessage,
   truncateText,
 } from "./runtime/messages.js";
@@ -53,7 +50,8 @@ import {
   selectLatestPlanningRequest,
 } from "./context.js";
 import {
-  formatExpandableToolOutput,
+  normalizeImpactPath,
+  shouldTrackImpactPath,
   type PendingImpactItem,
 } from "./impact.js";
 import {
@@ -72,24 +70,11 @@ import {
   shouldAllowPlanModeBashCommand,
 } from "./tools.js";
 
-const DotdotgodGraphImpactParams = Type.Object({
-  changed: Type.Optional(
-    Type.String({
-      description: "Changed file path to check with dotdotgod graph impact",
-    }),
-  ),
-  paths: Type.Optional(
-    Type.Array(Type.String(), {
-      description: "Changed file paths to check with dotdotgod graph impact",
-    }),
-  ),
-});
-
 export default function planModeExtension(pi: ExtensionAPI): void {
   const modeLifecycle = new ModeLifecycleController();
   const planArtifact = new PlanArtifactController();
   const contextShaping = new ContextShapingController();
-  const gates = new GateController();
+  const impactState = (ctx: ExtensionContext) => new ImpactState(ctx.cwd, ctx.sessionManager.getSessionId());
   const executionProgress = new ExecutionProgressController();
 
   function refreshPlanModePolicy(cwd: string): void {
@@ -135,85 +120,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     default: "",
   });
 
-  pi.registerTool({
-    outputSchema: Type.Record(Type.String(), Type.Any()),
-    name: "dotdotgod_impact_status",
-    label: "dotdotgod impact status",
-    description: "Read the current Pi session's pending impact checks without running or clearing them. Use when asked to show the pending list; this is not a git worktree status query.",
-    parameters: Type.Object({ limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })) }),
-    async execute(_toolCallId, params) {
-      const pending = gates.pendingImpactItems.slice(0, params.limit ?? 50).map((item) => ({ ...item }));
-      const details = { ok: true, count: gates.pendingImpactItems.length, pending, truncated: pending.length < gates.pendingImpactItems.length };
-      return { content: [{ type: "text", text: formatToolMarkdown("impact status", details) }], details, structuredContent: details };
-    },
-  });
-
-  pi.registerTool({
-    name: "dotdotgod_graph_impact",
-    label: "dotdotgod graph impact",
-    description:
-      "Run bounded dotdotgod graph impact checks for changed files and clear pending Pi impact reminders after success.",
-    promptSnippet:
-      "Run dotdotgod graph impact for changed files before broad tests, commits, pushes, or publishing.",
-    promptGuidelines: [
-      "Use dotdotgod_graph_impact after source/config edits and before broad tests, commits, pushes, or publishing when changed files may affect related docs/tests/files.",
-    ],
-    parameters: DotdotgodGraphImpactParams,
-    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-      const paths = [
-        ...(params.changed ? [params.changed] : []),
-        ...(params.paths ?? []),
-      ];
-      if (paths.length === 0) {
-        return {
-          content: [
-            { type: "text", text: "Error: changed or paths is required" },
-          ],
-          details: {
-            ok: false,
-            error: "changed or paths is required",
-            summary: "Error: changed or paths is required",
-          },
-        };
-      }
-      const result = runImpactChecks(ctx, paths);
-      return {
-        content: [{ type: "text", text: result.summary }],
-        details: {
-          ok: result.failed.length === 0,
-          checked: result.checked,
-          failed: result.failed,
-          pending: gates.pendingImpactItems,
-          summary: result.summary,
-        },
-      };
-    },
-    renderResult(result, { expanded, isPartial }, theme) {
-      if (isPartial)
-        return new Text(
-          theme.fg("warning", "Running dotdotgod graph impact..."),
-          0,
-          0,
-        );
-      const details =
-        result.details && typeof result.details === "object"
-          ? (result.details as { summary?: unknown; error?: unknown })
-          : undefined;
-      const summary =
-        typeof details?.summary === "string"
-          ? details.summary
-          : typeof details?.error === "string"
-            ? `Error: ${details.error}`
-            : "dotdotgod graph impact completed.";
-      const text = formatExpandableToolOutput(
-        summary,
-        expanded,
-        keyHint("app.tools.expand", expanded ? "to collapse" : "to expand"),
-      );
-      return new Text(text, 0, 0);
-    },
-  });
-
   function updateStatus(ctx: ExtensionContext): void {
     if (modeLifecycle.executing && executionProgress.todos.length > 0) {
       const completed = executionProgress.todos.filter((t) => t.completed).length;
@@ -237,33 +143,16 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   function trackPendingImpact(
     ctx: ExtensionContext,
     path: string,
-    reason: PendingImpactItem["reason"],
   ): void {
-    if (!gates.trackPendingImpact(ctx.cwd, path, reason)) return;
+    const normalized = normalizeImpactPath(ctx.cwd, path);
+    if (!normalized || !shouldTrackImpactPath(normalized)) return;
+    impactState(ctx).mark([path]);
     updateImpactStatus(ctx);
     persistState();
   }
 
-  function runImpactChecks(
-    ctx: ExtensionContext,
-    paths: string[],
-  ): { summary: string; checked: string[]; failed: string[] } {
-    const result = gates.runImpactChecks(ctx.cwd, paths, (batch) =>
-      runDotdotgodCli(ctx.cwd, [
-        "graph",
-        "impact",
-        ctx.cwd,
-        ...batch.flatMap((path) => ["--changed", path]),
-        "--compact",
-      ]),
-    );
-    updateImpactStatus(ctx);
-    persistState();
-    return result;
-  }
-
-  function buildPendingImpactReminder(): string | undefined {
-    return gates.buildPendingImpactReminder();
+  function buildPendingImpactReminder(ctx: ExtensionContext): string | undefined {
+    return impactReminder(impactState(ctx).status());
   }
 
   function getPlanModeOwnedTools(): string[] {
@@ -331,7 +220,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       mode: modeLifecycle.snapshot(),
       artifact: planArtifact.snapshot(),
       context: contextShaping.snapshot(),
-      gates: gates.snapshot(),
       execution: executionProgress.snapshot(),
     });
   }
@@ -339,7 +227,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   pi.registerCommand("impact-check", {
     description: "Run dotdotgod graph impact for pending and git-changed files",
     handler: async (_args, ctx) => {
-      const paths = gates.mergeImpactCheckPaths(ctx.cwd, collectGitChangedPaths(ctx.cwd));
+      const paths = [...new Set([...impactState(ctx).snapshot().map(item => item.path), ...collectGitChangedPaths(ctx.cwd)])];
       if (paths.length === 0) {
         ctx.ui.notify(
           "No source/config files need dotdotgod impact checks.",
@@ -347,11 +235,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
         );
         return;
       }
-      const result = runImpactChecks(ctx, paths);
-      ctx.ui.notify(
-        result.summary,
-        result.failed.length > 0 ? "warning" : "info",
-      );
+      pi.sendUserMessage(`Run the project_impact tool from the dotdotgod_context MCP server for these paths in batches of at most 20, inspect success and related evidence, and report any pending paths. Do not clear pending state on failure. Paths: ${JSON.stringify(paths)}`, { deliverAs: "followUp" });
     },
   });
 
@@ -403,35 +287,14 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   pi.on("tool_call", async (event, ctx) => {
     const executionCommands = event.toolName === "bash"
       ? [event.input.command as string]
-      : event.toolName === "dotdotgod_execute"
-        ? (event.input.commands as { command?: string; executable?: string; args?: string[] }[] ?? []).map((entry) => entry.executable ? [entry.executable, ...(entry.args ?? [])].map((value) => /^[\w./:-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`).join(" ") : entry.command ?? "")
+      : event.toolName === mcpTool("execute")
+        ? ((event.input as Record<string, unknown>).commands as { command?: string; executable?: string; args?: string[] }[] ?? []).map((entry) => entry.executable ? [entry.executable, ...(entry.args ?? [])].map((value) => /^[\w./:-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`).join(" ") : entry.command ?? "")
         : [];
-    for (const command of executionCommands) {
-      const gateCommand = command.replace(/^\s*(?:[^\s]*[/\\])([^\s/\\]+)(?=\s|$)/, "$1");
-      const commitBlockReason = gates.buildCommitBlockReason(command) ?? gates.buildCommitBlockReason(gateCommand);
-      if (commitBlockReason) {
-        return {
-          block: true,
-          reason: commitBlockReason,
-        };
-      }
-      const broadVerificationPrompt = gates.buildBroadVerificationPrompt(command) ?? gates.buildBroadVerificationPrompt(gateCommand);
-      if (broadVerificationPrompt && ctx.hasUI) {
-        const approved = await ctx.ui.confirm(
-          "Run broad verification before impact check?",
-          broadVerificationPrompt,
-        );
-        if (!approved) {
-          return {
-            block: true,
-            reason:
-              "Blocked: run /impact-check or dotdotgod_graph_impact before broad verification.",
-          };
-        }
-      }
-    }
-
     if (!modeLifecycle.restrictsMutation) return;
+
+    if (isMcpTool(event.toolName) && !["execute", "index", "search", "fetch_and_index", "stats", "doctor", "session_resume", "ingestion_job_start", "ingestion_job_status", "project_load", "project_impact", "impact_status", "embedding_status"].some(name => event.toolName === mcpTool(name))) {
+      return { block: true, reason: "Plan mode: write-capable MCP operation is unavailable until execution mode." };
+    }
 
     for (const command of executionCommands) {
       const decision = await shouldAllowPlanModeBashCommand(command, {
@@ -469,18 +332,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     if (event.isError) return;
     if (event.toolName === "edit" || event.toolName === "write") {
       const path = getToolPath(event.input);
-      if (path) trackPendingImpact(ctx, path, event.toolName);
+      if (path) trackPendingImpact(ctx, path);
       return;
     }
-    if (event.toolName === "bash") {
-      const command =
-        typeof event.input.command === "string" ? event.input.command : "";
-      const output = getTextContent(event.content);
-      if (gates.clearFromImpactCommandResult(ctx.cwd, command, output)) {
-        updateImpactStatus(ctx);
-        persistState();
-      }
-    }
+    // Only a successful shared MCP review clears durable pending state. Shell
+    // command text is not evidence that a review completed for this revision.
   });
 
   pi.on("context", async (event) => {
@@ -541,7 +397,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       persistState();
     }
 
-    const impactReminder = buildPendingImpactReminder();
+    const impactReminder = buildPendingImpactReminder(ctx);
 
     if (modeLifecycle.injectsPlanningPrompt) {
       if (modeLifecycle.activeTools.length === 0)
@@ -748,7 +604,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
             mode?: ModeLifecycleSnapshot;
             artifact?: PlanArtifactSnapshot;
             context?: ContextShapingSnapshot;
-            gates?: GateSnapshot;
+            gates?: { pendingImpactItems?: PendingImpactItem[] };
             execution?: ExecutionProgressSnapshot;
           };
         }
@@ -760,8 +616,15 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
       modeLifecycle.returnToPlanning();
       planArtifact.restore(planModeEntry.data.artifact);
       contextShaping.restore(planModeEntry.data.context);
-      gates.restore(planModeEntry.data.gates);
       executionProgress.restore(planModeEntry.data.execution);
+    }
+
+    // Import legacy snapshots once; later session resumes must not resurrect
+    // paths already reviewed through MCP.
+    const legacyPending = planModeEntry?.data?.gates?.pendingImpactItems ?? [];
+    if (legacyPending.length && !entries.some((entry) => entry.type === "custom" && entry.customType === "impact-mcp-migrated")) {
+      impactState(ctx).mark(legacyPending.map(item => item.path));
+      pi.appendEntry("impact-mcp-migrated", { version: 1 });
     }
 
     const isResume = planModeEntry !== undefined;

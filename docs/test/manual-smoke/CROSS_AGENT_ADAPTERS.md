@@ -12,9 +12,9 @@ Build and pack the adapter, extract the tarball under a clean temporary parent o
 claude --plugin-dir /tmp/dotdotgod-claude-code/package
 ```
 
-Confirm `SessionStart` and `PreToolUse` do not emit `package_json_reader` or `ERR_MODULE_NOT_FOUND`. Confirm the packaged `dotdotgod-context` stdio MCP server starts and exposes the complete context, project-workflow, session, ingestion-job, healing, and doctor tool surface. Run a non-empty-focus `dotdotgod_project_load` from a project directory different from the plugin path: it must return the documentation map, and unavailable optional embeddings must appear only as bounded `queryUnavailable` evidence. Confirm a rejected Load leaves Bash/Edit/Write denied.
+Confirm `SessionStart` and `PreToolUse` do not emit `package_json_reader` or `ERR_MODULE_NOT_FOUND`. Confirm the packaged `dotdotgod-context` stdio MCP server starts and exposes the complete context, project-workflow, session, ingestion-job, healing, and doctor tool surface. Run a non-empty-focus `project_load` from a project directory different from the plugin path: it must return the documentation map, and unavailable optional embeddings must appear only as bounded recovery evidence. Confirm a rejected Load leaves Bash/Edit/Write denied.
 
-Then verify host dispatch with the installed plugin, not by invoking `runtime.mjs posttooluse` directly: start a fresh session, observe the initial Bash/Edit/Write denial, let Claude call the plugin-qualified `dotdotgod_project_load`, confirm its successful PostToolUse hook runs, and retry Bash/Edit/Write. The retry must succeed without ending the session. To check unrelated MCP isolation, first complete a Write, confirm a broad verification command is denied by pending impact state, call an unrelated MCP tool, and confirm the same command remains denied. Verify small output returns directly and a large output returns an index handle without the full raw bytes.
+Then verify host dispatch with the installed plugin, not by invoking `runtime.mjs posttooluse` directly: start a fresh session, observe the initial Bash/Edit/Write denial, let Claude call the plugin-qualified `project_load`, confirm its successful PostToolUse hook runs, and retry Bash/Edit/Write. The retry must succeed without ending the session. To check unrelated MCP isolation, first complete a Write, confirm a broad verification command is denied by pending impact state, call an unrelated MCP tool (including another server's `project_load` or `project_impact`), and confirm the same command remains denied. Verify small output returns directly and a large output returns an index handle without the full raw bytes.
 
 Confirm these commands are discoverable or invokable:
 
@@ -41,7 +41,7 @@ After updating either installed adapter, restart the host and confirm it referen
 
 ## Pi Context Tools
 
-Confirm Pi registers native `dotdotgod_execute`, `dotdotgod_execute_file`, context index/search/fetch/stats/purge, and `dotdotgod_project_initialize` tools from the adapter. Confirm no dotdotgod stdio MCP child process starts. Verify large output uses `.dotdotgod/context/` and existing pending-only project load plus graph-impact reminder behavior remains unchanged.
+Confirm Pi starts the host-managed `dotdotgod_context` stdio MCP child and exposes the unprefixed nineteen-tool catalog, with no native forwarding aliases or graph-impact/status wrappers. Verify Code Mode MCP envelopes, bounded large-output retention under `.dotdotgod/context/`, pending-only native `project_memory_load`, advisory impact, nested Plan Mode checks, cancellation and shutdown. Reload existing sessions before testing the new names.
 
 ## Pi Load Guidance
 

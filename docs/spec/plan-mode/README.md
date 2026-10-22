@@ -12,8 +12,8 @@ This README is a navigation summary. Detailed behavior contracts live in the tra
 - `/dd:plan`: toggle plan mode when no request text is provided.
 - `/dd:plan <request>`: enable Plan Mode if needed and send `<request>` as the first or next planning request without toggling Plan Mode off.
 - `/dd:plan <path>`: when `<path>` resolves to `docs/plan/<task>/README.md` or `docs/plan/<task>`, load that existing plan as the active plan and restore its internal todo state.
-- `/impact-check`: run `dotdotgod graph impact --yml` for pending source/config edits and current git source/config changes.
-- `dotdotgod_graph_impact`: LLM-callable impact tool for changed-file impact review.
+- `/impact-check`: request shared MCP impact review of pending and git-changed source/config paths, in batches of at most twenty. Pending is advisory, not an execution gate.
+- `mcp__dotdotgod_context__project_impact`: shared MCP tool for changed-file impact review; no native impact/status wrapper is registered.
 - `Ctrl+Alt+P`: toggle plan mode.
 
 Pi has no built-in plan mode; this package provides the workflow as an extension.

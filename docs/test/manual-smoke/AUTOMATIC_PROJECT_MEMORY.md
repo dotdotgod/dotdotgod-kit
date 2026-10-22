@@ -6,7 +6,7 @@ Use these checks when changing Pi's mode-neutral automatic project-memory assess
 
 1. Install the local adapter with `pi install /path/to/dotdotgod/packages/pi` and start a fresh ordinary-mode Pi session in an initialized project.
 2. Submit a substantive request without calling `/load` or `/dd:load`.
-3. Confirm startup context files alone do not suppress loading: `dotdotgod_project_load` becomes pending even when Pi has already injected project README files.
+3. Confirm startup context files alone do not suppress loading: `project_memory_load` becomes pending even when Pi has already injected project README files.
 4. Confirm the submitted user message and attached images remain unchanged and contain no project-memory marker or automatic-load instruction.
 5. Confirm a persistent `project-memory-context` custom message with `display: false` supplies the model-only instruction, and that it does not render as user-authored request text in the TUI.
 6. Confirm the agent generates a concise task-specific focus, calls the tool exactly once immediately after receiving the hidden instruction without a red delivery-timing error, consumes the compact Load result, and continues the original request.

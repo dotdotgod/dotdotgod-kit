@@ -6,7 +6,6 @@ import { describe, it } from "node:test";
 import { ContextShapingController } from "../extensions/plan-mode/controllers/context-shaping.ts";
 import { ExecutionFlowController } from "../extensions/plan-mode/controllers/execution-flow.ts";
 import { ExecutionProgressController } from "../extensions/plan-mode/controllers/execution-progress.ts";
-import { GateController } from "../extensions/plan-mode/controllers/gates.ts";
 import { ModeLifecycleController } from "../extensions/plan-mode/controllers/mode-lifecycle.ts";
 import { PlanArtifactController } from "../extensions/plan-mode/controllers/plan-artifact.ts";
 import { configureDocumentationPaths, isActivePlanMarkdownPath, isManagedPlanMarkdownPath } from "../extensions/plan-mode/runtime/paths.ts";
@@ -25,14 +24,10 @@ import {
 	extractTodoItems,
 	extractDiscussionQueueItems,
 	formatCompactImpactSummary,
-	formatExpandableToolOutput,
-	formatMultiImpactSummary,
 	formatReferenceExpansionSummary,
 	extractPathMentions,
 	extractPlanSlugMentions,
 	getCurrentPlanReadmePath,
-	getChangedPathFromDotdotgodImpactCommand,
-	getChangedPathsFromDotdotgodImpactCommand,
 	getNextPlanReviewActionIndex,
 	getPlanReviewActionChoice,
 	getPlanReviewBodyViewportLines,
@@ -40,15 +35,11 @@ import {
 	getPlanReviewVisibleBodyLines,
 	hasExplicitBracketReferences,
 	hasLikelyFuzzyReferences,
-	isBroadVerificationCommand,
-	isCommitLikeCommand,
 	normalizeImpactPath,
 	normalizePlanCommandRequest,
 	mapPlanReviewFallbackChoice,
-	mergeImpactCheckPaths,
 	parsePlanModeExtraTools,
 	planModeFollowUpDeliveryOptions,
-	pendingImpactSummary,
 	resolveMentionedPlanPath,
 	resolvePlanExecutionTarget,
 	isAutoAllowedDotdotgodPlanModeCommand,
@@ -64,9 +55,6 @@ import {
 	shouldShapePlanningContextOnAgentStart,
 	isPlanModeRuntimeRequest,
 	selectLatestPlanningRequest,
-	upsertPendingImpact,
-	clearPendingImpactForPath,
-	type PendingImpactItem,
 	type TodoItem,
 } from "../extensions/plan-mode/utils.ts";
 
@@ -77,16 +65,13 @@ describe("plan-mode user-message delivery", () => {
 });
 
 describe("plan-mode domain controllers", () => {
-	it("stores lifecycle, context, gates, and execution progress as snapshots", () => {
+	it("stores lifecycle, context, and execution progress as snapshots", () => {
 		const lifecycle = new ModeLifecycleController();
 		lifecycle.enablePlanning(["read", "grep"]);
 
 		const context = new ContextShapingController();
 		context.resetForPlanning();
 		context.setAdvisorySummary("summary");
-
-		const gates = new GateController();
-		gates.pendingImpactItems = [{ path: "packages/pi/index.ts", reason: "edit", touchedAt: "2026-05-25T00:00:00.000Z" }];
 
 		const execution = new ExecutionProgressController();
 		execution.setTodos([{ step: 1, text: "Verify plan", completed: false }]);
@@ -95,8 +80,6 @@ describe("plan-mode domain controllers", () => {
 		restoredLifecycle.restore(lifecycle.snapshot());
 		const restoredContext = new ContextShapingController();
 		restoredContext.restore(context.snapshot());
-		const restoredGates = new GateController();
-		restoredGates.restore(gates.snapshot());
 		const restoredExecution = new ExecutionProgressController();
 		restoredExecution.restore(execution.snapshot());
 
@@ -104,7 +87,6 @@ describe("plan-mode domain controllers", () => {
 		assert.deepEqual(restoredLifecycle.snapshot(), { mode: "planning", activeTools: ["read", "grep"] });
 		assert.equal(restoredContext.advisoryContextStatus, "ready");
 		assert.equal(restoredContext.advisorySummary, "summary");
-		assert.equal(restoredGates.pendingImpactItems.length, 1);
 		assert.equal(restoredExecution.todos[0]?.text, "Verify plan");
 	});
 
@@ -187,79 +169,6 @@ describe("plan-mode domain controllers", () => {
 			execution.todos.map((todo) => todo.text),
 			["Docs", "Tests"],
 		);
-	});
-
-	it("batches impact checks, preserves order, and clears successful paths", () => {
-		const root = mkdtempSync(join(tmpdir(), "plan-mode-controller-"));
-		const sourcePaths = [
-			"packages/pi/extensions/plan-mode/index.ts",
-			"packages/pi/extensions/plan-mode/impact.ts",
-		];
-		mkdirSync(join(root, "packages/pi/extensions/plan-mode"), { recursive: true });
-		for (const path of sourcePaths) writeFileSync(join(root, path), `export const value = "${path}";\n`);
-
-		const gates = new GateController();
-		for (const path of sourcePaths) assert.equal(gates.trackPendingImpact(root, path, "edit"), true);
-		assert.match(gates.buildPendingImpactReminder() ?? "", /packages\/pi\/extensions\/plan-mode\/index\.ts/);
-		assert.match(gates.buildCommitBlockReason("git commit -m test") ?? "", /graph impact is pending for task-relevant changed files/);
-		assert.match(gates.buildBroadVerificationPrompt("pnpm run verify") ?? "", /graph impact remains pending for these task-relevant changed files/);
-
-		const batches: string[][] = [];
-		const result = gates.runImpactChecks(root, [...sourcePaths, sourcePaths[0]!], (batch) => {
-			batches.push([...batch]);
-			return { ok: true, stdout: `impact:\n  changed_files: [${batch.join(", ")}]` };
-		});
-
-		assert.deepEqual(batches, [sourcePaths]);
-		assert.deepEqual(result.checked, sourcePaths);
-		assert.deepEqual(result.failed, []);
-		assert.equal(gates.pendingImpactItems.length, 0);
-	});
-
-	it("retains failed batches and files modified during successful checks", () => {
-		const root = mkdtempSync(join(tmpdir(), "plan-mode-controller-"));
-		const paths = ["src/one.ts", "src/two.ts", "src/three.ts"];
-		mkdirSync(join(root, "src"), { recursive: true });
-		for (const path of paths) {
-			writeFileSync(join(root, path), "export const value = 1;\n");
-		}
-		const gates = new GateController();
-		for (const path of paths) gates.trackPendingImpact(root, path, "edit");
-
-		let call = 0;
-		const result = gates.runImpactChecks(root, paths, (batch) => {
-			call += 1;
-			if (call === 1) {
-				writeFileSync(join(root, batch[0] ?? ""), "export const changed = true;\n");
-				return { ok: true, stdout: "impact:\n  ok: true" };
-			}
-			return { ok: false, error: "failed" };
-		}, 2);
-
-		assert.deepEqual(result.checked, paths.slice(0, 2));
-		assert.deepEqual(result.failed, paths.slice(2));
-		assert.deepEqual(gates.pendingImpactItems.map((item) => item.path), [paths[0], paths[2]]);
-	});
-
-	it("clears every pending path from a successful manual multi-seed command", () => {
-		const root = mkdtempSync(join(tmpdir(), "plan-mode-controller-"));
-		const paths = ["src/one.ts", "src/two.ts"];
-		mkdirSync(join(root, "src"), { recursive: true });
-		for (const path of paths) {
-			writeFileSync(join(root, path), "export const value = 1;\n");
-		}
-		const gates = new GateController();
-		for (const path of paths) gates.trackPendingImpact(root, path, "edit");
-
-		assert.equal(
-			gates.clearFromImpactCommandResult(
-				root,
-				"dotdotgod graph impact . --changed src/one.ts --changed=src/two.ts --yml",
-				"impact:\n  ok: true",
-			),
-			true,
-		);
-		assert.deepEqual(gates.pendingImpactItems, []);
 	});
 
 	it("resolves execution targets from active and mentioned plans", () => {
@@ -391,76 +300,13 @@ describe("plan-mode command safety", () => {
 		}
 	});
 
-	it("detects impact-check commands and commit gates", () => {
-		assert.deepEqual(
-			getChangedPathsFromDotdotgodImpactCommand("dotdotgod graph impact . --changed packages/pi/extensions/plan-mode/index.ts --changed=packages/pi/extensions/plan-mode/utils.ts --changed packages/pi/extensions/plan-mode/index.ts --yml"),
-			["packages/pi/extensions/plan-mode/index.ts", "packages/pi/extensions/plan-mode/utils.ts"],
-		);
-		assert.equal(getChangedPathFromDotdotgodImpactCommand("dotdotgod graph impact . --changed packages/pi/extensions/plan-mode/index.ts --yml"), "packages/pi/extensions/plan-mode/index.ts");
-		assert.equal(getChangedPathFromDotdotgodImpactCommand("node /tmp/repo/packages/cli/bin/dotdotgod.mjs graph impact . --changed=packages/pi/extensions/plan-mode/utils.ts --json"), "packages/pi/extensions/plan-mode/utils.ts");
-		assert.deepEqual(getChangedPathsFromDotdotgodImpactCommand("dotdotgod graph communities . --json"), []);
-		assert.equal(getChangedPathFromDotdotgodImpactCommand("dotdotgod graph communities . --json"), undefined);
-		assert.equal(isCommitLikeCommand("git commit -m test"), true);
-		assert.equal(isCommitLikeCommand("git push"), true);
-		assert.equal(isCommitLikeCommand("pnpm publish"), true);
-		assert.equal(isCommitLikeCommand("git status --short"), false);
-		assert.equal(isBroadVerificationCommand("pnpm run verify"), true);
-		assert.equal(isBroadVerificationCommand("pytest tests"), true);
-		assert.equal(isBroadVerificationCommand("node packages/cli/bin/dotdotgod.mjs validate ."), false);
-	});
-
-	it("tracks and clears pending impact paths", () => {
+	it("normalizes and filters explicit impact paths", () => {
 		assert.equal(normalizeImpactPath("/repo", "./packages/pi/index.ts"), "packages/pi/index.ts");
 		assert.equal(normalizeImpactPath("/repo", "/repo/packages/pi/index.ts"), "packages/pi/index.ts");
 		assert.equal(normalizeImpactPath("/repo", "../outside.ts"), undefined);
 		assert.equal(shouldTrackImpactPath("packages/pi/index.ts"), true);
 		assert.equal(shouldTrackImpactPath("docs/plan/task/README.md"), false);
 		assert.equal(shouldTrackImpactPath(".dotdotgod/manifest.json"), false);
-
-		const first: PendingImpactItem = { path: "packages/pi/index.ts", fingerprint: "a", reason: "edit", touchedAt: "t1" };
-		const second: PendingImpactItem = { path: "packages/pi/utils.ts", fingerprint: "b", reason: "write", touchedAt: "t2" };
-		let items = upsertPendingImpact([], first);
-		items = upsertPendingImpact(items, second);
-		items = upsertPendingImpact(items, { ...first, fingerprint: "c", touchedAt: "t3" });
-		assert.deepEqual(items.map((item) => `${item.path}:${item.fingerprint}`), ["packages/pi/utils.ts:b", "packages/pi/index.ts:c"]);
-		assert.equal(pendingImpactSummary(items), "- packages/pi/utils.ts\n- packages/pi/index.ts");
-		assert.deepEqual(clearPendingImpactForPath(items, "packages/pi/index.ts").map((item) => item.path), ["packages/pi/utils.ts"]);
-	});
-
-	it("merges pending and git worktree impact paths", () => {
-		const pending: PendingImpactItem[] = [
-			{ path: "packages/pi/index.ts", fingerprint: "old", reason: "edit", touchedAt: "t1" },
-			{ path: "docs/plan/task/README.md", reason: "write", touchedAt: "t2" },
-		];
-		assert.deepEqual(
-			mergeImpactCheckPaths("/repo", pending, ["packages/pi/utils.ts", "packages/pi/index.ts", "coverage/out.json", "../outside.ts"]),
-			["packages/pi/index.ts", "packages/pi/utils.ts"],
-		);
-	});
-
-	it("formats expandable tool output", () => {
-		const tenLines = Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join("\n");
-		assert.equal(formatExpandableToolOutput(tenLines, false, "ctrl+o to expand"), tenLines);
-
-		const twelveLines = Array.from({ length: 12 }, (_, i) => `line ${i + 1}`).join("\n");
-		assert.equal(
-			formatExpandableToolOutput(twelveLines, false, "ctrl+o to expand"),
-			`${Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join("\n")}\n... (2 more lines, ctrl+o to expand)`,
-		);
-		assert.equal(formatExpandableToolOutput(twelveLines, true, "ctrl+o to expand"), twelveLines);
-	});
-
-	it("formats multi-file impact summaries", () => {
-		const summary = formatMultiImpactSummary([{ path: "packages/pi/index.ts", error: "missing cli" }]);
-		assert.match(summary, /dotdotgod graph impact summary/);
-		assert.match(summary, /failed for packages\/pi\/index.ts/);
-		const structured = formatMultiImpactSummary([{ path: "packages/pi/index.ts", summary: "impact:\n  output: \"yml\"" }]);
-		assert.equal(structured, "impact:\n  output: \"yml\"");
-		const multiStructured = formatMultiImpactSummary([
-			{ path: "packages/pi/index.ts", summary: "impact:\n  changed: \"packages/pi/index.ts\"" },
-			{ path: "packages/pi/utils.ts", summary: "impact:\n  changed: \"packages/pi/utils.ts\"" },
-		]);
-		assert.match(multiStructured, /\n---\n/);
 	});
 
 	it("asks for one-command approval before allowing other dotdotgod CLI in Plan Mode", async () => {

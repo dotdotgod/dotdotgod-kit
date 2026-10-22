@@ -22,16 +22,6 @@ export {
 	formatCompactImpactSummary,
 	normalizeImpactPath,
 	shouldTrackImpactPath,
-	upsertPendingImpact,
-	clearPendingImpactForPath,
-	mergeImpactCheckPaths,
-	pendingImpactSummary,
-	getChangedPathFromDotdotgodImpactCommand,
-	getChangedPathsFromDotdotgodImpactCommand,
-	isCommitLikeCommand,
-	isBroadVerificationCommand,
-	formatExpandableToolOutput,
-	formatMultiImpactSummary,
 } from "./impact.ts";
 
 export type { PlanChoiceTriggerState, PlanningContextShapeTriggerState } from "./prompts.ts";

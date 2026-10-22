@@ -6,7 +6,7 @@ While the authoritative lifecycle is `planning` or `reviewing`:
 
 - Reading files and searching the project are allowed.
 - The default active tool list is conservative; see [`../PLAN_MODE_TOOL_SETTINGS.md`](../PLAN_MODE_TOOL_SETTINGS.md) for optional extra installed tools.
-- Read-only bash commands are allowed through an allowlist. If `dotdotgod_execute` is active, every command in its required `commands` array passes the same allowlist and pending-impact gates before any command starts. Explicit execution cwd is allowed; command safety applies regardless of location.
+- Read-only bash commands are allowed through an allowlist. Dotdotgod execution, including direct MCP and nested codemode calls, checks every command in its required commands array against the same Plan Mode policy. Explicit cwd is allowed. Pending impact is advisory, not a gate.
 - `edit` and `write` allow Markdown planning documents at any location, not implementation edits. Non-Markdown source/config writes require execution mode.
 - Moving, deleting, or creating directories through shell commands requires execution mode everywhere, including plan/archive paths.
 - These planning workflow guards do not provide a filesystem sandbox.
@@ -32,9 +32,9 @@ Bounded dotdotgod context/status commands are auto-allowed when invoked directly
 
 ## Pending Impact Checks
 
-During execution and normal mode, successful source/config `edit` and `write` tool results create pending impact checks. Pi injects a hidden reminder without a persistent impact status or widget. The read-only `dotdotgod_impact_status` tool exposes bounded pending session records on request without running checks or clearing gates. Pi requires `/impact-check`, `dotdotgod_graph_impact`, or successful manual `dotdotgod graph impact ... --changed <path>` before commit-like actions.
+Successful observed source/config edit and write results create durable session-local pending records. Pi injects a bounded hidden reminder without a persistent widget. The read-only status tool exposes pending paths. Pending impact never blocks edits, verification, commits, pushes or publishing and adds no approval dialog. Plan Mode and user permission restrictions remain separate.
 
-`/impact-check` checks the union of tool-tracked pending paths and current git unstaged, staged, and untracked source/config paths. A successful impact check clears the matching pending path for the checked current file, including stale pending records whose stored fingerprint no longer matches the file. Long `dotdotgod_graph_impact` tool results stay complete for the agent and render compactly in Pi's TUI until expanded. Pending checks ignore plan/archive markdown, cache, vendor, build, and coverage paths. Broad verification may ask for confirmation; commit/push/publish commands are blocked until pending paths are checked.
+`/impact-check` requests MCP project_impact review of pending and explicitly selected git-changed paths in batches of at most twenty. No native graph-impact/status forwarding tool is registered. Successful shared reviews clear only covered unchanged revisions; failures, cancellation and edits during review retain pending state. Manual shell command text alone does not clear records. Plan/archive, cache, dependency and build paths are excluded. Shell/external/unrecognized changes need explicit paths; all pre-existing git changes are not attributed to the session automatically.
 
 ## Verification by Change Type
 

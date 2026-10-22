@@ -13,7 +13,7 @@ test("real SDK separates model Markdown from codemode structuredContent", async 
   try {
     const direct = await f.call("fixture_structured", {});
     assert.match(textContent(direct), /^## Fixture/);
-    const script = await f.call("codemode", "const value = await tools.fixture_structured({}); if (typeof value !== 'object' || value.ok !== true) throw new Error('not structured'); const status = await tools.dotdotgod_impact_status({}); if (typeof status !== 'object' || !status.ok) throw new Error('status not structured'); const impact = await tools.dotdotgod_graph_impact({}); if (typeof impact !== 'string' || !impact.includes('required')) throw new Error('graph impact changed'); return 'object received; graph impact text unchanged';");
+    const script = await f.call("codemode", "const value = await tools.fixture_structured({}); if (typeof value !== 'object' || value.ok !== true) throw new Error('not structured'); const status = await tools.mcp__dotdotgod_context__impact_status({}); if (status.isError || !status.structuredContent.ok) throw new Error('MCP envelope missing'); let rejected = false; try { await tools.mcp__dotdotgod_context__project_impact({ paths: [] }); } catch { rejected = true; } if (!rejected) throw new Error('MCP schema failure missing'); return 'object received; MCP envelope retained';");
     assert.equal(script.isError, false, textContent(script));
     assert.match(textContent(script), /object received/);
   } finally { await f.close(); }

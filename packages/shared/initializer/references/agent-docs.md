@@ -7,6 +7,7 @@ Use `AGENTS.md` as the canonical shared instruction file.
 - `AGENTS.md`: preferred shared file name. OpenAI Codex recognizes this convention, and the community `agents.md` convention uses the plural form.
 - `CLAUDE.md`: Claude Code's project memory file. Keep it thin and import `AGENTS.md` with `@AGENTS.md`.
 - `CODEX.md`: project-local Codex pointer. Keep it thin and link to `AGENTS.md`.
+- OpenCode reads `AGENTS.md` natively; do not create an `OPENCODE.md` copy.
 - `.github/copilot-instructions.md`: optional Copilot surface. If present, route to `AGENTS.md`, `docs/README.md`, and project commands instead of copying the full rules body.
 - `.cursor/rules/*.md`: optional Cursor path-scoped rules. If present, keep Cursor-specific scoping there and route durable project rules to shared docs.
 - `llms.txt`: optional documentation discovery surface. If present, point to README indexes and bounded docs entrypoints instead of embedding large docs bodies.
