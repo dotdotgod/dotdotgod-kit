@@ -116,7 +116,7 @@ This is tested interception coverage, not a claim that every external file mutat
 
 ## Advisory Impact State
 
-Pi/OpenCode share impact.sqlite keyed by host session/path. Observed edits assign revisions; MCP snapshots revision/current content and clears unchanged rows only on success. SQLite serializes writers; AsyncLocalStorage isolates per-call host identity. Pending never blocks tools. Shell/external edits are not automatically attributed. Claude/Codex gates remain separate. See [contract](../spec/ADVISORY_IMPACT.md).
+Pi/OpenCode share impact.sqlite keyed by host session/path. Observed edits assign revisions; MCP snapshots revision/current content and clears unchanged rows only on success. SQLite serializes writers; AsyncLocalStorage isolates per-call host identity. Pending never blocks tools. Shell/external edits are not automatically attributed. Claude/Codex gates remain separate. See [contract](../spec/OPENCODE_ADAPTER.md#advisory-impact).
 
 ## Phase 3 Components
 

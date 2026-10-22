@@ -26,6 +26,7 @@ Every adapter follows the same loop:
 | [`@dotdotgod/context`](packages/context/README.md) | You want local command/file processing, FTS5 retrieval, and the shared stdio MCP runtime. | Installed automatically by the agent adapters. |
 | [`@dotdotgod/claude-code`](packages/claude-code/README.md#start-here) | You use Claude Code and want `/dd:*` workflows plus local context MCP tools. | `/plugin marketplace add dotdotgod/dotdotgod-kit`, then `/plugin install dotdotgod@dotdotgod` |
 | [`@dotdotgod/codex`](packages/codex/README.md#start-here) | You use Codex and want dotdotgod skills, local context MCP tools, and reviewed hooks. | Register the plugin manifest through a trusted Codex plugin flow. |
+| [`@dotdotgod/opencode`](packages/opencode/README.md) | You use OpenCode V2 and want MCP tools, automatic project plans and advisory impact tracking. | Add the package to `opencode.jsonc` plugins after publishing; use the package directory locally. |
 
 The source checkout also includes [`@dotdotgod/hermes`](packages/hermes/README.md)
 for Hermes CLI/gateway, with per-session MCP connections and no Plan Mode.
@@ -84,7 +85,7 @@ The structure provides:
 
 The adapters share a local runtime that keeps large command output, files, and fetched text useful without filling the model context. Small results return directly; larger results become locally searchable, bounded excerpts with provenance and trust metadata. Durable ingestion jobs and opaque session resume let longer processing survive individual turns.
 
-Pi calls this core through native `dotdotgod_*` tools. Claude Code and Codex use the local stdio MCP server; Hermes native wrappers own a separate MCP connection per authorized repository/session. These policies apply to dotdotgod execution and retrieval tools, while each host's built-in shell keeps its native behavior. The default compatibility environment preserves ordinary inherited credentials; an opt-in allowlist mode provides a stricter child environment.
+Pi and OpenCode use the shared local MCP runtime without native forwarding aliases. Individual tool names are unprefixed; hosts qualify them with the MCP server namespace. Pi/OpenCode track pending impact without blocking commands. Claude Code/Codex retain their hook policies; Hermes wrappers own a connection per authorized repository/session. Host shell and permission behavior remains separate. The compatibility environment preserves ordinary inherited credentials; allowlist mode provides a stricter child environment.
 
 The runtime applies bounded capture, storage, traversal, and HTTP(S) fetch policies. These controls provide defense in depth rather than a network sandbox or prompt-injection guarantee. See the [`@dotdotgod/context` npm landing page](packages/context/README.md), [behavior contract](docs/spec/CONTEXT_EXECUTION.md), [architecture](docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md), and [verification strategy](docs/test/CONTEXT_EXECUTION.md).
 

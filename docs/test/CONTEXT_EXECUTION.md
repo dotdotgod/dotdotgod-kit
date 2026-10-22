@@ -34,7 +34,7 @@ Focused hardening suites cover:
 
 `packages/context/test/adapter-packaging.test.mjs` packs and extracts both adapters outside workspace dependency ancestry, audits links and local-path leakage, blocks runtime package-manager/network commands, executes valid and malformed hook input, initializes MCP, lists the complete tool surface, calls project load, executes the packaged CLI entry, and reports compressed and unpacked sizes.
 
-Pi verification covers alias-free MCP registration, envelopes and nested calls. The host owns child lifecycle and cancellation. Shared state coverage uses packages/context/test/impact-state.test.mjs.
+Pi verification covers alias-free MCP registration, envelopes and nested calls. The host owns child lifecycle and cancellation. See [OpenCode coverage](OPENCODE_ADAPTER.md).
 
 ## Pi Native And Codemode Workflows
 

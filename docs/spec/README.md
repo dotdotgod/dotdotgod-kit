@@ -29,6 +29,8 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 
 ## Index
 
+- `OPENCODE_ADAPTER.md`: OpenCode V2 native planning, MCP and advisory impact contract.
+
 - `ADVISORY_IMPACT.md`: shared host-session pending revisions and successful review acknowledgement.
 
 - `REFERENCE_SCOPE_VALIDATION.md`: shared-to-local Markdown and inline-code dependency errors with layout-example exemptions.

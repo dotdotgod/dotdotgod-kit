@@ -4,7 +4,7 @@ Code query/graph/validation share [outline metadata](../spec/cli/CODE_OUTLINES.m
 
 ## Purpose
 
-This document defines how dotdotgod provides a cross-agent project memory kit for Pi, Claude Code, Codex, and Hermes.
+This document defines the project memory kit for Pi, OpenCode, Claude Code, Codex, and Hermes.
 
 ## Architectural Direction
 
@@ -19,10 +19,11 @@ dotdotgod
 ├── packages/claude-code/      # generated Claude Code plugin commands and skills
 ├── packages/codex/            # generated Codex plugin skills
 ├── packages/hermes/           # native lifecycle and per-session MCP routing
+├── packages/opencode/         # V2 plugin, native plan integration and advisory impact
 └── scripts/generate-adapters.mjs
 ```
 
-Shared owns workflows, context processing. Adapters bundle CLI/MCP; Claude/Codex add hooks, Hermes a client. Generate parser assets before source-local installs/packing; tarballs need no build.
+Shared owns workflows and processing. Adapters bundle CLI/MCP; Claude/Codex add hooks. Generate parser assets before local installs/packing; tarballs need no build.
 
 ## Shared Source Responsibilities
 
@@ -53,13 +54,13 @@ Current implementation:
 
 Pi-specific behavior remains here:
 
-- native execution, file-processing, FTS5 retrieval, fetch, operations, and initializer tools over `@dotdotgod/context` without starting MCP
+- shared MCP execution/retrieval without aliases; plan/UI and pending-only project_memory_load remain Pi-owned
 - slash command registration
 - shortcut registration
 - tool filtering
 - session state
 - active plan-file touch tracking and concise execute/stay/refine review prompts
-- pending changed-file impact reminders and `/impact-check` enforcement before commit, push, or publish commands
+- durable pending-impact tracking and advisory reminders, with no pending-based command blocks or approval dialogs
 
 Plan Mode startup flag: `--dd-plan`. Its namespace allows other Pi extensions to own the generic `--plan` flag.
 
@@ -69,6 +70,10 @@ Commands:
 - `/load`
 - `/dd:load`
 - `/impact-check`
+
+### OpenCode Adapter
+
+packages/opencode registers V2 commands/skills and bundled MCP. Native plan integration automatically saves concrete project plans; no dd:plan or duplicate native project tools exist. Shared state tracks advisory impact without blocking. See [contract](../spec/OPENCODE_ADAPTER.md).
 
 ### Claude Code Adapter
 
@@ -125,7 +130,7 @@ Responsibilities:
 - optional MCP/tooling integration when useful
 - optional hook documentation for trusted Codex configuration layers
 
-Codex adapter design should not depend on Pi-style command parity. Impact review parity is guidance-oriented: Codex should run graph-impact checks when asked or prompted by trusted hooks, but the adapter must not claim Pi's automatic pending-impact state or commit-blocking behavior.
+Codex adapter design should not depend on Pi-style command parity. Its trusted hook gates remain host-specific; Pi/OpenCode now track pending impact without commit blocking.
 
 ### Hermes Adapter
 
@@ -146,7 +151,7 @@ Default examples should be advisory or read-only. `dotdotgod status` is safe for
 
 Claude Code hook guidance may reference current lifecycle events such as `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolBatch`, `Stop`, `StopFailure`, and `SessionEnd` when useful. It must not present undocumented plan-mode transition hooks such as `PrePlanMode`, `PostPlanMode`, plan accept, or plan reject as available unless Claude Code officially documents them. SDLC guidance should frame hooks as optional guardrails around plan, implement, verify, review, and archive phases, with `AGENTS.md` remaining the cross-agent project brain.
 
-Blocking hooks should be narrow and project-local. A `PreToolUse` plan-safety hook should block source/config writes only when an explicit plan-only state signal exists and the hook payload has been tested. Hooks must not auto-run full workspace verification, auto-run `dotdotgod index`, auto-initialize projects, move plans to the archive, or attempt to recreate Pi's pending-impact state unless the target runtime exposes a tested complete interception boundary.
+Hooks must be narrow and tested. Plan-only source/config blocks require explicit state. Hooks must not automatically run workspace verification/indexing, initialize projects, archive plans or claim complete mutation interception.
 
 ## Packaging Strategy
 

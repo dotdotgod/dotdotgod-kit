@@ -4,6 +4,8 @@ Use this domain for adapter, Plan Mode, initializer, publishing, and README land
 
 ## Domain Map
 
+- [`OPENCODE_ADAPTER.md`](OPENCODE_ADAPTER.md): native plan automatic storage, MCP execution/retrieval and advisory impact.
+
 - [`PLAN_DECISION_WIZARD.md`](PLAN_DECISION_WIZARD.md): sequential decisions, batch confirmation, native input, fallback, and stale-result safety checks before separate execution approval.
 
 - [`PI_ADAPTER.md`](PI_ADAPTER.md): Pi adapter install/load checks, Plan Mode checks, and `/impact-check` checks.
