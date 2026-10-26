@@ -86,6 +86,17 @@ Local embeddings first use an ordinarily installed `@huggingface/transformers` p
 
 `dotdotgod embedding status [<root>] [--json]` is read-only and offline. `dotdotgod embedding install [<root>] --confirm [--json]` installs the fixed compatible runtime with npm using a fixed prefix and package version. Installation uses network access and dependency install scripts. The configured model may still download on the first subsequent local query. Remote embedding profiles do not require or offer local runtime installation.
 
+## Scope-Safe Persistence
+
+Document/code snapshots and batch checkpoints share one atomically replaced
+`vectors/snapshots.json` state file. Only refreshed corpora are pruned, including
+empty corpora; candidates always use current chunk metadata. Compatible legacy
+artifacts migrate without new passage calls. A project lock serializes builds
+with a 30-second wait and confirmed-dead-owner recovery; malformed locks fail
+closed and require inspection. Diagnostics include invalidation reason, lock wait,
+and per-corpus embedded/reused/recovered counts. Offline regression coverage is
+`packages/cli/test/vector-cache-session.test.mjs`, including multiprocess writers.
+
 ## Cache and Failures
 
 The vector manifest records provider, model, dimensions, and a secret-free profile fingerprint. Schema version 2 invalidates all schema-1 caches. Output-affecting profile changes rebuild the index. Cache identity includes effective prefixes and a formatting version. Omitted and explicit equivalent E5 formats share identity; object key order does not matter. Query- or document-prefix changes invalidate the cache, and legacy identities without formatting information rebuild once. Credentials remain excluded.

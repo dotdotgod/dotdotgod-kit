@@ -1,10 +1,11 @@
 import { resolve } from 'node:path';
+import { vectorCacheSession } from '../query/cache-session.mjs';
 import { usage } from '../cli/usage.mjs';
 import { readMemoryConfig } from '../memory/config.mjs';
 import { collectDocumentationChunks } from '../query/chunks.mjs';
 import { resolveEmbedder } from '../query/embedder.mjs';
 import { resolveEmbeddingProfile } from '../query/embedding-config.mjs';
-import { isValidNormalizedVectorValues, profileFingerprint, readVectorCache, writeVectorCache } from '../query/store.mjs';
+import { isValidNormalizedVectorValues, profileFingerprint, writeVectorCache } from '../query/store.mjs';
 
 import { projectCorpus, keywordCandidates, fuseCandidates, attachRelationships } from '../query/hybrid.mjs';
 
@@ -69,7 +70,12 @@ export async function buildVectorIndex(root, embedOrOptions = {}) {
   const config = readMemoryConfig(root);
   const exclude = config.load?.documentationSummary?.exclude ?? ['docs/plan', 'docs/archive'];
   const chunks = options.chunks ?? collectDocumentationChunks(root, exclude, config.documentation?.root ?? 'docs');
-  const cached = readVectorCache(root, resolved.identity);
+  return vectorCacheSession(root, resolved.identity, async (state, save, diagnostics) => {
+  const selectedFingerprints = new Set(chunks.map((chunk) => chunk.fingerprint));
+  state.pending = state.pending.filter((row) => selectedFingerprints.has(row.chunk.fingerprint));
+  const recovered = new Set(state.pending.map((row) => row.chunk.fingerprint));
+  const cacheRows = [...state.docs, ...state.code, ...state.pending];
+  const cached = state.dimensions ? { chunks: cacheRows.map((row) => row.chunk), vectors: Float32Array.from(cacheRows.flatMap((row) => row.vector)), manifest: { dimensions: state.dimensions } } : null;
   const cachedOffsets = new Map((cached?.chunks ?? []).map((chunk, index) => [chunk.fingerprint, index]));
   const rows = new Array(chunks.length);
   const missing = []; let reused = 0;
@@ -77,16 +83,38 @@ export async function buildVectorIndex(root, embedOrOptions = {}) {
   for (let offset = 0; offset < missing.length; offset += EMBED_BATCH_SIZE) {
     const batch = missing.slice(offset, offset + EMBED_BATCH_SIZE);
     const embedded = await resolved.embed(batch.map(({ chunk }) => chunk.passage), 'document');
-    embedded.forEach((vector, index) => { rows[batch[index].index] = vector; });
+    if (!Array.isArray(embedded) || embedded.length !== batch.length) throw new Error('Embedder returned an unexpected vector count.');
+    embedded.forEach((vector, index) => {
+      const dimensions = state.dimensions ?? vector.length;
+      assertVector(vector, dimensions, 'Passage vector');
+      state.dimensions = dimensions;
+      rows[batch[index].index] = vector;
+      const { passage, ...chunk } = batch[index].chunk;
+      state.pending.push({ chunk, vector: Array.from(vector) });
+    });
+    save();
   }
   const dimensions = rows[0]?.length ?? cached?.manifest?.dimensions;
-  if (!dimensions) throw new Error('No documentation chunks were available to establish vector dimensions.');
+  if (!dimensions && chunks.length) throw new Error('No documentation chunks were available to establish vector dimensions.');
   if (rows.some((row) => !row || row.length !== dimensions)) throw new Error('Embedder returned inconsistent passage-vector dimensions.');
   const vectors = new Float32Array(chunks.length * dimensions);
   rows.forEach((row, index) => { assertVector(row, dimensions, 'Passage vector'); vectors.set(row, index * dimensions); });
   const storedChunks = chunks.map(({ passage, ...chunk }) => chunk);
-  const manifest = writeVectorCache(root, storedChunks, vectors, { provider: resolved.profile.provider, model: resolved.profile.model, dimensions, profileFingerprint: profileFingerprint(resolved.identity), excluded: exclude, embedded: missing.length, reused });
+  const refreshed = options.corpora ?? (options.chunks ? [...new Set(chunks.map((chunk) => chunk.kind === 'symbol' ? 'code' : 'docs'))] : ['docs']);
+  const counters = {};
+  for (const corpus of refreshed) {
+    const positions = chunks.map((chunk, index) => ({ chunk, index })).filter(({ chunk }) => (chunk.kind === 'symbol' ? 'code' : 'docs') === corpus);
+    state[corpus] = positions.map(({ index }) => ({ chunk: storedChunks[index], vector: Array.from(rows[index]) }));
+    counters[corpus] = { chunks: positions.length, embedded: missing.filter(({ chunk }) => (chunk.kind === 'symbol' ? 'code' : 'docs') === corpus).length, recovered: positions.filter(({ chunk }) => recovered.has(chunk.fingerprint)).length };
+    counters[corpus].reused = positions.length - counters[corpus].embedded;
+  }
+  state.pending = [];
+  save();
+  const metadata = { provider: resolved.profile.provider, model: resolved.profile.model, dimensions, profileFingerprint: profileFingerprint(resolved.identity), excluded: exclude, embedded: missing.length, reused, diagnostics: { ...diagnostics, corpora: counters } };
+  // Keep the legacy export readable; authoritative snapshots remain atomic above.
+  const manifest = dimensions ? writeVectorCache(root, storedChunks, vectors, metadata) : { chunks: 0, ...metadata };
   return { chunks: storedChunks, vectors, manifest, embedding: resolved };
+  });
 }
 
 export async function queryDocumentation(root, query, options = {}) {
@@ -113,10 +141,10 @@ export async function queryProject(root, query, options = {}) {
     catch (error) { if (search === 'vector') throw error; vectorError = error.message; }
     if (!configured && !vectorError && search === 'vector') throw new Error('Embedding is not configured. Set embedding in project or global configuration to use vector search.');
   }
-  if (search !== 'keyword' && configured && corpus.chunks.length) {
+  if (search !== 'keyword' && configured) {
     try {
-      index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks });
-      const [queryVector] = await index.embedding.embed([query], 'query');
+      index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks, corpora: scope === 'all' ? ['docs', 'code'] : [scope] });
+      const [queryVector] = index.chunks.length ? await index.embedding.embed([query], 'query') : [];
       vector = index.chunks.map((chunk, position) => ({ ...chunk, vectorScore: cosineScore(queryVector, index.vectors, position * index.manifest.dimensions, index.manifest.dimensions) }))
         .sort((a, b) => b.vectorScore - a.vectorScore || a.id.localeCompare(b.id));
     } catch (error) {

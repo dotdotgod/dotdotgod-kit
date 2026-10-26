@@ -29,20 +29,25 @@ export function vectorCachePaths(root) {
   return { directory, manifest: join(directory, 'manifest.json'), chunks: join(directory, 'chunks.jsonl'), embeddings: join(directory, 'embeddings.f32') };
 }
 
-export function readVectorCache(root, identity = null) {
+export function readVectorCache(root, identity = null, diagnostics = {}) {
+  diagnostics.reason = 'missing';
   const paths = vectorCachePaths(root);
   if (!existsSync(paths.manifest) || !existsSync(paths.chunks) || !existsSync(paths.embeddings)) return null;
   try {
     const manifest = JSON.parse(readFileSync(paths.manifest, 'utf8'));
+    diagnostics.reason = 'schema-mismatch';
     if (manifest.schemaVersion !== VECTOR_SCHEMA_VERSION || !Number.isInteger(manifest.dimensions) || manifest.dimensions < 1) return null;
+    diagnostics.reason = 'profile-mismatch';
     if (identity && manifest.profileFingerprint !== profileFingerprint(identity)) return null;
+    diagnostics.reason = 'corrupt';
     const chunks = readFileSync(paths.chunks, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line));
     const buffer = readFileSync(paths.embeddings);
     if (buffer.byteLength !== chunks.length * manifest.dimensions * 4) return null;
     const vectors = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4);
     if (!isValidNormalizedVectorValues(vectors, manifest.dimensions)) return null;
+    diagnostics.reason = 'valid';
     return { manifest, chunks, vectors: new Float32Array(vectors) };
-  } catch { return null; }
+  } catch { diagnostics.reason = 'corrupt'; return null; }
 }
 
 function atomicWrite(path, data) {

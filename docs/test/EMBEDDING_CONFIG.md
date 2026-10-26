@@ -22,6 +22,17 @@
 
 Existing CLI tests verify incremental chunk reuse, query ranking, malformed vectors, and graph-impact graceful degradation. All provider tests use injected embedders or local HTTP fixtures; CI must not download models or contact external services. Run workspace tests with an isolated HOME so a user's remote global profile cannot change default-model expectations. Live profile changes and reindexing require explicit authorization; offline tests do not prove server-side prompt behavior.
 
+## Scope-Safe Persistence
+
+Document/code snapshots and batch checkpoints share one atomically replaced
+`vectors/snapshots.json` state file. Only refreshed corpora are pruned, including
+empty corpora; candidates always use current chunk metadata. Compatible legacy
+artifacts migrate without new passage calls. A project lock serializes builds
+with a 30-second wait and confirmed-dead-owner recovery; malformed locks fail
+closed and require inspection. Diagnostics include invalidation reason, lock wait,
+and per-corpus embedded/reused/recovered counts. Offline regression coverage is
+`packages/cli/test/vector-cache-session.test.mjs`, including multiprocess writers.
+
 ## Commands
 
 ```bash

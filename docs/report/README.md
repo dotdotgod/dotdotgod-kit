@@ -6,6 +6,8 @@ Use reports for evidence snapshots, measurements, and interpretations. Route dur
 
 ## Index
 
+- `RELEASE_0_6_7.md`: scope-safe vector snapshots, batch recovery, locking and release limits.
+
 - `RELEASE_0_6_6.md`: release scope, compatibility migrations, native planning and publication gates.
 
 - `agent-planning-research/`: research synthesis and lane reports for improving plan mode with hierarchical planning, persistent TODOs, multi-agent decomposition, planning visibility, and verification-driven execution.

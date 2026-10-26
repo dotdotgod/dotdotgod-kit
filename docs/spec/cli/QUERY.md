@@ -35,6 +35,21 @@ Vector cache stays under ignored .dotdotgod/vectors with schema/provider/model/
 dimension/profile identities and normalized float vectors. Missing/corrupt or
 incompatible caches rebuild. Writes use temporary files and atomic artifact rename.
 
+## Scope-Safe Vector Persistence
+
+Document and code snapshots are separate logical corpora in the atomic
+`.dotdotgod/vectors/snapshots.json` state file. Refresh replaces only selected
+corpora, including clearing empty corpora; current chunks alone become candidates.
+Compatible legacy vector artifacts migrate without passage re-embedding.
+Successful batches checkpoint separately from completed snapshots and resume by
+profile and passage fingerprint. A project build lock serializes writers, waits
+up to 30 seconds, and recovers a confirmed dead process owner. Malformed locks
+fail closed after timeout; manual inspection may be required. Diagnostics report
+missing/corrupt/schema/profile reasons, lock wait, and per-corpus embedded, reused
+and recovered counts without credentials or provider response bodies.
+The offline `vector-cache-session.test.mjs` covers scope preservation, empty
+pruning, batch recovery, corrupt state and multiprocess serialization.
+
 ## Retrieval
 
 - Keyword candidates independently match names, signatures, original comments and

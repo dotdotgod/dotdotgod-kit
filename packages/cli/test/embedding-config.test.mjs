@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -94,6 +94,7 @@ describe('embedding configuration and providers', () => {
     const manifest = JSON.parse(readFileSync(manifestPath));
     manifest.profileFingerprint = profileFingerprint({ provider: 'local', model: 'm' });
     writeFileSync(manifestPath, JSON.stringify(manifest));
+    rmSync(join(root, '.dotdotgod/vectors/snapshots.json'));
     assert.equal((await buildVectorIndex(root, { profile, embed })).manifest.embedded, initial.chunks.length);
     const changed = { ...profile, inputFormat: { queryPrefix: 'Q: ', documentPrefix: 'passage: ' } };
     assert.equal((await buildVectorIndex(root, { profile: changed, embed })).manifest.embedded, initial.chunks.length);
@@ -131,6 +132,7 @@ describe('embedding configuration and providers', () => {
       assert.deepEqual(requests.at(-1).parsed.input, ['query: retrieval']);
       assert.equal(readVectorCache(root, embeddingProfileIdentity(profile)).manifest.schemaVersion, VECTOR_SCHEMA_VERSION);
       const manifestPath = join(root, '.dotdotgod/vectors/manifest.json'); const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')); manifest.schemaVersion = 1; writeFileSync(manifestPath, JSON.stringify(manifest));
+      rmSync(join(root, '.dotdotgod/vectors/snapshots.json'));
       let calls = 0; await buildVectorIndex(root, { profile, embed: async (texts) => { calls += 1; return texts.map(() => unitVector(0)); } }); assert(calls > 0);
       assert(!readFileSync(manifestPath, 'utf8').includes('secret'));
     } finally { remote.instance.close(); }

@@ -35,7 +35,7 @@ export function codexRpc(binary, { cwd, env = process.env, args = [], onNotifica
   return {
     call,
     async initialize() {
-      await call('initialize', { clientInfo: { name: 'dotdotgod-plan-setup', version: '0.6.6' }, capabilities: { experimentalApi: true } });
+      await call('initialize', { clientInfo: { name: 'dotdotgod-plan-setup', version: '0.6.7' }, capabilities: { experimentalApi: true } });
       child.stdin.write(`${JSON.stringify({ method: 'initialized' })}\n`);
     },
     close() { lines.close(); child.stdin.end(); child.kill('SIGTERM'); fail(new Error('RPC closed')); },

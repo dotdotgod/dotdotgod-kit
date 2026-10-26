@@ -3937,12 +3937,196 @@ function runConfig(argv) {
 // packages/cli/src/commands/query.mjs
 import { resolve as resolve11 } from "node:path";
 
+// packages/cli/src/query/cache-session.mjs
+import { randomUUID as randomUUID2 } from "node:crypto";
+import { mkdirSync as mkdirSync6, openSync, closeSync, readFileSync as readFileSync16, writeFileSync as writeFileSync7, renameSync as renameSync3, rmSync as rmSync2 } from "node:fs";
+import { join as join16 } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
+
+// packages/cli/src/query/store.mjs
+import { createHash as createHash6 } from "node:crypto";
+import { existsSync as existsSync16, mkdirSync as mkdirSync5, readFileSync as readFileSync15, renameSync as renameSync2, rmSync, writeFileSync as writeFileSync6 } from "node:fs";
+import { join as join15 } from "node:path";
+var VECTOR_SCHEMA_VERSION = 2;
+var VECTOR_DIMENSIONS = 384;
+function profileFingerprint(identity2) {
+  return createHash6("sha256").update(JSON.stringify(identity2)).digest("hex");
+}
+function isValidNormalizedVectorValues(values, dimensions = VECTOR_DIMENSIONS) {
+  if (!Number.isInteger(dimensions) || dimensions < 1 || !values || values.length % dimensions !== 0) return false;
+  for (let offset = 0; offset < values.length; offset += dimensions) {
+    let squaredNorm = 0;
+    for (let index = 0; index < dimensions; index += 1) {
+      const value = values[offset + index];
+      if (!Number.isFinite(value) || value < -1 || value > 1) return false;
+      squaredNorm += value * value;
+    }
+    if (Math.abs(Math.sqrt(squaredNorm) - 1) > 0.01) return false;
+  }
+  return true;
+}
+function vectorCachePaths(root) {
+  const directory = join15(root, ".dotdotgod", "vectors");
+  return { directory, manifest: join15(directory, "manifest.json"), chunks: join15(directory, "chunks.jsonl"), embeddings: join15(directory, "embeddings.f32") };
+}
+function readVectorCache(root, identity2 = null, diagnostics = {}) {
+  diagnostics.reason = "missing";
+  const paths = vectorCachePaths(root);
+  if (!existsSync16(paths.manifest) || !existsSync16(paths.chunks) || !existsSync16(paths.embeddings)) return null;
+  try {
+    const manifest = JSON.parse(readFileSync15(paths.manifest, "utf8"));
+    diagnostics.reason = "schema-mismatch";
+    if (manifest.schemaVersion !== VECTOR_SCHEMA_VERSION || !Number.isInteger(manifest.dimensions) || manifest.dimensions < 1) return null;
+    diagnostics.reason = "profile-mismatch";
+    if (identity2 && manifest.profileFingerprint !== profileFingerprint(identity2)) return null;
+    diagnostics.reason = "corrupt";
+    const chunks = readFileSync15(paths.chunks, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
+    const buffer = readFileSync15(paths.embeddings);
+    if (buffer.byteLength !== chunks.length * manifest.dimensions * 4) return null;
+    const vectors = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4);
+    if (!isValidNormalizedVectorValues(vectors, manifest.dimensions)) return null;
+    diagnostics.reason = "valid";
+    return { manifest, chunks, vectors: new Float32Array(vectors) };
+  } catch {
+    diagnostics.reason = "corrupt";
+    return null;
+  }
+}
+function atomicWrite(path, data) {
+  const temporary = `${path}.tmp-${process.pid}`;
+  writeFileSync6(temporary, data);
+  renameSync2(temporary, path);
+}
+function writeVectorCache(root, chunks, vectors, metadata = {}) {
+  const paths = vectorCachePaths(root);
+  const dimensions = metadata.dimensions;
+  if (!Number.isInteger(dimensions) || dimensions < 1) throw new Error("Vector dimensions must be a positive integer.");
+  mkdirSync5(paths.directory, { recursive: true });
+  if (vectors.length !== chunks.length * dimensions) throw new Error("Vector count does not match chunk metadata.");
+  if (!isValidNormalizedVectorValues(vectors, dimensions)) throw new Error("Vectors must contain finite normalized values.");
+  const manifest = { schemaVersion: VECTOR_SCHEMA_VERSION, chunks: chunks.length, generatedAt: (/* @__PURE__ */ new Date()).toISOString(), ...metadata };
+  atomicWrite(paths.chunks, `${chunks.map((chunk) => JSON.stringify(chunk)).join("\n")}
+`);
+  atomicWrite(paths.embeddings, Buffer.from(vectors.buffer, vectors.byteOffset, vectors.byteLength));
+  atomicWrite(paths.manifest, `${JSON.stringify(manifest, null, 2)}
+`);
+  return manifest;
+}
+
+// packages/cli/src/query/cache-session.mjs
+async function vectorCacheSession(root, identity2, action2) {
+  const directory = join16(root, ".dotdotgod", "vectors");
+  mkdirSync6(directory, { recursive: true });
+  const lock = join16(directory, "build.lock");
+  const token = randomUUID2();
+  const started = Date.now();
+  let waited = false;
+  while (true) {
+    try {
+      const fd = openSync(lock, "wx");
+      try {
+        writeFileSync7(fd, JSON.stringify({ pid: process.pid, token }));
+      } finally {
+        closeSync(fd);
+      }
+      break;
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      waited = true;
+      if (Date.now() - started >= 3e4) throw new Error("Vector cache lock timed out; another build may be running or the lock needs inspection.");
+      try {
+        const owner = JSON.parse(readFileSync16(lock, "utf8"));
+        if (!Number.isInteger(owner.pid) || owner.pid < 1) throw new Error("Invalid lock owner.");
+        try {
+          process.kill(owner.pid, 0);
+        } catch (probe) {
+          if (probe.code !== "ESRCH") throw probe;
+          const recovery = `${lock}.recovery`;
+          try {
+            mkdirSync6(recovery);
+          } catch (claim) {
+            if (claim.code === "EEXIST") {
+              await sleep(50);
+              continue;
+            }
+            throw claim;
+          }
+          try {
+            const current = JSON.parse(readFileSync16(lock, "utf8"));
+            if (current.token === owner.token && current.pid === owner.pid) rmSync2(lock);
+          } finally {
+            rmSync2(recovery, { recursive: true, force: true });
+          }
+          continue;
+        }
+      } catch (probe) {
+        if (probe.code === "ENOENT") continue;
+      }
+      await sleep(50);
+    }
+  }
+  try {
+    const path = join16(directory, "snapshots.json");
+    const fingerprint2 = profileFingerprint(identity2);
+    let state;
+    let reason = "missing";
+    try {
+      state = JSON.parse(readFileSync16(path, "utf8"));
+      if (state.schema !== 1) {
+        reason = "schema-mismatch";
+        state = null;
+      } else if (state.profile !== fingerprint2) {
+        reason = "profile-mismatch";
+        state = null;
+      } else {
+        if (state.dimensions !== null && (!Number.isInteger(state.dimensions) || state.dimensions < 1)) throw new Error("Invalid cache dimensions.");
+        for (const rows of [state.docs, state.code, state.pending]) {
+          if (!Array.isArray(rows) || rows.some((row) => typeof row.chunk?.fingerprint !== "string" || !Array.isArray(row.vector) || row.vector.length !== state.dimensions || !isValidNormalizedVectorValues(row.vector, state.dimensions))) throw new Error("Invalid cache rows.");
+        }
+        reason = "valid";
+      }
+    } catch (error) {
+      state = null;
+      reason = error.code === "ENOENT" ? "missing" : "corrupt";
+    }
+    if (!state) {
+      state = { schema: 1, profile: fingerprint2, dimensions: null, docs: [], code: [], pending: [] };
+      if (reason === "missing") {
+        const legacyDiagnostics = {};
+        const legacy = readVectorCache(root, identity2, legacyDiagnostics);
+        reason = legacyDiagnostics.reason;
+        if (legacy) {
+          state.dimensions = legacy.manifest.dimensions;
+          legacy.chunks.forEach((chunk, i) => state[chunk.kind === "symbol" ? "code" : "docs"].push({ chunk, vector: Array.from(legacy.vectors.subarray(i * state.dimensions, (i + 1) * state.dimensions)) }));
+          reason = "legacy-migrated";
+        }
+      }
+    }
+    const save = () => {
+      const temporary = `${path}.tmp-${token}`;
+      try {
+        writeFileSync7(temporary, JSON.stringify(state));
+        renameSync3(temporary, path);
+      } finally {
+        rmSync2(temporary, { force: true });
+      }
+    };
+    return await action2(state, save, { reason, lockWaitMs: waited ? Date.now() - started : 0 });
+  } finally {
+    try {
+      if (JSON.parse(readFileSync16(lock, "utf8")).token === token) rmSync2(lock);
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+  }
+}
+
 // packages/cli/src/query/embedding-runtime.mjs
-import { existsSync as existsSync16, mkdirSync as mkdirSync5, readFileSync as readFileSync15, rmSync, writeFileSync as writeFileSync6 } from "node:fs";
+import { existsSync as existsSync17, mkdirSync as mkdirSync7, readFileSync as readFileSync17, rmSync as rmSync3, writeFileSync as writeFileSync8 } from "node:fs";
 import { spawnSync as spawnSync2 } from "node:child_process";
 import { createRequire as createRequire2 } from "node:module";
 import { homedir as homedir3 } from "node:os";
-import { join as join15 } from "node:path";
+import { join as join17 } from "node:path";
 import { pathToFileURL } from "node:url";
 var EMBEDDING_RUNTIME_PACKAGE = "@huggingface/transformers";
 var EMBEDDING_RUNTIME_VERSION = "4.2.0";
@@ -3954,12 +4138,12 @@ var EmbeddingRuntimeMissingError = class extends Error {
   }
 };
 function embeddingRuntimeRoot(options = {}) {
-  return join15(options.home ?? homedir3(), ".dotdotgod", "runtime", "embedding");
+  return join17(options.home ?? homedir3(), ".dotdotgod", "runtime", "embedding");
 }
 function resolvePersistentTransformers(options = {}) {
   const root = embeddingRuntimeRoot(options);
   try {
-    const require3 = createRequire2(join15(root, "package.json"));
+    const require3 = createRequire2(join17(root, "package.json"));
     return require3.resolve(EMBEDDING_RUNTIME_PACKAGE);
   } catch {
     throw new EmbeddingRuntimeMissingError();
@@ -3968,10 +4152,10 @@ function resolvePersistentTransformers(options = {}) {
 function embeddingRuntimeStatus(options = {}) {
   const root = embeddingRuntimeRoot(options);
   try {
-    const require3 = createRequire2(join15(root, "package.json"));
+    const require3 = createRequire2(join17(root, "package.json"));
     require3.resolve(EMBEDDING_RUNTIME_PACKAGE);
-    const packagePath = join15(root, "node_modules", ...EMBEDDING_RUNTIME_PACKAGE.split("/"), "package.json");
-    const version = JSON.parse(readFileSync15(packagePath, "utf8")).version;
+    const packagePath = join17(root, "node_modules", ...EMBEDDING_RUNTIME_PACKAGE.split("/"), "package.json");
+    const version = JSON.parse(readFileSync17(packagePath, "utf8")).version;
     return { ok: true, installed: true, installAvailable: true, package: EMBEDDING_RUNTIME_PACKAGE, requiredVersion: EMBEDDING_RUNTIME_VERSION, packageVersion: version, location: root };
   } catch {
     return { ok: true, installed: false, installAvailable: true, package: EMBEDDING_RUNTIME_PACKAGE, requiredVersion: EMBEDDING_RUNTIME_VERSION, packageVersion: null, location: root };
@@ -3980,10 +4164,10 @@ function embeddingRuntimeStatus(options = {}) {
 function installEmbeddingRuntime(options = {}) {
   if (options.confirm !== true) throw new Error("Embedding runtime installation requires explicit confirmation.");
   const root = embeddingRuntimeRoot(options);
-  const lock = join15(root, ".installing");
-  if (existsSync16(lock)) throw new Error("Embedding runtime installation is already in progress.");
-  mkdirSync5(root, { recursive: true });
-  writeFileSync6(lock, `${process.pid}
+  const lock = join17(root, ".installing");
+  if (existsSync17(lock)) throw new Error("Embedding runtime installation is already in progress.");
+  mkdirSync7(root, { recursive: true });
+  writeFileSync8(lock, `${process.pid}
 `, { flag: "wx" });
   try {
     const spawn = options.spawnImpl ?? spawnSync2;
@@ -3993,7 +4177,7 @@ function installEmbeddingRuntime(options = {}) {
     if (!status.installed) throw new Error("Embedding runtime installation could not be verified.");
     return { ...status, command: "embedding install", modelDownloadPending: true };
   } finally {
-    rmSync(lock, { force: true });
+    rmSync3(lock, { force: true });
   }
 }
 async function importTransformers(options = {}) {
@@ -4101,70 +4285,6 @@ async function resolveEmbedder(root, options = {}) {
   const resolved = options.profile || options.embed ? { profile: options.profile ?? DEFAULT_EMBEDDING_PROFILE, source: options.source ?? "injected", path: null } : resolveEmbeddingProfile(root, options);
   if (!resolved.profile) throw new Error("Embedding is not configured. Set embedding in project or global configuration to use vector search.");
   return { ...resolved, identity: embeddingProfileIdentity(resolved.profile), embed: options.embed ? withInputFormat(options.embed, resolved.profile) : await createEmbedder(resolved.profile) };
-}
-
-// packages/cli/src/query/store.mjs
-import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync17, mkdirSync as mkdirSync6, readFileSync as readFileSync16, renameSync as renameSync2, rmSync as rmSync2, writeFileSync as writeFileSync7 } from "node:fs";
-import { join as join16 } from "node:path";
-var VECTOR_SCHEMA_VERSION = 2;
-var VECTOR_DIMENSIONS = 384;
-function profileFingerprint(identity2) {
-  return createHash6("sha256").update(JSON.stringify(identity2)).digest("hex");
-}
-function isValidNormalizedVectorValues(values, dimensions = VECTOR_DIMENSIONS) {
-  if (!Number.isInteger(dimensions) || dimensions < 1 || !values || values.length % dimensions !== 0) return false;
-  for (let offset = 0; offset < values.length; offset += dimensions) {
-    let squaredNorm = 0;
-    for (let index = 0; index < dimensions; index += 1) {
-      const value = values[offset + index];
-      if (!Number.isFinite(value) || value < -1 || value > 1) return false;
-      squaredNorm += value * value;
-    }
-    if (Math.abs(Math.sqrt(squaredNorm) - 1) > 0.01) return false;
-  }
-  return true;
-}
-function vectorCachePaths(root) {
-  const directory = join16(root, ".dotdotgod", "vectors");
-  return { directory, manifest: join16(directory, "manifest.json"), chunks: join16(directory, "chunks.jsonl"), embeddings: join16(directory, "embeddings.f32") };
-}
-function readVectorCache(root, identity2 = null) {
-  const paths = vectorCachePaths(root);
-  if (!existsSync17(paths.manifest) || !existsSync17(paths.chunks) || !existsSync17(paths.embeddings)) return null;
-  try {
-    const manifest = JSON.parse(readFileSync16(paths.manifest, "utf8"));
-    if (manifest.schemaVersion !== VECTOR_SCHEMA_VERSION || !Number.isInteger(manifest.dimensions) || manifest.dimensions < 1) return null;
-    if (identity2 && manifest.profileFingerprint !== profileFingerprint(identity2)) return null;
-    const chunks = readFileSync16(paths.chunks, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
-    const buffer = readFileSync16(paths.embeddings);
-    if (buffer.byteLength !== chunks.length * manifest.dimensions * 4) return null;
-    const vectors = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4);
-    if (!isValidNormalizedVectorValues(vectors, manifest.dimensions)) return null;
-    return { manifest, chunks, vectors: new Float32Array(vectors) };
-  } catch {
-    return null;
-  }
-}
-function atomicWrite(path, data) {
-  const temporary = `${path}.tmp-${process.pid}`;
-  writeFileSync7(temporary, data);
-  renameSync2(temporary, path);
-}
-function writeVectorCache(root, chunks, vectors, metadata = {}) {
-  const paths = vectorCachePaths(root);
-  const dimensions = metadata.dimensions;
-  if (!Number.isInteger(dimensions) || dimensions < 1) throw new Error("Vector dimensions must be a positive integer.");
-  mkdirSync6(paths.directory, { recursive: true });
-  if (vectors.length !== chunks.length * dimensions) throw new Error("Vector count does not match chunk metadata.");
-  if (!isValidNormalizedVectorValues(vectors, dimensions)) throw new Error("Vectors must contain finite normalized values.");
-  const manifest = { schemaVersion: VECTOR_SCHEMA_VERSION, chunks: chunks.length, generatedAt: (/* @__PURE__ */ new Date()).toISOString(), ...metadata };
-  atomicWrite(paths.chunks, `${chunks.map((chunk) => JSON.stringify(chunk)).join("\n")}
-`);
-  atomicWrite(paths.embeddings, Buffer.from(vectors.buffer, vectors.byteOffset, vectors.byteLength));
-  atomicWrite(paths.manifest, `${JSON.stringify(manifest, null, 2)}
-`);
-  return manifest;
 }
 
 // packages/cli/src/query/hybrid.mjs
@@ -4284,38 +4404,62 @@ async function buildVectorIndex(root, embedOrOptions = {}) {
   const config = readMemoryConfig(root);
   const exclude = config.load?.documentationSummary?.exclude ?? ["docs/plan", "docs/archive"];
   const chunks = options.chunks ?? collectDocumentationChunks(root, exclude, config.documentation?.root ?? "docs");
-  const cached = readVectorCache(root, resolved.identity);
-  const cachedOffsets = new Map((cached?.chunks ?? []).map((chunk, index) => [chunk.fingerprint, index]));
-  const rows = new Array(chunks.length);
-  const missing = [];
-  let reused = 0;
-  chunks.forEach((chunk, index) => {
-    const oldIndex = cachedOffsets.get(chunk.fingerprint);
-    if (oldIndex === void 0 || !cached) missing.push({ chunk, index });
-    else {
-      const d = cached.manifest.dimensions;
-      rows[index] = Array.from(cached.vectors.subarray(oldIndex * d, (oldIndex + 1) * d));
-      reused += 1;
-    }
-  });
-  for (let offset = 0; offset < missing.length; offset += EMBED_BATCH_SIZE) {
-    const batch = missing.slice(offset, offset + EMBED_BATCH_SIZE);
-    const embedded = await resolved.embed(batch.map(({ chunk }) => chunk.passage), "document");
-    embedded.forEach((vector, index) => {
-      rows[batch[index].index] = vector;
+  return vectorCacheSession(root, resolved.identity, async (state, save, diagnostics) => {
+    const selectedFingerprints = new Set(chunks.map((chunk) => chunk.fingerprint));
+    state.pending = state.pending.filter((row) => selectedFingerprints.has(row.chunk.fingerprint));
+    const recovered = new Set(state.pending.map((row) => row.chunk.fingerprint));
+    const cacheRows = [...state.docs, ...state.code, ...state.pending];
+    const cached = state.dimensions ? { chunks: cacheRows.map((row) => row.chunk), vectors: Float32Array.from(cacheRows.flatMap((row) => row.vector)), manifest: { dimensions: state.dimensions } } : null;
+    const cachedOffsets = new Map((cached?.chunks ?? []).map((chunk, index) => [chunk.fingerprint, index]));
+    const rows = new Array(chunks.length);
+    const missing = [];
+    let reused = 0;
+    chunks.forEach((chunk, index) => {
+      const oldIndex = cachedOffsets.get(chunk.fingerprint);
+      if (oldIndex === void 0 || !cached) missing.push({ chunk, index });
+      else {
+        const d = cached.manifest.dimensions;
+        rows[index] = Array.from(cached.vectors.subarray(oldIndex * d, (oldIndex + 1) * d));
+        reused += 1;
+      }
     });
-  }
-  const dimensions = rows[0]?.length ?? cached?.manifest?.dimensions;
-  if (!dimensions) throw new Error("No documentation chunks were available to establish vector dimensions.");
-  if (rows.some((row) => !row || row.length !== dimensions)) throw new Error("Embedder returned inconsistent passage-vector dimensions.");
-  const vectors = new Float32Array(chunks.length * dimensions);
-  rows.forEach((row, index) => {
-    assertVector(row, dimensions, "Passage vector");
-    vectors.set(row, index * dimensions);
+    for (let offset = 0; offset < missing.length; offset += EMBED_BATCH_SIZE) {
+      const batch = missing.slice(offset, offset + EMBED_BATCH_SIZE);
+      const embedded = await resolved.embed(batch.map(({ chunk }) => chunk.passage), "document");
+      if (!Array.isArray(embedded) || embedded.length !== batch.length) throw new Error("Embedder returned an unexpected vector count.");
+      embedded.forEach((vector, index) => {
+        const dimensions2 = state.dimensions ?? vector.length;
+        assertVector(vector, dimensions2, "Passage vector");
+        state.dimensions = dimensions2;
+        rows[batch[index].index] = vector;
+        const { passage, ...chunk } = batch[index].chunk;
+        state.pending.push({ chunk, vector: Array.from(vector) });
+      });
+      save();
+    }
+    const dimensions = rows[0]?.length ?? cached?.manifest?.dimensions;
+    if (!dimensions && chunks.length) throw new Error("No documentation chunks were available to establish vector dimensions.");
+    if (rows.some((row) => !row || row.length !== dimensions)) throw new Error("Embedder returned inconsistent passage-vector dimensions.");
+    const vectors = new Float32Array(chunks.length * dimensions);
+    rows.forEach((row, index) => {
+      assertVector(row, dimensions, "Passage vector");
+      vectors.set(row, index * dimensions);
+    });
+    const storedChunks = chunks.map(({ passage, ...chunk }) => chunk);
+    const refreshed = options.corpora ?? (options.chunks ? [...new Set(chunks.map((chunk) => chunk.kind === "symbol" ? "code" : "docs"))] : ["docs"]);
+    const counters = {};
+    for (const corpus of refreshed) {
+      const positions = chunks.map((chunk, index) => ({ chunk, index })).filter(({ chunk }) => (chunk.kind === "symbol" ? "code" : "docs") === corpus);
+      state[corpus] = positions.map(({ index }) => ({ chunk: storedChunks[index], vector: Array.from(rows[index]) }));
+      counters[corpus] = { chunks: positions.length, embedded: missing.filter(({ chunk }) => (chunk.kind === "symbol" ? "code" : "docs") === corpus).length, recovered: positions.filter(({ chunk }) => recovered.has(chunk.fingerprint)).length };
+      counters[corpus].reused = positions.length - counters[corpus].embedded;
+    }
+    state.pending = [];
+    save();
+    const metadata = { provider: resolved.profile.provider, model: resolved.profile.model, dimensions, profileFingerprint: profileFingerprint(resolved.identity), excluded: exclude, embedded: missing.length, reused, diagnostics: { ...diagnostics, corpora: counters } };
+    const manifest = dimensions ? writeVectorCache(root, storedChunks, vectors, metadata) : { chunks: 0, ...metadata };
+    return { chunks: storedChunks, vectors, manifest, embedding: resolved };
   });
-  const storedChunks = chunks.map(({ passage, ...chunk }) => chunk);
-  const manifest = writeVectorCache(root, storedChunks, vectors, { provider: resolved.profile.provider, model: resolved.profile.model, dimensions, profileFingerprint: profileFingerprint(resolved.identity), excluded: exclude, embedded: missing.length, reused });
-  return { chunks: storedChunks, vectors, manifest, embedding: resolved };
 }
 async function queryProject(root, query, options = {}) {
   const scope = options.scope ?? "all";
@@ -4336,10 +4480,10 @@ async function queryProject(root, query, options = {}) {
     }
     if (!configured && !vectorError && search === "vector") throw new Error("Embedding is not configured. Set embedding in project or global configuration to use vector search.");
   }
-  if (search !== "keyword" && configured && corpus.chunks.length) {
+  if (search !== "keyword" && configured) {
     try {
-      index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks });
-      const [queryVector] = await index.embedding.embed([query], "query");
+      index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks, corpora: scope === "all" ? ["docs", "code"] : [scope] });
+      const [queryVector] = index.chunks.length ? await index.embedding.embed([query], "query") : [];
       vector = index.chunks.map((chunk, position) => ({ ...chunk, vectorScore: cosineScore(queryVector, index.vectors, position * index.manifest.dimensions, index.manifest.dimensions) })).sort((a, b) => b.vectorScore - a.vectorScore || a.id.localeCompare(b.id));
     } catch (error) {
       if (search === "vector") throw error;
@@ -4430,7 +4574,7 @@ import { resolve as resolve14 } from "node:path";
 
 // packages/cli/src/memory/documentation-map.mjs
 import { existsSync as existsSync18, readdirSync as readdirSync4, statSync as statSync7 } from "node:fs";
-import { join as join17, resolve as resolve13 } from "node:path";
+import { join as join18, resolve as resolve13 } from "node:path";
 var SKIPPED_DIRECTORIES2 = /* @__PURE__ */ new Set(["node_modules", "dist", "build", "coverage", ".git", ".dotdotgod"]);
 function node() {
   return { directories: /* @__PURE__ */ new Map(), files: [] };
@@ -4493,7 +4637,7 @@ function discoverMarkdown(root, documentationRoot, exclude) {
   const walk = (relativeDirectory) => {
     let entries;
     try {
-      entries = readdirSync4(join17(root, relativeDirectory), { withFileTypes: true, encoding: "utf8" });
+      entries = readdirSync4(join18(root, relativeDirectory), { withFileTypes: true, encoding: "utf8" });
     } catch {
       return;
     }
@@ -5942,7 +6086,7 @@ function compareImpactItems(seeds) {
 }
 
 // packages/cli/src/impact/references.mjs
-import { readFileSync as readFileSync17, statSync as statSync8 } from "node:fs";
+import { readFileSync as readFileSync18, statSync as statSync8 } from "node:fs";
 import { extname as extname7, resolve as resolve15 } from "node:path";
 var WARNING_LIMIT = 20;
 var edgeKey = (source, target, relation) => `${source}\0${target}\0${relation}`;
@@ -5958,7 +6102,7 @@ function prepareImpactReferences(index, root, changedPaths) {
       const absolute = resolve15(root, path);
       const stat = statSync8(absolute);
       result = { status: "exists" };
-      if (stat.isFile() && extname7(absolute) === ".md") result.anchors = extractAnchors(readFileSync17(absolute, "utf8"));
+      if (stat.isFile() && extname7(absolute) === ".md") result.anchors = extractAnchors(readFileSync18(absolute, "utf8"));
     } catch (error) {
       result = { status: ["ENOENT", "ENOTDIR"].includes(error.code) ? "missing" : "unavailable" };
     }
@@ -6020,7 +6164,7 @@ function prepareImpactReferences(index, root, changedPaths) {
 }
 
 // packages/cli/src/impact/vector-profile.mjs
-import { lstatSync as lstatSync4, readFileSync as readFileSync18, realpathSync as realpathSync3 } from "node:fs";
+import { lstatSync as lstatSync4, readFileSync as readFileSync19, realpathSync as realpathSync3 } from "node:fs";
 import { extname as extname8, relative as relative7, resolve as resolve16, sep } from "node:path";
 var MAX_VECTOR_PROFILE_FILE_BYTES = 64 * 1024;
 var MAX_VECTOR_PROFILE_CHARS = 4e3;
@@ -6079,7 +6223,7 @@ function safeTextPrefix(root, path) {
     if (canonicalPath !== path || unsafeProfilePath(canonicalPath) || !TEXT_EXTENSIONS.has(extname8(canonicalPath).toLowerCase())) return "";
     const stats = lstatSync4(canonicalAbsolute);
     if (!stats.isFile() || stats.isSymbolicLink() || stats.size > MAX_VECTOR_PROFILE_FILE_BYTES) return "";
-    const buffer = readFileSync18(canonicalAbsolute);
+    const buffer = readFileSync19(canonicalAbsolute);
     if (buffer.includes(0)) return "";
     const text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
     return text.slice(0, MAX_VECTOR_PROFILE_CHARS);
@@ -6530,15 +6674,15 @@ function runExpand(argv) {
 }
 
 // packages/cli/src/commands/traceability.mjs
-import { existsSync as existsSync19, readFileSync as readFileSync19, readdirSync as readdirSync5, writeFileSync as writeFileSync8 } from "node:fs";
-import { join as join18, resolve as resolve18 } from "node:path";
+import { existsSync as existsSync19, readFileSync as readFileSync20, readdirSync as readdirSync5, writeFileSync as writeFileSync9 } from "node:fs";
+import { join as join19, resolve as resolve18 } from "node:path";
 function collectDocsMarkdownFiles(root) {
-  const docs = join18(root, "docs");
+  const docs = join19(root, "docs");
   const files = [];
   const walk = (dir) => {
     if (!existsSync19(dir)) return;
     for (const entry of readdirSync5(dir, { withFileTypes: true })) {
-      const path = join18(dir, entry.name);
+      const path = join19(dir, entry.name);
       if (entry.isDirectory()) walk(path);
       else if (entry.isFile() && entry.name.endsWith(".md")) files.push(path);
     }
@@ -6574,7 +6718,7 @@ function runTraceability(argv) {
   const errors = [...config.errors ?? []];
   for (const file of files) {
     if (options.write && errors.length > 0) break;
-    const content = readFileSync19(file, "utf8");
+    const content = readFileSync20(file, "utf8");
     for (const error of validateTraceabilityLinksRegion(content, options.root, file)) errors.push(error);
     const blocks = extractDotdotgodTraceabilityBlocks(content).filter((block) => !block.error);
     if (blocks.length === 0) continue;
@@ -6583,7 +6727,7 @@ function runTraceability(argv) {
       for (const error of result.errors ?? []) errors.push(error);
       continue;
     }
-    if (options.write && result.changed) writeFileSync8(file, result.content);
+    if (options.write && result.changed) writeFileSync9(file, result.content);
     if (result.changed) results.push({ file: rel(options.root, file), changed: true });
   }
   const ok = errors.length === 0 && (!options.check || results.length === 0);
@@ -6604,8 +6748,8 @@ function runTraceability(argv) {
 
 // packages/cli/src/graph-view/server.mjs
 import { createServer } from "node:http";
-import { readFileSync as readFileSync20 } from "node:fs";
-import { dirname as dirname13, extname as extname10, join as join19 } from "node:path";
+import { readFileSync as readFileSync21 } from "node:fs";
+import { dirname as dirname13, extname as extname10, join as join20 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // packages/cli/src/graph-view/payload.mjs
@@ -6717,7 +6861,7 @@ function buildImpactGraphPayload(index, impact) {
 }
 
 // packages/cli/src/graph-view/server.mjs
-var ASSET_ROOT = join19(dirname13(fileURLToPath2(import.meta.url)), "assets");
+var ASSET_ROOT = join20(dirname13(fileURLToPath2(import.meta.url)), "assets");
 var CONTENT_TYPES = { ".css": "text/css; charset=utf-8", ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".map": "application/json; charset=utf-8" };
 var VENDOR_FILES = {
   "/vendor/sigma.js": new URL("../../node_modules/sigma/dist/sigma.min.js", import.meta.url),
@@ -6730,7 +6874,7 @@ function json(response, status, value) {
 }
 function asset(response, file) {
   try {
-    const body = readFileSync20(file);
+    const body = readFileSync21(file);
     response.writeHead(200, { "content-type": CONTENT_TYPES[extname10(file)] ?? "application/octet-stream", "cache-control": "no-store" });
     response.end(body);
   } catch {
@@ -6772,7 +6916,7 @@ async function startImpactGraphServer({ root, changed, host = "127.0.0.1", port 
       response.writeHead(404);
       return response.end("Not found");
     }
-    return asset(response, join19(ASSET_ROOT, relative8));
+    return asset(response, join20(ASSET_ROOT, relative8));
   });
   await new Promise((resolve19, reject) => {
     server.once("error", reject);
