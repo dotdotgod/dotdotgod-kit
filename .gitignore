@@ -10,5 +10,9 @@ docs/archive
 
 .DS_Store
 
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+
 # Generated parser binaries are verified/rebuilt, not tracked.
 packages/*/mcp/parsers/

@@ -22,7 +22,7 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 - `CONFIG_COMMAND.md`: config discovery, JSON output, initialization, invalid-config fallback, and user-facing repair behavior.
 - `CONTEXT_EXECUTION.md`: local execution, FTS5 retrieval, MCP/native adapter, output-safety, and hook-routing behavior.
 - `TOOL_RESPONSES.md`: Markdown presentation, structured programmatic access, migration, and graph-impact exclusions.
-- `PI_CONTEXT_TOOL_SELECTION.md`: native/codemode selection guidance, Markdown text and structured results, public SDK tests, and permission boundaries.
+- `PI_CONTEXT_TOOL_SELECTION.md`: host-managed MCP selection, envelopes and bounded results, public SDK tests, and permission boundaries.
 - `CONTEXT_SEARCH_RECOVERY.md`: failure diagnostic queries, bounded wildcard browsing, and evidence limits.
 - `CONFIG_TEMPLATES.md`: initialization-only built-in/custom templates, global default selection, shadowing, and fallback behavior.
 - `EMBEDDING_CONFIG.md`: global/project embedding profiles, local and remote providers, credentials, consent, and cache invalidation.

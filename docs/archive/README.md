@@ -17,7 +17,14 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ## Index
 
+### Local Investigations
+
+- `report/hermes-session-investigation/`: installed-host session propagation findings, including private local paths.
+- `report/benchmark-recovery/`: benchmark progress snapshot and local session recovery utility; not executed during cleanup.
+
 ### Completed plans
+
+- `plan/model-specific-embedding-input/`: implemented configurable query/document prefixes, shared role-aware formatting, format-aware cache identity and passing workspace/docs verification; global profile rollout remains manual.
 
 - `plan/remove-session-access-checks/`: removed host-session admission checks, retained optional routing/search state, and passed package/workspace/docs verification plus independent review; live Desktop smoke remains unverified.
 

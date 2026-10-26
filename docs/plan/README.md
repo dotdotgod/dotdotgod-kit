@@ -26,6 +26,18 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 
 ## Active Plans
 
+- `vector-cache-scope-preservation/` — ready-to-archive: scope-safe snapshots, batch recovery, project locking and diagnostics implemented; verification passed and release 0.6.7 committed.
+
+
+
+- `remove-path-access-restrictions/` — paused: remove dotdotgod-owned filesystem-area access gates across adapters/CLI; scope confirmed, awaiting execution approval.
+
+- `hermes-desktop-session-binding/` — paused: verify Desktop approval/session contracts before implementing repository binding and nested tool identity propagation.
+
+- `markdown-answer-smoke/` — active: live Markdown answer submission smoke test only; no source changes or execution approval.
+
+
+
 
 
 
