@@ -130,7 +130,7 @@ register('impact_status', 'Read this host session\'s advisory pending impact pat
   limit: z.number().int().min(1).max(50).optional(),
 }, (input) => new ImpactState(root, currentSession()).status(input.limit), { readOnlyHint: true });
 register('project_initialize', 'Initialize project memory; dry-run is default and writes require explicit confirmation.', {
-  root: z.string().optional(), dryRun: z.boolean().optional(), confirmWrite: z.boolean().optional(), projectName: z.string().optional(), template: z.string().optional(), dotdotSetting: z.boolean().optional(),
+  root: z.string().optional(), dryRun: z.boolean().optional(), confirmWrite: z.boolean().optional(), projectName: z.string().optional(), template: z.string().optional(),
 }, (input) => projectInitialize(projectInput(input)), { destructiveHint: true });
 
 export async function startServer() {

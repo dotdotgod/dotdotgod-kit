@@ -44,7 +44,7 @@ Pi runtime code under `packages/pi/extensions/**` is hand-authored and owns comm
 
 The initializer skill describes a safe setup workflow and delegates deterministic file creation to a bundled POSIX shell script.
 
-The script owns scaffold generation, overwrite policy, dry-run reporting, and optional dotdot setting generation.
+The script owns template-specific scaffold generation, overwrite policy, and dry-run reporting.
 
 ### `document-clarify` Skill and Plan Clarifier Subagent
 

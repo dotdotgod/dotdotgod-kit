@@ -108,6 +108,5 @@ export async function projectInitialize(input) {
   if (dryRun) args.push('--dry-run');
   if (input.projectName) args.push('--project-name', input.projectName);
   if (input.template) args.push('--template', input.template);
-  if (input.dotdotSetting) args.push('--dotdot-setting');
   return await cliJson(args, root);
 }

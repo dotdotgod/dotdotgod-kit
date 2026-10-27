@@ -360,11 +360,8 @@ describe('dotdotgod CLI e2e', () => {
     assert.deepEqual(JSON.parse(readFileSync(join(policyRoot, 'dotdotgod.config.json'), 'utf8')), builtInTemplateData('policy'));
 
     const dotdotRoot = mkdtempSync(join(tmpdir(), 'dotdotgod-init-dotdot-'));
-    json(run(['init', dotdotRoot, '--dotdot-setting', '--json']));
-    assert.equal(existsSync(join(dotdotRoot, 'docs/arch/DOCS_STRUCTURE.md')), true);
-    assert.equal(existsSync(join(dotdotRoot, 'docs/arch/CODE_CONVENTIONS.md')), true);
-    assert.match(readFileSync(join(dotdotRoot, 'AGENTS.md'), 'utf8'), /DOCS_STRUCTURE\.md/);
-    assert.match(readFileSync(join(dotdotRoot, 'AGENTS.md'), 'utf8'), /CODE_CONVENTIONS\.md/);
+    assert.equal(run(['init', dotdotRoot, '--dotdot-setting', '--json']).status, 2);
+    assert.equal(existsSync(join(dotdotRoot, 'AGENTS.md')), false);
 
     const rcRoot = join(parent, 'rc-project');
     mkdirSync(rcRoot, { recursive: true });
@@ -373,6 +370,32 @@ describe('dotdotgod CLI e2e', () => {
     assert.equal(rcInitialized.actions.find((item) => item.path.endsWith('/dotdotgod.config.json')).status, 'created');
     assert.equal(existsSync(join(rcRoot, 'dotdotgod.config.json')), true);
     assert.equal(existsSync(join(rcRoot, '.dotdotgodrc.json')), true);
+  });
+
+  it('creates engineering areas only for software and research across CLI and POSIX', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'dotdotgod-template-areas-'));
+    const script = resolve('../shared/initializer/scripts/init_project.sh');
+    for (const name of ['software', 'research', 'case-and-evidence', 'publication', 'portfolio', 'policy']) {
+      const cliRoot = join(parent, `${name}-cli`);
+      const shellRoot = join(parent, `${name}-shell`);
+      const dryRun = json(run(['init', cliRoot, '--template', name, '--documentation-root', 'knowledge', '--dry-run', '--json']));
+      json(run(['init', cliRoot, '--template', name, '--documentation-root', 'knowledge', '--json']));
+      const shell = spawnSync('sh', [script, shellRoot, '--template', name, '--documentation-root', 'knowledge'], { encoding: 'utf8' });
+      assert.equal(shell.status, 0, shell.stderr);
+      for (const area of ['spec', 'arch', 'test']) {
+        const expected = ['software', 'research'].includes(name);
+        const path = `knowledge/${area}/README.md`;
+        assert.equal(existsSync(join(cliRoot, path)), expected, `${name}: CLI ${area}`);
+        assert.equal(existsSync(join(shellRoot, path)), expected, `${name}: POSIX ${area}`);
+        assert.equal(dryRun.actions.some(item => item.path.endsWith(`/${path}`)), expected);
+        for (const root of [cliRoot, shellRoot]) {
+          assert.equal(readFileSync(join(root, 'AGENTS.md'), 'utf8').includes(`knowledge/${area}/`), expected);
+          assert.equal(readFileSync(join(root, 'knowledge/README.md'), 'utf8').includes(`\`${area}/\``), expected);
+        }
+      }
+      for (const file of ['DOCS_STRUCTURE.md', 'CODE_CONVENTIONS.md']) assert.equal(existsSync(join(cliRoot, 'knowledge/arch', file)), false);
+    }
+    assert.equal(spawnSync('sh', [script, join(parent, 'removed'), '--dotdot-setting']).status, 2);
   });
 
   it('keeps the POSIX initializer config aligned with CLI defaults', () => {
@@ -451,6 +474,15 @@ describe('dotdotgod CLI e2e', () => {
     const customInit = json(run(['config', 'init', customRoot, '--template', 'software', '--json'], { env }));
     assert.deepEqual(customInit.template, { name: 'software', source: 'custom', selectedBy: 'explicit' });
     assert.equal(JSON.parse(readFileSync(join(customRoot, 'dotdotgod.config.json'), 'utf8')).memory.areas[0].label, 'Custom Software Rules');
+
+    const customScaffoldRoot = join(home, 'custom-scaffold');
+    const customScaffold = json(run(['init', customScaffoldRoot, '--template', 'software', '--json'], { env }));
+    assert.equal(customScaffold.template.source, 'custom');
+    for (const area of ['spec', 'arch', 'test']) {
+      assert.equal(existsSync(join(customScaffoldRoot, 'docs', area)), false);
+      assert.equal(readFileSync(join(customScaffoldRoot, 'AGENTS.md'), 'utf8').includes(`docs/${area}/`), false);
+    }
+    assert.equal(existsSync(join(customScaffoldRoot, 'docs/plan/README.md')), true);
 
     writeFileSync(join(globalDir, 'templates/policy.json'), '{bad json\n');
     const invalidRoot = createFixture();

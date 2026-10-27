@@ -45,6 +45,8 @@ The CLI provides:
 
 Each bundled template also owns an explicit initialization scaffold for its directory-based domain areas. Initialization combines that scaffold with the common agent, docs, plan, and archive baseline. The scaffold is maintained explicitly rather than inferred from memory-area globs, because configured paths may identify files, optional areas, generated artifacts, or non-document data.
 
+Only `software` and `research` create `docs/spec/`, `docs/arch/`, and `docs/test/`: software uses behavior, architecture, and testing contracts; research uses research specifications, design rationale, and evaluation methods. The other four templates use their domain areas instead. Generated agent and docs maps list the selected bundled template's domain areas. Custom templates receive no engineering-area scaffold. Existing files and directories are preserved, not migrated or deleted.
+
 Custom templates affect config creation only and receive the common scaffold. The CLI does not interpret custom path patterns as filesystem creation instructions.
 
 ## Selection and Shadowing

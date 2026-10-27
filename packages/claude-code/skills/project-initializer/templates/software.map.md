@@ -1,0 +1,3 @@
+- `docs/spec/`: Use this area for behavior specs, API contracts, and requirements. Follow `dotdotgod validate` traceability guidance for applicable documents.
+- `docs/arch/`: Use this area for architecture decisions, design rationale, conventions, and integration boundaries.
+- `docs/test/`: Use this area for test strategy, evaluation methods, regression cases, and verification records.

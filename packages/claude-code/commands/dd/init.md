@@ -1,6 +1,6 @@
 ---
 description: Initialize dotdotgod project memory and config
-argument-hint: [project-root] [--dotdot-setting] [--claude-plans] [--dry-run]
+argument-hint: [project-root] [--claude-plans] [--dry-run]
 allowed-tools: [Read, Glob, Grep, Bash, Write, Edit]
 ---
 

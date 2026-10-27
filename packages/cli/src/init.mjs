@@ -14,11 +14,10 @@ function formatAction(item) {
 }
 
 function parseInitOptions(argv) {
-  const options = { root: null, projectName: '', dotdotSetting: false, dryRun: false, json: false, template: null, documentationRoot: 'docs', documentationRootExplicit: false };
+  const options = { root: null, projectName: '', dryRun: false, json: false, template: null, documentationRoot: 'docs', documentationRootExplicit: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--json') options.json = true;
-    else if (arg === '--dotdot-setting') options.dotdotSetting = true;
     else if (arg === '--dry-run') options.dryRun = true;
     else if (arg === '--claude-plans') options.claudePlans = true;
     else if (arg === '--project-name' || arg === '--template' || arg === '--documentation-root') {
@@ -100,8 +99,7 @@ function ensureGitignoreEntry(options, entry, actions) {
   actions.push(action(existed ? 'updated' : 'created', target, { add: entry }));
 }
 
-function agentContent(projectName, dotdotSetting) {
-  const dotdotAgentRule = dotdotSetting ? '\n- Follow the project documentation structure in `docs/arch/DOCS_STRUCTURE.md` and code conventions in `docs/arch/CODE_CONVENTIONS.md`.' : '';
+function agentContent(projectName, domainMap) {
   return `# AGENTS.md
 
 Canonical instructions for AI coding agents working in this repository.
@@ -119,7 +117,7 @@ Canonical instructions for AI coding agents working in this repository.
 - Preserve user edits and unrelated dirty worktree changes.
 - Prefer existing local patterns over introducing new abstractions.
 - Update docs when behavior, architecture, or test strategy changes.
-- When using the dotdotgod CLI, run \`dotdotgod validate\` after docs changes and follow its traceability guidance for behavior specs.${dotdotAgentRule}
+- When using the dotdotgod CLI, run \`dotdotgod validate\` after docs changes and follow its traceability guidance.
 
 ## dotdotgod
 
@@ -144,15 +142,12 @@ TODO
 
 ## Documentation Map
 
-- \`docs/spec/\`: product behavior, API contracts, user-facing requirements.
-- \`docs/test/\`: test strategy, regression cases, manual verification notes.
-- \`docs/arch/\`: architecture decisions, code conventions, module boundaries, data flow, infrastructure/runtime dependencies, integration boundaries, and migration design.
+${domainMap}
 - \`docs/\`: all directories use kebab-case; all markdown file names use UPPER_SNAKE_CASE, including \`README.md\`.
 - \`docs/\`: prefer keeping individual markdown files under the configured markdown validation budgets (default 200 lines and 10,000 characters); split larger docs into focused UPPER_SNAKE_CASE files and keep \`README.md\` as the index/overview unless a narrow size-check exception is configured.
 - \`docs/\`: when adding, renaming, splitting, moving, or archiving docs, update the nearest relevant \`README.md\` index/table of contents in the same change.
 - \`docs/\`: each docs subdirectory \`README.md\` acts as the local table of contents; list important files, task directories, status, and a one-line purpose for each entry.
 - \`docs/\`: start small with a single focused markdown file; when one domain grows into multiple docs, promote it to \`docs/<area>/<domain>/README.md\` plus related UPPER_SNAKE_CASE files in that directory.
-- \`docs/arch/\`: code conventions may start as \`CODE_CONVENTIONS.md\`; when they grow across multiple topics, use \`docs/arch/conventions/README.md\` as the index with supporting UPPER_SNAKE_CASE files.
 - \`docs/plan/\`: local active implementation plans. Create one kebab-case directory per task (\`docs/plan/<task-slug>/\`), keep the task overview/index in that directory's \`README.md\`, and add supporting UPPER_SNAKE_CASE plan files alongside it. Ignored by git by default.
 - \`docs/archive/\`: local completed plans, temporary reports, historical notes, payload captures. Move completed plan task directories to \`docs/archive/plan/<task-slug>/\`; put temporary reports and investigations under \`docs/archive/report/<report-slug>/\`. Ignored by git by default.
 
@@ -164,7 +159,7 @@ TODO
 Keep long-lived instructions here so agent-specific files do not drift.`;
 }
 
-function docsReadmeContent() {
+function docsReadmeContent(domainMap) {
   return `# Docs
 
 This directory keeps project knowledge close to the code.
@@ -183,115 +178,21 @@ This directory keeps project knowledge close to the code.
 
 ## Map
 
-- \`spec/\`: product behavior, API contracts, user-facing requirements.
-- \`test/\`: test strategy, regression cases, manual verification notes.
-- \`arch/\`: architecture decisions, code conventions, module boundaries, data flow, infrastructure/runtime dependencies, integration boundaries, and migration design.
+${domainMap.replaceAll('`docs/', '`')}
 - \`plan/\`: local active implementation plans. Create one kebab-case directory per task (\`plan/<task-slug>/\`), keep the task overview/index in that directory's \`README.md\`, and add supporting UPPER_SNAKE_CASE plan files alongside it. Ignored by git by default.
 - \`archive/\`: local completed plans, temporary reports, historical notes, payload captures. Move completed plan task directories to \`archive/plan/<task-slug>/\`; put temporary reports and investigations under \`archive/report/<report-slug>/\`. Ignored by git by default.`;
 }
 
-function docsStructureContent() {
-  return `# Docs Structure
-
-Long-term documentation structure for this project.
-
-## Top-Level Areas
-
-- \`docs/spec/\`: product behavior, API contracts, user-facing requirements, and feature contracts.
-- \`docs/test/\`: test strategy, coverage notes, regression cases, and manual verification records.
-- \`docs/arch/\`: architecture decisions, code conventions, module boundaries, data flow, infrastructure/runtime dependencies, integration boundaries, and migration design.
-- \`docs/plan/\`: local active implementation plans.
-- \`docs/archive/\`: local completed plans, historical notes, payload captures, and investigation notes.
-
-## Naming
-
-- Directories under \`docs/\` use kebab-case.
-- Markdown files under \`docs/\` use UPPER_SNAKE_CASE.
-- \`README.md\` is the only mixed-case markdown filename exception and is required for index/overview files.
-
-## File Size Guideline
-
-Prefer keeping individual markdown files under 200 lines and 10,000 characters. When either guideline is exceeded, split the document into focused UPPER_SNAKE_CASE files and keep \`README.md\` as the index/overview. Configured validation exceptions should stay narrow and intentional.
-
-## README Indexes
-
-Each docs subdirectory \`README.md\` acts as the local table of contents. It should list important files, task directories, status, and a one-line purpose for each entry.
-
-When adding, renaming, splitting, moving, or archiving docs, update the nearest relevant \`README.md\` in the same change.
-
-## Domain Directory Promotion
-
-Start small with one focused markdown file. When one domain grows into multiple docs, promote it to \`docs/<area>/<domain>/README.md\` and place related UPPER_SNAKE_CASE markdown files in that directory.
-
-## Spec Writing Contract
-
-Behavior specs describe the current product contract: supported commands, API shapes, user-visible behavior, defaults, constraints, and validation outcomes.
-
-Specs should not describe how behavior changed over time. Rewrite historical-change wording into direct current-state rules. Historical context, migration rationale, future extension ideas, and completed-plan notes belong in \`docs/arch/\`, \`docs/test/\`, \`docs/archive/\`, or active \`docs/plan/\` files rather than behavior specs. If compatibility behavior is still user-visible, keep it in the spec but phrase it as a current supported or unsupported rule.
-
-Config/action terms such as \`remove\`, \`exclude\`, \`fallback\`, and \`replacement semantics\` are allowed when they name current behavior precisely.
-
-## Traceability Blocks
-
-Behavior specs may include fenced \`json dotdotgod\` traceability blocks as the final section to connect specs to source, tests, related docs, and verification commands. The dotdotgod CLI owns the schema and validation behavior.
-
-## Plan and Archive Directories
-
-Active task plans use \`docs/plan/<task-slug>/README.md\`. Completed or superseded plan task directories move to \`docs/archive/plan/<task-slug>/\`. Temporary investigations, reports, payload captures, and historical notes move to \`docs/archive/report/<report-slug>/\`.
-
-\`docs/plan\` and \`docs/archive\` are ignored by git by default.`;
-}
-
-function codeConventionsContent() {
-  return `# Code Conventions
-
-Dotdot code conventions for keeping implementation simple and maintainable.
-
-## Abstraction Boundaries
-
-- Do not introduce unnecessary abstractions.
-- Do not abstract code that is not reused.
-- Do not abstract reused code when the reused behavior is likely to split into separate features or flows later.
-- Prefer local, explicit code until a stable reuse pattern appears.
-
-## Source File Size
-
-- Keep source files small enough to read in one focused pass by humans and coding agents.
-- If code grows beyond 150 lines, consider splitting or extracting focused units even when it is not reused.
-- Review files approaching 250 lines for focused extraction by responsibility.
-- Split by behavior or responsibility, not by arbitrary layers.
-
-## Dotdotgod Impact Hotspots
-
-- Treat repeated \`dotdotgod graph impact\` results that collapse onto one large file as a design signal, not as normal precision.
-- Dotdotgod impact reveals mixed-responsibility hotspots; it does not replace focused module boundaries.
-- When unrelated changes keep pointing to the same source file, split the file by behavior so impact results, tests, and docs can map to narrower responsibilities.
-
-## Extraction and Testability
-
-- Prefer extracting pure helpers when behavior can be tested without runtime dependencies.
-- Keep runtime integration explicit and local until reuse is stable.
-- Put testable logic in focused modules before adding broad framework abstractions.
-- Preserve plain-text readability: avoid dense clever code, hidden control flow, and large mixed-responsibility files.`;
-}
-
-function initFiles(options) {
-  const archReadmeExtra = options.dotdotSetting ? '\n\n## Index\n\n- `DOCS_STRUCTURE.md`: documentation layout, naming, README index, spec current-state writing contract, and domain directory promotion rules.\n- `CODE_CONVENTIONS.md`: dotdot code conventions, including abstraction boundaries, source file size guidance, impact hotspot handling, and extraction/testability rules. If conventions grow across multiple topics, promote them to `conventions/README.md` with supporting UPPER_SNAKE_CASE files.' : '';
+function initFiles(options, scaffold) {
+  const domainMap = scaffold.filter(item => item.type === 'file').map(item => `- \`${item.path.replace(/README\.md$/, '')}\`: ${item.content.split('\n\n')[1]}`).join('\n');
   const files = [
-    ['AGENTS.md', agentContent(options.projectName, options.dotdotSetting)],
+    ['AGENTS.md', agentContent(options.projectName, domainMap)],
     ['CLAUDE.md', '# CLAUDE.md\n\n@AGENTS.md'],
     ['CODEX.md', '# CODEX.md\n\nSee [AGENTS.md](./AGENTS.md).'],
-    ['docs/README.md', docsReadmeContent()],
-    ['docs/spec/README.md', '# Specs\n\nUse this area for behavior specs, API contracts, and product requirements.\n\nFor projects using the dotdotgod CLI, behavior specs may be required by `dotdotgod validate` to include fenced `json dotdotgod` traceability blocks as the final section. The CLI owns the schema and prints property-level repair guidance when validation fails.'],
-    ['docs/test/README.md', '# Tests\n\nUse this area for test strategy, coverage notes, regression cases, and manual verification records.'],
-    ['docs/arch/README.md', `# Architecture\n\nUse this area for architecture decisions, code conventions, module boundaries, data flow notes, infrastructure/runtime dependencies, integration boundaries, and migration design.${archReadmeExtra}`],
+    ['docs/README.md', docsReadmeContent(domainMap)],
     ['docs/plan/README.md', '# Plans\n\nUse this area for active implementation plans.\n\n## Naming\n\n- Task directories use kebab-case: `docs/plan/<task-slug>/`.\n- Markdown file names use UPPER_SNAKE_CASE: `README.md`, `RESEARCH_NOTES.md`, `VERIFICATION.md`.\n\n## Structure\n\n- Create one directory per task: `docs/plan/<task-slug>/`.\n- Put the task overview, index, scope, status, and main plan in `docs/plan/<task-slug>/README.md`.\n- Add supporting research, checklists, payload captures, or verification notes as additional UPPER_SNAKE_CASE markdown files in the same task directory.\n- Move completed or superseded task directories to `docs/archive/plan/<task-slug>/`.\n\nThis directory is local-only and ignored by git by default.'],
     ['docs/archive/README.md', '# Archive\n\nUse this area for local completed plans, temporary reports, historical notes, payload captures, and investigation notes.\n\n## Naming\n\n- Archived plan task directories preserve their kebab-case task slug.\n- Archived report directories use a focused kebab-case report slug.\n- Markdown file names use UPPER_SNAKE_CASE, including `README.md`.\n\n## Structure\n\n- Move completed plan task directories from `docs/plan/<task-slug>/` to `docs/archive/plan/<task-slug>/`.\n- Put temporary investigations, reports, payload captures, and historical notes under `docs/archive/report/<report-slug>/`.\n- Preserve each archive directory\'s `README.md` overview/index and supporting UPPER_SNAKE_CASE markdown files.\n- Additional archive categories can be added later as focused kebab-case subdirectories when needed.\n\nThis directory is local-only and ignored by git by default.'],
   ];
-  if (options.dotdotSetting) {
-    files.push(['docs/arch/DOCS_STRUCTURE.md', docsStructureContent()]);
-    files.push(['docs/arch/CODE_CONVENTIONS.md', codeConventionsContent()]);
-  }
   return files.map(([path, content]) => [path.replace(/^docs(?=\/|$)/, options.documentationRoot), content.replaceAll('docs/', `${options.documentationRoot}/`).replaceAll('`docs`', `\`${options.documentationRoot}\``)]);
 }
 
@@ -334,7 +235,8 @@ export function runInit(argv, usage) {
   if (template?.source === 'bundled') { const data = builtInTemplateData(template.name, { documentationRoot: options.documentationRoot }); template = { ...template, data, text: `${JSON.stringify(data, null, 2)}\n` }; }
 
   const actions = [];
-  for (const [relativePath, content] of initFiles(options)) writeInitFile(options, relativePath, content, actions);
+  const scaffold = template?.source === 'bundled' ? builtInTemplateScaffold(template.name) : [];
+  for (const [relativePath, content] of initFiles(options, scaffold)) writeInitFile(options, relativePath, content, actions);
   if (template?.source === 'bundled') {
     for (const item of builtInTemplateScaffold(template.name, { documentationRoot: options.documentationRoot }) ?? []) {
       if (item.type === 'directory') ensureInitDirectory(options, item.path, actions);
@@ -351,7 +253,7 @@ export function runInit(argv, usage) {
     catch (error) { initError(options, 'CLAUDE_SETTINGS_CHANGED', error.message); }
   }
 
-  const payload = { ok: true, command: 'init', root: options.root, projectName: options.projectName, documentationRoot: options.documentationRoot, dryRun: options.dryRun, dotdotSetting: options.dotdotSetting, template: template ? { name: template.name, source: template.source, selectedBy: template.selectedBy } : null, actions };
+  const payload = { ok: true, command: 'init', root: options.root, projectName: options.projectName, documentationRoot: options.documentationRoot, dryRun: options.dryRun, template: template ? { name: template.name, source: template.source, selectedBy: template.selectedBy } : null, actions };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else {
     if (template) console.log(`template      ${template.source}:${template.name} (${template.selectedBy})`);

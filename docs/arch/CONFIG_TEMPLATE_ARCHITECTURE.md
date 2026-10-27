@@ -17,6 +17,8 @@ The template module owns:
 
 Built-in domain templates reuse the public project-config schema. The registry also owns explicit scaffold metadata for directory-based domain areas. Scaffold metadata is separate from memory-area globs so initialization does not accidentally turn file paths, optional areas, or artifact patterns into documentation directories. Generated adapter resources come from the same registry.
 
+Engineering indexes (`spec`, `arch`, and `test`) are explicit scaffold entries for software and research only. The common baseline contains agent entrypoints, the documentation index, and local plan/archive maps. CLI maps and packaged POSIX domain-map resources derive from the registry's scaffold metadata, not arbitrary configured globs. Convention-document generation is not part of initialization.
+
 ## Initialization Flow
 
 1. `init` or `config init` receives an optional template name.

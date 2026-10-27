@@ -9,13 +9,13 @@ The `dotdotgod init` CLI command and bundled POSIX fallback produce the same bas
 ## CLI Contract
 
 ```bash
-dotdotgod init <project-root> [--project-name NAME] [--template NAME] [--dotdot-setting] [--claude-plans] [--dry-run] [--json]
+dotdotgod init <project-root> [--project-name NAME] [--template NAME] [--claude-plans] [--dry-run] [--json]
 ```
 
 Fallback script contract, used when `dotdotgod` is unavailable or not executable:
 
 ```bash
-sh skills/project-initializer/scripts/init_project.sh <project-root> [--project-name NAME] [--template NAME] [--dotdot-setting] [--dry-run]
+sh skills/project-initializer/scripts/init_project.sh <project-root> [--project-name NAME] [--template NAME] [--dry-run]
 ```
 
 ## Generated Scaffold
@@ -27,13 +27,12 @@ The initializer creates a common scaffold when files are missing:
 - `CODEX.md`
 - `dotdotgod.config.json`
 - `docs/README.md`
-- `docs/spec/README.md`
-- `docs/test/README.md`
-- `docs/arch/README.md`
 - A README directly under `docs/plan/`
 - A README directly under `docs/archive/`
 
 For bundled templates, it also materializes the template's maintained domain areas with focused `README.md` indexes. The `research` template adds `docs/research/README.md`, `docs/record/README.md`, `docs/report/README.md`, and the generated-artifact directory `outputs/`. Other bundled templates likewise create indexes for their directory-based domain areas. File-specific paths are not synthesized, and non-document artifact roots are created as empty runtime directories.
+
+`docs/spec/`, `docs/arch/`, and `docs/test/` belong only to the `software` and `research` bundled scaffolds, not the common baseline. Other bundled templates and custom templates do not create those areas. Generated documentation maps follow the selected bundled scaffold. Initialization does not generate optional documentation-structure or code-convention documents.
 
 Custom templates create the common scaffold and project config only. Their arbitrary path globs are not interpreted as writable filesystem instructions.
 
@@ -96,10 +95,6 @@ Generated docs follow these conventions:
 - When one domain grows into multiple docs, promote it to `docs/<area>/<domain>/README.md` plus related UPPER_SNAKE_CASE files in that directory.
 - Completed plan task directories move from `docs/plan/<task-slug>/` to `docs/archive/plan/<task-slug>/`.
 - Temporary investigations, reports, payload captures, and historical notes live under `docs/archive/report/<report-slug>/`.
-
-## Dotdot Setting
-
-`--dotdot-setting` adds the optional dotdot documentation-structure and code-convention scaffold. See [`DOTDOT_SETTING.md`](./DOTDOT_SETTING.md).
 
 ## Non-Goals
 

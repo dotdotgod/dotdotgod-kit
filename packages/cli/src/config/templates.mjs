@@ -7,9 +7,16 @@ import { isKebabCase } from '../docs/markdown.mjs';
 export const DEFAULT_TEMPLATE_NAME = 'software';
 export const BUILT_IN_TEMPLATE_NAMES = ['software', 'research', 'case-and-evidence', 'publication', 'portfolio', 'policy'];
 
+const engineeringScaffold = [
+  ['docs/spec/README.md', 'Specs', 'Use this area for behavior specs, API contracts, and requirements. Follow `dotdotgod validate` traceability guidance for applicable documents.'],
+  ['docs/arch/README.md', 'Architecture', 'Use this area for architecture decisions, design rationale, conventions, and integration boundaries.'],
+  ['docs/test/README.md', 'Verification', 'Use this area for test strategy, evaluation methods, regression cases, and verification records.'],
+];
+
 const BUILT_IN_TEMPLATE_SCAFFOLDS = {
-  software: [],
+  software: engineeringScaffold,
   research: [
+    ...engineeringScaffold,
     ['docs/research/README.md', 'Research', 'Use this area for research notes, sources, and findings.'],
     ['docs/record/README.md', 'Research Records', 'Use this area for dated measurements, experiments, and execution records.'],
     ['docs/report/README.md', 'Reports', 'Use this area for research diagnoses, analyses, results, and performance reports.'],

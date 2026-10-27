@@ -814,9 +814,6 @@
         "template": {
           "type": "string"
         },
-        "dotdotSetting": {
-          "type": "boolean"
-        },
         "contextSessionId": {
           "type": "string",
           "description": "Host session identity; adapters supply this for shared MCP connections."

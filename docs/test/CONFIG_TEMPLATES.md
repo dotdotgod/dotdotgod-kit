@@ -17,6 +17,8 @@
 - bundled templates materialize their explicit domain scaffold through both CLI and POSIX initialization
 - research initialization creates `docs/research/README.md`, `docs/record/README.md`, `docs/report/README.md`, and `outputs/`
 - dry-run action output includes template-specific files and directories
+- CLI and POSIX initialization create engineering areas only for software and research, including alternate documentation roots and matching generated maps
+- removed initializer convention options are rejected without creating scaffold files
 
 Tests use an isolated temporary home and never touch the developer's real `~/.dotdotgod`.
 

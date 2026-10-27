@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BUILT_IN_TEMPLATE_NAMES, builtInTemplateText } from "../packages/cli/src/config/templates.mjs";
+import { BUILT_IN_TEMPLATE_NAMES, builtInTemplateText, builtInTemplateScaffold } from "../packages/cli/src/config/templates.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const check = process.argv.includes("--check");
@@ -48,7 +48,10 @@ const initBody = read("packages/shared/workflows/init.md");
 const impactBody = read("packages/shared/workflows/impact.md");
 const docClarifyBody = read("packages/shared/workflows/doc-clarify.md");
 
-for (const name of BUILT_IN_TEMPLATE_NAMES) write(`packages/shared/initializer/templates/${name}.json`, builtInTemplateText(name));
+for (const name of BUILT_IN_TEMPLATE_NAMES) {
+  write(`packages/shared/initializer/templates/${name}.json`, builtInTemplateText(name));
+  write(`packages/shared/initializer/templates/${name}.map.md`, builtInTemplateScaffold(name).filter(item => item.type === 'file').map(item => `- \`${item.path.replace(/README\.md$/, '')}\`: ${item.content.split('\n\n')[1]}`).join('\n'));
+}
 write("packages/shared/initializer/templates/dotdotgod.config.json", builtInTemplateText("software"));
 
 const initCommands = {
@@ -155,7 +158,7 @@ write(
 write(
   "packages/claude-code/commands/dd/init.md",
   command(
-    `description: Initialize dotdotgod project memory and config\nargument-hint: [project-root] [--dotdot-setting] [--claude-plans] [--dry-run]\nallowed-tools: [Read, Glob, Grep, Bash, Write, Edit]`,
+    `description: Initialize dotdotgod project memory and config\nargument-hint: [project-root] [--claude-plans] [--dry-run]\nallowed-tools: [Read, Glob, Grep, Bash, Write, Edit]`,
     "/dd:init - Initialize Project Memory",
     "Initialize or normalize a repository with dotdotgod project memory and the complete default config.\n\nArguments: `$ARGUMENTS`",
     renderInitBody("claude"),

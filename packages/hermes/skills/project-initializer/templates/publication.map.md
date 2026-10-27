@@ -1,0 +1,4 @@
+- `docs/outline/`: Use this area for publication structure and outlines.
+- `docs/chapters/`: Use this area for chapter plans and direction.
+- `docs/claims/`: Use this area for maintained claims and their support.
+- `docs/research/`: Use this area for research sources and supporting notes.

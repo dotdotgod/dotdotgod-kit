@@ -23310,7 +23310,6 @@ async function projectInitialize(input) {
   if (dryRun) args.push("--dry-run");
   if (input.projectName) args.push("--project-name", input.projectName);
   if (input.template) args.push("--template", input.template);
-  if (input.dotdotSetting) args.push("--dotdot-setting");
   return await cliJson(args, root2);
 }
 
@@ -23702,8 +23701,7 @@ register("project_initialize", "Initialize project memory; dry-run is default an
   dryRun: external_exports.boolean().optional(),
   confirmWrite: external_exports.boolean().optional(),
   projectName: external_exports.string().optional(),
-  template: external_exports.string().optional(),
-  dotdotSetting: external_exports.boolean().optional()
+  template: external_exports.string().optional()
 }, (input) => projectInitialize(projectInput(input)), { destructiveHint: true });
 async function startServer() {
   await server.connect(new StdioServerTransport());
