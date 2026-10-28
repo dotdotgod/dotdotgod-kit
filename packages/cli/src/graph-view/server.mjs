@@ -1,18 +1,13 @@
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
-import { dirname, extname, join } from 'node:path';
+import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildVectorImpactOverlay } from '../impact/vector-overlay.mjs';
-import { buildImpactReport } from '../impact/report.mjs';
-import { canonicalizeChangedPath } from '../impact/vector-profile.mjs';
-import { readFreshIndex } from '../index/cache.mjs';
-import { buildImpactGraphPayload } from './payload.mjs';
+import { exportTraceability } from './traceability.mjs';
+import nodeStyle from './node-style.cjs';
 
 const ASSET_ROOT = join(dirname(fileURLToPath(import.meta.url)), 'assets');
-const CONTENT_TYPES = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.map': 'application/json; charset=utf-8' };
+const CONTENT_TYPES = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.cjs': 'text/javascript; charset=utf-8', '.map': 'application/json; charset=utf-8' };
 const VENDOR_FILES = {
-  '/vendor/sigma.js': new URL('../../node_modules/sigma/dist/sigma.min.js', import.meta.url),
-  '/vendor/graphology.js': new URL('../../node_modules/graphology/dist/graphology.umd.min.js', import.meta.url),
   '/vendor/d3.js': new URL('../../node_modules/d3/dist/d3.min.js', import.meta.url),
 };
 
@@ -32,38 +27,30 @@ function asset(response, file) {
   }
 }
 
-export async function buildServedImpact(root, changedPaths) {
-  const normalized = [...new Set(changedPaths.map((path) => canonicalizeChangedPath(root, path)).filter(Boolean))];
-  const { status, index, metadata } = readFreshIndex(root);
-  const overlay = await buildVectorImpactOverlay(root, index, normalized);
-  const impact = buildImpactReport(index, normalized, { root, overlay, verboseSemantic: false, related: 40 });
-  const graph = buildImpactGraphPayload(index, impact);
-  const graphIds = new Set(graph.nodes.map((node) => node.id));
-  const explorerImpact = {
-    ...impact,
-    related: impact.related.filter((item) => graphIds.has(item.id)),
-  };
-  return { ok: status.ok, status, metadata, impact: explorerImpact, graph };
-}
-
 export async function startImpactGraphServer({ root, changed, host = '127.0.0.1', port = 0 }) {
-  let payload = await buildServedImpact(root, changed);
+  root = resolve(root);
+  if (!['127.0.0.1', 'localhost', '::1'].includes(host)) throw new Error('Graph UI is local-only; use a loopback host.');
+  const build = async () => {
+    const data = await exportTraceability(root);
+    const paths = [...new Set(data.edges.flatMap(e => [e.source, e.target]))];
+    return { ...data, projectRoot: undefined, nodes: paths.map(path => ({ id: path, ...nodeStyle.describeNode(path, data.config.documentation.root) })) };
+  };
+  let payload = await build();
   const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? '/', `http://${request.headers.host ?? host}`);
-    if (url.pathname === '/api/impact') return json(response, 200, payload);
-    if (url.pathname === '/api/reroot') {
-      const paths = url.searchParams.getAll('changed');
-      if (paths.length === 0) return json(response, 400, { ok: false, error: { code: 'MISSING_CHANGED', message: 'At least one changed path is required.' } });
+    if (!['GET', 'HEAD'].includes(request.method)) return json(response, 405, { error: 'Method not allowed' });
+    if (url.pathname === '/api/graph') {
       try {
-        payload = await buildServedImpact(root, paths);
+        payload = await build();
         return json(response, 200, payload);
       } catch (error) {
         return json(response, 500, { ok: false, error: { code: 'GRAPH_SERVE_FAILED', message: error instanceof Error ? error.message : String(error) } });
       }
     }
     if (VENDOR_FILES[url.pathname]) return asset(response, fileURLToPath(VENDOR_FILES[url.pathname]));
+    if (url.pathname === '/policy.js') return asset(response, join(ASSET_ROOT, '../policy.cjs'));
     const relative = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
-    if (!['index.html', 'app.css', 'app.js'].includes(relative)) {
+    if (!['index.html', 'app.css', 'app.js', 'file-list.js', 'graph-client.js', 'layout.js'].includes(relative)) {
       response.writeHead(404);
       return response.end('Not found');
     }
@@ -75,5 +62,5 @@ export async function startImpactGraphServer({ root, changed, host = '127.0.0.1'
   });
   const address = server.address();
   const actualPort = typeof address === 'object' && address ? address.port : port;
-  return { server, url: `http://${host}:${actualPort}`, payload };
+  return { server, url: `http://${host.includes(':') ? `[${host}]` : host}:${actualPort}`, payload };
 }

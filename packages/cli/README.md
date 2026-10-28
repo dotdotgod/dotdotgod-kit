@@ -42,7 +42,7 @@ dotdotgod init .
 dotdotgod validate .
 dotdotgod query . "project documentation"
 dotdotgod graph impact . --changed <path> --compact
-dotdotgod graph serve . --changed <path>
+dotdotgod graph serve .
 ```
 
 ## What It Does
@@ -53,7 +53,7 @@ dotdotgod graph serve . --changed <path>
 - `query` defaults to hybrid vector/keyword search over full Markdown and code outlines/comments, not implementation bodies. Use `--scope docs|code|all`, `--search hybrid|keyword|vector` and `--limit 30`. Keyword mode works without embeddings; hybrid reports vector failures and retains keyword results. Selecting a remote embedding provider authorizes sending documentation and code metadata (names, signatures, and comments), without implementation bodies or an additional consent flag. Local E5 remains the default when its optional runtime is installed. Tree-sitter coverage and boundaries: [CODE_OUTLINES.md](../../docs/spec/cli/CODE_OUTLINES.md).
 - `resolve` and `expand` map explicit or high-signal prompt references to project files and can include related impact evidence.
 - `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five. Non-seed scores use fixed weighted PPR connection `80` plus memory policy `20`. A bounded request-local multilingual vector overlay participates in PPR when the query cache is available; vector preparation failures degrade to structural-only results.
-- `graph serve` starts a local read-only explorer rooted at one or more changed files. It keeps only connected shared structural nodes, lays them out by minimum structural hop, and supports persisted instant, layer, or one-by-one reveal modes.
+- `graph serve` starts a standalone read-only traceability graph without Obsidian. It uses resolved project configuration, relation filters, document-group colors, and optional weighted line widths.
 - `traceability links` checks or repairs generated Markdown traceability-link sections.
 
 ## Commands
@@ -79,8 +79,8 @@ dotdotgod traceability links . --write
 dotdotgod graph impact . --changed <path>
 dotdotgod graph impact . --changed <path> --changed <another-path> --compact
 dotdotgod graph impact . --changed <path> --changed <another-path> --yml
-dotdotgod graph serve . --changed <path>
-dotdotgod graph serve . --changed <path> --changed <another-path> --port 4313
+dotdotgod graph serve .
+dotdotgod graph serve . --port 4313
 dotdotgod graph communities .
 ```
 
@@ -95,7 +95,7 @@ dotdotgod graph communities .
 | Resolve `[[...]]` references from a prompt | `dotdotgod expand . "Update [[PLAN_MODE]]"` |
 | Repair generated traceability-link sections | `dotdotgod traceability links . --write` |
 | See what else to inspect after a change | `dotdotgod graph impact . --changed <path> --compact` |
-| Explore the connected structural graph visually | `dotdotgod graph serve . --changed <path>` |
+| Explore project traceability visually | `dotdotgod graph serve .` |
 
 ## Changed-File Impact
 
@@ -122,10 +122,10 @@ The indexed graph is built from maintained project files: Markdown links, README
 ## Local Impact Graph Explorer
 
 ```bash
-dotdotgod graph serve . --changed packages/cli/src/core.mjs
+dotdotgod graph serve .
 ```
 
-`graph serve` prints a local URL and binds to `127.0.0.1` by default. Repeat `--changed` to use multiple roots. Set `--port 4313` for a fixed port or `--host <host>` when the default loopback binding is not suitable.
+`graph serve` prints a local URL and binds to `127.0.0.1` by default. Set `--port 4313` for a fixed port. Only loopback hosts are accepted. Use `graph impact --changed <path>` for changed-file ranking; the web command no longer accepts `--changed`. Reload refreshes project config and index data.
 
 The explorer includes only shared indexed nodes structurally connected to a retained changed-file root. Connectivity treats stored structural edges as undirected so incoming evidence remains discoverable, while rendered arrows preserve each relation's original direction. Local-memory nodes, disconnected nodes, and request-local vector edges are excluded from the canvas and search.
 

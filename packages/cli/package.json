@@ -36,10 +36,8 @@
   "dependencies": {
     "@vscode/tree-sitter-wasm": "0.3.1",
     "d3": "^7.9.0",
-    "graphology": "^0.26.0",
     "ignore": "7.0.5",
-    "leiden-ts": "^0.1.0",
-    "sigma": "^3.0.3"
+    "leiden-ts": "^0.1.0"
   },
   "homepage": "https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/cli#readme",
   "repository": {

@@ -11,7 +11,6 @@ import {
   buildCommunities,
   buildGraph,
   buildImpactReport,
-  buildImpactGraphPayload,
   buildChangedFileProfile,
   buildVectorImpactOverlay,
   buildMemoryAreas,
@@ -1017,72 +1016,6 @@ describe('impact ranking unit coverage', () => {
     assert(compact.perSeed.every((entry) => entry.related.length === 5));
     assert(!compact.related.some((item) => ['file:packages/multi/a.mjs', 'file:packages/multi/b.mjs'].includes(item.id)));
 
-    const payload = buildImpactGraphPayload(index, report);
-    assert.deepEqual(payload.nodes.filter((node) => node.seed).map((node) => node.id).sort(), ['file:packages/multi/a.mjs', 'file:packages/multi/b.mjs']);
-    assert(!report.related.some((item) => payload.nodes.find((node) => node.id === item.id)?.seed));
-    assert(payload.edges.every((edge) => payload.nodes.some((node) => node.id === edge.source) && payload.nodes.some((node) => node.id === edge.target)));
-    assert.equal(payload.complete, true);
-    assert.deepEqual(new Set(payload.edges.map((edge) => edge.relation)), new Set(['related_doc', 'verified_by']));
-    assert(payload.nodes.every((node) => Number.isInteger(node.component)));
-  });
-
-  it('builds a complete cycle-safe shared structural graph with isolated nodes and deduplicated edges', () => {
-    const nodes = [
-      { id: 'file:a.mjs', type: 'file', path: 'a.mjs' },
-      { id: 'file:b.mjs', type: 'file', path: 'b.mjs' },
-      { id: 'file:c.mjs', type: 'file', path: 'c.mjs' },
-      { id: 'file:isolated.mjs', type: 'file', path: 'isolated.mjs' },
-      { id: 'package:app', type: 'package', name: 'app' },
-      { id: 'resource:api', type: 'resource', target: '/api' },
-    ];
-    const edges = [
-      { source: 'file:a.mjs', target: 'file:b.mjs', relation: 'related_doc' },
-      { source: 'file:b.mjs', target: 'file:c.mjs', relation: 'links_to' },
-      { source: 'file:c.mjs', target: 'file:a.mjs', relation: 'routes_to' },
-      { source: 'file:a.mjs', target: 'file:b.mjs', relation: 'related_doc' },
-      { source: 'package:app', target: 'resource:api', relation: 'declares_resource' },
-    ];
-    const config = defaultMemoryConfig();
-    const impact = buildImpactReport({ memoryConfig: config, graph: { nodes, edges } }, 'a.mjs');
-    const payload = buildImpactGraphPayload({ memoryConfig: config, graph: { nodes, edges } }, impact);
-
-    assert.equal(payload.nodes.length, 3);
-    assert.equal(payload.edges.length, 3);
-    assert.equal(new Set(payload.nodes.map((node) => node.id)).size, 3);
-    assert.equal(payload.components.length, 1);
-    assert(!payload.nodes.some((node) => node.id === 'file:isolated.mjs'));
-    assert.deepEqual(payload.diagnostics, { rootNodes: 1, connectedNodes: 3, disconnectedNodesOmitted: 3, maximumDepth: 1 });
-    assert.equal(payload.nodes.find((node) => node.id === 'file:a.mjs').depth, 0);
-    assert.equal(payload.nodes.find((node) => node.id === 'file:b.mjs').depth, 1);
-    assert.deepEqual(new Set(payload.edges.map((edge) => edge.relation)), new Set(['related_doc', 'links_to', 'routes_to']));
-  });
-
-  it('includes shared headings while excluding local memory and preserving endpoint integrity', () => {
-    const config = defaultMemoryConfig();
-    const nodes = [
-      { id: 'file:src/a.mjs', type: 'file', path: 'src/a.mjs' },
-      { id: 'file:docs/spec/A.md', type: 'file', path: 'docs/spec/A.md' },
-      { id: 'file:docs/plan/local/README.md', type: 'file', path: 'docs/plan/local/README.md' },
-      { id: 'file:src/orphan.mjs', type: 'file', path: 'src/orphan.mjs' },
-      { id: 'heading:docs/spec/A.md#purpose', type: 'heading', path: 'docs/spec/A.md', title: 'Purpose' },
-      { id: 'heading:docs/plan/local/README.md#notes', type: 'heading', path: 'docs/plan/local/README.md', title: 'Notes' },
-    ];
-    const edges = [
-      { source: 'file:docs/spec/A.md', target: 'file:src/a.mjs', relation: 'implemented_by' },
-      { source: 'file:docs/plan/local/README.md', target: 'file:src/a.mjs', relation: 'related_doc' },
-      { source: 'file:src/a.mjs', target: 'file:src/orphan.mjs', relation: 'links_to' },
-      { source: 'file:docs/spec/A.md', target: 'heading:docs/spec/A.md#purpose', relation: 'contains_heading' },
-      { source: 'heading:docs/spec/A.md#purpose', target: 'file:src/a.mjs', relation: 'links_to' },
-      { source: 'file:docs/plan/local/README.md', target: 'heading:docs/plan/local/README.md#notes', relation: 'contains_heading' },
-    ];
-    const impact = buildImpactReport({ memoryConfig: config, graph: { nodes, edges } }, 'src/a.mjs');
-    const payload = buildImpactGraphPayload({ memoryConfig: config, graph: { nodes, edges } }, impact);
-
-    assert.deepEqual(payload.edges.map((edge) => edge.relation), ['implemented_by', 'links_to', 'contains_heading', 'links_to']);
-    assert.deepEqual(payload.nodes.map((node) => node.id).sort(), ['file:docs/spec/A.md', 'file:src/a.mjs', 'file:src/orphan.mjs', 'heading:docs/spec/A.md#purpose']);
-    assert.equal(payload.nodes.find((node) => node.id === 'file:docs/spec/A.md').depth, 1, 'incoming implemented_by relation permits undirected reachability');
-    assert(payload.edges.some((edge) => edge.source === 'file:docs/spec/A.md' && edge.target === 'file:src/a.mjs'), 'rendered direction is preserved');
-    assert(payload.edges.every((edge) => payload.nodes.some((node) => node.id === edge.source) && payload.nodes.some((node) => node.id === edge.target)));
   });
 
   it('keeps incremental graph output equal to a full rebuild after Markdown changes', () => {

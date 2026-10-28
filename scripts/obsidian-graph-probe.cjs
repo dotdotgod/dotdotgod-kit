@@ -1,6 +1,7 @@
 // Development-only compatibility probe. Uses undocumented native graph internals.
 const { Plugin, Notice, Setting, getLanguage } = require('obsidian');
 const { translate } = require('./obsidian-i18n.cjs');
+const { selectTraceability } = require('./policy.cjs');
 const { readFile } = require('node:fs/promises');
 const { describeNode } = require('./obsidian-node-style.cjs');
 module.exports = class GraphProbe extends Plugin {
@@ -83,15 +84,9 @@ module.exports = class GraphProbe extends Plugin {
     view.dataEngine.controlsEl.appendChild(controls);
     // The native renderer has one directed link per file pair. Highest configured
     // weight wins; ties use relation ID for deterministic styling.
-    const pairs = new Map();
+    const filtered = selectTraceability(this.graph, options);
     const allEndpoints = new Set(this.graph.edges.flatMap(e => [e.source, e.target]));
-    for (const edge of [...this.graph.edges].sort((a, b) => b.weight - a.weight || a.relation.localeCompare(b.relation))) {
-      if (options.disabledRelations.includes(edge.relation)) continue;
-      if (options.documentsOnly && [edge.source, edge.target].some(path => !/\.md$/i.test(path))) continue;
-      const key = `${edge.source}\0${edge.target}`;
-      if (!pairs.has(key)) pairs.set(key, edge);
-    }
-    const relations = [...pairs.values()].map(e => [e.source, e.target, e.relation, e.weight, parseInt(e.color.slice(1), 16)]);
+    const relations = filtered.edges.map(e => [e.source, e.target, e.relation, e.weight, parseInt(e.color.slice(1), 16)]);
     const r = view.renderer;
     const original = r.setData;
     const originalArrow = r.fShowArrow;
@@ -147,7 +142,7 @@ module.exports = class GraphProbe extends Plugin {
       const enabled = !options.disabledRelations.includes(relation);
       item.setAttribute('aria-pressed', String(enabled));
       item.dataset.relation = relation;
-      Object.assign(item.style, { pointerEvents: 'auto', background: 'transparent', boxShadow: 'none', border: '1px solid var(--background-modifier-border)', opacity: enabled ? '1' : '0.45', textDecoration: enabled ? 'none' : 'line-through' });
+      Object.assign(item.style, { pointerEvents: 'auto', background: 'transparent', boxShadow: 'none', border: '1px solid var(--background-modifier-border)', opacity: enabled ? '1' : '0.45' });
       item.addEventListener('click', () => {
         const disabled = new Set(options.disabledRelations);
         if (disabled.has(relation)) disabled.delete(relation); else disabled.add(relation);

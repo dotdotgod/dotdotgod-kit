@@ -8,7 +8,6 @@ import { test } from 'node:test';
 import { buildIndex, writeIndex, readIndex } from '../src/index/cache.mjs';
 import { CACHE_VERSION } from '../src/index/constants.mjs';
 import { buildImpactReport, buildCompactImpactReport } from '../src/impact/report.mjs';
-import { buildImpactGraphPayload } from '../src/graph-view/payload.mjs';
 import { startImpactGraphServer } from '../src/graph-view/server.mjs';
 
 const bin = fileURLToPath(new URL('../bin/dotdotgod.mjs', import.meta.url));
@@ -37,10 +36,9 @@ test('missing files and anchors are excluded, mixed valid evidence and duplicate
   assert.equal(buildCompactImpactReport(impact).warnings, impact.warnings);
   for (const entry of impact.perSeed) assert.ok(!entry.related.some((node) => node.path === 'docs/MISSING.md'));
   for (const group of Object.values(impact.groups)) assert.ok(!group.items.some((node) => node.path === 'docs/MISSING.md'));
-  const payload = buildImpactGraphPayload(index, impact);
-  assert.ok(!payload.nodes.some((node) => node.path === 'docs/MISSING.md'));
-  const ids = new Set(payload.nodes.map((node) => node.id));
-  assert.ok(payload.edges.every((edge) => ids.has(edge.source) && ids.has(edge.target)));
+  assert.ok(!impact.structuralGraph.nodes.some((node) => node.path === 'docs/MISSING.md'));
+  const ids = new Set(impact.structuralGraph.nodes.map((node) => node.id));
+  assert.ok(impact.structuralGraph.edges.every((edge) => ids.has(edge.source) && ids.has(edge.target)));
   assert.ok(index.graph.nodes.some((node) => node.path === 'docs/MISSING.md'), 'persisted graph remains intact');
 });
 
@@ -89,10 +87,9 @@ test('deleted seeds retain incoming Markdown and traceability docs across deleti
     const impact = buildImpactReport(index, changed, { root });
     assert.ok(hasTarget(impact, 'docs/README.md'));
     for (const seed of impact.perSeed) assert.ok(seed.related.some((item) => item.path === 'docs/README.md'), seed.changed);
-    const payload = buildImpactGraphPayload(index, impact);
-    assert.ok(payload.nodes.some((node) => node.path === 'docs/README.md'));
+    assert.ok(impact.structuralGraph.nodes.some((node) => node.path === 'docs/README.md'));
     for (const path of changed) {
-      assert.ok(payload.edges.some((edge) => edge.source === 'file:docs/README.md' && edge.target === `file:${path}`), path);
+      assert.ok(impact.structuralGraph.edges.some((edge) => edge.source === 'file:docs/README.md' && edge.target === `file:${path}`), path);
       const single = buildImpactReport(index, [path], { root });
       assert.ok(hasTarget(single, 'docs/README.md'), path);
       if (deleted) assert.ok(single.warnings.items.some((item) => item.targetPath === path && item.reason === 'MISSING_FILE'));
@@ -129,7 +126,7 @@ test('warnings are bounded separately; valid candidates refill limits; missing s
   assert.equal(impact.related.length, 3); assert.equal(impact.omittedRelated, 0);
   assert.deepEqual(impact.warnings, report(root, index).warnings);
   const multi = buildImpactReport(index, ['docs/README.md', 'deleted.mjs'], { root });
-  assert.ok(buildImpactGraphPayload(index, multi).nodes.some((node) => node.id === 'file:deleted.mjs' && node.seed));
+  assert.ok(multi.changedFiles.includes('deleted.mjs'));
   assert.deepEqual(multi.changedFiles, ['docs/README.md', 'deleted.mjs']);
   assert.ok(!multi.related.some((node) => multi.changedFiles.some((path) => node.id === `file:${path}`)));
   const reversed = buildImpactReport(index, ['deleted.mjs', 'docs/README.md'], { root });
@@ -162,21 +159,7 @@ test('CLI all output modes expose warnings without warning-only failure or sourc
   assert.equal(readFileSync(join(root, 'docs/README.md'), 'utf8'), source);
 });
 
-test('served explorer API and accessible warning UI use filtered graph and preserve valid evidence', async (t) => {
-  const root = fixture(t, '# Root\n[bad](TARGET.md#absent)\n[good](TARGET.md#present)\n[missing](MISSING.md)\n');
-  const running = await startImpactGraphServer({ root, changed: ['docs/README.md'] });
-  t.after(() => new Promise((resolve) => running.server.close(resolve)));
-  const response = await fetch(`${running.url}/api/impact`); const payload = await response.json();
-  assert.equal(payload.impact.warnings.total, 2);
-  assert.ok(payload.graph.nodes.some((node) => node.path === 'docs/TARGET.md'));
-  assert.ok(!payload.graph.nodes.some((node) => node.path === 'docs/MISSING.md'));
-  const ids = new Set(payload.graph.nodes.map((node) => node.id));
-  assert.ok(payload.impact.related.every((node) => ids.has(node.id)));
-  assert.ok(payload.graph.edges.every((edge) => ids.has(edge.source) && ids.has(edge.target)));
-  const html = await (await fetch(running.url)).text();
-  assert.match(html, /id="reference-warnings"[^>]+aria-live="polite"/);
-  const app = await (await fetch(`${running.url}/app.js`)).text();
-  assert.match(app, /warningList.replaceChildren/); assert.match(app, /item.textContent/);
-  const reroot = await (await fetch(`${running.url}/api/reroot?changed=docs%2FTARGET.md`)).json();
-  assert.ok(!reroot.graph.nodes.some((node) => node.path === 'docs/MISSING.md'));
+test('standalone graph rejects invalid config rather than serving stale impact UI', async (t) => {
+  const root = fixture(t, '# Root\n');
+  await assert.rejects(startImpactGraphServer({ root }), /EMBEDDING_CONFIG_INVALID/);
 });

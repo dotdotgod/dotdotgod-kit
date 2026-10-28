@@ -2,6 +2,7 @@
 
 ## Automated Coverage
 
+
 `packages/context/test/context.test.mjs` covers the existing end-to-end contracts:
 
 - bounded overlapping generic chunks;

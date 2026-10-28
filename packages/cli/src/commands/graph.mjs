@@ -44,7 +44,7 @@ export async function runGraph(argv) {
   const isServe = sub === 'serve';
   if (!['impact', 'communities', 'serve'].includes(sub)) usage(sub ? `Unknown graph command: ${sub}` : 'Missing graph command.', 'graph');
   const options = parseGraphOptions(argv.slice(1));
-  if (isServe && options.changed.length === 0) usage('Missing required option: --changed <path>.', 'graph serve');
+  if (isServe && options.changed.length > 0) usage('graph serve now shows project traceability. Use graph impact for --changed analysis.', 'graph serve');
   if (isServe && !Number.isInteger(options.port)) usage('Invalid --port. Use an integer from 0 through 65535.', 'graph serve');
   if (isServe) {
     options.changed = [...new Set(options.changed.map((path) => canonicalizeChangedPath(options.root, path)).filter(Boolean))];

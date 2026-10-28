@@ -1,78 +1,21 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>dotdotgod structural graph</title>
-  <link rel="stylesheet" href="/app.css">
-</head>
-<body>
-  <header class="command-rail">
-    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><strong>dotdotgod</strong><span>structural graph</span></div>
-    <form id="reroot-form" class="reroot-form">
-      <label for="reroot-path">Re-root graph</label>
-      <input id="reroot-path" name="changed" autocomplete="off" placeholder="packages/cli/src/core.mjs">
-      <button type="submit">Inspect file</button>
-    </form>
-    <p id="status" role="status">Loading impact data…</p>
-  </header>
-
-  <main class="workspace">
-    <aside class="filters" aria-labelledby="filters-title">
-      <div>
-        <h1 id="filters-title">Relation signals</h1>
-        <p>Filter what is drawn without changing the impact ranking.</p>
-      </div>
-      <fieldset id="relation-filters"><legend class="sr-only">Visible relation types</legend></fieldset>
-      <label class="motion-control" for="motion-mode">Node reveal</label>
-      <select id="motion-mode">
-        <option value="instant">Instant</option>
-        <option value="layer">By hop layer</option>
-        <option value="sequence">One by one</option>
-      </select>
-      <button id="skip-reveal" type="button" hidden>Skip reveal</button>
-      <div class="legend" aria-label="Node legend">
-        <span><i class="node-key seed"></i>Changed root</span>
-        <span><i class="node-key doc"></i>Documentation</span>
-        <span><i class="node-key test"></i>Verification</span>
-        <span><i class="node-key code"></i>Source</span>
-        <span><i class="node-key contract"></i>Contract</span>
-        <span><i class="node-key heading"></i>Heading</span>
-      </div>
-      <p class="reading-note">The graph grows outward from changed-file roots by structural hop. Position is layout only, never rank.</p>
-    </aside>
-
-    <section class="plot" aria-labelledby="plot-title">
-      <div class="plot-heading">
-        <div><h2 id="plot-title">Impact field</h2><p id="plot-summary"></p></div>
-        <button id="reset-camera" type="button">Reset view</button>
-      </div>
-      <div id="graph" aria-hidden="true"></div>
-      <div id="graph-fallback" class="graph-fallback" hidden>WebGL is unavailable. Use the synchronized ranked list.</div>
-    </section>
-
-    <aside class="evidence" aria-labelledby="evidence-title">
-      <section class="node-search" aria-labelledby="node-search-title">
-        <label id="node-search-title" for="node-search-input">Search shared graph nodes</label>
-        <input id="node-search-input" type="search" autocomplete="off" placeholder="Path, title, or node ID" aria-controls="node-search-results">
-        <ul id="node-search-results" class="node-search-results"></ul>
-      </section>
-      <div class="evidence-heading"><h2 id="evidence-title">Ranked evidence</h2><span id="result-count"></span></div>
-      <section id="reference-warnings" class="reference-warnings" aria-live="polite" hidden>
-        <h3>Reference warnings</h3>
-        <p id="reference-warning-summary"></p>
-        <ul id="reference-warning-list"></ul>
-      </section>
-      <ol id="result-list" class="result-list"></ol>
-      <section id="inspection" class="inspection" aria-live="polite">
-        <h3>Select an impacted file</h3>
-        <p>The graph and ranked list share one selection. Details will appear here.</p>
-      </section>
-    </aside>
-  </main>
-  <script src="/vendor/graphology.js"></script>
-  <script src="/vendor/sigma.js"></script>
-  <script src="/vendor/d3.js"></script>
-  <script src="/app.js"></script>
-</body>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>dotdotgod Traceability</title><link rel="stylesheet" href="/app.css">
+<header><h1>dotdotgod · Traceability</h1><div id="legend"></div></header>
+<canvas aria-label="File relationship graph"></canvas>
+<aside>
+  <details open><summary id="title">Graph options</summary>
+    <label><input id="documents" type="checkbox"><span id="documents-label">Documents only</span></label>
+    <label><input id="colors" type="checkbox" checked><span id="colors-label">Show color legend</span></label>
+    <label><input id="weights" type="checkbox" checked><span id="weights-label">Weight-based line width</span></label>
+    <button id="reload">Reload</button>
+  </details>
+  <p id="status" role="status"></p>
+  <input id="search" aria-label="Search files" placeholder="Search files">
+  <ul id="files"></ul><p id="path"></p><button id="copy" disabled>Copy path</button>
+</aside>
+<div id="tooltip" hidden></div>
+<script src="/vendor/d3.js"></script><script src="/policy.js"></script>
+<script src="/file-list.js"></script><script src="/graph-client.js"></script><script src="/layout.js"></script><script src="/app.js"></script>
 </html>

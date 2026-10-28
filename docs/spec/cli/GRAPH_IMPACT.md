@@ -19,15 +19,11 @@
 - Shared related nodes MAY repeat across `perSeed` lists, while the combined `related` ranking MUST deduplicate nodes.
 - The command MAY include one output mode: `--compact`, `--json`, or `--yml`/`--yaml`.
 - `--yml`/`--yaml` MUST return compact structured agent-facing output with changed files, per-seed top-five results, grouped docs, tests, files, scores, reasons, omitted counts, status metadata, and recommended actions.
-- `dotdotgod graph serve <root> --changed <path>` MUST start a local-only impact explorer, accept repeated changed paths plus optional `--host` and `--port`, render changed files as dedicated root nodes, and keep those roots out of ranked related-result lists.
-- The explorer MUST use D3 force simulation for layout and Sigma/WebGL for rendering, provide synchronized keyboard-accessible ranked-list selection, relation filtering, score/reason inspection, re-rooting, and a usable list fallback when WebGL is unavailable.
-- The explorer graph payload MUST include only shared structural nodes reachable from retained changed-file roots. Reachability and minimum-hop depth MUST treat every allowed structural edge as undirected, while retained edges MUST preserve original direction, type, weight, and confidence.
-- Explorer graph membership MUST include indexed headings, `contains_heading`, ordinary links, routes, package metadata, dependencies, resources, memory-area relationships, contracts, and configured traceability. Nodes resolved to local-memory areas, including their heading nodes, edges incident to excluded nodes, and request-local semantic edges MUST be excluded.
-- The explorer MUST NOT expose graph-depth CLI options, query parameters, or controls. Changed files MUST be emphasized as context while graph distance remains independent from impact strength.
-- Root-connected views MUST lay out changed-file roots first and progress outward by deterministic minimum structural hop. Heading nodes MUST remain visually subordinate to file and contract nodes, and no synthetic edges may be introduced.
-- The explorer MUST offer persisted `Instant`, `By hop layer`, and `One by one` node-reveal modes. One-by-one mode MUST follow deterministic breadth-first order, automatically compress its interval to a bounded total delay, expose a skip action while running, and originate entering nodes near their nearest root. Re-rooting and relation-filter changes MUST preserve spatial continuity for surviving nodes through bounded, interruptible morph transitions. `prefers-reduced-motion` MUST resolve every mode to immediate final placement without hiding state changes.
-- Explorer diagnostics MUST report retained roots, connected nodes, maximum hop depth, and shared nodes omitted because they are disconnected from every retained root. Omitted nodes MUST NOT appear in search or explorer ranked evidence.
-- The explorer ranked evidence list MUST remain bounded and MUST be intersected with shared structural graph-member IDs, while standalone `graph impact` ranking and output remain unchanged.
+- `dotdotgod graph serve <root>` MUST serve standalone file-level traceability without Obsidian, accept loopback `--host` and optional `--port`, and reject legacy `--changed` arguments with guidance to use `graph impact`.
+- `GET /api/graph` MUST resolve default/project configuration and refresh the index. It MUST omit local-memory and missing file endpoints and include only configured traceability relations.
+- The UI MUST use D3 layout and Canvas rendering, with relation colors, arrows, optional weight-based widths, document-group node colors, compact hover labels, a searchable file list, and path copying.
+- Relationship legend controls MUST hide disabled edges and endpoints with no active relation. Shared endpoints MUST remain. Markdown-only mode MUST keep only `.md` endpoints. Shared Node/browser policy MUST select the highest-weight relation per directed pair with relation-ID tie-breaking.
+- The right rail MUST provide document-only, legend visibility, weighted width, and reload controls. The legacy impact/reroot API, structural explorer payload, and reveal modes MUST NOT be served. Standalone `graph impact` ranking and output MUST remain unchanged.
 - Unsupported graph subcommands such as `graph query` MUST print an unknown graph command error to stderr and exit `2` without creating or refreshing `.dotdotgod/`.
 - When `graph impact` is missing `--changed`, human output MUST print a usage error to stderr and exit `2` without creating or refreshing `.dotdotgod/`.
 - When `graph impact` is missing `--changed --json`, JSON output MUST include `ok: false`, `command: "graph impact"`, `error.code: "MISSING_CHANGED"`, and a usage string, then exit `2`.
@@ -43,7 +39,6 @@
 - `impact.warnings` MUST expose deterministically ordered `items` (at most 20), `total`, and `omitted`, separately from ranking truncation counts. Warnings MUST cover sources structurally connected to changed roots in the pre-filter graph, including broken-reference evidence.
 - Default/compact output MUST explain exclusions; JSON and YAML MUST expose structured warnings. Broken references alone MUST NOT fail the command or rewrite source documents. Uncertain filesystem access MUST warn without claiming a confirmed broken reference or excluding its evidence.
 - Existing unindexed targets and directories MUST remain valid. Remote URLs MUST NOT be checked; logical commands, dependencies, and package glob declarations MUST NOT be interpreted as missing files.
-- The explorer MUST use the same filtered structural graph for membership, search, and ranked evidence, and MUST show a bounded accessible warning summary even without WebGL. Missing changed seeds MUST remain dedicated roots when shared-scope filtering allows them.
 - Original references MUST remain source-owned index evidence so target deletion/restoration or heading changes can be reclassified without editing an unchanged referring document. Old caches without this evidence MUST rebuild.
 
 ## Traceability
@@ -66,12 +61,13 @@
   - [packages/cli/src/impact/format.mjs](../../../packages/cli/src/impact/format.mjs)
   - [packages/cli/src/impact/vector-overlay.mjs](../../../packages/cli/src/impact/vector-overlay.mjs)
   - [packages/cli/src/impact/vector-profile.mjs](../../../packages/cli/src/impact/vector-profile.mjs)
-  - [packages/cli/src/graph-view/payload.mjs](../../../packages/cli/src/graph-view/payload.mjs)
+  - [packages/cli/src/graph-view/traceability.mjs](../../../packages/cli/src/graph-view/traceability.mjs)
   - [packages/cli/src/graph-view/server.mjs](../../../packages/cli/src/graph-view/server.mjs)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../../packages/cli/test/e2e.test.mjs)
   - [packages/cli/test/impact-references.test.mjs](../../../packages/cli/test/impact-references.test.mjs)
+  - [packages/cli/test/traceability-web.test.mjs](../../../packages/cli/test/traceability-web.test.mjs)
   - [docs/test/CLI_INTERFACE.md](../../test/CLI_INTERFACE.md)
   - [docs/test/IMPACT_RANKING_CONFIG.md](../../test/IMPACT_RANKING_CONFIG.md)
 - Related docs:
@@ -82,5 +78,5 @@
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/commands/graph.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/references.mjs","packages/cli/src/graph/extract.mjs","packages/cli/src/graph/metadata.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/format.mjs","packages/cli/src/impact/vector-overlay.mjs","packages/cli/src/impact/vector-profile.mjs","packages/cli/src/graph-view/payload.mjs","packages/cli/src/graph-view/server.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/cli/test/impact-references.test.mjs","docs/test/CLI_INTERFACE.md","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/spec/IMPACT_RANKING_CONFIG.md","docs/test/README.md","packages/cli/README.md"],"designDecisions":[]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/commands/graph.mjs","packages/cli/src/impact/report.mjs","packages/cli/src/impact/references.mjs","packages/cli/src/graph/extract.mjs","packages/cli/src/graph/metadata.mjs","packages/cli/src/impact/scoring.mjs","packages/cli/src/impact/format.mjs","packages/cli/src/impact/vector-overlay.mjs","packages/cli/src/impact/vector-profile.mjs","packages/cli/src/graph-view/traceability.mjs","packages/cli/src/graph-view/server.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/cli/test/impact-references.test.mjs","packages/cli/test/traceability-web.test.mjs","docs/test/CLI_INTERFACE.md","docs/test/IMPACT_RANKING_CONFIG.md"],"relatedDocs":["docs/spec/IMPACT_RANKING_CONFIG.md","docs/test/README.md","packages/cli/README.md"],"designDecisions":[]}
 ```
