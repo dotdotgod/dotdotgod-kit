@@ -1,0 +1,1030 @@
+[
+  {
+    "command": "node.create",
+    "params": {
+      "type": "frame",
+      "name": "Traceability — dark / visual proposal",
+      "x": 0,
+      "y": 0,
+      "width": 1440,
+      "height": 900,
+      "props": {
+        "fill": "#1B1D24"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "rectangle",
+      "name": "Ribbon",
+      "x": 0,
+      "y": 0,
+      "width": 48,
+      "height": 900,
+      "props": {
+        "fill": "#14161B",
+        "cornerRadius": 0
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "rectangle",
+      "name": "Files",
+      "x": 48,
+      "y": 0,
+      "width": 224,
+      "height": 900,
+      "props": {
+        "fill": "#181A20",
+        "cornerRadius": 0
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "rectangle",
+      "name": "Tab bar",
+      "x": 272,
+      "y": 0,
+      "width": 1168,
+      "height": 48,
+      "props": {
+        "fill": "#181A20",
+        "cornerRadius": 0
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "rectangle",
+      "name": "Inspector",
+      "x": 1120,
+      "y": 48,
+      "width": 320,
+      "height": 852,
+      "props": {
+        "fill": "#20222B",
+        "cornerRadius": 0
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "rectangle",
+      "name": "Ribbon graph stem",
+      "x": 23,
+      "y": 24,
+      "width": 1,
+      "height": 23,
+      "props": {
+        "fill": "#B9A3FF",
+        "cornerRadius": 0
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "ellipse",
+      "name": "Graph icon point",
+      "x": 21,
+      "y": 21,
+      "width": 6,
+      "height": 6,
+      "props": {
+        "fill": "#B9A3FF"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "ellipse",
+      "name": "Graph icon point",
+      "x": 13,
+      "y": 41,
+      "width": 6,
+      "height": 6,
+      "props": {
+        "fill": "#B9A3FF"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "ellipse",
+      "name": "Graph icon point",
+      "x": 29,
+      "y": 41,
+      "width": 6,
+      "height": 6,
+      "props": {
+        "fill": "#B9A3FF"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "PROJECT FILES",
+      "x": 68,
+      "y": 24,
+      "width": 102.95,
+      "height": 17.6,
+      "props": {
+        "fill": "#929AAE",
+        "fontSize": 11,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "PROJECT FILES"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "dotdotgod",
+      "x": 68,
+      "y": 66,
+      "width": 109.45,
+      "height": 27.200000000000003,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 17,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "dotdotgod"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "▾ docs",
+      "x": 68,
+      "y": 112,
+      "width": 60.7,
+      "height": 20.8,
+      "props": {
+        "fill": "#AAB2C2",
+        "fontSize": 13,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "▾ docs"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "    ▾ spec",
+      "x": 68,
+      "y": 143,
+      "width": 94.5,
+      "height": 20.8,
+      "props": {
+        "fill": "#AAB2C2",
+        "fontSize": 13,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "    ▾ spec"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "        AUTH.md",
+      "x": 68,
+      "y": 174,
+      "width": 136.75,
+      "height": 20.8,
+      "props": {
+        "fill": "#B9A3FF",
+        "fontSize": 13,
+        "fontFamily": "Menlo"
+      },
+      "text": "        AUTH.md"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "    ▾ arch",
+      "x": 68,
+      "y": 205,
+      "width": 94.5,
+      "height": 20.8,
+      "props": {
+        "fill": "#AAB2C2",
+        "fontSize": 13,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "    ▾ arch"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "        AUTH_DESIGN.md",
+      "x": 68,
+      "y": 236,
+      "width": 195.9,
+      "height": 20.8,
+      "props": {
+        "fill": "#AAB2C2",
+        "fontSize": 13,
+        "fontFamily": "Menlo"
+      },
+      "text": "        AUTH_DESIGN.md"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "▾ src",
+      "x": 68,
+      "y": 267,
+      "width": 52.25,
+      "height": 20.8,
+      "props": {
+        "fill": "#AAB2C2",
+        "fontSize": 13,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "▾ src"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "    auth.ts",
+      "x": 68,
+      "y": 298,
+      "width": 102.95,
+      "height": 20.8,
+      "props": {
+        "fill": "#AAB2C2",
+        "fontSize": 13,
+        "fontFamily": "Menlo"
+      },
+      "text": "    auth.ts"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "▾ test",
+      "x": 68,
+      "y": 329,
+      "width": 60.7,
+      "height": 20.8,
+      "props": {
+        "fill": "#AAB2C2",
+        "fontSize": 13,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "▾ test"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "    auth.test.ts",
+      "x": 68,
+      "y": 360,
+      "width": 145.20000000000002,
+      "height": 20.8,
+      "props": {
+        "fill": "#AAB2C2",
+        "fontSize": 13,
+        "fontFamily": "Menlo"
+      },
+      "text": "    auth.test.ts"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "Traceability",
+      "x": 298,
+      "y": 15,
+      "width": 119.2,
+      "height": 22.400000000000002,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 14,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "Traceability"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "Relationship",
+      "x": 1144,
+      "y": 80,
+      "width": 158.20000000000002,
+      "height": 30.400000000000002,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 19,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "Relationship"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "implemented_by",
+      "x": 1144,
+      "y": 120,
+      "width": 146.5,
+      "height": 24,
+      "props": {
+        "fill": "#D8CAFF",
+        "fontSize": 15,
+        "fontFamily": "Menlo"
+      },
+      "text": "implemented_by"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "rectangle",
+      "name": "Inspector divider",
+      "x": 1144,
+      "y": 160,
+      "width": 272,
+      "height": 1,
+      "props": {
+        "fill": "#373B48",
+        "cornerRadius": 0
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "From",
+      "x": 1144,
+      "y": 188,
+      "width": 41.2,
+      "height": 19.200000000000003,
+      "props": {
+        "fill": "#AAB2C2",
+        "fontSize": 12,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "From"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "docs/spec/AUTH.md",
+      "x": 1144,
+      "y": 213,
+      "width": 153.65,
+      "height": 20.8,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 13,
+        "fontFamily": "Menlo"
+      },
+      "text": "docs/spec/AUTH.md"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "To",
+      "x": 1144,
+      "y": 260,
+      "width": 25.6,
+      "height": 19.200000000000003,
+      "props": {
+        "fill": "#AAB2C2",
+        "fontSize": 12,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "To"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "src/auth.ts",
+      "x": 1144,
+      "y": 285,
+      "width": 102.95,
+      "height": 20.8,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 13,
+        "fontFamily": "Menlo"
+      },
+      "text": "src/auth.ts"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "Weight",
+      "x": 1144,
+      "y": 332,
+      "width": 56.800000000000004,
+      "height": 19.200000000000003,
+      "props": {
+        "fill": "#AAB2C2",
+        "fontSize": 12,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "Weight"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "4",
+      "x": 1144,
+      "y": 357,
+      "width": 18.450000000000003,
+      "height": 20.8,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 13,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "4"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "rectangle",
+      "name": "Evidence divider",
+      "x": 1144,
+      "y": 404,
+      "width": 272,
+      "height": 1,
+      "props": {
+        "fill": "#373B48",
+        "cornerRadius": 0
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "Evidence",
+      "x": 1144,
+      "y": 428,
+      "width": 88,
+      "height": 24,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 15,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "Evidence"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "implementedBy: src/auth.ts",
+      "x": 1144,
+      "y": 462,
+      "width": 212.8,
+      "height": 19.200000000000003,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 12,
+        "fontFamily": "Menlo"
+      },
+      "text": "implementedBy: src/auth.ts"
+    }
+  },
+  {
+    "command": "vector.create",
+    "params": {
+      "path": "M 470 365 L 794.0195512262968 345.6555491805196",
+      "props": {
+        "fill": "none",
+        "stroke": "#527F9C",
+        "strokeWeight": 3
+      }
+    }
+  },
+  {
+    "command": "vector.create",
+    "params": {
+      "path": "M 783.3370793528298 351.3022114399952 L 794.0195512262968 345.6555491805196 L 782.7411255523574 341.31998528208317 Z",
+      "props": {
+        "fill": "#527F9C",
+        "stroke": "none"
+      }
+    }
+  },
+  {
+    "command": "vector.create",
+    "params": {
+      "path": "M 470 365 L 654.9556204832414 537.4974698807432",
+      "props": {
+        "fill": "none",
+        "stroke": "#C8B5FF",
+        "strokeWeight": 5
+      }
+    }
+  },
+  {
+    "command": "vector.create",
+    "params": {
+      "path": "M 643.5010000031843 533.6514759054676 L 654.9556204832414 537.4974698807432 L 650.3214819297814 526.3384036175053 Z",
+      "props": {
+        "fill": "#C8B5FF",
+        "stroke": "none"
+      }
+    }
+  },
+  {
+    "command": "vector.create",
+    "params": {
+      "path": "M 470 365 L 871.7550844903775 624.0391663989052",
+      "props": {
+        "fill": "none",
+        "stroke": "#508E76",
+        "strokeWeight": 5
+      }
+    }
+  },
+  {
+    "command": "vector.create",
+    "params": {
+      "path": "M 859.8006991620755 622.2805671203661 L 871.7550844903775 624.0391663989052 L 865.2196387994345 613.8760984752547 Z",
+      "props": {
+        "fill": "#508E76",
+        "stroke": "none"
+      }
+    }
+  },
+  {
+    "command": "vector.create",
+    "params": {
+      "path": "M 805 345 L 669.3681411098844 536.030787169177",
+      "props": {
+        "fill": "none",
+        "stroke": "#998353",
+        "strokeWeight": 2
+      }
+    }
+  },
+  {
+    "command": "vector.create",
+    "params": {
+      "path": "M 671.6593672966674 524.1669647429519 L 669.3681411098844 536.030787169177 L 679.8131971428702 529.9561839337559 Z",
+      "props": {
+        "fill": "#998353",
+        "stroke": "none"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "ellipse",
+      "name": "AUTH.md selection",
+      "x": 455,
+      "y": 350,
+      "width": 30,
+      "height": 30,
+      "props": {
+        "fill": "#292B42",
+        "stroke": "#B9A3FF",
+        "strokeWeight": 2
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "ellipse",
+      "name": "AUTH.md",
+      "x": 463,
+      "y": 358,
+      "width": 14,
+      "height": 14,
+      "props": {
+        "fill": "#B9A3FF"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "AUTH.md",
+      "x": 405,
+      "y": 385,
+      "width": 69.15,
+      "height": 20.8,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 13,
+        "fontFamily": "Menlo"
+      },
+      "text": "AUTH.md"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "ellipse",
+      "name": "AUTH_DESIGN.md",
+      "x": 798,
+      "y": 338,
+      "width": 14,
+      "height": 14,
+      "props": {
+        "fill": "#72B9E6"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "AUTH_DESIGN.md",
+      "x": 740,
+      "y": 365,
+      "width": 128.3,
+      "height": 20.8,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 13,
+        "fontFamily": "Menlo"
+      },
+      "text": "AUTH_DESIGN.md"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "ellipse",
+      "name": "auth.ts",
+      "x": 656,
+      "y": 538,
+      "width": 14,
+      "height": 14,
+      "props": {
+        "fill": "#D8DEE9"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "auth.ts",
+      "x": 598,
+      "y": 565,
+      "width": 69.15,
+      "height": 20.8,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 13,
+        "fontFamily": "Menlo"
+      },
+      "text": "auth.ts"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "ellipse",
+      "name": "auth.test.ts",
+      "x": 874,
+      "y": 623,
+      "width": 14,
+      "height": 14,
+      "props": {
+        "fill": "#70C9A2"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "auth.test.ts",
+      "x": 816,
+      "y": 650,
+      "width": 111.4,
+      "height": 20.8,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 13,
+        "fontFamily": "Menlo"
+      },
+      "text": "auth.test.ts"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "rectangle",
+      "name": "Legend divider",
+      "x": 302,
+      "y": 154,
+      "width": 788,
+      "height": 1,
+      "props": {
+        "fill": "#373B48",
+        "cornerRadius": 0
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "Relationships",
+      "x": 320,
+      "y": 78,
+      "width": 111.4,
+      "height": 19.200000000000003,
+      "props": {
+        "fill": "#AAB2C2",
+        "fontSize": 12,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "Relationships"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "ellipse",
+      "name": "Implementation legend",
+      "x": 320,
+      "y": 113,
+      "width": 8,
+      "height": 8,
+      "props": {
+        "fill": "#C8B5FF"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "Implementation",
+      "x": 335,
+      "y": 107,
+      "width": 119.2,
+      "height": 19.200000000000003,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 12,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "Implementation"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "ellipse",
+      "name": "Verification legend",
+      "x": 485,
+      "y": 113,
+      "width": 8,
+      "height": 8,
+      "props": {
+        "fill": "#508E76"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "Verification",
+      "x": 500,
+      "y": 107,
+      "width": 103.60000000000001,
+      "height": 19.200000000000003,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 12,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "Verification"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "ellipse",
+      "name": "Design legend",
+      "x": 630,
+      "y": 113,
+      "width": 8,
+      "height": 8,
+      "props": {
+        "fill": "#527F9C"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "Design",
+      "x": 645,
+      "y": 107,
+      "width": 56.800000000000004,
+      "height": 19.200000000000003,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 12,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "Design"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "ellipse",
+      "name": "Related legend",
+      "x": 745,
+      "y": 113,
+      "width": 8,
+      "height": 8,
+      "props": {
+        "fill": "#998353"
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "Related",
+      "x": 760,
+      "y": 107,
+      "width": 64.6,
+      "height": 19.200000000000003,
+      "props": {
+        "fill": "#D8DEE9",
+        "fontSize": 12,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "Related"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "WEIGHT",
+      "x": 320,
+      "y": 827,
+      "width": 49,
+      "height": 16,
+      "props": {
+        "fill": "#929AAE",
+        "fontSize": 10,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "WEIGHT"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "rectangle",
+      "name": "Weight 1 sample",
+      "x": 415,
+      "y": 834.5,
+      "width": 54,
+      "height": 1,
+      "props": {
+        "fill": "#AAB2C2",
+        "cornerRadius": 0
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "1",
+      "x": 480,
+      "y": 826,
+      "width": 17.15,
+      "height": 17.6,
+      "props": {
+        "fill": "#929AAE",
+        "fontSize": 11,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "1"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "rectangle",
+      "name": "Weight 3 sample",
+      "x": 560,
+      "y": 833.5,
+      "width": 54,
+      "height": 3,
+      "props": {
+        "fill": "#AAB2C2",
+        "cornerRadius": 0
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "3",
+      "x": 625,
+      "y": 826,
+      "width": 17.15,
+      "height": 17.6,
+      "props": {
+        "fill": "#929AAE",
+        "fontSize": 11,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "3"
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "rectangle",
+      "name": "Weight 4 sample",
+      "x": 705,
+      "y": 832.5,
+      "width": 54,
+      "height": 5,
+      "props": {
+        "fill": "#AAB2C2",
+        "cornerRadius": 0
+      }
+    }
+  },
+  {
+    "command": "node.create",
+    "params": {
+      "type": "text",
+      "name": "4",
+      "x": 770,
+      "y": 826,
+      "width": 17.15,
+      "height": 17.6,
+      "props": {
+        "fill": "#929AAE",
+        "fontSize": 11,
+        "fontFamily": "Helvetica Neue"
+      },
+      "text": "4"
+    }
+  }
+]
