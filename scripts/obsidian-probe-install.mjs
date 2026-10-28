@@ -1,24 +1,30 @@
-import { mkdir, copyFile, writeFile, readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { mkdir, copyFile, writeFile, readFile, constants } from 'node:fs/promises';
+import { resolve, dirname } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { exportTraceability } from './obsidian-traceability-export.mjs';
-const directory = resolve(import.meta.dirname, '../.obsidian-dev/vault/.obsidian/plugins/dotdotgod-graph-probe');
-await mkdir(directory, { recursive: true });
-const helper = await readFile(resolve(import.meta.dirname, '../packages/cli/src/graph-view/node-style.cjs'), 'utf8');
-const policy = await readFile(resolve(import.meta.dirname, '../packages/cli/src/graph-view/policy.cjs'), 'utf8');
-const plugin = await readFile(resolve(import.meta.dirname, 'obsidian-graph-probe.cjs'), 'utf8');
-const translations = await readFile(resolve(import.meta.dirname, 'obsidian-i18n.cjs'), 'utf8');
-await writeFile(resolve(directory, 'main.js'), helper.replace('module.exports = { describeNode };', '') + '\n' + policy.replace("if (typeof module !== 'undefined') module.exports = { selectTraceability };\nelse globalThis.selectTraceability = selectTraceability;", '') + '\n' + translations.replace('module.exports = { translate };', '') + '\n' + plugin.replace("const { describeNode } = require('./obsidian-node-style.cjs');", '').replace("const { translate } = require('./obsidian-i18n.cjs');", '').replace("const { selectTraceability } = require('./policy.cjs');", ''));
-await copyFile(resolve(import.meta.dirname, 'obsidian-node-style.cjs'), resolve(directory, 'obsidian-node-style.cjs'));
-await writeFile(resolve(directory, 'manifest.json'), JSON.stringify({
-  id: 'dotdotgod-graph-probe', name: 'dotdotgod Graph Probe', version: '0.0.1',
-  minAppVersion: '1.14.5', description: 'Development-only native graph compatibility probe.', author: 'dotdotgod', isDesktopOnly: true,
-}, null, 2));
 const project = resolve(import.meta.dirname, '..');
-const graphFile = resolve(project, '.obsidian-dev/traceability.json');
+execFileSync(process.execPath, [resolve(project, 'packages/obsidian/scripts/build.mjs')], { stdio: 'inherit' });
+// Keep the original local probe ID to avoid enabling two adapters in the test vault.
+const vault = resolve(project, '.obsidian-dev/vault');
+const directory = resolve(vault, '.obsidian/plugins/dotdotgod-graph-probe');
+await mkdir(directory, { recursive: true });
+await copyFile(resolve(project, 'packages/obsidian/dist/main.js'), resolve(directory, 'main.js'));
+await copyFile(resolve(project, 'packages/obsidian/dist/styles.css'), resolve(directory, 'styles.css'));
+const manifest = JSON.parse(await readFile(resolve(project, 'manifest.json'), 'utf8'));
+await writeFile(resolve(directory, 'manifest.json'), JSON.stringify({ ...manifest, id: 'dotdotgod-graph-probe' }));
 const graph = await exportTraceability(project);
-await writeFile(graphFile, JSON.stringify(graph, null, 2));
+delete graph.projectRoot;
+await mkdir(resolve(vault, '.dotdotgod'), { recursive: true });
+await writeFile(resolve(vault, '.dotdotgod/traceability.json'), JSON.stringify(graph));
+// Copy only the exported read-only fixture files; no symlinks outside the vault.
+for (const path of new Set(graph.edges.flatMap(edge => [edge.source, edge.target]))) {
+  const target = resolve(vault, path);
+  await mkdir(dirname(target), { recursive: true });
+  try { await copyFile(resolve(project, path), target, constants.COPYFILE_EXCL); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+}
 let settings = {};
 try { settings = JSON.parse(await readFile(resolve(directory, 'data.json'), 'utf8')); }
 catch (error) { if (error.code !== 'ENOENT') throw error; }
-await writeFile(resolve(directory, 'data.json'), JSON.stringify({ ...settings, graphFile }));
+delete settings.graphFile;
+await writeFile(resolve(directory, 'data.json'), JSON.stringify({ ...settings, graphPath: '.dotdotgod/traceability.json' }));
 console.log(directory);

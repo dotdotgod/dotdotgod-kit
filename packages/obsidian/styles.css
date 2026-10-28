@@ -1,0 +1,44 @@
+.dotdotgod-tooltip {
+  position: fixed;
+  display: none;
+  pointer-events: none;
+  z-index: 1000;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+  font: 12px var(--font-monospace);
+  max-width: calc(100vw - 16px);
+  overflow-wrap: anywhere;
+}
+.dotdotgod-legend {
+  position: absolute;
+  inset-block-start: 12px;
+  inset-inline-start: 16px;
+  inset-inline-end: min(260px, 35%);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  pointer-events: none;
+  font: var(--font-ui-small) var(--font-interface);
+  color: var(--text-normal);
+}
+.dotdotgod-legend button {
+  pointer-events: auto;
+  background: var(--background-primary);
+  box-shadow: none;
+  border: 1px solid var(--background-modifier-border);
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.dotdotgod-legend button[aria-pressed="false"] { opacity: .45; }
+.dotdotgod-legend button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+.dotdotgod-relation-swatch, .dotdotgod-group-swatch {
+  display: inline-block;
+  margin-inline-end: 7px;
+  vertical-align: middle;
+}
+.dotdotgod-relation-swatch { width: 20px; height: 3px; }
+.dotdotgod-group-swatch { width: 8px; height: 8px; border-radius: 50%; }

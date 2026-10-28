@@ -1,6 +1,6 @@
 {
   "name": "dotdotgod-workspace",
-  "version": "0.6.7",
+  "version": "0.7.0",
   "private": true,
   "description": "Workspace for dotdotgod project memory packages across CLI, Pi, OpenCode, Claude Code, Codex, and Hermes adapters.",
   "type": "module",

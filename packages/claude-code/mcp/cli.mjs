@@ -2112,6 +2112,7 @@ Checks or writes generated Markdown traceability link sections from canonical fe
       return `Usage:
   dotdotgod graph impact <root> --changed <path> [--changed <path> ...] [--compact|--json|--yml|--yaml]
   dotdotgod graph serve <root> [--host HOST] [--port PORT]
+  dotdotgod graph export <root> [--json]
   dotdotgod graph communities <root> [--json]`;
     case "graph impact":
       return `Usage:
@@ -2122,7 +2123,12 @@ Ranks nodes related to one or more changed files. <root> is the project root; re
       return `Usage:
   dotdotgod graph serve <root> [--host HOST] [--port PORT]
 
-Starts a local-only impact graph explorer. Changed files are rendered as root nodes and are excluded from related-result lists.`;
+Starts a standalone local traceability graph without Obsidian.`;
+    case "graph export":
+      return `Usage:
+  dotdotgod graph export <root> [--json]
+
+Write .dotdotgod/traceability.json for the Obsidian plugin.`;
     case "graph communities":
       return `Usage:
   dotdotgod graph communities <root> [--json]`;
@@ -2147,6 +2153,7 @@ Commands:
   traceability links    Check or write generated traceability links.
   graph impact          Find files related to changed files.
   graph serve           Open a standalone local traceability graph.
+  graph export          Export traceability data for Obsidian.
   graph communities     Find groups of related project-memory nodes.
 
 Options:
@@ -6672,11 +6679,9 @@ function runTraceability(argv) {
   process.exit(ok ? 0 : 1);
 }
 
-// packages/cli/src/graph-view/server.mjs
-import { createServer } from "node:http";
-import { readFileSync as readFileSync21 } from "node:fs";
-import { dirname as dirname13, extname as extname10, join as join20, resolve as resolve20 } from "node:path";
-import { fileURLToPath as fileURLToPath2 } from "node:url";
+// packages/cli/src/commands/graph.mjs
+import { mkdir, writeFile, rename, rm } from "node:fs/promises";
+import { join as join21 } from "node:path";
 
 // packages/cli/src/graph-view/traceability.mjs
 import { resolve as resolve19 } from "node:path";
@@ -6717,6 +6722,10 @@ async function exportTraceability(root) {
 }
 
 // packages/cli/src/graph-view/server.mjs
+import { createServer } from "node:http";
+import { readFileSync as readFileSync21 } from "node:fs";
+import { dirname as dirname13, extname as extname10, join as join20, resolve as resolve20 } from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 var import_node_style = __toESM(require_node_style(), 1);
 var ASSET_ROOT = join20(dirname13(fileURLToPath2(import.meta.url)), "assets");
 var CONTENT_TYPES = { ".css": "text/css; charset=utf-8", ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".cjs": "text/javascript; charset=utf-8", ".map": "application/json; charset=utf-8" };
@@ -6928,8 +6937,24 @@ async function runGraph(argv) {
   const sub = argv[0];
   const isImpact = sub === "impact";
   const isServe = sub === "serve";
-  if (!["impact", "communities", "serve"].includes(sub)) usage(sub ? `Unknown graph command: ${sub}` : "Missing graph command.", "graph");
+  if (!["impact", "communities", "serve", "export"].includes(sub)) usage(sub ? `Unknown graph command: ${sub}` : "Missing graph command.", "graph");
   const options = parseGraphOptions(argv.slice(1));
+  if (sub === "export") {
+    const graph = await exportTraceability(options.root);
+    delete graph.projectRoot;
+    const directory = join21(options.root, ".dotdotgod");
+    await mkdir(directory, { recursive: true });
+    const path = join21(directory, "traceability.json");
+    const temporary = `${path}.${process.pid}.tmp`;
+    try {
+      await writeFile(temporary, JSON.stringify(graph, null, 2));
+      await rename(temporary, path);
+    } finally {
+      await rm(temporary, { force: true });
+    }
+    console.log(options.json ? JSON.stringify({ ok: true, path, edges: graph.edges.length }) : `graph export: ${path} (${graph.edges.length} relations)`);
+    return;
+  }
   if (isServe && options.changed.length > 0) usage("graph serve now shows project traceability. Use graph impact for --changed analysis.", "graph serve");
   if (isServe && !Number.isInteger(options.port)) usage("Invalid --port. Use an integer from 0 through 65535.", "graph serve");
   if (isServe) {

@@ -28,7 +28,7 @@ function getJobs() {
   jobRunner ??= new IngestionJobRunner(getStore());
   return jobRunner;
 }
-const server = new McpServer({ name: 'dotdotgod-context', version: '0.6.7' });
+const server = new McpServer({ name: 'dotdotgod-context', version: '0.7.0' });
 
 const scopeSchema = z.enum(['transient', 'session', 'project']).optional();
 const outputModeSchema = z.enum(['auto', 'direct', 'indexed', 'discard']).optional();

@@ -54,6 +54,7 @@ dotdotgod graph serve .
 - `resolve` and `expand` map explicit or high-signal prompt references to project files and can include related impact evidence.
 - `graph impact` ranks likely related specs, tests, docs, commands, and source files for one or more changed paths, with a combined ranking and per-file top five. Non-seed scores use fixed weighted PPR connection `80` plus memory policy `20`. A bounded request-local multilingual vector overlay participates in PPR when the query cache is available; vector preparation failures degrade to structural-only results.
 - `graph serve` starts a standalone read-only traceability graph without Obsidian. It uses resolved project configuration, relation filters, document-group colors, and optional weighted line widths.
+- `graph export` writes `.dotdotgod/traceability.json` for the desktop Obsidian plugin. Run it in the project/vault, then reload traceability in Obsidian. Exported paths are relative; referenced files must exist in the vault. See [plugin setup](../obsidian/README.md).
 - `traceability links` checks or repairs generated Markdown traceability-link sections.
 
 ## Commands

@@ -20,6 +20,7 @@
 - The command MAY include one output mode: `--compact`, `--json`, or `--yml`/`--yaml`.
 - `--yml`/`--yaml` MUST return compact structured agent-facing output with changed files, per-seed top-five results, grouped docs, tests, files, scores, reasons, omitted counts, status metadata, and recommended actions.
 - `dotdotgod graph serve <root>` MUST serve standalone file-level traceability without Obsidian, accept loopback `--host` and optional `--port`, and reject legacy `--changed` arguments with guidance to use `graph impact`.
+- `dotdotgod graph export <root> [--json]` MUST atomically write the same resolved shared traceability relations to `.dotdotgod/traceability.json` without an absolute project root, for the desktop plugin defined in `../OBSIDIAN_PLUGIN.md`.
 - `GET /api/graph` MUST resolve default/project configuration and refresh the index. It MUST omit local-memory and missing file endpoints and include only configured traceability relations.
 - The UI MUST use D3 layout and Canvas rendering, with relation colors, arrows, optional weight-based widths, document-group node colors, compact hover labels, a searchable file list, and path copying.
 - Relationship legend controls MUST hide disabled edges and endpoints with no active relation. Shared endpoints MUST remain. Markdown-only mode MUST keep only `.md` endpoints. Shared Node/browser policy MUST select the highest-weight relation per directed pair with relation-ID tie-breaking.

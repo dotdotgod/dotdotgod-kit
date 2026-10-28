@@ -6,6 +6,9 @@ Use reports for evidence snapshots, measurements, and interpretations. Route dur
 
 ## Index
 
+- `RELEASE_0_7_0.md`: standalone traceability explorer, Pi root isolation, and Obsidian release preparation.
+- `OBSIDIAN_COMMUNITY_SUBMISSION.md`: listing fields, release checks, owner submission steps, and review limits.
+
 - `RELEASE_0_6_7.md`: scope-safe vector snapshots, batch recovery, locking and release limits.
 
 - `RELEASE_0_6_6.md`: release scope, compatibility migrations, native planning and publication gates.

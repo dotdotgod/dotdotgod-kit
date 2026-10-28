@@ -1,0 +1,13 @@
+{
+  "name": "@dotdotgod/obsidian",
+  "version": "0.7.0",
+  "private": true,
+  "type": "module",
+  "license": "Elastic-2.0",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "verify": "pnpm run build && pnpm run test"
+  },
+  "devDependencies": { "esbuild": "^0.25.12" }
+}

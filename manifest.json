@@ -1,0 +1,10 @@
+{
+  "id": "dotdotgod-traceability",
+  "name": "dotdotgod Traceability",
+  "version": "0.7.0",
+  "minAppVersion": "1.14.5",
+  "description": "Explore exported project traceability in the native graph with relation colors, weights, filters, and document groups.",
+  "author": "dotdotgod",
+  "authorUrl": "https://github.com/dotdotgod",
+  "isDesktopOnly": true
+}

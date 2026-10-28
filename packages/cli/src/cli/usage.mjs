@@ -68,6 +68,7 @@ Checks or writes generated Markdown traceability link sections from canonical fe
       return `Usage:
   dotdotgod graph impact <root> --changed <path> [--changed <path> ...] [--compact|--json|--yml|--yaml]
   dotdotgod graph serve <root> [--host HOST] [--port PORT]
+  dotdotgod graph export <root> [--json]
   dotdotgod graph communities <root> [--json]`;
     case 'graph impact':
       return `Usage:
@@ -78,7 +79,9 @@ Ranks nodes related to one or more changed files. <root> is the project root; re
       return `Usage:
   dotdotgod graph serve <root> [--host HOST] [--port PORT]
 
-Starts a local-only impact graph explorer. Changed files are rendered as root nodes and are excluded from related-result lists.`;
+Starts a standalone local traceability graph without Obsidian.`;
+    case 'graph export':
+      return `Usage:\n  dotdotgod graph export <root> [--json]\n\nWrite .dotdotgod/traceability.json for the Obsidian plugin.`;
     case 'graph communities':
       return `Usage:
   dotdotgod graph communities <root> [--json]`;
@@ -103,6 +106,7 @@ Commands:
   traceability links    Check or write generated traceability links.
   graph impact          Find files related to changed files.
   graph serve           Open a standalone local traceability graph.
+  graph export          Export traceability data for Obsidian.
   graph communities     Find groups of related project-memory nodes.
 
 Options:

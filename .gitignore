@@ -1,5 +1,7 @@
 node_modules/
 .obsidian-dev/
+.obsidian/
+packages/obsidian/dist/
 docs/plan
 docs/archive
 

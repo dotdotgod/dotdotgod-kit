@@ -8,11 +8,37 @@ Use it to carry project knowledge across sessions while keeping plans, verificat
 
 Repository: <https://github.com/dotdotgod/dotdotgod-kit>
 
-## 0.6.6 Upgrade
+## Obsidian Traceability Plugin
 
-See [release and migration notes](docs/report/RELEASE_0_6_6.md) for renamed tools,
-fixed 24-hour context storage, explicit embedding configuration, and opt-in
-Claude Code/Codex native project-plan files. Restart agent sessions after updating.
+Explore project traceability in the native global graph with relationship
+colors, weighted lines, clickable relation filters, document-group colors,
+and compact hover paths. Desktop Obsidian 1.14.5+ is required (tested on 1.14.5).
+Download the plugin ZIP from the [0.7.0 release](https://github.com/dotdotgod/dotdotgod-kit/releases/tag/0.7.0),
+extract `dotdotgod-traceability/` into `<vault>/.obsidian/plugins/`, reload,
+and enable **dotdotgod Traceability**. Then export in the project/vault:
+
+```bash
+npx @dotdotgod/cli@0.7.0 graph export .
+```
+
+Open Graph view and use **Reload traceability**. The default graph file is
+`.dotdotgod/traceability.json`; settings accept another vault-relative JSON path.
+The referenced files must exist in the vault. Non-Markdown clicks reveal files
+in the OS file browser, never execute them. No network, telemetry, payment, or
+account is used by the plugin; `npx` installation may contact npm.
+
+**Compatibility:** the plugin uses undocumented native renderer APIs and is not
+yet community-approved. Native filters may not constrain injected endpoints.
+Mobile/local graphs are unsupported. Licensed under **Elastic License 2.0**.
+See [full installation, usage, privacy, and compatibility details](packages/obsidian/README.md).
+
+## 0.7.0 Upgrade
+
+See [0.7.0 release notes](docs/report/RELEASE_0_7_0.md) for the standalone graph,
+`graph export`, packaged Obsidian plugin, and Pi project-root isolation.
+`graph serve` no longer accepts `--changed`; use `graph impact` for ranking.
+For earlier migrations, see [0.6.6 notes](docs/report/RELEASE_0_6_6.md).
+Restart agent sessions after updating adapters.
 
 ## The Working Loop
 
@@ -66,7 +92,7 @@ npx @dotdotgod/cli validate .
 npx @dotdotgod/cli init .
 npx @dotdotgod/cli validate .
 npx @dotdotgod/cli graph impact . --changed <path> --compact
-npx @dotdotgod/cli graph serve . --changed <path>
+npx @dotdotgod/cli graph serve .
 ```
 
 For Claude Code and Codex setup, follow the package-specific **Start Here** links in the package table.

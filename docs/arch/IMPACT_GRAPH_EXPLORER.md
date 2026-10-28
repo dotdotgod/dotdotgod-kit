@@ -18,7 +18,7 @@ impact/reroot API routes and the root-connected structural payload are removed.
 ## Shared Policy
 
 `graph-view/policy.cjs` runs unchanged in Node, the browser, and the bundled
-Obsidian development adapter. It owns document-only filtering, disabled relation
+Obsidian desktop plugin. It owns document-only filtering, disabled relation
 filtering, active endpoints, and representative edges. Each directed file pair
 uses the highest configured weight; relation ID resolves ties. Complete original
 relations remain in the data payload.
@@ -54,7 +54,12 @@ selection refers to the same active file set.
 The server reads project data and may refresh ignored index caches; it does not
 edit source documents. The browser cannot open arbitrary local files and offers
 path copying instead. Refresh needs no separate export command. Obsidian's
-development integration still reads an explicitly exported JSON file.
+plugin reads `.dotdotgod/traceability.json` created by `graph export`, or another
+vault-relative JSON path from its settings. Its bundled source, validation,
+renderer hooks, styles, tests, and release builder live in `packages/obsidian/`.
+Root `manifest.json` and `versions.json` support monorepo release discovery.
+The undocumented renderer boundary and native-filter limitation are explicit;
+see `../spec/OBSIDIAN_PLUGIN.md` for its behavior and safety contract.
 
 Impact ranking, reference validation, PPR, and CLI output contracts remain
 independent of this renderer replacement. See `../test/IMPACT_GRAPH_EXPLORER.md`

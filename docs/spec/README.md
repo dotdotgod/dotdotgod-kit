@@ -1,5 +1,7 @@
 # Specs
 
+- `OBSIDIAN_PLUGIN.md`: vault-relative export, desktop plugin behavior, safety, lifecycle, and release contract.
+
 - `CONTEXT_RETENTION.md`: fixed 24-hour SQLite content/job/impact lifetime, migration and cleanup contract.
 
 Use this area for behavior specs, API contracts, and product requirements.

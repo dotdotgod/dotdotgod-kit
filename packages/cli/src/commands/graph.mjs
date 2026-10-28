@@ -1,4 +1,7 @@
 import { commandUsage, parseCommon, usage } from '../cli/usage.mjs';
+import { mkdir, writeFile, rename, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { exportTraceability } from '../graph-view/traceability.mjs';
 import { buildCommunities } from '../graph/communities.mjs';
 import { graphSummary, readFreshIndex } from '../index/cache.mjs';
 import { buildCompactImpactReport, buildImpactReport } from '../impact/report.mjs';
@@ -42,8 +45,22 @@ export async function runGraph(argv) {
   const sub = argv[0];
   const isImpact = sub === 'impact';
   const isServe = sub === 'serve';
-  if (!['impact', 'communities', 'serve'].includes(sub)) usage(sub ? `Unknown graph command: ${sub}` : 'Missing graph command.', 'graph');
+  if (!['impact', 'communities', 'serve', 'export'].includes(sub)) usage(sub ? `Unknown graph command: ${sub}` : 'Missing graph command.', 'graph');
   const options = parseGraphOptions(argv.slice(1));
+  if (sub === 'export') {
+    const graph = await exportTraceability(options.root);
+    delete graph.projectRoot;
+    const directory = join(options.root, '.dotdotgod');
+    await mkdir(directory, { recursive: true });
+    const path = join(directory, 'traceability.json');
+    const temporary = `${path}.${process.pid}.tmp`;
+    try {
+      await writeFile(temporary, JSON.stringify(graph, null, 2));
+      await rename(temporary, path);
+    } finally { await rm(temporary, { force: true }); }
+    console.log(options.json ? JSON.stringify({ ok: true, path, edges: graph.edges.length }) : `graph export: ${path} (${graph.edges.length} relations)`);
+    return;
+  }
   if (isServe && options.changed.length > 0) usage('graph serve now shows project traceability. Use graph impact for --changed analysis.', 'graph serve');
   if (isServe && !Number.isInteger(options.port)) usage('Invalid --port. Use an integer from 0 through 65535.', 'graph serve');
   if (isServe) {

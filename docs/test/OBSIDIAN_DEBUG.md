@@ -51,8 +51,9 @@ restarting; it waits for vault readiness and captures output in `app.log`.
 ### Project Traceability Data
 
 `node scripts/obsidian-probe-install.mjs` now exports the current checkout's
-traceability graph and installs its absolute `graphFile` setting in the isolated
-plugin. Export uses `readMemoryConfig` and `readFreshIndex`, preserving the CLI's
+traceability graph into the isolated vault and installs the bundled release
+plugin with vault-relative `graphPath`. Referenced fixture files are copied
+without overwriting existing files. Export uses `readMemoryConfig` and `readFreshIndex`, preserving the CLI's
 default/configured policy resolution and rejecting configuration errors.
 Only configured traceability relations with existing, non-local file endpoints
 are exported. Relation labels and weights come from the resolved configuration;
@@ -64,11 +65,11 @@ node scripts/obsidian-traceability-export.mjs .
 node scripts/obsidian-traceability-check.mjs
 ```
 
-Reload the graph using the plugin's `Reload project traceability graph` command
-after exporting again. Refresh is explicit, not a filesystem watcher. When the
-test vault differs from the exported project root, project node clicks open the
-real project file externally. This remains a desktop development integration,
-not a packaged community release. Native filters are not yet honored.
+Reload with the plugin's `Reload traceability` command after exporting again.
+Refresh is explicit, not a watcher. Markdown clicks stay native; non-Markdown
+clicks reveal the copied vault file in the OS browser. Native filters are not
+guaranteed to constrain injected endpoints. Release use and compatibility limits
+are documented in `../../packages/obsidian/README.md`.
 
 The earlier fixed-fixture `obsidian-probe-check.mjs` assumes fixture relations
 and must not be used as acceptance evidence for this project-data mode.
@@ -123,11 +124,9 @@ On first use, enable community plugins in the isolated vault and load the probe:
 node scripts/obsidian-dev.mjs eval '(async()=>{await app.plugins.setEnable(true);await app.plugins.loadManifests();await app.plugins.enablePlugin("dotdotgod-graph-probe");return true})()'
 ```
 
-The development-only probe uses undocumented renderer methods, injects two real
-TypeScript file nodes and three fixed relations, and styles native link graphics.
-Labels are pointer-transparent DOM overlays positioned from PIXI coordinates,
-adjusted for device pixel ratio. No original Markdown or source is rewritten.
-It does not respect graph filters and is not a production plugin.
+The old fixed-fixture probe observations below are historical, not acceptance
+evidence for the packaged plugin. Current release code uses undocumented graph
+methods, styles native links, and displays compact hover paths, not edge labels.
 
 The real-app check passed node presence, color values, width ordering, three
 data refreshes, programmatic pan/zoom, unload node restoration, label removal,
@@ -137,4 +136,26 @@ alignment assertions. Manual drag, graph close/reopen, missing files, and
 cross-version compatibility remain unverified.
 
 `eval` intentionally executes trusted JavaScript inside the isolated app; never
-pass untrusted text. The probe remains enabled in the current test session.
+pass untrusted text.
+
+## Packaged Plugin Regression Gate
+
+`pnpm --filter @dotdotgod/obsidian run verify` builds and tests path/schema
+validation, corrupt-settings normalization, missing-export recovery, preserving
+the prior graph on failure, missing files, concurrent reads, unload during IO,
+unsupported renderers, and release metadata/bundle boundaries.
+`packages/cli/test/graph-export.test.mjs` checks relative exports, CLI help,
+successful file replacement, and retaining the prior export on config errors.
+
+Real-app acceptance must additionally cover all relation toggles, documents-only,
+legend/weight settings, repeated reload, disable/re-enable, graph close/reopen,
+first-run missing export, settings save, non-Markdown reveal, and native-option
+preservation. Cross-version, Windows/Linux, mobile, and full keyboard graph
+navigation are not claimed. The supported version is initially 1.14.5 desktop.
+
+Run `node scripts/obsidian-release-check.mjs` after installing the current bundle
+in the isolated app. It verifies exported endpoints, all-relations filtering,
+Markdown mode, legend/weight options, three reloads, missing-file recovery,
+non-Markdown reveal routing (OS call intercepted), settings save, native option
+preservation, unload hook/node/UI restoration, re-enable, and graph close/reopen.
+This is opt-in app automation, not part of headless workspace verification.
