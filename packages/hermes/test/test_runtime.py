@@ -49,6 +49,14 @@ class Context:
 
 class RuntimeTest(unittest.TestCase):
     def setUp(self):
+        # Runtime subprocesses, not just direct fixture Git calls, must inherit
+        # the fixture's repository discovery instead of a parent push hook.
+        clean_env = os.environ.copy()
+        for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_PREFIX"):
+            clean_env.pop(name, None)
+        environment = patch.dict(os.environ, clean_env, clear=True)
+        environment.start()
+        self.addCleanup(environment.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.a = Path(self.temp.name).resolve() / "a"
