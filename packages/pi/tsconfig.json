@@ -2,7 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "rootDir": "."
+    "rootDir": ".",
+    "paths": {
+      "pi-subagents/src/extension/index.ts": ["./extensions/subagents/dependency.d.ts"]
+    }
   },
   "include": ["extensions/**/*.ts", "test/**/*.ts"]
 }

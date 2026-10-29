@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/opencode",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "OpenCode V2 project memory, automatic project plans and advisory impact tracking.",
   "type": "module",
   "main": "./index.js",

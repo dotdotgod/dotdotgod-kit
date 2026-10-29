@@ -140,6 +140,12 @@ pass untrusted text.
 
 ## Packaged Plugin Regression Gate
 
+Plugin tests additionally compare bundle hashes from repository-root and package
+working directories. `.github/workflows/obsidian-release.yml` runs workspace
+verification, builds from the exact tag, attests supported assets, and verifies
+their provenance. Only Obsidian-supported files are attached to new Releases;
+the manual ZIP is retained as a separate Actions artifact for 90 days.
+
 `pnpm --filter @dotdotgod/obsidian run verify` builds and tests path/schema
 validation, corrupt-settings normalization, missing-export recovery, preserving
 the prior graph on failure, missing files, concurrent reads, unload during IO,

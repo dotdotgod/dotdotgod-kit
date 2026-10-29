@@ -43,7 +43,6 @@ import {
   isManagedPlanMarkdownPath,
   normalizeToolPath,
   PLAN_DIRECTORY,
-  planPathExists,
 } from "./runtime/paths.js";
 import {
   buildPlanModeRequestFraming,
@@ -55,8 +54,6 @@ import {
   type PendingImpactItem,
 } from "./impact.js";
 import {
-  buildPlanReviewDisplayMarkdown,
-  buildPlanReviewMarkdown,
   planModeFollowUpDeliveryOptions,
 } from "./plans.js";
 import {
@@ -356,7 +353,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
           return !content.some(
             (c) =>
               c.type === "text" &&
-              (c as TextContent).text?.includes("[PLAN MODE ACTIVE]"),
+              c.text?.includes("[PLAN MODE ACTIVE]"),
           );
         }
         return true;

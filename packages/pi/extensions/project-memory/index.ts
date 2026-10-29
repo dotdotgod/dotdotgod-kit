@@ -107,7 +107,10 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 							? { ok: queryResult.ok, command: queryResult.command, error: queryResult.error }
 							: undefined,
 				};
-				return { content: [{ type: "text", text: prompt }], details, structuredContent: JSON.parse(JSON.stringify(details)) };
+				const structuredContent = { ok: details.ok, focus, output: prompt, map: details.map,
+					...(details.query ? { query: { ok: details.query.ok, command: details.query.command,
+						...(details.query.error !== undefined ? { error: details.query.error } : {}) } } : {}) };
+				return { content: [{ type: "text", text: prompt }], details, structuredContent };
 			} finally {
 				lifecycle.finishLoad();
 			}

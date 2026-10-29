@@ -15,20 +15,26 @@ and compact hover paths. English and Korean controls follow the app language.
 
 ## Install
 
-The plugin is not yet approved for the community directory. Download
-`dotdotgod-traceability-0.7.0.zip` from the
-[0.7.0 release](https://github.com/dotdotgod/dotdotgod-kit/releases/tag/0.7.0).
-Extract its `dotdotgod-traceability` folder into
-`<vault>/.obsidian/plugins/`, reload Obsidian, and enable **dotdotgod
-Traceability** in Community plugins. The folder must contain `main.js`,
-`manifest.json`, and `styles.css`. Never replace your vault's `.obsidian` folder.
+The [community listing](https://community.obsidian.md/plugins/dotdotgod-traceability)
+is public; automated review and in-app availability are separate statuses.
+For manual installation, create `<vault>/.obsidian/plugins/dotdotgod-traceability/`
+and copy `main.js`, `manifest.json`, and `styles.css` from the
+[0.7.1 release](https://github.com/dotdotgod/dotdotgod-kit/releases/tag/0.7.1)
+into it. Reload Obsidian and enable **dotdotgod Traceability** in Community
+plugins. Never replace your vault's `.obsidian` folder.
+
+A manual-install ZIP is available as the `dotdotgod-traceability-manual-install`
+artifact of the release's [GitHub Actions run](https://github.com/dotdotgod/dotdotgod-kit/actions/workflows/obsidian-release.yml)
+(GitHub sign-in required; retained for 90 days). Extract the downloaded artifact,
+then extract its nested plugin ZIP into `<vault>/.obsidian/plugins/`.
+Only the three Obsidian-supported files are attached to new GitHub Releases.
 
 ## Use
 
 In the project/vault directory, run:
 
 ```bash
-npx @dotdotgod/cli@0.7.0 graph export .
+npx @dotdotgod/cli@0.7.1 graph export .
 ```
 
 This resolves default/project configuration, refreshes the index, and writes

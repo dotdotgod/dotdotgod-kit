@@ -6,6 +6,10 @@
   metadata in `manifest.json` and `versions.json`. Release tags MUST match the
   manifest version without a `v` prefix; assets MUST include `main.js`,
   `manifest.json`, and `styles.css` when styling is bundled.
+- Tagged releases MUST be built and tested by CI with artifact attestations for
+  `main.js` and `styles.css`. Bundle content MUST be independent of build cwd.
+  New Releases MUST attach only Obsidian-supported assets; optional manual ZIPs
+  MAY be distributed separately as time-limited CI artifacts.
 - `dotdotgod graph export <root> [--json]` MUST write
   `.dotdotgod/traceability.json` through temporary-file rename, using the same
   configuration and shared endpoints as the standalone graph. The payload MUST

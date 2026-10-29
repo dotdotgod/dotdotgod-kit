@@ -2,9 +2,20 @@
 
 ## Status
 
-Version 0.7.0 is prepared for GitHub distribution and community review, not
-community-approved. The owner must sign in and submit; GitHub publication alone
-does not add a plugin to Obsidian's directory.
+Submitted and published through the community website on 2026-10-29 after the
+owner explicitly accepted the developer policies and maintenance commitment.
+GitHub is connected as `dotdotgod`; listing ownership is `Myself`.
+
+- Public listing: <https://community.obsidian.md/plugins/dotdotgod-traceability>
+- Owner dashboard: <https://community.obsidian.md/account/plugins/dotdotgod-traceability>
+- Detected version: `0.7.0`, commit `b113d04`.
+- Observed dashboard message: "Your entry is live. An automated review is in progress."
+- Review state at submission: **Pending**. Public listing visibility is verified;
+  automated review completion, approval, and in-app directory propagation are not.
+
+The listing description discloses desktop-only support, undocumented renderer
+APIs, native-filter limitations, safe local-file reveal, no network/telemetry,
+and Elastic-2.0 licensing. GitHub release assets were discovered successfully.
 
 ## Listing Fields
 
@@ -14,7 +25,7 @@ does not add a plugin to Obsidian's directory.
 - Author: `dotdotgod`
 - Description: Explore exported project traceability in the native graph with
   relation colors, weights, filters, and document groups.
-- Version/tag: `0.7.0` (no `v` prefix)
+- Next review version/tag: `0.7.1` (no `v` prefix)
 - Minimum app: `1.14.5`; desktop only; tested on macOS Obsidian 1.14.5.
 - License: Elastic License 2.0. No copied Extended Graph implementation.
 
@@ -24,8 +35,8 @@ does not add a plugin to Obsidian's directory.
 - Root README introduces the plugin and links to full usage/privacy details.
 - Build: `pnpm --filter @dotdotgod/obsidian run verify`.
 - Bundle: `node packages/obsidian/scripts/release.mjs`.
-- Assets: `main.js`, `manifest.json`, `styles.css`, and
-  `dotdotgod-traceability-0.7.0.zip` from `packages/obsidian/dist/`.
+- Release assets: only `main.js`, `manifest.json`, and `styles.css` from
+  `packages/obsidian/dist/`. The manual ZIP is a separate Actions artifact.
 - ZIP contains a `dotdotgod-traceability/` directory, not an entire vault.
 - Review source/bundle for external paths, network, telemetry, dependency
   installers, untrusted HTML, and OS file execution.
@@ -39,7 +50,7 @@ does not add a plugin to Obsidian's directory.
 1. Sign in at <https://community.obsidian.md> with an Obsidian account and connect
    the GitHub account that owns the repository.
 2. Choose plugin submission and enter the repository/listing fields.
-3. Point reviewers to `packages/obsidian/`, the root manifest, exact `0.7.0`
+3. Point reviewers to `packages/obsidian/`, the root manifest, exact versioned
    release, and build instructions. Explain that this is a monorepo.
 4. Disclose undocumented renderer hooks, desktop-only support, native-filter
    limitations, local-file reveal, and Elastic-2.0 licensing. The plugin uses no

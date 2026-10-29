@@ -1,4 +1,5 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { setTimeout } from "node:timers";
 import { recordContextMetric } from "../../context-metrics/utils.ts";
 import {
 	buildPlanExecutionDecision,

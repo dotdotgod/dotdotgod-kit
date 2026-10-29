@@ -23,8 +23,10 @@ function getSafeCustomComponentWidth(width: number): number {
 
 function getCustomComponentScrollOffset(currentOffset: number, data: string, visibleLines: number): number | undefined {
 	let wheel = 0;
-	if (/\x1b\[<64;\d+;\d+[mM]/.test(data) || /\x1b\[M[`]/.test(data)) wheel = -3;
-	else if (/\x1b\[<65;\d+;\d+[mM]/.test(data) || /\x1b\[M[a]/.test(data)) wheel = 3;
+	// Strip ESC before matching the printable terminal mouse-report payload.
+	const reports = data.split("\u001b").slice(1);
+	if (reports.some(report => /^\[<64;\d+;\d+[mM]/.test(report) || report.startsWith("[M`"))) wheel = -3;
+	else if (reports.some(report => /^\[<65;\d+;\d+[mM]/.test(report) || report.startsWith("[Ma"))) wheel = 3;
 	if (wheel !== 0) return Math.max(0, currentOffset + wheel);
 	if (matchesKey(data, Key.up)) return Math.max(0, currentOffset - 1);
 	if (matchesKey(data, Key.down)) return currentOffset + 1;

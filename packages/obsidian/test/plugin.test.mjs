@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import validation from '../src/validation.cjs';
 const { graphPath, validateGraph, normalizeOptions } = validation;
 const graph = () => ({ version: 1, config: { documentation: { root: 'docs' } },
@@ -104,4 +106,14 @@ test('release metadata and bundled output agree', () => {
   assert.doesNotMatch(bundle, /require\(["']\.\.?\//);
   assert.doesNotMatch(bundle, /openPath|fetch\(|https?:\/\//);
   assert.match(bundle, /showItemInFolder/);
+});
+
+test('plugin build is independent of invocation directory', () => {
+  const root = new URL('../../..', import.meta.url).pathname;
+  const build = new URL('../scripts/build.mjs', import.meta.url).pathname;
+  const digest = () => createHash('sha256').update(readFileSync(new URL('../dist/main.js', import.meta.url))).digest('hex');
+  execFileSync(process.execPath, [build], { cwd: root });
+  const fromRoot = digest();
+  execFileSync(process.execPath, [build], { cwd: new URL('..', import.meta.url).pathname });
+  assert.equal(digest(), fromRoot);
 });

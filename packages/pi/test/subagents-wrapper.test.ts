@@ -3,6 +3,12 @@ import * as fs from "node:fs";
 import test from "node:test";
 import registerDotdotgodSubagents, { getPackageLocalSubagentsResourcePaths } from "../extensions/subagents/index.ts";
 
+test("subagents runtime import is a fixed package specifier, not a computed URL", () => {
+	const source = fs.readFileSync(new URL("../extensions/subagents/index.ts", import.meta.url), "utf8");
+	assert.match(source, /import\("pi-subagents\/src\/extension\/index\.ts"\)/);
+	assert.doesNotMatch(source, /import\(extensionUrl\)|pathToFileURL/);
+});
+
 test("subagents wrapper defers runtime tool inspection until session start", async () => {
 	let getAllToolsCalls = 0;
 	const handlers = new Map<string, Array<(...args: unknown[]) => unknown>>();

@@ -37,6 +37,7 @@ Focused hardening suites cover:
 
 Pi verification covers alias-free MCP registration, envelopes and nested calls. The host owns child lifecycle and cancellation. See [OpenCode coverage](OPENCODE_ADAPTER.md).
 
+
 ## Pi Native And Codemode Workflows
 
 - `packages/pi/test/context-workflow.test.ts` exercises MCP tools through public Pi SDK sessions: small direct auto output, large auto/indexed retention and source search, file ingestion without raw bytes, source/scope isolation, no-match, discard, nonzero diagnostics, timeout, and policy-blocked calls.

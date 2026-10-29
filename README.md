@@ -13,12 +13,12 @@ Repository: <https://github.com/dotdotgod/dotdotgod-kit>
 Explore project traceability in the native global graph with relationship
 colors, weighted lines, clickable relation filters, document-group colors,
 and compact hover paths. Desktop Obsidian 1.14.5+ is required (tested on 1.14.5).
-Download the plugin ZIP from the [0.7.0 release](https://github.com/dotdotgod/dotdotgod-kit/releases/tag/0.7.0),
-extract `dotdotgod-traceability/` into `<vault>/.obsidian/plugins/`, reload,
+Copy `main.js`, `manifest.json`, and `styles.css` from the [0.7.1 release](https://github.com/dotdotgod/dotdotgod-kit/releases/tag/0.7.1)
+into `<vault>/.obsidian/plugins/dotdotgod-traceability/`, reload,
 and enable **dotdotgod Traceability**. Then export in the project/vault:
 
 ```bash
-npx @dotdotgod/cli@0.7.0 graph export .
+npx @dotdotgod/cli@0.7.1 graph export .
 ```
 
 Open Graph view and use **Reload traceability**. The default graph file is
@@ -27,8 +27,9 @@ The referenced files must exist in the vault. Non-Markdown clicks reveal files
 in the OS file browser, never execute them. No network, telemetry, payment, or
 account is used by the plugin; `npx` installation may contact npm.
 
-**Compatibility:** the plugin uses undocumented native renderer APIs and is not
-yet community-approved. Native filters may not constrain injected endpoints.
+**Compatibility:** the plugin uses undocumented native renderer APIs. Its community
+listing is public, but automated review completion is not yet confirmed. Native
+filters may not constrain injected endpoints.
 Mobile/local graphs are unsupported. Licensed under **Elastic License 2.0**.
 See [full installation, usage, privacy, and compatibility details](packages/obsidian/README.md).
 

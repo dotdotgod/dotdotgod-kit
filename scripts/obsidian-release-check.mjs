@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
+const version = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url))).version;
 
 // Explicit real-app acceptance against the isolated vault, never a user's vault.
 const expression = `(async () => {
@@ -10,7 +12,7 @@ const expression = `(async () => {
   assert(view, 'Open the global graph first');
   const renderer = view.renderer;
   const plugin = app.plugins.plugins[id];
-  assert(plugin?.manifest.version === '0.7.0', 'Install the current bundle first');
+  assert(plugin?.manifest.version === ${JSON.stringify(version)}, 'Install the current bundle first');
   const saved = structuredClone(plugin.options);
   const options = JSON.stringify(view.dataEngine.options);
   const countUI = () => document.querySelectorAll('[data-dotdotgod-controls]').length;

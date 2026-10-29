@@ -7,8 +7,9 @@ export function queryFailureDetail(result: { error?: { message: string }; stdout
 	let detail = result.error?.message;
 	if (!detail && result.stdout.length <= 64 * 1024) {
 		try {
-			const payload = JSON.parse(result.stdout);
-			if (payload?.ok === false && typeof payload.error === "string" && payload.error.trim()) detail = payload.error.trim();
+			const payload: unknown = JSON.parse(result.stdout);
+			if (payload && typeof payload === "object" && "ok" in payload && payload.ok === false &&
+				"error" in payload && typeof payload.error === "string" && payload.error.trim()) detail = payload.error.trim();
 		} catch { /* Non-JSON failures use stderr or exit status below. */ }
 	}
 	detail ??= result.stderr.trim() || `exit ${String(result.status)}`;

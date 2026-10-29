@@ -1,6 +1,5 @@
 import * as path from "node:path";
 import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const require = createRequire(import.meta.url);
@@ -32,8 +31,8 @@ async function registerPackageLocalSubagents(pi: ExtensionAPI): Promise<void> {
 		owner = "external";
 		return;
 	}
-	const extensionUrl = pathToFileURL(path.join(resolveSubagentsPackageRoot(), "src", "extension", "index.ts")).href;
-	const subagentsModule = await import(extensionUrl) as { default?: (api: ExtensionAPI) => void | Promise<void> };
+	// Only the installed dependency's literal entrypoint can supply executable code.
+	const subagentsModule = await import("pi-subagents/src/extension/index.ts");
 	const registerSubagents = subagentsModule.default;
 	if (typeof registerSubagents !== "function") {
 		throw new Error("pi-subagents extension does not export a default factory function");
