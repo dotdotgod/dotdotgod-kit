@@ -117,3 +117,11 @@ test('plugin build is independent of invocation directory', () => {
   execFileSync(process.execPath, [build], { cwd: new URL('..', import.meta.url).pathname });
   assert.equal(digest(), fromRoot);
 });
+
+test('root build reproduces the published main and styles bytes for review', () => {
+  const root = new URL('../../..', import.meta.url);
+  execFileSync(process.execPath, [new URL('scripts/obsidian-community-build.mjs', root).pathname], { cwd: root.pathname });
+  for (const file of ['main.js', 'styles.css']) {
+    assert.deepEqual(readFileSync(new URL(file, root)), readFileSync(new URL(`../dist/${file}`, import.meta.url)));
+  }
+});

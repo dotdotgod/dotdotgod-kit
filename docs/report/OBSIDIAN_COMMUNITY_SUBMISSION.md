@@ -25,7 +25,7 @@ and Elastic-2.0 licensing. GitHub release assets were discovered successfully.
 - Author: `dotdotgod`
 - Description: Explore exported project traceability in the native graph with
   relation colors, weights, filters, and document groups.
-- Next review version/tag: `0.7.1` (no `v` prefix)
+- Next plugin review version/tag: `0.7.2` (no `v` prefix); npm remains `0.7.1`.
 - Minimum app: `1.14.5`; desktop only; tested on macOS Obsidian 1.14.5.
 - License: Elastic License 2.0. No copied Extended Graph implementation.
 
@@ -44,6 +44,25 @@ and Elastic-2.0 licensing. GitHub release assets were discovered successfully.
   repeated reload, graph reopen, and disable restoration.
 - Run workspace verification and docs/index validation after generation.
 - Inspect actual uploaded assets and registry versions after publication.
+
+## Follow-up Review Evidence
+
+Version 0.7.1 was released from `e55b13a`. Its
+[CI run](https://github.com/dotdotgod/dotdotgod-kit/actions/runs/40902099027)
+passed workspace tests, generated-runtime checks, build, artifact attestation,
+Release upload, and attestation verification. The Release contains only the
+three supported assets; the manual ZIP is a separate Actions artifact.
+All seven npm packages were accepted for publication.
+
+The owner dashboard queued a 0.7.1 review on 2026-10-30 (local date). Both asset
+attestations passed, the unsupported ZIP recommendation disappeared, and source
+checks were still Pending when observed. The 0.7.0 review also reported a missing
+root build script. A follow-up root `build` command reproduces the plugin assets
+without moving unrelated runtime source into scanner-ignored paths. This change
+ships in plugin-only 0.7.2 and needs a new hosted review for external confirmation.
+
+ELv2 is intentionally retained. GitHub's license detection database lacks it,
+so the recognition warning is an external limitation, not a missing license.
 
 ## Owner Submission
 

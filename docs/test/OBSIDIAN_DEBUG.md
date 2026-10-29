@@ -140,6 +140,10 @@ pass untrusted text.
 
 ## Packaged Plugin Regression Gate
 
+The root `pnpm run build` reproduces `main.js` and `styles.css` in the repository
+root for community build verification. These copies are ignored; the canonical
+build output remains under `packages/obsidian/dist/`.
+
 Plugin tests additionally compare bundle hashes from repository-root and package
 working directories. `.github/workflows/obsidian-release.yml` runs workspace
 verification, builds from the exact tag, attests supported assets, and verifies

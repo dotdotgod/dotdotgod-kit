@@ -59,7 +59,7 @@ jobs:
             packages/obsidian/dist/manifest.json \
             packages/obsidian/dist/styles.css \
             --verify-tag --title "$RELEASE_TAG — Community review fixes" \
-            --notes-file docs/report/RELEASE_0_7_1.md
+            --notes-file "docs/report/RELEASE_${RELEASE_TAG//./_}.md"
       - name: Verify published attestations
         env:
           GH_TOKEN: ${{ github.token }}

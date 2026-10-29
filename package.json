@@ -7,6 +7,7 @@
   "license": "Elastic-2.0",
   "packageManager": "pnpm@10.30.0",
   "scripts": {
+    "build": "node scripts/obsidian-community-build.mjs",
     "generate": "node scripts/generate-adapters.mjs && node scripts/build-adapter-runtime.mjs",
     "verify:generated": "node scripts/generate-adapters.mjs --check && node scripts/build-adapter-runtime.mjs --check",
     "verify:types": "pnpm -r --if-present run typecheck",

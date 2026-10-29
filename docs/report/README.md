@@ -6,6 +6,8 @@ Use reports for evidence snapshots, measurements, and interpretations. Route dur
 
 ## Index
 
+- `RELEASE_0_7_2.md`: plugin-only root build reproduction for community review; npm remains 0.7.1.
+
 - `RELEASE_0_7_1.md`: community review fixes, source typing, reproducible artifacts, and ELv2 recognition limits.
 
 - `RELEASE_0_7_0.md`: standalone traceability explorer, Pi root isolation, and Obsidian release preparation.

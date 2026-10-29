@@ -2,6 +2,8 @@ node_modules/
 .obsidian-dev/
 .obsidian/
 packages/obsidian/dist/
+/main.js
+/styles.css
 docs/plan
 docs/archive
 

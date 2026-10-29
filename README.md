@@ -13,7 +13,7 @@ Repository: <https://github.com/dotdotgod/dotdotgod-kit>
 Explore project traceability in the native global graph with relationship
 colors, weighted lines, clickable relation filters, document-group colors,
 and compact hover paths. Desktop Obsidian 1.14.5+ is required (tested on 1.14.5).
-Copy `main.js`, `manifest.json`, and `styles.css` from the [0.7.1 release](https://github.com/dotdotgod/dotdotgod-kit/releases/tag/0.7.1)
+Copy `main.js`, `manifest.json`, and `styles.css` from the [0.7.2 plugin release](https://github.com/dotdotgod/dotdotgod-kit/releases/tag/0.7.2)
 into `<vault>/.obsidian/plugins/dotdotgod-traceability/`, reload,
 and enable **dotdotgod Traceability**. Then export in the project/vault:
 
