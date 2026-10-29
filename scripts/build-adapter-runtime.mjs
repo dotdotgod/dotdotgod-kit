@@ -76,14 +76,14 @@ async function buildAdapter(name) {
     const parserAssets = (await readdir(parserDirectory)).filter((file) => file.endsWith('.wasm') || file === 'tree-sitter.js');
     if (!check) await mkdir(assetDirectory, { recursive: true });
     for (const asset of parserAssets) {
-      const source = ['tree-sitter-typescript.wasm', 'tree-sitter-tsx.wasm'].includes(asset)
+      const source = ['tree-sitter-typescript.wasm', 'tree-sitter-tsx.wasm', 'tree-sitter-c-sharp.wasm'].includes(asset)
         ? join(root, 'packages/cli/src/symbols/parsers', asset) : join(parserDirectory, asset);
       const target = join(assetDirectory, asset === 'tree-sitter.js' ? 'tree-sitter.cjs' : asset);
       if (check) {
         if (!(await readFile(source)).equals(await readFile(target))) throw new Error(`parser asset drift: ${target}`);
       } else await copyFile(source, target);
     }
-    for (const [licenseSource, filename] of [[join(parserDirectory, '../LICENSE'), 'LICENSE'], [join(root, 'packages/cli/src/symbols/parsers/TYPESCRIPT_LICENSE'), 'TYPESCRIPT_LICENSE'], [join(dirname(cliRequire.resolve('ignore')), 'LICENSE-MIT'), 'IGNORE_LICENSE']]) {
+    for (const [licenseSource, filename] of [[join(parserDirectory, '../LICENSE'), 'LICENSE'], [join(root, 'packages/cli/src/symbols/parsers/TYPESCRIPT_LICENSE'), 'TYPESCRIPT_LICENSE'], [join(root, 'packages/cli/src/symbols/parsers/CSHARP_LICENSE'), 'CSHARP_LICENSE'], [join(dirname(cliRequire.resolve('ignore')), 'LICENSE-MIT'), 'IGNORE_LICENSE']]) {
       const licenseTarget = join(assetDirectory, filename);
       if (check) {
         if (!(await readFile(licenseSource)).equals(await readFile(licenseTarget))) throw new Error(`parser license drift: ${licenseTarget}`);

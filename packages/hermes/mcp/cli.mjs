@@ -538,7 +538,7 @@ var init_languages = __esm({
       ".zsh",
       ".fish"
     ]);
-    EXTRACTOR_ID = "outline-v4:vscode-0.3.1:typescript-import-types-1";
+    EXTRACTOR_ID = "outline-v5:vscode-0.3.1:typescript-import-types-1:csharp-0.23.5-contextual-1";
     DECLARATIONS = {
       function_declaration: "function",
       generator_function_declaration: "function",
