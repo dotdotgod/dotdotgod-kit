@@ -28,6 +28,10 @@ jobs:
           node-version: '22.23.2'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Materialize ignored runtime parser assets in a clean checkout
+        run: pnpm run generate
+      - name: Reject tracked generated-runtime drift
+        run: git diff --exit-code
       - run: pnpm run verify
       - name: Build reproducible plugin and manual-install archive
         run: node packages/obsidian/scripts/release.mjs
