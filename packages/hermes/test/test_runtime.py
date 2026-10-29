@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -67,7 +68,12 @@ class RuntimeTest(unittest.TestCase):
         self.addCleanup(self.runtime.close_all)
 
     def git(self, root, *args):
-        return subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=True).stdout
+        # Linked-worktree hooks export repository-local Git variables. Fixture
+        # operations must never inherit those and target the release repository.
+        env = os.environ.copy()
+        for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_PREFIX"):
+            env.pop(name, None)
+        return subprocess.run(["git", "-C", str(root), *args], env=env, capture_output=True, check=True).stdout
 
     def enter(self, sid="A", sender="alice"):
         return self.runtime.before_llm(session_id=sid, user_message="review src/api.ts", platform="telegram", sender_id=sender)
