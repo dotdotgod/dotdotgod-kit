@@ -7,6 +7,15 @@ typeof-import calls, qualified import-type arrays, real syntax errors, symbol
 locations and nineteen-file indexing without exclusions. Patched WASM sources,
 toolchain and regeneration are documented in the CLI parser asset README.
 
+`packages/cli/test/csharp-modern-syntax.test.mjs` covers empty/populated/spread
+collection expressions, list patterns, primary constructors, required member
+modifiers and a contextual required pattern variable used in element access.
+It checks original Unicode/CRLF declaration ranges, docs, method ownership,
+body exclusion, fresh/reused caches and unchanged source bytes. Malformed
+collections/modifiers/patterns/declarations remain partial; no error suppression
+or consumer exclusions are used. This syntax grammar is not compiler validation:
+the upstream collection grammar can accept the compiler-invalid [..] form.
+
 Run node --test packages/cli/test/symbol-query.test.mjs for parser-backed fixtures
 and pnpm --filter @dotdotgod/pi run test for focused-load formatting regressions.
 

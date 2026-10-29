@@ -11,7 +11,7 @@ export const SOURCE_EXTENSIONS = new Set([
   ...Object.values(LANGUAGE_EXTENSIONS).flat(), '.c', '.h', '.kt', '.kts', '.swift',
   '.scala', '.clj', '.cljs', '.ex', '.exs', '.erl', '.hrl', '.lua', '.pl', '.pm', '.r', '.R', '.sql', '.m', '.mm', '.zsh', '.fish',
 ]);
-export const EXTRACTOR_ID = 'outline-v4:vscode-0.3.1:typescript-import-types-1';
+export const EXTRACTOR_ID = 'outline-v5:vscode-0.3.1:typescript-import-types-1:csharp-0.23.5-contextual-1';
 export function languageForPath(path) {
   return Object.entries(LANGUAGE_EXTENSIONS).find(([, extensions]) => extensions.includes(extname(path)))?.[0] ?? null;
 }
