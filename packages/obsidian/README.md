@@ -19,7 +19,7 @@ The [community listing](https://community.obsidian.md/plugins/dotdotgod-traceabi
 is public; automated review and in-app availability are separate statuses.
 For manual installation, create `<vault>/.obsidian/plugins/dotdotgod-traceability/`
 and copy `main.js`, `manifest.json`, and `styles.css` from the
-[0.7.2 release](https://github.com/dotdotgod/dotdotgod-kit/releases/tag/0.7.2)
+[0.7.3 release](https://github.com/dotdotgod/dotdotgod-kit/releases/tag/0.7.3)
 into it. Reload Obsidian and enable **dotdotgod Traceability** in Community
 plugins. Never replace your vault's `.obsidian` folder.
 
@@ -34,7 +34,7 @@ Only the three Obsidian-supported files are attached to new GitHub Releases.
 In the project/vault directory, run:
 
 ```bash
-npx @dotdotgod/cli@0.7.1 graph export .
+npx @dotdotgod/cli@0.7.3 graph export .
 ```
 
 This resolves default/project configuration, refreshes the index, and writes
