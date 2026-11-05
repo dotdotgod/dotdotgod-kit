@@ -17,17 +17,11 @@ Load aliases:
 
 Run `/dd:load` without arguments and confirm it is not wrapped in an automatic compact load and the prompt contains a prefix-compressed documentation map through directory depth 5 without query results. Run `/dd:load project memory` and confirm it contains a depth-3 map plus at most 30 distinct Markdown-file results. `docs/plan/**` and `docs/archive/**` bodies should remain excluded by default while their README maps remain targeted routing entrypoints. Temporarily remove the global CLI from `PATH` to verify the package-local `@dotdotgod/cli` dependency is tried before README-only fallback.
 
-## Packaged CLI And Subagents
+## Packaged CLI
 
-1. Install `@dotdotgod/pi` into a clean Pi package environment without separately installing `@dotdotgod/cli` or `pi-subagents`.
+1. Install `@dotdotgod/pi` into a clean Pi package environment without separately installing `@dotdotgod/cli`.
 2. Confirm `/dd:load` can run `dotdotgod query` for focused loads and Plan Mode context shaping can run validation and graph-impact commands through the package-local CLI dependency when no global CLI is on `PATH`.
-3. Confirm the `subagent` tool is available.
-4. Confirm builtin agents include `scout`, `researcher`, `planner`, `worker`, `reviewer`, `context-builder`, `oracle`, and `delegate`.
-5. Confirm package agents include `dotdotgod.plan-doc-clarifier`, and inspect it to verify `defaultContext: fresh`, `inheritProjectContext: false`, and `inheritSkills: false`.
-6. Run a simple read-only subagent task, such as listing available agents or asking `scout` to inspect one README.
-7. Confirm the plan-doc clarifier can be launched with `context: "fresh"` and explicit `reads` containing one plan README, and that its prompt refuses broad project-memory reads unless explicitly named.
-8. Confirm subagent prompts are discoverable if prompt templates are enabled in the active Pi runtime.
-7. If standalone `pi-subagents` is also installed, confirm `@dotdotgod/pi` does not raise a duplicate `subagent` tool error, skill/prompt conflict warnings, or `Extension runtime not initialized` startup error, and leaves the existing standalone tool, skill, and prompts registered.
+3. Confirm the adapter does not install or register subagent tools or resources.
 
 ## Plan Mode
 

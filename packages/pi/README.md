@@ -38,7 +38,6 @@ A good first run:
 - **Prompts connect to project evidence.** Explicit `[[...]]` references and high-signal natural-language references can expand into focused context and related impact evidence.
 - **Project memory follows session lineage.** Automatic assessment reuses completed reachable loads while forks and abandoned sibling work retain correct isolation.
 - **Handoffs include related checks.** Pending impact state keeps broad verification, commits, pushes, and publishing aligned with changed files.
-- **Specialized work can be delegated.** Bundled `pi-subagents` resources support parallel review and controlled implementation handoffs.
 
 ## What It Adds to Pi
 
@@ -49,7 +48,6 @@ A good first run:
 | Plan safely before source/config edits | `/dd:plan`, `/dd:plan <request>`, or startup flag `--dd-plan` |
 | Review changed-file impact | `/impact-check` or MCP `project_impact` |
 | Improve docs clarity | `document-clarify` skill |
-| Delegate analysis or implementation work | bundled `pi-subagents` resources |
 
 ## Project Initializer
 
@@ -149,14 +147,13 @@ Source-checkout evaluation: `scripts/evaluate-context-tools.mjs` compares native
 - mode-neutral `project-memory` extension
 - `plan-mode` extension
 - explicit `load-project` extension
-- `pi-subagents` wrapper resources
 - package-local `@dotdotgod/cli` dependency
 
-If standalone `pi-subagents` is already installed, the wrapper avoids duplicate dotdotgod-provided tool, skill, and prompt resources.
+Subagent tools and resources are not included; install a separate extension if needed.
 
 ## Local Development
 
-The source checkout pins the Pi SDK development packages to `1.0.0` (Node `>=22.19.0`) for public codemode integration tests; published host peer ranges remain unchanged. `pi-subagents` remains at `0.25.0` and retains its own `0.74.x` TUI dependency. SDK typecheck/resource tests verify the adapter without upgrading the user's global Pi installation.
+The source checkout pins the Pi SDK development packages to `1.0.0` (Node `>=22.19.0`) for public codemode integration tests; published host peer ranges remain unchanged. SDK typecheck/resource tests verify the adapter without upgrading the user's global Pi installation.
 
 ```bash
 pi install /path/to/dotdotgod/packages/pi

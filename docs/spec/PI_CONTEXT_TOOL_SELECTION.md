@@ -22,7 +22,7 @@ The execution source is each result's `indexed.id`; file ingestion returns `id`,
 
 ## SDK And Safety Boundary
 
-The source checkout pins Pi agent-core, AI, coding-agent, and TUI development dependencies to `1.0.0` for public SDK codemode tests; these SDK packages require Node `>=22.19.0`. Published host peer ranges and `pi-subagents` remain unchanged.
+The source checkout pins Pi agent-core, AI, coding-agent, and TUI development dependencies to `1.0.0` for public SDK codemode tests; these SDK packages require Node `>=22.19.0`. Published host peer ranges remain unchanged.
 
 Codemode nested MCP calls traverse Pi's tool pipeline. Every execute entry passes the Plan Mode allowlist before the batch starts; write-capable file processing and mutation operations remain restricted while planning. Impact pending is tracked and reported but never blocks execution. This is not a sandbox or complete observation of shell/external writes.
 

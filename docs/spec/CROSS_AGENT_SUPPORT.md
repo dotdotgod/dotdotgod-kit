@@ -12,11 +12,11 @@ The shared contract is the documentation scaffold and workflow, not identical sl
 
 Current first-class support.
 
-- Package entrypoint: npm package with `package.json#pi` manifest and runtime dependencies for `@dotdotgod/cli` plus `pi-subagents`.
+- Package entrypoint: npm package with `package.json#pi` manifest and runtime dependencies for `@dotdotgod/cli` and `@dotdotgod/context`.
 - Initialization: `project-initializer` skill.
 - Documentation clarity: `document-clarify` skill.
-- Runtime workflow: `plan-mode`, `load-project`, and dependency-provided `pi-subagents` extensions.
-- Commands and tools: `/dd:plan`, `/load`, `/dd:load`, pending-only `project_memory_load`, `/impact-check`, and host-managed shared MCP tools without forwarding aliases. Pi retains plan/UI and subagent integration; pending impact is advisory and never blocks commands.
+- Runtime workflow: `plan-mode`, `load-project`, and `project-memory` extensions.
+- Commands and tools: `/dd:plan`, `/load`, `/dd:load`, pending-only `project_memory_load`, `/impact-check`, and host-managed shared MCP tools without forwarding aliases. Pi retains plan/UI integration; pending impact is advisory and never blocks commands.
 
 ### OpenCode
 
@@ -117,7 +117,7 @@ Parity is behavioral, not identical runtime mechanics. Pi/OpenCode track pending
 
 Cross-agent support is distributed as npm workspace packages:
 
-- `@dotdotgod/pi`: Pi adapter with skills, extensions, package-local `@dotdotgod/cli` dependency, and dependency-provided subagent resources.
+- `@dotdotgod/pi`: Pi adapter with skills, extensions, package-local `@dotdotgod/cli` dependency, and package-local `@dotdotgod/context` dependency.
 - `@dotdotgod/cli`: validation, local documentation query, and graph indexing CLI.
 - `@dotdotgod/context`: shared local execution, FTS5 retrieval, hooks, project workflow services, and stdio MCP runtime.
 - `@dotdotgod/claude-code`: Claude Code adapter with plugin commands and skills.

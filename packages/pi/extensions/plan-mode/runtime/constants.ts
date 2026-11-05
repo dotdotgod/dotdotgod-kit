@@ -14,5 +14,4 @@ export const NORMAL_MODE_TOOLS = [
 	"code_search",
 	"fetch_content",
 	"get_search_content",
-	"subagent",
 ];

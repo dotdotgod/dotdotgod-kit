@@ -3,17 +3,17 @@ import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { createFauxCore, fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
+import { createFauxCore } from "@earendil-works/pi-ai";
 import { createAgentSession, DefaultResourceLoader, ModelRuntime, SessionManager, SettingsManager } from "@earendil-works/pi-coding-agent";
 
-test("Pi 1.0 public loader starts existing plan/project-memory/subagents extensions without spawning agents", async () => {
+test("Pi 1.0 public loader starts existing plan/project-memory extensions", async () => {
   const root = mkdtempSync(join(tmpdir(), "dotdotgod-sdk-upgrade-"));
   const agentDir = join(root, "agent");
   mkdirSync(agentDir);
   const settingsManager = SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: false } });
   const resourceLoader = new DefaultResourceLoader({
     cwd: root, agentDir, settingsManager, noExtensions: true, noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true,
-    additionalExtensionPaths: ["plan-mode", "project-memory", "subagents"].map((name) => new URL(`../extensions/${name}/index.ts`, import.meta.url).pathname),
+    additionalExtensionPaths: ["plan-mode", "project-memory"].map((name) => new URL(`../extensions/${name}/index.ts`, import.meta.url).pathname),
   });
   let session: Awaited<ReturnType<typeof createAgentSession>>["session"] | undefined;
   try {
@@ -30,16 +30,6 @@ test("Pi 1.0 public loader starts existing plan/project-memory/subagents extensi
     const names = session.getAllTools().map((tool) => tool.name);
     assert.ok(names.includes("project_memory_load"));
     assert.ok(names.every(name => !name.startsWith("dotdotgod_")));
-    // A delegated worker deliberately receives no subagent tool; do not bypass that boundary.
-    if (process.env.PI_SUBAGENT_CHILD === "1" && process.env.PI_SUBAGENT_FANOUT_CHILD !== "1") assert.equal(names.includes("subagent"), false);
-    else {
-      assert.ok(names.includes("subagent"));
-      faux.setResponses([fauxAssistantMessage(fauxToolCall("subagent", { action: "list" })), fauxAssistantMessage("fixture complete")]);
-      await session.prompt("List configured agents without spawning any.");
-      const listed = session.messages.find((message) => message.role === "toolResult" && message.toolName === "subagent");
-      assert.ok(listed && listed.role === "toolResult");
-      assert.equal(listed.isError, false);
-      assert.match(JSON.stringify(listed.content), /reviewer/);
-    }
+    assert.equal(names.includes("subagent"), false);
   } finally { session?.dispose(); rmSync(root, { recursive: true, force: true }); }
 });

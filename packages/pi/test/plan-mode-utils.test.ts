@@ -793,7 +793,7 @@ describe("plan-mode CLI context helpers", () => {
 
 describe("plan-mode tool settings", () => {
 	it("parses and resolves extra Plan Mode tools against installed tools", () => {
-		assert.deepEqual(parsePlanModeExtraTools("ctx_search, ctx_execute_file, ctx_search, bad tool, subagent"), ["ctx_search", "ctx_execute_file", "subagent"]);
+		assert.deepEqual(parsePlanModeExtraTools("ctx_search, ctx_execute_file, ctx_search, bad tool, custom_tool"), ["ctx_search", "ctx_execute_file", "custom_tool"]);
 		const resolved = resolvePlanModeTools("ctx_search,missing_tool", ["read", "bash", "edit", "write", "grep", "find", "ls", "ctx_search"]);
 		assert.deepEqual(resolved, ["read", "bash", "edit", "write", "grep", "find", "ls", "ctx_search"]);
 		assert(!resolved.includes("questionnaire"));

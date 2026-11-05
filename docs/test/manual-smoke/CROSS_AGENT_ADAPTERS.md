@@ -2,12 +2,11 @@
 
 ## Pi Adapter Dependency Resources
 
-Automated wrapper and real-SDK tests verify a lazy literal dependency import,
-external-tool ownership, and delegated-worker restrictions.
+Real-SDK tests verify the plan and project-memory extensions load without providing a subagent tool.
 `packages/pi/test/mcp-envelope.test.ts` covers envelope guards, structured-result
 precedence, primitive/array fallback, cycles, and error propagation.
 
-`@dotdotgod/pi` should install `@dotdotgod/cli` and `pi-subagents` as runtime dependencies. In a packaged-install smoke, confirm Pi can load `/dd:load`, `/impact-check`, and `subagent` without separate global installs of those packages. If `pi-subagents` is installed both standalone and through `@dotdotgod/pi`, confirm the dotdotgod wrapper waits until session startup and skips duplicate `subagent` tool, skill, and prompt resources instead of failing startup or logging resource conflicts.
+`@dotdotgod/pi` should install `@dotdotgod/cli` and `@dotdotgod/context` as runtime dependencies. In a packaged-install smoke, confirm Pi can load `/dd:load` and `/impact-check` without separate global installs of those packages. Subagent extensions are independently installed and are not managed by this adapter.
 
 ## Claude Code Adapter
 

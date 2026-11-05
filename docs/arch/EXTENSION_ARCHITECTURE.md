@@ -14,7 +14,7 @@
 }
 ```
 
-Pi core packages are peer dependencies and are not bundled into the tarball. `@dotdotgod/cli`, `@dotdotgod/context`, and `pi-subagents` are runtime dependencies so npm/Pi installs fetch them automatically; pnpm's isolated node linker prevents `bundledDependencies`, so the published tarball declares dependencies rather than embedding `node_modules` bodies.
+Pi core packages are peer dependencies and are not bundled into the tarball. `@dotdotgod/cli` and `@dotdotgod/context` are runtime dependencies so npm/Pi installs fetch them automatically; pnpm's isolated node linker prevents `bundledDependencies`, so the published tarball declares dependencies rather than embedding `node_modules` bodies.
 
 ## Package Distribution Metadata
 
@@ -29,7 +29,7 @@ Distribution metadata:
 - Pi peer dependencies remain unbundled and are resolved by the host Pi installation.
 - `@dotdotgod/cli` is a package dependency used by Pi extensions as a source-checkout, package-local, then global CLI fallback chain.
 - `@dotdotgod/context` provides the shared stdio MCP server. Pi registers it through the host MCP API without forwarding aliases or duplicate schemas; plan/UI and load lifecycle remain in-process.
-- `pi-subagents` is a pinned package dependency whose skill and prompts are resolved by the dotdotgod wrapper through Node package resolution. The wrapper defers duplicate tool detection until `session_start`; when a standalone `subagent` tool already exists it suppresses package-local tool, skill, and prompt resources, and when dotdotgod owns registration it exposes the dependency resources during `resources_discover`. This lets hoisted, package-local, and local development installs coexist with standalone `pi-subagents` without duplicate resource warnings or runtime action calls during extension loading.
+- Subagent tools, skills, prompts, and agent definitions are not supplied by this adapter.
 
 
 ## Resource Responsibilities
