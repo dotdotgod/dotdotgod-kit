@@ -47,6 +47,8 @@ Agents preserve existing user changes and avoid rereading baseline content alrea
 
 The shared CLI `map` command discovers Markdown below the configured documentation root and renders repository-relative paths as a prefix-compressed tree for every adapter. Pi invokes `map --json` through its source/package/global CLI resolver and retains a bounded local fallback for CLI-unavailable operation. Directory depth counts `docs/` as depth 1, `docs/spec/` as depth 2, and `docs/spec/plan-mode/` as depth 3 under the default root.
 
+Shared MCP `project_load` returns `ok: false`, `mapUnavailable.code: "MAP_UNAVAILABLE"`, an empty `documentationTree`, and `query: null` when map execution fails. It does not substitute an unconfigured `docs` tree or claim a successful empty map. Agents continue with settings-aware host file inspection and README routing.
+
 `load.documentationSummary.exclude` filters complete subtrees from this shared map. Its default values are:
 
 - `docs/plan`

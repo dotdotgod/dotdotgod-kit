@@ -14,7 +14,7 @@ Review task-relevant source, config, and documentation changes with dotdotgod im
 ## Workflow
 
 1. Build the changed-file set from Git status. Preserve unrelated user work and exclude dependencies, caches, build output, secrets, and unrelated local memory.
-2. Run one bounded multi-seed impact command for up to 20 unique paths in first-seen order:
+2. Call the host-registered project_impact tool with up to 20 unique paths in first-seen order; discover its exact host name and inspect isError and structuredContent. This acknowledges host pending-impact state. Split larger sets into batches. If MCP is unavailable or host tracking is disabled, use the CLI for review evidence without claiming it clears host pending state:
 
    ```bash
    dotdotgod graph impact <root> --changed <path-a> --changed <path-b> --compact

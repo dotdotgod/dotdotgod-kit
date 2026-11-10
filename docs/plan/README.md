@@ -26,6 +26,12 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 
 ## Active Plans
 
+- `standalone-document-clarify/` — active: exclusive standalone migration implemented; package and five-target copy checks pass, native upgrade/discovery/rollback gates remain open.
+
+- `remove-speculative-validation/` — active: investigate unnecessary checks across all six adapters/plugins and shared callers; deletion ledger pending, planning only.
+
+- `standalone-skill-installation/` — active: installation guidance and five-target copy asset checks completed; native host discovery remains unverified, Claude Code binary unavailable.
+
 - `vector-cache-scope-preservation/` — ready-to-archive: scope-safe snapshots, batch recovery, project locking and diagnostics implemented; verification passed and release 0.6.7 committed.
 
 

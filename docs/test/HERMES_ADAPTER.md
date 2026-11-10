@@ -19,7 +19,7 @@ version for compatibility smoke. No Python MCP dependency is needed by the plugi
   checks cover empty roots/grants, optional selection, ordinary host tools without
   path rewriting or impact scans, on-demand dotdotgod routing, one-shot initialization,
   absolute targets, dry-run/write confirmation, failure cleanup and ignored legacy grants.
-- resources.test.mjs: 18 shared tools plus two local tools, four generated skills,
+- resources.test.mjs: 18 shared tools plus two local tools, three generated skills,
   batch schemas, self-contained artifacts, absent profile-wide MCP declaration
   and no planning resources.
 - Shared packages/context tests retain execution limits, source-filtered search,

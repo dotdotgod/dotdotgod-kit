@@ -26,6 +26,11 @@ test('graph schema rejects malformed types, paths, colors, weights and unknown r
     const value = graph(); mutate(value); assert.throws(() => validateGraph(value));
   }
 });
+test('graph validation accepts more than 100000 valid edges', () => {
+  const value = graph();
+  value.edges = Array.from({ length: 100001 }, (_, i) => ({ ...value.edges[0], target: `src/file-${i}.ts` }));
+  assert.equal(validateGraph(value), value);
+});
 test('settings normalize corrupt state and drop obsolete absolute paths', () => {
   const options = normalizeOptions({ graphFile: '/private/file.json', graphPath: '../bad.json', disabledRelations: null, showFiles: false, showLegend: 'no' });
   assert.equal(options.graphPath, '.dotdotgod/traceability.json');
@@ -58,6 +63,19 @@ function pluginHarness() {
     vault: { adapter: { read: async () => JSON.stringify(graph()) }, getAbstractFileByPath: () => ({ extension: 'md' }) } };
   return { plugin, notices, intervals, ready: () => layoutReady() };
 }
+test('reload uses the custom persisted graph path', async () => {
+  const { plugin } = pluginHarness();
+  const path = 'graphs/custom.json';
+  plugin.loadData = async () => ({ graphPath: path });
+  const reads = [];
+  plugin.app.vault.adapter.read = async value => { reads.push(value); return JSON.stringify(graph()); };
+  await plugin.onload();
+  await plugin.loadGraph();
+  assert.equal(plugin.options.graphPath, path);
+  assert.deepEqual(reads, [path]);
+  assert.equal(plugin.graph.edges.length, 1);
+  plugin.onunload();
+});
 test('first-run missing export keeps plugin/settings available and reload recovers', async () => {
   const { plugin, ready, notices } = pluginHarness();
   plugin.app.vault.adapter.read = async () => { throw Error('ENOENT'); };

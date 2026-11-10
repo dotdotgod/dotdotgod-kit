@@ -82,7 +82,7 @@ test('MCP wrapper blocks write-capable plan calls and propagates host shell perm
   assert.deepEqual(checks.map(check => check.resources[0]), ['pwd', 'git push']);
 });
 
-test('plugin registers three commands, five skills, Code Mode MCP, advisory tracking and safe plan fallback', async () => {
+test('plugin registers three commands, four skills, Code Mode MCP, advisory tracking and safe plan fallback', async () => {
   const root = mkdtempSync(join(tmpdir(), 'opencode-adapter-'));
   try {
     const hooks = {}, commands = [], skills = [], servers = new Map();
@@ -102,7 +102,8 @@ test('plugin registers three commands, five skills, Code Mode MCP, advisory trac
     };
     await plugin.setup(ctx);
     assert.deepEqual(commands.map(command => command.name), ['dd:load', 'dd:init', 'dd:impact']);
-    assert.equal(skills.length, 5);
+    assert.equal(skills.length, 4);
+    assert.equal(skills.some(skill => skill.id === 'document-clarify'), false);
     assert.ok(skills.every(skill => skill.path.endsWith('SKILL.md')));
     const planning = skills.find(skill => skill.id === 'doc-first-planning').content;
     assert.match(planning, /automatically create or revise/);

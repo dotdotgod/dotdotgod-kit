@@ -14,7 +14,7 @@ API calls and complete model-driven delegation are separate live checks.
 
 The native plugin directory contains plugin.yaml and __init__.py. Enable it
 explicitly and restart the host. Four canonical generated skills are registered:
-project-initializer, project-load, impact-review and document-clarify.
+project-initializer, project-load and impact-review. `document-clarify` is installed separately from `@dotdotgod/skills`.
 Generated server/client/CLI artifacts work without ancestor node_modules or
 Python MCP packages. No profile-wide mcp.json server declaration is installed.
 

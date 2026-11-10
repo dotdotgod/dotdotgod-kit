@@ -1,6 +1,6 @@
 const { Plugin, Notice, getLanguage } = require('obsidian');
 const { translate } = require('./i18n.cjs');
-const { validateGraph, graphPath, normalizeOptions } = require('./validation.cjs');
+const { validateGraph, normalizeOptions } = require('./validation.cjs');
 const { TraceabilitySettings } = require('./settings.cjs');
 const { attach } = require('./renderer.cjs');
 
@@ -25,7 +25,7 @@ module.exports = class TraceabilityPlugin extends Plugin {
     try { return await this.loading; } finally { this.loading = null; }
   }
   async readGraph() {
-    const path = graphPath(this.options.graphPath);
+    const path = this.options.graphPath;
     const graph = validateGraph(JSON.parse(await this.app.vault.adapter.read(path)));
     graph.edges = graph.edges.filter(edge => [edge.source, edge.target].every(path => {
       const file = this.app.vault.getAbstractFileByPath(path);

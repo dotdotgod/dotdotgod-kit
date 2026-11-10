@@ -146,8 +146,6 @@ class Runtime:
         if name == "impact_status":
             return envelope({"ok": True, "pending": list(self.pending(session))})
         if name == "project_load":
-            if contained(session.root, args.get("root") or ".") != session.root:
-                self.select(session, str(contained(session.root, args["root"])))
             return self.load(session, args)
         if name in {"execute", "execute_file"}:
             reason = self.check(session, name, args)

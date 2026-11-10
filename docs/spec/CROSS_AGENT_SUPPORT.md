@@ -14,13 +14,13 @@ Current first-class support.
 
 - Package entrypoint: npm package with `package.json#pi` manifest and runtime dependencies for `@dotdotgod/cli` and `@dotdotgod/context`.
 - Initialization: `project-initializer` skill.
-- Documentation clarity: `document-clarify` skill.
+- Documentation clarity: separately installed `document-clarify` from `@dotdotgod/skills`.
 - Runtime workflow: `plan-mode`, `load-project`, and `project-memory` extensions.
 - Commands and tools: `/dd:plan`, `/load`, `/dd:load`, pending-only `project_memory_load`, `/impact-check`, and host-managed shared MCP tools without forwarding aliases. Pi retains plan/UI integration; pending impact is advisory and never blocks commands.
 
 ### OpenCode
 
-@dotdotgod/opencode registers three commands, five skills and shared MCP. Native plan automatically saves project plans; observed edits create advisory impact records without blocking tools. No dd:plan or OPENCODE.md is added. See [versioned contract](OPENCODE_ADAPTER.md).
+@dotdotgod/opencode registers three commands, four skills and shared MCP. Native plan automatically saves project plans; observed edits create advisory impact records without blocking tools. No dd:plan or OPENCODE.md is added. See [versioned contract](OPENCODE_ADAPTER.md).
 
 ### Claude Code
 
@@ -31,7 +31,7 @@ Current adapter support.
 - Project loading: `project-load` skill and `/dd:load` command.
 - Planning workflow: `doc-first-planning` skill and `/dd:plan` command.
 - Impact review workflow: `impact-review` skill and `/dd:impact` command for post-edit graph-impact checks before broad verification or handoff.
-- Documentation clarity workflow: `document-clarify` skill loads resolved memory-area guidance with `dotdotgod config <root> --json`, then improves project documentation with direct prose, removes verified obsolete historical behavior and superseded conditions from current specs, and preserves current requirements, traceability, and historical archive meaning.
+- Install `document-clarify` separately from `@dotdotgod/skills`. It resolves memory-area guidance with `dotdotgod config <root> --json`, clarifies current docs, removes verified obsolete conditions, and preserves requirements, traceability and archive meaning.
 - Bundled local stdio MCP tools for generic execution/retrieval and project load/impact/initialize operations.
 - Bundled lifecycle hooks for load-required and impact-pending deny/retry routing, plus maintained guidance for additional guardrails using documented Claude Code hook events.
 - `CLAUDE.md` remains a thin project entrypoint that imports or points to `AGENTS.md`.
@@ -41,7 +41,7 @@ Current adapter support.
 Current adapter support.
 
 - Package entrypoint: Codex plugin manifest under `.codex-plugin/plugin.json`.
-- Skills: `project-initializer`, `project-load`, `doc-first-planning`, `impact-review`, and `document-clarify`.
+- Skills: `project-initializer`, `project-load`, `doc-first-planning`, and `impact-review`. Install `document-clarify` separately from `@dotdotgod/skills`.
 - Codex reads `AGENTS.md` as a primary project instruction source.
 - `dd:init`, `dd:load`, `dd:plan`, and `dd:impact` are command-like trigger phrases unless the active Codex runtime provides direct command registration.
 - Bundled local stdio MCP tools for generic execution/retrieval and project load/impact/initialize operations.
@@ -56,7 +56,7 @@ Native CLI and messaging-gateway adapter, without Plan Mode; see
 - Package: @dotdotgod/hermes with native plugin.yaml, registered shared skills and tools.
 - Lifecycle hooks plus an adapter-owned stdio MCP client/server per selected project/session; project labels do not authorize filesystem access.
 - Operator-controlled gateway root labels/grants, explicit selection and reauthorization.
-- Automatic/explicit map-query load, reference expansion, initializer, clarification,
+- Automatic/explicit map-query load, reference expansion, initializer,
   context operations, pending impact and covered release-command gates.
 - Native Hermes delegate_task, not a pi-subagents port; no planning wizard/compaction.
 - AGENTS.md remains canonical; no new agent-specific instruction file is introduced.
@@ -115,7 +115,7 @@ Parity is behavioral, not identical runtime mechanics. Pi/OpenCode track pending
 
 ## Packaging Contract
 
-Cross-agent support is distributed as npm workspace packages:
+`@dotdotgod/skills` alone supplies `document-clarify`; see [migration](../../packages/skills/MIGRATION.md). Adapter packages are listed below.
 
 - `@dotdotgod/pi`: Pi adapter with skills, extensions, package-local `@dotdotgod/cli` dependency, and package-local `@dotdotgod/context` dependency.
 - `@dotdotgod/cli`: validation, local documentation query, and graph indexing CLI.
@@ -153,29 +153,28 @@ New package, command, and tool names should use dotdotgod and `dd` prefixes.
   - [packages/claude-code/skills/doc-first-planning/SKILL.md](../../packages/claude-code/skills/doc-first-planning/SKILL.md)
   - [packages/claude-code/skills/project-initializer/SKILL.md](../../packages/claude-code/skills/project-initializer/SKILL.md)
   - [packages/claude-code/skills/impact-review/SKILL.md](../../packages/claude-code/skills/impact-review/SKILL.md)
-  - [packages/claude-code/skills/document-clarify/SKILL.md](../../packages/claude-code/skills/document-clarify/SKILL.md)
   - [packages/codex/skills/project-load/SKILL.md](../../packages/codex/skills/project-load/SKILL.md)
   - [packages/codex/skills/doc-first-planning/SKILL.md](../../packages/codex/skills/doc-first-planning/SKILL.md)
   - [packages/codex/skills/project-initializer/SKILL.md](../../packages/codex/skills/project-initializer/SKILL.md)
   - [packages/codex/skills/impact-review/SKILL.md](../../packages/codex/skills/impact-review/SKILL.md)
-  - [packages/codex/skills/document-clarify/SKILL.md](../../packages/codex/skills/document-clarify/SKILL.md)
-  - [packages/pi/skills/document-clarify/SKILL.md](../../packages/pi/skills/document-clarify/SKILL.md)
   - [packages/claude-code/hooks/README.md](../../packages/claude-code/hooks/README.md)
   - [packages/codex/hooks/README.md](../../packages/codex/hooks/README.md)
   - [packages/claude-code/.claude-plugin/plugin.json](../../packages/claude-code/.claude-plugin/plugin.json)
   - [packages/codex/.codex-plugin/plugin.json](../../packages/codex/.codex-plugin/plugin.json)
   - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
+  - [packages/skills/skills/document-clarify/SKILL.md](../../packages/skills/skills/document-clarify/SKILL.md)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [docs/test/README.md](../test/README.md)
+  - [packages/cli/test/document-clarify.test.mjs](../../packages/cli/test/document-clarify.test.mjs)
 - Design decisions:
   - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../arch/CROSS_AGENT_ARCHITECTURE.md)
   - [docs/arch/DOCS_STRUCTURE.md](../arch/DOCS_STRUCTURE.md)
 - Contracts:
   - `CROSS-AGENT-SHARED-001` — Shared docs scaffold and workflow contract stays agent-neutral (sections: 1, implementedBy: 6, verifiedBy: 1, designDecisions: 2)
-  - `CROSS-AGENT-PI-001` — Pi adapter provides first-class package, skills, extensions, commands, and tools (sections: 1, implementedBy: 3, verifiedBy: 1, designDecisions: 1)
+  - `CROSS-AGENT-PI-001` — Pi adapter provides first-class package, skills, extensions, commands, and tools (sections: 1, implementedBy: 2, verifiedBy: 1, designDecisions: 1)
   - `CROSS-AGENT-CLAUDE-001` — Claude Code adapter provides plugin commands, skills, hooks guidance, and thin CLAUDE.md routing (sections: 1, implementedBy: 6, verifiedBy: 1, designDecisions: 1)
-  - `CROSS-AGENT-CODEX-001` — Codex adapter provides skills, trigger phrases, hooks guidance, and CODEX.md routing (sections: 1, implementedBy: 7, verifiedBy: 1, designDecisions: 1)
+  - `CROSS-AGENT-CODEX-001` — Codex adapter provides skills, trigger phrases, hooks guidance, and CODEX.md routing (sections: 1, implementedBy: 6, verifiedBy: 1, designDecisions: 1)
   - `CROSS-AGENT-INSTRUCTIONS-001` — Agent-specific instruction surfaces route to the shared project-memory contract (sections: 1, implementedBy: 2, verifiedBy: 1, designDecisions: 1)
   - `CROSS-AGENT-PARITY-001` — Adapters preserve behavior parity across native runtime mechanics (sections: 1, implementedBy: 5, verifiedBy: 1, designDecisions: 1)
   - `CROSS-AGENT-PACKAGING-001` — Cross-agent support ships as aligned npm workspace packages and manifests (sections: 1, implementedBy: 3, verifiedBy: 1, designDecisions: 1)
@@ -183,5 +182,5 @@ New package, command, and tool names should use dotdotgod and `dd` prefixes.
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md","packages/shared/initializer/references/agent-docs.md","packages/claude-code/commands/dd/load.md","packages/claude-code/commands/dd/plan.md","packages/claude-code/commands/dd/init.md","packages/claude-code/commands/dd/impact.md","packages/claude-code/skills/project-load/SKILL.md","packages/claude-code/skills/doc-first-planning/SKILL.md","packages/claude-code/skills/project-initializer/SKILL.md","packages/claude-code/skills/impact-review/SKILL.md","packages/claude-code/skills/document-clarify/SKILL.md","packages/codex/skills/project-load/SKILL.md","packages/codex/skills/doc-first-planning/SKILL.md","packages/codex/skills/project-initializer/SKILL.md","packages/codex/skills/impact-review/SKILL.md","packages/codex/skills/document-clarify/SKILL.md","packages/pi/skills/document-clarify/SKILL.md","packages/claude-code/hooks/README.md","packages/codex/hooks/README.md","packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","docs/test/README.md"],"relatedDocs":[],"contracts":[{"id":"CROSS-AGENT-SHARED-001","title":"Shared docs scaffold and workflow contract stays agent-neutral","sections":["Shared Contract"],"implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md","packages/shared/initializer/references/agent-docs.md"],"verifiedBy":["packages/cli/test/core.test.mjs"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"]},{"id":"CROSS-AGENT-PI-001","title":"Pi adapter provides first-class package, skills, extensions, commands, and tools","sections":["Pi"],"implementedBy":["packages/pi/package.json","packages/pi/README.md","packages/pi/skills/document-clarify/SKILL.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-CLAUDE-001","title":"Claude Code adapter provides plugin commands, skills, hooks guidance, and thin CLAUDE.md routing","sections":["Claude Code"],"implementedBy":["packages/claude-code/.claude-plugin/plugin.json","packages/claude-code/commands/dd/load.md","packages/claude-code/commands/dd/plan.md","packages/claude-code/commands/dd/init.md","packages/claude-code/commands/dd/impact.md","packages/claude-code/hooks/README.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-CODEX-001","title":"Codex adapter provides skills, trigger phrases, hooks guidance, and CODEX.md routing","sections":["Codex"],"implementedBy":["packages/codex/.codex-plugin/plugin.json","packages/codex/skills/project-load/SKILL.md","packages/codex/skills/doc-first-planning/SKILL.md","packages/codex/skills/project-initializer/SKILL.md","packages/codex/skills/impact-review/SKILL.md","packages/codex/skills/document-clarify/SKILL.md","packages/codex/hooks/README.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-INSTRUCTIONS-001","title":"Agent-specific instruction surfaces route to the shared project-memory contract","sections":["Instruction Surface Matrix"],"implementedBy":["packages/shared/initializer/references/agent-docs.md","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs"],"relatedDocs":[],"designDecisions":["docs/arch/DOCS_STRUCTURE.md"]},{"id":"CROSS-AGENT-PARITY-001","title":"Adapters preserve behavior parity across native runtime mechanics","sections":["Workflow Parity"],"implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-PACKAGING-001","title":"Cross-agent support ships as aligned npm workspace packages and manifests","sections":["Packaging Contract"],"implementedBy":["packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]}],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"]}
+{"kind":"spec","implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md","packages/shared/initializer/references/agent-docs.md","packages/claude-code/commands/dd/load.md","packages/claude-code/commands/dd/plan.md","packages/claude-code/commands/dd/init.md","packages/claude-code/commands/dd/impact.md","packages/claude-code/skills/project-load/SKILL.md","packages/claude-code/skills/doc-first-planning/SKILL.md","packages/claude-code/skills/project-initializer/SKILL.md","packages/claude-code/skills/impact-review/SKILL.md","packages/codex/skills/project-load/SKILL.md","packages/codex/skills/doc-first-planning/SKILL.md","packages/codex/skills/project-initializer/SKILL.md","packages/codex/skills/impact-review/SKILL.md","packages/claude-code/hooks/README.md","packages/codex/hooks/README.md","packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","scripts/generate-adapters.mjs","packages/skills/skills/document-clarify/SKILL.md"],"verifiedBy":["packages/cli/test/core.test.mjs","docs/test/README.md","packages/cli/test/document-clarify.test.mjs"],"relatedDocs":[],"contracts":[{"id":"CROSS-AGENT-SHARED-001","title":"Shared docs scaffold and workflow contract stays agent-neutral","sections":["Shared Contract"],"implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md","packages/shared/initializer/references/agent-docs.md"],"verifiedBy":["packages/cli/test/core.test.mjs"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"]},{"id":"CROSS-AGENT-PI-001","title":"Pi adapter provides first-class package, skills, extensions, commands, and tools","sections":["Pi"],"implementedBy":["packages/pi/package.json","packages/pi/README.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-CLAUDE-001","title":"Claude Code adapter provides plugin commands, skills, hooks guidance, and thin CLAUDE.md routing","sections":["Claude Code"],"implementedBy":["packages/claude-code/.claude-plugin/plugin.json","packages/claude-code/commands/dd/load.md","packages/claude-code/commands/dd/plan.md","packages/claude-code/commands/dd/init.md","packages/claude-code/commands/dd/impact.md","packages/claude-code/hooks/README.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-CODEX-001","title":"Codex adapter provides skills, trigger phrases, hooks guidance, and CODEX.md routing","sections":["Codex"],"implementedBy":["packages/codex/.codex-plugin/plugin.json","packages/codex/skills/project-load/SKILL.md","packages/codex/skills/doc-first-planning/SKILL.md","packages/codex/skills/project-initializer/SKILL.md","packages/codex/skills/impact-review/SKILL.md","packages/codex/hooks/README.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-INSTRUCTIONS-001","title":"Agent-specific instruction surfaces route to the shared project-memory contract","sections":["Instruction Surface Matrix"],"implementedBy":["packages/shared/initializer/references/agent-docs.md","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs"],"relatedDocs":[],"designDecisions":["docs/arch/DOCS_STRUCTURE.md"]},{"id":"CROSS-AGENT-PARITY-001","title":"Adapters preserve behavior parity across native runtime mechanics","sections":["Workflow Parity"],"implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-PACKAGING-001","title":"Cross-agent support ships as aligned npm workspace packages and manifests","sections":["Packaging Contract"],"implementedBy":["packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]}],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"]}
 ```

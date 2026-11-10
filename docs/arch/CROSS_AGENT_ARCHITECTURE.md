@@ -48,7 +48,6 @@ Current implementation:
 
 - `package.json#pi`
 - `skills/project-initializer/`
-- `skills/document-clarify/`
 - `extensions/plan-mode/`
 - `extensions/load-project/`
 
@@ -90,7 +89,6 @@ Current implementation:
 - `skills/doc-first-planning/`
 - `skills/project-initializer/`
 - `skills/impact-review/`
-- `skills/document-clarify/`
 
 Responsibilities:
 
@@ -101,7 +99,7 @@ Responsibilities:
 - project loading skill and `/dd:load` command
 - planning workflow guidance using Claude-native command and skill components
 - impact review workflow guidance using `/dd:impact` and `impact-review` for Pi-like changed-file graph checks without Pi runtime enforcement
-- documentation clarity workflow guidance using `document-clarify` for config-aware docs copy improvements without changing behavior contracts
+- documentation clarity is distributed separately through `@dotdotgod/skills`, not adapter resource trees
 - generated Load guidance using `dotdotgod map` for the tree and `query` for focus
 - optional hook documentation for advisory reminders, opt-in validation, and narrowly scoped plan-safety patterns
 
@@ -116,7 +114,6 @@ Current implementation:
 - `skills/doc-first-planning/`
 - `skills/project-initializer/`
 - `skills/impact-review/`
-- `skills/document-clarify/`
 
 Responsibilities:
 
@@ -196,3 +193,7 @@ Run pnpm run generate, verify:generated, verify and pack:dry-run. Maintained
 [cross-agent smoke](../test/manual-smoke/CROSS_AGENT_ADAPTERS.md) cover Pi local/npm
 installation, Claude plugin schemas/commands, Codex discovery/skill triggers and
 initializer dry-run/fallback parity. Hermes adds its isolated pinned-host smoke.
+
+## Standalone Documentation Skill
+
+`workflows/doc-clarify.md` generates only the standalone skill. See [migration](../../packages/skills/MIGRATION.md).

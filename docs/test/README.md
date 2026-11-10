@@ -4,6 +4,8 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 
 ## Index
 
+- `SKILL_INSTALLATION.md`: standalone Skills CLI asset checks and five-host native discovery smoke matrix.
+
 - `PI_CONTEXT_ROOT.md`: parent environment isolation and host impact session regressions.
 
 - `OBSIDIAN_DEBUG.md`: isolated real-app debugging commands and graph acceptance checks.
@@ -38,6 +40,8 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 
 ## Planning And Clarification Regressions
 
+- `packages/cli/test/skill-guidance.test.mjs`: generated initializer paths, host impact acknowledgment guidance, map-unavailable recovery, and standalone task/report scope separation.
+
 - `packages/cli/test/embedding-opt-in.test.mjs`: unconfigured keyword/structural retrieval, vector-request errors and explicit keyword override without embeddings.
 
 - `packages/pi/test/planning-context.test.ts`: bounded impact/reference refresh,
@@ -45,7 +49,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
   failure/execution-mode handling. Plan Mode utilities also cover old snapshots.
 - `packages/cli/test/pre-push.test.mjs`: composed gate order and failure exits,
   single documentation-validation path, and standalone cache-gate guarantees.
-- `packages/cli/test/document-clarify.test.mjs`: generated adapter parity and
+- `packages/cli/test/document-clarify.test.mjs`: standalone guidance, adapter absence and
   removal of verified obsolete spec history while protecting current requirements
   and historical archive meaning.
 

@@ -123,6 +123,8 @@ importers:
 
   packages/shared: {}
 
+  packages/skills: {}
+
 packages:
 
   '@anthropic-ai/sdk@0.124.0':

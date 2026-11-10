@@ -1,5 +1,7 @@
 # @dotdotgod/pi
 
+`document-clarify` is distributed separately through [@dotdotgod/skills](../skills/README.md). Before upgrading from a bundled copy, follow its [migration guide](../skills/MIGRATION.md).
+
 [![npm version](https://img.shields.io/npm/v/@dotdotgod/pi.svg)](https://www.npmjs.com/package/@dotdotgod/pi) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod--kit-181717?logo=github)](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/pi) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](https://github.com/dotdotgod/dotdotgod-kit/blob/main/LICENSE)
 
 Pi adapter for dotdotgod's docs-first project-memory workflow.
@@ -47,7 +49,6 @@ A good first run:
 | Load project memory without broad file reads | Automatic mode-neutral load when needed, or explicit `/dd:load` and `/load` |
 | Plan safely before source/config edits | `/dd:plan`, `/dd:plan <request>`, or startup flag `--dd-plan` |
 | Review changed-file impact | `/impact-check` or MCP `project_impact` |
-| Improve docs clarity | `document-clarify` skill |
 
 ## Project Initializer
 
@@ -143,7 +144,6 @@ Source-checkout evaluation: `scripts/evaluate-context-tools.mjs` compares native
 ## Included Resources
 
 - `project-initializer` skill
-- `document-clarify` skill
 - mode-neutral `project-memory` extension
 - `plan-mode` extension
 - explicit `load-project` extension

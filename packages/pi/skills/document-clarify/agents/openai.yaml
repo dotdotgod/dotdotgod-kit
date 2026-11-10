@@ -1,4 +1,0 @@
-interface:
-  display_name: "Document Clarify"
-  short_description: "Clarify dotdotgod project documentation."
-  default_prompt: "Clarify the target docs using resolved dotdotgod memory-area guidance and direct affirmative prose while preserving established meaning and traceability."

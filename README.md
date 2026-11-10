@@ -61,6 +61,8 @@ Every adapter follows the same loop:
 | [`@dotdotgod/codex`](packages/codex/README.md#start-here) | You use Codex and want dotdotgod skills, local context MCP tools, and reviewed hooks. | Register the plugin manifest through a trusted Codex plugin flow. |
 | [`@dotdotgod/opencode`](packages/opencode/README.md) | You use OpenCode V2 and want MCP tools, automatic project plans and advisory impact tracking. | Add the package to `opencode.jsonc` plugins after publishing; use the package directory locally. |
 
+The source checkout includes [`@dotdotgod/skills`](packages/skills/README.md), a standalone skills package with role-based planning and `document-clarify` (no longer bundled with adapters). Its [Skills CLI installation guide](packages/skills/README.md#설치-플러그인-없이-skills-cli-사용) covers Codex, Claude Code, Pi, Hermes Agent, and OpenCode without a new plugin; native host discovery verification is still pending.
+
 The source checkout also includes [`@dotdotgod/hermes`](packages/hermes/README.md)
 for Hermes CLI/gateway, with per-session MCP connections and no Plan Mode.
 Install its npm tarball into the native Hermes plugin directory; see its package README.

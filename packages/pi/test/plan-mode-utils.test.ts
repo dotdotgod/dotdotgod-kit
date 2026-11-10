@@ -462,6 +462,9 @@ describe("plan-mode review helpers", () => {
 	it("keeps long review body viewports bounded to visible lines", () => {
 		const bodyLines = Array.from({ length: 100 }, (_, index) => `line ${index + 1}`);
 		assert.deepEqual(getPlanReviewBodyViewportLines(bodyLines, 10, 3), ["line 11", "line 12", "line 13"]);
+		const visibleLines = getPlanReviewVisibleBodyLines(60);
+		const scroll = getPlanReviewScrollState(Number.MAX_SAFE_INTEGER, bodyLines.length, visibleLines);
+		assert.deepEqual(getPlanReviewBodyViewportLines(bodyLines, scroll.offset, visibleLines), bodyLines.slice(-visibleLines));
 	});
 
 	it("maps cursor-selectable review actions and wraps selection", () => {
@@ -469,8 +472,14 @@ describe("plan-mode review helpers", () => {
 		assert.equal(getPlanReviewActionChoice(1), "stay");
 		assert.equal(getPlanReviewActionChoice(2), "refine");
 		assert.equal(getPlanReviewActionChoice(3), "cancel");
-		assert.equal(getPlanReviewActionChoice(-10), "execute");
-		assert.equal(getPlanReviewActionChoice(99), "cancel");
+		for (const direction of [-1, 1] as const) {
+			let index = 0;
+			const expected = direction === 1 ? ["stay", "refine", "cancel", "execute"] : ["cancel", "refine", "stay", "execute"];
+			for (let step = 0; step < 12; step += 1) {
+				index = getNextPlanReviewActionIndex(index, direction);
+				assert.equal(getPlanReviewActionChoice(index), expected[step % expected.length]);
+			}
+		}
 		assert.equal(getNextPlanReviewActionIndex(0, 1), 1);
 		assert.equal(getNextPlanReviewActionIndex(3, 1), 0);
 		assert.equal(getNextPlanReviewActionIndex(0, -1), 3);

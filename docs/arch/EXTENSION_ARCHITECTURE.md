@@ -36,7 +36,7 @@ Distribution metadata:
 
 ### Generated vs Hand-Authored Resources
 
-Common workflow text for generated adapter skills comes from `packages/shared/workflows/` and `scripts/generate-adapters.mjs`; edit those sources, then run `pnpm run generate` and `pnpm run verify:generated`. Examples include generated `project-initializer`, `document-clarify`, load, plan, and impact skill bodies across adapters.
+Common workflow text for generated adapter skills comes from `packages/shared/workflows/` and `scripts/generate-adapters.mjs`; edit those sources, then run `pnpm run generate` and `pnpm run verify:generated`. Examples include adapter initializer/load/plan/impact bodies and the standalone `document-clarify` skill.
 
 Pi runtime code under `packages/pi/extensions/**` is hand-authored and owns command registration, state, tool policy, and TUI/runtime behavior. Checked-in generated resources are package artifacts for local installs and npm tarballs; do not edit them directly except when intentionally repairing generator output. See [`CROSS_AGENT_ARCHITECTURE.md`](CROSS_AGENT_ARCHITECTURE.md) for cross-adapter ownership.
 
@@ -46,7 +46,9 @@ The initializer skill describes a safe setup workflow and delegates deterministi
 
 The script owns template-specific scaffold generation, overwrite policy, and dry-run reporting.
 
-### `document-clarify` Skill and Plan Clarifier Subagent
+### Standalone `document-clarify` Skill
+
+`@dotdotgod/skills` owns its distribution; Pi no longer bundles it. The shared workflow remains canonical, and the generator writes complete portable instructions and metadata into `packages/skills/skills/document-clarify/`. No Plan Clarifier subagent is supplied. See the [migration guide](../../packages/skills/MIGRATION.md).
 
 
 ### `plan-mode` Extension

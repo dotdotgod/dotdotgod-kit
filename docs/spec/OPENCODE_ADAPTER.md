@@ -3,8 +3,8 @@
 ## Package And Resources
 
 `@dotdotgod/opencode` is a V2 ESM plugin. Shared workflows generate three commands
-(`dd:load`, `dd:init`, `dd:impact`) and five skills (project-load,
-doc-first-planning, project-initializer, impact-review, document-clarify).
+(`dd:load`, `dd:init`, `dd:impact`) and four skills (project-load,
+doc-first-planning, project-initializer, impact-review). `document-clarify` is installed separately from `@dotdotgod/skills`.
 Commands preserve prompt attachments and delivery mode. Skill paths identify the
 actual SKILL.md so supporting files resolve from the installed package.
 

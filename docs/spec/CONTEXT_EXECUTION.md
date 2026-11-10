@@ -82,11 +82,11 @@ Claude/Codex bundle shared hooks, MCP and CLI. Extracted runtimes require no anc
 
 ## Hook Routing
 
-Claude Code and Codex hooks keep project/session state under `.dotdotgod/context/runtime/`. Declared roots override transient cwd. Otherwise hooks find nearest same-session ancestor state; only SessionStart creates state at cwd. Each invocation shares one root across state and fingerprints. Unidentified events fail open.
+Claude Code and Codex hooks keep project/session state under `.dotdotgod/context/runtime/`. Declared roots override transient cwd. Otherwise hooks find nearest same-session ancestor state; only SessionStart creates state at cwd. Unidentified events fail open.
 
 - Session start marks project load as required.
 - Substantive shell or write tools are denied until project load succeeds.
-- Successful edit tools record project-contained changed paths and fingerprints.
+- Successful edits record project-contained pending paths, not file hashes; legacy hash-valued entries remain readable.
 - Broad test, build, lint, verify, commit, push, publish, and deploy commands are denied while impact is pending.
 - Denial identifies the required MCP tool; the model calls it and retries the original operation.
 - Project MCP tools bypass their own guards.

@@ -151,7 +151,8 @@ their provenance. Only Obsidian-supported files are attached to new Releases;
 the manual ZIP is retained as a separate Actions artifact for 90 days.
 
 `pnpm --filter @dotdotgod/obsidian run verify` builds and tests path/schema
-validation, corrupt-settings normalization, missing-export recovery, preserving
+validation (including 100001 valid edges), corrupt-settings normalization,
+custom persisted graph paths, missing-export recovery, preserving
 the prior graph on failure, missing files, concurrent reads, unload during IO,
 unsupported renderers, and release metadata/bundle boundaries.
 `packages/cli/test/graph-export.test.mjs` checks relative exports, CLI help,

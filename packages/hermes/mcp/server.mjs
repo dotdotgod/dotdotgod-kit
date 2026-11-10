@@ -3650,49 +3650,49 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative4, options, skipNormalization) {
+    function resolveComponent(base, relative3, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative4 = parse3(serialize(relative4, options), options);
+        relative3 = parse3(serialize(relative3, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative4.scheme) {
-        target.scheme = relative4.scheme;
-        target.userinfo = relative4.userinfo;
-        target.host = relative4.host;
-        target.port = relative4.port;
-        target.path = removeDotSegments(relative4.path || "");
-        target.query = relative4.query;
+      if (!options.tolerant && relative3.scheme) {
+        target.scheme = relative3.scheme;
+        target.userinfo = relative3.userinfo;
+        target.host = relative3.host;
+        target.port = relative3.port;
+        target.path = removeDotSegments(relative3.path || "");
+        target.query = relative3.query;
       } else {
-        if (relative4.userinfo !== void 0 || relative4.host !== void 0 || relative4.port !== void 0) {
-          target.userinfo = relative4.userinfo;
-          target.host = relative4.host;
-          target.port = relative4.port;
-          target.path = removeDotSegments(relative4.path || "");
-          target.query = relative4.query;
+        if (relative3.userinfo !== void 0 || relative3.host !== void 0 || relative3.port !== void 0) {
+          target.userinfo = relative3.userinfo;
+          target.host = relative3.host;
+          target.port = relative3.port;
+          target.path = removeDotSegments(relative3.path || "");
+          target.query = relative3.query;
         } else {
-          if (!relative4.path) {
+          if (!relative3.path) {
             target.path = base.path;
-            if (relative4.query !== void 0) {
-              target.query = relative4.query;
+            if (relative3.query !== void 0) {
+              target.query = relative3.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative4.path[0] === "/") {
-              target.path = removeDotSegments(relative4.path);
+            if (relative3.path[0] === "/") {
+              target.path = removeDotSegments(relative3.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative4.path;
+                target.path = "/" + relative3.path;
               } else if (!base.path) {
-                target.path = relative4.path;
+                target.path = relative3.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative4.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative3.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative4.query;
+            target.query = relative3.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3700,7 +3700,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative4.fragment;
+      target.fragment = relative3.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -23203,28 +23203,10 @@ function runDoctor(options = {}) {
 }
 
 // packages/context/src/project.mjs
-import { existsSync as existsSync3, readdirSync as readdirSync2 } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { relative as relative2, resolve as resolve5 } from "node:path";
+import { resolve as resolve5 } from "node:path";
 import { spawn as spawn2 } from "node:child_process";
 var cli = fileURLToPath(new URL("./cli.mjs", import.meta.url));
-function markdownTree(root2, maxDepth = 5) {
-  const docs = resolve5(root2, "docs");
-  if (!existsSync3(docs)) return [];
-  const output = [];
-  function walk(dir, depth) {
-    if (depth > maxDepth) return;
-    for (const entry of readdirSync2(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      const path = resolve5(dir, entry.name);
-      if (entry.isDirectory()) {
-        output.push(`${"  ".repeat(depth - 1)}- ${relative2(root2, path)}/`);
-        walk(path, depth + 1);
-      } else if (entry.isFile() && entry.name.endsWith(".md")) output.push(`${"  ".repeat(depth - 1)}- ${relative2(root2, path)}`);
-    }
-  }
-  walk(docs, 1);
-  return output;
-}
 async function cliText(args, cwd, signal) {
   return await new Promise((resolvePromise, reject) => {
     const child = spawn2(process.execPath, [cli, ...args], { cwd, signal, stdio: ["ignore", "pipe", "pipe"] });
@@ -23262,8 +23244,16 @@ async function projectLoad(input) {
   try {
     documentationMap = await cliJson(["map", root2, "--depth", String(input.maxDepth ?? (focus ? 3 : 5)), "--json"], root2);
   } catch {
+    return {
+      ok: false,
+      root: root2,
+      focus,
+      documentationTree: [],
+      query: null,
+      mapUnavailable: { code: "MAP_UNAVAILABLE", message: "Configured documentation map is unavailable; inspect project settings and README indexes with host tools. Do not treat this as an empty project map." }
+    };
   }
-  const tree = documentationMap ? documentationMap.paths?.length ? documentationMap.tree.split("\n") : [] : markdownTree(root2, input.maxDepth ?? (focus ? 3 : 5));
+  const tree = documentationMap.paths?.length ? documentationMap.tree.split("\n") : [];
   let query = null;
   let queryUnavailable;
   let vectorUnavailable;
@@ -23425,19 +23415,19 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 // packages/context/src/impact-state.mjs
 import { createHash as createHash2, randomUUID } from "node:crypto";
-import { existsSync as existsSync4, mkdirSync as mkdirSync2, readFileSync as readFileSync4, realpathSync as realpathSync3 } from "node:fs";
-import { dirname as dirname3, isAbsolute, join as join4, relative as relative3, resolve as resolve6 } from "node:path";
+import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync4, realpathSync as realpathSync3 } from "node:fs";
+import { dirname as dirname3, isAbsolute, join as join4, relative as relative2, resolve as resolve6 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 function impactPath(root2, path) {
   if (typeof path !== "string" || !path.trim() || path.includes("\0")) return void 0;
   const absolute = resolve6(root2, path);
-  const name = relative3(resolve6(root2), absolute).replaceAll("\\", "/");
+  const name = relative2(resolve6(root2), absolute).replaceAll("\\", "/");
   if (!name || name === ".." || name.startsWith("../") || isAbsolute(name)) return void 0;
   if (/(^|\/)(node_modules|\.git|\.dotdotgod|dist|build|coverage)(\/|$)/.test(name)) return void 0;
   if (/^docs\/(plan|archive)(\/|$)/.test(name)) return void 0;
   let ancestor = absolute;
-  while (!existsSync4(ancestor) && dirname3(ancestor) !== ancestor) ancestor = dirname3(ancestor);
-  const realRelative = relative3(realpathSync3(root2), realpathSync3(ancestor));
+  while (!existsSync3(ancestor) && dirname3(ancestor) !== ancestor) ancestor = dirname3(ancestor);
+  const realRelative = relative2(realpathSync3(root2), realpathSync3(ancestor));
   if (realRelative === ".." || realRelative.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) || isAbsolute(realRelative)) return void 0;
   return name;
 }
@@ -23455,7 +23445,7 @@ var ImpactState = class {
     this.path = join4(this.root, ".dotdotgod/context/impact.sqlite");
   }
   database(write = false) {
-    if (!write && !existsSync4(this.path)) return void 0;
+    if (!write && !existsSync3(this.path)) return void 0;
     if (write) mkdirSync2(dirname3(this.path), { recursive: true });
     const db = new DatabaseSync3(this.path);
     db.exec("PRAGMA busy_timeout=5000");

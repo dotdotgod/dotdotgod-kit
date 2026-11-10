@@ -1,5 +1,4 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 import { dirname, isAbsolute, join, parse, relative, resolve } from 'node:path';
 
 function inputText() { return readFileSync(0, 'utf8'); }
@@ -32,13 +31,10 @@ function resolveHookContext(input, event) {
 }
 function readState(path) { try { return JSON.parse(readFileSync(path, 'utf8')); } catch { return { loadRequired: false, pending: {} }; } }
 function writeState(path, state) {
-  if (!path) return;
   mkdirSync(dirname(path), { recursive: true });
   const temp = `${path}.${process.pid}.tmp`; writeFileSync(temp, `${JSON.stringify(state, null, 2)}\n`); renameSync(temp, path);
 }
-function fileHash(path) { try { return createHash('sha256').update(readFileSync(path)).digest('hex'); } catch { return 'missing'; } }
 function isInsideRoot(root, path) {
-  if (!root || typeof path !== 'string') return false;
   const absolute = resolve(path);
   const rel = relative(root, absolute);
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
@@ -137,7 +133,7 @@ export function runHook(event) {
       return {};
     } else if (/^(Edit|Write|apply_patch)$/i.test(name)) {
       const path = changedPath(input, context.root);
-      if (path && !isPlanDocument(context.root, path)) state.pending[path] = fileHash(path);
+      if (path && !isPlanDocument(context.root, path)) state.pending[path] = true;
     }
     writeState(context.path, state);
     return {};

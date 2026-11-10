@@ -1,13 +1,23 @@
 """Project changed-file fingerprints and deliberately limited command gates."""
+
 import hashlib
 import re
 import subprocess
 from pathlib import Path
 
-# ponytail: recognize common release/test invocations, not arbitrary shell/program semantics.
 # Keep host approval/sandbox policy; add a host execution-policy integration if stronger isolation is required.
-GATE = re.compile(r"\bgit\b[^\n;|]{0,200}\b(?:commit|push|tag)\b|\b(?:npm|pnpm|yarn)\b[^\n;|]{0,100}\b(?:publish|deploy|verify|test|build|lint|check)\b|\bpytest\b|\bnode\s+--test\b|\bpython\S*\s+-m\s+unittest\b")
-EXCLUDED = (".dotdotgod/", "node_modules/", "dist/", "build/", "coverage/", "docs/plan/", "docs/archive/")
+GATE = re.compile(
+    r"\bgit\b[^\n;|]{0,200}\b(?:commit|push|tag)\b|\b(?:npm|pnpm|yarn)\b[^\n;|]{0,100}\b(?:publish|deploy|verify|test|build|lint|check)\b|\bpytest\b|\bnode\s+--test\b|\bpython\S*\s+-m\s+unittest\b"
+)
+EXCLUDED = (
+    ".dotdotgod/",
+    "node_modules/",
+    "dist/",
+    "build/",
+    "coverage/",
+    "docs/plan/",
+    "docs/archive/",
+)
 
 
 def contained(root, value):
@@ -28,34 +38,64 @@ def fingerprint(path):
 
 
 def snapshot(root):
-    # ponytail: hash all dirty bytes per gate; cache Git/file signatures only if profiling warrants it.
     # Dirty and untracked paths only; ignored/local memory is not indexed for impact.
     names = set()
-    for args in (["diff", "--name-only", "-z", "HEAD"], ["ls-files", "--others", "--exclude-standard", "-z"]):
-        run = subprocess.run(["git", "-C", str(root), *args], capture_output=True, timeout=10)
+    for args in (
+        ["diff", "--name-only", "-z", "HEAD"],
+        ["ls-files", "--others", "--exclude-standard", "-z"],
+    ):
+        run = subprocess.run(
+            ["git", "-C", str(root), *args], capture_output=True, timeout=10
+        )
         if run.returncode:
             # A new repository can have no HEAD; fall back to tracked worktree paths.
             if args[0] == "diff":
-                run = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, timeout=10)
+                run = subprocess.run(
+                    ["git", "-C", str(root), "ls-files", "-z"],
+                    capture_output=True,
+                    timeout=10,
+                )
             if run.returncode:
-                raise RuntimeError("Impact requires a readable Git worktree; no release commands allowed")
+                raise RuntimeError(
+                    "Impact requires a readable Git worktree; no release commands allowed"
+                )
         names.update(run.stdout.decode("utf-8", errors="strict").split("\0"))
-    return {name: fingerprint(contained(root, name)) for name in sorted(names) if name and tracked(name)}
+    return {
+        name: fingerprint(contained(root, name))
+        for name in sorted(names)
+        if name and tracked(name)
+    }
 
 
 def commands(name, args):
     if name.endswith("execute"):
-        return [" ".join(str(v) for v in [item.get("command", ""), item.get("executable", ""), *item.get("args", [])])
-                for item in args.get("commands", [])]
-    return [str(args.get(key, "")) for key in ("command", "code", "goal", "tasks", "data")]
+        return [
+            " ".join(
+                str(v)
+                for v in [
+                    item.get("command", ""),
+                    item.get("executable", ""),
+                    *item.get("args", []),
+                ]
+            )
+            for item in args.get("commands", [])
+        ]
+    return [
+        str(args.get(key, "")) for key in ("command", "code", "goal", "tasks", "data")
+    ]
 
 
 def gate(name, args, pending):
     if not pending:
         return None
-    opaque = name.endswith("execute_file") or (name == "process" and args.get("action") in {"write", "submit"})
+    opaque = name.endswith("execute_file") or (
+        name == "process" and args.get("action") in {"write", "submit"}
+    )
     if opaque or any(GATE.search(text) for text in commands(name, args)):
-        return "Run project_impact for pending paths before verification/commit/push/publish: " + ", ".join(sorted(pending)[:8])
+        return (
+            "Run project_impact for pending paths before verification/commit/push/publish: "
+            + ", ".join(sorted(pending)[:8])
+        )
     return None
 
 

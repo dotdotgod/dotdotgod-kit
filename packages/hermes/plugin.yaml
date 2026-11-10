@@ -34,7 +34,6 @@ provides_skills:
   - project-initializer
   - project-load
   - impact-review
-  - document-clarify
 config_schema:
   roots:
     type: dict

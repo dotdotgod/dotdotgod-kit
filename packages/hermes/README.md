@@ -1,5 +1,7 @@
 # @dotdotgod/hermes
 
+`document-clarify` is distributed separately through [@dotdotgod/skills](../skills/README.md). Before upgrading from a bundled copy, follow its [migration guide](../skills/MIGRATION.md).
+
 Hermes CLI and messaging-gateway project memory adapter, without Plan Mode.
 Target host revision: `19b57f11d6eefb17e3e8a58e40b0b16aeb8b83b9`.
 
@@ -71,7 +73,7 @@ project data; context scope/session filters are not access-control lists.
 
 ## Features
 
-- Generated project-initializer, project-load, impact-review and document-clarify
+- Generated project-initializer, project-load and impact-review
   skills from canonical shared sources.
 - Automatic load-required instructions; call project_load once with an
   agent-selected focus and continue the original request. Explicit load uses the

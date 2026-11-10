@@ -19,7 +19,8 @@
   backslashes, and non-JSON paths MUST be rejected. External paths are unsupported.
 - Graph version, relation identifiers, colors, finite nonnegative weights, and
   endpoint paths MUST be validated before native hooks are installed. Missing
-  vault endpoints MUST be omitted.
+  vault endpoints MUST be omitted. Valid graphs MUST NOT be rejected solely by a
+  fixed edge-count limit; acceptance does not guarantee native rendering performance.
 - Missing data on first use MUST leave settings/reload available. Failed reloads
   MUST preserve the last graph. Concurrent reads MUST coalesce; pending reads
   MUST NOT bind after unload or a path change.

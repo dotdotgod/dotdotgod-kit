@@ -125,7 +125,7 @@ class RuntimeTest(unittest.TestCase):
         module.register(self.ctx)
         self.addCleanup(self.ctx.hooks["on_session_finalize"], session_id="registered")
         self.assertEqual(len(self.ctx.tools), 20)
-        self.assertEqual(len(self.ctx.skills), 4)
+        self.assertEqual(len(self.ctx.skills), 3)
         self.assertNotIn("plan", " ".join(self.ctx.tools))
         self.ctx.hooks["pre_llm_call"](session_id="registered", user_message="hello", platform="cli")
         self.assertFalse(any(name.startswith("dotdotgod_") for name in self.ctx.tools))

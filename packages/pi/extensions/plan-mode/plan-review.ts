@@ -104,10 +104,8 @@ export function getPlanReviewVisibleBodyLines(terminalRows: number | undefined):
 }
 
 export function getPlanReviewScrollState(offset: number, totalLines: number, visibleLines: number): PlanReviewScrollState {
-	const safeVisibleLines = Math.max(1, Math.floor(visibleLines));
-	const safeTotalLines = Math.max(0, Math.floor(totalLines));
-	const maxOffset = Math.max(0, safeTotalLines - safeVisibleLines);
-	const safeOffset = Math.min(Math.max(0, Math.floor(offset)), maxOffset);
+	const maxOffset = Math.max(0, totalLines - visibleLines);
+	const safeOffset = Math.min(Math.max(0, offset), maxOffset);
 	return {
 		offset: safeOffset,
 		maxOffset,
@@ -117,21 +115,18 @@ export function getPlanReviewScrollState(offset: number, totalLines: number, vis
 }
 
 export function getPlanReviewBodyViewportLines(bodyLines: readonly string[], offset: number, visibleLines: number): string[] {
-	const safeVisibleLines = Math.max(1, Math.floor(visibleLines));
-	const viewport = bodyLines.slice(Math.max(0, Math.floor(offset)), Math.max(0, Math.floor(offset)) + safeVisibleLines);
-	while (viewport.length < safeVisibleLines) viewport.push("");
+	const viewport = bodyLines.slice(offset, offset + visibleLines);
+	while (viewport.length < visibleLines) viewport.push("");
 	return viewport;
 }
 
 export function getPlanReviewActionChoice(index: number): PlanReviewChoice {
-	const safeIndex = Math.min(Math.max(0, Math.floor(index)), PLAN_REVIEW_ACTIONS.length - 1);
-	return PLAN_REVIEW_ACTIONS[safeIndex]?.choice ?? "cancel";
+	return PLAN_REVIEW_ACTIONS[index]!.choice;
 }
 
 export function getNextPlanReviewActionIndex(index: number, direction: -1 | 1): number {
 	const count = PLAN_REVIEW_ACTIONS.length;
-	if (count === 0) return 0;
-	return (Math.floor(index) + direction + count) % count;
+	return (index + direction + count) % count;
 }
 
 export function buildPlanExecutionHandoff(todoItems: readonly TodoItem[], planPath: string | undefined): PlanExecutionHandoff {

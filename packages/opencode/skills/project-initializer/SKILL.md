@@ -31,7 +31,7 @@ Create a non-destructive dotdotgod baseline with canonical agent instructions, t
 ## Workflow
 
 1. Preserve existing files and unrelated user work.
-2. Call the shared MCP project_initialize tool with the selected template. Keep dryRun true initially; after explicit write approval call with dryRun false and confirmWrite true. Existing files are skipped, never replaced. Switch out of the native plan agent before initialization.
+2. Call the shared MCP project_initialize tool with the selected template. Keep dryRun true initially; after explicit write approval call with dryRun false and confirmWrite true. Existing scaffold files are skipped; missing local-memory/cache entries may be appended to .gitignore. Switch out of the native plan agent before initialization.
 3. Use bundled scripts only as an explicit fallback when MCP is unavailable. Custom templates require the CLI; do not silently substitute a bundled template.
 4. Validate the initialized project with `dotdotgod validate <project-root>` when available.
 5. Report created and skipped files, the selected template, validation failures, and unresolved instruction conflicts.

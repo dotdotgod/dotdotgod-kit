@@ -59,6 +59,23 @@ test('hooks gate load and acknowledgement-based impact without recursion', () =>
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('pending membership needs no file read and accepts legacy fingerprint values', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-membership-'));
+  try {
+    payload(root, 'sessionstart'); payload(root, 'posttooluse', load);
+    const file = join(root, 'deleted.ts');
+    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
+    const statePath = join(root, '.dotdotgod/context/runtime/test.json');
+    const state = JSON.parse(readFileSync(statePath, 'utf8'));
+    assert.equal(state.pending[file], true);
+    state.pending[file] = 'legacy-fingerprint';
+    writeFileSync(statePath, JSON.stringify(state));
+    assert.equal(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
+    payload(root, 'posttooluse', { tool_name: 'mcp__dotdotgod_context__project_impact', tool_input: { paths: [file] } });
+    assert.deepEqual(payload(root, 'pretooluse', bash), {});
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('hooks share load state across nested event working directories', () => {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-nested-'));
   const nested = join(root, 'packages', 'app');

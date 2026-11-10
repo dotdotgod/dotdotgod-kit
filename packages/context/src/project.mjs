@@ -1,26 +1,9 @@
-import { existsSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { relative, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 
 const require = createRequire(import.meta.url);
 const cli = require.resolve('@dotdotgod/cli/bin/dotdotgod.mjs');
-
-function markdownTree(root, maxDepth = 5) {
-  const docs = resolve(root, 'docs');
-  if (!existsSync(docs)) return [];
-  const output = [];
-  function walk(dir, depth) {
-    if (depth > maxDepth) return;
-    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      const path = resolve(dir, entry.name);
-      if (entry.isDirectory()) { output.push(`${'  '.repeat(depth - 1)}- ${relative(root, path)}/`); walk(path, depth + 1); }
-      else if (entry.isFile() && entry.name.endsWith('.md')) output.push(`${'  '.repeat(depth - 1)}- ${relative(root, path)}`);
-    }
-  }
-  walk(docs, 1);
-  return output;
-}
 
 async function cliText(args, cwd, signal) {
   return await new Promise((resolvePromise, reject) => {
@@ -56,8 +39,11 @@ export async function projectLoad(input) {
   const focus = input.focus?.trim() ?? '';
   let documentationMap;
   try { documentationMap = await cliJson(['map', root, '--depth', String(input.maxDepth ?? (focus ? 3 : 5)), '--json'], root); }
-  catch { /* Preserve filesystem fallback when CLI navigation is unavailable. */ }
-  const tree = documentationMap ? (documentationMap.paths?.length ? documentationMap.tree.split('\n') : []) : markdownTree(root, input.maxDepth ?? (focus ? 3 : 5));
+  catch {
+    return { ok: false, root, focus, documentationTree: [], query: null,
+      mapUnavailable: { code: 'MAP_UNAVAILABLE', message: 'Configured documentation map is unavailable; inspect project settings and README indexes with host tools. Do not treat this as an empty project map.' } };
+  }
+  const tree = documentationMap.paths?.length ? documentationMap.tree.split('\n') : [];
   let query = null;
   let queryUnavailable;
   let vectorUnavailable;

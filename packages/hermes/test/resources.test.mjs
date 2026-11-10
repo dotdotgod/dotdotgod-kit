@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import test from 'node:test';
 
-test('native package has four generated skills, isolated MCP artifacts and no planning resources', () => {
+test('native package has three generated skills, isolated MCP artifacts and no planning resources', () => {
   const pkg = JSON.parse(readFileSync('package.json'));
   assert.equal(pkg.name, '@dotdotgod/hermes');
   for (const path of ['plugin.yaml', '__init__.py', 'runtime.py', 'proxy.py', 'policy.py', 'mcp/server.mjs', 'mcp/cli.mjs', 'mcp/bridge.mjs', 'mcp/tools.json', 'LICENSE', 'README.md']) {
     assert.ok(existsSync(path), path);
   }
-  assert.deepEqual(readdirSync('skills').sort(), ['document-clarify', 'impact-review', 'project-initializer', 'project-load']);
+  assert.deepEqual(readdirSync('skills').sort(), ['impact-review', 'project-initializer', 'project-load']);
   const tools = JSON.parse(readFileSync('mcp/tools.json'));
   assert.equal(tools.length, 19);
   assert.equal(new Set(tools.map(tool => tool.name)).size, 19);

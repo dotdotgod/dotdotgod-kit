@@ -1,0 +1,33 @@
+{
+  "name": "@dotdotgod/skills",
+  "version": "0.7.3",
+  "description": "Standalone agent skills for dotdotgod.",
+  "type": "module",
+  "license": "Elastic-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "agent-skills",
+    "ai-coding-agent",
+    "dotdotgod"
+  ],
+  "scripts": {
+    "pack:dry-run": "pnpm pack --dry-run --json"
+  },
+  "files": [
+    "skills",
+    "README.md",
+    "MIGRATION.md",
+    "LICENSE"
+  ],
+  "homepage": "https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/skills#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dotdotgod/dotdotgod-kit.git",
+    "directory": "packages/skills"
+  },
+  "bugs": {
+    "url": "https://github.com/dotdotgod/dotdotgod-kit/issues"
+  }
+}

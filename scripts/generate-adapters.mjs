@@ -55,9 +55,9 @@ for (const name of BUILT_IN_TEMPLATE_NAMES) {
 write("packages/shared/initializer/templates/dotdotgod.config.json", builtInTemplateText("software"));
 
 const initCommands = {
-  pi: "sh scripts/init_project.sh <project-root>",
+  pi: "sh <resolved-skill-directory>/scripts/init_project.sh <project-root>",
   claude: 'sh "${CLAUDE_PLUGIN_ROOT}/skills/project-initializer/scripts/init_project.sh" <project-root>',
-  codex: "sh scripts/init_project.sh <project-root>",
+  codex: "sh <resolved-skill-directory>/scripts/init_project.sh <project-root>",
   hermes: "sh <resolved-skill-directory>/scripts/init_project.sh <project-root>",
   opencode: "sh <resolved-skill-directory>/scripts/init_project.sh <project-root>",
 };
@@ -68,7 +68,7 @@ function renderInitBody(platform) {
   const body = initBody.replace("{{INIT_SCRIPT_COMMAND}}", initCommands[platform]);
   if (platform === "claude") return `${body}\n\n## Native Plan Storage\n\nOnly after the user opts in, add \`--claude-plans\` to the CLI initialization command. It adds project-local \`plansDirectory\` without replacing an existing value or changing permissions. Preview with \`--dry-run\`. The shell fallback does not support this option: use the bundled CLI at \`$CLAUDE_PLUGIN_ROOT/mcp/cli.mjs\` instead. Native file names remain Claude Code-owned; shared task plans still use task directories and README.md.`;
   if (platform !== "opencode") return body;
-  return body.replace(/^2\. Run `dotdotgod init.*$/m, '2. Call the shared MCP project_initialize tool with the selected template. Keep dryRun true initially; after explicit write approval call with dryRun false and confirmWrite true. Existing files are skipped, never replaced. Switch out of the native plan agent before initialization.')
+  return body.replace(/^2\. Run `dotdotgod init.*$/m, '2. Call the shared MCP project_initialize tool with the selected template. Keep dryRun true initially; after explicit write approval call with dryRun false and confirmWrite true. Existing scaffold files are skipped; missing local-memory/cache entries may be appended to .gitignore. Switch out of the native plan agent before initialization.')
     .replace(/^3\. The POSIX fallback.*$/m, '3. Use bundled scripts only as an explicit fallback when MCP is unavailable. Custom templates require the CLI; do not silently substitute a bundled template.');
 }
 
@@ -128,14 +128,14 @@ copyDirectory("packages/shared/initializer/scripts", "packages/pi/skills/project
 copyDirectory("packages/shared/initializer/templates", "packages/pi/skills/project-initializer/templates");
 copyDirectory("packages/shared/initializer/references", "packages/pi/skills/project-initializer/references");
 write(
-  "packages/pi/skills/document-clarify/SKILL.md",
+  "packages/skills/skills/document-clarify/SKILL.md",
   skill(
     `name: document-clarify\ndescription: Clarify project documentation using resolved dotdotgod memory-area guidance and direct, concise prose. Use when asked to improve README indexes, specs, tests, architecture docs, plans, archives, or project-specific docs while preserving established meaning and traceability.`,
     "Document Clarify",
     renderDocClarifyBody(),
   ),
 );
-write("packages/pi/skills/document-clarify/agents/openai.yaml", yaml.docClarify);
+write("packages/skills/skills/document-clarify/agents/openai.yaml", yaml.docClarify);
 
 write(
   "packages/claude-code/commands/dd/load.md",
@@ -205,19 +205,10 @@ write(
     impactBody,
   ),
 );
-write(
-  "packages/claude-code/skills/document-clarify/SKILL.md",
-  skill(
-    `name: document-clarify\ndescription: Use this skill when Claude Code should clarify project documentation using resolved dotdotgod memory-area guidance and direct, concise prose; when README indexes or project-specific docs need clearer wording while preserving established meaning and traceability.\nversion: 1.0.0`,
-    "Document Clarify",
-    renderDocClarifyBody(),
-  ),
-);
 write("packages/claude-code/skills/project-load/agents/openai.yaml", yaml.load);
 write("packages/claude-code/skills/doc-first-planning/agents/openai.yaml", yaml.plan);
 write("packages/claude-code/skills/project-initializer/agents/openai.yaml", yaml.init);
 write("packages/claude-code/skills/impact-review/agents/openai.yaml", yaml.impact);
-write("packages/claude-code/skills/document-clarify/agents/openai.yaml", yaml.docClarify);
 copyDirectory("packages/shared/initializer/scripts", "packages/claude-code/skills/project-initializer/scripts");
 copyDirectory("packages/shared/initializer/templates", "packages/claude-code/skills/project-initializer/templates");
 copyDirectory("packages/shared/initializer/references", "packages/claude-code/skills/project-initializer/references");
@@ -254,19 +245,10 @@ write(
     impactBody,
   ),
 );
-write(
-  "packages/codex/skills/document-clarify/SKILL.md",
-  skill(
-    `name: document-clarify\ndescription: Clarify project documentation using resolved dotdotgod memory-area guidance and direct, concise prose. Use when Codex is asked to improve README indexes or project-specific docs while preserving established meaning and traceability.`,
-    "Document Clarify",
-    renderDocClarifyBody(),
-  ),
-);
 write("packages/codex/skills/project-load/agents/openai.yaml", yaml.load);
 write("packages/codex/skills/doc-first-planning/agents/openai.yaml", yaml.plan);
 write("packages/codex/skills/project-initializer/agents/openai.yaml", yaml.init);
 write("packages/codex/skills/impact-review/agents/openai.yaml", yaml.impact);
-write("packages/codex/skills/document-clarify/agents/openai.yaml", yaml.docClarify);
 copyDirectory("packages/shared/initializer/scripts", "packages/codex/skills/project-initializer/scripts");
 copyDirectory("packages/shared/initializer/templates", "packages/codex/skills/project-initializer/templates");
 copyDirectory("packages/shared/initializer/references", "packages/codex/skills/project-initializer/references");
@@ -275,7 +257,6 @@ for (const [name, title, body] of [
   ["project-initializer", "Project Initializer", renderInitBody("hermes")],
   ["project-load", "Project Load", renderLoadBody("hermes")],
   ["impact-review", "Impact Review", impactBody],
-  ["document-clarify", "Document Clarify", renderDocClarifyBody()],
 ]) {
   const routing = "Use the operator-authorized selected repository. Prefer project_initialize, project_load and project_impact from the dotdotgod toolset for their respective workflows. Context tools use the shared MCP catalog names without adapter aliases; inspect content, structuredContent and isError. Do not bypass host permissions or pending impact gates. Hermes native delegate_task handles delegation; this adapter has no Plan Mode.";
   write(`packages/hermes/skills/${name}/SKILL.md`, skill(
@@ -291,13 +272,12 @@ copyFile("LICENSE", "packages/hermes/LICENSE");
 const opencodeRouting = 'Use the dotdotgod_context MCP server for project load, initialization, graph impact, execution and indexed retrieval. Discover its exact tool names in OpenCode Code Mode; inspect MCP isError and structuredContent and every execution results entry. For unknown output size use execute with a commands array and outputMode auto; search indexed.id with bounded source-scoped search. Run ancillary CLI checks through MCP execute rather than a duplicate native service. Keep direct read for short located source and images. Pending impact is advisory, never an execution gate. Preserve host permissions. Use the native plan agent, not dd:plan; concrete plans are automatically maintained in docs/plan/<task-slug>/README.md without a separate save request.';
 const opencodeImpactBody = impactBody
   .replace('Claude Code and Codex use this advisory workflow; trusted runtime or project hooks may enforce a stricter boundary.', 'OpenCode tracks observed edits per session; pending impact is advisory and never blocks tools.')
-  .replace(/2\. Run one bounded multi-seed impact command[\s\S]*?(?=\n3\. Review)/, '2. Call the shared MCP project_impact tool with up to twenty unique paths in first-seen order. Split larger sets into ordered batches of twenty. Inspect isError and structuredContent; only successful reviews of covered unchanged revisions clear pending state. Failures, cancellation and concurrent re-edits retain pending. When MCP is unavailable, follow README indexes, traceability, package metadata and focused search without claiming pending was cleared.');
+  .replace(/2\. Call the host-registered project_impact[\s\S]*?(?=\n3\. Review)/, '2. Call the shared MCP project_impact tool with up to twenty unique paths in first-seen order. Split larger sets into ordered batches of twenty. Inspect isError and structuredContent; only successful reviews of covered unchanged revisions clear pending state. Failures, cancellation and concurrent re-edits retain pending. When MCP is unavailable, follow README indexes, traceability, package metadata and focused search without claiming pending was cleared.');
 for (const [id, title, body, description] of [
   ['project-load', 'Project Load', renderLoadBody('opencode'), 'Load or refresh project memory and focused documentation/code search.'],
   ['doc-first-planning', 'Doc-First Planning', renderPlanBody('opencode'), 'Plan implementation from maintained docs with the native plan agent.'],
   ['project-initializer', 'Project Initializer', renderInitBody('opencode'), 'Initialize shared project memory, documentation indexes and configuration.'],
   ['impact-review', 'Impact Review', opencodeImpactBody, 'Review changed files and related docs/tests using graph impact.'],
-  ['document-clarify', 'Document Clarify', renderDocClarifyBody(), 'Clarify documentation while preserving requirements and traceability.'],
 ]) write(`packages/opencode/skills/${id}/SKILL.md`, skill(`name: ${id}\ndescription: ${description}`, title, `${opencodeRouting}\n\n${body}`));
 for (const [id, title, body] of [
   ['load', 'Load project memory', renderLoadBody('opencode')],

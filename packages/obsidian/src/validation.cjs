@@ -9,7 +9,7 @@ function graphPath(value) {
 }
 function validateGraph(graph) {
   if (!graph || graph.version !== 1 || !Array.isArray(graph.edges) || !Array.isArray(graph.types) ||
-      !relativePath(graph.config?.documentation?.root) || graph.edges.length > 100000) throw new Error('Invalid traceability graph.');
+      !relativePath(graph.config?.documentation?.root)) throw new Error('Invalid traceability graph.');
   const types = new Map();
   for (const type of graph.types) {
     if (!type || typeof type.relation !== 'string' || !type.relation || types.has(type.relation) ||

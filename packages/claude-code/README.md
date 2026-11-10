@@ -1,5 +1,7 @@
 # @dotdotgod/claude-code
 
+`document-clarify` is distributed separately through [@dotdotgod/skills](../skills/README.md). Before upgrading from a bundled copy, follow its [migration guide](../skills/MIGRATION.md).
+
 [![npm version](https://img.shields.io/npm/v/@dotdotgod/claude-code.svg)](https://www.npmjs.com/package/@dotdotgod/claude-code) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod--kit-181717?logo=github)](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/claude-code) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](https://github.com/dotdotgod/dotdotgod-kit/blob/main/LICENSE)
 
 Claude Code adapter for dotdotgod's docs-first project-memory workflow.
@@ -50,7 +52,6 @@ claude --plugin-dir /path/to/dotdotgod/packages/claude-code
 | `/dd:load` | Load project memory without changing maintained project files. | Renders the shared Markdown tree and uses `dotdotgod query` when focus text is provided; unavailable optional semantic routing falls back to the map with bounded evidence. |
 | `/dd:plan` | Plan before implementation. | Writes or updates durable task intent in `docs/plan/<task-slug>/README.md`. |
 | `/dd:impact` | Review changed files before verification or handoff. | Uses `dotdotgod graph impact` to identify likely related docs, tests, commands, and source files. |
-| `document-clarify` | Improve docs wording without changing behavior contracts. | Clarifies README/spec/test/arch/plan/archive docs using memory-area roles. |
 | `dotdotgod-context` MCP tools | Run commands, process files, fetch/index text, and search large output locally. | Keeps large raw bytes outside model context and returns bounded output or FTS5 excerpts. |
 
 ## Shared Project-Memory Contract

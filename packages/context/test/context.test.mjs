@@ -167,6 +167,20 @@ test('project workflows preserve bounded load, impact, and dry-run initializatio
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('projectLoad reports map failure without exposing an unconfigured docs fallback', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-map-failure-'));
+  try {
+    mkdirSync(join(root, 'docs/plan'), { recursive: true });
+    writeFileSync(join(root, 'docs/plan/PRIVATE.md'), '# Local plan');
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({ documentation: { root: 'memory' } }));
+    const result = await projectLoad({ root, maxDepth: 0 });
+    assert.equal(result.ok, false);
+    assert.equal(result.mapUnavailable.code, 'MAP_UNAVAILABLE');
+    assert.deepEqual(result.documentationTree, []);
+    assert.equal(result.query, null);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('ContextStore rejects an incompatible existing schema without migration', () => {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-context-schema-test-'));
   const dir = join(root, '.dotdotgod', 'context');

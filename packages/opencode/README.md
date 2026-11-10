@@ -1,5 +1,7 @@
 # OpenCode Adapter
 
+`document-clarify` is distributed separately through [@dotdotgod/skills](../skills/README.md). Before upgrading from a bundled copy, follow its [migration guide](../skills/MIGRATION.md).
+
 Dotdotgod project-memory workflows for OpenCode V2: shared MCP execution and
 retrieval, native plan-agent integration, and advisory changed-file impact.
 
@@ -28,8 +30,8 @@ canonical. Reload/restart OpenCode after installation changes.
 - `/dd:load`: bounded project map and optional focused query.
 - `/dd:init`: initialize project memory; dry-run by default, writes confirmed.
 - `/dd:impact`: review changed paths through the shared MCP tool.
-- Five shared skills: project-load, doc-first-planning, project-initializer,
-  impact-review, and document-clarify.
+- Four shared skills: project-load, doc-first-planning, project-initializer,
+  and impact-review.
 
 There is no `/dd:plan`. Select OpenCode's built-in plan agent. Concrete plans
 are automatically saved to `docs/plan/<task-slug>/README.md` without a separate
