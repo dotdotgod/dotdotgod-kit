@@ -19,7 +19,7 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Local Investigations
 
-- [Pi policy planning progress](report/2026-11-14/pi-plan-mode-policy/README.md): partial UX/inheritance design and task handoff; host feasibility remains open.
+- `report/2026-11-14/pi-plan-mode-policy/`: local planning and implementation evidence; ignored report bodies are available only in the working checkout.
 
 - `report/hermes-session-investigation/`: installed-host session propagation findings, including private local paths.
 - `report/benchmark-recovery/`: benchmark progress snapshot and local session recovery utility; not executed during cleanup.
