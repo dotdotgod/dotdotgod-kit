@@ -237,5 +237,11 @@
       ]
     }
   },
-  "planMode": {}
+  "planMode": {
+    "commands": [],
+    "markdown": {
+      "allow": [],
+      "deny": []
+    }
+  }
 }

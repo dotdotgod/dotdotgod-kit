@@ -789,7 +789,7 @@ import { join as join3 } from "node:path";
 
 // packages/cli/src/memory/config.mjs
 import { existsSync as existsSync2, readFileSync as readFileSync2 } from "node:fs";
-import { join as join2, resolve } from "node:path";
+import { isAbsolute, join as join2, normalize, resolve } from "node:path";
 
 // packages/cli/src/common/paths.mjs
 import { relative } from "node:path";
@@ -977,6 +977,7 @@ var DEFAULT_LOAD_POLICY = {
     exclude: ["docs/plan", "docs/archive"]
   }
 };
+var DEFAULT_PLAN_MODE_POLICY = { commands: [], markdown: { allow: [], deny: [] } };
 var DEFAULT_IMPACT_RANKING_POLICY = {
   connectionCap: 80,
   memoryCap: 20,
@@ -1151,8 +1152,11 @@ function cloneLoadPolicy(policy = DEFAULT_LOAD_POLICY) {
     }
   };
 }
-function clonePlanModePolicy() {
-  return {};
+function clonePlanModePolicy(policy = DEFAULT_PLAN_MODE_POLICY) {
+  return {
+    commands: (policy.commands ?? []).map(({ effect, executable, args, cwd }) => ({ effect, executable, args: [...args], cwd })),
+    markdown: { allow: [...policy.markdown?.allow ?? []], deny: [...policy.markdown?.deny ?? []] }
+  };
 }
 function normalizeDocumentationRoot(value = DEFAULT_DOCUMENTATION_ROOT) {
   return String(value).trim().replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/{2,}/g, "/").replace(/^\/+|\/+$/g, "");
@@ -1227,17 +1231,67 @@ function isSecretLikePathPattern(value = "") {
   const normalized = normalizePathPattern(value);
   return /(^|\/)(\.env|\.npmrc|\.pypirc|id_rsa|id_dsa|id_ed25519|credentials?|secrets?)(\.|\/|$)/i.test(normalized);
 }
-function normalizePlanModePolicy(_raw) {
-  return clonePlanModePolicy();
+function normalizePlanModePolicy(raw) {
+  return clonePlanModePolicy(raw);
+}
+function validatePlanModePolicy(policy, { allowAbsolutePaths = false } = {}) {
+  const errors = [];
+  const add = (field2, message) => errors.push({ field: field2, message });
+  const object = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+  const fields = (value, allowed, prefix) => {
+    for (const key of Object.keys(value)) if (!allowed.includes(key)) add(`${prefix}.${key}`, "Unsupported field.");
+  };
+  const canonicalPath = (value) => typeof value === "string" && value.trim().length > 0 && !/[\u0000-\u001f\u007f\\*?\[\]{}]/.test(value) && normalize(value) === value && (value === "/" || !value.endsWith("/")) && !value.split("/").some((part) => part === "." || part === "..") && !value.includes("//");
+  if (!object(policy)) {
+    add("planMode", "Expected an object.");
+    return errors;
+  }
+  fields(policy, ["commands", "markdown", "writablePaths"], "planMode");
+  if (policy.commands !== void 0) {
+    if (!Array.isArray(policy.commands)) add("planMode.commands", "Expected an array of command rules.");
+    else for (const [index, rule] of policy.commands.entries()) {
+      const prefix = `planMode.commands[${index}]`;
+      if (!object(rule)) {
+        add(prefix, "Expected an object.");
+        continue;
+      }
+      fields(rule, ["effect", "executable", "args", "cwd"], prefix);
+      if (!["allow", "deny"].includes(rule.effect)) add(`${prefix}.effect`, 'Expected "allow" or "deny".');
+      for (const key of ["executable", "cwd"]) {
+        if (!canonicalPath(rule[key]) || !isAbsolute(rule[key])) add(`${prefix}.${key}`, "Expected a canonical absolute path without glob syntax.");
+      }
+      if (!Array.isArray(rule.args) || rule.args.some((arg) => typeof arg !== "string")) add(`${prefix}.args`, "Expected an exact array of strings.");
+    }
+  }
+  if (policy.markdown !== void 0) {
+    if (!object(policy.markdown)) add("planMode.markdown", "Expected an object.");
+    else {
+      fields(policy.markdown, ["allow", "deny"], "planMode.markdown");
+      for (const key of ["allow", "deny"]) {
+        const values = policy.markdown[key];
+        const prefix = `planMode.markdown.${key}`;
+        if (values === void 0) continue;
+        if (!Array.isArray(values)) {
+          add(prefix, "Expected an array of path strings.");
+          continue;
+        }
+        for (const [index, value] of values.entries()) {
+          const path = typeof value === "string" && value.endsWith("/**") ? value.slice(0, -3) || "/" : value;
+          if (!canonicalPath(path) || /^[A-Za-z]:/.test(path) || !allowAbsolutePaths && isAbsolute(path)) add(`${prefix}[${index}]`, "Expected an exact path or terminal /** subtree; absolute paths are user-policy only.");
+        }
+      }
+    }
+  }
+  return errors;
 }
 function normalizeLoadPolicy(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return cloneLoadPolicy();
-  const normalize2 = (values) => Array.isArray(values) ? [...new Set(values.map(normalizePathPattern))] : [];
+  const normalize3 = (values) => Array.isArray(values) ? [...new Set(values.map(normalizePathPattern))] : [];
   return cloneLoadPolicy({
     pinnedPaths: [],
     pinnedBodies: [],
     documentationSummary: {
-      exclude: raw.documentationSummary?.exclude === void 0 ? DEFAULT_LOAD_POLICY.documentationSummary.exclude : normalize2(raw.documentationSummary.exclude)
+      exclude: raw.documentationSummary?.exclude === void 0 ? DEFAULT_LOAD_POLICY.documentationSummary.exclude : normalize3(raw.documentationSummary.exclude)
     }
   });
 }
@@ -1371,9 +1425,7 @@ Fix: ${fix ?? `update ${field2 ?? "this config"} in ${file} to match the expecte
   }
   const planMode = data.planMode;
   if (planMode !== void 0) {
-    if (!planMode || typeof planMode !== "object" || Array.isArray(planMode)) {
-      add("PLAN_MODE_CONFIG_INVALID", "planMode", "Expected an object.");
-    }
+    for (const { field: field2, message } of validatePlanModePolicy(planMode)) add("PLAN_MODE_CONFIG_INVALID", field2, message);
   }
   const referenceExpansion = data.referenceExpansion;
   if (referenceExpansion !== void 0) {
@@ -1734,7 +1786,7 @@ function resolveInitializationTemplate(explicitName = null, home = dotdotgodHome
 
 // packages/cli/src/claude-plans.mjs
 import { existsSync as existsSync4, lstatSync, readFileSync as readFileSync4, realpathSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname, join as join4, relative as relative2, resolve as resolve2, isAbsolute } from "node:path";
+import { dirname, join as join4, relative as relative2, resolve as resolve2, isAbsolute as isAbsolute2 } from "node:path";
 function prepareClaudePlans(root, documentationRoot) {
   const path = join4(root, ".claude", "settings.json");
   for (const target of [join4(root, ".claude"), path]) {
@@ -1747,7 +1799,7 @@ function prepareClaudePlans(root, documentationRoot) {
   const base = resolve2(root);
   if (existsSync4(dirname(path))) {
     const rel2 = relative2(realpathSync(base), realpathSync(dirname(path)));
-    if (rel2.startsWith("..") || isAbsolute(rel2)) throw new Error("Claude settings must stay inside the project.");
+    if (rel2.startsWith("..") || isAbsolute2(rel2)) throw new Error("Claude settings must stay inside the project.");
   }
   const current = existsSync4(path) ? readFileSync4(path, "utf8") : null;
   const settings = current === null ? {} : JSON.parse(current);
@@ -3019,7 +3071,7 @@ import { dirname as dirname8, join as join11 } from "node:path";
 // packages/cli/src/symbols/discovery.mjs
 var import_ignore = __toESM(require_ignore(), 1);
 import { existsSync as existsSync11, lstatSync as lstatSync2, readFileSync as readFileSync11, realpathSync as realpathSync2 } from "node:fs";
-import { extname as extname5, join as join10, relative as relative5, isAbsolute as isAbsolute2 } from "node:path";
+import { extname as extname5, join as join10, relative as relative5, isAbsolute as isAbsolute3 } from "node:path";
 
 // packages/cli/src/query/chunks.mjs
 import { readFileSync as readFileSync9, readdirSync as readdirSync2 } from "node:fs";
@@ -3117,7 +3169,7 @@ init_runtime();
 function inside(root, file) {
   if (!lstatSync2(file).isFile()) return false;
   const path = relative5(realpathSync2(root), realpathSync2(file));
-  return !path.startsWith("..") && !isAbsolute2(path);
+  return !path.startsWith("..") && !isAbsolute3(path);
 }
 function ignoreRules(root, directory, cache) {
   if (!cache.has(directory)) {
@@ -4188,7 +4240,7 @@ async function importTransformers(options = {}) {
 
 // packages/cli/src/query/embedder.mjs
 var localPipelines = /* @__PURE__ */ new Map();
-function normalize(row) {
+function normalize2(row) {
   if (!Array.isArray(row) || row.length === 0 || row.some((value) => !Number.isFinite(value))) throw new Error("Embedding provider returned an invalid vector.");
   const norm = Math.sqrt(row.reduce((sum, value) => sum + value * value, 0));
   if (!Number.isFinite(norm) || norm === 0) throw new Error("Embedding provider returned a zero-length vector.");
@@ -4202,7 +4254,7 @@ async function localEmbedder(profile) {
     }));
   }
   const model = await localPipelines.get(profile.model);
-  return async (texts) => (await model(texts, { pooling: "mean", normalize: true })).tolist().map(normalize);
+  return async (texts) => (await model(texts, { pooling: "mean", normalize: true })).tolist().map(normalize2);
 }
 function credential(profile) {
   if (profile.apiKey) return profile.apiKey;
@@ -4242,13 +4294,13 @@ function remoteEmbedder(profile) {
   if (profile.provider === "ollama") return async (texts) => {
     const data = await postJson(`${profile.baseUrl ?? "http://localhost:11434"}/api/embed`, { model: profile.model, input: texts }, profile);
     if (!Array.isArray(data.embeddings)) throw new Error("Ollama embedding response is missing embeddings.");
-    return data.embeddings.map(normalize);
+    return data.embeddings.map(normalize2);
   };
   return async (texts) => {
     const data = await postJson(`${profile.baseUrl ?? "https://api.openai.com/v1"}/embeddings`, { model: profile.model, input: texts }, profile);
     if (!Array.isArray(data.data)) throw new Error("OpenAI-compatible embedding response is missing data.");
     const ordered = [...data.data].sort((a, b) => a.index - b.index).map((item) => item.embedding);
-    return ordered.map(normalize);
+    return ordered.map(normalize2);
   };
 }
 function withInputFormat(embed, profile) {
@@ -6479,8 +6531,8 @@ function referencePathForNode(node2) {
 function isArchiveBodyPath(path = "", memoryConfig) {
   const area2 = memoryConfig?.areas?.find((candidate) => candidate.id === "archive-body" || candidate.role === "historical-memory-body");
   if (!area2) return path.startsWith("docs/archive/") && path !== "docs/archive/README.md";
-  const normalize2 = (value) => value.replace(/\/\*\*$/, "");
-  return (area2.paths ?? []).some((pattern) => path === normalize2(pattern) || path.startsWith(`${normalize2(pattern)}/`)) && !(area2.excludePaths ?? []).some((excluded) => path === excluded);
+  const normalize3 = (value) => value.replace(/\/\*\*$/, "");
+  return (area2.paths ?? []).some((pattern) => path === normalize3(pattern) || path.startsWith(`${normalize3(pattern)}/`)) && !(area2.excludePaths ?? []).some((excluded) => path === excluded);
 }
 function aliasEntriesForPath(path = "") {
   const entries = [];

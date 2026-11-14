@@ -47,7 +47,7 @@ async function harness(run: (h: {
 		sendMessage() {},
 	} as unknown as ExtensionAPI);
 	const ctx = {
-		cwd, mode: "rpc", hasUI: true,
+		cwd, mode: "rpc", hasUI: true, isProjectTrusted: () => false,
 		ui: { theme: { fg: (_: string, text: string) => text }, notify() {}, setStatus(key: string, value: unknown) { displays.push({ key, value }); }, setWidget(key: string, value: unknown) { displays.push({ key, value }); }, select: async () => "Cancel" },
 		sessionManager: { getSessionId: () => "wizard-fixture", getEntries: () => [{ type: "custom", customType: "plan-mode", data: {
 			version: 2, mode: { mode: "planning", activeTools: ["read", "write"] },
@@ -104,9 +104,9 @@ it("rejects execute when the plan changes during execution review", () => harnes
 	assert.ok(!entries.some((entry) => entry.customType === "plan-mode-execute"));
 }));
 
-it("keeps pending impact UI hidden without registering duplicate native tools", () => harness(async ({ ctx, emit, tools, displays }) => {
+it("keeps pending impact UI hidden with only the policy-aware bash override", () => harness(async ({ ctx, emit, tools, displays }) => {
 	await emit("tool_result", { toolName: "write", input: { path: "src/example.ts" }, isError: false });
-	assert.equal(tools.size, 0);
+	assert.deepEqual([...tools.keys()], ["bash"]);
 	const state = new ImpactState(ctx.cwd, ctx.sessionManager.getSessionId());
 	assert.equal(state.status().count, 1);
 	assert.equal(state.status().pending[0]?.path, "src/example.ts");

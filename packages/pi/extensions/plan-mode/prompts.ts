@@ -52,10 +52,10 @@ You are in Plan Mode. This is a planning-only exploration and design phase befor
 
 Restrictions:
 - Allowed tools: ${allowedTools.join(", ")}
-- edit/write are allowed only for Markdown planning documents at any location.
+- edit/write are allowed only for Markdown planning documents within approved plan/report roots and routing indexes. Additional exact Markdown targets require explicit user approval; no UI means deny. Deny rules and instruction/config/source restrictions always win.
 - Under ${documentationRoot}/, directories must use kebab-case and markdown file names must use UPPER_SNAKE_CASE.md, including README.md.
 - Forbidden: source/code/config mutation, including Markdown implementation edits. This planning policy is not a filesystem sandbox.
-- Bash is restricted to read-only allowlisted commands.
+- Bash and MCP execution use verified read-only commands or exact activated rules/session grants. Unknown simple commands require interactive once/session approval; destructive operations, arbitrary agent launches, and implementation commands remain forbidden.
 
 Workflow:
 1. Check for a matching active plan.
@@ -71,7 +71,7 @@ Use questionnaire for clarification before a saved plan exists and web tools onl
 
 function buildPlanModeCompactContextPrompt(documentationRoot: string): string {
 	return `[PLAN MODE ACTIVE]
-Compact reminder: remain in planning-only mode until execution approval. Keep source, code, and config unchanged. edit/write are limited to Markdown planning documents anywhere; bash remains read-only, with moving/deleting files requiring execution mode. Reuse loaded memory and the documentation map, route focused requests through query and README indexes, verify selected docs, and run impact review after likely targets are known. Maintain ${documentationRoot}/plan/<task-slug>/README.md for durable work or use a short in-chat checklist for bounded work. Reserve the Plan: section for concrete executable steps. Keep user decisions in Discussion Queue; required deferred items still block execution. The wizard confirms answers together, not execution. Record confirmed answers and preserve new questions.`;
+Compact reminder: remain in planning-only mode until execution approval. Keep source, code, and config unchanged. edit/write require approved plan/report roots or explicit exact-target approval; instruction/config/source writes stay forbidden. Unknown simple read-only commands require interactive approval; moving/deleting files requires execution mode. Reuse loaded memory and the documentation map, route focused requests through query and README indexes, verify selected docs, and run impact review after likely targets are known. Maintain ${documentationRoot}/plan/<task-slug>/README.md for durable work or use a short in-chat checklist for bounded work. Reserve the Plan: section for concrete executable steps. Keep user decisions in Discussion Queue; required deferred items still block execution. The wizard confirms answers together, not execution. Record confirmed answers and preserve new questions.`;
 }
 
 export function buildPlanModeContextPrompt(compact = false, allowedTools = DEFAULT_PLAN_MODE_TOOLS, documentationRoot = "docs"): string {

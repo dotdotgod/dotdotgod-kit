@@ -78,6 +78,22 @@ Behavior contract:
 
 `load.pinnedPaths` and `load.pinnedBodies` remain accepted as non-blocking compatibility input, but their values are ignored and resolve to empty arrays because they no longer alter Load output. New projects should rely on the complete documentation tree and focused local query instead of pinned bodies.
 
+## Plan Mode Policy Data
+
+Project config accepts this policy shape; omitted arrays resolve to empty arrays:
+
+```json
+{"planMode":{"commands":[],"markdown":{"allow":[],"deny":[]}}}
+```
+
+Each command rule requires `effect` (`allow` or `deny`), `executable`, `args`, and `cwd`. Executable and cwd must be canonical absolute paths without glob syntax; args is an exact array of strings, preserved without trimming or expansion. Schema validation checks lexical path form, not filesystem identity or symlink resolution.
+
+Markdown allow/deny lists accept exact repository-relative paths or terminal `/**` subtrees, not suffix or general glob patterns. Traversal and non-canonical path forms are invalid. The shared pure validator additionally supports absolute paths when explicitly validating user policy; project config does not. Only Markdown targets can become runtime write candidates; schema acceptance is not a write grant.
+
+Legacy `planMode.writablePaths` is accepted but ignored and discarded. Unsupported policy fields and malformed new fields produce errors naming the exact field. Normalized config and summaries deep-copy command rules, argv, and path arrays.
+
+CLI output is project policy, not Pi trust. Pi runtime owns user/project/session provenance, activation, default roots, deny precedence, and execution-time checks. Empty allow lists add no paths or remove defaults; use deny for exclusions. Memory metadata and CLI fallback grant no authority. Schema support does not imply completion of runtime approval.
+
 ## Validation Behavior
 
 `dotdotgod validate` reports memory config errors for:
@@ -96,7 +112,7 @@ Behavior contract:
 - exact duplicate path patterns that are not excluded by the subsequent area
 - malformed `referenceExpansion.fuzzy.lowSignal.add` or `remove` arrays
 - non-object `load`; invalid `load.documentationSummary` objects; and non-array or invalid `load.documentationSummary.exclude` patterns
-- invalid non-object `planMode`; legacy `planMode.writablePaths` is accepted but ignored and discarded during normalization
+- invalid `planMode` objects, command rules, Markdown path lists, or unsupported policy fields; errors identify the precise field (legacy `planMode.writablePaths` remains ignored)
 
 Invalid memory config does not make the CLI crash. Runtime commands fall back to the default memory config while validation reports repairable errors.
 

@@ -15,49 +15,61 @@ Load aliases:
 /dd:load
 ```
 
-Run `/dd:load` without arguments and confirm it is not wrapped in an automatic compact load and the prompt contains a prefix-compressed documentation map through directory depth 5 without query results. Run `/dd:load project memory` and confirm it contains a depth-3 map plus at most 30 distinct Markdown-file results. `docs/plan/**` and `docs/archive/**` bodies should remain excluded by default while their README maps remain targeted routing entrypoints. Temporarily remove the global CLI from `PATH` to verify the package-local `@dotdotgod/cli` dependency is tried before README-only fallback.
+`/dd:load` without args must produce a compressed depth-5 map without query results or automatic compact wrapping. `/dd:load project memory` uses depth 3 plus at most 30 Markdown results. Plan/archive bodies stay excluded; README maps remain routing entrypoints. Remove global CLI from `PATH`: package-local CLI must precede README-only fallback.
 
 ## Packaged CLI
 
 1. Install `@dotdotgod/pi` into a clean Pi package environment without separately installing `@dotdotgod/cli`.
 2. Confirm `/dd:load` can run `dotdotgod query` for focused loads and Plan Mode context shaping can run validation and graph-impact commands through the package-local CLI dependency when no global CLI is on `PATH`.
-3. Confirm the adapter does not install or register subagent tools or resources.
+3. Confirm no custom manager tool or `/dd:plan-child` command is registered; managed children use existing native `bash` hc commands.
 
 ## Plan Mode
 
-Run `pi --help` and confirm dotdotgod contributes `--dd-plan` without contributing `--plan`. Run `pi --dd-plan` and confirm the session starts with dotdotgod Plan Mode enabled. With `@plannotator/pi-extension` also installed, confirm Pi lists plannotator's `--plan` and dotdotgod's `--dd-plan`, starts without a flag-conflict diagnostic, and preserves each extension's documented startup behavior.
+Check `pi --help`: dotdotgod adds `--dd-plan`, not `--plan`. `pi --dd-plan` starts planning. With plannotator installed, its `--plan` coexists without conflicts; preserve both extensions' startup behavior.
 
 1. Run `/dd:plan`.
 2. Ask the agent to write or update `docs/plan/<task-slug>/README.md`.
 3. From normal mode, run `/dd:plan add inline request support` and confirm Plan Mode is enabled before the request is handled.
 4. While still in Plan Mode, run `/dd:plan refine this plan` and confirm it sends a planning request without disabling Plan Mode and without opening `Which active plan should be executed?`, even when active plans already exist or the turn updates `docs/plan/` markdown.
 5. Run `/dd:plan` without args and confirm it still toggles Plan Mode off. Confirm `/plan` and `/todos` are absent from command discovery and are not compatibility aliases.
-6. Confirm Pi opens a full-page custom saved-plan review UI before execution can be selected when the plan has no unresolved `Discussion Queue`; test keyboard scrolling, action-bar navigation with `←`/`→`, `Tab`, and `Enter`, shortcut keys for execute/stay/refine/cancel, and in iTerm2 with wheel-to-terminal-scroll enabled observe whether the wheel scrolls review content, terminal scrollback, or neither.
+6. With no unresolved `Discussion Queue`, confirm full-page saved-plan review precedes execution. Test scrolling, action navigation (`←`/`→`, `Tab`, `Enter`), execute/stay/refine/cancel shortcuts, and iTerm2 wheel behavior.
 7. Run the [Plan Decision Wizard smoke tests](PLAN_DECISION_WIZARD.md): sequential choices/custom answers, Back/Next drafts, editable batch summary, native editor IME/paste, and cancellation.
 8. Confirm exactly one batch follow-up updates the plan before separate execution approval. New unresolved questions reopen the wizard; required deferred items remain blocking.
 9. Verify equivalent fallback, noninteractive safety, duplicate IDs, and stale-result rejection using the focused wizard smoke tests.
 12. While active plans exist, ask to design or create a plan from scratch with phrasing such as `설계부터 진행하자` or `계획을 만들어보자`; confirm Pi does not open `Which active plan should be executed?`. Then ask to execute a named existing plan and confirm the chooser/review path still works.
 15. Trigger explicit execution review and choose stay/refine/cancel; confirm the same plan execution UI does not appear a second time at agent end.
-16. Test narrow/short terminals and resize with long Korean questions, options, and answers. The decision wizard must wrap and scroll via PgUp/PgDn without over-wide lines; all actions must remain keyboard-reachable. Confirm the separate saved-plan review screen still behaves as before.
+16. Resize narrow/short terminals with long Korean content. Wizard wrapping, PgUp/PgDn and all keyboard actions must work; saved-plan review stays unchanged.
 17. Confirm explanatory replies that do not touch `docs/plan/` do not show the action prompt or extract todos.
 18. Confirm no persistent `[plan-todo-list]` widget or dedicated todo command appears; extracted todo state remains available to review and execution flows.
-19. Verify external cwd reads and external Markdown planning writes. Shell moves/deletions require execution mode everywhere.
-20. Block non-Markdown source/config writes; planning instructions prohibit Markdown implementation edits, not as a sandbox.
+19. Verify external cwd reads; default-root Markdown writes succeed, while extra eligible targets require exact once/session approval. Check deny precedence and symlink escape rejection. Shell moves/deletions require execution mode everywhere.
+20. Block source/config, host instruction Markdown and implementation writes; these are trusted workflow guards, not an OS sandbox.
 21. Confirm high context usage does not cause Plan Mode to request compaction; Pi's own compaction settings remain unchanged.
 22. Submit request B immediately after request A; confirm advisory context uses B without a synthetic compaction-resume message or replay of A. Restore an old compaction snapshot and confirm planning is not blocked.
 23. With the CLI available, confirm first-turn context shaping adds bounded graph impact and reference expansion without running validate; without the CLI, Plan Mode continues.
-24. Confirm bounded dotdotgod context/status commands are allowed while `init`, `config init`, shell chaining, redirects, pipes, command substitution, and package-runner wrappers remain blocked or require approval.
-25. When automatic loading is needed, confirm the global extension leaves the initial user text and images unchanged and injects only a hidden `project-memory-context` custom message with `display: false`. Confirm no automatic-load marker renders as user-authored text, `project_memory_load` is available in that run and succeeds after the hidden instruction is scheduled, focused context returns, planning resumes without repetition, empty focus uses the depth-five fallback, and Plan Mode has no load framing or string classification.
+24. Confirm bounded dotdotgod context/status commands are allowed. Unknown simple inspection commands offer deny/once/session; cancellation/headless denies. `init`, `config init`, chaining, redirects, pipes, substitutions and package-runner wrappers remain blocked.
+25. Automatic load preserves initial text/images and injects only hidden `project-memory-context` (`display: false`), not user markers. After scheduling, `project_memory_load` succeeds with focused context; planning resumes once. Empty focus uses depth five. Plan Mode owns no load framing/classification.
 26. Confirm later planning turns do not automatically repeat the one-shot planning advisory context refresh; global project-memory assessment remains independently owned.
 27. Confirm first-turn and later-turn hidden prompts use full and compact forms respectively while source/config mutation stays blocked.
 28. Confirm `pi --dd-plan --plan-extra-tools ctx_search,ctx_execute_file` adds only installed tools and renders the resolved tool list.
 29. Choose execute with and without extracted todos; confirm normal tools, execution guidance, and a queued follow-up naming the plan path.
 30. With extracted todos, confirm execution context includes the active plan path.
 31. Ask to execute an existing active plan path and confirm the queue-first review flow opens even if the plan was not edited in that turn; choose execute after the queue is clear and confirm execution starts through an explicitly queued follow-up.
-32. While multiple active plans exist and no current plan is selected, send a planning/proceed phrase such as `진행하자`, an advisory selector-policy request, and a non-plan command such as `run tests`; confirm Pi does not ask which active plan to execute. Then send an explicit plan execution request such as `실행하자` or mention a specific existing plan and confirm Pi asks or resolves the target before review.
+32. With multiple plans and none selected, `진행하자`, advisory questions, and `run tests` must not open the execution chooser. An explicit `실행하자` or named plan execution request must resolve the target before review.
 33. Confirm advisory questions remain lightweight and implementation-looking requests become durable plans first.
 34. Start without baseline docs in ordinary mode and `pi --dd-plan`. Confirm global state persists, the initial input remains unchanged, the read-only load tool is lifecycle-gated to the hidden instruction, and the original task resumes once.
-35. Confirm implementation plans include a step to run `dotdotgod graph impact` for intended changed files before source changes.
+35. Plans require `dotdotgod graph impact` for intended files before source edits.
+
+## Policy and Child Acceptance
+
+Not live-run evidence; record hc/Pi results. Follow [policy settings](../../spec/PLAN_MODE_TOOL_SETTINGS.md) and [tool policy](../../spec/plan-mode/TOOL_POLICY.md).
+
+1. No `/dd:plan-policy`, `/dd:plan-child` or save UI. Edit existing `planMode` config manually; in-context activation binds the exact project revision separately from once/session grants. Reject stale approvals; preserve unrelated settings. Invalid config blocks commands/writes, not reads.
+2. Verify once consumption, session reuse, policy/root/environment/executable invalidation including A/B/A; explicit env/non-default shell once-only. Denied MCP batch runs nothing; context changes during later prompts invalidate earlier entries. Test unknown/nested tool guards.
+3. `pi --dd-plan` overrides restored off/executing state. Through native `bash`, run `hc run --bg pi --dd-plan [task]` with and without a task. Require user approval, audited explicit plugin and authenticated readiness BEFORE task delivery. Missing/failed plugin, forged readiness or timeout: no task, scoped cleanup.
+4. `hc send/wait/get/read/interrupt/kill/rm` require owned IDs; reject unrelated IDs. `hc ls` uses generic approval, not adoption. Parent narrowing/context change/reload/disconnect cancels pending calls and later delivery. Matching persistent rules work; environment mismatch stays unavailable. No inherited once/session grants or further delegation; permitted Markdown works.
+5. Observe cleanup failures visibly. In-flight cancellation is best effort, not rollback/sandboxing. Ordinary plugin-less Pi is valid but unrestricted; readiness protects managed delivery, not all external input.
+6. MCP `execute`/`execute_file` stateful hc must deny with native `bash` guidance; mixed batches run nothing. Ordinary safe reads remain unchanged.
+7. Remote/templates/custom launch flags must report route scope limits, not universal hc restrictions. Record actual results, not assumed acceptance.
 
 ## Pending Impact Checks
 

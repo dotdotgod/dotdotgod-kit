@@ -8,7 +8,8 @@ import { ExecutionFlowController } from "../extensions/plan-mode/controllers/exe
 import { ExecutionProgressController } from "../extensions/plan-mode/controllers/execution-progress.ts";
 import { ModeLifecycleController } from "../extensions/plan-mode/controllers/mode-lifecycle.ts";
 import { PlanArtifactController } from "../extensions/plan-mode/controllers/plan-artifact.ts";
-import { configureDocumentationPaths, isActivePlanMarkdownPath, isManagedPlanMarkdownPath } from "../extensions/plan-mode/runtime/paths.ts";
+import { markdownDecision } from "../extensions/plan-mode/policy/markdown.ts";
+import { configureDocumentationPaths, isActivePlanMarkdownPath } from "../extensions/plan-mode/runtime/paths.ts";
 import {
 	PLAN_REVIEW_MIN_BODY_LINES,
 	buildPlanExecutionDecision,
@@ -812,7 +813,10 @@ describe("plan-mode tool settings", () => {
 	it("injects the resolved Plan Mode tool list into the full prompt", () => {
 		const prompt = buildPlanModeContextPrompt(false, ["read", "bash", "ctx_search"], "project-memory");
 		assert.match(prompt, /Allowed tools: read, bash, ctx_search/);
-		assert.match(prompt, /Markdown planning documents at any location/);
+		assert.match(prompt, /Markdown planning documents within approved plan\/report roots/);
+		assert.match(prompt, /Additional exact Markdown targets require explicit user approval/);
+		assert.match(prompt, /no UI means deny/);
+		assert.match(prompt, /Unknown simple commands require interactive once\/session approval/);
 		assert.match(prompt, /project-memory\/plan/);
 		assert.match(prompt, /questionnaire/);
 		assert.match(prompt, /focused query and README indexes/);
@@ -975,8 +979,11 @@ describe("plan-mode done markers", () => {
 describe("alternate documentation root Plan Mode policy", () => {
 	it("accepts safe configured-root markdown and renders the durable path", () => {
 		const root = mkdtempSync(join(tmpdir(), "dotdotgod-plan-root-"));
-		assert.equal(isManagedPlanMarkdownPath(root, "project-memory/plan/task/README.md"), true);
-		assert.equal(isManagedPlanMarkdownPath(root, "../project-memory/plan/task/README.md"), true);
+		const policy = { commands: [], markdown: { allow: [], deny: [] } };
+		const roots = ["project-memory/plan/**", "project-memory/archive/report/**"];
+		assert.equal(markdownDecision(root, "project-memory/plan/task/README.md", roots, policy), "allow");
+		assert.equal(markdownDecision(root, "../project-memory/plan/task/README.md", roots, policy), "deny");
+		assert.equal(markdownDecision(root, "notes/README.md", roots, policy), "approval");
 		const prompt = buildPlanModeContextPrompt(false, undefined, "project-memory");
 		assert.match(prompt, /project-memory\/plan\/<task-slug>\/README\.md/);
 		assert.doesNotMatch(prompt, /docs\/plan\/<task-slug>/);

@@ -20,6 +20,7 @@ describe("plan-mode command registration", () => {
 		assert.match(extensionSource, /registerCommand\("dd:plan"/);
 		assert.doesNotMatch(extensionSource, /registerCommand\("plan"/);
 		assert.doesNotMatch(extensionSource, /registerCommand\("todos"/);
+		assert.doesNotMatch(extensionSource, /registerCommand\("dd:plan-(policy|child)"/);
 	});
 
 	it("registers and reads only the namespaced startup flag", () => {

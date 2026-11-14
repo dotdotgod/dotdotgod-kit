@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, normalize, resolve } from 'node:path';
 import { rel } from '../common/paths.mjs';
 import { isKebabCase } from '../docs/markdown.mjs';
 import { validateEmbeddingProfile } from '../query/embedding-config.mjs';
@@ -37,7 +37,7 @@ export const DEFAULT_LOAD_POLICY = {
     exclude: ['docs/plan', 'docs/archive'],
   },
 };
-export const DEFAULT_PLAN_MODE_POLICY = {};
+export const DEFAULT_PLAN_MODE_POLICY = { commands: [], markdown: { allow: [], deny: [] } };
 export const DEFAULT_IMPACT_RANKING_POLICY = {
   connectionCap: 80,
   memoryCap: 20,
@@ -197,8 +197,11 @@ export function cloneLoadPolicy(policy = DEFAULT_LOAD_POLICY) {
   };
 }
 
-export function clonePlanModePolicy() {
-  return {};
+export function clonePlanModePolicy(policy = DEFAULT_PLAN_MODE_POLICY) {
+  return {
+    commands: (policy.commands ?? []).map(({ effect, executable, args, cwd }) => ({ effect, executable, args: [...args], cwd })),
+    markdown: { allow: [...(policy.markdown?.allow ?? [])], deny: [...(policy.markdown?.deny ?? [])] },
+  };
 }
 
 export function normalizeDocumentationRoot(value = DEFAULT_DOCUMENTATION_ROOT) {
@@ -288,8 +291,54 @@ export function isSecretLikePathPattern(value = '') {
 }
 
 // Legacy planMode.writablePaths is accepted but discarded on normalization.
-function normalizePlanModePolicy(_raw) {
-  return clonePlanModePolicy();
+export function normalizePlanModePolicy(raw) {
+  return clonePlanModePolicy(raw);
+}
+
+export function validatePlanModePolicy(policy, { allowAbsolutePaths = false } = {}) {
+  const errors = [];
+  const add = (field, message) => errors.push({ field, message });
+  const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  const fields = (value, allowed, prefix) => {
+    for (const key of Object.keys(value)) if (!allowed.includes(key)) add(`${prefix}.${key}`, 'Unsupported field.');
+  };
+  const canonicalPath = value => typeof value === 'string' && value.trim().length > 0
+    && !/[\u0000-\u001f\u007f\\*?\[\]{}]/.test(value)
+    && normalize(value) === value && (value === '/' || !value.endsWith('/'))
+    && !value.split('/').some(part => part === '.' || part === '..')
+    && !value.includes('//');
+  if (!object(policy)) { add('planMode', 'Expected an object.'); return errors; }
+  fields(policy, ['commands', 'markdown', 'writablePaths'], 'planMode');
+  if (policy.commands !== undefined) {
+    if (!Array.isArray(policy.commands)) add('planMode.commands', 'Expected an array of command rules.');
+    else for (const [index, rule] of policy.commands.entries()) {
+      const prefix = `planMode.commands[${index}]`;
+      if (!object(rule)) { add(prefix, 'Expected an object.'); continue; }
+      fields(rule, ['effect', 'executable', 'args', 'cwd'], prefix);
+      if (!['allow', 'deny'].includes(rule.effect)) add(`${prefix}.effect`, 'Expected "allow" or "deny".');
+      for (const key of ['executable', 'cwd']) {
+        if (!canonicalPath(rule[key]) || !isAbsolute(rule[key])) add(`${prefix}.${key}`, 'Expected a canonical absolute path without glob syntax.');
+      }
+      if (!Array.isArray(rule.args) || rule.args.some(arg => typeof arg !== 'string')) add(`${prefix}.args`, 'Expected an exact array of strings.');
+    }
+  }
+  if (policy.markdown !== undefined) {
+    if (!object(policy.markdown)) add('planMode.markdown', 'Expected an object.');
+    else {
+      fields(policy.markdown, ['allow', 'deny'], 'planMode.markdown');
+      for (const key of ['allow', 'deny']) {
+        const values = policy.markdown[key];
+        const prefix = `planMode.markdown.${key}`;
+        if (values === undefined) continue;
+        if (!Array.isArray(values)) { add(prefix, 'Expected an array of path strings.'); continue; }
+        for (const [index, value] of values.entries()) {
+          const path = typeof value === 'string' && value.endsWith('/**') ? value.slice(0, -3) || '/' : value;
+          if (!canonicalPath(path) || /^[A-Za-z]:/.test(path) || (!allowAbsolutePaths && isAbsolute(path))) add(`${prefix}[${index}]`, 'Expected an exact path or terminal /** subtree; absolute paths are user-policy only.');
+        }
+      }
+    }
+  }
+  return errors;
 }
 
 function normalizeLoadPolicy(raw) {
@@ -430,9 +479,7 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
   }
   const planMode = data.planMode;
   if (planMode !== undefined) {
-    if (!planMode || typeof planMode !== 'object' || Array.isArray(planMode)) {
-      add('PLAN_MODE_CONFIG_INVALID', 'planMode', 'Expected an object.');
-    }
+    for (const { field, message } of validatePlanModePolicy(planMode)) add('PLAN_MODE_CONFIG_INVALID', field, message);
   }
   const referenceExpansion = data.referenceExpansion;
   if (referenceExpansion !== undefined) {

@@ -11,6 +11,14 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
+import { createLocalBashOperations, createBashToolDefinition } from "@earendil-works/pi-coding-agent";
+import { PolicyRuntime } from "./policy/runtime.ts";
+import { approveCommand, approvePath, ensureProjectPolicy } from "./policy/ui.ts";
+import { authorizeExecution } from "./policy/execution.ts";
+import { resolveInvocation, type ExecutionInput } from "./policy/invocation.ts";
+import { ChildManager } from "./children/manager.ts";
+import { parseHcCommand, type HcCommand } from "./children/hc-command.ts";
+import { tokenizeShellCommand } from "./tools.ts";
 import { ImpactState, impactReminder } from "@dotdotgod/context";
 import { isMcpTool, mcpTool } from "../shared/mcp.ts";
 import { buildDecisionWizardFollowUp } from "./decision-wizard.ts";
@@ -40,7 +48,6 @@ import {
   DOCUMENTATION_ROOT,
   getToolPath,
   isActivePlanMarkdownPath,
-  isManagedPlanMarkdownPath,
   normalizeToolPath,
   PLAN_DIRECTORY,
 } from "./runtime/paths.js";
@@ -64,7 +71,6 @@ import {
 } from "./prompts.js";
 import {
   normalizePlanCommandRequest,
-  shouldAllowPlanModeBashCommand,
 } from "./tools.js";
 
 export default function planModeExtension(pi: ExtensionAPI): void {
@@ -73,6 +79,25 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   const contextShaping = new ContextShapingController();
   const impactState = (ctx: ExtensionContext) => new ImpactState(ctx.cwd, ctx.sessionManager.getSessionId());
   const executionProgress = new ExecutionProgressController();
+  const policy = new PolicyRuntime();
+  const children = new ChildManager(pi, policy);
+  const pendingHc = new Map<string,{request:HcCommand;generation:number;command:string}>();
+  // Pin planning execution to the same environment/context that approvals inspect.
+  const bashDefinition=createBashToolDefinition(process.cwd());
+  pi.registerTool({...bashDefinition,execute:async(id,args,signal,update,ctx)=>{
+    const managed=pendingHc.get(id);
+    if(managed){
+      pendingHc.delete(id);policy.refresh(ctx.cwd);
+      if(!modeLifecycle.restrictsMutation||managed.generation!==policy.generation||managed.command!==args.command)throw new Error("Plan mode: hc approval context changed.");
+      const output=await children.execute(managed.request,ctx,signal);
+      return {content:[{type:"text" as const,text:output}],details:undefined};
+    }
+    const settings=pi.getSettings() as {shellPath?:string;shellCommandPrefix?:string};
+    const options=modeLifecycle.restrictsMutation
+      ? {exposeSessionEnvironment:false,spawnHook:(value:{command:string;cwd:string;env:NodeJS.ProcessEnv})=>({...value,env:{...process.env}})}
+      : {...(settings.shellPath?{shellPath:settings.shellPath}:{}),...(settings.shellCommandPrefix?{commandPrefix:settings.shellCommandPrefix}:{})};
+    return createBashToolDefinition(ctx.cwd,options).execute(id,args,signal,update,ctx);
+  }});
 
   function refreshPlanModePolicy(cwd: string): void {
     const result = runDotdotgodCli(cwd, ["config", cwd, "--json"]);
@@ -168,8 +193,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   }
 
   function setPlanModeEnabled(ctx: ExtensionContext, enabled: boolean): void {
+    policy.clear();
+    void children.revokeAll("Parent mode changed").catch(error=>ctx.ui.notify(String(error),"error"));
     if (enabled) {
       refreshPlanModePolicy(ctx.cwd);
+      policy.refresh(ctx.cwd);
       executionProgress.clear();
       planArtifact.resetForFreshPlanning();
       contextShaping.resetForPlanning();
@@ -282,50 +310,73 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   });
 
   pi.on("tool_call", async (event, ctx) => {
-    const executionCommands = event.toolName === "bash"
-      ? [event.input.command as string]
-      : event.toolName === mcpTool("execute")
-        ? ((event.input as Record<string, unknown>).commands as { command?: string; executable?: string; args?: string[] }[] ?? []).map((entry) => entry.executable ? [entry.executable, ...(entry.args ?? [])].map((value) => /^[\w./:-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`).join(" ") : entry.command ?? "")
-        : [];
     if (!modeLifecycle.restrictsMutation) return;
+    policy.refresh(ctx.cwd);
+    await ensureProjectPolicy(ctx,policy);
 
     if (isMcpTool(event.toolName) && !["execute", "index", "search", "fetch_and_index", "stats", "doctor", "session_resume", "ingestion_job_start", "ingestion_job_status", "project_load", "project_impact", "impact_status", "embedding_status"].some(name => event.toolName === mcpTool(name))) {
       return { block: true, reason: "Plan mode: write-capable MCP operation is unavailable until execution mode." };
     }
 
-    for (const command of executionCommands) {
-      const decision = await shouldAllowPlanModeBashCommand(command, {
-        hasUI: ctx.hasUI,
-        confirm: (title, message) => ctx.ui.confirm(title, message),
-      });
-      if (!decision.allow) {
-        return {
-          block: true,
-          reason: decision.reason ?? "Plan mode: command blocked.",
-        };
-      }
+    if (event.toolName === "bash" || event.toolName === mcpTool("execute")) {
+      const batch = event.input as {commands?: ExecutionInput[];cwd?: string};
+      const entries = event.toolName === "bash" ? [event.input as ExecutionInput] : batch.commands ?? [];
+      const updates: Array<() => void> = [];
+      const generation = policy.generation;
+      const approved: Array<{input:ExecutionInput;key:string;source:"native"|"mcp"}> = [];
+      try {
+        for (const entry of entries) {
+          const input = {...entry, ...(entry.cwd ?? batch.cwd ? {cwd:entry.cwd ?? batch.cwd} : {})};
+          const tokens=input.executable?[input.executable,...(input.args??[])]:tokenizeShellCommand(input.command??"");
+          const managed=tokens?parseHcCommand(tokens):undefined;
+          if(managed){
+            if(event.toolName!=="bash")return {block:true,reason:"Plan mode: stateful hc operations require native bash so restriction readiness is preserved."};
+            if(policy.error)return {block:true,reason:policy.error};
+            const requested=resolveInvocation(input,ctx.cwd);
+            const actual=resolveInvocation({executable:"hc",args:tokens!.slice(1)},ctx.cwd);
+            if(requested.executable!==actual.executable)return {block:true,reason:"Plan mode: managed hc must resolve to the active hc executable."};
+            if(policy.deniesInvocation(actual))return {block:true,reason:"Plan policy: explicit hc deny."};
+            pendingHc.set(event.toolCallId,{request:managed,generation:policy.generation,command:input.command!});
+            return;
+          }
+          const result = await authorizeExecution(policy,input,event.toolName === "bash" ? "native" : "mcp",v => approveCommand(ctx,v));
+          if (!result.decision.allow) return {block:true,reason:result.decision.reason ?? "Plan mode: command blocked."};
+          approved.push({input,key:JSON.stringify(result.invocation),source:event.toolName==="bash"?"native":"mcp"});
+          if(event.toolName === "bash") updates.push(() => {event.input.command=result.executed.command;});
+          else updates.push(() => {
+            entry.executable=result.executed.executable;entry.args=result.executed.args;entry.shell=false;
+          });
+        }
+        policy.refresh(ctx.cwd);
+        if(generation!==policy.generation || approved.some(a=>JSON.stringify(resolveInvocation(a.input,ctx.cwd,a.source))!==a.key))return {block:true,reason:"Plan policy or execution context changed during batch approval."};
+        for(const update of updates)update();
+      } catch(error) {return {block:true,reason:`Plan mode: ${String(error)}`};}
+      return;
     }
-    if (executionCommands.length) return;
+
+    if (!["read","grep","find","ls","write","edit",mcpTool("index"),mcpTool("search"),mcpTool("fetch_and_index"),mcpTool("stats"),mcpTool("doctor"),mcpTool("session_resume"),mcpTool("ingestion_job_start"),mcpTool("ingestion_job_status"),mcpTool("project_load"),mcpTool("project_impact"),mcpTool("impact_status"),mcpTool("embedding_status"),"project_memory_load","codemode","questionnaire"].includes(event.toolName)) return {block:true,reason:"Plan mode: unclassified tool is unavailable until execution mode."};
 
     if (event.toolName === "write" || event.toolName === "edit") {
       const path = getToolPath(event.input);
-      if (!path || !isManagedPlanMarkdownPath(ctx.cwd, path)) {
+      const decision = path ? await policy.authorizePath(normalizeToolPath(path),p => approvePath(ctx,p)) : {allow:false};
+      if (!decision.allow) {
         return {
           block: true,
-          reason: `Plan mode: ${event.toolName} is only allowed for Markdown planning documents, regardless of location. Keep source and config unchanged; use execution mode for implementation.`,
+          reason: decision.reason ?? "Plan mode: Markdown planning documents require a permitted path.",
         };
       }
-      const normalizedPath = normalizeToolPath(path).replace(/\\/g, "/");
+      const normalizedPath = normalizeToolPath(path!).replace(/\\/g, "/");
       if (!planArtifact.touchedPlanPaths.includes(normalizedPath)) {
         planArtifact.markTouched(normalizedPath);
       }
-      if (isActivePlanMarkdownPath(ctx.cwd, path)) {
+      if (path && isActivePlanMarkdownPath(ctx.cwd, path)) {
         planArtifact.setActivePlanFromMarkdownPath(path);
       }
     }
   });
 
   pi.on("tool_result", async (event, ctx) => {
+    pendingHc.delete(event.toolCallId);
     if (event.isError) return;
     if (event.toolName === "edit" || event.toolName === "write") {
       const path = getToolPath(event.input);
@@ -483,8 +534,32 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
     persistState();
   });
 
-  pi.on("session_shutdown", () => modeLifecycle.disable());
-  pi.on("session_tree", () => {
+  pi.on("user_bash", async (event, ctx) => {
+    if(!modeLifecycle.restrictsMutation)return;
+    policy.refresh(ctx.cwd);
+    await ensureProjectPolicy(ctx,policy);
+    try {
+      const tokens=tokenizeShellCommand(event.command);
+      const managed=tokens?parseHcCommand(tokens):undefined;
+      if(managed){
+        if(policy.error)throw new Error(policy.error);
+        const requested=resolveInvocation({command:event.command,cwd:event.cwd},ctx.cwd);
+        const actual=resolveInvocation({executable:"hc",args:tokens!.slice(1)},ctx.cwd);
+        if(requested.executable!==actual.executable)throw new Error("Plan mode: managed hc must resolve to the active hc executable.");
+        if(policy.deniesInvocation(actual))throw new Error("Plan policy: explicit hc deny.");
+        const output=await children.execute(managed,ctx);
+        return {result:{output,exitCode:0,cancelled:false,truncated:false}};
+      }
+      const {decision,executed}=await authorizeExecution(policy,{command:event.command,cwd:event.cwd},"native",v=>approveCommand(ctx,v));
+      if(decision.allow)return {operations:{exec: (_command,cwd,options)=>createLocalBashOperations().exec(executed.command,cwd,{...options,env:{...process.env}})}};
+      return {result:{output:decision.reason??"Plan mode: command denied.",exitCode:1,cancelled:false,truncated:false}};
+    } catch(error){return {result:{output:String(error),exitCode:1,cancelled:false,truncated:false}};}
+  });
+
+  pi.on("tool_execution_end", event => {pendingHc.delete(event.toolCallId);});
+  pi.on("session_shutdown", async () => {pendingHc.clear();policy.reset();await children.revokeAll("Parent session ended");modeLifecycle.disable();});
+  pi.on("session_tree", async () => {
+    policy.clear();await children.revokeAll("Parent branch changed");
     if (modeLifecycle.reviewing) modeLifecycle.returnToPlanning();
   });
 
@@ -581,6 +656,7 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
   });
 
   pi.on("session_start", async (_event, ctx) => {
+    policy.reset();policy.refresh(ctx.cwd);
     refreshPlanModePolicy(ctx.cwd);
     if (pi.getFlag("dd-plan") === true) {
       modeLifecycle.enablePlanning(getPlanModeTools());
@@ -615,6 +691,9 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
       contextShaping.restore(planModeEntry.data.context);
       executionProgress.restore(planModeEntry.data.execution);
     }
+
+    // Startup restriction wins over restored off/executing state.
+    if (pi.getFlag("dd-plan") === true) modeLifecycle.enablePlanning(getPlanModeTools());
 
     // Import legacy snapshots once; later session resumes must not resurrect
     // paths already reviewed through MCP.

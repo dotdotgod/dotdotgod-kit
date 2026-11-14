@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, rmSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ExtensionUIContext } from "@earendil-works/pi-coding-agent";
@@ -51,7 +51,44 @@ test("Plan Mode checks every execute entry, including nested codemode calls", as
     assert.equal(cwd.isError, false, textContent(cwd));
     assert.match(textContent(cwd), new RegExp(tmpdir()));
     const nested = await f.call("codemode", `return await tools.${mcpTool("execute")}({commands:[{command:"ls"},{command:"rm -rf src"}]});`);
-    assert.match(textContent(nested), /blocked|not allowlisted/i);
+    assert.match(textContent(nested), /destructive commands require execution mode/i);
+  } finally { await f.close(); }
+});
+
+test("generic unknown hc inspection uses select, session reuse and hard denials without side effects", async () => {
+  const f = await workflowSession(undefined, [new URL("../extensions/plan-mode/index.ts", import.meta.url).pathname]);
+  try {
+    const bin = join(f.root, "bin");
+    mkdirSync(bin);
+    writeFileSync(join(bin, "hc"), "#!/bin/sh\nprintf 'hc manual fixture\\n'\n", { mode: 0o755 });
+    const command = `${join(bin, "hc")} --skill`;
+    await f.session.prompt("/dd:plan");
+    f.session.setActiveToolsByName(["bash", "write"]);
+    let prompts = 0;
+    await f.session.prompt("/fixture-close-mcp");
+    await f.session.bindExtensions({ uiContext: {
+      theme: { fg: (_color: string, text: string) => text },
+      notify() {}, setStatus() {}, setWidget() {},
+      select: async (title: string, choices: string[]) => {
+        prompts++;
+        assert.match(title, /command approval/);
+        assert.match(title, /--skill/);
+        assert.ok(choices.includes("Allow same invocation this session"));
+        return "Allow same invocation this session";
+      },
+    } as unknown as ExtensionUIContext });
+    for (let i = 0; i < 2; i++) {
+      const result = await f.call("bash", { command });
+      assert.equal(result.isError, false, textContent(result));
+      assert.match(textContent(result), /hc manual|hc: programs/);
+    }
+    assert.equal(prompts, 1, "session grant must avoid repeated UI");
+    const denied = await f.call("bash", { command: "touch denied-side-effect.md" });
+    assert.equal(denied.isError, true);
+    assert.equal(existsSync(join(f.root, "denied-side-effect.md")), false);
+    assert.equal(prompts, 1, "hard denial must not offer generic approval");
+    const defaultWrite = await f.call("write", { path: "docs/plan/task/README.md", content: "# Default plan" });
+    assert.equal(defaultWrite.isError, false, textContent(defaultWrite));
   } finally { await f.close(); }
 });
 
@@ -94,15 +131,34 @@ test("pending impact does not prompt or block safe commit/publish dry-runs", asy
   } finally { await f.close(); }
 });
 
- test("planning Markdown exception is location-independent, not source/config permission", async () => {
+test("planning Markdown defaults require explicit once approval for an external target", async () => {
   const external = mkdtempSync(join(tmpdir(), "dotdotgod-external-plan-"));
   const f = await workflowSession(undefined, [new URL("../extensions/plan-mode/index.ts", import.meta.url).pathname]);
   try {
     await f.session.prompt("/dd:plan");
     f.session.setActiveToolsByName(["write", "read", mcpTool("execute")]);
     const path = join(external, "planning-notes.md");
+    const headless = await f.call("write", {path, content: "# Not approved"});
+    assert.equal(headless.isError, true);
+    assert.equal(existsSync(path), false);
+    const selections: string[] = [];
+    await f.session.prompt("/fixture-close-mcp");
+    await f.session.bindExtensions({ uiContext: {
+      theme: { fg: (_color: string, text: string) => text },
+      notify() {}, setStatus() {}, setWidget() {},
+      select: async (title: string, choices: string[]) => {
+        selections.push(title);
+        assert.match(title, /Additional planning Markdown/);
+        assert.ok(choices.includes("Allow once"));
+        return selections.length === 1 ? "Allow once" : "Deny";
+      },
+    } as unknown as ExtensionUIContext });
     const written = await f.call("write", {path, content: "# Planning notes\nExplore only."});
     assert.equal(written.isError, false, textContent(written));
+    assert.match(readFileSync(path, "utf8"), /Explore only/);
+    const repeated = await f.call("write", {path, content: "# Must not overwrite"});
+    assert.equal(repeated.isError, true);
+    assert.equal(selections.length, 2);
     assert.match(readFileSync(path, "utf8"), /Explore only/);
     const read = await f.call("read", {path});
     assert.equal(read.isError, false, textContent(read));

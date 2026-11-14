@@ -460,7 +460,7 @@ describe('CLI docs helpers', () => {
     assert.deepEqual(validateMemoryConfigData(data), []);
     assert(data.memory.areas.some((area) => area.id === 'archive-body' && area.includeBodiesByDefault === false));
     assert(data.memory.areas.some((area) => area.id === 'docs' && area.paths.includes('docs/**')));
-    assert.deepEqual(data.planMode, {});
+    assert.deepEqual(data.planMode, { commands: [], markdown: { allow: [], deny: [] } });
     assert.deepEqual(data.traceability.keys.map((entry) => entry.key), ['implementedBy', 'verifiedBy', 'relatedDocs', 'designDecisions']);
     assert.deepEqual(data.traceability.keys.map((entry) => entry.relation), ['implemented_by', 'verified_by', 'related_doc', 'design_decision']);
     assert.deepEqual(data.traceability.keys.map((entry) => entry.weight), [4, 4, 3, 3]);
@@ -793,7 +793,7 @@ describe('CLI docs helpers', () => {
     const root = fixture();
     writeFixtureJson(root, 'dotdotgod.config.json', { planMode: { writablePaths: ['docs/proposals/**'] } });
     const config = readMemoryConfig(root);
-    assert.deepEqual(config.planMode, {});
+    assert.deepEqual(config.planMode, { commands: [], markdown: { allow: [], deny: [] } });
     assert.deepEqual(memoryConfigSummary(config).planMode, config.planMode);
     assert(validateMemoryConfigData({ planMode: { writablePaths: [] } }, root).length === 0);
     assert(validateMemoryConfigData({ planMode: { writablePaths: ['src/**'] } }, root).length === 0);
@@ -1326,7 +1326,7 @@ describe('configurable documentation root', () => {
     assert.ok(config.areas.some((area) => area.paths.includes('project-memory/spec/**')));
     assert.deepEqual(config.traceability.required, ['project-memory/spec/**']);
     assert.deepEqual(config.load.documentationSummary.exclude, ['project-memory/plan', 'project-memory/archive']);
-    assert.deepEqual(config.planMode, {});
+    assert.deepEqual(config.planMode, { commands: [], markdown: { allow: [], deny: [] } });
     assert.equal(isValidDocumentationRoot('project-memory'), true);
     for (const value of ['', '../docs', '/docs', '.dotdotgod', 'secret/data', 'docs/*']) assert.equal(isValidDocumentationRoot(value), false);
   });

@@ -6,12 +6,22 @@ While the authoritative lifecycle is `planning` or `reviewing`:
 
 - Reading files and searching the project are allowed.
 - The default active tool list is conservative; see [`../PLAN_MODE_TOOL_SETTINGS.md`](../PLAN_MODE_TOOL_SETTINGS.md) for optional extra installed tools.
-- Read-only bash commands are allowed through an allowlist. Dotdotgod execution, including direct MCP and nested codemode calls, checks every command in its required commands array against the same Plan Mode policy. Explicit cwd is allowed. Pending impact is advisory, not a gate.
-- `edit` and `write` allow Markdown planning documents at any location, not implementation edits. Non-Markdown source/config writes require execution mode.
+- Verified argument-aware read commands are allowed. Unknown simple commands offer Deny, Allow once, or Allow same invocation this session; unavailable UI or cancellation denies. Shell operators, wrappers, destructive/implementation commands and unknown tool classes remain blocked. Direct MCP batches authorize every entry before any execution and revalidate context before dispatch.
+- `edit` and `write` allow Markdown planning documents under approved roots or exact extra targets, not implementation edits. Source/config and host instruction Markdown remain forbidden. See [policy settings](../PLAN_MODE_TOOL_SETTINGS.md).
 - Moving, deleting, or creating directories through shell commands requires execution mode everywhere, including plan/archive paths.
 - These planning workflow guards do not provide a filesystem sandbox.
 
 The `executing` and `off` states do not apply these planning-only mutation restrictions. Todo presence or count never grants or revokes mutation permission; only the lifecycle state does.
+
+## Policy and Managed Children
+
+User/project `planMode` configuration is manually edited through the existing config; no policy-saving UI or `/dd:plan-policy` command is provided. In-context approval activates a trusted project's exact revision separately from generic once/session approvals. Configuration data is separate from runtime activation. Denies win; policy, root, environment, executable identity, mode or session changes invalidate relevant grants. Explicit environment overrides and non-default shell contexts are once-only. Unknown MCP execution is also once-only because Pi cannot attest the separate executor environment; verified built-in reads remain allowed. Git read execution disables external helpers/pagers, and rg ignores inherited config.
+
+Use the existing native `bash` path: `hc run --bg pi --dd-plan [task]` routes internally through explicit launch approval, the audited Pi plugin/bootstrap loadout and inherited ceiling. The child starts without the task; authenticated loaded-plugin readiness must precede task delivery. Missing/failed bootstrap means no task and scoped cleanup, never unrestricted retry. There is no `/dd:plan-child` command or custom manager tool, and no Pi host patch is required.
+
+Existing `hc send/wait/get/read/interrupt/kill/rm` lifecycle operations require an owned child ID; unrelated IDs are rejected. `hc ls` inspection uses generic command approval rather than granting ownership of listed terminals. Stateful hc calls through MCP execution are explicitly denied with guidance to use native `bash`; ordinary read inspections retain their normal policy. Remote launches, templates and custom launch flags are outside this supported Plan Mode route and rejected as scope limitations, not declarations that hc itself lacks those features.
+
+Children inherit activated persistent ceilings, not parent once/session grants or new approval rights. Environment-mismatched persistent activations remain unavailable, never silently rebound. Reload, parent narrowing, disconnect or session change ends authority. Registry-bound cleanup and cancellation are best effort for in-flight operations: trusted plugin/tool controls are not an OS sandbox. Live-host acceptance must be checked separately.
 
 ## Dotdotgod Commands
 
@@ -56,9 +66,19 @@ For `docs/plan/` and `docs/archive/` housekeeping, impact checks are not require
 - Implemented by:
   - [packages/pi/extensions/plan-mode/index.ts](../../../packages/pi/extensions/plan-mode/index.ts)
   - [packages/pi/extensions/plan-mode/utils.ts](../../../packages/pi/extensions/plan-mode/utils.ts)
+  - [packages/pi/extensions/plan-mode/policy/runtime.ts](../../../packages/pi/extensions/plan-mode/policy/runtime.ts)
+  - [packages/pi/extensions/plan-mode/policy/invocation.ts](../../../packages/pi/extensions/plan-mode/policy/invocation.ts)
+  - [packages/pi/extensions/plan-mode/policy/execution.ts](../../../packages/pi/extensions/plan-mode/policy/execution.ts)
+  - [packages/pi/extensions/plan-mode/children/hc-command.ts](../../../packages/pi/extensions/plan-mode/children/hc-command.ts)
+  - [packages/pi/extensions/plan-mode/children/manager.ts](../../../packages/pi/extensions/plan-mode/children/manager.ts)
+  - [packages/pi/extensions/plan-mode/children/bootstrap.ts](../../../packages/pi/extensions/plan-mode/children/bootstrap.ts)
 - Verified by:
   - [packages/pi/test/plan-mode-utils.test.ts](../../../packages/pi/test/plan-mode-utils.test.ts)
   - [packages/pi/test/context-execution-gates.test.ts](../../../packages/pi/test/context-execution-gates.test.ts)
+  - [packages/pi/test/plan-mode-policy-review.test.ts](../../../packages/pi/test/plan-mode-policy-review.test.ts)
+  - [packages/pi/test/plan-mode-policy-runtime.test.ts](../../../packages/pi/test/plan-mode-policy-runtime.test.ts)
+  - [packages/pi/test/plan-mode-commands.test.ts](../../../packages/pi/test/plan-mode-commands.test.ts)
+  - [packages/pi/test/plan-mode-children.test.ts](../../../packages/pi/test/plan-mode-children.test.ts)
   - [docs/test/README.md](../../test/README.md)
 - Related docs:
   - [docs/spec/plan-mode/README.md](README.md)
@@ -71,5 +91,5 @@ For `docs/plan/` and `docs/archive/` housekeeping, impact checks are not require
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts"],"verifiedBy":["packages/pi/test/plan-mode-utils.test.ts","packages/pi/test/context-execution-gates.test.ts","docs/test/README.md"],"relatedDocs":["docs/spec/plan-mode/README.md","docs/spec/PLAN_MODE_TOOL_SETTINGS.md","docs/spec/IMPACT_RANKING_CONFIG.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md","docs/arch/CODE_CONVENTIONS.md"]}
+{"kind":"spec","implementedBy":["packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts","packages/pi/extensions/plan-mode/policy/runtime.ts","packages/pi/extensions/plan-mode/policy/invocation.ts","packages/pi/extensions/plan-mode/policy/execution.ts","packages/pi/extensions/plan-mode/children/hc-command.ts","packages/pi/extensions/plan-mode/children/manager.ts","packages/pi/extensions/plan-mode/children/bootstrap.ts"],"verifiedBy":["packages/pi/test/plan-mode-utils.test.ts","packages/pi/test/context-execution-gates.test.ts","packages/pi/test/plan-mode-policy-review.test.ts","packages/pi/test/plan-mode-policy-runtime.test.ts","packages/pi/test/plan-mode-commands.test.ts","packages/pi/test/plan-mode-children.test.ts","docs/test/README.md"],"relatedDocs":["docs/spec/plan-mode/README.md","docs/spec/PLAN_MODE_TOOL_SETTINGS.md","docs/spec/IMPACT_RANKING_CONFIG.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md","docs/arch/CODE_CONVENTIONS.md"]}
 ```
