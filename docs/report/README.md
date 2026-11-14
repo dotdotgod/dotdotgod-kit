@@ -6,6 +6,8 @@ Use reports for evidence snapshots, measurements, and interpretations. Route dur
 
 ## Index
 
+- `RELEASE_0_9_0.md`: Plan Mode approvals, config and inherited native hc restrictions with unchanged command surfaces.
+
 - `RELEASE_0_8_1.md`: project-specific clarification guidance and replacement release.
 
 - `RELEASE_0_8_0.md`: standalone skills, exclusive document-clarify migration, runtime validation cleanup and release verification limits.
