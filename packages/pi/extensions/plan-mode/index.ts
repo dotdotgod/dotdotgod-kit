@@ -12,6 +12,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
 import { createLocalBashOperations, createBashToolDefinition } from "@earendil-works/pi-coding-agent";
+import { stageAdmission } from "./policy/admission.ts";
 import { PolicyRuntime } from "./policy/runtime.ts";
 import { approveCommand, approvePath, ensureProjectPolicy } from "./policy/ui.ts";
 import { authorizeExecution } from "./policy/execution.ts";
@@ -81,6 +82,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   const executionProgress = new ExecutionProgressController();
   const policy = new PolicyRuntime();
   const children = new ChildManager(pi, policy);
+  const pendingAdmissions = new Map<string, ReturnType<typeof stageAdmission>>();
   const pendingHc = new Map<string,{request:HcCommand;generation:number;command:string}>();
   // Pin planning execution to the same environment/context that approvals inspect.
   const bashDefinition=createBashToolDefinition(process.cwd());
@@ -92,9 +94,13 @@ export default function planModeExtension(pi: ExtensionAPI): void {
       const output=await children.execute(managed.request,ctx,signal);
       return {content:[{type:"text" as const,text:output}],details:undefined};
     }
+    const admit = pendingAdmissions.get(id);
+    pendingAdmissions.delete(id);
+    const frozenEnv = admit ? await admit(args.command,ctx.cwd,ctx.sessionManager.getSessionId(),signal) : undefined;
+    if (modeLifecycle.restrictsMutation && !admit) throw new Error("Plan mode: missing command admission.");
     const settings=pi.getSettings() as {shellPath?:string;shellCommandPrefix?:string};
     const options=modeLifecycle.restrictsMutation
-      ? {exposeSessionEnvironment:false,spawnHook:(value:{command:string;cwd:string;env:NodeJS.ProcessEnv})=>({...value,env:{...process.env}})}
+      ? {exposeSessionEnvironment:false,spawnHook:(value:{command:string;cwd:string;env:NodeJS.ProcessEnv})=>({...value,env:frozenEnv ?? {...process.env}})}
       : {...(settings.shellPath?{shellPath:settings.shellPath}:{}),...(settings.shellCommandPrefix?{commandPrefix:settings.shellCommandPrefix}:{})};
     return createBashToolDefinition(ctx.cwd,options).execute(id,args,signal,update,ctx);
   }});
@@ -321,6 +327,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     if (event.toolName === "bash" || event.toolName === mcpTool("execute")) {
       const batch = event.input as {commands?: ExecutionInput[];cwd?: string};
       const entries = event.toolName === "bash" ? [event.input as ExecutionInput] : batch.commands ?? [];
+      const approvalBatch = policy.batch();
+      const hostRoot=ctx.cwd, hostSession=ctx.sessionManager.getSessionId(), hostTrust=ctx.isProjectTrusted();
+      approvalBatch.checks.push(()=>ctx.cwd===hostRoot && ctx.sessionManager.getSessionId()===hostSession && ctx.isProjectTrusted()===hostTrust);
       const updates: Array<() => void> = [];
       const generation = policy.generation;
       const approved: Array<{input:ExecutionInput;key:string;source:"native"|"mcp"}> = [];
@@ -339,7 +348,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
             pendingHc.set(event.toolCallId,{request:managed,generation:policy.generation,command:input.command!});
             return;
           }
-          const result = await authorizeExecution(policy,input,event.toolName === "bash" ? "native" : "mcp",v => approveCommand(ctx,v));
+          const result = await authorizeExecution(policy,input,event.toolName === "bash" ? "native" : "mcp",v => approveCommand(ctx,v,policy.scopes(v)),approvalBatch);
           if (!result.decision.allow) return {block:true,reason:result.decision.reason ?? "Plan mode: command blocked."};
           approved.push({input,key:JSON.stringify(result.invocation),source:event.toolName==="bash"?"native":"mcp"});
           if(event.toolName === "bash") updates.push(() => {event.input.command=result.executed.command;});
@@ -349,7 +358,10 @@ export default function planModeExtension(pi: ExtensionAPI): void {
         }
         policy.refresh(ctx.cwd);
         if(generation!==policy.generation || approved.some(a=>JSON.stringify(resolveInvocation(a.input,ctx.cwd,a.source))!==a.key))return {block:true,reason:"Plan policy or execution context changed during batch approval."};
+        approvalBatch.checks.push(()=>approved.every(a=>{try{return JSON.stringify(resolveInvocation(a.input,ctx.cwd,a.source))===a.key;}catch{return false;}}));
         for(const update of updates)update();
+        if (event.toolName === "bash") pendingAdmissions.set(event.toolCallId,stageAdmission(policy,approvalBatch,event.input.command as string,ctx.cwd,ctx.sessionManager.getSessionId(),()=>modeLifecycle.restrictsMutation,()=>({cwd:ctx.cwd,session:ctx.sessionManager.getSessionId(),trusted:ctx.isProjectTrusted()})));
+        else { const finalized = await policy.finalize(approvalBatch); if (!finalized.allow) return {block:true,reason:finalized.reason ?? "Plan mode: command denied."}; }
       } catch(error) {return {block:true,reason:`Plan mode: ${String(error)}`};}
       return;
     }
@@ -550,13 +562,22 @@ If an out-of-scope change is required, stop and ask the user for confirmation.${
         const output=await children.execute(managed,ctx);
         return {result:{output,exitCode:0,cancelled:false,truncated:false}};
       }
-      const {decision,executed}=await authorizeExecution(policy,{command:event.command,cwd:event.cwd},"native",v=>approveCommand(ctx,v));
-      if(decision.allow)return {operations:{exec: (_command,cwd,options)=>createLocalBashOperations().exec(executed.command,cwd,{...options,env:{...process.env}})}};
+      const batch = policy.batch();
+      const hostRoot=ctx.cwd, hostSession=ctx.sessionManager.getSessionId(), hostTrust=ctx.isProjectTrusted();
+      batch.checks.push(()=>ctx.cwd===hostRoot && ctx.sessionManager.getSessionId()===hostSession && ctx.isProjectTrusted()===hostTrust);
+      const {decision,executed,invocation}=await authorizeExecution(policy,{command:event.command,cwd:event.cwd},"native",v=>approveCommand(ctx,v,policy.scopes(v)),batch);
+      const invocationKey=JSON.stringify(invocation), requestedCommand=event.command, requestedCwd=event.cwd;
+      batch.checks.push(()=>{try{return JSON.stringify(resolveInvocation({command:requestedCommand,cwd:requestedCwd},hostRoot))===invocationKey;}catch{return false;}});
+      const admit = stageAdmission(policy,batch,event.command,event.cwd,ctx.sessionManager.getSessionId(),()=>modeLifecycle.restrictsMutation,()=>({cwd:ctx.cwd,session:ctx.sessionManager.getSessionId(),trusted:ctx.isProjectTrusted()}));
+      if(decision.allow)return {operations:{exec: async (command,cwd,options)=> {
+        const env = await admit(command,cwd,ctx.sessionManager.getSessionId(),options.signal);
+        return createLocalBashOperations().exec(executed.command,executed.cwd,{...options,env});
+      }}};
       return {result:{output:decision.reason??"Plan mode: command denied.",exitCode:1,cancelled:false,truncated:false}};
     } catch(error){return {result:{output:String(error),exitCode:1,cancelled:false,truncated:false}};}
   });
 
-  pi.on("tool_execution_end", event => {pendingHc.delete(event.toolCallId);});
+  pi.on("tool_execution_end", event => {pendingHc.delete(event.toolCallId);pendingAdmissions.delete(event.toolCallId);});
   pi.on("session_shutdown", async () => {pendingHc.clear();policy.reset();await children.revokeAll("Parent session ended");modeLifecycle.disable();});
   pi.on("session_tree", async () => {
     policy.clear();await children.revokeAll("Parent branch changed");

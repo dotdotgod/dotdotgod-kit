@@ -85,6 +85,8 @@ The mode-neutral `project-memory` extension owns automatic assessment in both or
 - remind agents to run impact checks after source/config edits,
 - archive completed plans under `docs/archive/plan/`.
 
+Eligible native command approval offers Deny, once, same invocation this session, always this project, and always all projects. Remembered approval is personal local state, not shared project policy. Exact identified executable/script contents, arguments and relative working directory are checked; dynamic dependencies, external configuration and environment-dependent effects are not exhaustively verified. Existing prohibited commands and managed child ceilings still apply. See [Plan Mode tool settings](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/PLAN_MODE_TOOL_SETTINGS.md) for storage, limitations and revocation.
+
 ## Loading and Impact Checks
 
 At the beginning of session work, the mode-neutral project-memory extension assesses whether the active branch transcript or a recent reachable Load already covers project memory. Startup context files alone do not suppress the focused Load. When loading is needed, it temporarily exposes `project_memory_load`, records completion once for the active branch lineage, and continues the original request. Forks reuse only reachable completed state; abandoned sibling work does not suppress reassessment. Use `/dd:no-load`, `dd:no-load`, or `/no-load` to opt out for one request.

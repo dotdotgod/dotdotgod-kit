@@ -26,6 +26,8 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 
 ## Active Plans
 
+- `pi-plan-mode-persistent-approvals/` — active: confirmed five-scope command approval UX; research-first target identity, host integration and safe persistence tasks, implementation not started.
+
 - `pi-plan-mode-policy/` — active: duplicate commands/save UI removed; native hc readiness/ceiling routing implemented, workspace verify passed (Pi 225) and isolated hc lifecycle smoke passed; full live acceptance still partial.
 
 - `standalone-document-clarify/` — active: exclusive standalone migration implemented; package and five-target copy checks pass, native upgrade/discovery/rollback gates remain open.

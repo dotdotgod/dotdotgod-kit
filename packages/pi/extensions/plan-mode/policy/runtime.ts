@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { classifyPlanCommand } from "../tools.ts";
@@ -5,9 +6,24 @@ import { canonicalPath, markdownDecision } from "./markdown.ts";
 import { loadPolicyFile, type PlanPolicy, type PolicySnapshot } from "./storage.ts";
 import { environmentFingerprint, executableIdentity, invocationKey, resolveInvocation, type Invocation } from "./invocation.ts";
 
-export type ApprovalChoice = "deny" | "once" | "session";
+import { DurableApprovals, durableKeys, secretArguments } from "./durable.ts";
+export type ApprovalChoice = "deny" | "once" | "session" | "project" | "global";
+export interface CommandApprovalBatch { rows: string[]; sessions: string[]; checks: Array<() => boolean> }
 export interface Decision { allow: boolean; reason?: string }
 export class PolicyRuntime {
+ private readonly durable: DurableApprovals;
+ constructor(durable = new DurableApprovals()) { this.durable = durable; }
+ batch(): CommandApprovalBatch { return {rows: [], sessions: [], checks: []}; }
+ scopes(value: Invocation): Array<"project" | "global"> { return !this.fixedCeiling && durableKeys(value, this.root) ? ["project", "global"] : []; }
+ async finalize(batch: CommandApprovalBatch): Promise<Decision> {
+  const valid = () => { if (!this.fixedCeiling) this.refresh(this.root); return batch.checks.every(check => check()); };
+  try {
+   if (!valid()) return {allow:false, reason:"Plan policy: approval context changed."};
+   if (batch.rows.length) await this.durable.save(batch.rows, valid);
+   for (const key of batch.sessions) this.grants.add(key);
+   return {allow:true};
+  } catch { return {allow:false, reason:"Plan mode: approval could not be saved; command denied."}; }
+ }
  generation = 0;
  root = "";
  projectActive = false;
@@ -75,7 +91,7 @@ export class PolicyRuntime {
    return effect==="deny"||activated===identity;
   }));
  }
- async authorize(invocation:Invocation, ask?: (value:Invocation)=>Promise<ApprovalChoice>):Promise<Decision>{
+ async authorize(invocation:Invocation, ask?: (value:Invocation)=>Promise<ApprovalChoice>, staged?: CommandApprovalBatch):Promise<Decision>{
   this.bindRules();
   if(this.fixedCeiling && executableIdentity(invocation.executable)!==invocation.fileIdentity)return {allow:false,reason:"Inherited executable changed."};
   if(this.error)return {allow:false,reason:`Plan policy invalid: ${this.error}`};
@@ -83,12 +99,23 @@ export class PolicyRuntime {
   if(classification.kind==="deny")return {allow:false,reason:classification.reason ?? "Plan mode: prohibited operation."};
   if(this.matching(invocation,"deny"))return {allow:false,reason:"Plan policy: explicit deny."};
   if(classification.kind==="safe"||(invocation.reusable&&(this.matching(invocation,"allow")||this.grants.has(invocationKey(invocation)))))return {allow:true};
+  const batch = staged ?? this.batch();
   const generation=this.generation;
+  const keys = !this.fixedCeiling ? durableKeys(invocation, this.root) : undefined;
+  const valid = () => {
+   try { return generation === this.generation && realpathSync(invocation.cwd) === invocation.cwd && executableIdentity(invocation.executable) === invocation.fileIdentity && (this.fixedCeiling || JSON.stringify(durableKeys(invocation, this.root)) === JSON.stringify(keys)); } catch { return false; }
+  };
+  batch.checks.push(valid);
+  try { if (keys && this.durable.has(keys)) return staged ? {allow:true} : this.finalize(batch); }
+  catch { return {allow:false, reason:"Plan mode: approval store unavailable; command denied."}; }
   const choice=await ask?.(invocation);
   if(!this.fixedCeiling)this.refresh(this.root);
   if(generation!==this.generation || executableIdentity(invocation.executable)!==invocation.fileIdentity)return {allow:false,reason:"Plan policy: approval context changed."};
-  if(choice==="session"&&invocation.reusable)this.grants.add(invocationKey(invocation));
-  return choice==="once" || (choice==="session"&&invocation.reusable)?{allow:true}:{allow:false,reason:"Plan mode: command approval denied or unavailable."};
+  if (!valid()) return {allow:false,reason:"Plan policy: approval context changed."};
+  if(choice==="session"&&invocation.reusable&&!secretArguments(invocation.args))batch.sessions.push(invocationKey(invocation));
+  else if ((choice === "project" || choice === "global") && keys) batch.rows.push(`${choice}:${keys[choice]}`);
+  else if (choice !== "once") return {allow:false,reason:"Plan mode: command approval denied or unavailable."};
+  return staged ? {allow:true} : this.finalize(batch);
  }
  async authorizePath(path:string,ask?: (path:string)=>Promise<ApprovalChoice>):Promise<Decision>{
   if(this.error)return {allow:false,reason:`Plan policy invalid: ${this.error}`};

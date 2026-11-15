@@ -33,7 +33,19 @@ Additional eligible Markdown targets offer deny/once/session approval for that e
 
 `planMode.commands` contains exact `{effect, executable, args, cwd}` rules; `markdown.allow/deny` use exact paths or terminal `/**` subtrees. Empty allow lists add no paths; denies can exclude defaults. User and activated project additions are additive, with deny precedence. Legacy `writablePaths` is ignored. CLI config output shows project data, not Pi trust.
 
-Edit `planMode` manually through the existing user/project configuration; there is no policy-saving UI or `/dd:plan-policy` command. In-context approval explicitly activates the exact trusted project revision separately from generic once/session command and Markdown approvals. Project changes require activation again. Headless operation cannot grant unknown commands or activate new project policy.
+Edit `planMode` manually through the existing user/project configuration; no `/dd:plan-policy` command or general policy editor is provided. In-context activation still binds the exact trusted project revision separately from individual command grants. Project changes require activation again. Headless operation cannot create new approvals or activate new project policy.
+
+## Remembered Command Approvals
+
+Eligible native commands additionally offer **Always allow this project** and **Always allow all projects**, after Deny, Allow once and Allow same invocation this session. Unsupported targets omit persistent choices with an explanation; unattested MCP and non-default execution contexts remain once-only. Markdown approvals remain deny/once/session.
+
+Remembered command approvals belong to the local user, not the team, and use a dedicated `~/.dotdotgod/plan-approvals/grants.json` store without editing user/project policy configuration. Project scope binds the canonical project root. Global scope matches the same identified execution target, exact ordered arguments and project-relative working directory across projects; it is not executable-name-wide or any-directory approval.
+
+Recheck identified executable/script contents before reuse; changes require approval again. Supported directly executed scripts require a single absolute shebang interpreter without arguments, resolved to an identifiable native binary; env indirection and nested script interpreters are unsupported. Native format recognition is conservative and host-specific (Linux ELF or macOS Mach-O). Unidentified targets have no persistent choice, and existing prohibited interpreter/package execution is not reopened. This practical identity contract does not verify every dynamic import, external configuration or environment-dependent behavior; it is not a sandbox or a guarantee that unchanged command text has unchanged effects.
+
+Successful atomic save commits consent before execution admission. Earlier save errors deny with no implicit once fallback; a subsequent execution error does not revoke committed consent. Cancellation, unavailable UI and stale context create no new grant. Explicit denies, prohibited operations, host permissions and fixed child ceilings remain authoritative. Managed children do not load, create or inherit these remembered grants.
+
+To revoke, stop Pi sessions sharing this home, securely back up the dedicated store, remove the matching records (or only this dedicated file to revoke all), then restart. Never remove unrelated user/project configuration. Busy or invalid storage errors are visible, not silently treated as an empty store. The private directory is mode 0700 and grant file 0600; an existing non-writable-by-others 0755 shared parent is allowed. A crashed writer can leave `grants.json.lock`: remove it only after confirming no writer remains. The file contains opaque `project:`/`global:` digest records, not raw arguments or human-readable command metadata; selective removal requires knowing the matching record, otherwise revoke all. Atomic rename is the commit boundary, not a power-loss durability guarantee. Secret-like arguments are redacted and limited to one-time approval; detection is heuristic, not a general secret scanner. Revocation prevents future reuse, not already admitted work.
 
 
 ## Prompt Requirements
@@ -64,6 +76,10 @@ The prompt should prefer already-loaded project memory and documentation maps be
   - [packages/pi/extensions/plan-mode/policy/runtime.ts](../../packages/pi/extensions/plan-mode/policy/runtime.ts)
   - [packages/pi/extensions/plan-mode/policy/markdown.ts](../../packages/pi/extensions/plan-mode/policy/markdown.ts)
   - [packages/pi/extensions/plan-mode/policy/storage.ts](../../packages/pi/extensions/plan-mode/policy/storage.ts)
+  - [packages/pi/extensions/plan-mode/policy/durable.ts](../../packages/pi/extensions/plan-mode/policy/durable.ts)
+  - [packages/pi/extensions/plan-mode/policy/admission.ts](../../packages/pi/extensions/plan-mode/policy/admission.ts)
+  - [packages/pi/extensions/plan-mode/policy/native-binary.ts](../../packages/pi/extensions/plan-mode/policy/native-binary.ts)
+  - [packages/pi/extensions/plan-mode/policy/ui.ts](../../packages/pi/extensions/plan-mode/policy/ui.ts)
 - Verified by:
   - [packages/pi/test/plan-mode-extension.test.ts](../../packages/pi/test/plan-mode-extension.test.ts)
   - [packages/pi/test/plan-mode-utils.test.ts](../../packages/pi/test/plan-mode-utils.test.ts)
@@ -72,6 +88,9 @@ The prompt should prefer already-loaded project memory and documentation maps be
   - [packages/pi/test/plan-mode-policy-storage.test.ts](../../packages/pi/test/plan-mode-policy-storage.test.ts)
   - [packages/pi/test/plan-mode-policy-runtime.test.ts](../../packages/pi/test/plan-mode-policy-runtime.test.ts)
   - [docs/test/README.md](../test/README.md)
+  - [packages/pi/test/plan-mode-durable.test.ts](../../packages/pi/test/plan-mode-durable.test.ts)
+  - [packages/pi/test/plan-mode-durable-boundaries.test.ts](../../packages/pi/test/plan-mode-durable-boundaries.test.ts)
+  - [packages/pi/test/plan-mode-admission-handlers.test.ts](../../packages/pi/test/plan-mode-admission-handlers.test.ts)
 - Related docs:
   - [docs/spec/PLAN_MODE.md](PLAN_MODE.md)
 - Design decisions:
@@ -80,5 +99,5 @@ The prompt should prefer already-loaded project memory and documentation maps be
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts","packages/pi/extensions/plan-mode/runtime/paths.ts","packages/pi/extensions/plan-mode/tools.ts","packages/pi/extensions/plan-mode/prompts.ts","packages/pi/extensions/plan-mode/policy/runtime.ts","packages/pi/extensions/plan-mode/policy/markdown.ts","packages/pi/extensions/plan-mode/policy/storage.ts"],"verifiedBy":["packages/pi/test/plan-mode-extension.test.ts","packages/pi/test/plan-mode-utils.test.ts","packages/pi/test/context-execution-gates.test.ts","packages/pi/test/plan-mode-policy-review.test.ts","packages/pi/test/plan-mode-policy-storage.test.ts","packages/pi/test/plan-mode-policy-runtime.test.ts","docs/test/README.md"],"relatedDocs":["docs/spec/PLAN_MODE.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts","packages/pi/extensions/plan-mode/runtime/paths.ts","packages/pi/extensions/plan-mode/tools.ts","packages/pi/extensions/plan-mode/prompts.ts","packages/pi/extensions/plan-mode/policy/runtime.ts","packages/pi/extensions/plan-mode/policy/markdown.ts","packages/pi/extensions/plan-mode/policy/storage.ts","packages/pi/extensions/plan-mode/policy/durable.ts","packages/pi/extensions/plan-mode/policy/admission.ts","packages/pi/extensions/plan-mode/policy/native-binary.ts","packages/pi/extensions/plan-mode/policy/ui.ts"],"verifiedBy":["packages/pi/test/plan-mode-extension.test.ts","packages/pi/test/plan-mode-utils.test.ts","packages/pi/test/context-execution-gates.test.ts","packages/pi/test/plan-mode-policy-review.test.ts","packages/pi/test/plan-mode-policy-storage.test.ts","packages/pi/test/plan-mode-policy-runtime.test.ts","docs/test/README.md","packages/pi/test/plan-mode-durable.test.ts","packages/pi/test/plan-mode-durable-boundaries.test.ts","packages/pi/test/plan-mode-admission-handlers.test.ts"],"relatedDocs":["docs/spec/PLAN_MODE.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
 ```

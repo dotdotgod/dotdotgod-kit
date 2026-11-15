@@ -19,6 +19,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Local Investigations
 
+- `report/2026-11-15/pi-plan-mode-persistent-approvals/`: five-scope command approval planning report; research-first, detailed mechanisms blocked and implementation not started.
+
 - `report/2026-11-14/pi-plan-mode-policy/`: local planning and implementation evidence; ignored report bodies are available only in the working checkout.
 
 - `report/hermes-session-investigation/`: installed-host session propagation findings, including private local paths.

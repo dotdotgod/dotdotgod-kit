@@ -1,5 +1,5 @@
 import { quoteArguments, resolveInvocation, type ExecutionInput, type Invocation } from "./invocation.ts";
-import { PolicyRuntime, type ApprovalChoice, type Decision } from "./runtime.ts";
+import { PolicyRuntime, type ApprovalChoice, type CommandApprovalBatch, type Decision } from "./runtime.ts";
 import { basename } from "node:path";
 
 export function guardGit(value: Invocation): Invocation {
@@ -10,8 +10,8 @@ export function guardGit(value: Invocation): Invocation {
  return {...value,args,command:quoteArguments([value.executable,...args])};
 }
 // Policy evaluates the requested command; these forced read-only Git options are never user grants.
-export async function authorizeExecution(runtime:PolicyRuntime,input:ExecutionInput,source:"native"|"mcp",ask?:(value:Invocation)=>Promise<ApprovalChoice>):Promise<{decision:Decision;invocation:Invocation;executed:Invocation}>{
+export async function authorizeExecution(runtime:PolicyRuntime,input:ExecutionInput,source:"native"|"mcp",ask?:(value:Invocation)=>Promise<ApprovalChoice>,batch?:CommandApprovalBatch):Promise<{decision:Decision;invocation:Invocation;executed:Invocation}>{
  const invocation=resolveInvocation(input,runtime.root,source);
- const decision=await runtime.authorize(invocation,ask);
+ const decision=await runtime.authorize(invocation,ask,batch);
  return {decision,invocation,executed:guardGit(invocation)};
 }

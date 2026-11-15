@@ -63,7 +63,7 @@ Check `pi --help`: dotdotgod adds `--dd-plan`, not `--plan`. `pi --dd-plan` star
 
 Not live-run evidence; record hc/Pi results. Follow [policy settings](../../spec/PLAN_MODE_TOOL_SETTINGS.md) and [tool policy](../../spec/plan-mode/TOOL_POLICY.md).
 
-1. No `/dd:plan-policy`, `/dd:plan-child` or save UI. Edit existing `planMode` config manually; in-context activation binds the exact project revision separately from once/session grants. Reject stale approvals; preserve unrelated settings. Invalid config blocks commands/writes, not reads.
+1. No `/dd:plan-policy`, `/dd:plan-child` or general policy editor. Eligible command approval supports five scopes; existing `planMode` config remains manually edited. In-context activation binds its exact project revision separately from individual grants. Reject stale approvals; preserve unrelated settings. Invalid config blocks commands/writes, not reads.
 2. Verify once consumption, session reuse, policy/root/environment/executable invalidation including A/B/A; explicit env/non-default shell once-only. Denied MCP batch runs nothing; context changes during later prompts invalidate earlier entries. Test unknown/nested tool guards.
 3. `pi --dd-plan` overrides restored off/executing state. Through native `bash`, run `hc run --bg pi --dd-plan [task]` with and without a task. Require user approval, audited explicit plugin and authenticated readiness BEFORE task delivery. Missing/failed plugin, forged readiness or timeout: no task, scoped cleanup.
 4. `hc send/wait/get/read/interrupt/kill/rm` require owned IDs; reject unrelated IDs. `hc ls` uses generic approval, not adoption. Parent narrowing/context change/reload/disconnect cancels pending calls and later delivery. Matching persistent rules work; environment mismatch stays unavailable. No inherited once/session grants or further delegation; permitted Markdown works.
@@ -71,14 +71,10 @@ Not live-run evidence; record hc/Pi results. Follow [policy settings](../../spec
 6. MCP `execute`/`execute_file` stateful hc must deny with native `bash` guidance; mixed batches run nothing. Ordinary safe reads remain unchanged.
 7. Remote/templates/custom launch flags must report route scope limits, not universal hc restrictions. Record actual results, not assumed acceptance.
 
+## Remembered Command Acceptance
+
+Use isolated projects/user home. Verify five eligible scopes, restart/two-project matching, script/interpreter changes, deny/stale/batch/save failures, child isolation, native and user_bash admission, revocation and readable keyboard previews. Follow [policy settings](../../spec/PLAN_MODE_TOOL_SETTINGS.md); report actual host results separately from units.
+
 ## Pending Impact Checks
 
-1. In execution or normal mode, make a source/config edit.
-2. Confirm neither an impact list widget nor a pending-count status appears. Ask the agent for pending impact checks; MCP `impact_status` must return current session records without clearing them. Hidden context still reminds the agent to run `/impact-check` or MCP `project_impact`.
-3. Confirm `/impact-check` runs compact graph impact for pending files plus current git unstaged, staged, and untracked source/config files, then status query returns no pending records after success.
-4. Change a pending file again before impact and confirm a successful `/impact-check` clears the stale pending record for that path.
-5. Stage a source/config file without an unstaged diff and confirm `/impact-check` includes it.
-6. Pending impact must not block normal-mode verification or safe commit/publish dry-runs. Preserve Plan Mode/user permissions; failed reviews and concurrent re-edits retain state.
-7. Confirm shell text claiming a successful `dotdotgod graph impact ... --changed <path>` does not clear pending; successful MCP `project_impact` is required.
-8. Run MCP `project_impact` with up to twenty paths; inspect `isError`, `structuredContent`, and host rendering. No custom ten-line impact renderer remains. Failures, cancellation and concurrent re-edits retain pending.
-9. After modification or coding work, confirm execution guidance requires `dotdotgod validate` before final completion.
+Follow [PI_IMPACT.md](PI_IMPACT.md) for pending-path, review and clearing scenarios.

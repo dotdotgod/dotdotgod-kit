@@ -1,11 +1,16 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { type ApprovalChoice, PolicyRuntime } from "./runtime.ts";
+import { secretArguments } from "./durable.ts";
 import type { Invocation } from "./invocation.ts";
 
-export async function approveCommand(ctx:ExtensionContext,value:Invocation):Promise<ApprovalChoice>{
+const preview = (text: string) => text.replace(/[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]/g, c => `\\u${c.charCodeAt(0).toString(16).padStart(4,"0")}`);
+export async function approveCommand(ctx:ExtensionContext,value:Invocation,scopes:Array<"project"|"global">=[]):Promise<ApprovalChoice>{
  if(!ctx.hasUI)return "deny";
- const choice=await ctx.ui.select(`Plan Mode: command approval\nExecutable: ${value.executable}\nArguments: ${JSON.stringify(value.args)}\nDirectory: ${value.cwd}\nShell: ${value.shell?"simple shell":"direct"}\nEnvironment: values hidden${value.reusable?"":"; once only"}\nThis invocation only; host permissions still apply.`,["Deny","Allow once",...(value.reusable?["Allow same invocation this session"]:[])]);
- return choice==="Allow once"?"once":choice==="Allow same invocation this session"?"session":"deny";
+ const sensitive = secretArguments(value.args);
+ const reusable = value.reusable && !sensitive;
+ if (!reusable) scopes = [];
+ const choice=await ctx.ui.select(`Plan Mode: command approval\nExecutable: ${preview(value.executable)}\nArguments: ${sensitive?"[redacted: secret-like arguments; once only]":preview(JSON.stringify(value.args))}\nDirectory: ${preview(value.cwd)}\nShell: ${value.shell?"simple shell":"direct"}\nEnvironment: values hidden${reusable?"":"; once only"}\nExact command, arguments, relative cwd and identified entry bytes only. Not a sandbox: imports, external configuration and environment-dependent behavior are not covered. Host permissions still apply.${scopes.length?"":" Persistent scopes unavailable for this target/context."}`,["Deny","Allow once",...(reusable?["Allow same invocation this session"]:[]),...(scopes.includes("project")?["Always this project"]:[]),...(scopes.includes("global")?["Always all projects"]:[])]);
+ return choice==="Allow once"?"once":choice==="Allow same invocation this session"?"session":choice==="Always this project"?"project":choice==="Always all projects"?"global":"deny";
 }
 export async function approvePath(ctx:ExtensionContext,path:string):Promise<ApprovalChoice>{
  if(!ctx.hasUI)return "deny";
