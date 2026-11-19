@@ -181,8 +181,11 @@ for (const adapter of ['claude-code', 'codex']) {
     assert.match(hookOutput.hookSpecificOutput.additionalContext, /project_load/u);
     assert.equal(existsSync(join(project, '.dotdotgod', 'context', 'runtime', `packed-${adapter}.json`)), true);
     const substantive = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'Bash', tool_input: { command: 'git status --short' } });
-    const deniedBeforeLoad = JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout);
-    assert.equal(deniedBeforeLoad.hookSpecificOutput.permissionDecision, 'deny');
+    assert.doesNotMatch(hookOutput.hookSpecificOutput.additionalContext, /must|required|before substantive/iu);
+    for (const tool_name of ['Bash', 'Edit', 'Write']) {
+      const unloaded = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name, tool_input: { command: 'git status --short', file_path: 'source.ts' } });
+      assert.deepEqual(JSON.parse(runHook(runtime, 'pretooluse', unloaded, { cwd: project, env }).stdout), {});
+    }
 
     const malformed = runHook(runtime, 'sessionstart', '{bad json', { cwd: project, env });
     assert.equal(malformed.status, 0);
@@ -207,11 +210,11 @@ for (const adapter of ['claude-code', 'codex']) {
         arguments: { root: '.', focus: 'x'.repeat(501), limit: 3, maxDepth: 2 },
       }), 10_000, `${adapter} rejected project load`);
       assert.equal(failed.isError, true);
-      assert.equal(JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout).hookSpecificOutput.permissionDecision, 'deny');
+      assert.deepEqual(JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout), {});
 
       const unrelatedMcp = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'mcp__plugin_other_server__unrelated_tool', tool_input: {} });
       assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', unrelatedMcp, { cwd: project, env }).stdout), {});
-      assert.equal(JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout).hookSpecificOutput.permissionDecision, 'deny');
+      assert.deepEqual(JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout), {});
 
       const loaded = await withTimeout(client.callTool({
         name: 'project_load',

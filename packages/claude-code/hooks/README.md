@@ -7,7 +7,7 @@ not create source-impact pending state. Native plan paths and permissions remain
 host-owned; hooks do not grant plan writes. Hook runtime state and MCP caches
 have separate process permissions from the model's native tools.
 
-The adapter packages `hooks/hooks.json` and `hooks/runtime.mjs`. They inject a bounded project-load requirement at session start, record successful `Edit`/`Write` paths, and deny broad verification or handoff shell commands while graph impact is pending. A denial names the required dotdotgod MCP tool; Claude calls it and retries the original operation. MCP tools bypass their own guards to prevent recursion.
+The adapter packages `hooks/hooks.json` and `hooks/runtime.mjs`. They offer optional project-memory advice at session start without blocking pre-load shell or write tools, record successful `Edit`/`Write` paths, and deny broad verification or handoff shell commands while graph impact is pending. A denial names the required dotdotgod MCP tool; Claude calls it and retries the original operation. MCP tools bypass their own guards to prevent recursion.
 
 Runtime state is local to `.dotdotgod/context/runtime/`. A successful impact call clears only paths whose current fingerprints match recorded edit state. Hooks run local commands with user permissions; review plugin resources before enabling them.
 
@@ -30,7 +30,7 @@ Claude Code currently does not document dedicated plan-mode transition hooks suc
 
 Hook handlers may be `command`, `http`, `mcp_tool`, `prompt`, or `agent`, with event-specific support limits. `SessionStart` and `Setup` support only `command` and `mcp_tool`. For project or plugin scripts, prefer command exec form with `args` so `${CLAUDE_PROJECT_DIR}`, `${CLAUDE_PLUGIN_ROOT}`, and `${CLAUDE_PLUGIN_DATA}` paths are passed without shell quoting. Hooks should not write directly to `/dev/tty`; use JSON `systemMessage` for user-visible messages or Claude Code's `terminalSequence` field for terminal notifications.
 
-Claude Code plugins can package hook config at `hooks/hooks.json` or through the plugin manifest. Dotdotgod ships `hooks/hooks.json` with bounded load-required and impact-pending routing. The hooks run local commands with user permissions, so users should review the packaged resources through Claude Code's plugin trust flow. `/dd:impact` and the `impact-review` skill remain explicit ways to request the same changed-file review workflow.
+Claude Code plugins can package hook config at `hooks/hooks.json` or through the plugin manifest. Dotdotgod ships `hooks/hooks.json` with optional memory guidance and impact-pending routing. The hooks run local commands with user permissions, so users should review the packaged resources through Claude Code's plugin trust flow. `/dd:impact` and the `impact-review` skill remain explicit ways to request the same changed-file review workflow.
 
 ## SDLC Guardrail Framing
 

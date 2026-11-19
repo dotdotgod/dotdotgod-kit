@@ -33,7 +33,7 @@ Current adapter support.
 - Impact review workflow: `impact-review` skill and `/dd:impact` command for post-edit graph-impact checks before broad verification or handoff.
 - Install `document-clarify` separately from `@dotdotgod/skills`. It resolves memory-area guidance with `dotdotgod config <root> --json`, clarifies current docs, removes verified obsolete conditions, and preserves requirements, traceability and archive meaning.
 - Bundled local stdio MCP tools for generic execution/retrieval and project load/impact/initialize operations.
-- Bundled lifecycle hooks for load-required and impact-pending deny/retry routing, plus maintained guidance for additional guardrails using documented Claude Code hook events.
+- Bundled lifecycle hooks for optional Load advice and impact-pending gates, plus maintained guidance for additional guardrails using documented Claude Code hook events.
 - `CLAUDE.md` remains a thin project entrypoint that imports or points to `AGENTS.md`.
 
 ### Codex
@@ -45,7 +45,7 @@ Current adapter support.
 - Codex reads `AGENTS.md` as a primary project instruction source.
 - `dd:init`, `dd:load`, `dd:plan`, and `dd:impact` are command-like trigger phrases unless the active Codex runtime provides direct command registration.
 - Bundled local stdio MCP tools for generic execution/retrieval and project load/impact/initialize operations.
-- Bundled lifecycle hooks, subject to Codex enablement/trust review, for load-required and impact-pending deny/retry routing.
+- Bundled lifecycle hooks, subject to Codex enablement/trust review, for optional Load advice and impact-pending gates.
 - `CODEX.md` remains a thin project entrypoint that points to `AGENTS.md`.
 
 ### Hermes

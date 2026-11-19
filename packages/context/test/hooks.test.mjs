@@ -37,12 +37,16 @@ test('local plan Markdown does not create source-impact gates; maintained docs s
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('hooks gate load and acknowledgement-based impact without recursion', () => {
+test('hooks advise optional load and gate acknowledgement-based impact without recursion', () => {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-test-'));
   try {
     const started = payload(root, 'sessionstart');
     assert.match(started.hookSpecificOutput.additionalContext, /project memory/i);
-    assert.equal(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
+    assert.doesNotMatch(started.hookSpecificOutput.additionalContext, /must|required|before substantive/i);
+    assert.equal(Object.hasOwn(JSON.parse(readFileSync(join(root, '.dotdotgod/context/runtime/test.json'), 'utf8')), 'loadRequired'), false);
+    for (const tool_name of ['Bash', 'Edit', 'Write', 'Shell', 'local_shell', 'shell', 'shell_command', 'exec_command', 'apply_patch']) {
+      assert.deepEqual(payload(root, 'pretooluse', { tool_name, tool_input: { command: 'npm test', file_path: 'source.ts' } }), {});
+    }
     assert.deepEqual(payload(root, 'pretooluse', load), {});
     payload(root, 'posttooluse', load);
 
@@ -56,6 +60,23 @@ test('hooks gate load and acknowledgement-based impact without recursion', () =>
     assert.deepEqual(payload(root, 'pretooluse', impact), {});
     payload(root, 'posttooluse', impact);
     assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'pnpm test' } }), {});
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('legacy loadRequired true is removed without blocking shell or writes', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-legacy-load-'));
+  try {
+    payload(root, 'sessionstart');
+    const statePath = join(root, '.dotdotgod/context/runtime/test.json');
+    for (const tool_name of ['Bash', 'Edit', 'Write']) {
+      writeFileSync(statePath, JSON.stringify({ loadRequired: true, pending: {} }));
+      assert.deepEqual(payload(root, 'pretooluse', { tool_name, tool_input: { command: 'npm test', file_path: 'source.ts' } }), {});
+      assert.equal(Object.hasOwn(JSON.parse(readFileSync(statePath, 'utf8')), 'loadRequired'), false);
+    }
+    writeFileSync(statePath, JSON.stringify({ loadRequired: true, pending: { 'source.ts': true } }));
+    assert.match(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecisionReason, /project_impact/);
+    payload(root, 'posttooluse', load);
+    assert.equal(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -76,14 +97,16 @@ test('pending membership needs no file read and accepts legacy fingerprint value
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('hooks share load state across nested event working directories', () => {
+test('hooks share impact state across nested event working directories without loading', () => {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-nested-'));
   const nested = join(root, 'packages', 'app');
   mkdirSync(nested, { recursive: true });
   try {
     payload(root, 'sessionstart');
+    const file = join(root, 'source.ts');
+    hook('posttooluse', { cwd: nested, session_id: 'test', tool_name: 'Write', tool_input: { file_path: file } });
     assert.equal(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
-    hook('posttooluse', { cwd: nested, session_id: 'test', ...load });
+    hook('posttooluse', { cwd: nested, session_id: 'test', tool_name: 'project_impact', tool_input: { paths: [file] } });
     assert.deepEqual(payload(root, 'pretooluse', bash), {});
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -94,8 +117,10 @@ test('declared project root overrides transient hook cwd and supports missing cw
   mkdirSync(nested);
   try {
     hook('sessionstart', { project_dir: root, cwd: nested, session_id: 'declared' });
-    assert.equal(hook('pretooluse', { project_dir: root, cwd: nested, session_id: 'declared', ...bash }).hookSpecificOutput.permissionDecision, 'deny');
-    hook('posttooluse', { project_dir: root, session_id: 'declared', ...load });
+    assert.deepEqual(hook('pretooluse', { project_dir: root, cwd: nested, session_id: 'declared', ...bash }), {});
+    hook('posttooluse', { project_dir: root, cwd: nested, session_id: 'declared', tool_name: 'Write', tool_input: { file_path: 'source.ts' } });
+    assert.equal(hook('pretooluse', { project_dir: root, session_id: 'declared', ...bash }).hookSpecificOutput.permissionDecision, 'deny');
+    hook('posttooluse', { project_dir: root, session_id: 'declared', tool_name: 'project_impact', tool_input: { paths: ['source.ts'] } });
     assert.deepEqual(hook('pretooluse', { project_dir: root, session_id: 'declared', ...bash }), {});
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -106,7 +131,8 @@ test('hook state remains isolated between projects with the same session id', ()
   try {
     payload(rootA, 'sessionstart');
     payload(rootB, 'sessionstart');
-    payload(rootA, 'posttooluse', load);
+    payload(rootB, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: 'source.ts' } });
+    payload(rootA, 'posttooluse', { tool_name: 'project_impact', tool_input: { paths: ['source.ts'] } });
     assert.deepEqual(payload(rootA, 'pretooluse', bash), {});
     assert.equal(payload(rootB, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
   } finally {
@@ -203,6 +229,7 @@ test('unrelated or unidentified hook inputs fail open', () => {
   const rootB = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-unrelated-'));
   try {
     payload(rootA, 'sessionstart');
+    payload(rootA, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: 'source.ts' } });
     assert.deepEqual(payload(rootB, 'pretooluse', bash), {});
     assert.equal(payload(rootA, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
     assert.deepEqual(hook('pretooluse', { session_id: 'unknown', ...bash }), {});
@@ -212,12 +239,12 @@ test('unrelated or unidentified hook inputs fail open', () => {
   }
 });
 
-test('unrelated MCP tools with shared short names cannot acknowledge load or impact', () => {
+test('unrelated MCP tools with shared short names cannot acknowledge impact', () => {
   const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-name-isolation-'));
   try {
     payload(root, 'sessionstart');
     payload(root, 'posttooluse', { tool_name: 'mcp__other_server__project_load', tool_input: {} });
-    assert.equal(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
+    assert.deepEqual(payload(root, 'pretooluse', bash), {});
     payload(root, 'posttooluse', load);
     const file = join(root, 'source.ts');
     writeFileSync(file, 'export const value = 1;');

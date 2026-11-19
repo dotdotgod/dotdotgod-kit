@@ -29,7 +29,7 @@ function resolveHookContext(input, event) {
   const root = resolve(input.cwd);
   return { root, path: runtimeStatePath(root, id) };
 }
-function readState(path) { try { return JSON.parse(readFileSync(path, 'utf8')); } catch { return { loadRequired: false, pending: {} }; } }
+function readState(path) { try { return JSON.parse(readFileSync(path, 'utf8')); } catch { return { pending: {} }; } }
 function writeState(path, state) {
   mkdirSync(dirname(path), { recursive: true });
   const temp = `${path}.${process.pid}.tmp`; writeFileSync(temp, `${JSON.stringify(state, null, 2)}\n`); renameSync(temp, path);
@@ -62,7 +62,6 @@ function mcpTool(name, suffix) {
 }
 function deny(reason) { return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } }; }
 function commandFrom(input) { const value = toolInput(input); return String(value.command || value.cmd || ''); }
-function isSubstantive(name) { return /^(Bash|Shell|local_shell|shell|shell_command|exec_command|Edit|Write|apply_patch)$/i.test(name); }
 function isImpactGate(name, input) {
   if (!/^(Bash|Shell|local_shell|shell|shell_command|exec_command)$/i.test(name)) return false;
   return /(^|\s)(test|build|lint|verify|commit|push|publish|deploy)(\s|:|$)|\b(git\s+(commit|push)|npm\s+(test|publish)|pnpm\s+[^\n]*(test|build|lint|verify|publish))\b/i.test(commandFrom(input));
@@ -94,6 +93,7 @@ export function runHook(event) {
   const name = toolName(input);
   const context = resolveHookContext(input, event);
   const state = readState(context?.path);
+  delete state.loadRequired;
   state.pending ||= {};
   if (context) {
     prunePending(state, context.root);
@@ -102,14 +102,11 @@ export function runHook(event) {
 
   if (event === 'sessionstart') {
     if (!context) return {};
-    state.loadRequired = true;
-    writeState(context.path, state);
-    return { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'Dotdotgod project memory has not been loaded for this session. Before substantive shell or write work, call project_load from the dotdotgod-context MCP server once with a concise task-specific focus.' } };
+    return { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'For relevant project memory, consider calling project_load from the dotdotgod-context MCP server with a concise task-specific focus.' } };
   }
 
   if (event === 'pretooluse') {
     if (mcpTool(name, 'project_load') || mcpTool(name, 'project_impact')) return {};
-    if (state.loadRequired && isSubstantive(name)) return deny('Project memory is required first. Call project_load from the dotdotgod-context MCP server with the current project root and a concise task-specific focus, then retry this tool.');
     const pendingPaths = Object.keys(state.pending);
     if (pendingPaths.length && isImpactGate(name, input)) return deny(`Graph impact is pending. Call project_impact from the dotdotgod-context MCP server with paths=${JSON.stringify(pendingPaths)} and then retry this tool.`);
     return {};
@@ -117,8 +114,7 @@ export function runHook(event) {
 
   if (event === 'posttooluse') {
     if (!context) return {};
-    if (mcpTool(name, 'project_load')) state.loadRequired = false;
-    else if (mcpTool(name, 'project_impact')) {
+    if (mcpTool(name, 'project_impact')) {
       const checked = toolInput(input).paths;
       let cleared = 0;
       if (Array.isArray(checked)) for (const path of checked) {

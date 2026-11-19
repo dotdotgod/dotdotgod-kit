@@ -70,7 +70,7 @@ Writable database connections use WAL and a bounded busy timeout. Source replace
 
 ## Project Workflow Boundaries
 
-`project_load` requires a bounded documentation tree; semantic query is optional. A missing local runtime returns `query: null`, `EMBEDDING_RUNTIME_MISSING`, and a confirmation-gated install offer; other query failures use `QUERY_UNAVAILABLE`. Load never auto-installs; refusal continues map-only. Standalone query fails visibly. Rejected Load keeps the hook gate; successful PostToolUse may clear it after map success. Pi's pending-only lifecycle remains separate.
+`project_load` requires a bounded documentation tree; semantic query is optional. A missing local runtime returns `query: null`, `EMBEDDING_RUNTIME_MISSING`, and a confirmation-gated install offer; other query failures use `QUERY_UNAVAILABLE`. Load never auto-installs; refusal continues map-only. Standalone query fails visibly. Load success or failure does not gate Claude/Codex shell or write tools. Pi's pending-only lifecycle remains separate.
 
 `project_impact` accepts 1–20 paths and returns compact evidence, checked paths and impactStatus. Pi/OpenCode supply contextSessionId per call; successful reviews clear unchanged pending revisions, failures retain them. State lives in .dotdotgod/context/impact.sqlite with a bounded status tool. Pending never blocks tools; see [advisory contract](OPENCODE_ADAPTER.md#advisory-impact). Claude/Codex hooks below remain unchanged.
 
@@ -84,8 +84,8 @@ Claude/Codex bundle shared hooks, MCP and CLI. Extracted runtimes require no anc
 
 Claude Code and Codex hooks keep project/session state under `.dotdotgod/context/runtime/`. Declared roots override transient cwd. Otherwise hooks find nearest same-session ancestor state; only SessionStart creates state at cwd. Unidentified events fail open.
 
-- Session start marks project load as required.
-- Substantive shell or write tools are denied until project load succeeds.
+- Session start offers optional project-memory guidance; no load-required flag is set.
+- Shell and write tools remain available without Load; legacy loadRequired state is discarded.
 - Successful edits record project-contained pending paths, not file hashes; legacy hash-valued entries remain readable.
 - Broad test, build, lint, verify, commit, push, publish, and deploy commands are denied while impact is pending.
 - Denial identifies the required MCP tool; the model calls it and retries the original operation.

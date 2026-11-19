@@ -94,7 +94,7 @@ Responsibilities:
 
 - Claude plugin manifest and installable resources
 - generated self-contained core stdio MCP server and CLI artifacts for generic context tools and project load/impact/initialize operations
-- packaged lifecycle hooks for load-required and impact-pending deny/retry routing
+- packaged lifecycle hooks for optional Load advice and impact-pending gates
 - project-memory initialization skill and `/dd:init` command
 - project loading skill and `/dd:load` command
 - planning workflow guidance using Claude-native command and skill components
@@ -119,7 +119,7 @@ Responsibilities:
 
 - Codex plugin manifest and package resources
 - generated self-contained core stdio MCP server and CLI artifacts plus local MCP configuration for project workflows
-- trust-reviewed lifecycle hooks for load-required and impact-pending deny/retry routing
+- trust-reviewed lifecycle hooks for optional Load advice and impact-pending gates
 - reusable skills for initialization, loading, planning, impact-review, and documentation clarity workflows
 - generated Load guidance using `dotdotgod map` for the tree and `query` for focus
 - `AGENTS.md`-first instruction flow
