@@ -6,6 +6,8 @@ Use reports for evidence snapshots, measurements, and interpretations. Route dur
 
 ## Index
 
+- `RELEASE_0_10_1.md`: remove mandatory Claude/Codex project-memory load gating; retain optional advice and impact checks.
+
 - `RELEASE_0_10_0.md`: personal remembered Pi command approvals, exact entry identity, admission checks and release limits.
 
 - `RELEASE_0_9_1.md`: fix clean-checkout archive-index link; retain Plan Mode behavior without rewriting 0.9.0.
