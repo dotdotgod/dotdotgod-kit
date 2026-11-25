@@ -1,0 +1,56 @@
+{
+  "name": "@dotdotgod/antigravity",
+  "version": "0.11.0",
+  "description": "Antigravity plugin for dotdotgod project memory workflows.",
+  "type": "module",
+  "license": "Elastic-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "agent-memory",
+    "ai-coding-agent",
+    "antigravity",
+    "context-curation",
+    "documentation",
+    "dotdotgod",
+    "graph-impact",
+    "planning",
+    "plugin",
+    "project-memory",
+    "traceability"
+  ],
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "devDependencies": {
+    "@dotdotgod/context": "workspace:*",
+    "esbuild": "0.27.3"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "verify": "pnpm run test",
+    "pack:dry-run": "pnpm pack --dry-run --json"
+  },
+  "files": [
+    "plugin.json",
+    "mcp_config.json",
+    "hooks.json",
+    "rules",
+    "assets",
+    "skills",
+    "scripts",
+    "mcp",
+    "README.md",
+    "LICENSE"
+  ],
+  "homepage": "https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/antigravity#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dotdotgod/dotdotgod-kit.git",
+    "directory": "packages/antigravity"
+  },
+  "bugs": {
+    "url": "https://github.com/dotdotgod/dotdotgod-kit/issues"
+  }
+}

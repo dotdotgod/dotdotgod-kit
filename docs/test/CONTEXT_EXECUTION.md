@@ -2,50 +2,33 @@
 
 ## Automated Coverage
 
+`packages/context/test/context.test.mjs` covers end-to-end execution and retrieval contracts: bounded overlapping generic chunks, FTS5 indexing/ranked search/scope filters/purge, small direct vs large indexed output, ordered single/multi `execute` batches under concurrency, file ingestion without raw source bytes, and destructive purge selector validation.
 
-`packages/context/test/context.test.mjs` covers the existing end-to-end contracts:
+Focused unit and hardening suites cover:
 
-- bounded overlapping generic chunks;
-- FTS5 indexing, ranked search, scope filters, and source purge;
-- small direct output and large indexed output;
-- ordered single/multi execute results under concurrency, required arrays, and rejection of old inputs;
-- file processing without returning source bytes;
-- destructive purge selector validation.
+- `impact-path.test.mjs` (`IP-01`..`IP-04`): `resolveDocumentationRoot` validation (`256 KiB` pass vs `+1 B` fallback, symlink/dir/corrupt JSON, traversal/dot-segment/control-char/external-symlink rejections falling back to `'docs'`), `impactPath` exclusions (`<docRoot>/(plan|archive)` and 6 build/cache dirs while preserving `<docRoot>/post`), and `impactReminder` post-`JSON.stringify` C1/separator/bidi escaping, 200-char/8-item caps (`status.count - shown.length`), `"does not block"`, and untrusted-data notice.
+- `impact-state.test.mjs` + `retention.test.mjs` (`IS-01`..`IS-05`): `impact.sqlite` v2 schema (`journal_mode === 'wal'`, `pending.notified`, 5-column `plan_notices`, no `pending(expires_at)` index), preserved legacy v1→v2 `DROP COLUMN` read-time migration, read-only fast path (`write = false` creates nothing on missing DB and filters `expires_at > now` without write locks), `mark()` `{ becameNonEmpty }`, `clearPaths()` session isolation, 2-process `claimUnnotified()` concurrency (disjoint claims + re-edit reset), and `plan_notices` dedup/clear/24h TTL.
+- `hooks.test.mjs` (`HK-01`..`HK-05`) and `hooks-antigravity.test.mjs` (`AG-01`..`AG-03`): non-blocking advisory hooks across Claude Code, Codex, and Antigravity. See [`HOOKS.md`](HOOKS.md) and [`ANTIGRAVITY_ADAPTER.md`](ANTIGRAVITY_ADAPTER.md).
+- `chunks.test.mjs`, `provenance.test.mjs`, `rank.test.mjs`, `search-recovery.test.mjs`: structural Markdown/JSON chunking, operation-owned trust/spoof prevention, RRF ranking, and failure diagnostic/wildcard browsing ([recovery contract](../spec/CONTEXT_SEARCH_RECOVERY.md)).
+- `safe-fetch.test.mjs`, `directory-ingestion.test.mjs`, `html-normalize.test.mjs`, `environment-policy.test.mjs`: DNS/peer/redirect/byte limits, directory traversal budgets, active HTML stripping, and child environment filtering.
+- `doctor.test.mjs`, `store-operations.test.mjs`, `phase3.test.mjs`, `package-audit.test.mjs`: read-only diagnostics, WAL/transactional rollback, migration ledger, durable job runner, backup-before-heal, and package export/license audit.
 
-Focused hardening suites cover:
+`packages/context/test/mcp.test.mjs` + `presentation.test.mjs` (`MC-01`..`MC-02`) start the real stdio server and verify:
 
-- `chunks.test.mjs`: Markdown headings/fences, JSON key paths, deterministic fallback, depth policy, Unicode, and UTF-8 byte bounds;
-- `provenance.test.mjs`: hashes, operation-owned trust, spoof prevention, malformed metadata, and legacy defaults;
-- `rank.test.mjs`: normalized terms, RRF, deterministic ties, title/path coverage, proximity, and bounded explanations;
-- `safe-fetch.test.mjs`: URL/address policy, every DNS answer, redirects, wire/decoded limits, MIME/encoding rejection, timeout, and abort;
-- `doctor.test.mjs`: no-network read-only checks, existing schema inspection, and incompatible schema failure without repair;
-- `package-audit.test.mjs`: package exports, declared files, license, and absence of a `context-mode` dependency or known copied artifact;
-- `store-operations.test.mjs`: WAL, busy timeout, reopen, concurrent access, transactional failure rollback, incompatible/corrupt databases, and privacy-safe statistics;
-- `environment-policy.test.mjs`: platform-specific reserved variables, overrides, deletion, validation, deterministic metadata, and value secrecy;
-- `directory-ingestion.test.mjs`: external directory/file access, symlinks, special files, deterministic filters, cancellation, replacement checks, and every traversal budget;
-- `html-normalize.test.mjs`: structural extraction, active/hidden content removal, MIME/charset policy, malformed input, and UTF-8 byte bounds.
+- MCP initialization, full 19-tool `tools/list`, and clean JSON-RPC stdout;
+- **MCP `roots/list` workspace resolution**: resolving the default project root from client `roots/list` (and `notifications/roots/list_changed`) when `DOTDOTGOD_PROJECT_ROOT` is unset;
+- **`sessionBound` & `guidance` contract** (in an isolated `test()` with fresh temp root): unbound `impact_status` and `project_impact.impactStatus` return `sessionBound: false` with static single-line `guidance` (`<= 120` chars, no path/UUID leakage) without creating `impact.sqlite`; bound sessions (`contextSessionId` / `DOTDOTGOD_SESSION_ID` / `session_resume`) return `sessionBound: true` with `guidance: undefined`; `presentation.test.mjs` verifies inline `guidance` rendering.
 
-`packages/context/test/mcp.test.mjs` starts the real stdio server and verifies:
+`packages/context/test/adapters.test.mjs` starts Claude Code, Codex, OpenCode, and Antigravity MCP wrappers outside their plugin directories and verifies all 19 tools plus `doctor`.
 
-- MCP initialization succeeds;
-- `tools/list` exposes the complete context and project workflow surface;
-- a structured tool call succeeds without protocol stdout corruption.
+`packages/context/test/adapter-packaging.test.mjs` (`AP-02`) packs and extracts Claude Code, Codex, and Antigravity tarballs outside workspace dependency ancestry, verifying advisory hook contracts (no `PreToolUse`, no `runtime/*.json`, no `deny`), malformed-input fail-open, MCP 19-tool startup, focused `project_load` with bounded query degradation, CLI syntax, link/path leakage, and artifact sizes.
 
-`packages/context/test/adapters.test.mjs` starts both Claude Code and Codex MCP wrappers from working directories outside their plugin directories and verifies the complete context, project-workflow, session, ingestion-job, healing, and doctor tool surface.
-
-`packages/context/test/adapter-packaging.test.mjs` packs and extracts both adapters outside workspace dependency ancestry, audits links and local-path leakage, blocks runtime package-manager/network commands, executes valid and malformed hook input, initializes MCP, lists the complete tool surface, calls project load, executes the packaged CLI entry, and reports compressed and unpacked sizes.
-
-Pi verification covers alias-free MCP registration, envelopes and nested calls. The host owns child lifecycle and cancellation. See [OpenCode coverage](OPENCODE_ADAPTER.md).
-
+Pi verification covers alias-free MCP registration, envelopes, and nested calls. See [OpenCode coverage](OPENCODE_ADAPTER.md), [Hermes coverage](HERMES_ADAPTER.md), and [Antigravity coverage](ANTIGRAVITY_ADAPTER.md).
 
 ## Pi Native And Codemode Workflows
 
-- `packages/pi/test/context-workflow.test.ts` exercises MCP tools through public Pi SDK sessions: small direct auto output, large auto/indexed retention and source search, file ingestion without raw bytes, source/scope isolation, no-match, discard, nonzero diagnostics, timeout, and policy-blocked calls.
-- `packages/pi/test/context-codemode.test.ts` runs real codemode scripts through the same SDK: MCP tool/namespace discovery, envelope access, execute/index/search chaining, bounded final projections, namespace guidance, nonzero/no-match/malformed JSON distinctions, nested hook calls, policy rejection, and active-child abort.
-- `test/support/context-workflow.ts` uses an isolated loader, real host MCP extension, in-memory session and faux stream. No paid model or ambient settings are needed. The fixture explicitly awaits the MCP shutdown hook because SDK dispose alone does not dispatch it.
-- `context-tools.test.ts`: automatic-load retry, exactly-once completion, compact narrative, baseline routing and Help guidance.
-- Development Pi SDK packages are pinned to `1.0.0`. Tests use public APIs, not a globally installed path. Existing extension tests remain required migration checks.
-- Deterministic streams prove workflow and guidance delivery, not actual model adoption. Evaluate real native/codemode tool choices separately with matched baseline/revised prompts, fixture answers, output-boundary measurements, and explicit model/settings records.
+- `packages/pi/test/context-workflow.test.ts` and `context-codemode.test.ts` run public Pi SDK (`1.0.0`) sessions with an isolated loader, real host MCP extension, and faux stream: direct/indexed output, source/scope isolation, codemode envelopes, nested hooks, policy rejection, and abort/shutdown cleanup.
+- `context-tools.test.ts`: automatic-load retry, compact narrative, baseline routing, and Help guidance.
 
 ```bash
 node --test --experimental-strip-types packages/pi/test/context-workflow.test.ts packages/pi/test/context-codemode.test.ts
@@ -53,51 +36,23 @@ node --test --experimental-strip-types packages/pi/test/context-workflow.test.ts
 
 ## Opt-In Model Selection Evaluation
 
-`packages/pi/scripts/evaluate-context-tools.mjs` runs four disposable fixture tasks per invocation using the configured model and available credentials. It is not a CI test and may incur model usage charges. Supply `baseline|revised`, `native|codemode`, and repetition `1|2`; eight invocations cover 32 trials. It requires the ignored task baseline captures, uses isolated session settings, and never enables codemode globally. Raw local artifacts are written under `.dotdotgod/context/evaluation/`.
-
-Compare eligible command selection, source-scoped retrieval, fixture-answer correctness, and outer model-visible result bytes. Inner codemode results are not model-visible bytes. Baseline/revised trials use the same upgraded SDK, host-managed MCP transport, current names/envelopes, and model; guidance is the changed condition. Historical captures are not rewritten or directly comparable to this transport. Small samples and sequential conditions do not establish guaranteed adoption, causality, token savings, or improved correctness. Failed retrieval must not be interpreted as absent diagnostics.
-
-## Failure Search Recovery
-
-`packages/context/test/search-recovery.test.mjs` checks middle failure retrieval and filtered, bounded `*` browsing. Public Pi tests check native/codemode calls and prompt guidance. See [recovery contract and cases](../spec/CONTEXT_SEARCH_RECOVERY.md); excerpts never prove absent diagnostics.
+`packages/pi/scripts/evaluate-context-tools.mjs` runs disposable fixture tasks against a configured model (not a CI test; may incur usage charges). Compare eligible command selection, source-scoped retrieval, fixture accuracy, and model-visible bytes; failed retrieval never proves absent diagnostics.
 
 ## Required Regression Cases
 
-- `packages/context/test/retention.test.mjs`: fixed-day boundaries, jobs and migration.
+Preserve focused coverage for:
 
-Add or preserve focused cases for:
-
-- nonzero exit, spawn failure, timeout, abort, process-group cleanup, and identical environment policy across command/batch/file execution;
-- stdout/stderr identity, Unicode, huge lines, binary-like bytes, JSON, logs, and Markdown;
-- automatic direct/indexed threshold and response-size bound;
-- concurrent session/project isolation, bounded SQLite busy behavior, atomic expiry/purge, and reopen compatibility;
-- TTL expiry and scoped purge;
-- legacy provenance defaults, trust spoof prevention, and non-authoritative search rendering;
-- scope/session/source filtering before ranking fusion;
-- Markdown/JSON deterministic structural chunking and byte bounds;
-- directory root escape, symlink defaults, replacement races, special files, cancellation, deterministic filters, and aggregate limits;
-- HTML active/hidden content, malformed input, MIME/charset, deterministic output, and preserved external-untrusted provenance;
-- URL protocols, credentials, blocked IPv4/IPv6 classes, all DNS answers, socket peer checks, and redirects;
-- HTTP errors, MIME/encoding rejection, timeout, abort, wire limits, and decompressed limits;
-- doctor no-network/no-repair behavior and schema compatibility;
-- initializer dry-run default and explicit write confirmation;
-- project-load query and project-impact 20-path bound;
-- hook recursion bypass, retry cap, unsupported-tool gaps, stable state routing across differing or missing cwd values, declared-root precedence, same-session cross-project isolation, canonical-root impact paths, project-external scratchpad pruning, acknowledgement-based impact clearing, failure warning without retry loops, and re-edit gating after impact acknowledgement;
-- packed Claude/Codex focused Load without ancestor `node_modules`, including bounded query degradation without `ERR_MODULE_NOT_FOUND`, failed-Load gate retention, successful Load plus direct PostToolUse runtime clearance, and Claude matcher coverage for plugin-qualified MCP tool names.
+- process nonzero exit, spawn failure, timeout, abort, process-group cleanup, and environment policy across command/batch/file execution;
+- direct/indexed output threshold, Unicode/binary-like bytes, and response-size bounds;
+- concurrent SQLite WAL/busy handling, fixed 24-hour TTL expiry, atomic purge, and v1→v2 migration;
+- provenance spoof prevention, `instructionAuthority: "none"`, scope filtering before RRF, and structural chunk bounds;
+- directory escape/symlink/special-file limits, HTML stripping, safe-fetch DNS/redirect/byte/MIME limits, and read-only `doctor`;
+- `impact.sqlite` v2 advisory hooks: invalid session fail-open, symlinked config/marker rejection, workspace segment boundaries, 2-process `claimUnnotified`, `clearPaths` on success vs retention on `isError`/error, third-party MCP rejection, legacy `runtime/*.json` ignore, and Antigravity Option C-2 `readArtifactBounded` safety;
+- packed Claude Code, Codex, and Antigravity tarballs without ancestor `node_modules`.
 
 ## Manual Adapter Verification
 
-Follow [`manual-smoke/CROSS_AGENT_ADAPTERS.md`](manual-smoke/CROSS_AGENT_ADAPTERS.md).
-
-Verify Claude/Codex outside the plugin directory and with varying hook cwd values. Confirm Load clears the original root's denial state, MCP starts, hooks respect host trust, and large output is indexed. For Claude, verify actual plugin-qualified PostToolUse dispatch; direct runtime execution alone is not evidence of host dispatch.
-
-Verify Pi's host-managed MCP connects, no forwarding aliases remain, raw Code Mode envelopes work, and shutdown reaps the child. Confirm pending impact is advisory while Plan Mode restrictions remain. Retrieved text remains data, legacy provenance remains unknown, and doctor performs no repair or network activity.
-
-Safe-fetch integration tests must use controlled fixtures with an explicit private-network test override. Production defaults must continue to reject private and reserved destinations.
-
-## Phase 3 Regression Coverage
-
-Automated coverage verifies typo retrieval with SQL scope filtering, migration ledger idempotence, restart job recovery, explicit backup-before-heal, durable job completion, allowlist name-only reporting, opaque session validation, absent-by-default renderer behavior, rendered byte limits, and untrusted provenance. MCP and Pi registration tests verify tool/schema parity.
+Follow [`manual-smoke/CROSS_AGENT_ADAPTERS.md`](manual-smoke/CROSS_AGENT_ADAPTERS.md) for Claude Code, Codex, Antigravity, Hermes, and Pi live verification. Safe-fetch integration tests require an explicit private-network override in controlled fixtures; production defaults always reject private/reserved addresses.
 
 ## Commands
 
@@ -106,6 +61,8 @@ pnpm --filter @dotdotgod/context verify
 pnpm --filter @dotdotgod/pi verify
 pnpm --filter @dotdotgod/claude-code verify
 pnpm --filter @dotdotgod/codex verify
+pnpm --filter @dotdotgod/antigravity verify
+pnpm --filter @dotdotgod/hermes verify
 pnpm run verify:generated
 node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index
 pnpm run pack:dry-run

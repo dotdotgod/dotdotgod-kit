@@ -7,11 +7,11 @@ description: Impact Review for dotdotgod project memory in Hermes CLI and messag
 
 # Impact Review
 
-Use the operator-authorized selected repository. Prefer project_initialize, project_load and project_impact from the dotdotgod toolset for their respective workflows. Context tools use the shared MCP catalog names without adapter aliases; inspect content, structuredContent and isError. Do not bypass host permissions or pending impact gates. Hermes native delegate_task handles delegation; this adapter has no Plan Mode.
+Use the operator-authorized selected repository. Prefer project_initialize, project_load and project_impact from the dotdotgod toolset for their respective workflows. Context tools use the shared MCP catalog names without adapter aliases; inspect content, structuredContent and isError. Pending impact is advisory and never blocks tools; preserve host permissions. Hermes native delegate_task handles delegation; this adapter has no Plan Mode.
 
 ## Goal
 
-Review task-relevant source, config, and documentation changes with dotdotgod impact evidence before broad verification, commits, pushes, publishing, or final handoff. Claude Code and Codex use this advisory workflow; trusted runtime or project hooks may enforce a stricter boundary.
+Review task-relevant source, config, and documentation changes with dotdotgod impact evidence before broad verification, commits, pushes, publishing, or final handoff. All adapters use this advisory workflow without blocking tools; trusted local hooks may optionally enforce a stricter project boundary.
 
 ## Workflow
 

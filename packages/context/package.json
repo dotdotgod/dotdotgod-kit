@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/context",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "Local-first MCP execution, indexing, and retrieval runtime for dotdotgod adapters.",
   "type": "module",
   "license": "Elastic-2.0",
@@ -19,11 +19,12 @@
     "./server": "./src/server.mjs",
     "./bin/server.mjs": "./bin/server.mjs",
     "./hooks": "./src/hooks.mjs",
+    "./hooks/antigravity": "./src/hooks-antigravity.mjs",
     "./impact": "./src/impact-state.mjs"
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "verify": "node --check bin/server.mjs && node --check src/server.mjs && pnpm run test",
+    "verify": "node --check bin/server.mjs && node --check src/server.mjs && node --check src/impact-path.mjs && node --check src/impact-state.mjs && node --check src/hook-state.mjs && node --check src/hooks.mjs && node --check src/hooks-antigravity.mjs && pnpm run test",
     "pack:dry-run": "pnpm pack --dry-run --json"
   },
   "files": [

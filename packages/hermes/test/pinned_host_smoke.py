@@ -44,7 +44,7 @@ with tempfile.TemporaryDirectory(prefix="dd-hermes-host-") as tmp:
     manager = PluginManager()
     manager.discover_and_load()
     assert len(manager._plugin_tool_names) == 20, [(name, item.error) for name, item in manager._plugins.items()]
-    assert len(manager._plugin_skills) == 4
+    assert len(manager._plugin_skills) == 3
 
     def hook(name, **kwargs):
         return manager.invoke_hook(name, **kwargs)
@@ -92,17 +92,22 @@ with tempfile.TemporaryDirectory(prefix="dd-hermes-host-") as tmp:
         again = hook("pre_llm_call", session_id="A", platform="telegram", sender_id="alice", user_message="continue", turn_id="2")
         assert all("Call project_load once" not in item.get("context", "") for item in again)
         Path(roots["a"], "src/api.ts").write_text("changed\n")
-        blocked = hook("pre_tool_call", session_id="A", tool_name="terminal", args={"command": "git push"}, task_id="A")
-        assert any(item.get("action") == "block" for item in blocked), blocked
+        hook("post_tool_call", session_id="A", tool_name="write_file", args={"path": "src/api.ts"}, result='{"ok": true}', status="ok", task_id="A")
+        advisory = hook("pre_llm_call", session_id="A", platform="telegram", sender_id="alice", user_message="continue", turn_id="3")
+        assert any("[DOTDOTGOD IMPACT PENDING — ADVISORY]" in item.get("context", "") and "src/api.ts" in item.get("context", "") for item in advisory), advisory
+        not_blocked = hook("pre_tool_call", session_id="A", tool_name="terminal", args={"command": "git push"}, task_id="A")
+        assert all(item.get("action") != "block" for item in not_blocked), not_blocked
         impact = call("project_impact", {"paths": ["src/api.ts"]}, "A")
         assert impact["structuredContent"]["ok"], impact
-        allowed = hook("pre_tool_call", session_id="A", tool_name="terminal", args={"command": "git push"}, task_id="A")
-        assert all(item.get("action") != "block" for item in allowed), allowed
+        assert call("impact_status", {}, "A")["structuredContent"]["count"] == 0
         Path(roots["a"], "src/api.ts").write_text("changed again\n")
-        assert any(item.get("action") == "block" for item in hook("pre_tool_call", session_id="A", tool_name="terminal", args={"command": "git push"}, task_id="A"))
+        hook("post_tool_call", session_id="A", tool_name="write_file", args={"path": "src/api.ts"}, result='{"ok": true}', status="ok", task_id="A")
+        reopened = call("impact_status", {}, "A")["structuredContent"]
+        assert reopened["count"] == 1 and reopened["pending"] == [{"path": "src/api.ts"}], reopened
+        assert all(item.get("action") != "block" for item in hook("pre_tool_call", session_id="A", tool_name="terminal", args={"command": "git push"}, task_id="A"))
         print(json.dumps({"pin": PIN, "installation": "extracted package, isolated real PluginManager profile",
-                          "registeredTools": 20, "registeredSkills": 4, "cliAndGatewayHooks": "passed",
-                          "concurrentRootsAndSessions": "passed", "impactDenyClearReedit": "passed",
+                          "registeredTools": 20, "registeredSkills": 3, "cliAndGatewayHooks": "passed",
+                          "concurrentRootsAndSessions": "passed", "impactAdvisoryClearReedit": "passed",
                           "externalMessagingAndModelCalls": "not performed"}, indent=2))
     finally:
         for sid in ("child", "cli", "A", "B", "unbound"):

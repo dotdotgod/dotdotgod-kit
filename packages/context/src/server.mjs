@@ -1,7 +1,10 @@
 import { formatToolMarkdown } from './presentation.mjs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { RootsListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
+import { existsSync, statSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { ContextStore, contextDbPath, healContextDatabase } from './store.mjs';
 import { executeBatch, executeFile } from './execute.mjs';
 import { fetchAndIndex, indexFile } from './content.mjs';
@@ -14,12 +17,17 @@ import { PHASE3_TOOL_INPUT_SCHEMAS } from './tool-contracts.mjs';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { ImpactState, withImpactReview } from './impact-state.mjs';
 
-const root = process.env.DOTDOTGOD_PROJECT_ROOT || process.cwd();
+const UNBOUND_IMPACT_GUIDANCE = 'Session unbound; hook-tracked pending paths are not visible here. Pass paths explicitly to project_impact.';
+const explicitRoot = process.env.DOTDOTGOD_PROJECT_ROOT;
+let root = explicitRoot || process.cwd();
+let sessionBound = Boolean(process.env.DOTDOTGOD_SESSION_ID);
 let sessionId = resolveSessionId(process.env.DOTDOTGOD_SESSION_ID);
 const sessions = new AsyncLocalStorage();
-const currentSession = () => sessions.getStore() ?? sessionId;
+const currentSession = () => sessions.getStore()?.id ?? sessionId;
+const currentBound = () => sessions.getStore()?.bound ?? sessionBound;
 let contextStore;
 let jobRunner;
+let rootsSyncPromise = Promise.resolve();
 function getStore() {
   contextStore ??= new ContextStore(root);
   return contextStore;
@@ -28,7 +36,29 @@ function getJobs() {
   jobRunner ??= new IngestionJobRunner(getStore());
   return jobRunner;
 }
+function unboundImpactStatus() {
+  return { ok: true, count: 0, pending: [], truncated: false, sessionBound: false, guidance: UNBOUND_IMPACT_GUIDANCE };
+}
 const server = new McpServer({ name: 'dotdotgod-context', version: '0.7.1' });
+
+async function syncRootsFromClient() {
+  if (explicitRoot || !server.server.getClientCapabilities()?.roots) return;
+  const response = await server.server.listRoots();
+  const entry = response?.roots?.find((item) => typeof item?.uri === 'string' && item.uri.startsWith('file://'));
+  if (!entry) return;
+  const nextRoot = fileURLToPath(entry.uri);
+  if (!existsSync(nextRoot) || !statSync(nextRoot).isDirectory() || nextRoot === root) return;
+  await jobRunner?.close();
+  jobRunner = undefined;
+  contextStore?.close();
+  contextStore = undefined;
+  root = nextRoot;
+}
+server.server.oninitialized = () => { rootsSyncPromise = syncRootsFromClient().catch(() => {}); };
+server.server.setNotificationHandler(RootsListChangedNotificationSchema, async () => {
+  rootsSyncPromise = syncRootsFromClient().catch(() => {});
+  await rootsSyncPromise;
+});
 
 const scopeSchema = z.enum(['transient', 'session', 'project']).optional();
 const outputModeSchema = z.enum(['auto', 'direct', 'indexed', 'discard']).optional();
@@ -54,9 +84,10 @@ function register(name, description, inputSchema, handler, annotations) {
   const schema = { ...inputSchema, contextSessionId: z.string().optional().describe('Host session identity; adapters supply this for shared MCP connections.') };
   server.registerTool(name, { description, inputSchema: z.object(schema).strict(), annotations }, async (input, extra) => {
     try {
+      await rootsSyncPromise;
       const { contextSessionId, ...args } = input;
-      return await sessions.run(contextSessionId ? validateSessionId(contextSessionId) : sessionId,
-        async () => success(await handler(args, extra), name));
+      const context = { id: contextSessionId ? validateSessionId(contextSessionId) : sessionId, bound: Boolean(contextSessionId) || sessionBound };
+      return await sessions.run(context, async () => success(await handler(args, extra), name));
     } catch (error) { return failure(error, name); }
   });
 }
@@ -101,7 +132,7 @@ function zodFromContract(schema) {
   throw new Error('Unsupported shared tool contract schema.');
 }
 const phase3Shape = (name) => zodFromContract(PHASE3_TOOL_INPUT_SCHEMAS[name]).shape;
-register('session_resume', 'Use an explicit opaque session ID for subsequent context operations on a dedicated connection; historical sessions are not listed. Shared connections should supply contextSessionId per call instead.', phase3Shape('session_resume'), (input) => { sessionId = validateSessionId(input.sessionId); return { ok: true, sessionId }; });
+register('session_resume', 'Use an explicit opaque session ID for subsequent context operations on a dedicated connection; historical sessions are not listed. Shared connections should supply contextSessionId per call instead.', phase3Shape('session_resume'), (input) => { sessionId = validateSessionId(input.sessionId); sessionBound = true; return { ok: true, sessionId }; });
 register('ingestion_job_start', 'Queue one durable bounded background index or strict-fetch ingestion job.', phase3Shape('ingestion_job_start'), (input) => {
   const runner = getJobs();
   runner.sessionId = currentSession();
@@ -122,13 +153,18 @@ register('embedding_status', 'Inspect the optional persistent embedding runtime 
 register('embedding_install', 'After explicit user approval, install the fixed optional embedding runtime persistently. Uses network and dependency install scripts.', { root: z.string().optional(), confirm: z.literal(true) }, (input) => projectEmbeddingInstall(projectInput(input)), { destructiveHint: true, openWorldHint: true });
 register('project_impact', 'Run bounded graph impact for up to 20 changed paths.', {
   root: z.string().optional(), paths: z.array(z.string()).min(1).max(20),
-}, (input, extra) => {
+}, async (input, extra) => {
   const args = projectInput(input);
-  return withImpactReview(args.root, currentSession(), args.paths, () => projectImpact({ ...args, signal: extra.signal }), extra.signal);
+  if (!currentBound()) {
+    const result = await projectImpact({ ...args, signal: extra.signal });
+    return { ...result, checked: result.ok === true ? args.paths : [], impactStatus: unboundImpactStatus() };
+  }
+  const reviewed = await withImpactReview(args.root, currentSession(), args.paths, () => projectImpact({ ...args, signal: extra.signal }), extra.signal);
+  return { ...reviewed, impactStatus: { ...reviewed.impactStatus, sessionBound: true } };
 }, { readOnlyHint: true });
 register('impact_status', 'Read this host session\'s advisory pending impact paths. Does not run reviews or clear pending state.', {
   limit: z.number().int().min(1).max(50).optional(),
-}, (input) => new ImpactState(root, currentSession()).status(input.limit), { readOnlyHint: true });
+}, (input) => (currentBound() ? { ...new ImpactState(root, currentSession()).status(input.limit), sessionBound: true } : unboundImpactStatus()), { readOnlyHint: true });
 register('project_initialize', 'Initialize project memory; dry-run is default and writes require explicit confirmation.', {
   root: z.string().optional(), dryRun: z.boolean().optional(), confirmWrite: z.boolean().optional(), projectName: z.string().optional(), template: z.string().optional(),
 }, (input) => projectInitialize(projectInput(input)), { destructiveHint: true });

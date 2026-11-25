@@ -4,25 +4,20 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 
 ## Index
 
-- `SKILL_INSTALLATION.md`: standalone Skills CLI asset checks and five-host native discovery smoke matrix.
-
+- `ANTIGRAVITY_ADAPTER.md`: Antigravity plugin manifest/resource checks, advisory hooks (`AG-01`..`AG-03`), `AP-01`/`AP-02` packaging, `agy plugin validate --strict`, and live CLI/App smoke scenarios.
+- `SKILL_INSTALLATION.md`: standalone Skills CLI asset checks and native discovery smoke matrix.
 - `PI_CONTEXT_ROOT.md`: parent environment isolation and host impact session regressions.
-
 - `OBSIDIAN_DEBUG.md`: isolated real-app debugging commands and graph acceptance checks.
-
-- `NATIVE_PLAN_STORAGE.md`: opt-in native plan settings and actual host verification.
-
-- `OPENCODE_ADAPTER.md`: OpenCode native plan, registry, packaged MCP and advisory impact checks.
-
+- `NATIVE_PLAN_STORAGE.md`: Claude Code/Codex opt-in native plan settings, Antigravity Option C-2 artifact observation, and host verification.
+- `OPENCODE_ADAPTER.md`: OpenCode native plan, registry, packaged MCP, and advisory impact checks.
 - `REFERENCE_SCOPE_VALIDATION.md`: reference extraction, scope combinations, layout examples, and traceability isolation regressions.
-
 - `README.md`: test documentation scope, verification command cheat sheet, and local table of contents.
 - `MEMORY_AREA_CONFIG.md`: memory-area config validation and graph/Load-query policy smoke checks.
 - `TRACEABILITY_CONFIG.md`: configurable traceability enforcement validation smoke checks.
 - `VALIDATION_CONFIG.md`: markdown validation budget and size-check exclusion coverage.
 - `CONTEXT_MEASUREMENT.md`: context measurement commands and runtime context debug smoke checks.
-- `HERMES_ADAPTER.md`: native registration, concurrent MCP routing, impact gates, packed pinned-host smoke and external messaging acceptance.
-- `CONTEXT_EXECUTION.md`: automated and manual coverage for local execution, FTS5 retrieval, MCP protocol, hooks, and adapter parity.
+- `HERMES_ADAPTER.md`: native registration, concurrent MCP routing, Path 1 non-blocking advisory impact (`HM-01`..`HM-03a`), packed pinned-host smoke, and external messaging acceptance.
+- `CONTEXT_EXECUTION.md`: automated and manual coverage for local execution, FTS5 retrieval, `impact.sqlite` v2, MCP `roots/list` and `sessionBound`, advisory hooks, and adapter packaging.
 - `COMMAND_GUIDANCE.md`: environment-aware query and project command guidance checks.
 - `IMPACT_RANKING_CONFIG.md`: fixed graph-impact scoring, non-blocking compatibility config, request-local vector overlay, compact output, and selection-noise checks.
 - `IMPACT_GRAPH_EXPLORER.md`: standalone traceability graph API, shared filtering, browser interactions, and workspace verification.
@@ -30,28 +25,21 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `CONFIG_COMMAND.md`: project-level config show/init command checks.
 - `CONFIG_TEMPLATES.md`: initialization template selection, isolation, shadowing, packaging, and fallback checks.
 - `EMBEDDING_CONFIG.md`: provider precedence, transport, credentials, dynamic dimensions, and cache invalidation checks.
-- `HOOKS.md`: optional Claude Code and Codex hook documentation and package-resource smoke checks.
+- `HOOKS.md`: non-blocking advisory hook tests (`HK-01`..`HK-05`, `AG-01`..`AG-03`), `impact.sqlite` v2, legacy `runtime/*.json` ignore, and smoke checks.
 - `CLI_INTERFACE.md`: baseline CLI help/version and invalid invocation checks.
 - `CLI_MAP.md`: shared documentation-map command, depth, filtering, JSON, errors, side effects, and adapter parity checks.
-- `CODE_OUTLINE_QUERY.md`: multilingual extraction, hybrid retrieval, outline freshness and installed-parser smoke checks.
+- `CODE_OUTLINE_QUERY.md`: multilingual extraction, hybrid retrieval, outline freshness, and installed-parser smoke checks.
 - `REFERENCE_EXPANSION.md`: reference resolution and prompt-time expansion regression and smoke checks.
 - `MANUAL_SMOKE.md`: compatibility route for manual smoke tests.
 - `manual-smoke/README.md`: adapter, Plan Mode, initializer, publishing, and README landing smoke checks.
 
 ## Planning And Clarification Regressions
 
-- `packages/cli/test/skill-guidance.test.mjs`: generated initializer paths, host impact acknowledgment guidance, map-unavailable recovery, and standalone task/report scope separation.
-
-- `packages/cli/test/embedding-opt-in.test.mjs`: unconfigured keyword/structural retrieval, vector-request errors and explicit keyword override without embeddings.
-
-- `packages/pi/test/planning-context.test.ts`: bounded impact/reference refresh,
-  no automatic validation or Plan Mode compaction, one-shot delivery, and CLI
-  failure/execution-mode handling. Plan Mode utilities also cover old snapshots.
-- `packages/cli/test/pre-push.test.mjs`: composed gate order and failure exits,
-  single documentation-validation path, and standalone cache-gate guarantees.
-- `packages/cli/test/document-clarify.test.mjs`: standalone guidance, adapter absence and
-  removal of verified obsolete spec history while protecting current requirements
-  and historical archive meaning.
+- `packages/cli/test/skill-guidance.test.mjs`: generated initializer paths, host impact acknowledgment guidance, map-unavailable recovery, and standalone task/report scope separation across adapters.
+- `packages/cli/test/embedding-opt-in.test.mjs`: unconfigured keyword/structural retrieval, vector-request errors, and explicit keyword override without embeddings.
+- `packages/pi/test/planning-context.test.ts`: bounded impact/reference refresh, no automatic validation or Plan Mode compaction, one-shot delivery, and CLI failure/execution-mode handling.
+- `packages/cli/test/pre-push.test.mjs`: composed gate order and failure exits, single documentation-validation path, and standalone cache-gate guarantees.
+- `packages/cli/test/document-clarify.test.mjs`: standalone guidance, absence from all six adapters, and removal of verified obsolete spec history while protecting current requirements and historical archive meaning.
 
 ## Verification Command Cheat Sheet
 
@@ -80,6 +68,7 @@ pnpm run verify:generated
 pnpm run verify:types
 pnpm run verify:unit
 pnpm run verify:contract
+agy plugin validate --strict packages/antigravity
 pnpm --filter @dotdotgod/cli test
 pnpm run verify
 pnpm run pack:dry-run
@@ -110,29 +99,23 @@ Confirm JSON includes schema/refresh metadata, graph counts, bounded summaries, 
 ## Workspace Coverage
 
 - `@dotdotgod/shared`: private source resources for generated adapter commands, skills, and initializer files.
-- `@dotdotgod/pi`: generated initializer skill, extension syntax smoke checks, TypeScript typecheck, unit tests for pure plan/load helpers, and Pi package tarball dry-run.
 - `@dotdotgod/cli`: CLI syntax check, unit/e2e tests, repository validation, local multilingual query/vector-cache coverage, sharded graph-cache status checks, stale-index reindex coverage, and Leiden/fallback community output coverage.
-- `@dotdotgod/claude-code`: generated plugin commands/skills, plugin manifest/resource checks, and tarball dry-run.
-- `@dotdotgod/codex`: generated plugin skills, plugin manifest/skill checks, and tarball dry-run.
+- `@dotdotgod/context`: local execution, FTS5 retrieval, `impact.sqlite` v2, advisory hooks, MCP `roots/list` + `sessionBound`, and isolated tarball packaging checks.
+- `@dotdotgod/pi`: generated initializer skill, extension syntax smoke checks, TypeScript typecheck, unit tests, and tarball dry-run.
+- `@dotdotgod/opencode`: V2 plugin, native plan persistence, bundled MCP, advisory impact, and tarball dry-run.
+- `@dotdotgod/claude-code`: generated plugin commands/skills, advisory hook/manifest checks, and tarball dry-run.
+- `@dotdotgod/codex`: generated plugin skills, advisory hook/manifest checks, and tarball dry-run.
+- `@dotdotgod/hermes`: native Python lifecycle/advisory impact (`impact.py`), bundled MCP artifacts, resource tests, opt-in pinned-host smoke, and tarball dry-run.
+- `@dotdotgod/antigravity`: plugin manifest, `rules/AGENTS.md`, `assets/logo.svg`, generated skills, advisory hooks, Option C-2 `/plan`, `agy plugin validate --strict`, and tarball dry-run.
 
 ## Manual Smoke Tests
 
-See `manual-smoke/README.md` for adapter, Plan Mode, initializer, publishing, and README landing smoke checks. The legacy `MANUAL_SMOKE.md` file routes to that domain.
-
-Focused smoke docs:
-
-- `MEMORY_AREA_CONFIG.md`
-- `TRACEABILITY_CONFIG.md`
-- `VALIDATION_CONFIG.md`
-- `HOOKS.md`
-- `CONTEXT_MEASUREMENT.md`
+See `manual-smoke/README.md` for adapter, Plan Mode, initializer, publishing, and README landing smoke checks. The legacy `MANUAL_SMOKE.md` file routes to that domain. Focused smoke docs: `MEMORY_AREA_CONFIG.md`, `TRACEABILITY_CONFIG.md`, `VALIDATION_CONFIG.md`, `HOOKS.md`, `ANTIGRAVITY_ADAPTER.md`, `HERMES_ADAPTER.md`, and `CONTEXT_MEASUREMENT.md`.
 
 ## Husky Pre-Push Hook
-
-Pre-push hook:
 
 ```bash
 pnpm run verify && pnpm run verify:cache && pnpm run pack:dry-run:packages
 ```
 
-`verify:cache` runs docs validation, `dotdotgod index`, and `dotdotgod status`, so pre-push refreshes the ignored `.dotdotgod/` cache automatically before checking freshness.
+`verify:cache` runs docs validation, `dotdotgod index`, and `dotdotgod status`, refreshing the ignored `.dotdotgod/` cache automatically before checking freshness.

@@ -108,3 +108,20 @@ test('active job deadline aborts the renderer and late output cannot recreate ex
     assert.equal(store.stats().sources, 0);
   } finally { await runner.close(); store.close(); rmSync(root, { recursive: true, force: true }); }
 });
+
+test('plan_notices expire after fixed 24 hours without sliding and expired pending allows becameNonEmpty', t => {
+  t.mock.timers.enable({ apis: ['Date'], now: 1700000000000 });
+  const root = mkdtempSync(join(tmpdir(), 'retention-plan-notice-'));
+  const state = new ImpactState(root, 'host');
+  try {
+    writeFileSync(join(root, 'a.ts'), 'value');
+    assert.deepEqual(state.mark(['a.ts']), { becameNonEmpty: true });
+    state.recordPlanNotice('plan-hash-1');
+    t.mock.timers.tick(RETENTION_MS - 1);
+    assert.equal(state.status().count, 1);
+    t.mock.timers.tick(1);
+    assert.equal(state.status().count, 0);
+    assert.equal(state.claimPlanNotice(), false);
+    assert.deepEqual(state.mark(['a.ts']), { becameNonEmpty: true });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});

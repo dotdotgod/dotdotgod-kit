@@ -9,7 +9,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
-for (const adapter of ['claude-code', 'codex', 'opencode']) {
+for (const adapter of ['claude-code', 'codex', 'opencode', 'antigravity']) {
   test(`${adapter} MCP wrapper starts outside the plugin directory`, async () => {
     const root = mkdtempSync(join(tmpdir(), `dotdotgod-${adapter}-smoke-`));
     const transport = new StdioClientTransport({

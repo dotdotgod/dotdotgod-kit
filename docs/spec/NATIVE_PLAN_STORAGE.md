@@ -45,14 +45,37 @@ Unsupported versions or conflicting settings stop setup without broad fallback.
 Profiles govern local native files/commands; MCP servers and hooks have separate
 execution boundaries and must not be used to bypass planning restrictions.
 
+## Antigravity
+
+Antigravity native `/plan` uses **Option C-2**: native
+`<artifactDirectoryPath>/implementation_plan.md`, inline comments, and the host
+**Proceed** approval gate remain 100% host-owned and untouched.
+
+- On a successful `PostToolUse` write/edit targeting exact
+  `<realpath(artifactDirectoryPath)>/implementation_plan.md` (ignoring reads,
+  sibling/workspace paths, `walkthrough.md`, `task.md`, and `scratch/**`), the
+  hook reads the artifact read-only (`O_RDONLY | O_NOFOLLOW | O_NONBLOCK`,
+  `fstat` regular-file `dev`/`ino` check, 2 MiB cap) and stores its SHA-256
+  content hash in `.dotdotgod/context/impact.sqlite` `plan_notices` (24-hour
+  TTL, storing no `$HOME` path).
+- Hooks NEVER write workspace files and never bypass `/plan` read-only gates.
+- On the next `PreInvocation`, `claimPlanNotice` emits a one-time advisory
+  (`notified: 0 -> 1`, re-armed only when content hash changes) reminding the
+  model to save the concrete plan to `<docRoot>/plan/<task-slug>/README.md` and
+  `<docRoot>/plan/README.md` via native file write tools only when workspace
+  writes are permitted. If writes are restricted or denied, the native artifact
+  is kept.
+- Writing `<docRoot>/plan/**/*.md` clears `plan_notices`. Moving completed plans
+  to `<docRoot>/archive/plan/<task-slug>/` remains explicit.
+
 ## Adapter Boundaries
 
-Planning Markdown under the resolved local plan directory does not create
-Claude/Codex source-impact pending gates. Other edits retain their existing
-hook policy. Hook/MCP internal caches and state are not claimed to be confined
-by the model's plan permission profile. Hermes has no native Plan Mode; its
-permissions and impact policy are unchanged. OpenCode keeps its separate native
-plan-agent integration.
+Planning and archive Markdown under `<docRoot>/(plan|archive)` does not create
+pending advisory impact records across adapters; all six adapters keep pending
+impact strictly advisory and non-blocking. Hook and MCP internal caches/state
+are not claimed to be confined by the model's plan permission profile. Hermes
+has no native Plan Mode. OpenCode keeps its separate native plan-agent
+integration.
 
 ## Traceability
 
@@ -69,6 +92,7 @@ plan-agent integration.
   - [packages/codex/src/native-plan.mjs](../../packages/codex/src/native-plan.mjs)
   - [packages/codex/scripts/setup-plan.mjs](../../packages/codex/scripts/setup-plan.mjs)
   - [packages/context/src/hooks.mjs](../../packages/context/src/hooks.mjs)
+  - [packages/context/src/hooks-antigravity.mjs](../../packages/context/src/hooks-antigravity.mjs)
   - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
 - Verified by:
   - [packages/cli/test/claude-plans.test.mjs](../../packages/cli/test/claude-plans.test.mjs)
@@ -76,14 +100,16 @@ plan-agent integration.
   - [packages/claude-code/scripts/smoke-plans.mjs](../../packages/claude-code/scripts/smoke-plans.mjs)
   - [packages/codex/scripts/smoke-plan.mjs](../../packages/codex/scripts/smoke-plan.mjs)
   - [packages/context/test/hooks.test.mjs](../../packages/context/test/hooks.test.mjs)
+  - [packages/context/test/hooks-antigravity.test.mjs](../../packages/context/test/hooks-antigravity.test.mjs)
 - Related docs:
   - [docs/test/NATIVE_PLAN_STORAGE.md](../test/NATIVE_PLAN_STORAGE.md)
   - [docs/spec/PROJECT_INITIALIZER.md](PROJECT_INITIALIZER.md)
+  - [docs/spec/ANTIGRAVITY_ADAPTER.md](ANTIGRAVITY_ADAPTER.md)
 - Design decisions:
   - [docs/arch/NATIVE_PLAN_INTEGRATION.md](../arch/NATIVE_PLAN_INTEGRATION.md)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/claude-plans.mjs","packages/cli/src/init.mjs","packages/codex/src/native-plan.mjs","packages/codex/scripts/setup-plan.mjs","packages/context/src/hooks.mjs","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/claude-plans.test.mjs","packages/codex/test/native-plan.test.mjs","packages/claude-code/scripts/smoke-plans.mjs","packages/codex/scripts/smoke-plan.mjs","packages/context/test/hooks.test.mjs"],"relatedDocs":["docs/test/NATIVE_PLAN_STORAGE.md","docs/spec/PROJECT_INITIALIZER.md"],"designDecisions":["docs/arch/NATIVE_PLAN_INTEGRATION.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/claude-plans.mjs","packages/cli/src/init.mjs","packages/codex/src/native-plan.mjs","packages/codex/scripts/setup-plan.mjs","packages/context/src/hooks.mjs","packages/context/src/hooks-antigravity.mjs","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/claude-plans.test.mjs","packages/codex/test/native-plan.test.mjs","packages/claude-code/scripts/smoke-plans.mjs","packages/codex/scripts/smoke-plan.mjs","packages/context/test/hooks.test.mjs","packages/context/test/hooks-antigravity.test.mjs"],"relatedDocs":["docs/test/NATIVE_PLAN_STORAGE.md","docs/spec/PROJECT_INITIALIZER.md","docs/spec/ANTIGRAVITY_ADAPTER.md"],"designDecisions":["docs/arch/NATIVE_PLAN_INTEGRATION.md"]}
 ```

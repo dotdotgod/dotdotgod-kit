@@ -1,144 +1,95 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { dirname, isAbsolute, join, parse, relative, resolve } from 'node:path';
+import { resolve } from 'node:path';
+import {
+  extractHookSessionId,
+  findInitializedRoot,
+  hasFailedToolResult,
+  isDotdotgodMcpTool,
+  isInitializedProject,
+  parseApplyPatchPaths,
+  parseHookInput,
+  runHookSafely,
+} from './hook-state.mjs';
+import { ImpactState, impactReminder } from './impact-state.mjs';
 
-function inputText() { return readFileSync(0, 'utf8'); }
-function parseInput() { const text = inputText().trim(); return text ? JSON.parse(text) : {}; }
-function sessionId(input) { return String(input.session_id || input.sessionId || 'default').replace(/[^a-zA-Z0-9._-]/g, '_'); }
-function runtimeStatePath(root, id) { return join(root, '.dotdotgod', 'context', 'runtime', `${id}.json`); }
-function declaredProjectRoot(input) {
-  const value = input.project_dir || process.env.CLAUDE_PROJECT_DIR;
-  return typeof value === 'string' && value.trim() ? resolve(value) : null;
-}
-function findExistingStateRoot(cwd, id) {
-  let current = resolve(cwd);
-  const filesystemRoot = parse(current).root;
-  while (true) {
-    if (existsSync(runtimeStatePath(current, id))) return current;
-    if (current === filesystemRoot) return null;
-    current = dirname(current);
+const MCP_PREFIXES = [
+  'mcp__dotdotgod_context__',
+  'mcp__dotdotgod-context__',
+  'mcp__plugin_dotdotgod_dotdotgod-context__',
+  'mcp__plugin_dotdotgod_dotdotgod_context__',
+];
+const EDIT_TOOL_RE = /^(?:Edit|Write|MultiEdit|apply_patch)$/i;
+const SESSION_START_ADVICE = 'For relevant project memory, consider calling project_load from the dotdotgod-context MCP server with a concise task-specific focus.';
+
+function resolveProjectRoot(input) {
+  const declared = input.project_dir || process.env.CLAUDE_PROJECT_DIR;
+  if (typeof declared === 'string' && declared.trim() && isInitializedProject(declared)) {
+    return resolve(declared);
   }
-}
-function resolveHookContext(input, event) {
-  const id = sessionId(input);
-  const declared = declaredProjectRoot(input);
-  if (declared) return { root: declared, path: runtimeStatePath(declared, id) };
-  if (typeof input.cwd !== 'string' || !input.cwd.trim()) return null;
-  const existing = findExistingStateRoot(input.cwd, id);
-  if (existing) return { root: existing, path: runtimeStatePath(existing, id) };
-  if (event !== 'sessionstart') return null;
-  const root = resolve(input.cwd);
-  return { root, path: runtimeStatePath(root, id) };
-}
-function readState(path) { try { return JSON.parse(readFileSync(path, 'utf8')); } catch { return { pending: {} }; } }
-function writeState(path, state) {
-  mkdirSync(dirname(path), { recursive: true });
-  const temp = `${path}.${process.pid}.tmp`; writeFileSync(temp, `${JSON.stringify(state, null, 2)}\n`); renameSync(temp, path);
-}
-function isInsideRoot(root, path) {
-  const absolute = resolve(path);
-  const rel = relative(root, absolute);
-  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
-}
-function normalizeProjectPath(root, path) {
-  if (!root || typeof path !== 'string' || !path.trim()) return null;
-  const absolute = resolve(root, path);
-  return isInsideRoot(root, absolute) ? absolute : null;
-}
-function prunePending(state, root) {
-  const next = {};
-  for (const [path, fingerprint] of Object.entries(state.pending || {})) {
-    const absolute = normalizeProjectPath(root, path);
-    if (absolute) next[absolute] = fingerprint;
-  }
-  state.pending = next;
-}
-function toolName(input) { return String(input.tool_name || input.toolName || ''); }
-function toolInput(input) { return input.tool_input || input.toolInput || {}; }
-function mcpTool(name, suffix) {
-  return name === suffix || [
-    'mcp__dotdotgod_context__', 'mcp__dotdotgod-context__',
-    'mcp__plugin_dotdotgod_dotdotgod-context__', 'mcp__plugin_dotdotgod_dotdotgod_context__',
-  ].some(prefix => name === `${prefix}${suffix}`);
-}
-function deny(reason) { return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } }; }
-function commandFrom(input) { const value = toolInput(input); return String(value.command || value.cmd || ''); }
-function isImpactGate(name, input) {
-  if (!/^(Bash|Shell|local_shell|shell|shell_command|exec_command)$/i.test(name)) return false;
-  return /(^|\s)(test|build|lint|verify|commit|push|publish|deploy)(\s|:|$)|\b(git\s+(commit|push)|npm\s+(test|publish)|pnpm\s+[^\n]*(test|build|lint|verify|publish))\b/i.test(commandFrom(input));
-}
-function changedPath(input, root) {
-  const value = toolInput(input);
-  const path = value.file_path || value.path;
-  return normalizeProjectPath(root, path);
-}
-function isPlanDocument(root, path) {
-  let documentationRoot = 'docs';
-  try {
-    const config = JSON.parse(readFileSync(join(root, 'dotdotgod.config.json'), 'utf8'));
-    if (typeof config.documentation?.root === 'string') documentationRoot = config.documentation.root;
-  } catch { /* Default documentation layout. */ }
-  const plan = normalizeProjectPath(root, join(documentationRoot, 'plan'));
-  return plan && isInsideRoot(plan, path) && /\.md$/i.test(path);
-}
-function hasFailedToolResult(input) {
-  const response = input.tool_response || input.toolResponse || input.tool_result || input.toolResult || input.result;
-  if (!response || typeof response !== 'object') return false;
-  if (response.is_error === true || response.isError === true || response.error) return true;
-  if (response.ok === false || response.status === 'error' || response.status === 'failed') return true;
-  return false;
+  return findInitializedRoot(input.cwd);
 }
 
-export function runHook(event) {
-  const input = parseInput();
-  const name = toolName(input);
-  const context = resolveHookContext(input, event);
-  const state = readState(context?.path);
-  delete state.loadRequired;
-  state.pending ||= {};
-  if (context) {
-    prunePending(state, context.root);
-    writeState(context.path, state);
-  }
-
-  if (event === 'sessionstart') {
-    if (!context) return {};
-    return { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'For relevant project memory, consider calling project_load from the dotdotgod-context MCP server with a concise task-specific focus.' } };
-  }
-
-  if (event === 'pretooluse') {
-    if (mcpTool(name, 'project_load') || mcpTool(name, 'project_impact')) return {};
-    const pendingPaths = Object.keys(state.pending);
-    if (pendingPaths.length && isImpactGate(name, input)) return deny(`Graph impact is pending. Call project_impact from the dotdotgod-context MCP server with paths=${JSON.stringify(pendingPaths)} and then retry this tool.`);
-    return {};
-  }
-
-  if (event === 'posttooluse') {
-    if (!context) return {};
-    if (mcpTool(name, 'project_impact')) {
-      const checked = toolInput(input).paths;
-      let cleared = 0;
-      if (Array.isArray(checked)) for (const path of checked) {
-        const absolute = normalizeProjectPath(context.root, path);
-        if (absolute && Object.hasOwn(state.pending, absolute)) {
-          delete state.pending[absolute];
-          cleared += 1;
-        }
+function extractEditPaths(name, rawInput) {
+  if (/^apply_patch$/i.test(name)) {
+    if (typeof rawInput === 'string') return parseApplyPatchPaths(rawInput);
+    if (rawInput && typeof rawInput === 'object') {
+      const patchText = rawInput.patch ?? rawInput.input ?? rawInput.diff;
+      if (typeof patchText === 'string') {
+        const parsed = parseApplyPatchPaths(patchText);
+        if (parsed.length) return parsed;
       }
-      writeState(context.path, state);
-      if (cleared > 0 && hasFailedToolResult(input)) return { hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `project_impact reported a failure, but dotdotgod cleared pending graph impact for ${cleared} requested path(s) to avoid a blocking retry loop. Review the impact error before broad operations.` } };
-      return {};
-    } else if (/^(Edit|Write|apply_patch)$/i.test(name)) {
-      const path = changedPath(input, context.root);
-      if (path && !isPlanDocument(context.root, path)) state.pending[path] = true;
+      const single = rawInput.file_path ?? rawInput.path;
+      return typeof single === 'string' && single.trim() ? [single] : [];
     }
-    writeState(context.path, state);
-    return {};
+    return [];
+  }
+  if (!rawInput || typeof rawInput !== 'object') return [];
+  const single = rawInput.file_path ?? rawInput.path;
+  return typeof single === 'string' && single.trim() ? [single] : [];
+}
+
+function advisory(hookEventName, additionalContext) {
+  return additionalContext ? { hookSpecificOutput: { hookEventName, additionalContext } } : {};
+}
+
+export function runHook(event, input = parseHookInput()) {
+  const kind = String(event ?? '').trim().toLowerCase();
+  if (kind === 'pretooluse') return {};
+
+  const root = resolveProjectRoot(input);
+  if (!root) return {};
+
+  if (kind === 'sessionstart') {
+    return advisory('SessionStart', SESSION_START_ADVICE);
+  }
+
+  const sessionId = extractHookSessionId(input);
+  if (!sessionId) return {};
+
+  if (kind === 'userpromptsubmit') {
+    const status = new ImpactState(root, sessionId).status();
+    return status.count > 0 ? advisory('UserPromptSubmit', impactReminder(status)) : {};
+  }
+
+  if (kind === 'posttooluse') {
+    if (hasFailedToolResult(input)) return {};
+    const name = String(input.tool_name ?? input.toolName ?? '');
+    const rawToolInput = input.tool_input ?? input.toolInput;
+    if (isDotdotgodMcpTool(name, 'project_impact', MCP_PREFIXES)) {
+      const paths = Array.isArray(rawToolInput?.paths) ? rawToolInput.paths : [];
+      if (paths.length) new ImpactState(root, sessionId).clearPaths(paths);
+      return {};
+    }
+    if (!EDIT_TOOL_RE.test(name)) return {};
+    const paths = extractEditPaths(name, rawToolInput);
+    if (!paths.length) return {};
+    const state = new ImpactState(root, sessionId);
+    const { becameNonEmpty } = state.mark(paths);
+    return becameNonEmpty ? advisory('PostToolUse', impactReminder(state.status())) : {};
   }
 
   return {};
 }
 
 export function hookMain(event) {
-  try { process.stdout.write(`${JSON.stringify(runHook(event))}\n`); }
-  catch (error) { process.stderr.write(`dotdotgod hook error: ${error instanceof Error ? error.message : String(error)}\n`); process.stdout.write('{}\n'); }
+  runHookSafely(() => runHook(event));
 }

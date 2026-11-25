@@ -13,7 +13,7 @@ This package brings dotdotgod's shared project memory to Codex through workflow 
 - **Codex shares the project's durable knowledge.** `AGENTS.md`, maintained docs, active plans, and archived outcomes stay portable across agent hosts.
 - **Skills provide a native workflow vocabulary.** `dd:init`, `dd:load`, `dd:plan`, and `dd:impact` map normal chat requests to reusable project-memory workflows.
 - **Large working evidence remains local and retrievable.** The MCP runtime processes command output, files, and fetched text as bounded excerpts with provenance.
-- **Plans and impact checks survive individual turns.** Durable plan files preserve intent, while trusted hooks track edits and require matching impact evidence before broad handoff operations.
+- **Plans and impact checks survive individual turns.** Durable plan files preserve intent, while trusted hooks track edits in `.dotdotgod/context/impact.sqlite` and surface non-blocking advisory reminders before broad handoff operations.
 - **Activation follows Codex trust boundaries.** Skills remain available independently; packaged hooks become active after the applicable plugin enablement and review flow.
 
 ## Start Here
@@ -90,7 +90,7 @@ The MCP `index` tool accepts files or explicitly requested bounded directories, 
 
 This behavior applies only when Codex calls the `dotdotgod-context` MCP execution, indexing, search, fetch, or diagnostic tools. It does not intercept or rewrite Codex's ordinary built-in shell calls. See the [`@dotdotgod/context` npm package](https://www.npmjs.com/package/@dotdotgod/context), its [GitHub README](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/context#readme), and the [maintained context execution contract](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md) for the complete tool and limit definitions.
 
-Bundled hooks become active only after Codex's applicable plugin trust/review flow. They mark project load as required, record successful source/config edits, and deny broad verification or handoff commands until matching graph impact succeeds. Codex then calls the named MCP tool and retries the original operation; hooks do not silently change a shell call into an MCP call. See [`hooks/README.md`](https://github.com/dotdotgod/dotdotgod-kit/blob/main/packages/codex/hooks/README.md).
+Bundled hooks (`SessionStart`, `UserPromptSubmit`, `PostToolUse`; no `PreToolUse` gate) become active only after Codex's applicable plugin trust/review flow. In initialized repositories, they offer optional project-memory advice at session start, record successful edits in `.dotdotgod/context/impact.sqlite`, emit non-blocking advisory reminders while impact is pending, and clear requested paths when `project_impact` succeeds (retaining pending state on failure). Pending impact never blocks tools, and hooks do not silently change a shell call into an MCP call. See [`hooks/README.md`](https://github.com/dotdotgod/dotdotgod-kit/blob/main/packages/codex/hooks/README.md).
 
 ## Opt-In Native Plan Files
 

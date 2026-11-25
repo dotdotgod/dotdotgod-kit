@@ -1,53 +1,43 @@
 # Hook Tests
 
-These checks cover packaged Claude Code and Codex runtime hooks plus additional optional guidance. Packaged hooks implement optional memory guidance and impact-pending routing after the host's applicable enablement and trust flow.
+These checks cover packaged non-blocking advisory hooks across Claude Code, Codex, and Antigravity, plus optional user-configured hook guidance. Packaged hooks never block host edits, tests, builds, commits, or other tools; all pending state lives in `.dotdotgod/context/impact.sqlite` v2 while legacy `.dotdotgod/context/runtime/*.json` files are ignored.
+
+- **Claude Code & Codex (`hooks/hooks.json`)**: `SessionStart`, `UserPromptSubmit`, and `PostToolUse` (`PreToolUse` is removed from `hooks.json`; invoking `pretooluse` directly returns `{}`).
+- **Antigravity (`hooks.json`)**: `PostToolUse` and `PreInvocation` (`rules/AGENTS.md` replaces `SessionStart`; no `PreToolUse` or `Stop`).
 
 ## Automated Checks
 
-- `pnpm --filter @dotdotgod/cli test` parses hook README JSON examples, checks Codex TOML example shape, enforces hook safety policy constraints, and confirms Claude Code/Codex package dry-runs include `hooks/README.md`.
-- `pnpm --filter @dotdotgod/context test` exercises session-start load state, deny/retry guidance, MCP recursion bypass, changed-file fingerprints, impact gating, and matching-state clearance. Regression cases cover nested or missing event cwd values, declared-root precedence, same-session cross-project isolation, canonical-root fingerprints, and unidentified-input fail-open behavior.
-- `pnpm --filter @dotdotgod/claude-code run verify` confirms packaged hook resources and generated hook/MCP/CLI runtime drift.
-- `pnpm --filter @dotdotgod/codex run verify` confirms packaged hook resources, manifest registration, and generated hook/MCP/CLI runtime drift.
-- `node --test packages/context/test/adapter-packaging.test.mjs` executes both extracted adapter tarballs outside workspace dependency ancestry and covers hook module loading, fail-open malformed input, MCP startup/tool listing, plugin-qualified Claude MCP matcher selection, non-empty-focus project Load with structured query degradation, failed/successful nonblocking Load behavior, packaged CLI syntax, link/path leakage, and artifact sizes.
-- `pnpm run verify:generated` confirms generated commands and skills did not drift when hook docs are updated manually, including `/dd:impact` and `impact-review` resources generated from `packages/shared/workflows/impact.md`.
-- `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index` confirms hook-related docs, links, traceability, and markdown index freshness stay valid after indexing.
+- `packages/context/test/hooks.test.mjs` (`HK-01`..`HK-05`):
+  - `HK-01`: `extractHookSessionId` rejects empty, traversal, 129-char, or non-string IDs and returns `null` (no `'default'` fallback, no DB created).
+  - `HK-02`: `isInitializedProject` rejects symlinked `dotdotgod.config.json` and symlinked `.dotdotgod`; `selectWorkspaceForPath` enforces segment-boundary matching (`/a/app` vs `/a/app-v2` returns `null`, `/a/app/sub` selects longest match).
+  - `HK-03`: `formatHookError` and `runHookSafely` mask `$HOME`, strip `\r\n`/ANSI controls, cap stderr at `<= 240` chars, and fail open with `{}\n` + exit `0`.
+  - `HK-04`..`HK-05`: Claude Code and Codex full advisory loop — `SessionStart` routing, `PostToolUse` single transition advisory on `0 -> >0` (`becameNonEmpty`), `apply_patch` multi-file tracking, `UserPromptSubmit` per-turn advisory while pending > 0, `PreToolUse` returning `{}` (never `deny`), failed `project_impact` retaining pending rows, succeeded `project_impact` clearing requested paths (`clearPaths`), third-party `mcp__other_server__project_impact` ignored, and pre-seeded legacy `.dotdotgod/context/runtime/*.json` completely ignored.
+- `packages/context/test/hooks-antigravity.test.mjs` (`AG-01`..`AG-03`): Antigravity workspace isolation, CLI + App/IDE tool tracking, 1-time `PreInvocation` `claimUnnotified`, `call_mcp_tool` clearance and `isError` retention, and Option C-2 `/plan` observation. See [`ANTIGRAVITY_ADAPTER.md`](ANTIGRAVITY_ADAPTER.md).
+- `pnpm --filter @dotdotgod/cli test`: validates Claude/Codex hook README JSON/TOML examples, safety policy rules, and package dry-run inclusion of `hooks/README.md`.
+- `pnpm --filter @dotdotgod/claude-code run verify`, `pnpm --filter @dotdotgod/codex run verify`, and `pnpm --filter @dotdotgod/antigravity run verify`: verify packaged hook manifests and generated hook/MCP/CLI runtime drift.
+- `node --test packages/context/test/adapter-packaging.test.mjs` (`AP-02`): extracts Claude Code, Codex, and Antigravity tarballs outside workspace dependency ancestry and checks advisory hook loading (no `PreToolUse`, no `runtime/*.json`, no `deny`), fail-open malformed input, MCP 19-tool startup, focused `project_load`, link/path leakage, and artifact sizes.
+- `pnpm run verify:generated` and `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index`: verify generated commands/skills and hook docs freshness.
 
 ## Manual Smoke Checks
 
-For Claude Code hook examples:
+For Claude Code hook checks:
 
-- confirm packaged defaults load only after the host's plugin hook activation/trust behavior
-- confirm examples use Claude settings-style `hooks` JSON
-- confirm advisory examples use fast commands and avoid full workspace verification
-- confirm `UserPromptSubmit` examples do not rely on matcher filtering and inspect the submitted `prompt` field when they need prompt-specific behavior
-- confirm prompt reminder examples stay advisory and non-mutating, mention `dotdotgod expand` only for explicit `[[...]]` project-memory refs, collect the complete target set into one repeated-`--changed` multi-seed command for up to 20 unique paths, split only larger sets, and point post-edit review to `/dd:impact`
-- confirm validation examples use `dotdotgod validate . --include-local-memory --check-index`
-- confirm current lifecycle notes distinguish success `Stop` hooks from API-error `StopFailure` hooks and optional `SessionEnd` cleanup
-- confirm `PostToolBatch` is described as batch-level guidance, not as a default validation hook
-- confirm SDLC framing maps plan, implement, impact-review, verify, review, and archive without enabling automatic archive moves
-- confirm examples prefer command exec form with `args` when referencing project-local hook scripts
-- confirm docs do not present unavailable plan-mode transition hooks such as `PrePlanMode`, `PostPlanMode`, plan accept, or plan reject as available
-- confirm strict plan-safety examples require a local tested mode signal before blocking writes
-- confirm packaged hooks do not deny pre-load work; they deny broad impact-gated operations, name the required MCP tool, and bypass their own MCP calls
-- confirm MCP hook matchers use the documented `mcp__.*` form so plugin-qualified tool names dispatch, then verify installed-plugin Bash/Edit/Write work before Load and remain available after failed/successful Load; direct runtime invocation alone is insufficient
-- confirm unrelated MCP PostToolUse events leave dotdotgod load and impact state unchanged
+- confirm packaged defaults load only after the host's plugin hook activation/trust flow and ship `SessionStart`, `UserPromptSubmit`, and `PostToolUse` without `PreToolUse`
+- confirm `PostToolUse` emits a single `0 -> >0` advisory and `UserPromptSubmit` repeats per-turn advisories without ever denying Bash, Edit, Write, tests, or git commands
+- confirm failed `project_impact` retains pending rows, succeeded `project_impact` clears requested paths, unrelated MCP `PostToolUse` events leave `impact.sqlite` unchanged, and legacy `.dotdotgod/context/runtime/*.json` is ignored
+- confirm optional hook examples use Claude settings JSON, keep `dotdotgod status` read-only, label `dotdotgod query`/`dotdotgod graph` as cache-aware, keep `dotdotgod validate . --include-local-memory --check-index` opt-in, and do not present undocumented `PrePlanMode`/`PostPlanMode` hooks as available
 
-For Codex hook examples:
+For Codex hook checks:
 
-- confirm packaged hooks are documented as trust-reviewed plugin resources and additional examples remain optional
-- confirm examples include `hooks.json` and inline `config.toml` shapes
-- confirm prompt reminder examples stay advisory and non-mutating, mention `dotdotgod expand` only for explicit `[[...]]` project-memory refs, collect the complete target set into one repeated-`--changed` multi-seed command for up to 20 unique paths, split only larger sets, and point post-edit review to `dd:impact`
-- confirm validation examples use `dotdotgod validate . --include-local-memory --check-index`
-- confirm docs tell users to open `/hooks` and approve trusted hooks when Codex reports that a hook needs review
-- confirm docs do not imply Codex has Claude/Pi slash-command parity
-- confirm strict plan-safety docs note Codex tool-interception limitations
-- confirm docs state the minimum supported Codex version's exact plugin-hook enablement and trust requirements before release
+- confirm `[features].hooks = true` and `/hooks` trust review enable packaged `SessionStart`, `UserPromptSubmit`, and `PostToolUse` (no `PreToolUse`)
+- confirm multi-file `apply_patch` updates `impact.sqlite`, `UserPromptSubmit` injects the structured JSON `additionalContext` advisory, commands are never denied, and legacy `runtime/*.json` is ignored
+- confirm docs note `hooks.json` and inline `config.toml` shapes, do not imply Claude/Pi slash-command parity, and do not return raw `dotdotgod status` JSON as Stop output
 
-For both adapters:
+For Antigravity hook checks:
 
-- start a session at the project root, complete project load from a nested cwd or with cwd omitted while a project root is declared, and confirm Bash/Edit/Write are no longer denied at the original root
-- `dotdotgod status` may be shown as read-only cache reporting, but Codex Stop examples must not return raw status JSON as hook output
-- `dotdotgod validate . --include-local-memory --check-index` may be shown as explicit opt-in validation and index-freshness checking
-- `dotdotgod query` and `dotdotgod graph` must be labeled cache-aware because they can refresh `.dotdotgod/` caches
-- `/dd:impact`, `dd:impact`, and `impact-review` should be documented as the default cross-agent counterpart to Pi's `/impact-check` reminders
-- `dotdotgod index`, `pnpm run verify:cache`, full `pnpm run verify`, and archive moves must not be default automatic hook actions
+- follow [`ANTIGRAVITY_ADAPTER.md`](ANTIGRAVITY_ADAPTER.md) for `PostToolUse` + `PreInvocation`, 1-time `claimUnnotified`, `call_mcp_tool` clearance/`isError` retention, and Option C-2 `/plan` observation
+
+For all hook-enabled adapters:
+
+- `dotdotgod index`, `pnpm run verify:cache`, full `pnpm run verify`, and archive moves must never be default automatic hook actions
+- `/dd:impact`, `dd:impact`, and `/impact-review` remain the cross-agent counterparts to Pi's `/impact-check` reminders

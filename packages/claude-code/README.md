@@ -13,8 +13,8 @@ Use this package when you want Claude Code to work from a shared project brain: 
 - **Claude starts from shared project knowledge.** `AGENTS.md` and the documentation map remain reusable across agents while Claude-specific commands provide a native entry point.
 - **Plans become durable project artifacts.** `/dd:plan` records task intent under `docs/plan/` so it survives compaction, handoff, and new sessions.
 - **Project evidence arrives when needed.** `/dd:load` and the local MCP runtime provide bounded documentation, command output, files, and fetched text.
-- **Changed files retain their review context.** Packaged hooks track successful edits and require matching graph impact before broad verification or handoff commands.
-- **The workflow stays inspectable.** A denied operation names the required MCP action, and Claude retries the original operation after the check succeeds.
+- **Changed files retain their review context.** Packaged hooks track successful edits in `.dotdotgod/context/impact.sqlite` and surface non-blocking advisory reminders to run graph impact before broad verification or handoff.
+- **The workflow stays non-blocking and inspectable.** Advisory reminders name `project_impact` without blocking edits, tests, builds, commits, or other tools, and clear requested paths once `project_impact` succeeds.
 
 ## Start Here
 
@@ -83,7 +83,7 @@ Dotdotgod execution tools share a 10 MiB stdout/stderr capture ceiling per comma
 
 The MCP `index` tool accepts files or explicitly requested bounded directories, including external paths, with deterministic traversal, configurable resource limits, explicit extension/path exclusions, and symlinks skipped by default. These capture and retrieval rules apply when Claude calls the dotdotgod MCP tools; Claude Code's built-in Bash tool keeps its native behavior. URL indexing performs application-level HTTP(S), DNS/address, connected-peer, redirect, and byte-limit validation. Accepted HTML is normalized as bounded untrusted text without browser rendering, JavaScript, subresource loading, or link following by default. The server bundles no browser renderer, so browser opt-in fails unless a host injects that capability. These controls are not a network sandbox or complete prompt-injection prevention. See the [`@dotdotgod/context` npm package](https://www.npmjs.com/package/@dotdotgod/context), its [GitHub README](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/context), and the [maintained execution contract](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md) for the complete runtime behavior.
 
-Bundled hooks mark project load as required at session start, record successful source/config edits, and deny broad verification or handoff commands until matching graph impact succeeds. Denial asks Claude to call the required MCP tool and retry; hooks do not silently change one tool type into another. See [`hooks/README.md`](https://github.com/dotdotgod/dotdotgod-kit/blob/main/packages/claude-code/hooks/README.md) for lifecycle and trust boundaries.
+Bundled hooks (`SessionStart`, `UserPromptSubmit`, `PostToolUse`; no `PreToolUse` gate) offer optional project-memory advice at session start in initialized repositories, record successful edits in `.dotdotgod/context/impact.sqlite`, emit non-blocking advisory reminders while impact is pending, and clear requested paths when `project_impact` succeeds (retaining pending state on failure). Pending impact never blocks tools, and hooks do not silently change one tool type into another. See [`hooks/README.md`](https://github.com/dotdotgod/dotdotgod-kit/blob/main/packages/claude-code/hooks/README.md) for lifecycle and trust boundaries.
 
 ## Native Plan Directory
 

@@ -9,7 +9,7 @@ description: Review changed files with dotdotgod graph impact before broad verif
 
 ## Goal
 
-Review task-relevant source, config, and documentation changes with dotdotgod impact evidence before broad verification, commits, pushes, publishing, or final handoff. Claude Code and Codex use this advisory workflow; trusted runtime or project hooks may enforce a stricter boundary.
+Review task-relevant source, config, and documentation changes with dotdotgod impact evidence before broad verification, commits, pushes, publishing, or final handoff. All adapters use this advisory workflow without blocking tools; trusted local hooks may optionally enforce a stricter project boundary.
 
 ## Workflow
 

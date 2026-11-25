@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/hermes",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "Hermes CLI and messaging-gateway adapter without Plan Mode.",
   "type": "module",
   "publishConfig": { "access": "public" },
@@ -13,6 +13,6 @@
     "verify": "node ../../scripts/build-adapter-runtime.mjs hermes --check && pnpm run test",
     "pack:dry-run": "pnpm pack --dry-run --json"
   },
-  "files": ["plugin.yaml", "__init__.py", "runtime.py", "proxy.py", "policy.py", "mcp", "skills", "README.md", "LICENSE"],
+  "files": ["plugin.yaml", "__init__.py", "runtime.py", "proxy.py", "policy.py", "impact.py", "mcp", "skills", "README.md", "LICENSE"],
   "repository": { "type": "git", "url": "git+https://github.com/dotdotgod/dotdotgod-kit.git", "directory": "packages/hermes" }
 }

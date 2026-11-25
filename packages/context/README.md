@@ -6,7 +6,7 @@ Local-first execution, ingestion, and retrieval runtime for dotdotgod adapters.
 
 Use this package to keep large command output, project files, and fetched text available as bounded local evidence across agent turns. Small results return directly; larger results become searchable excerpts with source provenance. Durable ingestion jobs and opaque session resume support work that outlives one tool call.
 
-Pi registers this stdio MCP server with its host; OpenCode, Claude Code and Codex bundle it. Pi's existing tool names forward through MCP. Direct integrators can use the server, hooks, and typed core exports on Node.js 22.5 or newer.
+Pi registers this stdio MCP server with its host; OpenCode, Claude Code, Codex, Hermes, and Antigravity bundle it. Direct integrators can use the server, hooks, and typed core exports on Node.js 22.5 or newer.
 
 ```bash
 npm install @dotdotgod/context
@@ -153,7 +153,7 @@ Doctor does not create the database, execute commands, contact npm or other netw
 
 The MCP server also exposes bounded project load, graph impact, and initializer services. Project initialization defaults to dry-run and requires both `dryRun: false` and `confirmWrite: true` before writing.
 
-Claude/Codex hooks may request an MCP call and retry a denied operation. Pi retains its native lifecycle/UI but shared operations use host-managed MCP directly, without forwarding aliases or duplicated schemas. Pi/OpenCode share durable advisory impact records; successful reviews clear covered unchanged revisions, failures retain pending state, and pending never blocks tools. Adapters supply contextSessionId per call on shared connections. MCP results are envelopes: inspect isError and structuredContent. All nineteen catalog names are unprefixed; discover host-qualified names and reload sessions after upgrading. Removed names are intentionally unsupported. Pi's pending-only project_memory_load retains its own lifecycle and unwraps project_load internally.
+All six adapters (Pi, OpenCode, Claude Code, Codex, Hermes, and Antigravity) share durable non-blocking advisory impact tracking in `.dotdotgod/context/impact.sqlite`; pending impact never blocks edits, tests, builds, commits, or other tools. Session-bound MCP connections (`DOTDOTGOD_SESSION_ID`, `contextSessionId`, or `session_resume`) report `sessionBound: true` and clear unchanged revisions via `withImpactReview`; unbound stdio connections report `sessionBound: false` with concise guidance without creating the database, while host hooks clear paths on successful `PostToolUse(project_impact)` and retain pending on failure. All nineteen catalog names are unprefixed; discover host-qualified names and reload sessions after upgrading. Removed names are intentionally unsupported. Pi's pending-only `project_memory_load` retains its own lifecycle and unwraps `project_load` internally.
 
 ## Advanced Runtime Capabilities
 

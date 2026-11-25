@@ -1,29 +1,31 @@
 # Cross-Agent Architecture
 
-Code query/graph/validation share [outline metadata](../spec/cli/CODE_OUTLINES.md).
+Code query, graph, and validation share [outline metadata](../spec/cli/CODE_OUTLINES.md).
 
 ## Purpose
 
-This document defines the project memory kit for Pi, OpenCode, Claude Code, Codex, and Hermes.
+This document defines the project memory kit across six adapters: Pi, OpenCode, Claude Code, Codex, Hermes, and Antigravity.
 
 ## Architectural Direction
 
-Use shared source resources with thin generated agent adapters.
+Use shared source resources with thin generated agent adapters and one unified non-blocking advisory impact model.
 
 ```text
 dotdotgod
-├── packages/shared/           # private shared source resources for generated adapters
-├── packages/cli/              # shared map, validation, query, and graph CLI
-├── packages/context/          # local execution, FTS5 retrieval, hooks, and stdio MCP runtime
-├── packages/pi/               # generated Pi skills plus Pi extensions
-├── packages/claude-code/      # generated Claude Code plugin commands and skills
-├── packages/codex/            # generated Codex plugin skills
-├── packages/hermes/           # native lifecycle and per-session MCP routing
-├── packages/opencode/         # V2 plugin, native plan integration and advisory impact
-└── scripts/generate-adapters.mjs
+├── packages/shared/                  # private shared source resources for generated adapters
+├── packages/cli/                     # shared map, validation, query, and graph CLI
+├── packages/context/                 # local execution, FTS5 retrieval, advisory hooks, stdio MCP
+├── packages/pi/                      # generated Pi skills plus Pi extensions
+├── packages/opencode/                # V2 plugin, native plan integration, advisory impact
+├── packages/claude-code/             # generated Claude Code plugin commands, skills, advisory hooks
+├── packages/codex/                   # generated Codex plugin skills, advisory hooks, MCP config
+├── packages/hermes/                  # native Python lifecycle, per-session MCP, advisory impact
+├── packages/antigravity/             # native Antigravity plugin, MCP, advisory hooks, C-2 /plan
+├── scripts/generate-adapters.mjs     # shared workflow and adapter resource generator
+└── scripts/build-adapter-runtime.mjs # esbuild bundler for self-contained adapter MCP/CLI/hooks
 ```
 
-Shared owns workflows and processing. Adapters bundle CLI/MCP; Claude/Codex add hooks. Generate parser assets before local installs/packing; tarballs need no build.
+`packages/shared` owns workflows and initializer assets. `scripts/generate-adapters.mjs` renders adapter skills, commands, and platform guidance; `scripts/build-adapter-runtime.mjs` bundles self-contained MCP, CLI, parser, and hook artifacts into adapter packages so extracted tarballs run without workspace `node_modules`.
 
 ## Shared Source Responsibilities
 
@@ -31,169 +33,89 @@ Shared owns workflows and processing. Adapters bundle CLI/MCP; Claude/Codex add 
 
 - `workflows/load.md`: common Load guidance using `dotdotgod map`, optional query, and README/tree fallback.
 - `workflows/impact.md`: common graph-impact review guidance for post-edit related-doc/test/source checks before broad verification or handoff.
-- `workflows/doc-clarify.md`: common documentation clarity workflow that uses memory-area metadata and dotdotgod default document roles while preserving behavior contracts.
-- `workflows/init.md`: common project initializer guidance that uses `dotdotgod init` when available and provides platform-specific fallback script command placeholders when the CLI is absent.
+- `workflows/doc-clarify.md`: common documentation clarity workflow distributed solely through `@dotdotgod/skills`.
+- `workflows/init.md`: common project initializer guidance using `dotdotgod init` with platform fallback placeholders.
 - `initializer/scripts/init_project.sh`: deterministic fallback scaffold generator mirroring `dotdotgod init`.
 - `initializer/references/agent-docs.md`: shared agent-doc naming reference.
 
-Shared guidance must not depend on one agent's tool names, shortcuts, or extension APIs. Platform wrappers, frontmatter, command names, and runtime enforcement stay in generated adapter resources or adapter code.
+Shared guidance must not depend on one agent's tool names, shortcuts, or extension APIs. Platform wrappers, frontmatter, command names, and runtime hooks stay in generated adapter resources or adapter code.
+
+## Unified Non-Blocking Advisory Impact
+
+All six adapters align on Pi's non-blocking advisory impact model backed by `.dotdotgod/context/impact.sqlite` (v2, 24-hour fixed TTL). Pending impact never blocks edits, tests, builds, commits, pushes, publishes, or other tools.
+
+- **Pi (`before_agent_start`) & OpenCode (`session.hook('context')`)**: ephemeral per-turn reminders; session-bound MCP `withImpactReview` clears unchanged revisions on success.
+- **Claude Code & Codex (`UserPromptSubmit` + `PostToolUse`)**: `PostToolUse` emits a single transition advisory when pending transitions `0 -> >0` and clears requested paths (`clearPaths`) on successful `project_impact`; `UserPromptSubmit` repeats per-turn reminders while pending > 0. `PreToolUse` is removed from `hooks.json`.
+- **Antigravity (`PostToolUse` + `PreInvocation`)**: `PostToolUse` tracks CLI/App edits and clears on successful `project_impact` (`call_mcp_tool` or direct MCP); `PreInvocation` atomically claims unnotified rows once (`notified: 0 -> 1`) so persisted `injectSteps` do not repeat until new edits occur.
+- **Hermes (`post_tool_call` + `before_llm`)**: native Python `sqlite3` interoperates with `impact.sqlite` v2; `before_llm` emits per-turn advisories and session-bound MCP clears on success.
 
 ## Adapter Responsibilities
 
 ### Pi Adapter
 
-Package: `packages/pi/`
-
-Current implementation:
-
-- `package.json#pi`
-- `skills/project-initializer/`
-- `extensions/plan-mode/`
-- `extensions/load-project/`
-
-Pi-specific behavior remains here:
-
-- shared MCP execution/retrieval without aliases; plan/UI and pending-only project_memory_load remain Pi-owned
-- slash command registration
-- shortcut registration
-- tool filtering
-- session state
-- active plan-file touch tracking and concise execute/stay/refine review prompts
-- durable pending-impact tracking and advisory reminders, with no pending-based command blocks or approval dialogs
-
-Plan Mode startup flag: `--dd-plan`. Its namespace allows other Pi extensions to own the generic `--plan` flag.
-
-Commands:
-
-- `/dd:plan`
-- `/load`
-- `/dd:load`
-- `/impact-check`
+Package: `packages/pi/` (`@dotdotgod/pi`). Owns `skills/project-initializer/`, `extensions/plan-mode/`, and `extensions/load-project/`. Keeps host-managed MCP without forwarding aliases, pending-only `project_memory_load`, slash commands (`/dd:plan`, `/load`, `/dd:load`, `/impact-check`), `--dd-plan` startup flag, tool filtering, and durable advisory impact reminders.
 
 ### OpenCode Adapter
 
-packages/opencode registers V2 commands/skills and bundled MCP. Native plan integration automatically saves concrete project plans; no dd:plan or duplicate native project tools exist. Shared state tracks advisory impact without blocking. See [contract](../spec/OPENCODE_ADAPTER.md).
+Package: `packages/opencode/` (`@dotdotgod/opencode`). Registers V2 commands/skills and bundled MCP, automatically persists concrete native plans, and shares `impact.sqlite` advisory tracking without blocking. See [OpenCode contract](../spec/OPENCODE_ADAPTER.md).
 
 ### Claude Code Adapter
 
-Package: `packages/claude-code/`
-
-Current implementation:
-
-- `.claude-plugin/plugin.json`
-- `commands/dd/load.md`
-- `commands/dd/plan.md`
-- `commands/dd/init.md`
-- `commands/dd/impact.md`
-- `skills/project-load/`
-- `skills/doc-first-planning/`
-- `skills/project-initializer/`
-- `skills/impact-review/`
-
-Responsibilities:
-
-- Claude plugin manifest and installable resources
-- generated self-contained core stdio MCP server and CLI artifacts for generic context tools and project load/impact/initialize operations
-- packaged lifecycle hooks for optional Load advice and impact-pending gates
-- project-memory initialization skill and `/dd:init` command
-- project loading skill and `/dd:load` command
-- planning workflow guidance using Claude-native command and skill components
-- impact review workflow guidance using `/dd:impact` and `impact-review` for Pi-like changed-file graph checks without Pi runtime enforcement
-- documentation clarity is distributed separately through `@dotdotgod/skills`, not adapter resource trees
-- generated Load guidance using `dotdotgod map` for the tree and `query` for focus
-- optional hook documentation for advisory reminders, opt-in validation, and narrowly scoped plan-safety patterns
+Package: `packages/claude-code/` (`@dotdotgod/claude-code`). Ships `.claude-plugin/plugin.json`, `/dd:{load,plan,init,impact}` commands, four generated skills (`project-load`, `doc-first-planning`, `project-initializer`, `impact-review`), bundled MCP/CLI/hook artifacts (`${CLAUDE_PLUGIN_ROOT}`), and non-blocking advisory hooks (`SessionStart`, `UserPromptSubmit`, `PostToolUse`). `document-clarify` stays separate in `@dotdotgod/skills`.
 
 ### Codex Adapter
 
-Package: `packages/codex/`
-
-Current implementation:
-
-- `.codex-plugin/plugin.json`
-- `skills/project-load/`
-- `skills/doc-first-planning/`
-- `skills/project-initializer/`
-- `skills/impact-review/`
-
-Responsibilities:
-
-- Codex plugin manifest and package resources
-- generated self-contained core stdio MCP server and CLI artifacts plus local MCP configuration for project workflows
-- trust-reviewed lifecycle hooks for optional Load advice and impact-pending gates
-- reusable skills for initialization, loading, planning, impact-review, and documentation clarity workflows
-- generated Load guidance using `dotdotgod map` for the tree and `query` for focus
-- `AGENTS.md`-first instruction flow
-- command-like trigger phrases: `dd:init`, `dd:load`, `dd:plan`, and `dd:impact`
-- optional MCP/tooling integration when useful
-- optional hook documentation for trusted Codex configuration layers
-
-Codex adapter design should not depend on Pi-style command parity. Its trusted hook gates remain host-specific; Pi/OpenCode now track pending impact without commit blocking.
+Package: `packages/codex/` (`@dotdotgod/codex`). Ships `.codex-plugin/plugin.json`, four generated skills with `dd:{init,load,plan,impact}` trigger phrases, `AGENTS.md`-first flow, local `.mcp.json`, bundled MCP/CLI/hook artifacts, and trust-reviewed non-blocking advisory hooks (`SessionStart`, `UserPromptSubmit`, `PostToolUse`).
 
 ### Hermes Adapter
 
-packages/hermes owns Python lifecycle/root routing and a per-session Node MCP
-client over generated shared server/CLI artifacts; same-root SQLite stays shared.
-Labels route projects, not access grants; host/OS permissions control access.
-Session IDs are optional, not permissions.
-No Plan Mode is ported. See [Hermes behavior](../spec/HERMES_ADAPTER.md) and
-[verification](../test/HERMES_ADAPTER.md).
+Package: `packages/hermes/` (`@dotdotgod/hermes`). Owns Python lifecycle/root routing (`__init__.py`, `runtime.py`, `policy.py`, `impact.py`), per-session Node MCP client over bundled server/CLI artifacts, and Path 1 non-blocking advisory impact via `post_tool_call` + `impact.sqlite`. Labels route projects, not access grants; no Plan Mode is ported. See [Hermes behavior](../spec/HERMES_ADAPTER.md) and [verification](../test/HERMES_ADAPTER.md).
+
+### Antigravity Adapter
+
+Package: `packages/antigravity/` (`@dotdotgod/antigravity`).
+
+- `plugin.json`: Antigravity plugin manifest (`name: "dotdotgod"`, `logo: "assets/logo.svg"`, three `suggestedPrompts`, zero-prompt activation).
+- `mcp_config.json`: stdio server key `context` (exposed as `dotdotgod_context`, `${PLUGIN_ROOT}/mcp/server.mjs`), resolving workspace root via MCP `roots/list`.
+- `hooks.json`: `PostToolUse` and `PreInvocation` invoking `node ./scripts/hook-runtime.mjs <event>` (no `PreToolUse`, `SessionStart`, or `Stop`).
+- `rules/AGENTS.md`: always-on router active only when `dotdotgod.config.json` or `.dotdotgod/` exists, enforcing approval and untrusted-data boundaries.
+- `skills/`: three short generated skills (`dd-init`, `dd-load`, `dd-impact`) exposed as `/dd-*` with `dd:*` triggers (no root `commands/` folder or separate planning skill; `document-clarify` stays in `@dotdotgod/skills`).
+- Native `/plan` Option C-2: hooks observe `<artifactDirectoryPath>/implementation_plan.md` read-only and emit a 1-time `PreInvocation` save advisory; native write tools persist `<docRoot>/plan/<task-slug>/README.md`.
+
+See [Antigravity contract](../spec/ANTIGRAVITY_ADAPTER.md) and [verification](../test/ANTIGRAVITY_ADAPTER.md).
 
 ## Hook Boundaries
 
-Claude Code and Codex hooks are optional workflow accelerators, not required setup and not Pi Plan Mode parity. Adapter packages may document hook examples for session start, prompt submission, tool boundaries, batch-level feedback, stop-time hygiene, failure logging, and session cleanup, but hooks must stay opt-in unless a future package deliberately ships a safe advisory default.
+Packaged hooks across Claude Code, Codex, and Antigravity are narrow, fail-open, and strictly advisory. They never block host commands or file edits, never read legacy `.dotdotgod/context/runtime/*.json`, never initialize repositories, never run full verification or indexing, and never claim complete external mutation interception.
 
-Claude Code plugins support skills, commands, agents, hooks, MCP, LSP and monitors; hooks use hooks/hooks.json or the manifest. Codex supports skills/apps/MCP and plugin hooks with plugin_hooks enabled; non-managed hooks require trust review. These adapters retain opt-in hook guidance and default skill/command parity.
-
-Default examples should be advisory or read-only. `dotdotgod status` is safe for stop-time cache reporting because it does not rebuild the cache. `dotdotgod validate . --include-local-memory --check-index` is appropriate as an explicit validation hook because it checks docs and Markdown/outline fingerprints without rebuilding. `dotdotgod query` and `dotdotgod graph ...` are useful for context and impact, but they may refresh ignored `.dotdotgod/` caches, so hook docs must label them as cache-aware opt-ins.
-
-Claude Code hook guidance may reference current lifecycle events such as `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolBatch`, `Stop`, `StopFailure`, and `SessionEnd` when useful. It must not present undocumented plan-mode transition hooks such as `PrePlanMode`, `PostPlanMode`, plan accept, or plan reject as available unless Claude Code officially documents them. SDLC guidance should frame hooks as optional guardrails around plan, implement, verify, review, and archive phases, with `AGENTS.md` remaining the cross-agent project brain.
-
-Hooks must be narrow and tested. Plan-only source/config blocks require explicit state. Hooks must not automatically run workspace verification/indexing, initialize projects, archive plans or claim complete mutation interception.
+Optional user-configured hook documentation may illustrate read-only `dotdotgod status`, explicit `dotdotgod validate . --include-local-memory --check-index`, and cache-aware `dotdotgod query` / `dotdotgod graph` opt-ins. Docs must not present undocumented plan-transition hooks (`PrePlanMode`/`PostPlanMode`) as available.
 
 ## Packaging Strategy
 
-Use a pnpm workspace monorepo:
+Workspace packages published under fixed versions (`pnpm run publish:all`):
 
-```text
-packages/cli/
-packages/pi/
-packages/claude-code/
-packages/codex/
-packages/hermes/
-```
+- `@dotdotgod/cli` (`packages/cli/`)
+- `@dotdotgod/context` (`packages/context/`)
+- `@dotdotgod/pi` (`packages/pi/`)
+- `@dotdotgod/opencode` (`packages/opencode/`)
+- `@dotdotgod/claude-code` (`packages/claude-code/`)
+- `@dotdotgod/codex` (`packages/codex/`)
+- `@dotdotgod/hermes` (`packages/hermes/`, installed as a native Hermes plugin)
+- `@dotdotgod/antigravity` (`packages/antigravity/`, validated/installed via `agy plugin`)
 
-Published package names:
+The root package is private and orchestrates generation, bundling, verification, and dry-run packing.
 
-- `@dotdotgod/cli`
-- `@dotdotgod/pi`
-- `@dotdotgod/claude-code`
-- `@dotdotgod/codex`
+## Migration And Generation Rules
 
-The @dotdotgod/hermes npm tarball installs as a native Hermes plugin; npm
-installation alone does not activate it.
-
-The root package is private and only orchestrates workspace verification and publishing.
-
-Use fixed versions initially. Independent versions are only worth the overhead when adapter release cadences diverge.
-
-## Migration Rules
-
-- Keep current Pi behavior compatible after resources live under `packages/pi/`.
-- Use `dd` for new namespaces and command prefixes.
-- Edit common workflow text in `packages/shared`, then run `pnpm run generate`.
-- Keep generated text tracked; run generate for ignored parser assets before source-local plugin installs/packing.
-- Use `pnpm run verify:generated` to catch drift when generated files are edited directly.
-- Keep `AGENTS.md` and docs scaffold stable across adapters.
-- Keep platform-specific UX enforcement in adapter code, but keep cross-agent quality contracts such as plan validation in the shared CLI.
+- Edit shared workflow text in `packages/shared`, then run `pnpm run generate` (`scripts/generate-adapters.mjs` + `scripts/build-adapter-runtime.mjs`).
+- Keep generated text tracked; generate ignored parser assets before source-local plugin installs or packing.
+- Run `pnpm run verify:generated` to catch direct-edit drift.
+- Keep `AGENTS.md`, `dotdotgod.config.json`, and docs scaffold contracts stable across all six adapters.
 
 ## Verification Strategy
 
-Run pnpm run generate, verify:generated, verify and pack:dry-run. Maintained
-[verification guidance](../test/README.md) and
-[cross-agent smoke](../test/manual-smoke/CROSS_AGENT_ADAPTERS.md) cover Pi local/npm
-installation, Claude plugin schemas/commands, Codex discovery/skill triggers and
-initializer dry-run/fallback parity. Hermes adds its isolated pinned-host smoke.
+Run `pnpm run generate`, `pnpm run verify:generated`, `pnpm run verify:contract`, `agy plugin validate --strict packages/antigravity`, `pnpm run verify`, and `pnpm run pack:dry-run`. Maintained [verification guidance](../test/README.md) and [cross-agent smoke](../test/manual-smoke/CROSS_AGENT_ADAPTERS.md) cover all six adapters plus isolated Hermes pinned-host and Antigravity CLI/App smoke checks.
 
 ## Standalone Documentation Skill
 
-`workflows/doc-clarify.md` generates only the standalone skill. See [migration](../../packages/skills/MIGRATION.md).
+`workflows/doc-clarify.md` generates only the standalone skill in `@dotdotgod/skills`. See [migration](../../packages/skills/MIGRATION.md).

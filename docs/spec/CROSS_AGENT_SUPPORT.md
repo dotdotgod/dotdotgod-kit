@@ -2,9 +2,7 @@
 
 ## Purpose
 
-Dotdotgod shares project memory workflows across agents while respecting native extensions.
-
-The shared contract is the documentation scaffold and workflow, not identical slash command behavior.
+Dotdotgod shares project memory workflows across six agent adapters while respecting native extensions. The shared contract is the documentation scaffold and workflow, not identical slash command behavior.
 
 ## Supported Agent Families
 
@@ -13,27 +11,22 @@ The shared contract is the documentation scaffold and workflow, not identical sl
 Current first-class support.
 
 - Package entrypoint: npm package with `package.json#pi` manifest and runtime dependencies for `@dotdotgod/cli` and `@dotdotgod/context`.
-- Initialization: `project-initializer` skill.
-- Documentation clarity: separately installed `document-clarify` from `@dotdotgod/skills`.
+- Initialization: `project-initializer` skill; `document-clarify` is installed separately from `@dotdotgod/skills`.
 - Runtime workflow: `plan-mode`, `load-project`, and `project-memory` extensions.
 - Commands and tools: `/dd:plan`, `/load`, `/dd:load`, pending-only `project_memory_load`, `/impact-check`, and host-managed shared MCP tools without forwarding aliases. Pi retains plan/UI integration; pending impact is advisory and never blocks commands.
 
 ### OpenCode
 
-@dotdotgod/opencode registers three commands, four skills and shared MCP. Native plan automatically saves project plans; observed edits create advisory impact records without blocking tools. No dd:plan or OPENCODE.md is added. See [versioned contract](OPENCODE_ADAPTER.md).
+`@dotdotgod/opencode` registers three commands, four skills, and shared MCP. Native plan automatically saves project plans; observed edits create advisory impact records without blocking tools. No `dd:plan` or `OPENCODE.md` is added. See [versioned contract](OPENCODE_ADAPTER.md).
 
 ### Claude Code
 
 Current adapter support.
 
 - Package entrypoint: Claude Code plugin manifest under `.claude-plugin/plugin.json`.
-- Initialization: `project-initializer` skill and `/dd:init` command.
-- Project loading: `project-load` skill and `/dd:load` command.
-- Planning workflow: `doc-first-planning` skill and `/dd:plan` command.
-- Impact review workflow: `impact-review` skill and `/dd:impact` command for post-edit graph-impact checks before broad verification or handoff.
-- Install `document-clarify` separately from `@dotdotgod/skills`. It resolves memory-area guidance with `dotdotgod config <root> --json`, clarifies current docs, removes verified obsolete conditions, and preserves requirements, traceability and archive meaning.
+- Skills and commands: `project-initializer` (`/dd:init`), `project-load` (`/dd:load`), `doc-first-planning` (`/dd:plan`), and `impact-review` (`/dd:impact`). Install `document-clarify` separately from `@dotdotgod/skills`.
 - Bundled local stdio MCP tools for generic execution/retrieval and project load/impact/initialize operations.
-- Bundled lifecycle hooks for optional Load advice and impact-pending gates, plus maintained guidance for additional guardrails using documented Claude Code hook events.
+- Bundled non-blocking lifecycle hooks (`SessionStart`, `UserPromptSubmit`, `PostToolUse`) backed by `.dotdotgod/context/impact.sqlite` v2 for optional Load advice and advisory impact reminders/clearance; no `PreToolUse` blocking gate.
 - `CLAUDE.md` remains a thin project entrypoint that imports or points to `AGENTS.md`.
 
 ### Codex
@@ -41,36 +34,32 @@ Current adapter support.
 Current adapter support.
 
 - Package entrypoint: Codex plugin manifest under `.codex-plugin/plugin.json`.
-- Skills: `project-initializer`, `project-load`, `doc-first-planning`, and `impact-review`. Install `document-clarify` separately from `@dotdotgod/skills`.
-- Codex reads `AGENTS.md` as a primary project instruction source.
-- `dd:init`, `dd:load`, `dd:plan`, and `dd:impact` are command-like trigger phrases unless the active Codex runtime provides direct command registration.
-- Bundled local stdio MCP tools for generic execution/retrieval and project load/impact/initialize operations.
-- Bundled lifecycle hooks, subject to Codex enablement/trust review, for optional Load advice and impact-pending gates.
-- `CODEX.md` remains a thin project entrypoint that points to `AGENTS.md`.
+- Skills: `project-initializer`, `project-load`, `doc-first-planning`, and `impact-review`; `dd:init`/`dd:load`/`dd:plan`/`dd:impact` act as trigger phrases. Install `document-clarify` separately from `@dotdotgod/skills`.
+- Bundled local stdio MCP tools and non-blocking lifecycle hooks (`SessionStart`, `UserPromptSubmit`, `PostToolUse`), subject to Codex enablement/trust review, for optional Load advice and advisory impact reminders/clearance; no `PreToolUse` blocking gate.
+- Codex reads `AGENTS.md` primarily; `CODEX.md` remains a thin entrypoint pointing to `AGENTS.md`.
+
+### Antigravity
+
+Native plugin for Antigravity CLI, App, and IDE; see [ANTIGRAVITY_ADAPTER.md](ANTIGRAVITY_ADAPTER.md).
+
+- Package: `@dotdotgod/antigravity` with root `plugin.json`, `mcp_config.json` (`dotdotgod_context`), root `hooks.json` (`PostToolUse` + `PreInvocation` only), `rules/AGENTS.md` (scoped to initialized repos), pastel yellow-green `assets/logo.svg`, and three short `/dd-*` skills (`dd-init`, `dd-load`, `dd-impact`, `dd:*` triggers, no `commands/` folder or separate planning skill). Install `document-clarify` separately from `@dotdotgod/skills`.
+- Non-blocking advisory impact via `.dotdotgod/context/impact.sqlite` v2 (`claimUnnotified` one-time `PreInvocation` notice, `PostToolUse` `clearPaths` on successful `project_impact`).
+- Option C-2 native `/plan` integration: read-only observation of `implementation_plan.md` triggers a one-time save advisory with zero hook workspace writes; `AGENTS.md` remains canonical (no `ANTIGRAVITY.md`/`GEMINI.md`).
 
 ### Hermes
 
-Native CLI and messaging-gateway adapter, without Plan Mode; see
-[HERMES_ADAPTER.md](HERMES_ADAPTER.md) for the pinned host and verification limits.
+Native CLI and messaging-gateway adapter without Plan Mode; see [HERMES_ADAPTER.md](HERMES_ADAPTER.md).
 
-- Package: @dotdotgod/hermes with native plugin.yaml, registered shared skills and tools.
-- Lifecycle hooks plus an adapter-owned stdio MCP client/server per selected project/session; project labels do not authorize filesystem access.
-- Operator-controlled gateway root labels/grants, explicit selection and reauthorization.
-- Automatic/explicit map-query load, reference expansion, initializer,
-  context operations, pending impact and covered release-command gates.
-- Native Hermes delegate_task, not a pi-subagents port; no planning wizard/compaction.
-- AGENTS.md remains canonical; no new agent-specific instruction file is introduced.
+- Package: `@dotdotgod/hermes` with native `plugin.yaml`, three registered canonical skills (`project-initializer`, `project-load`, `impact-review`; `document-clarify` separate in `@dotdotgod/skills`), and 20 native tools.
+- Per-session adapter-owned stdio MCP client/server routing, operator-controlled root labels, automatic/explicit map-query load, reference expansion, and non-blocking Path 1 advisory impact via `post_tool_call` + `.dotdotgod/context/impact.sqlite` v2 (zero blocking gates).
+- Native Hermes `delegate_task`, no planning wizard/compaction, canonical `AGENTS.md`.
 
 ## Shared Contract
 
-All supported agents should share these conventions:
+All supported agents share these conventions:
 
-- `AGENTS.md` is the canonical long-lived project instruction file and provides the stable dotdotgod purpose plus `dotdotgod --help` discovery route.
-- `CLAUDE.md` and `CODEX.md` stay thin and point to `AGENTS.md` without duplicating CLI guidance.
-- `docs/spec/`, `docs/test/`, `docs/arch/`, `docs/plan/`, and `docs/archive/` keep the same meanings.
-- Active task plans use `docs/plan/<task-slug>/README.md`.
-- Completed plans move to `docs/archive/plan/<task-slug>/`.
-- Temporary reports and investigations move to `docs/archive/report/<report-slug>/`.
+- `AGENTS.md` is the canonical long-lived project instruction file with the stable dotdotgod purpose and `dotdotgod --help` route; `CLAUDE.md` and `CODEX.md` stay thin pointers.
+- `docs/spec/`, `docs/test/`, `docs/arch/`, `docs/plan/`, and `docs/archive/` keep the same meanings; active task plans use `docs/plan/<task-slug>/README.md`, completed plans move to `docs/archive/plan/<task-slug>/`, and temporary reports move to `docs/archive/report/<report-slug>/`.
 - Docs naming, README indexes, size guidelines, and domain-directory promotion rules remain agent-neutral.
 
 ## Instruction Surface Matrix
@@ -79,55 +68,42 @@ Dotdotgod treats agent-specific instruction files as routing surfaces over one s
 
 | Surface | Tool or owner | Role | Expected content | Support status |
 | --- | --- | --- | --- | --- |
-| `AGENTS.md` | Shared agents, Codex and OpenCode | Canonical instructions | Purpose, commands, docs map, coding and verification rules | Required |
-| `CLAUDE.md` | Claude Code | Thin entrypoint | Import AGENTS.md; avoid duplicated rules | Required pointer |
-| `CODEX.md` | Codex and tools that look for Codex-specific docs | Thin Codex-specific project entrypoint | Point to `AGENTS.md`; include only Codex-specific bootstrap details when unavoidable | Required thin pointer for generated project scaffold |
-| `.github/copilot-instructions.md` | GitHub Copilot | Optional repository instruction surface | Route Copilot to `AGENTS.md`, `docs/README.md`, and relevant project commands; avoid duplicating the full shared rules body | Optional project-owned surface, not generated by default |
-| `.cursor/rules/*.md` | Cursor | Optional path-scoped rule surface | Keep Cursor-specific invocation or path-scoping rules; route durable project rules to `AGENTS.md` and docs indexes | Optional project-owned surface, not generated by default |
-| `llms.txt` or docs index surface | Web docs and tools that discover documentation indexes | Optional documentation discovery surface | Point to README indexes and bounded docs entrypoints rather than embedding large docs bodies | Optional project-owned surface, not generated by default |
+| `AGENTS.md` | Shared agents, Codex, OpenCode, Antigravity, Hermes | Canonical instructions | Purpose, commands, docs map, coding and verification rules | Required |
+| `CLAUDE.md` | Claude Code | Thin entrypoint | Import `AGENTS.md`; avoid duplicated rules | Required pointer |
+| `CODEX.md` | Codex | Thin project entrypoint | Point to `AGENTS.md`; minimal Codex bootstrap details | Required thin pointer |
+| Plugin `rules/AGENTS.md` | Antigravity plugin | Scoped always-on router | Activate only when `dotdotgod.config.json` or `.dotdotgod/` exists | Bundled in `@dotdotgod/antigravity` |
+| `.github/copilot-instructions.md` | GitHub Copilot | Optional repo surface | Route to `AGENTS.md`, `docs/README.md`, and commands | Optional, not generated |
+| `.cursor/rules/*.md` | Cursor | Optional path-scoped rules | Route durable project rules to `AGENTS.md` and docs indexes | Optional, not generated |
+| `llms.txt` or docs index | Web docs/tools | Optional discovery surface | Point to README indexes rather than embedding bodies | Optional, not generated |
 
-Agent-specific surfaces should not copy the full canonical rules body. They should route agents to the shared docs scaffold so instructions stay maintainable across tools.
+Agent-specific surfaces must not copy the full canonical rules body; they route to the shared docs scaffold.
 
 ## Workflow Parity
 
-Adapters should provide workflow parity across each agent's native capabilities.
+Adapters provide behavioral parity across native mechanics:
 
-Required workflows:
+- Initialize or normalize the project memory scaffold and editable default config.
+- Load project memory without editing source, docs, or config, retaining the bounded documentation map, optional focused query with visible failure/degradation evidence, and `Help: dotdotgod --help` routing.
+- Where planning is supported, plan safely before source/config changes (Hermes excludes Plan Mode; OpenCode, Claude Code, Codex, and Antigravity preserve native planning gates).
+- Track observed edits as non-blocking advisory impact in `.dotdotgod/context/impact.sqlite` v2 across all six adapters, encouraging graph-impact review before verification or handoff without denying tools or bypassing host permissions.
+- Preserve completed plans and temporary reports in the archive structure.
 
-- initialize or normalize the project memory scaffold and complete editable default config
-- load project memory without modifying source, documentation, or project config; Claude Code and Codex always retain the bounded documentation map, use `dotdotgod query` for optional focused routing, and return structured query-unavailable evidence when cached/extracted adapters cannot resolve optional embeddings; standalone focused query may refresh ignored vector and model caches or retain its visible failure contract
-- expose `Help: dotdotgod --help` as optional Load guidance across native adapter mechanics without reporting installation status or blocking fallback when CLI or shell execution is unavailable
-- where planning is supported, plan safely before source/config changes; Hermes intentionally excludes Plan Mode; Claude Code and Codex use explicit `dotdotgod query` guidance and resolve config when planning policy affects the task
-- review changed files with graph-impact evidence before broad verification, commits, pushes, publishing, or final handoff when the CLI or an equivalent project-local impact command is available; otherwise preserve the same review intent through targeted specs/tests/docs reads
-- preserve completed plans and temporary reports in the archive structure
-
-Optional workflows:
-
-- slash commands matching `dd:*` names
-- keyboard shortcuts
-- tool filtering or permission hooks
-- lifecycle hooks for advisory load/plan/impact reminders, SDLC guardrails, validation, failure logging, and narrowly scoped plan-safety checks
-- packaged default hooks only when they are advisory, safe by default, and supported by the target runtime; otherwise keep examples documented but opt-in
-- project memory indexing/search
-- CLI-backed focused documentation query and graph-impact checks where shell or package execution is available
-
-Parity is behavioral, not identical runtime mechanics. Pi/OpenCode track pending impact without blocking commands. Claude/Codex retain their existing trusted hook policies. Planning permissions remain independent from impact reminders.
+Optional workflows include `dd:*` slash commands, keyboard shortcuts, lifecycle hooks for advisory reminders/sync, project memory indexing/search, and CLI-backed focused query/impact checks.
 
 ## Packaging Contract
 
-`@dotdotgod/skills` alone supplies `document-clarify`; see [migration](../../packages/skills/MIGRATION.md). Adapter packages are listed below.
+`@dotdotgod/skills` alone supplies `document-clarify`; see [migration](../../packages/skills/MIGRATION.md). Workspace packages:
 
-- `@dotdotgod/pi`: Pi adapter with skills, extensions, package-local `@dotdotgod/cli` dependency, and package-local `@dotdotgod/context` dependency.
 - `@dotdotgod/cli`: validation, local documentation query, and graph indexing CLI.
 - `@dotdotgod/context`: shared local execution, FTS5 retrieval, hooks, project workflow services, and stdio MCP runtime.
-- `@dotdotgod/claude-code`: Claude Code adapter with plugin commands and skills.
-- `@dotdotgod/codex`: Codex adapter with project memory skills.
-- `@dotdotgod/opencode`: V2 plugin, generated commands/skills, bundled MCP, native plan integration and advisory impact.
-- `@dotdotgod/hermes`: native Hermes resources with per-session MCP routing, no Plan Mode; npm tarballs install into a native Hermes plugin directory; npm alone does not enable it.
+- `@dotdotgod/pi`: Pi adapter with skills, extensions, and local `@dotdotgod/cli` + `@dotdotgod/context` dependencies.
+- `@dotdotgod/opencode`: V2 plugin, generated commands/skills, bundled MCP, native plan integration, and advisory impact.
+- `@dotdotgod/claude-code`: Claude Code plugin with commands, skills, bundled MCP, and advisory hooks.
+- `@dotdotgod/codex`: Codex plugin with skills, bundled MCP, advisory hooks, and opt-in native plan setup.
+- `@dotdotgod/antigravity`: Antigravity plugin with manifest, `mcp_config.json`, advisory/plan-sync `hooks.json`, `rules/AGENTS.md`, `assets/logo.svg`, and three short skills (`dd-init`, `dd-load`, `dd-impact`).
+- `@dotdotgod/hermes`: native Hermes plugin resources with per-session MCP routing and Path 1 advisory impact (no Plan Mode).
 
-Extracted or cached Claude Code and Codex adapters must satisfy the mandatory project-load map contract without ancestor `node_modules`; unavailable optional semantic dependencies degrade only focused enrichment. Versions are fixed across packages initially. The root workspace package is private and is not published.
-
-New package, command, and tool names should use dotdotgod and `dd` prefixes.
+Extracted or cached Claude Code, Codex, and Antigravity adapters must satisfy the mandatory project-load map contract without ancestor `node_modules`; unavailable optional embeddings degrade only focused enrichment. Versions are aligned across packages; the root workspace package is private. New package, command, and tool names use `dotdotgod` and `dd` prefixes.
 
 ## Traceability
 
@@ -161,12 +137,19 @@ New package, command, and tool names should use dotdotgod and `dd` prefixes.
   - [packages/codex/hooks/README.md](../../packages/codex/hooks/README.md)
   - [packages/claude-code/.claude-plugin/plugin.json](../../packages/claude-code/.claude-plugin/plugin.json)
   - [packages/codex/.codex-plugin/plugin.json](../../packages/codex/.codex-plugin/plugin.json)
+  - [packages/antigravity/plugin.json](../../packages/antigravity/plugin.json)
+  - [packages/antigravity/hooks.json](../../packages/antigravity/hooks.json)
+  - [packages/antigravity/rules/AGENTS.md](../../packages/antigravity/rules/AGENTS.md)
   - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
   - [packages/skills/skills/document-clarify/SKILL.md](../../packages/skills/skills/document-clarify/SKILL.md)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [docs/test/README.md](../test/README.md)
   - [packages/cli/test/document-clarify.test.mjs](../../packages/cli/test/document-clarify.test.mjs)
+  - [packages/antigravity/test/resources.test.mjs](../../packages/antigravity/test/resources.test.mjs)
+- Related docs:
+  - [docs/spec/ANTIGRAVITY_ADAPTER.md](ANTIGRAVITY_ADAPTER.md)
+  - [docs/spec/ADVISORY_IMPACT.md](ADVISORY_IMPACT.md)
 - Design decisions:
   - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../arch/CROSS_AGENT_ARCHITECTURE.md)
   - [docs/arch/DOCS_STRUCTURE.md](../arch/DOCS_STRUCTURE.md)
@@ -175,12 +158,13 @@ New package, command, and tool names should use dotdotgod and `dd` prefixes.
   - `CROSS-AGENT-PI-001` — Pi adapter provides first-class package, skills, extensions, commands, and tools (sections: 1, implementedBy: 2, verifiedBy: 1, designDecisions: 1)
   - `CROSS-AGENT-CLAUDE-001` — Claude Code adapter provides plugin commands, skills, hooks guidance, and thin CLAUDE.md routing (sections: 1, implementedBy: 6, verifiedBy: 1, designDecisions: 1)
   - `CROSS-AGENT-CODEX-001` — Codex adapter provides skills, trigger phrases, hooks guidance, and CODEX.md routing (sections: 1, implementedBy: 6, verifiedBy: 1, designDecisions: 1)
+  - `CROSS-AGENT-ANTIGRAVITY-001` — Antigravity adapter provides native plugin manifest, MCP, scoped rules, advisory hooks, and Option C-2 plan sync (sections: 1, implementedBy: 4, verifiedBy: 2, relatedDocs: 1, designDecisions: 1)
   - `CROSS-AGENT-INSTRUCTIONS-001` — Agent-specific instruction surfaces route to the shared project-memory contract (sections: 1, implementedBy: 2, verifiedBy: 1, designDecisions: 1)
   - `CROSS-AGENT-PARITY-001` — Adapters preserve behavior parity across native runtime mechanics (sections: 1, implementedBy: 5, verifiedBy: 1, designDecisions: 1)
-  - `CROSS-AGENT-PACKAGING-001` — Cross-agent support ships as aligned npm workspace packages and manifests (sections: 1, implementedBy: 3, verifiedBy: 1, designDecisions: 1)
+  - `CROSS-AGENT-PACKAGING-001` — Cross-agent support ships as aligned npm workspace packages and manifests (sections: 1, implementedBy: 4, verifiedBy: 2, designDecisions: 1)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md","packages/shared/initializer/references/agent-docs.md","packages/claude-code/commands/dd/load.md","packages/claude-code/commands/dd/plan.md","packages/claude-code/commands/dd/init.md","packages/claude-code/commands/dd/impact.md","packages/claude-code/skills/project-load/SKILL.md","packages/claude-code/skills/doc-first-planning/SKILL.md","packages/claude-code/skills/project-initializer/SKILL.md","packages/claude-code/skills/impact-review/SKILL.md","packages/codex/skills/project-load/SKILL.md","packages/codex/skills/doc-first-planning/SKILL.md","packages/codex/skills/project-initializer/SKILL.md","packages/codex/skills/impact-review/SKILL.md","packages/claude-code/hooks/README.md","packages/codex/hooks/README.md","packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","scripts/generate-adapters.mjs","packages/skills/skills/document-clarify/SKILL.md"],"verifiedBy":["packages/cli/test/core.test.mjs","docs/test/README.md","packages/cli/test/document-clarify.test.mjs"],"relatedDocs":[],"contracts":[{"id":"CROSS-AGENT-SHARED-001","title":"Shared docs scaffold and workflow contract stays agent-neutral","sections":["Shared Contract"],"implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md","packages/shared/initializer/references/agent-docs.md"],"verifiedBy":["packages/cli/test/core.test.mjs"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"]},{"id":"CROSS-AGENT-PI-001","title":"Pi adapter provides first-class package, skills, extensions, commands, and tools","sections":["Pi"],"implementedBy":["packages/pi/package.json","packages/pi/README.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-CLAUDE-001","title":"Claude Code adapter provides plugin commands, skills, hooks guidance, and thin CLAUDE.md routing","sections":["Claude Code"],"implementedBy":["packages/claude-code/.claude-plugin/plugin.json","packages/claude-code/commands/dd/load.md","packages/claude-code/commands/dd/plan.md","packages/claude-code/commands/dd/init.md","packages/claude-code/commands/dd/impact.md","packages/claude-code/hooks/README.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-CODEX-001","title":"Codex adapter provides skills, trigger phrases, hooks guidance, and CODEX.md routing","sections":["Codex"],"implementedBy":["packages/codex/.codex-plugin/plugin.json","packages/codex/skills/project-load/SKILL.md","packages/codex/skills/doc-first-planning/SKILL.md","packages/codex/skills/project-initializer/SKILL.md","packages/codex/skills/impact-review/SKILL.md","packages/codex/hooks/README.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-INSTRUCTIONS-001","title":"Agent-specific instruction surfaces route to the shared project-memory contract","sections":["Instruction Surface Matrix"],"implementedBy":["packages/shared/initializer/references/agent-docs.md","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs"],"relatedDocs":[],"designDecisions":["docs/arch/DOCS_STRUCTURE.md"]},{"id":"CROSS-AGENT-PARITY-001","title":"Adapters preserve behavior parity across native runtime mechanics","sections":["Workflow Parity"],"implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-PACKAGING-001","title":"Cross-agent support ships as aligned npm workspace packages and manifests","sections":["Packaging Contract"],"implementedBy":["packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]}],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"]}
+{"kind":"spec","implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md","packages/shared/initializer/references/agent-docs.md","packages/claude-code/commands/dd/load.md","packages/claude-code/commands/dd/plan.md","packages/claude-code/commands/dd/init.md","packages/claude-code/commands/dd/impact.md","packages/claude-code/skills/project-load/SKILL.md","packages/claude-code/skills/doc-first-planning/SKILL.md","packages/claude-code/skills/project-initializer/SKILL.md","packages/claude-code/skills/impact-review/SKILL.md","packages/codex/skills/project-load/SKILL.md","packages/codex/skills/doc-first-planning/SKILL.md","packages/codex/skills/project-initializer/SKILL.md","packages/codex/skills/impact-review/SKILL.md","packages/claude-code/hooks/README.md","packages/codex/hooks/README.md","packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","packages/antigravity/plugin.json","packages/antigravity/hooks.json","packages/antigravity/rules/AGENTS.md","scripts/generate-adapters.mjs","packages/skills/skills/document-clarify/SKILL.md"],"verifiedBy":["packages/cli/test/core.test.mjs","docs/test/README.md","packages/cli/test/document-clarify.test.mjs","packages/antigravity/test/resources.test.mjs"],"relatedDocs":["docs/spec/ANTIGRAVITY_ADAPTER.md","docs/spec/ADVISORY_IMPACT.md"],"contracts":[{"id":"CROSS-AGENT-SHARED-001","title":"Shared docs scaffold and workflow contract stays agent-neutral","sections":["Shared Contract"],"implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md","packages/shared/initializer/references/agent-docs.md"],"verifiedBy":["packages/cli/test/core.test.mjs"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"]},{"id":"CROSS-AGENT-PI-001","title":"Pi adapter provides first-class package, skills, extensions, commands, and tools","sections":["Pi"],"implementedBy":["packages/pi/package.json","packages/pi/README.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-CLAUDE-001","title":"Claude Code adapter provides plugin commands, skills, hooks guidance, and thin CLAUDE.md routing","sections":["Claude Code"],"implementedBy":["packages/claude-code/.claude-plugin/plugin.json","packages/claude-code/commands/dd/load.md","packages/claude-code/commands/dd/plan.md","packages/claude-code/commands/dd/init.md","packages/claude-code/commands/dd/impact.md","packages/claude-code/hooks/README.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-CODEX-001","title":"Codex adapter provides skills, trigger phrases, hooks guidance, and CODEX.md routing","sections":["Codex"],"implementedBy":["packages/codex/.codex-plugin/plugin.json","packages/codex/skills/project-load/SKILL.md","packages/codex/skills/doc-first-planning/SKILL.md","packages/codex/skills/project-initializer/SKILL.md","packages/codex/skills/impact-review/SKILL.md","packages/codex/hooks/README.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-ANTIGRAVITY-001","title":"Antigravity adapter provides native plugin manifest, MCP, scoped rules, advisory hooks, and Option C-2 plan sync","sections":["Antigravity"],"implementedBy":["packages/antigravity/plugin.json","packages/antigravity/mcp_config.json","packages/antigravity/hooks.json","packages/antigravity/rules/AGENTS.md"],"verifiedBy":["packages/antigravity/test/resources.test.mjs","packages/context/test/hooks-antigravity.test.mjs"],"relatedDocs":["docs/spec/ANTIGRAVITY_ADAPTER.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-INSTRUCTIONS-001","title":"Agent-specific instruction surfaces route to the shared project-memory contract","sections":["Instruction Surface Matrix"],"implementedBy":["packages/shared/initializer/references/agent-docs.md","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs"],"relatedDocs":[],"designDecisions":["docs/arch/DOCS_STRUCTURE.md"]},{"id":"CROSS-AGENT-PARITY-001","title":"Adapters preserve behavior parity across native runtime mechanics","sections":["Workflow Parity"],"implementedBy":["packages/shared/workflows/init.md","packages/shared/workflows/load.md","packages/shared/workflows/plan.md","packages/shared/workflows/impact.md","packages/shared/workflows/doc-clarify.md"],"verifiedBy":["docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]},{"id":"CROSS-AGENT-PACKAGING-001","title":"Cross-agent support ships as aligned npm workspace packages and manifests","sections":["Packaging Contract"],"implementedBy":["packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","packages/antigravity/plugin.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/context/test/adapter-packaging.test.mjs"],"relatedDocs":[],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]}],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"]}
 ```

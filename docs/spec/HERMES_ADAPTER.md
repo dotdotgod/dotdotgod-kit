@@ -6,50 +6,56 @@ The Hermes adapter supports CLI and messaging-gateway project memory without
 Plan Mode. Native plugin tools and hooks route context operations through an
 adapter-owned stdio MCP client per selected project/host session.
 
-Host pin: 19b57f11d6eefb17e3e8a58e40b0b16aeb8b83b9. Compatibility evidence covers
-the real loader/registry/hooks and generated runtime; external messaging/model
-API calls and complete model-driven delegation are separate live checks.
+Host pin: `19b57f11d6eefb17e3e8a58e40b0b16aeb8b83b9` (verified to support
+`post_tool_call` in `VALID_HOOKS`). Compatibility evidence covers the real
+loader/registry/hooks and generated runtime; external messaging/model API calls
+and complete model-driven delegation are separate live checks.
 
 ## Installation And Routing
 
-The native plugin directory contains plugin.yaml and __init__.py. Enable it
-explicitly and restart the host. Four canonical generated skills are registered:
-project-initializer, project-load and impact-review. `document-clarify` is installed separately from `@dotdotgod/skills`.
-Generated server/client/CLI artifacts work without ancestor node_modules or
-Python MCP packages. No profile-wide mcp.json server declaration is installed.
+The native plugin directory contains `plugin.yaml` and `__init__.py`. Enable it
+explicitly and restart the host. Three canonical generated skills are registered:
+`project-initializer`, `project-load`, and `impact-review`. `document-clarify`
+is installed separately from `@dotdotgod/skills`. Generated server/client/CLI
+artifacts work without ancestor `node_modules` or Python MCP packages. No
+profile-wide `mcp.json` server declaration is installed.
 
 Configured roots map convenient labels to absolute local directories. Every
 platform may select a configured label or any existing absolute directory through
-select_root. Legacy gateway_access is ignored: dotdotgod does not
-provide repository or filesystem-area authorization. Host permissions and OS
-isolation are responsible for access, including gateway deployments.
-Before selection, dotdotgod is inactive and ordinary host tools remain available
-under host permissions without dotdotgod path rewriting or impact gates. There
-is no mandatory selection/load instruction. Selection and initialization are available without a selected project, even
-without configured labels; other project/context tools need a routing root. Initialization requires an explicit absolute path to
-an existing directory, defaults to dry-run and requires confirmWrite for writes.
-It uses a disposable client and does not persist selection. Host session IDs
-are optional bookkeeping, not admission credentials. Unknown IDs create routing
-state on demand; missing IDs use disposable clients and never inherit another
-conversation's selection. Tools may run before a pre-LLM event. Explicit load
-roots take precedence; otherwise cli_root or the launch directory supplies the
-default for unbound dotdotgod calls. Anonymous selections are not persisted.
-The selected label or absolute path persists for identified conversations and
-is resolved on restore without a sender/principal authorization check. Relative native file paths and terminal workdir default to the selected root;
-explicit external paths are allowed. Host shell policy remains separate.
+`select_root`. Legacy `gateway_access` is ignored: dotdotgod does not provide
+repository or filesystem-area authorization. Host permissions and OS isolation
+are responsible for access, including gateway deployments. Before selection,
+dotdotgod is inactive and ordinary host tools remain available under host
+permissions without dotdotgod path rewriting or advisory impact tracking. There
+is no mandatory selection/load instruction. Selection and initialization are
+available without a selected project, even without configured labels; other
+project/context tools need a routing root. Initialization requires an explicit
+absolute path to an existing directory, defaults to dry-run, and requires
+`confirmWrite` for writes using a disposable client without persisting selection.
+Host session IDs are optional bookkeeping, not admission credentials. Unknown
+IDs create routing state on demand; missing IDs use disposable clients and never
+inherit another conversation's selection. Tools may run before a pre-LLM event.
+Explicit load roots take precedence; otherwise `cli_root` or the launch
+directory supplies the default for unbound dotdotgod calls. Anonymous selections
+are not persisted. The selected label or absolute path persists for identified
+conversations and is resolved on restore without a sender/principal authorization
+check. Relative native file paths and terminal workdir default to the selected
+root; explicit external paths are allowed. Host shell policy remains separate.
 
 Each host session gets a lazily opened client/server pair. Same-repository SQLite
 storage is shared, but mutable connection session IDs are not. Explicit context
-session_resume affects only that connection, including its reconnect identity. Explicit project-load root changes replace
-that session's routing connection and reset load assessment.
-These IDs and scope filters are not authentication or project-data ACLs.
+`session_resume` affects only that connection, including its reconnect identity.
+Explicit `project_load` root changes replace that session's routing connection
+and reset load assessment. These IDs and scope filters are not authentication or
+project-data ACLs.
 
 ## Load And References
 
 Automatic assessment injects a load-required instruction until successful project
 load; it does not rewrite user text/images or run broad validation. Requests with
-dd:no-load suppress only that request's automatic instruction. Restored sessions
-conservatively reassess; completion is never inherited from abandoned siblings.
+`dd:no-load` suppress only that request's automatic instruction. Restored
+sessions conservatively reassess; completion is never inherited from abandoned
+siblings.
 
 Full load uses canonical map depth 5. Focused load uses map depth 3 and up to 30
 query hits. CLI/query failure falls back to baseline README routing without
@@ -60,14 +66,16 @@ Hermes does not claim Pi's hidden TUI-message or codemode delivery mechanics.
 ## Context Results And Lifecycle
 
 The adapter exposes the shared 19-tool context/project catalog names in the
-dotdotgod toolset, plus select_root: twenty unique native registrations. Hermes
-provides its selected-repository impact_status instead of registering the shared
-catalog entry twice. Names have no dotdotgod_ prefix or compatibility aliases.
+dotdotgod toolset, plus `select_root`: twenty unique native registrations. Hermes
+provides its selected-repository `impact_status` instead of registering the
+shared catalog entry twice. Names have no `dotdotgod_` prefix or compatibility
+aliases.
 
-Native handlers return a JSON envelope with content and structuredContent. Shared
-MCP responses remain unchanged; native project-load uses the canonical map/query
-contract. Markdown is not parsed as JSON. Existing execution flags, errors,
-source IDs, limits, ordering, confirmations and graph-impact presentation remain.
+Native handlers return a JSON envelope with `content` and `structuredContent`.
+Shared MCP responses remain unchanged; native `project_load` uses the canonical
+map/query contract. Markdown is not parsed as JSON. Existing execution flags,
+errors, source IDs, limits, ordering, confirmations, and graph-impact
+presentation remain.
 
 Each bridge serializes its own calls. Normal turn completion retains the
 connection/jobs. Interrupt closes it; finalize/reset releases it. Transport
@@ -75,48 +83,64 @@ failures are not replayed automatically. A later call may reconnect. In-flight
 limits are 660 seconds at MCP and 690 seconds at the bridge; cancellation kills
 the local process group after sending SDK cancellation for detached commands.
 Forced transport loss cannot guarantee termination of detached commands, so never
-replay uncertain calls. Cleanup is POSIX-tested; Windows is unverified.
-Python bridge diagnostics retain an 8,000-character
-stderr tail; this does not change shared command-capture limits or result data.
+replay uncertain calls. Cleanup is POSIX-tested; Windows is unverified. Python
+bridge diagnostics retain an 8,000-character stderr tail; this does not change
+shared command-capture limits or result data.
 
 ## Impact And Delegation
 
-Dirty/untracked Git file fingerprints, excluding ignored caches and local
-plan/archive bodies, determine pending impact. Durable checked fingerprints are
-shared for the selected worktree. Successful checks clear only requested paths
-whose fingerprints still match. Failure, unrequested paths and re-edits remain
-pending. impact_status is read-only and does not clear state.
+Hermes uses Path 1 non-blocking advisory impact backed by shared
+`.dotdotgod/context/impact.sqlite` v2 (24-hour fixed millisecond TTL, WAL mode,
+`busy_timeout=5000`, `isolation_level=None`, `BEGIN IMMEDIATE`, `closing`) for
+direct cross-process interoperability between Python `sqlite3` and Node
+`ImpactState`.
 
-Known release/test commands are blocked while pending; execute batches check
-inside the adapter too. Opaque execute_file and interactive process write/submit
-calls are blocked while pending. Relative file paths/workdir default to the project;
-external paths remain allowed.
-Unavailable impact state blocks covered release paths rather than authorizing
-unchecked handoff; reads, load, initialization and impact review remain usable.
+- `post_tool_call` observes successful native `write_file`, `file_write`,
+  `file_edit`, and `patch` (both `path` and V4A multi-file `patch` headers)
+  edits inside the selected repository and marks them under a principal-derived
+  `impact_key` (`sha256(principal + "\0" + session_id + "\0" + root)`).
+- Excluded paths match the shared contract: paths outside canonical root,
+  `node_modules`, `.git`, `.dotdotgod`, `dist`, `build`, `coverage`, and
+  `<docRoot>/(plan|archive)` (resolved safely from `dotdotgod.config.json`
+  `documentation.root`, default `docs`); `<docRoot>/post` remains tracked.
+  Failed tool calls (`status != "ok"`, `error`, `is_error`, `isError`,
+  `ok === false`) add nothing.
+- `project_impact` passes the fixed `impact_key` as `contextSessionId` so the
+  shared Node MCP `withImpactReview` clears only successfully reviewed, unchanged
+  revisions. Failed reviews and re-edits remain pending.
+- `impact_status` is read-only (bounded `limit` 1..50) and returns the aligned
+  shared schema `{ ok, count, pending: [{ path }], truncated }`.
+- `before_llm` emits an ephemeral per-turn `impactReminder` advisory while
+  `count > 0` (degrading safely with masked stderr and no raw error message in
+  prompt context if status fails).
+- **Non-blocking policy**: all legacy blocking gates (`before_tool` deny,
+  `before_tool` exception-to-block, and `execute`/`execute_file`
+  `PermissionError`) are removed. `before_tool` only rewrites relative native
+  file arguments to the selected root and fails open on error. Pending impact
+  never blocks shell commands, `execute`, `execute_file`, interactive processes,
+  or edits.
 
-Hermes delegate_task remains host-owned. A subagent pre-LLM event may inherit
-an available parent's root, with a separate client; missing parents and changed
-sender identities do not deny calls. Children may select their own routing root.
-Ordinary host tools without known project state pass through unchanged, including
-nested calls with task_id but no session_id. Impact interception cannot infer a
-project in that case; host policy remains authoritative. Shared-worktree fingerprints include delegated edits.
-
-Hooks and command recognition are not an OS sandbox. Arbitrary programs, shell
-paths, patch bodies, other plugins and combined mutation/release commands do not
-have universal coverage. Host errors/timeouts can fail open. Keep host approvals
-and OS isolation; do not claim bypass-proof enforcement or multi-tenant isolation.
-No host memory, compaction, planning UI or pi-subagents implementation is replaced.
+Hermes `delegate_task` remains host-owned. A subagent `before_llm` event may
+inherit an available parent's root with a separate client; missing parents and
+changed sender identities do not deny calls. Children may select their own
+routing root. Ordinary host tools without known project state pass through
+unchanged, including nested calls with `task_id` but no `session_id`; host
+policy remains authoritative. Keep host approvals and OS isolation; no host
+memory, compaction, planning UI, or `pi-subagents` implementation is replaced.
 
 ## Verification
 
-Python stdlib regressions exercise registration, unrestricted project routing, concurrent
-clients, same-root session filtering, explicit resume/reconnect, conservative load
-restore/opt-out, reference fallback, impact failure/subsets/re-edits, delegation
-identity, nested gates and interruption with real generated Node processes.
-Resource checks validate generated skills and intentionally absent Plan Mode.
-The opt-in pinned-host smoke loads an extracted package in an isolated real
-PluginManager profile and tests CLI/gateway hook delivery, concurrent roots,
-shared-result channels and impact deny/clear/re-edit without remote mutations.
+Python stdlib regressions exercise registration, unrestricted project routing,
+concurrent clients, same-root session filtering, explicit resume/reconnect,
+conservative load restore/opt-out, reference fallback, `post_tool_call` edit
+tracking, Python/Node `impact.sqlite` v2 interop, aligned `impact_status`,
+MCP `project_impact` clearance/failure/re-edits, non-blocking execution under
+pending impact, delegation identity, and interruption with real generated Node
+processes. Resource checks validate generated skills and absent Plan Mode. The
+opt-in pinned-host smoke loads an extracted package in an isolated real
+`PluginManager` profile and tests CLI/gateway hook delivery, concurrent roots,
+and advisory impact mark/remind/clear/re-edit without blocking or remote
+mutations.
 
 ## Traceability
 
@@ -131,6 +155,7 @@ shared-result channels and impact deny/clear/re-edit without remote mutations.
   - [packages/hermes/__init__.py](../../packages/hermes/__init__.py)
   - [packages/hermes/plugin.yaml](../../packages/hermes/plugin.yaml)
   - [packages/hermes/runtime.py](../../packages/hermes/runtime.py)
+  - [packages/hermes/impact.py](../../packages/hermes/impact.py)
   - [packages/hermes/proxy.py](../../packages/hermes/proxy.py)
   - [packages/hermes/policy.py](../../packages/hermes/policy.py)
   - [packages/hermes/mcp/bridge-entry.mjs](../../packages/hermes/mcp/bridge-entry.mjs)
@@ -143,6 +168,7 @@ shared-result channels and impact deny/clear/re-edit without remote mutations.
   - [docs/test/HERMES_ADAPTER.md](../test/HERMES_ADAPTER.md)
 - Related docs:
   - [docs/spec/CROSS_AGENT_SUPPORT.md](CROSS_AGENT_SUPPORT.md)
+  - [docs/spec/ADVISORY_IMPACT.md](ADVISORY_IMPACT.md)
   - [docs/spec/LOAD_PROJECT.md](LOAD_PROJECT.md)
   - [docs/spec/CONTEXT_EXECUTION.md](CONTEXT_EXECUTION.md)
   - [docs/spec/TOOL_RESPONSES.md](TOOL_RESPONSES.md)
@@ -150,10 +176,10 @@ shared-result channels and impact deny/clear/re-edit without remote mutations.
   - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../arch/CROSS_AGENT_ARCHITECTURE.md)
 - Contracts:
   - `HERMES-ROUTING-001` — CLI and gateway sessions use project-routed MCP connections without filesystem-area authorization or Plan Mode (sections: 2, implementedBy: 3, verifiedBy: 2)
-  - `HERMES-IMPACT-001` — Supported release paths require successful current-fingerprint impact checks (sections: 1, implementedBy: 2, verifiedBy: 2)
+  - `HERMES-IMPACT-001` — Observed edits record non-blocking advisory pending impact in shared impact.sqlite with aligned status and MCP review clearance (sections: 1, implementedBy: 3, verifiedBy: 2)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/hermes/__init__.py","packages/hermes/plugin.yaml","packages/hermes/runtime.py","packages/hermes/proxy.py","packages/hermes/policy.py","packages/hermes/mcp/bridge-entry.mjs","scripts/generate-adapters.mjs","scripts/build-adapter-runtime.mjs"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/resources.test.mjs","packages/hermes/test/pinned_host_smoke.py","docs/test/HERMES_ADAPTER.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/LOAD_PROJECT.md","docs/spec/CONTEXT_EXECUTION.md","docs/spec/TOOL_RESPONSES.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"],"contracts":[{"id":"HERMES-ROUTING-001","title":"CLI and gateway sessions use project-routed MCP connections without filesystem-area authorization or Plan Mode","sections":["Installation And Routing","Context Results And Lifecycle"],"implementedBy":["packages/hermes/__init__.py","packages/hermes/runtime.py","packages/hermes/proxy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]},{"id":"HERMES-IMPACT-001","title":"Supported release paths require successful current-fingerprint impact checks","sections":["Impact And Delegation"],"implementedBy":["packages/hermes/runtime.py","packages/hermes/policy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]}]}
+{"kind":"spec","implementedBy":["packages/hermes/__init__.py","packages/hermes/plugin.yaml","packages/hermes/runtime.py","packages/hermes/impact.py","packages/hermes/proxy.py","packages/hermes/policy.py","packages/hermes/mcp/bridge-entry.mjs","scripts/generate-adapters.mjs","scripts/build-adapter-runtime.mjs"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/resources.test.mjs","packages/hermes/test/pinned_host_smoke.py","docs/test/HERMES_ADAPTER.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/ADVISORY_IMPACT.md","docs/spec/LOAD_PROJECT.md","docs/spec/CONTEXT_EXECUTION.md","docs/spec/TOOL_RESPONSES.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"],"contracts":[{"id":"HERMES-ROUTING-001","title":"CLI and gateway sessions use project-routed MCP connections without filesystem-area authorization or Plan Mode","sections":["Installation And Routing","Context Results And Lifecycle"],"implementedBy":["packages/hermes/__init__.py","packages/hermes/runtime.py","packages/hermes/proxy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]},{"id":"HERMES-IMPACT-001","title":"Observed edits record non-blocking advisory pending impact in shared impact.sqlite with aligned status and MCP review clearance","sections":["Impact And Delegation"],"implementedBy":["packages/hermes/runtime.py","packages/hermes/impact.py","packages/hermes/policy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]}]}
 ```

@@ -1,255 +1,318 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import {
+  extractHookSessionId,
+  formatHookError,
+  isInitializedProject,
+  selectWorkspaceForPath,
+} from '../src/hook-state.mjs';
+import { ImpactState } from '../src/impact-state.mjs';
 
 const runner = `import { hookMain } from './src/hooks.mjs'; hookMain(process.argv[1]);`;
-function hook(event, input = {}) {
-  const result = spawnSync(process.execPath, ['--input-type=module', '-e', runner, event], {
-    cwd: new URL('..', import.meta.url), input: JSON.stringify(input), encoding: 'utf8',
+const packageRoot = new URL('..', import.meta.url);
+
+function runHookRaw(event, stdinText, extraEnv = {}) {
+  const env = { ...process.env, ...extraEnv };
+  if (!Object.hasOwn(extraEnv, 'CLAUDE_PROJECT_DIR')) delete env.CLAUDE_PROJECT_DIR;
+  return spawnSync(process.execPath, ['--input-type=module', '-e', runner, event], {
+    cwd: packageRoot,
+    input: stdinText,
+    encoding: 'utf8',
+    env,
   });
+}
+
+function hook(event, input = {}, extraEnv = {}) {
+  const result = runHookRaw(event, JSON.stringify(input), extraEnv);
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout);
 }
 
-function payload(root, event, extra = {}) {
-  return hook(event, { cwd: root, session_id: 'test', ...extra });
+function initProject(prefix, config = {}) {
+  const root = mkdtempSync(join(tmpdir(), prefix));
+  writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify(config));
+  return root;
 }
 
-const bash = { tool_name: 'Bash', tool_input: { command: 'npm test' } };
-const load = { tool_name: 'mcp__dotdotgod_context__project_load', tool_input: {} };
+function impactDbPath(root) {
+  return join(root, '.dotdotgod', 'context', 'impact.sqlite');
+}
 
-test('local plan Markdown does not create source-impact gates; maintained docs still do', () => {
-  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-plan-'));
+test('HK-01: extractHookSessionId rejects invalid session IDs without default fallback or DB creation', () => {
+  for (const bad of ['', '   ', '../evil', 'a/b', 'bad space', 'x'.repeat(129), 123, null, undefined, {}]) {
+    assert.equal(extractHookSessionId({ session_id: bad }), null);
+    assert.equal(extractHookSessionId({ sessionId: bad }), null);
+    assert.equal(extractHookSessionId({ conversationId: bad }), null);
+  }
+  assert.equal(extractHookSessionId({ session_id: 'sess_ok-1.2~a' }), 'sess_ok-1.2~a');
+  assert.equal(extractHookSessionId({ conversationId: 'conv-123' }), 'conv-123');
+
+  const root = initProject('dotdotgod-hk01-');
   try {
-    payload(root, 'sessionstart'); payload(root, 'posttooluse', load);
-    for (const documentationRoot of ['docs', 'knowledge']) {
-      writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({ documentation: { root: documentationRoot } }));
-      const file = join(root, documentationRoot, 'plan/task/README.md');
-      mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, '# Plan');
-      payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
-      assert.deepEqual(payload(root, 'pretooluse', bash), {});
+    writeFileSync(join(root, 'source.ts'), 'export const x = 1;\n');
+    for (const badId of [undefined, '', '../evil', 'a'.repeat(129)]) {
+      const base = badId === undefined ? { cwd: root } : { cwd: root, session_id: badId };
+      assert.deepEqual(hook('posttooluse', { ...base, tool_name: 'Write', tool_input: { file_path: join(root, 'source.ts') } }), {});
+      assert.deepEqual(hook('userpromptsubmit', base), {});
     }
-    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: join(root, 'docs/SPEC.md') } });
-    assert.equal(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
-  } finally { rmSync(root, { recursive: true, force: true }); }
+    assert.equal(existsSync(impactDbPath(root)), false, 'invalid session IDs must not create impact.sqlite');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
-test('hooks advise optional load and gate acknowledgement-based impact without recursion', () => {
-  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-test-'));
+test('HK-02: isInitializedProject rejects symlinks and selectWorkspaceForPath enforces segment boundaries', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hk02-'));
   try {
-    const started = payload(root, 'sessionstart');
-    assert.match(started.hookSpecificOutput.additionalContext, /project memory/i);
-    assert.doesNotMatch(started.hookSpecificOutput.additionalContext, /must|required|before substantive/i);
-    assert.equal(Object.hasOwn(JSON.parse(readFileSync(join(root, '.dotdotgod/context/runtime/test.json'), 'utf8')), 'loadRequired'), false);
-    for (const tool_name of ['Bash', 'Edit', 'Write', 'Shell', 'local_shell', 'shell', 'shell_command', 'exec_command', 'apply_patch']) {
-      assert.deepEqual(payload(root, 'pretooluse', { tool_name, tool_input: { command: 'npm test', file_path: 'source.ts' } }), {});
-    }
-    assert.deepEqual(payload(root, 'pretooluse', load), {});
-    payload(root, 'posttooluse', load);
+    const externalCfg = join(root, 'real.config.json');
+    const externalDir = join(root, 'real-dotdotgod');
+    writeFileSync(externalCfg, '{}');
+    mkdirSync(externalDir);
 
-    const file = join(root, 'source.ts');
-    writeFileSync(file, 'export const value = 1;\n');
-    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
-    const deniedImpact = payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'pnpm test' } });
-    assert.equal(deniedImpact.hookSpecificOutput.permissionDecision, 'deny');
-    assert.match(deniedImpact.hookSpecificOutput.permissionDecisionReason, /project_impact/);
-    const impact = { tool_name: 'mcp__dotdotgod_context__project_impact', tool_input: { paths: [file] } };
-    assert.deepEqual(payload(root, 'pretooluse', impact), {});
-    payload(root, 'posttooluse', impact);
-    assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'pnpm test' } }), {});
-  } finally { rmSync(root, { recursive: true, force: true }); }
+    const symlinkCfgRepo = join(root, 'symlink-cfg');
+    mkdirSync(symlinkCfgRepo);
+    symlinkSync(externalCfg, join(symlinkCfgRepo, 'dotdotgod.config.json'));
+    assert.equal(isInitializedProject(symlinkCfgRepo), false);
+
+    const symlinkDirRepo = join(root, 'symlink-dir');
+    mkdirSync(symlinkDirRepo);
+    symlinkSync(externalDir, join(symlinkDirRepo, '.dotdotgod'));
+    assert.equal(isInitializedProject(symlinkDirRepo), false);
+
+    assert.deepEqual(
+      hook('posttooluse', { cwd: symlinkCfgRepo, session_id: 'sym', tool_name: 'Write', tool_input: { file_path: join(symlinkCfgRepo, 'a.ts') } }),
+      {},
+    );
+    assert.equal(existsSync(impactDbPath(symlinkCfgRepo)), false);
+
+    const realDirRepo = join(root, 'real-dir-repo');
+    mkdirSync(join(realDirRepo, '.dotdotgod'), { recursive: true });
+    assert.equal(isInitializedProject(realDirRepo), true);
+
+    const app = join(root, 'app');
+    const appSub = join(app, 'sub');
+    const appV2 = join(root, 'app-v2');
+    mkdirSync(appSub, { recursive: true });
+    mkdirSync(appV2, { recursive: true });
+    assert.equal(selectWorkspaceForPath([app], join(appV2, 'file.ts')), null);
+    assert.equal(selectWorkspaceForPath([app, appSub], join(appSub, 'file.ts')), appSub);
+    assert.equal(selectWorkspaceForPath([app, appSub], join(app, 'file.ts')), app);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
-test('legacy loadRequired true is removed without blocking shell or writes', () => {
-  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-legacy-load-'));
-  try {
-    payload(root, 'sessionstart');
-    const statePath = join(root, '.dotdotgod/context/runtime/test.json');
-    for (const tool_name of ['Bash', 'Edit', 'Write']) {
-      writeFileSync(statePath, JSON.stringify({ loadRequired: true, pending: {} }));
-      assert.deepEqual(payload(root, 'pretooluse', { tool_name, tool_input: { command: 'npm test', file_path: 'source.ts' } }), {});
-      assert.equal(Object.hasOwn(JSON.parse(readFileSync(statePath, 'utf8')), 'loadRequired'), false);
-    }
-    writeFileSync(statePath, JSON.stringify({ loadRequired: true, pending: { 'source.ts': true } }));
-    assert.match(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecisionReason, /project_impact/);
-    payload(root, 'posttooluse', load);
-    assert.equal(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
-  } finally { rmSync(root, { recursive: true, force: true }); }
+test('HK-03: formatHookError masks $HOME, strips newlines/ANSI, caps at 240 chars, and hookMain fails open', () => {
+  const home = homedir();
+  const noisy = new Error(`\x1B[31mboom\x1B[0m at ${home}/secret/file.ts\r\nline2\t${'z'.repeat(300)}`);
+  const formatted = formatHookError(noisy);
+  assert.equal(formatted.includes(home), false);
+  assert.equal(formatted.includes('~/secret/file.ts'), true);
+  assert.doesNotMatch(formatted, /[\r\n\x1B]/);
+  assert.ok(formatted.length <= 240);
+  assert.ok(formatted.endsWith('...'));
+
+  for (const badStdin of ['{not valid json', '["array-not-object"]']) {
+    const res = runHookRaw('posttooluse', badStdin);
+    assert.equal(res.status, 0);
+    assert.equal(res.stdout, '{}\n');
+    assert.match(res.stderr, /^dotdotgod hook error: .+\n$/);
+    assert.ok(res.stderr.trimEnd().length <= 240);
+  }
 });
 
-test('pending membership needs no file read and accepts legacy fingerprint values', () => {
-  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-membership-'));
-  try {
-    payload(root, 'sessionstart'); payload(root, 'posttooluse', load);
-    const file = join(root, 'deleted.ts');
-    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
-    const statePath = join(root, '.dotdotgod/context/runtime/test.json');
-    const state = JSON.parse(readFileSync(statePath, 'utf8'));
-    assert.equal(state.pending[file], true);
-    state.pending[file] = 'legacy-fingerprint';
-    writeFileSync(statePath, JSON.stringify(state));
-    assert.equal(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
-    payload(root, 'posttooluse', { tool_name: 'mcp__dotdotgod_context__project_impact', tool_input: { paths: [file] } });
-    assert.deepEqual(payload(root, 'pretooluse', bash), {});
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
-
-test('hooks share impact state across nested event working directories without loading', () => {
-  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-nested-'));
+test('HK-04: Claude Code & Codex full advisory loop is non-blocking, tracks apply_patch and docRoot, and honors root resolution', () => {
+  const uninit = mkdtempSync(join(tmpdir(), 'dotdotgod-hk04-uninit-'));
+  const root = initProject('dotdotgod-hk04-init-', { documentation: { root: 'knowledge' } });
   const nested = join(root, 'packages', 'app');
   mkdirSync(nested, { recursive: true });
   try {
-    payload(root, 'sessionstart');
-    const file = join(root, 'source.ts');
-    hook('posttooluse', { cwd: nested, session_id: 'test', tool_name: 'Write', tool_input: { file_path: file } });
-    assert.equal(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
-    hook('posttooluse', { cwd: nested, session_id: 'test', tool_name: 'project_impact', tool_input: { paths: [file] } });
-    assert.deepEqual(payload(root, 'pretooluse', bash), {});
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
+    // Uninitialized repo stays completely silent and creates no DB.
+    assert.deepEqual(hook('sessionstart', { cwd: uninit, session_id: 's1' }), {});
+    assert.deepEqual(hook('posttooluse', { cwd: uninit, session_id: 's1', tool_name: 'Write', tool_input: { file_path: join(uninit, 'a.ts') } }), {});
+    assert.deepEqual(hook('userpromptsubmit', { cwd: uninit, session_id: 's1' }), {});
+    assert.equal(existsSync(impactDbPath(uninit)), false);
 
-test('declared project root overrides transient hook cwd and supports missing cwd', () => {
-  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-declared-'));
-  const nested = join(root, 'nested');
-  mkdirSync(nested);
-  try {
-    hook('sessionstart', { project_dir: root, cwd: nested, session_id: 'declared' });
-    assert.deepEqual(hook('pretooluse', { project_dir: root, cwd: nested, session_id: 'declared', ...bash }), {});
-    hook('posttooluse', { project_dir: root, cwd: nested, session_id: 'declared', tool_name: 'Write', tool_input: { file_path: 'source.ts' } });
-    assert.equal(hook('pretooluse', { project_dir: root, session_id: 'declared', ...bash }).hookSpecificOutput.permissionDecision, 'deny');
-    hook('posttooluse', { project_dir: root, session_id: 'declared', tool_name: 'project_impact', tool_input: { paths: ['source.ts'] } });
-    assert.deepEqual(hook('pretooluse', { project_dir: root, session_id: 'declared', ...bash }), {});
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
+    // SessionStart gives optional non-blocking advice without writing DB.
+    const started = hook('sessionstart', { cwd: nested, session_id: 's1' });
+    assert.equal(started.hookSpecificOutput.hookEventName, 'SessionStart');
+    assert.match(started.hookSpecificOutput.additionalContext, /project_load/);
+    assert.doesNotMatch(started.hookSpecificOutput.additionalContext, /must|required|before substantive/i);
+    assert.equal(existsSync(impactDbPath(root)), false);
 
-test('hook state remains isolated between projects with the same session id', () => {
-  const rootA = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-a-'));
-  const rootB = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-b-'));
-  try {
-    payload(rootA, 'sessionstart');
-    payload(rootB, 'sessionstart');
-    payload(rootB, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: 'source.ts' } });
-    payload(rootA, 'posttooluse', { tool_name: 'project_impact', tool_input: { paths: ['source.ts'] } });
-    assert.deepEqual(payload(rootA, 'pretooluse', bash), {});
-    assert.equal(payload(rootB, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
+    // UserPromptSubmit with no pending is a read-only no-op and does not create DB.
+    assert.deepEqual(hook('userpromptsubmit', { cwd: nested, session_id: 's1' }), {});
+    assert.equal(existsSync(impactDbPath(root)), false);
+
+    // Custom documentation.root excludes plan/archive, keeps post.
+    for (const ignored of ['knowledge/plan/task/README.md', 'knowledge/archive/old/README.md', 'node_modules/pkg/index.js']) {
+      const target = join(root, ignored);
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, 'ignored\n');
+      assert.deepEqual(hook('posttooluse', { cwd: nested, session_id: 's1', tool_name: 'Write', tool_input: { file_path: target } }), {});
+    }
+    assert.equal(existsSync(impactDbPath(root)), false);
+
+    // First tracked edit (0 -> >0) emits 1-time PostToolUse advisory notice (including <docRoot>/post).
+    const postDoc = join(root, 'knowledge/post/note/README.md');
+    mkdirSync(dirname(postDoc), { recursive: true });
+    writeFileSync(postDoc, '# Post\n');
+    const firstEdit = hook('posttooluse', { cwd: nested, session_id: 's1', tool_name: 'Write', tool_input: { file_path: postDoc } });
+    assert.equal(firstEdit.hookSpecificOutput.hookEventName, 'PostToolUse');
+    assert.match(firstEdit.hookSpecificOutput.additionalContext, /knowledge\/post\/note\/README\.md/);
+    assert.match(firstEdit.hookSpecificOutput.additionalContext, /does not block/i);
+
+    // Second edit (>0 -> >0) records path silently without repeating PostToolUse advisory.
+    const srcA = join(root, 'src/a.ts');
+    const srcB = join(root, 'src/b.ts');
+    mkdirSync(dirname(srcA), { recursive: true });
+    writeFileSync(srcA, 'export const a = 1;\n');
+    writeFileSync(srcB, 'export const b = 2;\n');
+    const patch = [
+      '*** Begin Patch',
+      '*** Update File: src/a.ts',
+      '@@',
+      '+export const a = 1;',
+      '*** Add File: src/b.ts',
+      '+export const b = 2;',
+      '*** End Patch',
+    ].join('\n');
+    assert.deepEqual(hook('posttooluse', { cwd: nested, session_id: 's1', tool_name: 'apply_patch', tool_input: { patch } }), {});
+
+    // MultiEdit also tracked cleanly.
+    const srcC = join(root, 'src/c.ts');
+    writeFileSync(srcC, 'export const c = 3;\n');
+    assert.deepEqual(hook('posttooluse', { project_dir: root, session_id: 's1', tool_name: 'MultiEdit', tool_input: { file_path: 'src/c.ts', edits: [] } }), {});
+
+    // UserPromptSubmit emits per-turn advisory across multiple turns (read-only, includes all 4 paths).
+    for (let turn = 0; turn < 2; turn += 1) {
+      const promptAdvice = hook('userpromptsubmit', { session_id: 's1' }, { CLAUDE_PROJECT_DIR: root });
+      assert.equal(promptAdvice.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+      for (const expectedPath of ['knowledge/post/note/README.md', 'src/a.ts', 'src/b.ts', 'src/c.ts']) {
+        assert.match(promptAdvice.hookSpecificOutput.additionalContext, new RegExp(expectedPath.replaceAll('/', '\\/')));
+      }
+      assert.match(promptAdvice.hookSpecificOutput.additionalContext, /does not block/i);
+    }
+
+    // PreToolUse ALWAYS returns {} and NEVER denies any command or tool.
+    for (const tool_name of ['Bash', 'Shell', 'local_shell', 'exec_command', 'Edit', 'Write', 'apply_patch']) {
+      const pre = hook('pretooluse', { cwd: root, session_id: 's1', tool_name, tool_input: { command: 'pnpm test && git commit -m "x"', file_path: srcA } });
+      assert.deepEqual(pre, {});
+    }
+
+    // Different session sees empty pending.
+    assert.deepEqual(hook('userpromptsubmit', { cwd: root, session_id: 'other-session' }), {});
   } finally {
-    rmSync(rootA, { recursive: true, force: true });
-    rmSync(rootB, { recursive: true, force: true });
+    rmSync(uninit, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
-test('impact paths resolve against the canonical project root', () => {
-  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-impact-root-'));
-  const nested = join(root, 'nested');
-  mkdirSync(nested);
+test('HK-05: failed project_impact retains pending, succeeded clears, third-party MCP and legacy runtime JSON are ignored', () => {
+  const root = initProject('dotdotgod-hk05-');
   try {
-    hook('sessionstart', { project_dir: root, cwd: nested, session_id: 'impact' });
-    hook('posttooluse', { project_dir: root, session_id: 'impact', ...load });
-    writeFileSync(join(root, 'source.ts'), 'export const value = 1;\n');
-    hook('posttooluse', { project_dir: root, cwd: nested, session_id: 'impact', tool_name: 'Write', tool_input: { file_path: 'source.ts' } });
-    const verify = { tool_name: 'Bash', tool_input: { command: 'pnpm test' } };
-    assert.match(hook('pretooluse', { project_dir: root, session_id: 'impact', ...verify }).hookSpecificOutput.permissionDecisionReason, /project_impact/);
-    hook('posttooluse', { project_dir: root, cwd: nested, session_id: 'impact', tool_name: 'mcp__dotdotgod_context__project_impact', tool_input: { paths: ['source.ts'] } });
-    assert.deepEqual(hook('pretooluse', { project_dir: root, session_id: 'impact', ...verify }), {});
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
+    // Seed legacy .dotdotgod/context/runtime/s1.json with loadRequired + pending: must be completely ignored.
+    const legacyPath = join(root, '.dotdotgod', 'context', 'runtime', 's1.json');
+    mkdirSync(dirname(legacyPath), { recursive: true });
+    const legacyContent = JSON.stringify({ loadRequired: true, pending: { [join(root, 'legacy.ts')]: true } });
+    writeFileSync(legacyPath, legacyContent);
+    assert.deepEqual(hook('userpromptsubmit', { cwd: root, session_id: 's1' }), {});
+    assert.deepEqual(hook('pretooluse', { cwd: root, session_id: 's1', tool_name: 'Bash', tool_input: { command: 'pnpm test' } }), {});
+    assert.equal(readFileSync(legacyPath, 'utf8'), legacyContent, 'legacy runtime JSON must not be mutated');
 
-test('outside-root scratchpad writes do not create commit-blocking pending impact', () => {
-  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-root-'));
-  const scratch = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-scratch-'));
-  try {
-    payload(root, 'sessionstart');
-    payload(root, 'posttooluse', load);
-    const scratchFile = join(scratch, 'scratchpad', 'test_zzz_diag.py');
-    mkdirSync(dirname(scratchFile), { recursive: true });
-    writeFileSync(scratchFile, 'print("diagnostic")\n');
-    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: scratchFile } });
-    assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } }), {});
+    // Failed Write does NOT mark pending.
+    const fileA = join(root, 'src/a.ts');
+    const fileB = join(root, 'src/b.ts');
+    mkdirSync(dirname(fileA), { recursive: true });
+    writeFileSync(fileA, 'export const a = 1;\n');
+    writeFileSync(fileB, 'export const b = 2;\n');
+    assert.deepEqual(
+      hook('posttooluse', { cwd: root, session_id: 's1', tool_name: 'Write', tool_input: { file_path: fileA }, tool_response: { isError: true } }),
+      {},
+    );
+    assert.equal(new ImpactState(root, 's1').status().count, 0);
+
+    // Mark both files via apply_patch raw string input.
+    const rawPatch = '*** Begin Patch\n*** Update File: src/a.ts\n*** Update File: src/b.ts\n*** End Patch';
+    const marked = hook('posttooluse', { cwd: root, session_id: 's1', tool_name: 'apply_patch', tool_input: rawPatch });
+    assert.equal(marked.hookSpecificOutput.hookEventName, 'PostToolUse');
+    assert.equal(new ImpactState(root, 's1').status().count, 2);
+
+    // Third-party MCP tool and unprefixed bare tool name cannot clear pending.
+    for (const untrusted of ['mcp__other_server__project_impact', 'project_impact']) {
+      assert.deepEqual(
+        hook('posttooluse', { cwd: root, session_id: 's1', tool_name: untrusted, tool_input: { paths: ['src/a.ts', 'src/b.ts'] } }),
+        {},
+      );
+    }
+    assert.equal(new ImpactState(root, 's1').status().count, 2);
+
+    // Failed dotdotgod project_impact retains pending across all failure shapes.
+    const failurePayloads = [
+      { tool_response: { ok: false, error: 'cli failed' } },
+      { tool_response: { isError: true } },
+      { tool_response: { is_error: true } },
+      { tool_response: { status: 'failed' } },
+      { tool_response: { structuredContent: { ok: false } } },
+      { error: 'top-level error' },
+    ];
+    for (const failExtra of failurePayloads) {
+      assert.deepEqual(
+        hook('posttooluse', {
+          cwd: root,
+          session_id: 's1',
+          tool_name: 'mcp__dotdotgod_context__project_impact',
+          tool_input: { paths: ['src/a.ts', 'src/b.ts'] },
+          ...failExtra,
+        }),
+        {},
+      );
+      assert.equal(new ImpactState(root, 's1').status().count, 2);
+    }
+
+    // Succeeded dotdotgod project_impact clears requested path using official prefixes.
+    assert.deepEqual(
+      hook('posttooluse', {
+        cwd: root,
+        session_id: 's1',
+        tool_name: 'mcp__plugin_dotdotgod_dotdotgod-context__project_impact',
+        tool_input: { paths: ['src/a.ts'] },
+        tool_response: { ok: true },
+      }),
+      {},
+    );
+    assert.deepEqual(new ImpactState(root, 's1').status().pending, [{ path: 'src/b.ts' }]);
+
+    assert.deepEqual(
+      hook('posttooluse', {
+        cwd: root,
+        session_id: 's1',
+        tool_name: 'mcp__dotdotgod-context__project_impact',
+        tool_input: { paths: [fileB] },
+      }),
+      {},
+    );
+    assert.equal(new ImpactState(root, 's1').status().count, 0);
+    assert.deepEqual(hook('userpromptsubmit', { cwd: root, session_id: 's1' }), {});
+
+    // Re-edit after clear transitions 0 -> >0 and emits PostToolUse advisory again.
+    writeFileSync(fileA, 'export const a = 2;\n');
+    const reEdited = hook('posttooluse', { cwd: root, session_id: 's1', tool_name: 'Edit', tool_input: { path: fileA } });
+    assert.equal(reEdited.hookSpecificOutput.hookEventName, 'PostToolUse');
+    assert.match(reEdited.hookSpecificOutput.additionalContext, /src\/a\.ts/);
   } finally {
     rmSync(root, { recursive: true, force: true });
-    rmSync(scratch, { recursive: true, force: true });
   }
-});
-
-test('stale outside-root pending impact state is pruned before broad command gates', () => {
-  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-stale-'));
-  const scratch = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-stale-scratch-'));
-  try {
-    payload(root, 'sessionstart');
-    payload(root, 'posttooluse', load);
-    const statePath = join(root, '.dotdotgod', 'context', 'runtime', 'test.json');
-    const scratchFile = join(scratch, 'scratchpad', 'stale.py');
-    writeFileSync(statePath, `${JSON.stringify({ loadRequired: false, pending: { [scratchFile]: 'missing' } }, null, 2)}\n`);
-    assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } }), {});
-    const state = JSON.parse(readFileSync(statePath, 'utf8'));
-    assert.deepEqual(state.pending, {});
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-    rmSync(scratch, { recursive: true, force: true });
-  }
-});
-
-test('impact posttooluse clears requested pending paths even when result reports failure', () => {
-  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-impact-clear-'));
-  try {
-    payload(root, 'sessionstart');
-    payload(root, 'posttooluse', load);
-    const file = join(root, 'source.ts');
-    writeFileSync(file, 'export const value = 1;\n');
-    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
-    assert.equal(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } }).hookSpecificOutput.permissionDecision, 'deny');
-    const impact = { tool_name: 'mcp__dotdotgod_context__project_impact', tool_input: { paths: [file] }, tool_response: { ok: false, error: 'diagnostic failure' } };
-    const warning = payload(root, 'posttooluse', impact);
-    assert.match(warning.hookSpecificOutput.additionalContext, /cleared pending graph impact/i);
-    assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'git commit -m "test"' } }), {});
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
-
-test('re-edit after impact acknowledgement creates a fresh pending gate', () => {
-  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-reedit-'));
-  try {
-    payload(root, 'sessionstart');
-    payload(root, 'posttooluse', load);
-    const file = join(root, 'source.ts');
-    writeFileSync(file, 'export const value = 1;\n');
-    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
-    payload(root, 'posttooluse', { tool_name: 'mcp__dotdotgod_context__project_impact', tool_input: { paths: [file] } });
-    assert.deepEqual(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'pnpm test' } }), {});
-    writeFileSync(file, 'export const value = 2;\n');
-    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: file } });
-    assert.equal(payload(root, 'pretooluse', { tool_name: 'Bash', tool_input: { command: 'pnpm test' } }).hookSpecificOutput.permissionDecision, 'deny');
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
-
-test('unrelated or unidentified hook inputs fail open', () => {
-  const rootA = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-known-'));
-  const rootB = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-unrelated-'));
-  try {
-    payload(rootA, 'sessionstart');
-    payload(rootA, 'posttooluse', { tool_name: 'Write', tool_input: { file_path: 'source.ts' } });
-    assert.deepEqual(payload(rootB, 'pretooluse', bash), {});
-    assert.equal(payload(rootA, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
-    assert.deepEqual(hook('pretooluse', { session_id: 'unknown', ...bash }), {});
-  } finally {
-    rmSync(rootA, { recursive: true, force: true });
-    rmSync(rootB, { recursive: true, force: true });
-  }
-});
-
-test('unrelated MCP tools with shared short names cannot acknowledge impact', () => {
-  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-hook-name-isolation-'));
-  try {
-    payload(root, 'sessionstart');
-    payload(root, 'posttooluse', { tool_name: 'mcp__other_server__project_load', tool_input: {} });
-    assert.deepEqual(payload(root, 'pretooluse', bash), {});
-    payload(root, 'posttooluse', load);
-    const file = join(root, 'source.ts');
-    writeFileSync(file, 'export const value = 1;');
-    payload(root, 'posttooluse', { tool_name: 'Write', tool_input: { path: file } });
-    payload(root, 'posttooluse', { tool_name: 'mcp__other_server__project_impact', tool_input: { paths: [file] } });
-    assert.equal(payload(root, 'pretooluse', bash).hookSpecificOutput.permissionDecision, 'deny');
-  } finally { rmSync(root, { recursive: true, force: true }); }
 });

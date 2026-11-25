@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="ddg-logo-title">
+  <title id="ddg-logo-title">dotdotgod — a lowercase g with two eyes</title>
+  <defs>
+    <linearGradient id="ddg-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#D6F0B0"/>
+      <stop offset="100%" stop-color="#BCE08E"/>
+    </linearGradient>
+  </defs>
+  <rect x="52" y="52" width="408" height="408" rx="92" ry="92" fill="url(#ddg-bg)"/>
+  <g fill="none" stroke="#1F2E1A" stroke-width="24">
+    <path d="M140 142H372V306H140Z M372 306V372H140V338"/>
+  </g>
+  <g fill="#1F2E1A">
+    <circle cx="212" cy="224" r="23"/>
+    <circle cx="300" cy="224" r="23"/>
+  </g>
+</svg>

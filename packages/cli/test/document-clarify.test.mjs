@@ -13,7 +13,7 @@ test('standalone document-clarify preserves guidance without adapter copies', ()
   assert.ok(skill.includes('When CLI-backed routing is unavailable'));
   assert.doesNotMatch(skill, /operator-authorized selected repository|OpenCode Code Mode/);
   assert.match(read('packages/skills/skills/document-clarify/agents/openai.yaml'), /Document Clarify/);
-  for (const adapter of ['pi', 'claude-code', 'codex', 'hermes', 'opencode']) {
+  for (const adapter of ['pi', 'claude-code', 'codex', 'hermes', 'opencode', 'antigravity']) {
     assert.equal(existsSync(new URL(`../../../packages/${adapter}/skills/document-clarify`, import.meta.url)), false, `${adapter} must not bundle the skill`);
   }
   for (const phrase of ['Reader Decision Check', 'specific misunderstanding, failure condition, or evidence limit', 'never turn an unresolved claim into a confirmed fact', 'rather than banning individual words or punctuation', 'Keep generated-file instructions, traceability mappings', 'Remove obsolete historical behavior and superseded conditions from current specs', 'maintained source, tests, or confirmed decisions', 'currently supported compatibility behavior', 'when retirement is unverified, ask rather than delete', 'Preserve historical meaning in archives and reports', 'Google Technical Writing One', '**Audience:**', '**Terminology:**', '**Sentences:**', '**Paragraphs:**', '**Lists and tables:**', '**Language:**', 'never invent an unknown actor', 'Preserve meaningful prohibitions', 'unverified status', 'Accuracy takes priority over brevity']) {

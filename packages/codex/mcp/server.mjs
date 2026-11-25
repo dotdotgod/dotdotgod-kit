@@ -2981,7 +2981,7 @@ var require_compile = __commonJS({
       const schOrFunc = root2.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve7.call(this, root2, ref);
+      let _sch = resolve8.call(this, root2, ref);
       if (_sch === void 0) {
         const schema = (_a = root2.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3008,7 +3008,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve7(root2, ref) {
+    function resolve8(root2, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3639,7 +3639,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve7(baseURI, relativeURI, options) {
+    function resolve8(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const { parsed: baseParsed, malformedAuthorityOrPort: baseMalformed } = parseWithStatus(baseURI, schemelessOptions);
       const { parsed: relativeParsed, malformedAuthorityOrPort: relativeMalformed } = parseWithStatus(relativeURI, schemelessOptions);
@@ -3923,7 +3923,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve7,
+      resolve: resolve8,
       resolveComponent,
       equal,
       serialize,
@@ -19073,7 +19073,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve7) => setTimeout(resolve7, pollInterval));
+        await new Promise((resolve8) => setTimeout(resolve8, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -19090,7 +19090,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve7, reject) => {
+    return new Promise((resolve8, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -19168,7 +19168,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve7(parseResult.data);
+            resolve8(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -19429,12 +19429,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve7, reject) => {
+    return new Promise((resolve8, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve7, interval);
+      const timeoutId = setTimeout(resolve8, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -20525,7 +20525,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve7) => setTimeout(resolve7, pollInterval));
+      await new Promise((resolve8) => setTimeout(resolve8, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -21189,16 +21189,20 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve7) => {
+    return new Promise((resolve8) => {
       const json = serializeMessage(message);
       if (this._stdout.write(json)) {
-        resolve7();
+        resolve8();
       } else {
-        this._stdout.once("drain", resolve7);
+        this._stdout.once("drain", resolve8);
       }
     });
   }
 };
+
+// packages/context/src/server.mjs
+import { existsSync as existsSync4, statSync as statSync6 } from "node:fs";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // packages/context/src/store.mjs
 import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
@@ -22805,7 +22809,7 @@ function requestOnce(url, addresses, options, signal) {
   const client = url.protocol === "https:" ? https : http;
   const allowed = new Set(addresses.map(({ address }) => normalizeAddress(address)));
   const selected = addresses[0];
-  return new Promise((resolve7, reject) => {
+  return new Promise((resolve8, reject) => {
     let settled = false;
     const finish = (fn, value) => {
       if (!settled) {
@@ -22822,7 +22826,7 @@ function requestOnce(url, addresses, options, signal) {
         if (lookupOptions?.all) callback(null, values);
         else callback(null, selected.address, selected.family);
       }
-    }, (response) => finish(resolve7, { request, response, allowed }));
+    }, (response) => finish(resolve8, { request, response, allowed }));
     request.once("socket", (socket) => {
       socket.once("connect", () => {
         const remote = normalizeAddress(socket.remoteAddress || "");
@@ -23375,7 +23379,7 @@ var IngestionJobRunner = class {
           clearTimeout(timer);
           this.controllers.delete(job.id);
         }
-        if (!this.closed) await new Promise((resolve7) => setImmediate(resolve7));
+        if (!this.closed) await new Promise((resolve8) => setImmediate(resolve8));
       }
     } finally {
       this.running = false;
@@ -23414,21 +23418,70 @@ var PHASE3_TOOL_INPUT_SCHEMAS = Object.freeze({
 import { AsyncLocalStorage } from "node:async_hooks";
 
 // packages/context/src/impact-state.mjs
-import { createHash as createHash2, randomUUID } from "node:crypto";
-import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync4, realpathSync as realpathSync3 } from "node:fs";
-import { dirname as dirname3, isAbsolute, join as join4, relative as relative2, resolve as resolve6 } from "node:path";
+import { randomUUID } from "node:crypto";
+import { existsSync as existsSync3, mkdirSync as mkdirSync2 } from "node:fs";
+import { dirname as dirname4, join as join5, resolve as resolve7 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
-function impactPath(root2, path) {
+
+// packages/context/src/impact-path.mjs
+import { createHash as createHash2 } from "node:crypto";
+import { lstatSync as lstatSync2, readFileSync as readFileSync4, realpathSync as realpathSync3 } from "node:fs";
+import { dirname as dirname3, isAbsolute, join as join4, relative as relative2, resolve as resolve6 } from "node:path";
+var MAX_CONFIG_BYTES = 262144;
+var UNSAFE_ROOT_CHARS = /[\x00-\x1F\x7F-\x9F\u2028\u2029\u200E\u200F\u202A-\u202E\u2066-\u2069`*?[\]{}]/;
+var EXCLUDED_DIRS = /(^|\/)(node_modules|\.git|\.dotdotgod|dist|build|coverage)(\/|$)/;
+function entryExists(targetPath) {
+  try {
+    lstatSync2(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function insideRealRoot(resolvedRoot, targetPath) {
+  try {
+    let ancestor = targetPath;
+    while (!entryExists(ancestor) && dirname3(ancestor) !== ancestor) ancestor = dirname3(ancestor);
+    const realRelative = relative2(realpathSync3(resolvedRoot), realpathSync3(ancestor));
+    const sep2 = process.platform === "win32" ? "\\" : "/";
+    return realRelative !== ".." && !realRelative.startsWith(`..${sep2}`) && !isAbsolute(realRelative);
+  } catch {
+    return false;
+  }
+}
+function resolveDocumentationRoot(root2) {
+  try {
+    const resolvedRoot = resolve6(root2);
+    const configPath = join4(resolvedRoot, "dotdotgod.config.json");
+    const stat = lstatSync2(configPath);
+    if (stat.isSymbolicLink() || !stat.isFile() || stat.size > MAX_CONFIG_BYTES) return "docs";
+    const parsed = JSON.parse(readFileSync4(configPath, "utf8"));
+    const raw = parsed?.documentation?.root;
+    if (typeof raw !== "string" || !raw || UNSAFE_ROOT_CHARS.test(raw)) return "docs";
+    if (raw.startsWith("\\") || raw.startsWith("/") || /^[A-Za-z]:/.test(raw) || isAbsolute(raw)) return "docs";
+    const normalized = raw.replaceAll("\\", "/").replace(/\/+$/, "");
+    if (!normalized) return "docs";
+    const segments = normalized.split("/");
+    if (segments.some((seg) => !seg || seg.startsWith("."))) return "docs";
+    if (!insideRealRoot(resolvedRoot, resolve6(resolvedRoot, normalized))) return "docs";
+    return normalized;
+  } catch {
+    return "docs";
+  }
+}
+function impactPath(root2, path, docRoot = resolveDocumentationRoot(root2)) {
   if (typeof path !== "string" || !path.trim() || path.includes("\0")) return void 0;
-  const absolute = resolve6(root2, path);
-  const name = relative2(resolve6(root2), absolute).replaceAll("\\", "/");
+  const resolvedRoot = resolve6(root2);
+  const absolute = resolve6(resolvedRoot, path);
+  const name = relative2(resolvedRoot, absolute).replaceAll("\\", "/");
   if (!name || name === ".." || name.startsWith("../") || isAbsolute(name)) return void 0;
-  if (/(^|\/)(node_modules|\.git|\.dotdotgod|dist|build|coverage)(\/|$)/.test(name)) return void 0;
-  if (/^docs\/(plan|archive)(\/|$)/.test(name)) return void 0;
-  let ancestor = absolute;
-  while (!existsSync3(ancestor) && dirname3(ancestor) !== ancestor) ancestor = dirname3(ancestor);
-  const realRelative = relative2(realpathSync3(root2), realpathSync3(ancestor));
-  if (realRelative === ".." || realRelative.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) || isAbsolute(realRelative)) return void 0;
+  if (EXCLUDED_DIRS.test(name)) return void 0;
+  const planPrefix = `${docRoot}/plan`;
+  const archivePrefix = `${docRoot}/archive`;
+  if (name === planPrefix || name.startsWith(`${planPrefix}/`) || name === archivePrefix || name.startsWith(`${archivePrefix}/`)) {
+    return void 0;
+  }
+  if (!insideRealRoot(resolvedRoot, absolute)) return void 0;
   return name;
 }
 function impactFingerprint(root2, path) {
@@ -23438,71 +23491,143 @@ function impactFingerprint(root2, path) {
     return error2.code === "ENOENT" ? "missing" : void 0;
   }
 }
+
+// packages/context/src/impact-state.mjs
+var CREATE_PENDING = "CREATE TABLE IF NOT EXISTS pending (session TEXT NOT NULL, path TEXT NOT NULL, revision TEXT NOT NULL, fingerprint TEXT, created_at INTEGER, expires_at INTEGER, notified INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (session, path))";
+var CREATE_PLAN_NOTICES = "CREATE TABLE IF NOT EXISTS plan_notices (session TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, notified INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)";
+function inspectSchema2(db) {
+  const hasPending = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pending'").get());
+  const hasPlanNotices = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='plan_notices'").get());
+  const cols = hasPending ? db.prepare("PRAGMA table_info(pending)").all().map((c) => c.name) : [];
+  return {
+    hasPending,
+    hasPlanNotices,
+    needsCreatedAt: hasPending && !cols.includes("created_at"),
+    needsExpiry: hasPending && !cols.includes("expires_at"),
+    needsNotified: hasPending && !cols.includes("notified")
+  };
+}
 var ImpactState = class {
   constructor(root2, sessionId2) {
-    this.root = resolve6(root2);
+    this.root = resolve7(root2);
     this.sessionId = validateSessionId(sessionId2);
-    this.path = join4(this.root, ".dotdotgod/context/impact.sqlite");
+    this.path = join5(this.root, ".dotdotgod/context/impact.sqlite");
   }
   database(write = false) {
     if (!write && !existsSync3(this.path)) return void 0;
-    if (write) mkdirSync2(dirname3(this.path), { recursive: true });
+    if (write) mkdirSync2(dirname4(this.path), { recursive: true });
     const db = new DatabaseSync3(this.path);
-    db.exec("PRAGMA busy_timeout=5000");
-    db.exec("CREATE TABLE IF NOT EXISTS pending (session TEXT NOT NULL, path TEXT NOT NULL, revision TEXT NOT NULL, fingerprint TEXT, PRIMARY KEY(session,path))");
-    db.exec("BEGIN IMMEDIATE");
     try {
-      const columns = db.prepare("PRAGMA table_info(pending)").all();
-      if (!columns.some((column) => column.name === "expires_at")) {
-        db.exec("ALTER TABLE pending ADD COLUMN created_at INTEGER; ALTER TABLE pending ADD COLUMN expires_at INTEGER;");
-        const now = Date.now();
-        db.prepare("UPDATE pending SET created_at = ?, expires_at = ?").run(now, now + RETENTION_MS);
+      db.exec("PRAGMA busy_timeout=5000");
+      db.exec("PRAGMA journal_mode=WAL");
+      const state = inspectSchema2(db);
+      const needsSchema = !state.hasPending || !state.hasPlanNotices || state.needsExpiry || state.needsNotified;
+      if (!write && !needsSchema) return db;
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        db.exec(CREATE_PENDING);
+        db.exec(CREATE_PLAN_NOTICES);
+        const current = inspectSchema2(db);
+        if (current.needsCreatedAt) db.exec("ALTER TABLE pending ADD COLUMN created_at INTEGER;");
+        if (current.needsExpiry) {
+          db.exec("ALTER TABLE pending ADD COLUMN expires_at INTEGER;");
+          const now = Date.now();
+          db.prepare("UPDATE pending SET created_at = COALESCE(created_at, ?), expires_at = ? WHERE expires_at IS NULL").run(now, now + RETENTION_MS);
+        }
+        if (current.needsNotified) db.exec("ALTER TABLE pending ADD COLUMN notified INTEGER NOT NULL DEFAULT 0;");
+        if (write) {
+          const now = Date.now();
+          db.prepare("DELETE FROM pending WHERE expires_at <= ?").run(now);
+          db.prepare("DELETE FROM plan_notices WHERE expires_at <= ?").run(now);
+        }
+        db.exec("COMMIT");
+      } catch (error2) {
+        db.exec("ROLLBACK");
+        throw error2;
       }
-      db.prepare("DELETE FROM pending WHERE expires_at <= ?").run(Date.now());
-      db.exec("COMMIT");
+      return db;
     } catch (error2) {
-      db.exec("ROLLBACK");
       db.close();
       throw error2;
     }
-    return db;
   }
-  mark(paths) {
-    const names = [...new Set(paths.map((path) => impactPath(this.root, path)).filter(Boolean))];
-    if (!names.length) return;
+  tx(fn) {
     const db = this.database(true);
     try {
-      const insert = db.prepare("INSERT OR REPLACE INTO pending (session,path,revision,fingerprint,created_at,expires_at) VALUES (?, ?, ?, ?, ?, ?)");
       db.exec("BEGIN IMMEDIATE");
-      const now = Date.now();
-      for (const path of names) insert.run(this.sessionId, path, randomUUID(), impactFingerprint(this.root, path) ?? null, now, now + RETENTION_MS);
-      db.exec("COMMIT");
+      try {
+        const result = fn(db);
+        db.exec("COMMIT");
+        return result;
+      } catch (error2) {
+        db.exec("ROLLBACK");
+        throw error2;
+      }
     } finally {
       db.close();
     }
   }
+  mark(paths) {
+    const docRoot = resolveDocumentationRoot(this.root);
+    const names = [...new Set(paths.map((path) => impactPath(this.root, path, docRoot)).filter(Boolean))];
+    if (!names.length) return { becameNonEmpty: false };
+    const entries = names.map((path) => ({ path, fingerprint: impactFingerprint(this.root, path) ?? null }));
+    return this.tx((db) => {
+      const now = Date.now();
+      const hadActive = Boolean(db.prepare("SELECT 1 FROM pending WHERE session=? AND expires_at > ? LIMIT 1").get(this.sessionId, now));
+      const insert = db.prepare("INSERT OR REPLACE INTO pending (session,path,revision,fingerprint,created_at,expires_at,notified) VALUES (?, ?, ?, ?, ?, ?, 0)");
+      for (const entry of entries) insert.run(this.sessionId, entry.path, randomUUID(), entry.fingerprint, now, now + RETENTION_MS);
+      return { becameNonEmpty: !hadActive };
+    });
+  }
   snapshot(paths) {
-    const selected = paths ? new Set(paths.map((path) => impactPath(this.root, path)).filter(Boolean)) : void 0;
-    const db = this.database();
+    const docRoot = paths ? resolveDocumentationRoot(this.root) : void 0;
+    const selected = paths ? new Set(paths.map((path) => impactPath(this.root, path, docRoot)).filter(Boolean)) : void 0;
+    const db = this.database(false);
     if (!db) return [];
     try {
-      return db.prepare("SELECT path,revision,fingerprint FROM pending WHERE session=? ORDER BY path").all(this.sessionId).filter((item) => !selected || selected.has(item.path));
+      return db.prepare("SELECT path,revision,fingerprint FROM pending WHERE session=? AND expires_at > ? ORDER BY path").all(this.sessionId, Date.now()).filter((item) => !selected || selected.has(item.path));
     } finally {
       db.close();
     }
   }
   complete(snapshot2) {
-    if (!snapshot2.length) return;
-    const db = this.database();
-    if (!db) return;
-    try {
+    if (!snapshot2.length || !existsSync3(this.path)) return;
+    this.tx((db) => {
       const remove = db.prepare("DELETE FROM pending WHERE session=? AND path=? AND revision=?");
       for (const item of snapshot2) {
         if (item.fingerprint && impactFingerprint(this.root, item.path) === item.fingerprint) remove.run(this.sessionId, item.path, item.revision);
       }
-    } finally {
-      db.close();
-    }
+    });
+  }
+  clearPaths(paths) {
+    const docRoot = resolveDocumentationRoot(this.root);
+    const names = [...new Set(paths.map((path) => impactPath(this.root, path, docRoot)).filter(Boolean))];
+    if (!names.length || !existsSync3(this.path)) return 0;
+    return this.tx((db) => {
+      const remove = db.prepare("DELETE FROM pending WHERE session=? AND path=?");
+      return names.reduce((sum, path) => sum + Number(remove.run(this.sessionId, path).changes ?? 0), 0);
+    });
+  }
+  claimUnnotified(limit = 50) {
+    if (!existsSync3(this.path)) return { ok: true, count: 0, pending: [], truncated: false };
+    const rows = this.tx((db) => db.prepare("UPDATE pending SET notified = 1 WHERE session = ? AND notified = 0 AND expires_at > ? RETURNING path").all(this.sessionId, Date.now()));
+    rows.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+    return { ok: true, count: rows.length, pending: rows.slice(0, limit).map(({ path }) => ({ path })), truncated: rows.length > limit };
+  }
+  recordPlanNotice(fingerprint) {
+    this.tx((db) => {
+      const now = Date.now();
+      db.prepare("INSERT INTO plan_notices (session,fingerprint,notified,created_at,expires_at) VALUES (?, ?, 0, ?, ?) ON CONFLICT(session) DO UPDATE SET fingerprint = excluded.fingerprint, notified = 0, created_at = excluded.created_at, expires_at = excluded.expires_at WHERE plan_notices.fingerprint IS NOT excluded.fingerprint").run(this.sessionId, fingerprint, now, now + RETENTION_MS);
+    });
+  }
+  claimPlanNotice() {
+    if (!existsSync3(this.path)) return false;
+    return this.tx((db) => Number(db.prepare("UPDATE plan_notices SET notified = 1 WHERE session = ? AND notified = 0 AND expires_at > ?").run(this.sessionId, Date.now()).changes ?? 0) === 1);
+  }
+  clearPlanNotice() {
+    if (!existsSync3(this.path)) return false;
+    return this.tx((db) => Number(db.prepare("DELETE FROM plan_notices WHERE session = ?").run(this.sessionId).changes ?? 0) > 0);
   }
   status(limit = 50) {
     const all = this.snapshot();
@@ -23520,12 +23645,17 @@ async function withImpactReview(root2, sessionId2, paths, review, signal) {
 }
 
 // packages/context/src/server.mjs
-var root = process.env.DOTDOTGOD_PROJECT_ROOT || process.cwd();
+var UNBOUND_IMPACT_GUIDANCE = "Session unbound; hook-tracked pending paths are not visible here. Pass paths explicitly to project_impact.";
+var explicitRoot = process.env.DOTDOTGOD_PROJECT_ROOT;
+var root = explicitRoot || process.cwd();
+var sessionBound = Boolean(process.env.DOTDOTGOD_SESSION_ID);
 var sessionId = resolveSessionId(process.env.DOTDOTGOD_SESSION_ID);
 var sessions = new AsyncLocalStorage();
-var currentSession = () => sessions.getStore() ?? sessionId;
+var currentSession = () => sessions.getStore()?.id ?? sessionId;
+var currentBound = () => sessions.getStore()?.bound ?? sessionBound;
 var contextStore;
 var jobRunner;
+var rootsSyncPromise = Promise.resolve();
 function getStore() {
   contextStore ??= new ContextStore(root);
   return contextStore;
@@ -23534,7 +23664,32 @@ function getJobs() {
   jobRunner ??= new IngestionJobRunner(getStore());
   return jobRunner;
 }
+function unboundImpactStatus() {
+  return { ok: true, count: 0, pending: [], truncated: false, sessionBound: false, guidance: UNBOUND_IMPACT_GUIDANCE };
+}
 var server = new McpServer({ name: "dotdotgod-context", version: "0.7.1" });
+async function syncRootsFromClient() {
+  if (explicitRoot || !server.server.getClientCapabilities()?.roots) return;
+  const response = await server.server.listRoots();
+  const entry = response?.roots?.find((item) => typeof item?.uri === "string" && item.uri.startsWith("file://"));
+  if (!entry) return;
+  const nextRoot = fileURLToPath2(entry.uri);
+  if (!existsSync4(nextRoot) || !statSync6(nextRoot).isDirectory() || nextRoot === root) return;
+  await jobRunner?.close();
+  jobRunner = void 0;
+  contextStore?.close();
+  contextStore = void 0;
+  root = nextRoot;
+}
+server.server.oninitialized = () => {
+  rootsSyncPromise = syncRootsFromClient().catch(() => {
+  });
+};
+server.server.setNotificationHandler(RootsListChangedNotificationSchema, async () => {
+  rootsSyncPromise = syncRootsFromClient().catch(() => {
+  });
+  await rootsSyncPromise;
+});
 var scopeSchema = external_exports.enum(["transient", "session", "project"]).optional();
 var outputModeSchema = external_exports.enum(["auto", "direct", "indexed", "discard"]).optional();
 var commandSchema = {
@@ -23568,11 +23723,10 @@ function register(name, description, inputSchema, handler, annotations) {
   const schema = { ...inputSchema, contextSessionId: external_exports.string().optional().describe("Host session identity; adapters supply this for shared MCP connections.") };
   server.registerTool(name, { description, inputSchema: external_exports.object(schema).strict(), annotations }, async (input, extra) => {
     try {
+      await rootsSyncPromise;
       const { contextSessionId, ...args } = input;
-      return await sessions.run(
-        contextSessionId ? validateSessionId(contextSessionId) : sessionId,
-        async () => success(await handler(args, extra), name)
-      );
+      const context = { id: contextSessionId ? validateSessionId(contextSessionId) : sessionId, bound: Boolean(contextSessionId) || sessionBound };
+      return await sessions.run(context, async () => success(await handler(args, extra), name));
     } catch (error2) {
       return failure(error2, name);
     }
@@ -23644,6 +23798,7 @@ function zodFromContract(schema) {
 var phase3Shape = (name) => zodFromContract(PHASE3_TOOL_INPUT_SCHEMAS[name]).shape;
 register("session_resume", "Use an explicit opaque session ID for subsequent context operations on a dedicated connection; historical sessions are not listed. Shared connections should supply contextSessionId per call instead.", phase3Shape("session_resume"), (input) => {
   sessionId = validateSessionId(input.sessionId);
+  sessionBound = true;
   return { ok: true, sessionId };
 });
 register("ingestion_job_start", "Queue one durable bounded background index or strict-fetch ingestion job.", phase3Shape("ingestion_job_start"), (input) => {
@@ -23679,13 +23834,18 @@ register("embedding_install", "After explicit user approval, install the fixed o
 register("project_impact", "Run bounded graph impact for up to 20 changed paths.", {
   root: external_exports.string().optional(),
   paths: external_exports.array(external_exports.string()).min(1).max(20)
-}, (input, extra) => {
+}, async (input, extra) => {
   const args = projectInput(input);
-  return withImpactReview(args.root, currentSession(), args.paths, () => projectImpact({ ...args, signal: extra.signal }), extra.signal);
+  if (!currentBound()) {
+    const result = await projectImpact({ ...args, signal: extra.signal });
+    return { ...result, checked: result.ok === true ? args.paths : [], impactStatus: unboundImpactStatus() };
+  }
+  const reviewed = await withImpactReview(args.root, currentSession(), args.paths, () => projectImpact({ ...args, signal: extra.signal }), extra.signal);
+  return { ...reviewed, impactStatus: { ...reviewed.impactStatus, sessionBound: true } };
 }, { readOnlyHint: true });
 register("impact_status", "Read this host session's advisory pending impact paths. Does not run reviews or clear pending state.", {
   limit: external_exports.number().int().min(1).max(50).optional()
-}, (input) => new ImpactState(root, currentSession()).status(input.limit), { readOnlyHint: true });
+}, (input) => currentBound() ? { ...new ImpactState(root, currentSession()).status(input.limit), sessionBound: true } : unboundImpactStatus(), { readOnlyHint: true });
 register("project_initialize", "Initialize project memory; dry-run is default and writes require explicit confirmation.", {
   root: external_exports.string().optional(),
   dryRun: external_exports.boolean().optional(),

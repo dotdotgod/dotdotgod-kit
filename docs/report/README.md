@@ -6,6 +6,8 @@ Use reports for evidence snapshots, measurements, and interpretations. Route dur
 
 ## Index
 
+- `RELEASE_0_11_0.md`: add `@dotdotgod/antigravity` plugin adapter (Option C-2 `/plan`, three `/dd-*` skills) and unify all six adapters on non-blocking advisory impact (`impact.sqlite` v2).
+
 - `RELEASE_0_10_1.md`: remove mandatory Claude/Codex project-memory load gating; retain optional advice and impact checks.
 
 - `RELEASE_0_10_0.md`: personal remembered Pi command approvals, exact entry identity, admission checks and release limits.

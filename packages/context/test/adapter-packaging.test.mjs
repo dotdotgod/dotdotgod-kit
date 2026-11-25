@@ -140,21 +140,22 @@ function withTimeout(promise, milliseconds, label) {
 
 function assertClaudeMcpHookMatchers(packageRoot) {
   const config = JSON.parse(readFileSync(join(packageRoot, 'hooks', 'hooks.json'), 'utf8'));
-  const pluginQualifiedLoad = 'mcp__plugin_dotdotgod_dotdotgod-context__project_load';
-  for (const event of ['PreToolUse', 'PostToolUse']) {
-    const matcher = config.hooks[event]?.[0]?.matcher;
-    assert.equal(typeof matcher, 'string', `${event} must declare a matcher`);
-    assert.match(matcher, /(?:^|\|)mcp__\.\*(?:\||$)/u, `${event} must use Claude's documented MCP wildcard form`);
-    assert.equal(new RegExp(matcher, 'u').test(pluginQualifiedLoad), true, `${event} must dispatch plugin-qualified Load tools`);
-  }
+  const pluginQualifiedImpact = 'mcp__plugin_dotdotgod_dotdotgod-context__project_impact';
+  assert.equal(config.hooks.PreToolUse, undefined, 'PreToolUse must be removed for advisory impact');
+  assert.ok(Array.isArray(config.hooks.UserPromptSubmit) && config.hooks.UserPromptSubmit.length > 0, 'UserPromptSubmit must be configured');
+  const matcher = config.hooks.PostToolUse?.[0]?.matcher;
+  assert.equal(typeof matcher, 'string', 'PostToolUse must declare a matcher');
+  assert.match(matcher, /(?:^|\|)mcp__\.\*(?:\||$)/u, 'PostToolUse must use Claude\'s documented MCP wildcard form');
+  assert.equal(new RegExp(matcher, 'u').test(pluginQualifiedImpact), true, 'PostToolUse must dispatch plugin-qualified impact tools');
 }
 
 for (const adapter of ['claude-code', 'codex']) {
-  test(`${adapter} packed adapter is a standalone hook and MCP runtime`, { timeout: 90_000 }, async (t) => {
+  test(`${adapter} packed adapter is a standalone advisory hook and MCP runtime`, { timeout: 90_000 }, async (t) => {
     const root = mkdtempSync(join(tmpdir(), `dotdotgod-packed-${adapter}-`));
     t.after(() => rmSync(root, { recursive: true, force: true }));
     const project = join(root, 'project');
     mkdirSync(project);
+    writeFileSync(join(project, 'dotdotgod.config.json'), JSON.stringify({ version: 1, documentation: { root: 'docs' } }));
     mkdirSync(join(project, 'docs'));
     writeFileSync(join(project, 'docs', 'README.md'), '# Project docs\n\nPackaged focused Load fixture.\n');
     mkdirSync(join(project, 'src'));
@@ -168,6 +169,11 @@ for (const adapter of ['claude-code', 'codex']) {
     const packedManifest = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
     assert.equal(packedManifest.engines.node, '>=22.5.0');
     if (adapter === 'claude-code') assertClaudeMcpHookMatchers(packageRoot);
+    else {
+      const codexHooks = JSON.parse(readFileSync(join(packageRoot, 'hooks', 'hooks.json'), 'utf8'));
+      assert.equal(codexHooks.hooks.PreToolUse, undefined, 'codex PreToolUse must be removed');
+      assert.ok(Array.isArray(codexHooks.hooks.UserPromptSubmit) && codexHooks.hooks.UserPromptSubmit.length > 0);
+    }
 
     const runtime = join(packageRoot, 'hooks', 'runtime.mjs');
     const sessionInput = JSON.stringify({ cwd: project, session_id: `packed-${adapter}` });
@@ -179,9 +185,9 @@ for (const adapter of ['claude-code', 'codex']) {
     const hookOutput = JSON.parse(lines[0]);
     assert.equal(hookOutput.hookSpecificOutput.hookEventName, 'SessionStart');
     assert.match(hookOutput.hookSpecificOutput.additionalContext, /project_load/u);
-    assert.equal(existsSync(join(project, '.dotdotgod', 'context', 'runtime', `packed-${adapter}.json`)), true);
-    const substantive = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'Bash', tool_input: { command: 'git status --short' } });
     assert.doesNotMatch(hookOutput.hookSpecificOutput.additionalContext, /must|required|before substantive/iu);
+    assert.equal(existsSync(join(project, '.dotdotgod', 'context', 'runtime', `packed-${adapter}.json`)), false);
+    const substantive = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'Bash', tool_input: { command: 'git status --short' } });
     for (const tool_name of ['Bash', 'Edit', 'Write']) {
       const unloaded = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name, tool_input: { command: 'git status --short', file_path: 'source.ts' } });
       assert.deepEqual(JSON.parse(runHook(runtime, 'pretooluse', unloaded, { cwd: project, env }).stdout), {});
@@ -214,7 +220,6 @@ for (const adapter of ['claude-code', 'codex']) {
 
       const unrelatedMcp = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'mcp__plugin_other_server__unrelated_tool', tool_input: {} });
       assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', unrelatedMcp, { cwd: project, env }).stdout), {});
-      assert.deepEqual(JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout), {});
 
       const loaded = await withTimeout(client.callTool({
         name: 'project_load',
@@ -235,17 +240,28 @@ for (const adapter of ['claude-code', 'codex']) {
       const serializedLoad = JSON.stringify(loaded);
       assert.doesNotMatch(serializedLoad, /ERR_MODULE_NOT_FOUND|plugins\/cache|package_json_reader/u);
 
-      const completedLoad = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'mcp__plugin_dotdotgod_dotdotgod-context__project_load', tool_input: { root: '.', focus: 'packaged focused project memory' } });
-      assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', completedLoad, { cwd: project, env }).stdout), {});
-      assert.deepEqual(JSON.parse(runHook(runtime, 'pretooluse', substantive, { cwd: project, env }).stdout), {});
-
       const changedPath = join(project, 'docs', 'README.md');
       const completedWrite = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'Write', tool_input: { file_path: changedPath } });
-      assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', completedWrite, { cwd: project, env }).stdout), {});
+      const writeOut = JSON.parse(runHook(runtime, 'posttooluse', completedWrite, { cwd: project, env }).stdout);
+      assert.equal(writeOut.hookSpecificOutput.hookEventName, 'PostToolUse');
+      assert.match(writeOut.hookSpecificOutput.additionalContext, /does not block/);
+      assert.equal(existsSync(join(project, '.dotdotgod', 'context', 'impact.sqlite')), true);
+      assert.equal(existsSync(join(project, '.dotdotgod', 'context', 'runtime')), false);
+
       const broadVerification = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'Bash', tool_input: { command: 'pnpm run verify' } });
-      assert.equal(JSON.parse(runHook(runtime, 'pretooluse', broadVerification, { cwd: project, env }).stdout).hookSpecificOutput.permissionDecision, 'deny');
-      assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', unrelatedMcp, { cwd: project, env }).stdout), {});
-      assert.equal(JSON.parse(runHook(runtime, 'pretooluse', broadVerification, { cwd: project, env }).stdout).hookSpecificOutput.permissionDecision, 'deny');
+      assert.deepEqual(JSON.parse(runHook(runtime, 'pretooluse', broadVerification, { cwd: project, env }).stdout), {});
+
+      const promptOut = JSON.parse(runHook(runtime, 'userpromptsubmit', sessionInput, { cwd: project, env }).stdout);
+      assert.equal(promptOut.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+      assert.match(promptOut.hookSpecificOutput.additionalContext, /docs\/README\.md/);
+
+      const failedImpact = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'mcp__plugin_dotdotgod_dotdotgod-context__project_impact', tool_input: { paths: ['docs/README.md'] }, tool_response: { isError: true } });
+      assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', failedImpact, { cwd: project, env }).stdout), {});
+      assert.match(JSON.parse(runHook(runtime, 'userpromptsubmit', sessionInput, { cwd: project, env }).stdout).hookSpecificOutput.additionalContext, /docs\/README\.md/);
+
+      const okImpact = JSON.stringify({ cwd: project, session_id: `packed-${adapter}`, tool_name: 'mcp__plugin_dotdotgod_dotdotgod-context__project_impact', tool_input: { paths: ['docs/README.md'] }, tool_response: { ok: true } });
+      assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', okImpact, { cwd: project, env }).stdout), {});
+      assert.deepEqual(JSON.parse(runHook(runtime, 'userpromptsubmit', sessionInput, { cwd: project, env }).stdout), {});
     } finally {
       await withTimeout(client.close(), 5_000, `${adapter} MCP close`);
     }
@@ -260,3 +276,99 @@ for (const adapter of ['claude-code', 'codex']) {
     t.diagnostic(`${adapter} packed size: ${compressed} bytes compressed, ${unpacked} bytes unpacked`);
   });
 }
+
+test('AP-02: antigravity packed adapter is a standalone plugin, hook, and roots-aware MCP runtime', { timeout: 90_000 }, async (t) => {
+  const { ListRootsRequestSchema } = await import('@modelcontextprotocol/sdk/types.js');
+  const { pathToFileURL } = await import('node:url');
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-packed-antigravity-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const project = join(root, 'project');
+  const artifactDir = join(root, 'artifacts');
+  mkdirSync(join(project, 'src'), { recursive: true });
+  mkdirSync(artifactDir, { recursive: true });
+  writeFileSync(join(project, 'dotdotgod.config.json'), JSON.stringify({ version: 1, documentation: { root: 'docs' } }));
+  writeFileSync(join(project, 'src', 'app.ts'), 'export const v = 1;\n');
+  writeFileSync(join(artifactDir, 'implementation_plan.md'), '# Plan\n\nStep 1.\n');
+  mkdirSync(join(root, 'home'));
+  const stubBin = createNetworkStubs(root);
+  const env = isolatedEnvironment(root, project, stubBin);
+  delete env.DOTDOTGOD_PROJECT_ROOT;
+  delete env.DOTDOTGOD_SESSION_ID;
+  const { packageRoot, tarball } = packAndExtract('antigravity', root);
+  assertNoAncestorNodeModules(packageRoot);
+  auditExtractedPackage(packageRoot);
+  const packedManifest = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
+  assert.equal(packedManifest.engines.node, '>=22.5.0');
+
+  for (const required of ['plugin.json', 'mcp_config.json', 'hooks.json', 'rules/AGENTS.md', 'assets/logo.svg', 'scripts/hook-runtime.mjs', 'mcp/server.mjs', 'mcp/cli.mjs', 'LICENSE']) {
+    assert.equal(existsSync(join(packageRoot, required)), true, `missing ${required} in packed @dotdotgod/antigravity`);
+  }
+
+  const runtime = join(packageRoot, 'scripts', 'hook-runtime.mjs');
+  const convId = 'agy-packed-session-01';
+  const editEvent = JSON.stringify({
+    conversationId: convId,
+    workspacePaths: [project],
+    cwd: project,
+    artifactDirectoryPath: artifactDir,
+    toolCall: { name: 'edit_file', args: { Path: join(project, 'src', 'app.ts') } },
+    error: '',
+  });
+  assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', editEvent, { cwd: packageRoot, env }).stdout), {});
+
+  const preEvent = JSON.stringify({ conversationId: convId, workspacePaths: [project], cwd: project, artifactDirectoryPath: artifactDir });
+  const pre1 = JSON.parse(runHook(runtime, 'preinvocation', preEvent, { cwd: packageRoot, env }).stdout);
+  assert.equal(pre1.injectSteps.length, 1);
+  assert.match(pre1.injectSteps[0].systemMessage.systemMessage, /src\/app\.ts/);
+  assert.deepEqual(JSON.parse(runHook(runtime, 'preinvocation', preEvent, { cwd: packageRoot, env }).stdout), {});
+
+  const planEvent = JSON.stringify({
+    conversationId: convId,
+    workspacePaths: [project],
+    cwd: project,
+    artifactDirectoryPath: artifactDir,
+    toolCall: { name: 'write_file', args: { Path: join(artifactDir, 'implementation_plan.md') } },
+    error: '',
+  });
+  assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', planEvent, { cwd: packageRoot, env }).stdout), {});
+  const prePlan = JSON.parse(runHook(runtime, 'preinvocation', preEvent, { cwd: packageRoot, env }).stdout);
+  assert.equal(prePlan.injectSteps.length, 1);
+  assert.match(prePlan.injectSteps[0].systemMessage.systemMessage, /DOTDOTGOD PLAN SYNC — ADVISORY/);
+
+  const clearEvent = JSON.stringify({
+    conversationId: convId,
+    workspacePaths: [project],
+    cwd: project,
+    toolCall: { name: 'call_mcp_tool', args: { ServerName: 'dotdotgod_context', ToolName: 'project_impact', Arguments: { paths: ['src/app.ts'] } } },
+    error: '',
+  });
+  assert.deepEqual(JSON.parse(runHook(runtime, 'posttooluse', clearEvent, { cwd: packageRoot, env }).stdout), {});
+
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [join(packageRoot, 'mcp', 'server.mjs')],
+    cwd: packageRoot,
+    env,
+    stderr: 'pipe',
+  });
+  const client = new Client({ name: 'packed-agy-test', version: '1.0.0' }, { capabilities: { roots: { listChanged: true } } });
+  client.setRequestHandler(ListRootsRequestSchema, async () => ({ roots: [{ uri: pathToFileURL(project).href }] }));
+  try {
+    await withTimeout(client.connect(transport), 10_000, 'antigravity MCP initialize');
+    const listed = await withTimeout(client.listTools(), 10_000, 'antigravity MCP listTools');
+    assert.deepEqual(listed.tools.map((tool) => tool.name).sort(), [...expectedTools].sort());
+    const doctor = await withTimeout(client.callTool({ name: 'doctor', arguments: {} }), 10_000, 'antigravity doctor');
+    assert.equal(doctor.structuredContent.ok, true);
+    assert.equal(realpathSync(doctor.structuredContent.root), realpathSync(project));
+    const impactStatus = await withTimeout(client.callTool({ name: 'impact_status', arguments: {} }), 10_000, 'antigravity impact_status');
+    assert.equal(impactStatus.structuredContent.sessionBound, false);
+    assert.ok(impactStatus.structuredContent.guidance.length <= 120);
+  } finally {
+    await withTimeout(client.close(), 5_000, 'antigravity MCP close');
+  }
+
+  const compressed = statSync(tarball).size;
+  let unpacked = 0;
+  walk(packageRoot, (path, entry) => { if (entry.isFile()) unpacked += lstatSync(path).size; });
+  t.diagnostic(`antigravity packed size: ${compressed} bytes compressed, ${unpacked} bytes unpacked`);
+});

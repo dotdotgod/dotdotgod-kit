@@ -55,15 +55,33 @@ export function projectImpact(input: Record<string, any>): Promise<Record<string
 export function projectInitialize(input: Record<string, any>): Promise<Record<string, any>>;
 export function startServer(): Promise<void>;
 export interface ImpactSnapshot { path: string; revision: string; fingerprint: string | null }
-export interface ImpactStatus { ok: true; count: number; pending: Array<{ path: string }>; truncated: boolean }
+export interface ImpactStatus { ok: true; count: number; pending: Array<{ path: string }>; truncated: boolean; sessionBound?: boolean; guidance?: string }
 export class ImpactState {
   constructor(root: string, sessionId: string);
-  mark(paths: string[]): void;
+  mark(paths: string[]): { becameNonEmpty: boolean };
   snapshot(paths?: string[]): ImpactSnapshot[];
   complete(snapshot: ImpactSnapshot[]): void;
+  clearPaths(paths: string[]): number;
+  claimUnnotified(limit?: number): ImpactStatus;
+  recordPlanNotice(fingerprint: string): void;
+  claimPlanNotice(): boolean;
+  clearPlanNotice(): boolean;
   status(limit?: number): ImpactStatus;
 }
+export function resolveDocumentationRoot(root: string): string;
+export function sanitizeDisplayPath(path: string): string;
 export function impactReminder(status: ImpactStatus): string | undefined;
-export function impactPath(root: string, path: string): string | undefined;
+export function impactPath(root: string, path: string, docRoot?: string): string | undefined;
 export function impactFingerprint(root: string, path: string): string | undefined;
 export function withImpactReview<T extends { ok?: boolean }>(root: string, sessionId: string, paths: string[], review: () => Promise<T>, signal?: AbortSignal): Promise<T & { checked: string[]; impactStatus: ImpactStatus }>;
+export function parseHookInput(raw?: string): Record<string, unknown>;
+export function extractHookSessionId(input: Record<string, unknown>): string | null;
+export function isInitializedProject(dir: string): boolean;
+export function findInitializedRoot(startDir: string): string | null;
+export function selectWorkspaceForPath(workspaces: string[], targetPath: string): string | null;
+export function parseApplyPatchPaths(patchText: string): string[];
+export function isDotdotgodMcpTool(name: string, suffix: string, prefixes: string[]): boolean;
+export function hasFailedToolResult(input: Record<string, unknown>): boolean;
+export function readArtifactBounded(artifactDir: string, fileName?: string, maxBytes?: number): Buffer | null;
+export function formatHookError(error: unknown): string;
+export function runHookSafely(fn: () => unknown): void;

@@ -2,132 +2,88 @@
 
 ## Direction
 
-Use one shared runtime package, thin transport/adapter wrappers, and platform-native lifecycle integration.
+Use one shared runtime package, thin transport/adapter wrappers, and platform-native lifecycle integration with unified non-blocking advisory impact.
 
 ```text
 @dotdotgod/context
-├── process capture and file processing
+├── process capture, file/directory ingestion, and safe fetch
 ├── structural chunking, provenance, ranking, and FTS5 storage
-├── strict fetch/index operations
-├── read-only runtime diagnostics
-├── project workflow services
-├── shared hook state machine
-└── stdio MCP server
+├── read-only runtime diagnostics and project workflow services
+├── impact-path.mjs + impact-state.mjs (v2 WAL SQLite advisory store)
+├── hook-state.mjs + hooks.mjs + hooks-antigravity.mjs (fail-open hooks)
+└── stdio MCP server (roots/list workspace resolution + sessionBound)
 
-Claude Code ── local stdio MCP + hooks
-Codex      ── local stdio MCP + hooks
-Pi         ── host-managed MCP + native plan/load lifecycle
-OpenCode   ── plugin-registered MCP + plan/impact integration
+Pi          ── host-managed MCP + native plan/load + impact.sqlite
+OpenCode    ── plugin-registered MCP + native plan + impact.sqlite
+Claude Code ── bundled stdio MCP + advisory hooks (SessionStart/UserPromptSubmit/PostToolUse)
+Codex       ── bundled stdio MCP + advisory hooks (SessionStart/UserPromptSubmit/PostToolUse)
+Antigravity ── bundled stdio MCP (roots/list) + advisory hooks (PostToolUse/PreInvocation)
+Hermes      ── per-session bundled MCP + Python post_tool_call/before_llm + impact.sqlite
 ```
 
 ## Runtime Boundary
 
-`packages/context` owns shared behavior; adapters own host registration, paths, approvals, lifecycle and naming.
+`packages/context` owns shared behavior; adapters own host registration, paths, approvals, lifecycle, and naming.
 
-The server writes only JSON-RPC to stdout. Child stdout/stderr flows to temporary files. Small bounded output may be returned directly; larger output is chunked and written to the project-local FTS5 database before excerpts are returned.
+The server writes only JSON-RPC to stdout. Child stdout/stderr flows to temporary files. Small bounded output returns directly; larger output is chunked and written to the project-local FTS5 database before excerpts return.
+
+## MCP Workspace Resolution And Session Binding
+
+- **Workspace resolution (`server.mjs`)**: when `DOTDOTGOD_PROJECT_ROOT` is unset and the MCP client advertises `capabilities.roots` (such as Antigravity, whose plugin MCP starts with `cwd === ${PLUGIN_ROOT}`), the server queries `roots/list` after `notifications/initialized` and updates on `notifications/roots/list_changed`. Non-roots clients fall back to `process.cwd()`.
+- **`sessionBound` and `guidance` boundary (`server.mjs`)**: per-call session binding tracks whether `DOTDOTGOD_SESSION_ID`, `contextSessionId`, or `session_resume` bound an active host session. Both `impact_status` and `project_impact.impactStatus` emit `sessionBound: boolean`. When `sessionBound === false`, the server does not open or create `impact.sqlite` and emits a static single-line `guidance` string (`<= 120` chars, no path or session leakage) explaining that non-bound stdio MCP cannot inspect hook-tracked pending rows. When `sessionBound === true`, `guidance` is omitted and `withImpactReview` applies optimistic revision/fingerprint CAS.
 
 ## Retrieval Layers
 
-Keep these layers separate:
-
-- filesystem documentation map for navigation;
-- local vector cache for semantic document routing;
-- graph/reference index for explicit relationships and impact;
-- FTS5 context store for transient command, file, and fetched text;
-- maintained project docs as durable source of truth.
-
-Project Load can provide focus and paths to execution retrieval. Execution output does not automatically become graph evidence or maintained project truth.
+Keep these layers separate: filesystem documentation map, local vector cache for semantic routing, graph/reference index for impact, FTS5 context store for transient outputs, and maintained project docs as durable source of truth. Execution output never automatically becomes graph evidence or maintained project truth.
 
 ## Pi Codemode Boundary
 
-Pi 1.0.0 owns MCP discovery, connections, cancellation and cleanup. Calls return envelopes through host hooks without aliases or duplicate schemas. Native project_memory_load unwraps ctx.executeTool internally. SDK tests use MCP/QuickJS and a faux stream; see [Pi selection](../spec/PI_CONTEXT_TOOL_SELECTION.md).
+Pi 1.0.0 owns MCP discovery, connections, cancellation, and cleanup. Calls return envelopes through host hooks without aliases or duplicate schemas; native `project_memory_load` unwraps `ctx.executeTool`. See [Pi selection](../spec/PI_CONTEXT_TOOL_SELECTION.md).
 
-## Storage
+## Storage And Retention
 
-Storage enforces [24-hour retention](../spec/CONTEXT_RETENTION.md), including jobs and impact.
+Storage enforces [24-hour retention](../spec/CONTEXT_RETENTION.md) across content, jobs, and impact rows using `node:sqlite` (`DatabaseSync`, Node `>=22.5.0`) below `.dotdotgod/context/`. Source metadata stays separate from FTS5 chunks with WAL, bounded busy timeout, transactional rollback, and operation-owned provenance (`unknown` on legacy read-time normalization).
 
-The initial implementation uses Node's built-in `node:sqlite` `DatabaseSync` and FTS5. The database lives below `.dotdotgod/context/`, which is expected to remain ignored local state.
+## Chunking, Ranking, Ingestion, And Safe Fetch
 
-Source metadata is stored separately from FTS chunks so expiry and scoped purge can remove complete sources. Writable connections configure WAL and a bounded busy timeout. Source replacement, expiry, and purge wrap source and FTS changes in transactions so injected write failures roll back the complete operation. Schema compatibility is checked before normal use. Recognized profiles migrate transactionally; explicit healing backs up and rebuilds only recognized recoverable profiles.
+- **Chunking & ranking**: Markdown, JSON, or plain-text chunks share one UTF-8 byte ceiling. Search applies authorization filters before Porter BM25 + label/path RRF fusion; wildcard browsing bypasses keyword matching ([search recovery](../spec/CONTEXT_SEARCH_RECOVERY.md)). Retrieved content carries `instructionAuthority: "none"`.
+- **Directory & HTML acquisition**: deterministic manifests skip symlinks by default, reject special files, enforce traversal budgets, and strip active/hidden HTML without script execution.
+- **Safe fetch (`safe-fetch.mjs`)**: Node core HTTP(S) validates all DNS answers, rechecks peers, revalidates manual redirects, and enforces wire/decoded byte limits and timeout/abort destruction (application-level checks, not a process/network sandbox).
+- **Diagnostics (`doctor.mjs`)**: local, read-only checks; never creates DBs, migrates schemas, contacts registries, or repairs config.
+- **Process capture (`execute.mjs`)**: strips reserved injection variables, streams detached process-group output to private temp files, and runs batch workers without shared shell state in input order.
 
-Provenance is additive metadata rather than a schema column. The indexing operation owns source type, trust, origin, SHA-256 content hash, timestamp, extractor, and chunker version, preventing caller metadata from promoting trust. Read-time normalization maps legacy or inconsistent records to `unknown` without rewriting them.
+## Modular Advisory Impact And Hook Architecture
 
-## Chunking And Retrieval Pipeline
+Advisory impact and hook logic are split into focused modules (targeting `<= 150` lines per module per `CODE_CONVENTIONS.md`):
 
-Format detection selects Markdown or JSON structural chunking; plain text retains overlapping character chunks. Structural paths apply one UTF-8 byte ceiling, preserve Markdown headings and fence metadata, and emit deterministic JSON key paths. Extractor and chunker versions make mixed legacy/new indexes observable without mandatory reindexing.
+- `packages/context/src/impact-path.mjs`: SQLite-free `resolveDocumentationRoot` (validating `dotdotgod.config.json` regular-file `<= 256 KiB` relative paths, rejecting escapes/dot-segments/control chars), `impactPath` (excluding build/cache dirs and `<docRoot>/(plan|archive)` while keeping `<docRoot>/post`), `impactFingerprint`, `sanitizeDisplayPath`, and `impactReminder` (post-`JSON.stringify` C1/separator/bidi escaping, 200-char/8-item caps, untrusted-data notice).
+- `packages/context/src/impact-state.mjs`: single owner of `.dotdotgod/context/impact.sqlite` v2 schema (`pending` with `notified` column, plus `plan_notices` without `$HOME` paths), 24-hour fixed TTL, `ImpactState`, and `withImpactReview` (re-exporting `impact-path.mjs`).
+- `packages/context/src/hook-state.mjs`: trust-boundary helpers — `parseHookInput`, `extractHookSessionId` (strict `validateSessionId`, fail-open `null`, no `'default'` fallback), `isInitializedProject` (`lstatSync` non-symlink `dotdotgod.config.json` or `.dotdotgod`), `findInitializedRoot`, `selectWorkspaceForPath` (segment-boundary longest match), `parseApplyPatchPaths`, `isDotdotgodMcpTool`, `hasFailedToolResult`, `readArtifactBounded` (`O_NOFOLLOW | O_NONBLOCK`, `2 MiB` ceiling), `formatHookError`, and `runHookSafely`.
+- `packages/context/src/hooks.mjs`: Claude Code and Codex hooks (`sessionstart`, `userpromptsubmit`, `posttooluse`; `pretooluse` returns `{}` and is removed from `hooks.json`). Legacy `.dotdotgod/context/runtime/*.json` files are ignored.
+- `packages/context/src/hooks-antigravity.mjs`: Antigravity hooks (`posttooluse`, `preinvocation`) tracking CLI/App edit tools, clearing on successful `call_mcp_tool` (`dotdotgod_context` / `project_impact`) or direct MCP, claiming unnotified rows once (`claimUnnotified`), and observing Option C-2 `/plan` artifacts.
+- `packages/hermes/impact.py`: Python `sqlite3` (`isolation_level=None`, WAL, `BEGIN IMMEDIATE`, ms TTL) interoperable with `impact.sqlite` v2 for Hermes `post_tool_call` and `before_llm`.
 
-Search keeps authorization filters at candidate selection time. Porter BM25 and bounded label/path lists use the same scope, session, and source predicates. Reciprocal-rank fusion combines the lists; title, path, and term-proximity signals rerank fused candidates with deterministic ties.
+## `impact.sqlite` v2 Concurrency And Fast Read-Only Path
 
-Wildcard browsing bypasses keyword matching; see [search recovery](../spec/CONTEXT_SEARCH_RECOVERY.md).
+1. `database(write = false)` returns `undefined` when `impact.sqlite` does not exist (never creates directories or files).
+2. Connections execute `PRAGMA busy_timeout = 5000` and `PRAGMA journal_mode = WAL` before any `BEGIN IMMEDIATE`.
+3. **Fast read-only path (`write = false`)**: when v2 columns/tables exist, queries filter `WHERE expires_at > ?` without `BEGIN IMMEDIATE` or physical `DELETE`. Legacy v0/v1 schemas migrate idempotently under `BEGIN IMMEDIATE` when columns are missing.
+4. **Write path (`write = true`)**: runs inside `BEGIN IMMEDIATE`, prunes `expires_at <= now` from `pending` and `plan_notices`, performs the atomic mutation (`mark` returning `{ becameNonEmpty }`, `clearPaths`, `claimUnnotified` via `UPDATE ... RETURNING`, `recordPlanNotice`, `claimPlanNotice`, or `clearPlanNotice`), and commits.
 
-Transport adapters add a non-authoritative data notice. Retrieved content remains structured data with `instructionAuthority: "none"`; it is not promoted to system or developer instruction by the context runtime.
-
-## Directory And HTML Acquisition
-
-Directory ingestion builds a deterministic metadata manifest, skips symlinks by default, rejects special files, bounds depth/entries/files/bytes, and verifies file identity before reading. Explicit external paths are supported. Each indexed file remains an independent source; results report success, skips, failures and truncation without source bodies.
-
-After safe fetch, a dependency-free HTML extractor removes active/hidden/non-content elements and preserves basic structure as bounded external-untrusted text. It neither executes scripts nor loads subresources, follows links or provides browser-grade parsing.
-
-## Safe Fetch Boundary
-
-`safe-fetch.mjs` uses Node core HTTP(S) with explicit lookup results rather than ambient proxy configuration. It rejects credentials and blocked address classes, validates all DNS answers, binds the connection lookup to the accepted addresses, rechecks the socket peer, and repeats validation for every manual redirect.
-
-Wire bytes are counted before optional gzip, deflate, or Brotli decoding, and decoded bytes have a separate limit. Timeouts and caller aborts destroy the request. Unsupported MIME types, encodings, statuses, redirects, or address policy results fail before indexing.
-
-This is application-level destination and resource validation. It does not provide a network namespace or process sandbox.
-
-## Diagnostics
-
-Doctor checks Node support, project/storage access, SQLite FTS5/Porter capability, existing schema compatibility, current store statistics, and configured fetch mode. Checks are local and read-only: doctor does not create the context database, migrate schemas, contact package registries, repair configuration, or execute commands.
-
-## Process Capture
-
-Commands may use an executable/argument array or explicit shell string. Before spawn, one shared policy composes the child environment for command, batch, and file execution. It preserves compatibility-oriented inheritance while removing reserved runtime injection variables, applies validated string/null overrides, and reports filtered names without values. It does not claim to remove ordinary inherited credentials.
-
-The runtime:
-
-1. resolves the working directory;
-2. creates private temporary stdout/stderr files;
-3. spawns a detached process group where supported;
-4. streams output without echoing it to MCP stdout;
-5. handles timeout or abort;
-6. returns bounded output or indexes content;
-7. removes temporary files.
-
-Batch workers share no shell state. Result order follows input order, not completion order.
-
-## Hook State Machine
-
-Claude/Codex hooks keep separate loadRequired/pending state. Root resolution prefers a host-declared root, then nearest same-session ancestor state, then SessionStart cwd. One invocation uses that root for state and fingerprints. Unidentified events fail open.
-
-Denials name an MCP recovery tool, not a transformed call. PostToolUse updates state before model retry; project tools bypass their own guards.
-
-This is tested interception coverage, not a claim that every external file mutation is observable.
+Non-bound hooks use `clearPaths` on successful `PostToolUse(project_impact)` and retain pending rows on failure. Session-bound MCP (`withImpactReview`) protects concurrent edits via revision/fingerprint CAS. External or shell mutations remain outside observed-edit interception.
 
 ## Packaging
 
-- `@dotdotgod/context` remains the runtime source of truth and is published before packages that consume it directly, including Pi.
-- Claude and Codex generate self-contained hook, MCP server, and CLI entry artifacts at build time; their published plugin caches do not require a separately installed `@dotdotgod/context` package.
-- Generated artifacts are checked into the adapter packages and verified for drift. `@dotdotgod/context` and esbuild are build-time dependencies of those adapters.
-- Optional semantic embeddings remain outside generated JavaScript. Project Load requires the filesystem map but not semantic routing: unresolved embeddings in an extracted plugin return the map with bounded query-unavailable evidence. Raw module paths stay hidden, and standalone query failure behavior is unchanged.
-- Claude uses `${CLAUDE_PLUGIN_ROOT}` for its server and hook scripts.
-- Codex references root `.mcp.json` and `hooks/hooks.json` through its plugin manifest.
-- Pi depends on the runtime package and registers its server entry with the host MCP API. OpenCode bundles server/CLI plus the small shared impact-state module without runtime dependencies.
-
-## Advisory Impact State
-
-Pi/OpenCode share impact.sqlite keyed by host session/path. Observed edits assign revisions; MCP snapshots revision/current content and clears unchanged rows only on success. SQLite serializes writers; AsyncLocalStorage isolates per-call host identity. Pending never blocks tools. Shell/external edits are not automatically attributed. Claude/Codex gates remain separate. See [contract](../spec/OPENCODE_ADAPTER.md#advisory-impact).
+- `@dotdotgod/context` is published first as the runtime source of truth (consumed directly by Pi).
+- `scripts/build-adapter-runtime.mjs` bundles self-contained MCP, CLI, parser, and hook artifacts into Claude Code (`${CLAUDE_PLUGIN_ROOT}`), Codex (`${PLUGIN_ROOT}`), Antigravity (`${PLUGIN_ROOT}/mcp/server.mjs` + `scripts/hook-runtime.mjs`), OpenCode (`mcp/impact-state.mjs` + server/CLI), and Hermes (`mcp/{server,cli,bridge,tools.json}`).
+- Optional semantic embeddings stay outside generated bundles; unresolved embeddings degrade to bounded recovery evidence without raw module paths.
 
 ## Phase 3 Components
 
-`ContextStore` owns the schema migration ledger, bounded trigram candidate scan, and durable ingestion-job rows. Migration occurs under `BEGIN IMMEDIATE`; startup requeues interrupted running jobs. Explicit healing copies the database before inspecting and migrating a recognized profile.
-
-`IngestionJobRunner` is a process-local, concurrency-one dispatcher over durable rows. It delegates to the same bounded file/directory and fetch functions as synchronous tools. Its asynchronous `close()` boundary stops scheduling, aborts active work, and settles the pump before an adapter closes or heals the backing store. Session IDs are opaque validated routing values and are never discovered through a listing API.
-
-Environment policies report names only. Browser rendering requires an injected capability; none is shipped. Renderers must honor timeout, abort and byte limits. Neither environment filtering nor fetching provides process isolation.
+`ContextStore` owns the migration ledger, bounded trigram scan, and durable ingestion-job rows (`BEGIN IMMEDIATE` migration, restart requeue, explicit backup-before-heal). `IngestionJobRunner` is a concurrency-one local pump whose `close()` drains active work before store shutdown/heal. Session IDs remain opaque validated routing keys.
 
 ## Related Behavior And Verification
 
-- Behavior: [`docs/spec/CONTEXT_EXECUTION.md`](../spec/CONTEXT_EXECUTION.md)
-- Tests: [`docs/test/CONTEXT_EXECUTION.md`](../test/CONTEXT_EXECUTION.md)
+- Behavior: [`docs/spec/CONTEXT_EXECUTION.md`](../spec/CONTEXT_EXECUTION.md), [`docs/spec/ADVISORY_IMPACT.md`](../spec/ADVISORY_IMPACT.md), [`docs/spec/ANTIGRAVITY_ADAPTER.md`](../spec/ANTIGRAVITY_ADAPTER.md)
+- Tests: [`docs/test/CONTEXT_EXECUTION.md`](../test/CONTEXT_EXECUTION.md), [`docs/test/HOOKS.md`](../test/HOOKS.md), [`docs/test/ANTIGRAVITY_ADAPTER.md`](../test/ANTIGRAVITY_ADAPTER.md)
 - Cross-agent architecture: [`CROSS_AGENT_ARCHITECTURE.md`](CROSS_AGENT_ARCHITECTURE.md)

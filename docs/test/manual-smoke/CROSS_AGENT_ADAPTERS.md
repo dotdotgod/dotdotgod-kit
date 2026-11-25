@@ -2,60 +2,57 @@
 
 ## Pi Adapter Dependency Resources
 
-Real-SDK tests verify the plan and project-memory extensions load without providing a subagent tool.
-`packages/pi/test/mcp-envelope.test.ts` covers envelope guards, structured-result
-precedence, primitive/array fallback, cycles, and error propagation.
+Real-SDK tests verify the plan and project-memory extensions load without providing a subagent tool. `packages/pi/test/mcp-envelope.test.ts` covers envelope guards, structured-result precedence, primitive/array fallback, cycles, and error propagation.
 
-`@dotdotgod/pi` should install `@dotdotgod/cli` and `@dotdotgod/context` as runtime dependencies. In a packaged-install smoke, confirm Pi can load `/dd:load` and `/impact-check` without separate global installs of those packages. Subagent extensions are independently installed and are not managed by this adapter.
+`@dotdotgod/pi` installs `@dotdotgod/cli` and `@dotdotgod/context` as runtime dependencies. In a packaged-install smoke, confirm Pi loads `/dd:load` and `/impact-check` without separate global installs. Subagent extensions are independently installed and not managed by this adapter.
+
+## Antigravity Adapter (CLI And App)
+
+Run sequentially in isolated workspaces (`/tmp/ddg-agy-init` with `dotdotgod.config.json` and `/tmp/ddg-agy-uninit` without `dotdotgod.config.json`/`.dotdotgod/`) after recording `$HOME/.dotdotgod` before and after:
+
+```bash
+agy plugin validate --strict packages/antigravity
+agy plugin install packages/antigravity
+```
+
+1. **Manifest, logo & rules**: confirm `agy plugin validate --strict` exits `0` (0 errors, 0 warnings); verify `/mcp` lists `dotdotgod_context` (19 tools), `/hooks` lists `PostToolUse` + `PreInvocation` only, `/dd-*` lists `dd-init`, `dd-load`, and `dd-impact` (no `doc-first-planning`), and Antigravity App renders pastel yellow-green `assets/logo.svg` and `rules/AGENTS.md`.
+2. **Uninitialized isolation**: edit a file in `/tmp/ddg-agy-uninit`; confirm `.dotdotgod/` is NOT created and `$HOME/.dotdotgod` is unchanged.
+3. **MCP `roots/list` & `sessionBound`**: in `/tmp/ddg-agy-init`, call `doctor` and `impact_status`; confirm workspace resolves via MCP `roots/list` (despite startup `cwd === ${PLUGIN_ROOT}`), `impact_status` returns `sessionBound: false` with single-line `guidance` (`<= 120` chars), and `impact.sqlite` is not created.
+4. **Non-blocking advisory impact**: edit `src/app.ts`; confirm 1-time `PreInvocation` `[DOTDOTGOD IMPACT PENDING — ADVISORY]` injection, run test/commit commands unblocked, confirm the next turn does not repeat the advisory, run a failing `call_mcp_tool(dotdotgod_context, project_impact)` (`isError: true`) to confirm pending retention, then run a valid `project_impact` to confirm pending clearance.
+5. **Option C-2 `/plan`**: run `/plan` writing `<artifactDirectoryPath>/implementation_plan.md`; confirm 1-time `PreInvocation` `[DOTDOTGOD PLAN SYNC — ADVISORY]`, zero hook workspace writes, intact host **Proceed** gate, no `$HOME` path in `plan_notices`, and clearance after writing `<docRoot>/plan/<slug>/README.md` via native write tools.
+6. **Cleanup**: run `agy plugin uninstall dotdotgod` and delete `/tmp/ddg-agy-*`.
 
 ## Claude Code Adapter
 
-Build and pack the adapter, extract the tarball under a clean temporary parent outside the checkout, and run with an isolated home/profile that has no separately installed `@dotdotgod/context` or `@dotdotgod/cli`. Then load it with the current local plugin flow, for example:
+Build, pack, and extract the tarball under a clean temporary parent outside the checkout with an isolated home/profile and no separately installed `@dotdotgod/context` or `@dotdotgod/cli`, then run:
 
 ```bash
 claude --plugin-dir /tmp/dotdotgod-claude-code/package
 ```
 
-Confirm `SessionStart` and `PreToolUse` do not emit `package_json_reader` or `ERR_MODULE_NOT_FOUND`. Confirm the packaged `dotdotgod-context` stdio MCP server starts and exposes the complete context, project-workflow, session, ingestion-job, healing, and doctor tool surface. Run a non-empty-focus `project_load` from a project directory different from the plugin path: it must return the documentation map, and unavailable optional embeddings must appear only as bounded recovery evidence. Confirm Bash/Edit/Write are available before Load and remain available after a rejected Load, unless separately impact-gated.
+Confirm `SessionStart`, `UserPromptSubmit`, and `PostToolUse` load without `ERR_MODULE_NOT_FOUND` and `PreToolUse` is absent from `hooks.json`. Confirm `dotdotgod-context` exposes all 19 tools and focused `project_load` degrades optional embeddings cleanly. Pre-seed `.dotdotgod/context/runtime/legacy.json` (`{"loadRequired":true,"pending":{"src/a.ts":true}}`) and confirm it is completely ignored and untouched.
 
-Then verify host dispatch with the installed plugin, not by invoking `runtime.mjs posttooluse` directly: start a fresh session, confirm Bash/Edit/Write need no prior Load, let Claude optionally call the plugin-qualified `project_load`, and confirm failed/successful Load does not create a permission gate. Seed legacy loadRequired=true state and confirm it is ignored/removed without ending the session. To check unrelated MCP isolation, first complete a Write, confirm a broad verification command is denied by pending impact state, call an unrelated MCP tool (including another server's `project_load` or `project_impact`), and confirm the same command remains denied. Verify small output returns directly and a large output returns an index handle without the full raw bytes.
-
-Confirm these commands are discoverable or invokable:
-
-```text
-/dd:load
-/dd:plan
-/dd:init
-/dd:impact
-```
-
-For `/dd:init`, generated guidance should preserve existing files, use the CLI or bundled fallback, and create the same complete default project config. Confirm the packaged initializer contains both `scripts/init_project.sh` and `templates/dotdotgod.config.json`.
-
-For `/dd:load`, generated command and skill guidance should expose `Help: dotdotgod --help` without installation status or mandatory Help execution, run `dotdotgod config <root> --json` to apply resolved documentation exclusions, render the shared Markdown tree through depth 5 without arguments, use `dotdotgod query` for up to 30 focused results plus a depth-3 map with arguments, keep the README directly under `docs/archive/` as the separate history map, and fall back to README-index reads when CLI execution is unavailable.
-
-For `/dd:impact`, generated guidance should identify changed source/config/docs files, run one repeated-`--changed` multi-seed `dotdotgod graph impact` command for up to 20 unique paths (and ordered batches only above that bound), inspect the combined ranking and per-seed results selectively, and choose focused verification before handoff.
+Edit a tracked file: confirm `PostToolUse` emits a single `0 -> >0` advisory, `UserPromptSubmit` emits per-turn reminders, and Bash/Edit/Write/test/commit commands are never denied. Confirm an unrelated MCP tool leaves `impact.sqlite` unchanged, a failed `project_impact` retains pending rows, and a succeeded `project_impact` clears them. Verify `/dd:load`, `/dd:plan`, `/dd:init`, and `/dd:impact` match shared contracts (including `Help: dotdotgod --help`, depth-bounded `map`, up to 20 repeated `--changed` paths, and bundled `scripts/init_project.sh` + `templates/dotdotgod.config.json`).
 
 ## Codex Adapter
 
-Install or add `/path/to/dotdotgod/packages/codex` with the current local plugin workflow.
+Pack and extract Codex under the same clean-cache constraints, enable `[features].hooks = true`, and approve plugin hooks via `/hooks`. Confirm `SessionStart`, `UserPromptSubmit`, and `PostToolUse` (no `PreToolUse`) load without module-resolution errors and `dotdotgod-context` exposes all 19 tools. Pre-seed legacy `.dotdotgod/context/runtime/legacy.json` and confirm it is ignored.
 
-Pack and extract Codex under the same clean-cache constraints. After Codex plugin hook trust/review, confirm hooks load without module-resolution diagnostics and the packaged `dotdotgod-context` server exposes the same complete tool surface as Claude Code. Repeat the focused Load degradation and failed/successful nonblocking Load checks used for Claude Code. Verify a direct write creates impact-pending state, a broad verification command is denied with exact MCP guidance, successful impact clears matching fingerprints, and the original command can be retried. Confirm `project-load`, `doc-first-planning`, `project-initializer`, and `impact-review` skills are discoverable. Confirm `document-clarify` is absent from adapter resources and separately installed when needed. Trigger phrases `dd:load`, `dd:plan`, `dd:init`, and `dd:impact` should activate the expected workflows. For `dd:init`, verify the same config template and preservation behavior as Claude Code. For `dd:load`, expose the same `Help: dotdotgod --help` hint without installation status or mandatory execution, and use the same depth-bounded documentation-map, focused-query, archive-exclusion, and unavailable-CLI/shell fallback expectations as Claude Code. For `dd:impact`, use the same bounded multi-seed changed-file graph-impact and focused-verification expectations as Claude Code.
+Apply a multi-file `apply_patch`: confirm `PostToolUse` tracks all changed paths in `impact.sqlite` and emits a `0 -> >0` advisory, `UserPromptSubmit` emits the structured JSON `additionalContext` advisory, commands are never denied, failed `project_impact` retains pending rows, and succeeded `project_impact` clears them. Confirm `project-load`, `doc-first-planning`, `project-initializer`, and `impact-review` skills and `dd:{load,plan,init,impact}` triggers work and `document-clarify` stays separate.
 
-After updating either installed adapter, restart the host and confirm it references the newly installed or registered artifact. Do not assume an existing content-hash plugin cache is rewritten by source changes; reinstall or re-register through the host's supported flow when the active artifact remains stale.
+After updating any installed adapter, restart the host so it picks up the newly installed artifact instead of a stale content-hash cache.
 
-## Pi Context Tools
+## Hermes Adapter
 
-Confirm Pi starts the host-managed `dotdotgod_context` stdio MCP child and exposes the unprefixed nineteen-tool catalog, with no native forwarding aliases or graph-impact/status wrappers. Verify Code Mode MCP envelopes, bounded large-output retention under `.dotdotgod/context/`, pending-only native `project_memory_load`, advisory impact, nested Plan Mode checks, cancellation and shutdown. Reload existing sessions before testing the new names.
+Run the isolated pinned-host smoke (`packages/hermes/test/pinned_host_smoke.py` against pinned commit `19b57f11d6eefb17e3e8a58e40b0b16aeb8b83b9`) plus a non-Git repository smoke: confirm `post_tool_call` tracks edits in `impact.sqlite`, `pre_llm_call` emits `[DOTDOTGOD IMPACT PENDING — ADVISORY]`, `pre_tool_call` never blocks (`terminal` `git push` allowed), `project_impact` clears pending rows, re-edits reopen them, and non-Git workspaces fail open. See [`../HERMES_ADAPTER.md`](../HERMES_ADAPTER.md).
 
-## Pi Load Guidance
+## Pi Context Tools And Load Guidance
 
-Confirm `/load`, `/dd:load`, and the mode-neutral automatic load expose exactly `Help: dotdotgod --help`, omit `CLI status:`, and continue through the documentation map when Help or query execution is unavailable. Confirm `/dd:load:compact` is not registered.
+Confirm Pi starts the host-managed `dotdotgod_context` stdio MCP child (19 unprefixed tools, no forwarding aliases), Code Mode envelopes work, pending impact stays advisory while Plan Mode restrictions remain, and shutdown reaps the child. Confirm `/load`, `/dd:load`, and automatic load expose `Help: dotdotgod --help`, omit `CLI status:`, and never register `/dd:load:compact`.
 
-## Cross-Agent Planning Parity
+## Cross-Agent Planning And Clarification Parity
 
-- Claude Code `/dd:plan` and both generated `doc-first-planning` skills provide an executable `dotdotgod query` command, conditional `dotdotgod config` guidance, and the written plan file as the durable review artifact without referencing saved-plan preview UI.
-- Claude Code `/dd:impact` and Codex `impact-review` provide the cross-agent counterpart to Pi's `/impact-check` reminders without claiming Pi's runtime pending-impact state.
-- Standalone `document-clarify` resolves `config.areas` with the CLI and retains a CLI-unavailable fallback across hosts.
-- The standalone skill includes the shared structural editing patterns, review procedure and MIT notice. `packages/cli/test/document-clarify.test.mjs` checks full-body preservation and absence from all five adapters. Follow the [installation and migration checks](../SKILL_INSTALLATION.md).
-- Review a clarification containing an unraised objection, stacked qualifiers, repeated closers, decorative formatting, and an unsupported absence claim. Confirm the rewrite removes empty framing while preserving actual restrictions, uncertainty, design rationale, source markers, and evidence. Punctuation and individual words must not trigger automatic edits.
-- `pnpm run verify:generated` confirms generated resources match shared workflow sources and platform-specific rendering.
+- Claude Code `/dd:plan`, Codex `doc-first-planning`, and Pi `/dd:plan` share executable `dotdotgod query` and conditional `dotdotgod config` guidance; Antigravity relies on built-in `/plan` with Option C-2 artifact observation (no separate planning skill and zero hook workspace writes).
+- All six adapters align on non-blocking advisory impact review (`/impact-check`, `/dd:impact`, `dd:impact`, `/dd-impact`, `/impact-review`).
+- Standalone `document-clarify` (`@dotdotgod/skills`) stays absent from all six adapter packages (`packages/cli/test/document-clarify.test.mjs`). Follow [`../SKILL_INSTALLATION.md`](../SKILL_INSTALLATION.md).
+- `pnpm run verify:generated` confirms generated resources match shared workflow sources across all adapters.

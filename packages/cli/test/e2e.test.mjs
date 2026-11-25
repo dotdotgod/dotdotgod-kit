@@ -419,6 +419,7 @@ describe('dotdotgod CLI e2e', () => {
       resolve('../pi/skills/project-initializer/templates/dotdotgod.config.json'),
       resolve('../claude-code/skills/project-initializer/templates/dotdotgod.config.json'),
       resolve('../codex/skills/project-initializer/templates/dotdotgod.config.json'),
+      resolve('../antigravity/skills/dd-init/templates/dotdotgod.config.json'),
     ]) assert.deepEqual(JSON.parse(readFileSync(template, 'utf8')), defaultDotdotgodConfigData());
 
     const rcRoot = join(parent, 'rc-project');
@@ -446,6 +447,13 @@ describe('dotdotgod CLI e2e', () => {
     const piPaths = new Set(piPayload.files.map((file) => file.path));
     assert(piPaths.has('skills/project-initializer/templates/dotdotgod.config.json'), '@dotdotgod/pi package should include the initializer config template');
     for (const name of ['software', 'research', 'case-and-evidence', 'publication', 'portfolio', 'policy']) assert(piPaths.has(`skills/project-initializer/templates/${name}.json`), `@dotdotgod/pi should include ${name}`);
+
+    const agyPayload = packDryRun('@dotdotgod/antigravity');
+    const agyPaths = new Set(agyPayload.files.map((file) => file.path));
+    for (const required of ['plugin.json', 'mcp_config.json', 'hooks.json', 'rules/AGENTS.md', 'assets/logo.svg', 'scripts/hook-runtime.mjs', 'mcp/server.mjs', 'skills/dd-init/templates/dotdotgod.config.json']) {
+      assert(agyPaths.has(required), `@dotdotgod/antigravity should include ${required}`);
+    }
+    for (const name of ['software', 'research', 'case-and-evidence', 'publication', 'portfolio', 'policy']) assert(agyPaths.has(`skills/dd-init/templates/${name}.json`), `@dotdotgod/antigravity should include ${name}`);
   });
 
   it('uses templates only when creating project config', () => {

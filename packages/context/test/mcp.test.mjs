@@ -174,3 +174,89 @@ test('stdio server lists the complete tool surface and calls doctor', async () =
     rmSync(external, { recursive: true, force: true });
   }
 });
+
+test('MC-01/MC-02: isolated server reports sessionBound and static guidance without opening impact.sqlite when unbound', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-mcp-bound-'));
+  const env = { ...process.env, DOTDOTGOD_PROJECT_ROOT: root };
+  delete env.DOTDOTGOD_SESSION_ID;
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [resolve('bin/server.mjs')],
+    cwd: resolve('.'),
+    env,
+    stderr: 'pipe',
+  });
+  const client = new Client({ name: 'test-bound', version: '1.0.0' });
+  try {
+    mkdirSync(join(root, 'src'));
+    writeFileSync(join(root, 'src/a.ts'), 'export const a = 1;\n');
+    await client.connect(transport);
+
+    const unboundStatus = await client.callTool({ name: 'impact_status', arguments: {} });
+    assert.equal(unboundStatus.isError, undefined);
+    assert.equal(unboundStatus.structuredContent.sessionBound, false);
+    assert.equal(unboundStatus.structuredContent.count, 0);
+    assert.equal(typeof unboundStatus.structuredContent.guidance, 'string');
+    assert.ok(unboundStatus.structuredContent.guidance.length <= 120);
+    assert.equal(/[\r\n]/.test(unboundStatus.structuredContent.guidance), false);
+    assert.equal(unboundStatus.structuredContent.guidance.includes(root), false);
+    assert.equal(existsSync(join(root, '.dotdotgod/context/impact.sqlite')), false);
+
+    const unboundImpact = await client.callTool({ name: 'project_impact', arguments: { paths: ['src/a.ts'] } });
+    assert.equal(unboundImpact.isError, undefined);
+    assert.equal(unboundImpact.structuredContent.impactStatus.sessionBound, false);
+    assert.equal(typeof unboundImpact.structuredContent.impactStatus.guidance, 'string');
+    assert.ok(unboundImpact.structuredContent.impactStatus.guidance.length <= 120);
+    assert.equal(existsSync(join(root, '.dotdotgod/context/impact.sqlite')), false);
+
+    // Per-call contextSessionId binds session
+    const boundPerCall = await client.callTool({ name: 'impact_status', arguments: { contextSessionId: 'explicit-host' } });
+    assert.equal(boundPerCall.structuredContent.sessionBound, true);
+    assert.equal(boundPerCall.structuredContent.guidance, undefined);
+
+    // session_resume binds subsequent calls
+    await client.callTool({ name: 'session_resume', arguments: { sessionId: 'resumed-host' } });
+    const boundResumed = await client.callTool({ name: 'impact_status', arguments: {} });
+    assert.equal(boundResumed.structuredContent.sessionBound, true);
+    assert.equal(boundResumed.structuredContent.guidance, undefined);
+
+    const boundImpact = await client.callTool({ name: 'project_impact', arguments: { paths: ['src/a.ts'] } });
+    assert.equal(boundImpact.structuredContent.impactStatus.sessionBound, true);
+    assert.equal(boundImpact.structuredContent.impactStatus.guidance, undefined);
+  } finally {
+    await client.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('MCP roots/list resolves workspace root when DOTDOTGOD_PROJECT_ROOT is unset', async () => {
+  const { ListRootsRequestSchema } = await import('@modelcontextprotocol/sdk/types.js');
+  const { pathToFileURL } = await import('node:url');
+  const workspace = mkdtempSync(join(tmpdir(), 'dotdotgod-mcp-roots-ws-'));
+  const pluginDir = mkdtempSync(join(tmpdir(), 'dotdotgod-mcp-roots-plugin-'));
+  const env = { ...process.env };
+  delete env.DOTDOTGOD_PROJECT_ROOT;
+  delete env.DOTDOTGOD_SESSION_ID;
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [resolve('bin/server.mjs')],
+    cwd: pluginDir,
+    env,
+    stderr: 'pipe',
+  });
+  const client = new Client({ name: 'test-roots', version: '1.0.0' }, { capabilities: { roots: { listChanged: true } } });
+  client.setRequestHandler(ListRootsRequestSchema, async () => ({
+    roots: [{ uri: pathToFileURL(workspace).href }],
+  }));
+  try {
+    await client.connect(transport);
+    const doctor = await client.callTool({ name: 'doctor', arguments: {} });
+    assert.equal(doctor.isError, undefined);
+    assert.equal(realpathSync(doctor.structuredContent.root), realpathSync(workspace));
+    assert.equal(existsSync(join(pluginDir, '.dotdotgod')), false);
+  } finally {
+    await client.close();
+    rmSync(workspace, { recursive: true, force: true });
+    rmSync(pluginDir, { recursive: true, force: true });
+  }
+});

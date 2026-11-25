@@ -8,7 +8,7 @@ Target host revision: `19b57f11d6eefb17e3e8a58e40b0b16aeb8b83b9`.
 ## Installation
 
 Requires Python 3.11+ (use the host's supported Python version), Node 22.19+,
-Git for impact tracking, and an explicitly enabled native Hermes plugin.
+and an explicitly enabled native Hermes plugin.
 The installed directory must contain plugin.yaml and __init__.py at its root.
 
 For a source checkout:
@@ -87,30 +87,34 @@ project data; context scope/session filters are not access-control lists.
 - select_root and impact_status are adapter-local tools; the shared impact_status
   entry is not registered twice. There are twenty unique tools. Reload the plugin
   after upgrading and update saved calls; old prefixed names are unsupported.
-- Pending impact is derived from Git dirty/untracked fingerprints and durable
-  checked fingerprints. Successful checks clear only checked, unchanged paths.
-  Source edits reopen pending state; reads and impact checks remain available.
+- Pending impact is tracked per principal-bound session in
+  `.dotdotgod/context/impact.sqlite` via `post_tool_call` (observing successful
+  `write_file` and `patch` edits, with 24-hour TTL and custom `documentation.root`
+  support). `pre_llm_call` injects non-blocking advisory reminders, `impact_status`
+  returns `{ok, count, pending: [{path}], truncated}`, and `project_impact` clears
+  checked unchanged paths via MCP `withImpactReview`. Source edits reopen pending
+  state; reads, tests, builds, commits, and impact checks remain available.
 - Native Hermes delegate_task is the delegation mechanism. Child hooks inherit
   an active matching-principal parent's project by default, with a separate
-  context connection; impact covers their changes in the shared worktree.
+  context connection and session-scoped advisory impact state.
 
 No dedicated planning state, wizard, source-edit approval UI, compaction feature,
 Pi TUI implementation, or pi-subagents port is included.
 
-## Gate And Lifecycle Limits
+## Advisory Impact And Lifecycle Limits
 
-Recognized git commit/push/tag, npm/pnpm/yarn test/verify/build/lint/check/publish/deploy and common
-Python/Node test commands are blocked while impact is pending. Execute batches
-are checked inside the adapter too. Opaque execute_file calls are blocked while
-pending because their effects cannot be inferred safely.
+Pending impact is strictly advisory and never blocks edits, tests, builds, lint,
+commits, pushes, publishes, `execute`, `execute_file`, or other host tools. Only
+observed `write_file` and `patch` tool calls are recorded automatically; shell,
+external, and unobserved changes may require passing explicit paths to
+`project_impact`.
 
 Relative native file paths and terminal workdir default to the selected project;
 explicit paths may refer anywhere accessible to the host. This adapter targets local host worktrees, not remote/container path
 translation. Shell paths, patch bodies, arbitrary programs and other plugins are
 not a filesystem sandbox; keep Hermes's own approvals and OS isolation.
-Shell mutations hidden inside one combined mutation/release command are not fully
-recognized. Native hooks can fail open under host errors/timeouts; no universal
-bypass-prevention claim is made.
+Native hooks fail open under errors/timeouts and mask `$HOME`/control characters
+in diagnostics without leaking raw exception paths into model context.
 
 Interrupted turns close their context connection without replaying writes.
 Finalized/reset sessions release processes. Normal end-of-turn retains connections

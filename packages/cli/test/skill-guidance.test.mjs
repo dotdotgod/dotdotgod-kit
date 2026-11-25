@@ -6,13 +6,13 @@ const root = new URL('../../../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
 
 test('generated initializer paths and impact guidance preserve host contracts', () => {
-  for (const agent of ['pi', 'codex']) {
-    const skill = read(`packages/${agent}/skills/project-initializer/SKILL.md`);
+  for (const [agent, skillDir] of [['pi', 'project-initializer'], ['codex', 'project-initializer'], ['antigravity', 'dd-init']]) {
+    const skill = read(`packages/${agent}/skills/${skillDir}/SKILL.md`);
     assert.match(skill, /sh <resolved-skill-directory>\/scripts\/init_project\.sh/);
     assert.match(skill, /missing local-memory\/cache entries may be appended/);
   }
-  for (const agent of ['claude-code', 'codex', 'hermes']) {
-    const skill = read(`packages/${agent}/skills/impact-review/SKILL.md`);
+  for (const [agent, skillDir] of [['claude-code', 'impact-review'], ['codex', 'impact-review'], ['hermes', 'impact-review'], ['antigravity', 'dd-impact']]) {
+    const skill = read(`packages/${agent}/skills/${skillDir}/SKILL.md`);
     assert.match(skill, /Call the host-registered project_impact/);
     assert.match(skill, /without claiming it clears host pending state/);
   }

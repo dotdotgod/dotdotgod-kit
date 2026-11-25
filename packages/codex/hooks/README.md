@@ -7,9 +7,9 @@ write permissions or override the active native collaboration mode.
 
 ## Packaged Defaults
 
-The adapter packages `hooks/hooks.json` and `hooks/runtime.mjs`. After Codex's applicable plugin-hook enablement and trust review, they inject a bounded project-load requirement, record successful `apply_patch`/`Edit`/`Write` paths, and deny broad verification or handoff shell commands while graph impact is pending. A denial names the required dotdotgod MCP tool; Codex calls it and retries the original operation. Hooks do not transform a shell tool call into an MCP call.
+The adapter packages `hooks/hooks.json` and `hooks/runtime.mjs` with `SessionStart`, `UserPromptSubmit`, and `PostToolUse` hooks (no `PreToolUse` gate). After Codex's applicable plugin-hook enablement and trust review in initialized repositories (`dotdotgod.config.json` or `.dotdotgod/`), `SessionStart` offers optional project-memory advice, `PostToolUse` records successful `apply_patch`/`Edit`/`Write`/`MultiEdit` paths (emitting a one-time advisory notice when pending transitions from empty to non-empty) and clears requested paths on successful `project_impact` (retaining pending state if `project_impact` fails), and `UserPromptSubmit` injects a non-blocking per-turn advisory reminder while impact is pending. Pending impact never blocks edits, tests, builds, commits, or other tools, and hooks do not transform a shell tool call into an MCP call.
 
-Runtime state is local to `.dotdotgod/context/runtime/`. MCP tools bypass their own guards, and successful impact clears only matching file fingerprints. Hooks run local commands with user permissions, so review plugin resources before enabling them.
+Advisory pending state is stored locally in `.dotdotgod/context/impact.sqlite` (24-hour fixed TTL; legacy `.dotdotgod/context/runtime/*.json` files are ignored). Hooks fail open on invalid input or missing session IDs and run local commands with user permissions, so review plugin resources before enabling them.
 
 Current Codex docs support plugin-bundled hooks subject to the active version's enablement and trust flow. The skills remain usable when hooks are disabled.
 

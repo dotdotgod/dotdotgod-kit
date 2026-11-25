@@ -2,7 +2,7 @@
 
 - `OBSIDIAN_PLUGIN.md`: vault-relative export, desktop plugin behavior, safety, lifecycle, and release contract.
 
-- `CONTEXT_RETENTION.md`: fixed 24-hour SQLite content/job/impact lifetime, migration and cleanup contract.
+- `CONTEXT_RETENTION.md`: fixed 24-hour SQLite content/job/impact (`pending` and `plan_notices`) lifetime, fast read-only path, migration, and cleanup contract.
 
 Use this area for behavior specs, API contracts, and product requirements.
 
@@ -22,7 +22,7 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 - `IMPACT_RANKING_CONFIG.md`: fixed weighted-PPR plus memory scoring, non-blocking `impactRanking` compatibility input, request-local vector candidates, score diagnostics, and compact text/YML output.
 - `REFERENCE_EXPANSION.md`: `referenceExpansion.fuzzy.lowSignal.add/remove` for fuzzy prompt matching.
 - `CONFIG_COMMAND.md`: config discovery, JSON output, initialization, invalid-config fallback, and user-facing repair behavior.
-- `CONTEXT_EXECUTION.md`: local execution, FTS5 retrieval, MCP/native adapter, output-safety, and hook-routing behavior.
+- `CONTEXT_EXECUTION.md`: local execution, FTS5 retrieval, MCP `roots/list`, unbound `sessionBound` guidance, output safety, and non-blocking hook routing.
 - `TOOL_RESPONSES.md`: Markdown presentation, structured programmatic access, migration, and graph-impact exclusions.
 - `PI_CONTEXT_TOOL_SELECTION.md`: host-managed MCP selection, envelopes and bounded results, public SDK tests, and permission boundaries.
 - `CONTEXT_SEARCH_RECOVERY.md`: failure diagnostic queries, bounded wildcard browsing, and evidence limits.
@@ -31,14 +31,11 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 
 ## Index
 
-- `NATIVE_PLAN_STORAGE.md`: opt-in native plan storage and host permission boundaries.
-
+- `ANTIGRAVITY_ADAPTER.md`: native Antigravity plugin layout, `dotdotgod_context` MCP, non-blocking advisory impact hooks, and Option C-2 `/plan` sync.
+- `NATIVE_PLAN_STORAGE.md`: opt-in Claude/Codex native plan storage, Antigravity Option C-2 read-only `/plan` observation, and host permission boundaries.
 - `OPENCODE_ADAPTER.md`: OpenCode V2 native planning, MCP and advisory impact contract.
-
-- `ADVISORY_IMPACT.md`: shared host-session pending revisions and successful review acknowledgement.
-
+- `ADVISORY_IMPACT.md`: unified all-6-adapter non-blocking `.dotdotgod/context/impact.sqlite` v2 pending state, clearance, and unbound MCP guidance.
 - `REFERENCE_SCOPE_VALIDATION.md`: shared-to-local Markdown and inline-code dependency errors with layout-example exemptions.
-
 - `README.md`: specs documentation scope and local table of contents.
 - `PROJECT_INITIALIZER.md`: project initializer scaffold, CLI options, overwrite policy, and docs contract.
 - `PLAN_MODE.md`: compatibility route for Plan Mode behavior docs.
@@ -53,6 +50,6 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 - `cli/README.md`: focused CLI specs for discovery/help, local multilingual query and vector cache, graph impact, traceability links, and plan commands.
 - `CLI_INTERFACE.md`: compatibility route for the legacy monolithic CLI interface spec; new behavior belongs under `cli/`.
 - `REFERENCE_EXPANSION.md`: CLI reference resolution and prompt-time expansion from the dotdotgod graph/index.
-- `CROSS_AGENT_SUPPORT.md`: cross-agent support contract for Pi, Claude Code, Codex, Hermes, and shared docs workflows.
-- `HERMES_ADAPTER.md`: native CLI/gateway adapter, per-session MCP routing, root authorization, load/impact lifecycle and limits without Plan Mode.
+- `CROSS_AGENT_SUPPORT.md`: cross-agent support contract for Pi, OpenCode, Claude Code, Codex, Antigravity, Hermes, and shared docs workflows.
+- `HERMES_ADAPTER.md`: native CLI/gateway adapter, per-session MCP routing, Path 1 non-blocking advisory impact, and limits without Plan Mode.
 - `WORKSPACE_VERIFICATION.md`: root verification, cache, pre-push, and package verify contract behavior.

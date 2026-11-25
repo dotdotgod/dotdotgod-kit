@@ -59,3 +59,9 @@ test('presentation adds no size cap', () => {
   const payload = 'x'.repeat(100000);
   assert.ok(formatToolMarkdown('execute', { stdout: payload }).includes(payload));
 });
+test('impact_status renders unbound guidance inline without code fencing', () => {
+  const guidance = 'Session unbound; hook-tracked pending paths are not visible here. Pass paths explicitly to project_impact.';
+  const text = formatToolMarkdown('impact_status', { ok: true, count: 0, pending: [], truncated: false, sessionBound: false, guidance });
+  assert.ok(text.includes(`- guidance: ${guidance}`));
+  assert.equal(text.includes('```text'), false);
+});

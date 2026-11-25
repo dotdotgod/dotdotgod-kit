@@ -1,0 +1,3 @@
+- `docs/case/`: Use this area for canonical case facts, questions, and decisions.
+- `docs/evidence/`: Use this area for factual, legal, and other supporting evidence.
+- `docs/outputs/`: Use this area for maintained case outputs.

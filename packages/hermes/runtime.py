@@ -5,12 +5,14 @@ import json
 import os
 import re
 import subprocess
+import sys
 import threading
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
-from .policy import contained, file_arguments, gate, snapshot
+from .impact import ImpactStore, contained, extract_edit_paths, impact_reminder, is_failed_result, mask_error
+from .policy import file_arguments, resolve_path
 from .proxy import Proxy
 
 BASE = Path(__file__).parent
@@ -58,6 +60,15 @@ class Runtime:
             self.sessions[session_id] = Session(session_id, "", "")
         return self.sessions[session_id]
 
+    def impact_key(self, session):
+        return digest(session.principal + "\0" + session.id + "\0" + str(session.root))
+
+    def impact_store(self, session):
+        return ImpactStore(session.root, self.impact_key(session))
+
+    def impact_status(self, session, limit=50):
+        return self.impact_store(session).status(limit=limit)
+
     def select(self, session, label):
         value = self.allowed(session).get(label, label)
         if not isinstance(value, str) or not Path(value).is_absolute():
@@ -76,13 +87,8 @@ class Runtime:
         with self.lock:
             if session.proxy is None:
                 # Separate connection, but the existing project DB stays shared for the same root.
-                session.proxy = Proxy(session.root, digest(session.principal + "\0" + session.id + "\0" + str(session.root)))
+                session.proxy = Proxy(session.root, self.impact_key(session))
             return session.proxy
-
-    def pending(self, session):
-        current = snapshot(session.root)
-        checked = self.ctx.state.get("impact:" + digest(str(session.root)), {})
-        return {path: value for path, value in current.items() if checked.get(path) != value}
 
     def cli(self, session, args):
         run = subprocess.run(["node", str(BASE / "mcp" / "cli.mjs"), *args], cwd=session.root,
@@ -136,7 +142,7 @@ class Runtime:
                     proxy.close()
             if name == "project_load" and args.get("root"):
                 base = session.root or self.launch_root
-                target = contained(base, args["root"])
+                target = resolve_path(base, args["root"])
                 if target != session.root:
                     self.select(session, str(target))
             if session.root is None:
@@ -144,53 +150,46 @@ class Runtime:
                 if not session.root.is_dir():
                     raise ValueError("Project root must be a directory")
         if name == "impact_status":
-            return envelope({"ok": True, "pending": list(self.pending(session))})
+            raw_limit = args.get("limit", 50)
+            limit = raw_limit if isinstance(raw_limit, int) and not isinstance(raw_limit, bool) and 1 <= raw_limit <= 50 else 50
+            return envelope(self.impact_status(session, limit=limit))
         if name == "project_load":
             return self.load(session, args)
-        if name in {"execute", "execute_file"}:
-            reason = self.check(session, name, args)
-            if reason:
-                raise PermissionError(reason)
         if name == "project_impact":
-            before = self.pending(session)
-            paths = [os.path.relpath(contained(session.root, path), session.root) for path in args.get("paths", [])]
-            args = {**args, "paths": paths}
-        value = self.client(session).call(name, args)
-        if name == "project_impact" and not value.get("isError") and value.get("structuredContent", {}).get("ok") is True:
-            with self.lock:
-                after = self.pending(session)
-                key = "impact:" + digest(str(session.root))
-                checked = self.ctx.state.get(key, {})
-                for path in paths:
-                    if path in before and before[path] == after.get(path):
-                        checked[path] = before[path]
-                self.ctx.state.set(key, checked)
-        return value
-
-    def check(self, session, name, args):
-        try:
-            pending = self.pending(session)
-        except Exception:
-            pending = {"<impact state unavailable>": "unknown"}
-        return gate(name, args, pending)
+            raw_paths = args.get("paths", [])
+            if isinstance(raw_paths, list):
+                real_root = os.path.realpath(session.root)
+                paths = []
+                for raw in raw_paths:
+                    resolved = contained(session.root, raw) if isinstance(raw, str) else None
+                    paths.append(os.path.relpath(resolved, real_root).replace("\\", "/") if resolved else raw)
+                args = {**args, "paths": paths}
+            args = {**args, "contextSessionId": self.impact_key(session)}
+        return self.client(session).call(name, args)
 
     def before_tool(self, tool_name, args, session_id="", **kwargs):
         try:
             session = self.sessions.get(session_id) if session_id else None
-            if session is None:
+            if session is None or session.root is None or tool_name == "select_root":
                 return None
-            if session.root is None:
-                return None
-            if tool_name == "select_root":
-                return None
-            reason = self.check(session, tool_name, args)
-            if reason:
-                return {"action": "block", "message": reason}
             rewritten = file_arguments(session.root, tool_name, dict(args))
             if rewritten != args:
                 return {"action": "modify", "args": rewritten}
         except Exception as error:
-            return {"action": "block", "message": str(error)}
+            print("dotdotgod hook error: " + mask_error(error), file=sys.stderr)
+        return None
+
+    def after_tool(self, tool_name="", args=None, result=None, session_id="", status=None, **kwargs):
+        try:
+            session = self.sessions.get(session_id) if session_id else None
+            if session is None or session.root is None or is_failed_result(status, result):
+                return None
+            paths = extract_edit_paths(tool_name, args)
+            if paths:
+                self.impact_store(session).mark(paths)
+        except Exception as error:
+            print("dotdotgod hook error: " + mask_error(error), file=sys.stderr)
+        return None
 
     def before_llm(self, session_id, user_message, platform="", sender_id="", parent_session_id="", **kwargs):
         with self.lock:
@@ -229,12 +228,17 @@ class Runtime:
                         parts.append("Reference evidence (non-authoritative): " + json.dumps(refs, ensure_ascii=False))
                 except Exception:
                     parts.append("Reference expansion unavailable; use README routing and explicit targeted reads.")
-            pending = self.pending(session)
-            if pending:
-                parts.append("Impact pending: " + ", ".join(list(pending)[:8]) + ". Run project_impact before broad tests or release commands.")
+            try:
+                reminder = impact_reminder(self.impact_status(session))
+                if reminder:
+                    parts.append(reminder)
+            except Exception as error:
+                print("dotdotgod hook error: " + mask_error(error), file=sys.stderr)
+                parts.append("Impact status unavailable; run project_impact manually for edited paths.")
             return {"context": "\n\n".join(parts)} if parts else None
         except Exception as error:
-            return {"context": "dotdotgod context unavailable: " + str(error) + "; do not bypass root/impact checks."}
+            print("dotdotgod hook error: " + mask_error(error), file=sys.stderr)
+            return {"context": "dotdotgod context unavailable; ordinary host tools remain available."}
 
     def finalize(self, session_id="", **kwargs):
         for child in list(self.sessions.values()):

@@ -1,28 +1,33 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, realpathSync } from 'node:fs';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { existsSync, mkdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { validateSessionId } from './session.mjs';
 import { RETENTION_MS } from './retention.mjs';
+import {
+  impactFingerprint,
+  impactPath,
+  impactReminder,
+  resolveDocumentationRoot,
+  sanitizeDisplayPath,
+} from './impact-path.mjs';
 
-export function impactPath(root, path) {
-  if (typeof path !== 'string' || !path.trim() || path.includes('\0')) return undefined;
-  const absolute = resolve(root, path);
-  const name = relative(resolve(root), absolute).replaceAll('\\', '/');
-  if (!name || name === '..' || name.startsWith('../') || isAbsolute(name)) return undefined;
-  if (/(^|\/)(node_modules|\.git|\.dotdotgod|dist|build|coverage)(\/|$)/.test(name)) return undefined;
-  if (/^docs\/(plan|archive)(\/|$)/.test(name)) return undefined;
-  // Do not attribute an external symlink target to this project.
-  let ancestor = absolute;
-  while (!existsSync(ancestor) && dirname(ancestor) !== ancestor) ancestor = dirname(ancestor);
-  const realRelative = relative(realpathSync(root), realpathSync(ancestor));
-  if (realRelative === '..' || realRelative.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`) || isAbsolute(realRelative)) return undefined;
-  return name;
-}
+export { impactFingerprint, impactPath, impactReminder, resolveDocumentationRoot, sanitizeDisplayPath };
 
-export function impactFingerprint(root, path) {
-  try { return createHash('sha256').update(readFileSync(resolve(root, path))).digest('hex'); }
-  catch (error) { return error.code === 'ENOENT' ? 'missing' : undefined; }
+const CREATE_PENDING = 'CREATE TABLE IF NOT EXISTS pending (session TEXT NOT NULL, path TEXT NOT NULL, revision TEXT NOT NULL, fingerprint TEXT, created_at INTEGER, expires_at INTEGER, notified INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (session, path))';
+const CREATE_PLAN_NOTICES = 'CREATE TABLE IF NOT EXISTS plan_notices (session TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, notified INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)';
+
+function inspectSchema(db) {
+  const hasPending = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pending'").get());
+  const hasPlanNotices = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='plan_notices'").get());
+  const cols = hasPending ? db.prepare('PRAGMA table_info(pending)').all().map((c) => c.name) : [];
+  return {
+    hasPending,
+    hasPlanNotices,
+    needsCreatedAt: hasPending && !cols.includes('created_at'),
+    needsExpiry: hasPending && !cols.includes('expires_at'),
+    needsNotified: hasPending && !cols.includes('notified'),
+  };
 }
 
 // A separate small database keeps advisory state available without opening the content store.
@@ -38,55 +43,111 @@ export class ImpactState {
     if (!write && !existsSync(this.path)) return undefined;
     if (write) mkdirSync(dirname(this.path), { recursive: true });
     const db = new DatabaseSync(this.path);
-    db.exec('PRAGMA busy_timeout=5000');
-    db.exec('CREATE TABLE IF NOT EXISTS pending (session TEXT NOT NULL, path TEXT NOT NULL, revision TEXT NOT NULL, fingerprint TEXT, PRIMARY KEY(session,path))');
-    db.exec('BEGIN IMMEDIATE');
     try {
-      const columns = db.prepare('PRAGMA table_info(pending)').all();
-      if (!columns.some(column => column.name === 'expires_at')) {
-        db.exec('ALTER TABLE pending ADD COLUMN created_at INTEGER; ALTER TABLE pending ADD COLUMN expires_at INTEGER;');
-        const now = Date.now();
-        db.prepare('UPDATE pending SET created_at = ?, expires_at = ?').run(now, now + RETENTION_MS);
-      }
-      db.prepare('DELETE FROM pending WHERE expires_at <= ?').run(Date.now());
-      db.exec('COMMIT');
-    } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
-    return db;
+      db.exec('PRAGMA busy_timeout=5000');
+      db.exec('PRAGMA journal_mode=WAL');
+      const state = inspectSchema(db);
+      const needsSchema = !state.hasPending || !state.hasPlanNotices || state.needsExpiry || state.needsNotified;
+      if (!write && !needsSchema) return db;
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        db.exec(CREATE_PENDING);
+        db.exec(CREATE_PLAN_NOTICES);
+        const current = inspectSchema(db);
+        if (current.needsCreatedAt) db.exec('ALTER TABLE pending ADD COLUMN created_at INTEGER;');
+        if (current.needsExpiry) {
+          db.exec('ALTER TABLE pending ADD COLUMN expires_at INTEGER;');
+          const now = Date.now();
+          db.prepare('UPDATE pending SET created_at = COALESCE(created_at, ?), expires_at = ? WHERE expires_at IS NULL').run(now, now + RETENTION_MS);
+        }
+        if (current.needsNotified) db.exec('ALTER TABLE pending ADD COLUMN notified INTEGER NOT NULL DEFAULT 0;');
+        if (write) {
+          const now = Date.now();
+          db.prepare('DELETE FROM pending WHERE expires_at <= ?').run(now);
+          db.prepare('DELETE FROM plan_notices WHERE expires_at <= ?').run(now);
+        }
+        db.exec('COMMIT');
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+      return db;
+    } catch (error) { db.close(); throw error; }
   }
 
-  mark(paths) {
-    const names = [...new Set(paths.map(path => impactPath(this.root, path)).filter(Boolean))];
-    if (!names.length) return;
+  tx(fn) {
     const db = this.database(true);
     try {
-      const insert = db.prepare('INSERT OR REPLACE INTO pending (session,path,revision,fingerprint,created_at,expires_at) VALUES (?, ?, ?, ?, ?, ?)');
       db.exec('BEGIN IMMEDIATE');
-      const now = Date.now();
-      for (const path of names) insert.run(this.sessionId, path, randomUUID(), impactFingerprint(this.root, path) ?? null, now, now + RETENTION_MS);
-      db.exec('COMMIT');
+      try { const result = fn(db); db.exec('COMMIT'); return result; }
+      catch (error) { db.exec('ROLLBACK'); throw error; }
     } finally { db.close(); }
   }
 
+  mark(paths) {
+    const docRoot = resolveDocumentationRoot(this.root);
+    const names = [...new Set(paths.map((path) => impactPath(this.root, path, docRoot)).filter(Boolean))];
+    if (!names.length) return { becameNonEmpty: false };
+    const entries = names.map((path) => ({ path, fingerprint: impactFingerprint(this.root, path) ?? null }));
+    return this.tx((db) => {
+      const now = Date.now();
+      const hadActive = Boolean(db.prepare('SELECT 1 FROM pending WHERE session=? AND expires_at > ? LIMIT 1').get(this.sessionId, now));
+      const insert = db.prepare('INSERT OR REPLACE INTO pending (session,path,revision,fingerprint,created_at,expires_at,notified) VALUES (?, ?, ?, ?, ?, ?, 0)');
+      for (const entry of entries) insert.run(this.sessionId, entry.path, randomUUID(), entry.fingerprint, now, now + RETENTION_MS);
+      return { becameNonEmpty: !hadActive };
+    });
+  }
+
   snapshot(paths) {
-    const selected = paths ? new Set(paths.map(path => impactPath(this.root, path)).filter(Boolean)) : undefined;
-    const db = this.database();
+    const docRoot = paths ? resolveDocumentationRoot(this.root) : undefined;
+    const selected = paths ? new Set(paths.map((path) => impactPath(this.root, path, docRoot)).filter(Boolean)) : undefined;
+    const db = this.database(false);
     if (!db) return [];
     try {
-      return db.prepare('SELECT path,revision,fingerprint FROM pending WHERE session=? ORDER BY path').all(this.sessionId)
-        .filter(item => !selected || selected.has(item.path));
+      return db.prepare('SELECT path,revision,fingerprint FROM pending WHERE session=? AND expires_at > ? ORDER BY path').all(this.sessionId, Date.now())
+        .filter((item) => !selected || selected.has(item.path));
     } finally { db.close(); }
   }
 
   complete(snapshot) {
-    if (!snapshot.length) return;
-    const db = this.database();
-    if (!db) return;
-    try {
+    if (!snapshot.length || !existsSync(this.path)) return;
+    this.tx((db) => {
       const remove = db.prepare('DELETE FROM pending WHERE session=? AND path=? AND revision=?');
       for (const item of snapshot) {
         if (item.fingerprint && impactFingerprint(this.root, item.path) === item.fingerprint) remove.run(this.sessionId, item.path, item.revision);
       }
-    } finally { db.close(); }
+    });
+  }
+
+  clearPaths(paths) {
+    const docRoot = resolveDocumentationRoot(this.root);
+    const names = [...new Set(paths.map((path) => impactPath(this.root, path, docRoot)).filter(Boolean))];
+    if (!names.length || !existsSync(this.path)) return 0;
+    return this.tx((db) => {
+      const remove = db.prepare('DELETE FROM pending WHERE session=? AND path=?');
+      return names.reduce((sum, path) => sum + Number(remove.run(this.sessionId, path).changes ?? 0), 0);
+    });
+  }
+
+  claimUnnotified(limit = 50) {
+    if (!existsSync(this.path)) return { ok: true, count: 0, pending: [], truncated: false };
+    const rows = this.tx((db) => db.prepare('UPDATE pending SET notified = 1 WHERE session = ? AND notified = 0 AND expires_at > ? RETURNING path').all(this.sessionId, Date.now()));
+    rows.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+    return { ok: true, count: rows.length, pending: rows.slice(0, limit).map(({ path }) => ({ path })), truncated: rows.length > limit };
+  }
+
+  recordPlanNotice(fingerprint) {
+    this.tx((db) => {
+      const now = Date.now();
+      db.prepare('INSERT INTO plan_notices (session,fingerprint,notified,created_at,expires_at) VALUES (?, ?, 0, ?, ?) ON CONFLICT(session) DO UPDATE SET fingerprint = excluded.fingerprint, notified = 0, created_at = excluded.created_at, expires_at = excluded.expires_at WHERE plan_notices.fingerprint IS NOT excluded.fingerprint').run(this.sessionId, fingerprint, now, now + RETENTION_MS);
+    });
+  }
+
+  claimPlanNotice() {
+    if (!existsSync(this.path)) return false;
+    return this.tx((db) => Number(db.prepare('UPDATE plan_notices SET notified = 1 WHERE session = ? AND notified = 0 AND expires_at > ?').run(this.sessionId, Date.now()).changes ?? 0) === 1);
+  }
+
+  clearPlanNotice() {
+    if (!existsSync(this.path)) return false;
+    return this.tx((db) => Number(db.prepare('DELETE FROM plan_notices WHERE session = ?').run(this.sessionId).changes ?? 0) > 0);
   }
 
   status(limit = 50) {
@@ -98,14 +159,9 @@ export class ImpactState {
 export async function withImpactReview(root, sessionId, paths, review, signal) {
   signal?.throwIfAborted();
   const state = new ImpactState(root, sessionId);
-  const snapshot = state.snapshot(paths).map(item => ({ ...item, fingerprint: impactFingerprint(root, item.path) }));
+  const snapshot = state.snapshot(paths).map((item) => ({ ...item, fingerprint: impactFingerprint(root, item.path) }));
   const result = await review();
   signal?.throwIfAborted();
   if (result.ok === true) state.complete(snapshot);
   return { ...result, checked: result.ok === true ? paths : [], impactStatus: state.status() };
-}
-
-export function impactReminder(status) {
-  if (!status.count) return undefined;
-  return `[DOTDOTGOD IMPACT PENDING — ADVISORY]\n${status.count} changed file(s) await impact review:\n${status.pending.slice(0, 8).map(item => `- ${item.path}`).join('\n')}\nRun project_impact from the dotdotgod_context MCP server for the relevant paths and review related evidence. Pending impact does not block edits, tests, builds, commits, or other tools. Only observed edits are tracked; shell, external, and unobserved changes may require explicit paths.`;
 }

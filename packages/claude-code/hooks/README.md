@@ -7,9 +7,9 @@ not create source-impact pending state. Native plan paths and permissions remain
 host-owned; hooks do not grant plan writes. Hook runtime state and MCP caches
 have separate process permissions from the model's native tools.
 
-The adapter packages `hooks/hooks.json` and `hooks/runtime.mjs`. They offer optional project-memory advice at session start without blocking pre-load shell or write tools, record successful `Edit`/`Write` paths, and deny broad verification or handoff shell commands while graph impact is pending. A denial names the required dotdotgod MCP tool; Claude calls it and retries the original operation. MCP tools bypass their own guards to prevent recursion.
+The adapter packages `hooks/hooks.json` and `hooks/runtime.mjs` with `SessionStart`, `UserPromptSubmit`, and `PostToolUse` hooks (no `PreToolUse` gate). In initialized dotdotgod repositories (`dotdotgod.config.json` or `.dotdotgod/`), `SessionStart` offers optional project-memory advice, `PostToolUse` records successful `Edit`/`Write`/`MultiEdit` paths (emitting a one-time advisory notice when pending transitions from empty to non-empty) and clears requested paths on successful `project_impact` (retaining pending state if `project_impact` fails), and `UserPromptSubmit` injects a non-blocking per-turn advisory reminder while impact is pending. Pending impact never blocks edits, tests, builds, commits, or other tools.
 
-Runtime state is local to `.dotdotgod/context/runtime/`. A successful impact call clears only paths whose current fingerprints match recorded edit state. Hooks run local commands with user permissions; review plugin resources before enabling them.
+Advisory pending state is stored locally in `.dotdotgod/context/impact.sqlite` (24-hour fixed TTL; legacy `.dotdotgod/context/runtime/*.json` files are ignored). Hooks fail open on invalid input or missing session IDs and run local commands with user permissions; review plugin resources before enabling them.
 
 ## Current Claude Code Lifecycle Notes
 

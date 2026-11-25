@@ -14,4 +14,5 @@ export { normalizeSearchTerms, reciprocalRankFusion, rerankCandidates } from './
 export { projectEmbeddingInstall, projectEmbeddingStatus, projectImpact, projectInitialize, projectLoad } from './project.mjs';
 export { startServer } from './server.mjs';
 export { formatToolMarkdown } from './presentation.mjs';
-export { ImpactState, impactPath, impactFingerprint, impactReminder, withImpactReview } from './impact-state.mjs';
+export { ImpactState, impactPath, impactFingerprint, impactReminder, resolveDocumentationRoot, sanitizeDisplayPath, withImpactReview } from './impact-state.mjs';
+export { extractHookSessionId, findInitializedRoot, formatHookError, hasFailedToolResult, isDotdotgodMcpTool, isInitializedProject, parseApplyPatchPaths, parseHookInput, readArtifactBounded, runHookSafely, selectWorkspaceForPath } from './hook-state.mjs';

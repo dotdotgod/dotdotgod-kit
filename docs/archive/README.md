@@ -19,6 +19,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Local Investigations
 
+- `report/2026-11-24/antigravity-adapter-advisory-impact/`: planning (`PLANNING.md`) and implementation/verification (`FINAL.md`) reports for `@dotdotgod/antigravity` and all-6-adapter advisory impact unification; released in `0.11.0`.
+
 - `report/2026-11-15/pi-plan-mode-persistent-approvals/`: five-scope command approval planning report; research-first, detailed mechanisms blocked and implementation not started.
 
 - `report/2026-11-14/pi-plan-mode-policy/`: local planning and implementation evidence; ignored report bodies are available only in the working checkout.
@@ -27,6 +29,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 - `report/benchmark-recovery/`: benchmark progress snapshot and local session recovery utility; not executed during cleanup.
 
 ### Completed plans
+
+- `plan/antigravity-adapter-advisory-impact/`: shipped `@dotdotgod/antigravity` (three `/dd-*` skills, borderless pastel logo, scoped `rules/AGENTS.md`, MCP `roots/list`, Option C-2 `/plan`) and unified all six adapters on non-blocking `impact.sqlite` v2 advisory impact; verified across workspace, Antigravity CLI, and Hermes pinned-host smokes and released as `0.11.0`.
 
 - `plan/model-specific-embedding-input/`: implemented configurable query/document prefixes, shared role-aware formatting, format-aware cache identity and passing workspace/docs verification; global profile rollout remains manual.
 

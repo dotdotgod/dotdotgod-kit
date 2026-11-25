@@ -1,6 +1,6 @@
 {
   "name": "@dotdotgod/skills",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "Standalone agent skills for dotdotgod.",
   "type": "module",
   "license": "Elastic-2.0",
