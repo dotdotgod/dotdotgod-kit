@@ -1,8 +1,8 @@
-import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, join, normalize, resolve } from 'node:path';
 import { rel } from '../common/paths.mjs';
 import { isKebabCase } from '../docs/markdown.mjs';
 import { validateEmbeddingProfile } from '../query/embedding-config.mjs';
+import { readConfigJson, validateDecisionProfile } from '../decision/config.mjs';
 
 const MEMORY_CONFIG_FILE = 'dotdotgod.config.json';
 export const DEFAULT_DOCUMENTATION_ROOT = 'docs';
@@ -385,7 +385,7 @@ function isFiniteNumberInRange(value, min, max) {
   return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 }
 
-export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.config.json') {
+export function validateMemoryConfigData(data, root = '.', file = MEMORY_CONFIG_FILE, profiles = {}) {
   const errors = [];
   const add = (code, field, message, fix = null) => errors.push({
     file: rel(root, resolve(root, file)),
@@ -401,8 +401,12 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
     else if (!isValidDocumentationRoot(data.documentation.root)) add('DOCUMENTATION_CONFIG_INVALID_ROOT', 'documentation.root', 'Expected a safe repository-relative directory without traversal, glob syntax, secrets, or reserved config/cache overlap.');
   }
   if (data.embedding !== undefined) {
-    try { validateEmbeddingProfile(data.embedding, 'embedding'); }
-    catch (error) { add('EMBEDDING_CONFIG_INVALID', 'embedding', error instanceof Error ? error.message : String(error)); }
+    try { profiles.embedding = validateEmbeddingProfile(data.embedding); }
+    catch (error) { add('EMBEDDING_CONFIG_INVALID', 'embedding', error.message); }
+  }
+  if (data.decision !== undefined) {
+    try { profiles.decision = validateDecisionProfile(data.decision); }
+    catch (error) { add('DECISION_CONFIG_INVALID', 'decision', error.message); }
   }
   const traceability = data.traceability;
   if (traceability !== undefined) {
@@ -544,26 +548,37 @@ export function validateMemoryConfigData(data, root = '.', file = 'dotdotgod.con
   return errors;
 }
 
-export function readMemoryConfig(root = '.') {
+export function readProjectConfig(root) {
   const path = join(root, MEMORY_CONFIG_FILE);
-  if (!existsSync(path)) return defaultMemoryConfig();
-  try {
-    const data = JSON.parse(readFileSync(path, 'utf8'));
-    const errors = validateMemoryConfigData(data, root, MEMORY_CONFIG_FILE);
-    if (errors.length > 0) return { ...defaultMemoryConfig(), source: MEMORY_CONFIG_FILE, errors };
-    const documentationRoot = normalizeDocumentationRoot(data.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT);
-    const defaults = defaultMemoryConfig({ documentationRoot });
-    const configuredAreas = data.memory?.areas?.map(normalizeMemoryArea) ?? [];
-    const traceability = data.traceability === undefined ? defaults.traceability : normalizeTraceabilityPolicy(data.traceability);
-    const validation = data.validation === undefined ? cloneValidationPolicy() : normalizeValidationPolicy(data.validation);
-    const impactRanking = normalizeImpactRankingPolicy(data.impactRanking);
-    const referenceExpansion = normalizeReferenceExpansionPolicy(data.referenceExpansion);
-    const load = data.load === undefined ? defaults.load : normalizeLoadPolicy(data.load);
-    const planMode = data.planMode === undefined ? defaults.planMode : normalizePlanModePolicy(data.planMode);
-    return configuredAreas.length > 0 ? { source: MEMORY_CONFIG_FILE, documentation: { root: documentationRoot }, areas: configuredAreas, traceability, validation, impactRanking, referenceExpansion, load, planMode, errors: [] } : { ...defaults, traceability, validation, impactRanking, referenceExpansion, load, planMode, source: MEMORY_CONFIG_FILE, errors: [] };
-  } catch (error) {
-    return { ...defaultMemoryConfig(), source: MEMORY_CONFIG_FILE, errors: [{ file: MEMORY_CONFIG_FILE, code: 'MEMORY_CONFIG_INVALID_JSON', message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}\nFix: repair ${MEMORY_CONFIG_FILE} so it is valid JSON, or remove it before regenerating the default config with \`dotdotgod config init <root>\`.` }] };
+  const profiles = {};
+  let data;
+  try { data = readConfigJson(path); }
+  catch (error) {
+    const message = `${error.message}\nFix: repair ${MEMORY_CONFIG_FILE} or remove it before regenerating it with \`dotdotgod config init <root>\`.`;
+    return { path, profiles, errors: [{ file: MEMORY_CONFIG_FILE, code: 'MEMORY_CONFIG_INVALID_JSON', message }] };
   }
+  const errors = data === undefined ? [] : validateMemoryConfigData(data, root, MEMORY_CONFIG_FILE, profiles);
+  return { path, data, profiles, errors };
+}
+
+export function readMemoryConfig(root = '.', { data, errors } = readProjectConfig(root)) {
+  if (errors.length > 0) return { ...defaultMemoryConfig(), source: MEMORY_CONFIG_FILE, errors };
+  if (data === undefined) return defaultMemoryConfig();
+  const documentationRoot = normalizeDocumentationRoot(data.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT);
+  const defaults = defaultMemoryConfig({ documentationRoot });
+  const configuredAreas = data.memory?.areas?.map(normalizeMemoryArea) ?? [];
+  return {
+    ...defaults,
+    source: MEMORY_CONFIG_FILE,
+    areas: configuredAreas.length > 0 ? configuredAreas : defaults.areas,
+    traceability: data.traceability === undefined ? defaults.traceability : normalizeTraceabilityPolicy(data.traceability),
+    validation: data.validation === undefined ? defaults.validation : normalizeValidationPolicy(data.validation),
+    impactRanking: normalizeImpactRankingPolicy(data.impactRanking),
+    referenceExpansion: normalizeReferenceExpansionPolicy(data.referenceExpansion),
+    load: data.load === undefined ? defaults.load : normalizeLoadPolicy(data.load),
+    planMode: data.planMode === undefined ? defaults.planMode : normalizePlanModePolicy(data.planMode),
+    errors: [],
+  };
 }
 
 function serializableMemoryArea(area) {

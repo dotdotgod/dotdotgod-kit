@@ -407,11 +407,11 @@ var require_codegen = __commonJS({
         const rhs = this.rhs === void 0 ? "" : ` = ${this.rhs}`;
         return `${varKind} ${this.name}${rhs};` + _n;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants5) {
         if (!names[this.name.str])
           return;
         if (this.rhs)
-          this.rhs = optimizeExpr(this.rhs, names, constants3);
+          this.rhs = optimizeExpr(this.rhs, names, constants5);
         return this;
       }
       get names() {
@@ -428,10 +428,10 @@ var require_codegen = __commonJS({
       render({ _n }) {
         return `${this.lhs} = ${this.rhs};` + _n;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants5) {
         if (this.lhs instanceof code_1.Name && !names[this.lhs.str] && !this.sideEffects)
           return;
-        this.rhs = optimizeExpr(this.rhs, names, constants3);
+        this.rhs = optimizeExpr(this.rhs, names, constants5);
         return this;
       }
       get names() {
@@ -492,8 +492,8 @@ var require_codegen = __commonJS({
       optimizeNodes() {
         return `${this.code}` ? this : void 0;
       }
-      optimizeNames(names, constants3) {
-        this.code = optimizeExpr(this.code, names, constants3);
+      optimizeNames(names, constants5) {
+        this.code = optimizeExpr(this.code, names, constants5);
         return this;
       }
       get names() {
@@ -522,12 +522,12 @@ var require_codegen = __commonJS({
         }
         return nodes.length > 0 ? this : void 0;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants5) {
         const { nodes } = this;
         let i = nodes.length;
         while (i--) {
           const n = nodes[i];
-          if (n.optimizeNames(names, constants3))
+          if (n.optimizeNames(names, constants5))
             continue;
           subtractNames(names, n.names);
           nodes.splice(i, 1);
@@ -580,12 +580,12 @@ var require_codegen = __commonJS({
           return void 0;
         return this;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants5) {
         var _a;
-        this.else = (_a = this.else) === null || _a === void 0 ? void 0 : _a.optimizeNames(names, constants3);
-        if (!(super.optimizeNames(names, constants3) || this.else))
+        this.else = (_a = this.else) === null || _a === void 0 ? void 0 : _a.optimizeNames(names, constants5);
+        if (!(super.optimizeNames(names, constants5) || this.else))
           return;
-        this.condition = optimizeExpr(this.condition, names, constants3);
+        this.condition = optimizeExpr(this.condition, names, constants5);
         return this;
       }
       get names() {
@@ -608,10 +608,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.iteration})` + super.render(opts);
       }
-      optimizeNames(names, constants3) {
-        if (!super.optimizeNames(names, constants3))
+      optimizeNames(names, constants5) {
+        if (!super.optimizeNames(names, constants5))
           return;
-        this.iteration = optimizeExpr(this.iteration, names, constants3);
+        this.iteration = optimizeExpr(this.iteration, names, constants5);
         return this;
       }
       get names() {
@@ -647,10 +647,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.varKind} ${this.name} ${this.loop} ${this.iterable})` + super.render(opts);
       }
-      optimizeNames(names, constants3) {
-        if (!super.optimizeNames(names, constants3))
+      optimizeNames(names, constants5) {
+        if (!super.optimizeNames(names, constants5))
           return;
-        this.iterable = optimizeExpr(this.iterable, names, constants3);
+        this.iterable = optimizeExpr(this.iterable, names, constants5);
         return this;
       }
       get names() {
@@ -692,11 +692,11 @@ var require_codegen = __commonJS({
         (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNodes();
         return this;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants5) {
         var _a, _b;
-        super.optimizeNames(names, constants3);
-        (_a = this.catch) === null || _a === void 0 ? void 0 : _a.optimizeNames(names, constants3);
-        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants3);
+        super.optimizeNames(names, constants5);
+        (_a = this.catch) === null || _a === void 0 ? void 0 : _a.optimizeNames(names, constants5);
+        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants5);
         return this;
       }
       get names() {
@@ -837,8 +837,8 @@ var require_codegen = __commonJS({
       endIf() {
         return this._endBlockNode(If, Else);
       }
-      _for(node, forBody) {
-        this._blockNode(node);
+      _for(node2, forBody) {
+        this._blockNode(node2);
         if (forBody)
           this.code(forBody).endFor();
         return this;
@@ -887,10 +887,10 @@ var require_codegen = __commonJS({
       }
       // `return` statement
       return(value) {
-        const node = new Return();
-        this._blockNode(node);
+        const node2 = new Return();
+        this._blockNode(node2);
         this.code(value);
-        if (node.nodes.length !== 1)
+        if (node2.nodes.length !== 1)
           throw new Error('CodeGen: "return" should have one node');
         return this._endBlockNode(Return);
       }
@@ -898,16 +898,16 @@ var require_codegen = __commonJS({
       try(tryBody, catchCode, finallyCode) {
         if (!catchCode && !finallyCode)
           throw new Error('CodeGen: "try" without "catch" and "finally"');
-        const node = new Try();
-        this._blockNode(node);
+        const node2 = new Try();
+        this._blockNode(node2);
         this.code(tryBody);
         if (catchCode) {
           const error2 = this.name("e");
-          this._currNode = node.catch = new Catch(error2);
+          this._currNode = node2.catch = new Catch(error2);
           catchCode(error2);
         }
         if (finallyCode) {
-          this._currNode = node.finally = new Finally();
+          this._currNode = node2.finally = new Finally();
           this.code(finallyCode);
         }
         return this._endBlockNode(Catch, Finally);
@@ -952,13 +952,13 @@ var require_codegen = __commonJS({
           this._root.optimizeNames(this._root.names, this._constants);
         }
       }
-      _leafNode(node) {
-        this._currNode.nodes.push(node);
+      _leafNode(node2) {
+        this._currNode.nodes.push(node2);
         return this;
       }
-      _blockNode(node) {
-        this._currNode.nodes.push(node);
-        this._nodes.push(node);
+      _blockNode(node2) {
+        this._currNode.nodes.push(node2);
+        this._nodes.push(node2);
       }
       _endBlockNode(N1, N2) {
         const n = this._currNode;
@@ -968,12 +968,12 @@ var require_codegen = __commonJS({
         }
         throw new Error(`CodeGen: not in block "${N2 ? `${N1.kind}/${N2.kind}` : N1.kind}"`);
       }
-      _elseNode(node) {
+      _elseNode(node2) {
         const n = this._currNode;
         if (!(n instanceof If)) {
           throw new Error('CodeGen: "else" without "if"');
         }
-        this._currNode = n.else = node;
+        this._currNode = n.else = node2;
         return this;
       }
       get _root() {
@@ -983,9 +983,9 @@ var require_codegen = __commonJS({
         const ns = this._nodes;
         return ns[ns.length - 1];
       }
-      set _currNode(node) {
+      set _currNode(node2) {
         const ns = this._nodes;
-        ns[ns.length - 1] = node;
+        ns[ns.length - 1] = node2;
       }
     };
     exports.CodeGen = CodeGen;
@@ -997,7 +997,7 @@ var require_codegen = __commonJS({
     function addExprNames(names, from) {
       return from instanceof code_1._CodeOrName ? addNames(names, from.names) : names;
     }
-    function optimizeExpr(expr, names, constants3) {
+    function optimizeExpr(expr, names, constants5) {
       if (expr instanceof code_1.Name)
         return replaceName(expr);
       if (!canOptimize(expr))
@@ -1012,14 +1012,14 @@ var require_codegen = __commonJS({
         return items;
       }, []));
       function replaceName(n) {
-        const c = constants3[n.str];
+        const c = constants5[n.str];
         if (c === void 0 || names[n.str] !== 1)
           return n;
         delete names[n.str];
         return c;
       }
       function canOptimize(e) {
-        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants3[c.str] !== void 0);
+        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants5[c.str] !== void 0);
       }
     }
     function subtractNames(names, from) {
@@ -2232,8 +2232,8 @@ var require_resolve = __commonJS({
       }
       return count;
     }
-    function getFullPath(resolver, id = "", normalize) {
-      if (normalize !== false)
+    function getFullPath(resolver, id = "", normalize2) {
+      if (normalize2 !== false)
         id = normalizeId(id);
       const p = resolver.parse(id);
       return _getFullPath(resolver, p);
@@ -2981,7 +2981,7 @@ var require_compile = __commonJS({
       const schOrFunc = root2.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve8.call(this, root2, ref);
+      let _sch = resolve11.call(this, root2, ref);
       if (_sch === void 0) {
         const schema = (_a = root2.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3008,7 +3008,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve8(root2, ref) {
+    function resolve11(root2, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3629,17 +3629,17 @@ var require_fast_uri = __commonJS({
     "use strict";
     var { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizePercentEncoding, normalizePathEncoding, escapePreservingEscapes, reescapeHostDelimiters, isIPv4, nonSimpleDomain } = require_utils();
     var { SCHEMES, getSchemeHandler } = require_schemes();
-    function normalize(uri, options) {
+    function normalize2(uri, options) {
       if (typeof uri === "string") {
         uri = /** @type {T} */
         normalizeString(uri, options);
       } else if (typeof uri === "object") {
         uri = /** @type {T} */
-        parse3(serialize(uri, options), options);
+        parse4(serialize(uri, options), options);
       }
       return uri;
     }
-    function resolve8(baseURI, relativeURI, options) {
+    function resolve11(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const { parsed: baseParsed, malformedAuthorityOrPort: baseMalformed } = parseWithStatus(baseURI, schemelessOptions);
       const { parsed: relativeParsed, malformedAuthorityOrPort: relativeMalformed } = parseWithStatus(relativeURI, schemelessOptions);
@@ -3650,49 +3650,49 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative3, options, skipNormalization) {
+    function resolveComponent(base, relative4, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
-        base = parse3(serialize(base, options), options);
-        relative3 = parse3(serialize(relative3, options), options);
+        base = parse4(serialize(base, options), options);
+        relative4 = parse4(serialize(relative4, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative3.scheme) {
-        target.scheme = relative3.scheme;
-        target.userinfo = relative3.userinfo;
-        target.host = relative3.host;
-        target.port = relative3.port;
-        target.path = removeDotSegments(relative3.path || "");
-        target.query = relative3.query;
+      if (!options.tolerant && relative4.scheme) {
+        target.scheme = relative4.scheme;
+        target.userinfo = relative4.userinfo;
+        target.host = relative4.host;
+        target.port = relative4.port;
+        target.path = removeDotSegments(relative4.path || "");
+        target.query = relative4.query;
       } else {
-        if (relative3.userinfo !== void 0 || relative3.host !== void 0 || relative3.port !== void 0) {
-          target.userinfo = relative3.userinfo;
-          target.host = relative3.host;
-          target.port = relative3.port;
-          target.path = removeDotSegments(relative3.path || "");
-          target.query = relative3.query;
+        if (relative4.userinfo !== void 0 || relative4.host !== void 0 || relative4.port !== void 0) {
+          target.userinfo = relative4.userinfo;
+          target.host = relative4.host;
+          target.port = relative4.port;
+          target.path = removeDotSegments(relative4.path || "");
+          target.query = relative4.query;
         } else {
-          if (!relative3.path) {
+          if (!relative4.path) {
             target.path = base.path;
-            if (relative3.query !== void 0) {
-              target.query = relative3.query;
+            if (relative4.query !== void 0) {
+              target.query = relative4.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative3.path[0] === "/") {
-              target.path = removeDotSegments(relative3.path);
+            if (relative4.path[0] === "/") {
+              target.path = removeDotSegments(relative4.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative3.path;
+                target.path = "/" + relative4.path;
               } else if (!base.path) {
-                target.path = relative3.path;
+                target.path = relative4.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative3.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative4.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative3.query;
+            target.query = relative4.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3700,7 +3700,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative3.fragment;
+      target.fragment = relative4.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -3898,7 +3898,7 @@ var require_fast_uri = __commonJS({
       }
       return { parsed, malformedAuthorityOrPort };
     }
-    function parse3(uri, opts) {
+    function parse4(uri, opts) {
       return parseWithStatus(uri, opts).parsed;
     }
     function normalizeString(uri, opts) {
@@ -3922,12 +3922,12 @@ var require_fast_uri = __commonJS({
     }
     var fastUri = {
       SCHEMES,
-      normalize,
-      resolve: resolve8,
+      normalize: normalize2,
+      resolve: resolve11,
       resolveComponent,
       equal,
       serialize,
-      parse: parse3
+      parse: parse4
     };
     module.exports = fastUri;
     module.exports.default = fastUri;
@@ -19073,7 +19073,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve8) => setTimeout(resolve8, pollInterval));
+        await new Promise((resolve11) => setTimeout(resolve11, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -19090,7 +19090,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve8, reject) => {
+    return new Promise((resolve11, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -19168,7 +19168,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve8(parseResult.data);
+            resolve11(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -19429,12 +19429,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve8, reject) => {
+    return new Promise((resolve11, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve8, interval);
+      const timeoutId = setTimeout(resolve11, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -20525,7 +20525,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve8) => setTimeout(resolve8, pollInterval));
+      await new Promise((resolve11) => setTimeout(resolve11, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -21189,19 +21189,19 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve8) => {
+    return new Promise((resolve11) => {
       const json = serializeMessage(message);
       if (this._stdout.write(json)) {
-        resolve8();
+        resolve11();
       } else {
-        this._stdout.once("drain", resolve8);
+        this._stdout.once("drain", resolve11);
       }
     });
   }
 };
 
 // packages/context/src/server.mjs
-import { existsSync as existsSync4, statSync as statSync6 } from "node:fs";
+import { existsSync as existsSync5, statSync as statSync7 } from "node:fs";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // packages/context/src/store.mjs
@@ -22809,7 +22809,7 @@ function requestOnce(url, addresses, options, signal) {
   const client = url.protocol === "https:" ? https : http;
   const allowed = new Set(addresses.map(({ address }) => normalizeAddress(address)));
   const selected = addresses[0];
-  return new Promise((resolve8, reject) => {
+  return new Promise((resolve11, reject) => {
     let settled = false;
     const finish = (fn, value) => {
       if (!settled) {
@@ -22826,7 +22826,7 @@ function requestOnce(url, addresses, options, signal) {
         if (lookupOptions?.all) callback(null, values);
         else callback(null, selected.address, selected.family);
       }
-    }, (response) => finish(resolve8, { request, response, allowed }));
+    }, (response) => finish(resolve11, { request, response, allowed }));
     request.once("socket", (socket) => {
       socket.once("connect", () => {
         const remote = normalizeAddress(socket.remoteAddress || "");
@@ -23208,8 +23208,847 @@ function runDoctor(options = {}) {
 
 // packages/context/src/project.mjs
 import { fileURLToPath } from "node:url";
-import { resolve as resolve5 } from "node:path";
+import { resolve as resolve7 } from "node:path";
 import { spawn as spawn2 } from "node:child_process";
+
+// packages/cli/src/memory/documentation-map.mjs
+import { existsSync as existsSync3, lstatSync as lstatSync3, readdirSync as readdirSync2, realpathSync as realpathSync3, statSync as statSync6 } from "node:fs";
+import { join as join5, resolve as resolve6 } from "node:path";
+
+// packages/cli/src/memory/config.mjs
+import { isAbsolute, join as join4, normalize, resolve as resolve5 } from "node:path";
+
+// packages/cli/src/common/paths.mjs
+import { relative as relative2 } from "node:path";
+function rel(root2, file) {
+  return relative2(root2, file).replaceAll("\\", "/");
+}
+
+// packages/cli/src/docs/markdown.mjs
+function isKebabCase(value) {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
+}
+
+// packages/cli/src/query/embedding-config.mjs
+var DEFAULT_EMBEDDING_PROFILE = Object.freeze({ provider: "local", model: "Xenova/multilingual-e5-small" });
+var EMBEDDING_PROVIDERS = Object.freeze(["local", "openai-compatible", "ollama"]);
+var DEFAULT_INPUT_FORMAT = Object.freeze({ queryPrefix: "query: ", documentPrefix: "passage: " });
+function embeddingInputFormat(profile, label = "embedding") {
+  if (profile.inputFormat === void 0) return { ...DEFAULT_INPUT_FORMAT };
+  const format = profile.inputFormat;
+  if (!format || typeof format !== "object" || Array.isArray(format) || Object.keys(format).some((key) => !Object.hasOwn(DEFAULT_INPUT_FORMAT, key)) || Object.keys(DEFAULT_INPUT_FORMAT).some((key) => typeof format[key] !== "string")) {
+    throw new Error(`${label}.inputFormat must contain exactly queryPrefix and documentPrefix strings.`);
+  }
+  return { queryPrefix: format.queryPrefix, documentPrefix: format.documentPrefix };
+}
+function validateEmbeddingProfile(profile, label = "embedding") {
+  if (!profile || typeof profile !== "object" || Array.isArray(profile)) throw new Error(`${label} must be an object.`);
+  const allowed = /* @__PURE__ */ new Set(["provider", "model", "baseUrl", "apiKey", "apiKeyEnv", "inputFormat"]);
+  const unknown2 = Object.keys(profile).find((key) => !allowed.has(key));
+  if (unknown2) throw new Error(`${label}.${unknown2} is not supported.`);
+  if (!EMBEDDING_PROVIDERS.includes(profile.provider)) throw new Error(`${label}.provider must be local, openai-compatible, or ollama.`);
+  if (typeof profile.model !== "string" || !profile.model.trim()) throw new Error(`${label}.model must be a non-empty string.`);
+  for (const key of ["baseUrl", "apiKey", "apiKeyEnv"]) if (profile[key] !== void 0 && (typeof profile[key] !== "string" || !profile[key].trim())) throw new Error(`${label}.${key} must be a non-empty string.`);
+  if (profile.apiKey !== void 0 && profile.apiKeyEnv !== void 0) throw new Error(`${label}.apiKey and ${label}.apiKeyEnv are mutually exclusive.`);
+  if (profile.provider === "local" && ["baseUrl", "apiKey", "apiKeyEnv"].some((key) => profile[key] !== void 0)) throw new Error(`${label} local provider does not accept remote connection fields.`);
+  if (profile.baseUrl !== void 0) {
+    let url;
+    try {
+      url = new URL(profile.baseUrl);
+    } catch {
+      throw new Error(`${label}.baseUrl must be an absolute HTTP(S) URL.`);
+    }
+    if (!["http:", "https:"].includes(url.protocol)) throw new Error(`${label}.baseUrl must use HTTP or HTTPS.`);
+    if (url.username || url.password) throw new Error(`${label}.baseUrl must not contain credentials.`);
+  }
+  embeddingInputFormat(profile, label);
+  return { ...profile, model: profile.model.trim(), ...profile.baseUrl ? { baseUrl: profile.baseUrl.replace(/\/$/, "") } : {} };
+}
+
+// packages/cli/src/decision/config.mjs
+import { closeSync as closeSync2, constants as constants3, fstatSync as fstatSync2, lstatSync as lstatSync2, openSync as openSync2, readSync } from "node:fs";
+var MAX_CONFIG_BYTES = 256 * 1024;
+var DEFAULT_PROFILE = Object.freeze({ mode: "advisory", delivery: "advice", fallback: "advisory", timeoutMs: 2e3 });
+var FALLBACK_MODES = ["advisory", "manual", "always"];
+var MODES = [...FALLBACK_MODES, "model"];
+var PROVIDERS = ["ollama", "openai-compatible", "host"];
+var CONNECTION_FIELDS = ["baseUrl", "apiKey", "apiKeyEnv"];
+var FIELDS = /* @__PURE__ */ new Set([...Object.keys(DEFAULT_PROFILE), "provider", "model", ...CONNECTION_FIELDS]);
+function readConfigJson(path) {
+  let entry;
+  try {
+    entry = lstatSync2(path);
+  } catch (error2) {
+    if (error2.code === "ENOENT") return void 0;
+    throw new Error("Cannot inspect config file.");
+  }
+  if (!entry.isFile()) throw new Error("Config must be a regular file, not a symlink or special file.");
+  let fd;
+  try {
+    fd = openSync2(path, constants3.O_RDONLY | constants3.O_NOFOLLOW | constants3.O_NONBLOCK);
+  } catch {
+    throw new Error("Cannot open config file without following symlinks.");
+  }
+  try {
+    const stat = fstatSync2(fd);
+    if (!stat.isFile()) throw new Error("Config must be a regular file.");
+    if (stat.size > MAX_CONFIG_BYTES) throw new Error("Config exceeds 256 KiB.");
+    const bytes = Buffer.alloc(MAX_CONFIG_BYTES + 1);
+    let length = 0;
+    while (length < bytes.length) {
+      const count = readSync(fd, bytes, length, bytes.length - length, null);
+      if (count === 0) break;
+      length += count;
+    }
+    if (length > MAX_CONFIG_BYTES) throw new Error("Config exceeds 256 KiB.");
+    try {
+      return JSON.parse(bytes.toString("utf8", 0, length));
+    } catch {
+      throw new Error("Invalid JSON in config file.");
+    }
+  } finally {
+    closeSync2(fd);
+  }
+}
+function loopback(hostname2) {
+  return hostname2 === "localhost" || hostname2 === "localhost." || hostname2 === "[::1]" || /^127\.\d+\.\d+\.\d+$/.test(hostname2) || /^\[::ffff:7f[0-9a-f]{2}:[0-9a-f]+\]$/.test(hostname2);
+}
+function decisionBaseUrl(baseUrl, hasCredential) {
+  const input = baseUrl.trim().replace(/[\t\r\n]/g, "");
+  const authority = /^https?:\/\/([^/\\?#]+)/i.exec(input)?.[1];
+  const url = URL.parse(input);
+  if (!authority || !url || !["http:", "https:"].includes(url.protocol)) throw new Error("decision.baseUrl must be an absolute HTTP(S) URL.");
+  if (authority.includes("@") || url.username || url.password || /[?#]/.test(url.href)) {
+    throw new Error("decision.baseUrl must not contain userinfo, a query, or a fragment.");
+  }
+  const host = url.hostname;
+  if (/^(?:169\.254\.|0\.)\d/.test(host) || /^\[(?:(?:fe[89ab][\da-f]):|::ffff:(?:a9fe|[\da-f]{1,2}):|::\])/.test(host)) {
+    throw new Error("decision.baseUrl must not target a link-local or unspecified address.");
+  }
+  if (hasCredential && url.protocol === "http:" && !loopback(host)) throw new Error("decision.baseUrl must use HTTPS with credentials on non-loopback hosts.");
+  return url.href.replace(/\/+$/, "");
+}
+function validateDecisionProfile(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("decision must be an object.");
+  if (Object.keys(data).some((key) => !FIELDS.has(key))) throw new Error("decision contains an unsupported field.");
+  const profile = { ...DEFAULT_PROFILE, ...data };
+  if (!MODES.includes(profile.mode)) throw new Error("decision.mode must be advisory, manual, always, or model.");
+  if (!["advice", "prefetch"].includes(profile.delivery)) throw new Error("decision.delivery must be advice or prefetch.");
+  if (!FALLBACK_MODES.includes(profile.fallback)) throw new Error("decision.fallback must be advisory, manual, or always.");
+  if (!Number.isInteger(profile.timeoutMs) || profile.timeoutMs < 200 || profile.timeoutMs > 15e3) throw new Error("decision.timeoutMs must be an integer from 200 to 15000.");
+  if ((profile.mode === "model" || profile.provider !== void 0) && !PROVIDERS.includes(profile.provider)) throw new Error("decision.provider must be ollama, openai-compatible, or host.");
+  const needsModel = profile.mode === "model" && profile.provider !== "host";
+  if (needsModel || profile.model !== void 0) {
+    if (typeof profile.model !== "string" || !profile.model.trim()) throw new Error("decision.model must be a non-empty string.");
+    profile.model = profile.model.trim();
+  }
+  if (profile.provider === "host" && CONNECTION_FIELDS.some((key) => profile[key] !== void 0)) throw new Error("decision provider host does not accept baseUrl, apiKey, or apiKeyEnv.");
+  for (const key of CONNECTION_FIELDS) {
+    if (profile[key] !== void 0 && (typeof profile[key] !== "string" || !profile[key].trim())) throw new Error(`decision.${key} must be a non-empty string.`);
+  }
+  if (profile.apiKey !== void 0 && profile.apiKeyEnv !== void 0) throw new Error("decision.apiKey and decision.apiKeyEnv are mutually exclusive.");
+  if (profile.apiKeyEnv !== void 0 && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(profile.apiKeyEnv)) throw new Error("decision.apiKeyEnv must be an environment variable name.");
+  if (profile.baseUrl !== void 0) profile.baseUrl = decisionBaseUrl(profile.baseUrl, Boolean(profile.apiKey || profile.apiKeyEnv));
+  return profile;
+}
+
+// packages/cli/src/memory/config.mjs
+var MEMORY_CONFIG_FILE = "dotdotgod.config.json";
+var DEFAULT_DOCUMENTATION_ROOT = "docs";
+var MEMORY_SCOPES = /* @__PURE__ */ new Set(["shared", "local"]);
+var MEMORY_FRESHNESS = /* @__PURE__ */ new Set(["fresh", "stale"]);
+var DEFAULT_TRACEABILITY_KEYS = [
+  { key: "implementedBy", label: "Implemented by", description: "Files that implement the behavior.", target: "path", relation: "implemented_by", weight: 4 },
+  { key: "verifiedBy", label: "Verified by", description: "Tests or maintained verification documents.", target: "path", relation: "verified_by", weight: 4 },
+  { key: "relatedDocs", label: "Related docs", description: "Documents needed to interpret the behavior.", target: "path", relation: "related_doc", weight: 3 },
+  { key: "designDecisions", label: "Design decisions", description: "Maintained architecture or design decision documents that constrain the behavior.", target: "path", relation: "design_decision", weight: 3 }
+];
+var DEFAULT_TRACEABILITY_POLICY = {
+  required: ["docs/spec/**"],
+  exclude: ["**/README.md"],
+  keys: DEFAULT_TRACEABILITY_KEYS
+};
+var DEFAULT_VALIDATION_POLICY = {
+  markdown: {
+    maxLines: 200,
+    maxChars: 1e4,
+    exclude: [],
+    filename: {
+      warnNumberedSeries: true,
+      allow: []
+    }
+  }
+};
+var DEFAULT_LOAD_POLICY = {
+  pinnedPaths: [],
+  pinnedBodies: [],
+  documentationSummary: {
+    exclude: ["docs/plan", "docs/archive"]
+  }
+};
+var DEFAULT_PLAN_MODE_POLICY = { commands: [], markdown: { allow: [], deny: [] } };
+var DEFAULT_IMPACT_RANKING_POLICY = {
+  connectionCap: 80,
+  memoryCap: 20,
+  ppr: { damping: 0.85, iterations: 20, tolerance: 1e-6, reference: 0.4 },
+  relationWeights: {
+    links_to: 2,
+    routes_to: 2,
+    belongs_to_area: 2,
+    vector_similarity: 2,
+    includes_resource: 1,
+    defines_contract: 2
+  },
+  semantic: { enabled: true, threshold: 0.5, topKPerFile: 5 }
+};
+var TRACEABILITY_TARGETS = /* @__PURE__ */ new Set(["path", "command"]);
+var TRACEABILITY_RESERVED_KEYS = /* @__PURE__ */ new Set(["kind", "contracts", "id", "title", "sections"]);
+var BUILT_IN_GRAPH_RELATIONS = /* @__PURE__ */ new Set([
+  "belongs_to_area",
+  "includes_resource",
+  "defines_contract",
+  "contains_heading",
+  "links_to",
+  "routes_to",
+  "declares_package",
+  "declares_script",
+  "declares_bin",
+  "depends_on",
+  "vector_similarity"
+]);
+var TRACEABILITY_RESERVED_RELATIONS = BUILT_IN_GRAPH_RELATIONS;
+var DEFAULT_FUZZY_LOW_SIGNAL_TERMS = [
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "by",
+  "docs",
+  "document",
+  "for",
+  "from",
+  "it",
+  "of",
+  "on",
+  "plan",
+  "test",
+  "the",
+  "to",
+  "update",
+  "version",
+  "with",
+  "\uACC4\uD68D",
+  "\uBB38\uC11C",
+  "\uC218\uC815",
+  "\uC5C5\uB370\uC774\uD2B8",
+  "\uBC84\uC804",
+  "\uC815\uBCF4",
+  "\uD655\uC778",
+  "\uD14C\uC2A4\uD2B8"
+];
+function memoryAreasForRoot(documentationRoot = DEFAULT_DOCUMENTATION_ROOT) {
+  const d = (path = "") => path ? `${documentationRoot}/${path}` : documentationRoot;
+  return [
+    { id: "rules", label: "Agent Rules", paths: ["AGENTS.md"], scope: "shared", freshness: "fresh", role: "agent-working-rules", priority: 100, includeBodiesByDefault: true },
+    { id: "agent-entrypoint", label: "Agent Entrypoints", paths: ["CLAUDE.md", "CODEX.md"], scope: "shared", freshness: "fresh", role: "agent-specific-entrypoint", priority: 85, includeBodiesByDefault: true },
+    { id: "project-overview", label: "Project Overview", paths: ["README.md"], scope: "shared", freshness: "fresh", role: "project-map", priority: 85, includeBodiesByDefault: true },
+    { id: "docs-index", label: "Docs Index", paths: ["docs/README.md"], scope: "shared", freshness: "fresh", role: "documentation-routing-map", priority: 90, includeBodiesByDefault: true },
+    { id: "spec", label: "Product Specs", paths: ["docs/spec/**"], scope: "shared", freshness: "fresh", role: "behavior-truth", priority: 80, includeBodiesByDefault: true },
+    { id: "architecture", label: "Architecture", paths: ["docs/arch/**"], scope: "shared", freshness: "fresh", role: "architecture-rationale", priority: 75, includeBodiesByDefault: true },
+    { id: "test", label: "Tests", paths: ["docs/test/**"], scope: "shared", freshness: "fresh", role: "verification-knowledge", priority: 70, includeBodiesByDefault: true },
+    { id: "active-plan", label: "Active Plans", paths: ["docs/plan/**"], scope: "local", freshness: "fresh", role: "active-task-intent", priority: 95, includeBodiesByDefault: true },
+    { id: "archive-map", label: "Archive Map", paths: ["docs/archive/README.md"], scope: "local", freshness: "stale", role: "historical-memory-map", priority: 65, includeBodiesByDefault: true },
+    { id: "archive-body", label: "Archive Body", paths: ["docs/archive/**"], excludePaths: ["docs/archive/README.md"], scope: "local", freshness: "stale", role: "historical-memory-body", priority: 20, includeBodiesByDefault: false },
+    { id: "docs", label: "Project Documentation", paths: [d("**")], scope: "shared", freshness: "fresh", role: "project-documentation", priority: 60, includeBodiesByDefault: true }
+  ].map((area) => ({ ...area, paths: area.paths.map((path) => path.replace(/^docs(?=\/|$)/, documentationRoot)), excludePaths: (area.excludePaths ?? []).map((path) => path.replace(/^docs(?=\/|$)/, documentationRoot)) }));
+}
+var DEFAULT_MEMORY_AREAS = memoryAreasForRoot();
+function cloneClarifyGuidance(clarify) {
+  if (!clarify || typeof clarify !== "object" || Array.isArray(clarify)) return void 0;
+  return {
+    ...Array.isArray(clarify.audience) ? { audience: [...clarify.audience] } : {},
+    ...typeof clarify.documentType === "string" ? { documentType: clarify.documentType } : {},
+    ...typeof clarify.clarityGoal === "string" ? { clarityGoal: clarify.clarityGoal } : {},
+    ...Array.isArray(clarify.editRules) ? { editRules: [...clarify.editRules] } : {}
+  };
+}
+function withOptionalAreaMetadata(target, area) {
+  const description = typeof area.description === "string" ? area.description.trim() : "";
+  const clarify = cloneClarifyGuidance(area.clarify);
+  return {
+    ...target,
+    ...description ? { description } : {},
+    ...clarify && Object.keys(clarify).length > 0 ? { clarify } : {}
+  };
+}
+function cloneArea(area) {
+  return withOptionalAreaMetadata({
+    ...area,
+    paths: [...area.paths ?? []],
+    excludePaths: [...area.excludePaths ?? []]
+  }, area);
+}
+function cloneTraceabilityKey(definition) {
+  return { key: definition.key, label: definition.label, description: definition.description, target: definition.target, relation: definition.relation, weight: definition.weight };
+}
+function cloneTraceabilityPolicy(policy = DEFAULT_TRACEABILITY_POLICY) {
+  return {
+    required: [...policy.required ?? []],
+    exclude: [...policy.exclude ?? []],
+    keys: (policy.keys ?? DEFAULT_TRACEABILITY_KEYS).map(cloneTraceabilityKey)
+  };
+}
+function cloneValidationPolicy(policy = DEFAULT_VALIDATION_POLICY) {
+  const filename = policy.markdown?.filename;
+  return {
+    markdown: {
+      maxLines: policy.markdown?.maxLines ?? DEFAULT_VALIDATION_POLICY.markdown.maxLines,
+      maxChars: policy.markdown?.maxChars ?? DEFAULT_VALIDATION_POLICY.markdown.maxChars,
+      exclude: [...policy.markdown?.exclude ?? []],
+      filename: filename ? { warnNumberedSeries: filename.warnNumberedSeries ?? true, allow: [...filename.allow ?? []] } : { ...DEFAULT_VALIDATION_POLICY.markdown.filename, allow: [] }
+    }
+  };
+}
+function cloneImpactRankingPolicy(policy = DEFAULT_IMPACT_RANKING_POLICY) {
+  return {
+    connectionCap: DEFAULT_IMPACT_RANKING_POLICY.connectionCap,
+    memoryCap: DEFAULT_IMPACT_RANKING_POLICY.memoryCap,
+    ppr: { ...DEFAULT_IMPACT_RANKING_POLICY.ppr },
+    relationWeights: { ...DEFAULT_IMPACT_RANKING_POLICY.relationWeights },
+    semantic: { ...DEFAULT_IMPACT_RANKING_POLICY.semantic, ...policy.semantic ?? {} }
+  };
+}
+function normalizeLowSignalTerm(value = "") {
+  return String(value).trim().toLowerCase().replace(/\s+/g, " ");
+}
+function uniqueNormalizedTerms(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map(normalizeLowSignalTerm).filter(Boolean))];
+}
+function cloneReferenceExpansionPolicy(policy = {}) {
+  const lowSignal = policy.fuzzy?.lowSignal ?? {};
+  const defaults = uniqueNormalizedTerms(lowSignal.defaults ?? DEFAULT_FUZZY_LOW_SIGNAL_TERMS);
+  const add = uniqueNormalizedTerms(lowSignal.add ?? []);
+  const remove = uniqueNormalizedTerms(lowSignal.remove ?? []);
+  const terms = new Set(defaults);
+  for (const term of remove) terms.delete(term);
+  for (const term of add) terms.add(term);
+  return { fuzzy: { lowSignal: { defaults, add, remove, terms: [...terms].sort() } } };
+}
+function normalizeReferenceExpansionPolicy(raw) {
+  const lowSignal = raw?.fuzzy?.lowSignal ?? {};
+  return cloneReferenceExpansionPolicy({ fuzzy: { lowSignal: { add: lowSignal.add, remove: lowSignal.remove } } });
+}
+function normalizeImpactRankingPolicy(raw) {
+  const candidate = raw && typeof raw === "object" && !Array.isArray(raw) && raw.semantic && typeof raw.semantic === "object" && !Array.isArray(raw.semantic) ? raw.semantic : {};
+  const semantic = {
+    ...typeof candidate.enabled === "boolean" ? { enabled: candidate.enabled } : {},
+    ...isFiniteNumberInRange(candidate.threshold, 0, 1) ? { threshold: candidate.threshold } : {},
+    ...Number.isInteger(candidate.topKPerFile) && candidate.topKPerFile >= 0 && candidate.topKPerFile <= 20 ? { topKPerFile: candidate.topKPerFile } : {}
+  };
+  return cloneImpactRankingPolicy({ semantic });
+}
+function cloneLoadPolicy(policy = DEFAULT_LOAD_POLICY) {
+  return {
+    pinnedPaths: [...policy.pinnedPaths ?? []],
+    pinnedBodies: [...policy.pinnedBodies ?? []],
+    documentationSummary: {
+      exclude: [...policy.documentationSummary?.exclude ?? DEFAULT_LOAD_POLICY.documentationSummary.exclude]
+    }
+  };
+}
+function clonePlanModePolicy(policy = DEFAULT_PLAN_MODE_POLICY) {
+  return {
+    commands: (policy.commands ?? []).map(({ effect, executable, args, cwd }) => ({ effect, executable, args: [...args], cwd })),
+    markdown: { allow: [...policy.markdown?.allow ?? []], deny: [...policy.markdown?.deny ?? []] }
+  };
+}
+function normalizeDocumentationRoot(value = DEFAULT_DOCUMENTATION_ROOT) {
+  return String(value).trim().replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/{2,}/g, "/").replace(/^\/+|\/+$/g, "");
+}
+function isValidDocumentationRoot(value) {
+  if (typeof value !== "string" || !value.trim() || /^[A-Za-z]:[\\/]/.test(value) || /^[/\\]{2}/.test(value) || value.trim().startsWith("/")) return false;
+  const root2 = normalizeDocumentationRoot(value);
+  if (!root2 || root2 === "." || root2.split("/").some((part) => part === ".." || !part || /[*?\[\]{}]/.test(part)) || isSecretLikePathPattern(root2)) return false;
+  const first = root2.split("/")[0];
+  return first !== "dotdotgod.config.json" && first !== ".dotdotgod";
+}
+function defaultMemoryConfig({ documentationRoot = DEFAULT_DOCUMENTATION_ROOT } = {}) {
+  const root2 = normalizeDocumentationRoot(documentationRoot);
+  return { source: "default", documentation: { root: root2 }, areas: memoryAreasForRoot(root2).map(cloneArea), traceability: cloneTraceabilityPolicy({ ...DEFAULT_TRACEABILITY_POLICY, required: [`${root2}/spec/**`] }), validation: cloneValidationPolicy(), impactRanking: cloneImpactRankingPolicy(), referenceExpansion: cloneReferenceExpansionPolicy(), load: cloneLoadPolicy({ ...DEFAULT_LOAD_POLICY, documentationSummary: { exclude: [`${root2}/plan`, `${root2}/archive`] } }), planMode: clonePlanModePolicy() };
+}
+function normalizePathPattern(value = "") {
+  return value.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$|^\/+/, "");
+}
+function isValidPathPattern(value) {
+  if (typeof value !== "string" || !value.trim()) return false;
+  const normalized = normalizePathPattern(value);
+  if (!normalized || normalized.startsWith("../") || normalized.includes("/../") || normalized === "..") return false;
+  if (normalized.includes("*") && !(normalized.endsWith("/**") || normalized.startsWith("**/"))) return false;
+  return true;
+}
+function matchPathPattern(path, pattern) {
+  const normalized = normalizePathPattern(path);
+  const normalizedPattern = normalizePathPattern(pattern);
+  if (normalizedPattern.endsWith("/**")) {
+    const prefix = normalizedPattern.slice(0, -3);
+    return normalized === prefix || normalized.startsWith(`${prefix}/`);
+  }
+  if (normalizedPattern.startsWith("**/")) {
+    const suffix = normalizedPattern.slice(3);
+    return normalized === suffix || normalized.endsWith(`/${suffix}`);
+  }
+  return normalized === normalizedPattern;
+}
+function areaMatchesPath(area, path) {
+  const excluded2 = (area.excludePaths ?? []).some((pattern) => matchPathPattern(path, pattern));
+  if (excluded2) return false;
+  return (area.paths ?? []).some((pattern) => matchPathPattern(path, pattern));
+}
+function resolveMemoryArea(path = "", config2 = defaultMemoryConfig()) {
+  return (config2.areas ?? []).find((area) => areaMatchesPath(area, path));
+}
+function normalizeTraceabilityPolicy(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return cloneTraceabilityPolicy();
+  return {
+    required: Array.isArray(raw.required) ? raw.required.map(normalizePathPattern) : [],
+    exclude: Array.isArray(raw.exclude) ? raw.exclude.map(normalizePathPattern) : [],
+    keys: (raw.keys === void 0 ? DEFAULT_TRACEABILITY_KEYS : raw.keys).map(cloneTraceabilityKey)
+  };
+}
+function normalizeValidationPolicy(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return cloneValidationPolicy();
+  const markdown = raw.markdown && typeof raw.markdown === "object" && !Array.isArray(raw.markdown) ? raw.markdown : {};
+  const filename = markdown.filename && typeof markdown.filename === "object" && !Array.isArray(markdown.filename) ? markdown.filename : void 0;
+  return cloneValidationPolicy({
+    markdown: {
+      maxLines: Number.isInteger(markdown.maxLines) ? markdown.maxLines : DEFAULT_VALIDATION_POLICY.markdown.maxLines,
+      maxChars: Number.isInteger(markdown.maxChars) ? markdown.maxChars : DEFAULT_VALIDATION_POLICY.markdown.maxChars,
+      exclude: Array.isArray(markdown.exclude) ? markdown.exclude.map(normalizePathPattern) : [],
+      filename: filename ? {
+        warnNumberedSeries: typeof filename.warnNumberedSeries === "boolean" ? filename.warnNumberedSeries : true,
+        allow: Array.isArray(filename.allow) ? filename.allow.map(normalizePathPattern) : []
+      } : void 0
+    }
+  });
+}
+function isSecretLikePathPattern(value = "") {
+  const normalized = normalizePathPattern(value);
+  return /(^|\/)(\.env|\.npmrc|\.pypirc|id_rsa|id_dsa|id_ed25519|credentials?|secrets?)(\.|\/|$)/i.test(normalized);
+}
+function normalizePlanModePolicy(raw) {
+  return clonePlanModePolicy(raw);
+}
+function validatePlanModePolicy(policy, { allowAbsolutePaths = false } = {}) {
+  const errors = [];
+  const add = (field, message) => errors.push({ field, message });
+  const object4 = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+  const fields2 = (value, allowed, prefix) => {
+    for (const key of Object.keys(value)) if (!allowed.includes(key)) add(`${prefix}.${key}`, "Unsupported field.");
+  };
+  const canonicalPath = (value) => typeof value === "string" && value.trim().length > 0 && !/[\u0000-\u001f\u007f\\*?\[\]{}]/.test(value) && normalize(value) === value && (value === "/" || !value.endsWith("/")) && !value.split("/").some((part) => part === "." || part === "..") && !value.includes("//");
+  if (!object4(policy)) {
+    add("planMode", "Expected an object.");
+    return errors;
+  }
+  fields2(policy, ["commands", "markdown", "writablePaths"], "planMode");
+  if (policy.commands !== void 0) {
+    if (!Array.isArray(policy.commands)) add("planMode.commands", "Expected an array of command rules.");
+    else for (const [index, rule] of policy.commands.entries()) {
+      const prefix = `planMode.commands[${index}]`;
+      if (!object4(rule)) {
+        add(prefix, "Expected an object.");
+        continue;
+      }
+      fields2(rule, ["effect", "executable", "args", "cwd"], prefix);
+      if (!["allow", "deny"].includes(rule.effect)) add(`${prefix}.effect`, 'Expected "allow" or "deny".');
+      for (const key of ["executable", "cwd"]) {
+        if (!canonicalPath(rule[key]) || !isAbsolute(rule[key])) add(`${prefix}.${key}`, "Expected a canonical absolute path without glob syntax.");
+      }
+      if (!Array.isArray(rule.args) || rule.args.some((arg) => typeof arg !== "string")) add(`${prefix}.args`, "Expected an exact array of strings.");
+    }
+  }
+  if (policy.markdown !== void 0) {
+    if (!object4(policy.markdown)) add("planMode.markdown", "Expected an object.");
+    else {
+      fields2(policy.markdown, ["allow", "deny"], "planMode.markdown");
+      for (const key of ["allow", "deny"]) {
+        const values = policy.markdown[key];
+        const prefix = `planMode.markdown.${key}`;
+        if (values === void 0) continue;
+        if (!Array.isArray(values)) {
+          add(prefix, "Expected an array of path strings.");
+          continue;
+        }
+        for (const [index, value] of values.entries()) {
+          const path = typeof value === "string" && value.endsWith("/**") ? value.slice(0, -3) || "/" : value;
+          if (!canonicalPath(path) || /^[A-Za-z]:/.test(path) || !allowAbsolutePaths && isAbsolute(path)) add(`${prefix}[${index}]`, "Expected an exact path or terminal /** subtree; absolute paths are user-policy only.");
+        }
+      }
+    }
+  }
+  return errors;
+}
+function normalizeLoadPolicy(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return cloneLoadPolicy();
+  const normalize2 = (values) => Array.isArray(values) ? [...new Set(values.map(normalizePathPattern))] : [];
+  return cloneLoadPolicy({
+    pinnedPaths: [],
+    pinnedBodies: [],
+    documentationSummary: {
+      exclude: raw.documentationSummary?.exclude === void 0 ? DEFAULT_LOAD_POLICY.documentationSummary.exclude : normalize2(raw.documentationSummary.exclude)
+    }
+  });
+}
+function normalizeMemoryArea(raw) {
+  return withOptionalAreaMetadata({
+    id: raw.id,
+    label: raw.label ?? raw.id,
+    paths: Array.isArray(raw.paths) ? raw.paths.map(normalizePathPattern) : [],
+    excludePaths: Array.isArray(raw.excludePaths) ? raw.excludePaths.map(normalizePathPattern) : [],
+    scope: raw.scope,
+    freshness: raw.freshness,
+    role: raw.role ?? raw.id,
+    priority: typeof raw.priority === "number" ? raw.priority : 30,
+    includeBodiesByDefault: raw.includeBodiesByDefault !== false
+  }, raw);
+}
+function isFiniteNumberInRange(value, min, max) {
+  return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max;
+}
+function validateMemoryConfigData(data, root2 = ".", file = MEMORY_CONFIG_FILE, profiles = {}) {
+  const errors = [];
+  const add = (code, field, message, fix = null) => errors.push({
+    file: rel(root2, resolve5(root2, file)),
+    code,
+    message: `${field ? `Field "${field}": ` : ""}${message}
+Fix: ${fix ?? `update ${field ?? "this config"} in ${file} to match the expected dotdotgod config schema.`}`
+  });
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    add("MEMORY_CONFIG_INVALID", null, "Config must be a JSON object.");
+    return errors;
+  }
+  if (data.documentation !== void 0) {
+    if (!data.documentation || typeof data.documentation !== "object" || Array.isArray(data.documentation)) add("DOCUMENTATION_CONFIG_INVALID", "documentation", "Expected an object.");
+    else if (!isValidDocumentationRoot(data.documentation.root)) add("DOCUMENTATION_CONFIG_INVALID_ROOT", "documentation.root", "Expected a safe repository-relative directory without traversal, glob syntax, secrets, or reserved config/cache overlap.");
+  }
+  if (data.embedding !== void 0) {
+    try {
+      profiles.embedding = validateEmbeddingProfile(data.embedding);
+    } catch (error2) {
+      add("EMBEDDING_CONFIG_INVALID", "embedding", error2.message);
+    }
+  }
+  if (data.decision !== void 0) {
+    try {
+      profiles.decision = validateDecisionProfile(data.decision);
+    } catch (error2) {
+      add("DECISION_CONFIG_INVALID", "decision", error2.message);
+    }
+  }
+  const traceability = data.traceability;
+  if (traceability !== void 0) {
+    if (!traceability || typeof traceability !== "object" || Array.isArray(traceability)) {
+      add("TRACEABILITY_CONFIG_INVALID", "traceability", "Expected an object.");
+    } else {
+      if (!Array.isArray(traceability.required)) add("TRACEABILITY_CONFIG_INVALID_REQUIRED", "traceability.required", "Expected an array of path strings.");
+      else if (traceability.required.some((value) => !isValidPathPattern(value))) add("TRACEABILITY_CONFIG_INVALID_REQUIRED", "traceability.required", "Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.");
+      if (traceability.exclude !== void 0 && !Array.isArray(traceability.exclude)) add("TRACEABILITY_CONFIG_INVALID_EXCLUDE", "traceability.exclude", "Expected an array of path strings.");
+      else if (Array.isArray(traceability.exclude) && traceability.exclude.some((value) => !isValidPathPattern(value))) add("TRACEABILITY_CONFIG_INVALID_EXCLUDE", "traceability.exclude", "Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.");
+      if (traceability.keys !== void 0 && !Array.isArray(traceability.keys)) add("TRACEABILITY_CONFIG_INVALID_KEYS", "traceability.keys", "Expected an array of traceability key definitions.");
+      else if (Array.isArray(traceability.keys)) {
+        const keys = /* @__PURE__ */ new Set();
+        const labels = /* @__PURE__ */ new Set();
+        const relations = /* @__PURE__ */ new Set();
+        for (const [index, definition] of traceability.keys.entries()) {
+          const prefix = `traceability.keys[${index}]`;
+          if (!definition || typeof definition !== "object" || Array.isArray(definition)) {
+            add("TRACEABILITY_CONFIG_INVALID_KEY", prefix, "Expected an object.");
+            continue;
+          }
+          const allowed = /* @__PURE__ */ new Set(["key", "label", "description", "target", "relation", "weight"]);
+          if (Object.keys(definition).some((key) => !allowed.has(key))) add("TRACEABILITY_CONFIG_INVALID_KEY", prefix, "Contains unsupported fields.");
+          if (typeof definition.key !== "string" || !/^[A-Za-z][A-Za-z0-9]*$/.test(definition.key) || TRACEABILITY_RESERVED_KEYS.has(definition.key) || keys.has(definition.key)) add("TRACEABILITY_CONFIG_INVALID_KEY", `${prefix}.key`, "Expected a unique non-reserved identifier.");
+          else keys.add(definition.key);
+          const trimmedLabel = typeof definition.label === "string" ? definition.label.trim() : "";
+          const normalizedLabel = trimmedLabel.toLocaleLowerCase();
+          if (!normalizedLabel || /[\u0000-\u001f\u007f]/.test(trimmedLabel) || labels.has(normalizedLabel)) add("TRACEABILITY_CONFIG_INVALID_LABEL", `${prefix}.label`, "Expected a unique single-line non-empty label after trimming and case normalization.");
+          else labels.add(normalizedLabel);
+          if (typeof definition.description !== "string" || !definition.description.trim()) add("TRACEABILITY_CONFIG_INVALID_DESCRIPTION", `${prefix}.description`, "Expected a non-empty description.");
+          if (!TRACEABILITY_TARGETS.has(definition.target)) add("TRACEABILITY_CONFIG_INVALID_TARGET", `${prefix}.target`, 'Expected "path" or "command".');
+          if (typeof definition.relation !== "string" || !/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/.test(definition.relation) || TRACEABILITY_RESERVED_RELATIONS.has(definition.relation) || relations.has(definition.relation)) add("TRACEABILITY_CONFIG_INVALID_RELATION", `${prefix}.relation`, "Expected a unique canonical snake_case relation not reserved by the graph.");
+          else relations.add(definition.relation);
+          if (!isFiniteNumberInRange(definition.weight, 0, 20)) add("TRACEABILITY_CONFIG_INVALID_WEIGHT", `${prefix}.weight`, "Expected a finite number from 0 to 20.");
+        }
+      }
+    }
+  }
+  const validation = data.validation;
+  if (validation !== void 0) {
+    if (!validation || typeof validation !== "object" || Array.isArray(validation)) {
+      add("VALIDATION_CONFIG_INVALID", "validation", "Expected an object.");
+    } else if (validation.markdown !== void 0) {
+      const markdown = validation.markdown;
+      if (!markdown || typeof markdown !== "object" || Array.isArray(markdown)) {
+        add("VALIDATION_CONFIG_INVALID_MARKDOWN", "validation.markdown", "Expected an object.");
+      } else {
+        if (markdown.maxLines !== void 0 && (!Number.isInteger(markdown.maxLines) || markdown.maxLines < 1)) add("VALIDATION_CONFIG_INVALID_MAX_LINES", "validation.markdown.maxLines", "Expected a positive integer.");
+        if (markdown.maxChars !== void 0 && (!Number.isInteger(markdown.maxChars) || markdown.maxChars < 1)) add("VALIDATION_CONFIG_INVALID_MAX_CHARS", "validation.markdown.maxChars", "Expected a positive integer.");
+        if (markdown.exclude !== void 0 && !Array.isArray(markdown.exclude)) add("VALIDATION_CONFIG_INVALID_EXCLUDE", "validation.markdown.exclude", "Expected an array of path strings.");
+        else if (Array.isArray(markdown.exclude) && markdown.exclude.some((value) => !isValidPathPattern(value))) add("VALIDATION_CONFIG_INVALID_EXCLUDE", "validation.markdown.exclude", "Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.");
+        if (markdown.filename !== void 0) {
+          const fn = markdown.filename;
+          if (!fn || typeof fn !== "object" || Array.isArray(fn)) {
+            add("VALIDATION_CONFIG_INVALID_FILENAME", "validation.markdown.filename", "Expected an object.");
+          } else {
+            if (fn.warnNumberedSeries !== void 0 && typeof fn.warnNumberedSeries !== "boolean") add("VALIDATION_CONFIG_INVALID_FILENAME", "validation.markdown.filename.warnNumberedSeries", "Expected a boolean.");
+            if (fn.allow !== void 0 && !Array.isArray(fn.allow)) add("VALIDATION_CONFIG_INVALID_FILENAME_ALLOW", "validation.markdown.filename.allow", "Expected an array of path strings.");
+            else if (Array.isArray(fn.allow) && fn.allow.some((value) => !isValidPathPattern(value))) add("VALIDATION_CONFIG_INVALID_FILENAME_ALLOW", "validation.markdown.filename.allow", "Expected path strings using exact paths, /** subtree patterns, or **/suffix patterns.");
+          }
+        }
+      }
+    }
+  }
+  const load = data.load;
+  if (load !== void 0) {
+    if (!load || typeof load !== "object" || Array.isArray(load)) {
+      add("LOAD_CONFIG_INVALID", "load", "Expected an object.");
+    } else {
+      if (load.documentationSummary !== void 0) {
+        const summary = load.documentationSummary;
+        if (!summary || typeof summary !== "object" || Array.isArray(summary)) {
+          add("LOAD_CONFIG_INVALID_DOCUMENTATION_SUMMARY", "load.documentationSummary", "Expected an object.");
+        } else if (summary.exclude !== void 0) {
+          if (!Array.isArray(summary.exclude)) add("LOAD_CONFIG_INVALID_DOCUMENTATION_SUMMARY_EXCLUDE", "load.documentationSummary.exclude", "Expected an array of path strings.");
+          else if (summary.exclude.some((value) => !isValidPathPattern(value) || typeof value === "string" && value.trim().startsWith("/"))) add("LOAD_CONFIG_INVALID_DOCUMENTATION_SUMMARY_EXCLUDE", "load.documentationSummary.exclude", "Expected repository-relative path strings using exact paths, /** subtree patterns, or **/suffix patterns.");
+        }
+      }
+    }
+  }
+  const planMode = data.planMode;
+  if (planMode !== void 0) {
+    for (const { field, message } of validatePlanModePolicy(planMode)) add("PLAN_MODE_CONFIG_INVALID", field, message);
+  }
+  const referenceExpansion = data.referenceExpansion;
+  if (referenceExpansion !== void 0) {
+    if (!referenceExpansion || typeof referenceExpansion !== "object" || Array.isArray(referenceExpansion)) {
+      add("REFERENCE_EXPANSION_CONFIG_INVALID", "referenceExpansion", "Expected an object.");
+    } else if (referenceExpansion.fuzzy !== void 0) {
+      const fuzzy = referenceExpansion.fuzzy;
+      if (!fuzzy || typeof fuzzy !== "object" || Array.isArray(fuzzy)) {
+        add("REFERENCE_EXPANSION_CONFIG_INVALID_FUZZY", "referenceExpansion.fuzzy", "Expected an object.");
+      } else if (fuzzy.lowSignal !== void 0) {
+        const lowSignal = fuzzy.lowSignal;
+        if (!lowSignal || typeof lowSignal !== "object" || Array.isArray(lowSignal)) {
+          add("REFERENCE_EXPANSION_CONFIG_INVALID_LOW_SIGNAL", "referenceExpansion.fuzzy.lowSignal", "Expected an object.");
+        } else {
+          for (const key of ["add", "remove"]) {
+            if (lowSignal[key] !== void 0 && (!Array.isArray(lowSignal[key]) || lowSignal[key].some((value) => typeof value !== "string" || !value.trim()))) add("REFERENCE_EXPANSION_CONFIG_INVALID_LOW_SIGNAL_TERMS", `referenceExpansion.fuzzy.lowSignal.${key}`, "Expected an array of non-empty strings.");
+          }
+        }
+      }
+    }
+  }
+  const areas = data.memory?.areas;
+  if (areas === void 0) return errors;
+  if (!Array.isArray(areas)) {
+    add("MEMORY_CONFIG_INVALID_FIELD", "memory.areas", "Expected an array.");
+    return errors;
+  }
+  const ids = /* @__PURE__ */ new Set();
+  const exactIncluded = /* @__PURE__ */ new Map();
+  for (const [index, area] of areas.entries()) {
+    const prefix = `memory.areas[${index}]`;
+    if (!area || typeof area !== "object" || Array.isArray(area)) {
+      add("MEMORY_CONFIG_INVALID_AREA", prefix, "Expected an object.");
+      continue;
+    }
+    if (typeof area.id !== "string" || !isKebabCase(area.id)) add("MEMORY_CONFIG_INVALID_ID", `${prefix}.id`, "Expected a kebab-case string.");
+    else if (ids.has(area.id)) add("MEMORY_CONFIG_DUPLICATE_ID", `${prefix}.id`, `Duplicate memory area id: ${area.id}`);
+    else ids.add(area.id);
+    if (!Array.isArray(area.paths) || area.paths.length === 0 || area.paths.some((value) => !isValidPathPattern(value))) add("MEMORY_CONFIG_INVALID_PATHS", `${prefix}.paths`, "Expected a non-empty array of path strings using exact paths, /** subtree patterns, or **/suffix patterns.");
+    if (area.excludePaths !== void 0 && (!Array.isArray(area.excludePaths) || area.excludePaths.some((value) => !isValidPathPattern(value)))) add("MEMORY_CONFIG_INVALID_EXCLUDE_PATHS", `${prefix}.excludePaths`, "Expected an array of path strings using exact paths, /** subtree patterns, or **/suffix patterns.");
+    if (!MEMORY_SCOPES.has(area.scope)) add("MEMORY_CONFIG_INVALID_SCOPE", `${prefix}.scope`, 'Expected "shared" or "local".');
+    if (!MEMORY_FRESHNESS.has(area.freshness)) add("MEMORY_CONFIG_INVALID_FRESHNESS", `${prefix}.freshness`, 'Expected "fresh" or "stale".');
+    if (area.priority !== void 0 && (!Number.isInteger(area.priority) || area.priority < 0 || area.priority > 100)) add("MEMORY_CONFIG_INVALID_PRIORITY", `${prefix}.priority`, "Expected an integer from 0 to 100.");
+    if (area.includeBodiesByDefault !== void 0 && typeof area.includeBodiesByDefault !== "boolean") add("MEMORY_CONFIG_INVALID_INCLUDE_POLICY", `${prefix}.includeBodiesByDefault`, "Expected a boolean.");
+    if (area.description !== void 0 && (typeof area.description !== "string" || !area.description.trim())) add("MEMORY_CONFIG_INVALID_DESCRIPTION", `${prefix}.description`, "Expected a non-empty string.");
+    if (area.clarify !== void 0) {
+      const clarify = area.clarify;
+      if (!clarify || typeof clarify !== "object" || Array.isArray(clarify)) {
+        add("MEMORY_CONFIG_INVALID_CLARIFY", `${prefix}.clarify`, "Expected an object.");
+      } else {
+        if (clarify.audience !== void 0 && (!Array.isArray(clarify.audience) || clarify.audience.some((value) => typeof value !== "string" || !value.trim()))) add("MEMORY_CONFIG_INVALID_CLARIFY_AUDIENCE", `${prefix}.clarify.audience`, "Expected an array of non-empty strings.");
+        if (clarify.documentType !== void 0 && (typeof clarify.documentType !== "string" || !clarify.documentType.trim())) add("MEMORY_CONFIG_INVALID_CLARIFY_DOCUMENT_TYPE", `${prefix}.clarify.documentType`, "Expected a non-empty string.");
+        if (clarify.clarityGoal !== void 0 && (typeof clarify.clarityGoal !== "string" || !clarify.clarityGoal.trim())) add("MEMORY_CONFIG_INVALID_CLARITY_GOAL", `${prefix}.clarify.clarityGoal`, "Expected a non-empty string.");
+        if (clarify.editRules !== void 0 && (!Array.isArray(clarify.editRules) || clarify.editRules.some((value) => typeof value !== "string" || !value.trim()))) add("MEMORY_CONFIG_INVALID_CLARIFY_EDIT_RULES", `${prefix}.clarify.editRules`, "Expected an array of non-empty strings.");
+      }
+    }
+    for (const pattern of area.paths ?? []) {
+      if (exactIncluded.has(pattern) && !(area.excludePaths ?? []).includes(pattern)) add("MEMORY_CONFIG_OVERLAP", `${prefix}.paths`, `Path pattern also appears in ${exactIncluded.get(pattern)}: ${pattern}`);
+      else exactIncluded.set(pattern, `${prefix}.paths`);
+    }
+  }
+  return errors;
+}
+function readProjectConfig(root2) {
+  const path = join4(root2, MEMORY_CONFIG_FILE);
+  const profiles = {};
+  let data;
+  try {
+    data = readConfigJson(path);
+  } catch (error2) {
+    const message = `${error2.message}
+Fix: repair ${MEMORY_CONFIG_FILE} or remove it before regenerating it with \`dotdotgod config init <root>\`.`;
+    return { path, profiles, errors: [{ file: MEMORY_CONFIG_FILE, code: "MEMORY_CONFIG_INVALID_JSON", message }] };
+  }
+  const errors = data === void 0 ? [] : validateMemoryConfigData(data, root2, MEMORY_CONFIG_FILE, profiles);
+  return { path, data, profiles, errors };
+}
+function readMemoryConfig(root2 = ".", { data, errors } = readProjectConfig(root2)) {
+  if (errors.length > 0) return { ...defaultMemoryConfig(), source: MEMORY_CONFIG_FILE, errors };
+  if (data === void 0) return defaultMemoryConfig();
+  const documentationRoot = normalizeDocumentationRoot(data.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT);
+  const defaults = defaultMemoryConfig({ documentationRoot });
+  const configuredAreas = data.memory?.areas?.map(normalizeMemoryArea) ?? [];
+  return {
+    ...defaults,
+    source: MEMORY_CONFIG_FILE,
+    areas: configuredAreas.length > 0 ? configuredAreas : defaults.areas,
+    traceability: data.traceability === void 0 ? defaults.traceability : normalizeTraceabilityPolicy(data.traceability),
+    validation: data.validation === void 0 ? defaults.validation : normalizeValidationPolicy(data.validation),
+    impactRanking: normalizeImpactRankingPolicy(data.impactRanking),
+    referenceExpansion: normalizeReferenceExpansionPolicy(data.referenceExpansion),
+    load: data.load === void 0 ? defaults.load : normalizeLoadPolicy(data.load),
+    planMode: data.planMode === void 0 ? defaults.planMode : normalizePlanModePolicy(data.planMode),
+    errors: []
+  };
+}
+
+// packages/cli/src/memory/documentation-map.mjs
+var SKIPPED_DIRECTORIES = /* @__PURE__ */ new Set(["node_modules", "dist", "build", "coverage", ".git", ".dotdotgod"]);
+function node() {
+  return { directories: /* @__PURE__ */ new Map(), files: [] };
+}
+function buildTree(paths) {
+  const root2 = node();
+  for (const path of [...new Set(paths)].sort()) {
+    const parts = path.split("/");
+    let current = root2;
+    for (const part of parts.slice(0, -1)) {
+      if (!current.directories.has(part)) current.directories.set(part, node());
+      current = current.directories.get(part);
+    }
+    current.files.push(parts.at(-1));
+  }
+  return root2;
+}
+function descendantCounts(current) {
+  let directories = 0;
+  let files = current.files.length;
+  for (const child of current.directories.values()) {
+    directories += 1;
+    const nested = descendantCounts(child);
+    directories += nested.directories;
+    files += nested.files;
+  }
+  return { directories, files };
+}
+function plural(count, singular, pluralForm = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : pluralForm}`;
+}
+function formatDocumentationTree(paths, documentationRoot = "docs", maxDepth = 5) {
+  const tree = buildTree(paths);
+  let docs = tree;
+  for (const part of documentationRoot.split("/")) {
+    docs = docs.directories.get(part);
+    if (!docs) return `- ${documentationRoot}/: missing`;
+  }
+  const lines = [`${documentationRoot}/`];
+  const render = (current, depth, indent) => {
+    for (const file of current.files.sort()) lines.push(`${indent}- ${file}`);
+    if (depth >= maxDepth && current.directories.size > 0) {
+      for (const [name, child] of [...current.directories.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+        const counts = descendantCounts(child);
+        lines.push(`${indent}- ${name}/`);
+        lines.push(`${indent}  - \u2026 ${plural(counts.directories, "directory", "directories")}, ${plural(counts.files, "Markdown file")}`);
+      }
+      return;
+    }
+    for (const [name, child] of [...current.directories.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+      lines.push(`${indent}- ${name}/`);
+      render(child, depth + 1, `${indent}  `);
+    }
+  };
+  render(docs, 1, "  ");
+  return lines.join("\n");
+}
+function checkedDocumentationRoot(root2, documentationRoot) {
+  const realRoot = realpathSync3(root2);
+  let path = realRoot;
+  for (const part of documentationRoot.split("/")) {
+    path = join5(path, part);
+    const entry = lstatSync3(path, { throwIfNoEntry: false });
+    if (!entry) return null;
+    if (!entry.isDirectory()) throw new Error("Configured documentation root must be a directory without symlinks.");
+  }
+  return realRoot;
+}
+function isSharedMemoryPath(path, config2) {
+  const roots = [config2.documentation.root, DEFAULT_DOCUMENTATION_ROOT];
+  return !/[\\\x00-\x1f\x7f]/.test(path) && !path.split("/").some((part) => !part || part.startsWith(".") || SKIPPED_DIRECTORIES.has(part)) && !roots.some((root2) => ["plan", "archive"].some((area) => matchPathPattern(path, `${root2}/${area}/**`))) && !isSecretLikePathPattern(path) && resolveMemoryArea(path, config2)?.scope !== "local";
+}
+function* discoverDocumentation(root2, documentationRoot, exclude, { maxDepth = Infinity, allowPath = () => true } = {}) {
+  function* walk(relativeDirectory, depth) {
+    let entries;
+    try {
+      entries = readdirSync2(join5(root2, relativeDirectory), { withFileTypes: true, encoding: "utf8" });
+    } catch {
+      return;
+    }
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+      const path = `${relativeDirectory}/${entry.name}`;
+      if (entry.name.startsWith(".") || entry.name.includes("\\") || isSecretLikePathPattern(path) || exclude.some((pattern) => matchPathPattern(path, pattern))) continue;
+      if (entry.isDirectory()) {
+        if (depth < maxDepth && !SKIPPED_DIRECTORIES.has(entry.name)) yield* walk(path, depth + 1);
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md") && allowPath(path)) yield path;
+    }
+  }
+  yield* walk(documentationRoot, 1);
+}
+function buildDecisionDocsMap(projectRoot = ".") {
+  const root2 = resolve6(projectRoot);
+  const unavailable = (message) => ({ ok: false, error: { code: "MAP_UNAVAILABLE", message } });
+  const config2 = readMemoryConfig(root2);
+  if (config2.errors?.length) return unavailable("Project configuration is invalid.");
+  const documentationRoot = config2.documentation.root;
+  let realRoot;
+  try {
+    realRoot = checkedDocumentationRoot(root2, documentationRoot);
+  } catch (error2) {
+    return unavailable(error2.message);
+  }
+  if (!realRoot) return unavailable("Configured documentation root does not exist.");
+  const depth = 2;
+  const maxBytes = 4 * 1024;
+  const paths = [];
+  let bytes = 0;
+  let tree = formatDocumentationTree(paths, documentationRoot, depth);
+  const allowPath = (path) => isSharedMemoryPath(path, config2);
+  for (const path of discoverDocumentation(realRoot, documentationRoot, [], { maxDepth: depth, allowPath })) {
+    bytes += Buffer.byteLength(path) + (paths.length ? 1 : 0);
+    if (bytes > maxBytes) break;
+    const next = formatDocumentationTree([...paths, path], documentationRoot, depth);
+    if (Buffer.byteLength(next) > maxBytes) break;
+    paths.push(path);
+    tree = next;
+    if (paths.length === 100) break;
+  }
+  return { ok: true, root: root2, documentationRoot, depth, paths: paths.sort(), tree };
+}
+
+// packages/context/src/project.mjs
 var cli = fileURLToPath(new URL("./cli.mjs", import.meta.url));
 async function cliText(args, cwd, signal) {
   return await new Promise((resolvePromise, reject) => {
@@ -23226,8 +24065,8 @@ async function cliText(args, cwd, signal) {
     });
   });
 }
-async function cliJson(args, cwd) {
-  const out = await cliText(args, cwd);
+async function cliJson(args, cwd, signal) {
+  const out = await cliText(args, cwd, signal);
   try {
     return JSON.parse(out);
   } catch {
@@ -23242,12 +24081,16 @@ function embeddingRuntimeRecovery() {
   };
 }
 async function projectLoad(input) {
-  const root2 = resolve5(input.root || process.cwd());
+  const root2 = resolve7(input.root || process.cwd());
   const focus = input.focus?.trim() ?? "";
+  const { readOnly, signal, refs } = input;
+  signal?.throwIfAborted();
   let documentationMap;
   try {
-    documentationMap = await cliJson(["map", root2, "--depth", String(input.maxDepth ?? (focus ? 3 : 5)), "--json"], root2);
+    documentationMap = readOnly ? buildDecisionDocsMap(root2) : await cliJson(["map", root2, "--depth", String(input.maxDepth ?? (focus ? 3 : 5)), "--json"], root2, signal);
+    if (!documentationMap.ok) throw new Error("MAP_UNAVAILABLE");
   } catch {
+    signal?.throwIfAborted();
     return {
       ok: false,
       root: root2,
@@ -23263,9 +24106,13 @@ async function projectLoad(input) {
   let vectorUnavailable;
   if (focus) {
     try {
-      query = await cliJson(["query", root2, focus, "--limit", String(Math.min(input.limit ?? 30, 30)), "--json"], root2);
+      const args = ["query", root2, "--limit", String(Math.min(input.limit ?? 30, 30)), "--json"];
+      if (readOnly) args.push("--no-write", "--search", "keyword", "--scope", "shared");
+      query = await cliJson([...args, "--", focus], root2, signal);
       if (query.warnings?.some((warning) => warning.includes("Optional local embedding runtime is not installed"))) vectorUnavailable = embeddingRuntimeRecovery();
     } catch (error2) {
+      signal?.throwIfAborted();
+      if (readOnly) throw error2;
       const missingRuntime = String(error2?.message ?? error2).includes("Optional local embedding runtime is not installed");
       queryUnavailable = missingRuntime ? embeddingRuntimeRecovery() : {
         code: "QUERY_UNAVAILABLE",
@@ -23273,21 +24120,28 @@ async function projectLoad(input) {
       };
     }
   }
-  return { ok: true, root: root2, focus, documentationTree: tree, ...documentationMap ? { documentationRoot: documentationMap.documentationRoot } : {}, query, ...queryUnavailable ? { queryUnavailable } : {}, ...vectorUnavailable ? { vectorUnavailable } : {} };
+  let references;
+  if (readOnly && refs?.length) {
+    const expanded = await cliJson(["expand", root2, "--json", "--no-write", "--scope", "shared", "--", refs.map((ref) => `[[${ref}]]`).join(" ")], root2, signal);
+    if (!expanded.ok) throw new Error("Reference expansion failed.");
+    references = expanded.refs;
+  }
+  signal?.throwIfAborted();
+  return { ok: true, root: root2, focus, documentationTree: tree, documentationRoot: documentationMap.documentationRoot, query, ...references ? { references } : {}, ...queryUnavailable ? { queryUnavailable } : {}, ...vectorUnavailable ? { vectorUnavailable } : {} };
 }
 async function projectEmbeddingStatus(input = {}) {
-  const root2 = resolve5(input.root || process.cwd());
+  const root2 = resolve7(input.root || process.cwd());
   const result = await cliJson(["embedding", "status", root2, "--json"], root2);
   return { ...result, ...result.location ? { location: "~/.dotdotgod/runtime/embedding" } : {} };
 }
 async function projectEmbeddingInstall(input = {}) {
   if (input.confirm !== true) throw new Error("confirm: true is required after explicit user approval.");
-  const root2 = resolve5(input.root || process.cwd());
+  const root2 = resolve7(input.root || process.cwd());
   const result = await cliJson(["embedding", "install", root2, "--confirm", "--json"], root2);
   return { ...result, ...result.location ? { location: "~/.dotdotgod/runtime/embedding" } : {} };
 }
 async function projectImpact(input) {
-  const root2 = resolve5(input.root || process.cwd());
+  const root2 = resolve7(input.root || process.cwd());
   const paths = [...new Set(input.paths ?? [])];
   if (paths.length === 0) throw new Error("paths must contain at least one changed path");
   if (paths.length > 20) throw new Error("paths is limited to 20 entries per call");
@@ -23297,7 +24151,7 @@ async function projectImpact(input) {
   return { ok: true, summary: (await cliText(args, root2, input.signal)).trim() };
 }
 async function projectInitialize(input) {
-  const root2 = resolve5(input.root || process.cwd());
+  const root2 = resolve7(input.root || process.cwd());
   const dryRun = input.dryRun !== false;
   if (!dryRun && input.confirmWrite !== true) throw new Error("confirmWrite: true is required when dryRun is false");
   const args = ["init", root2, "--json"];
@@ -23379,7 +24233,7 @@ var IngestionJobRunner = class {
           clearTimeout(timer);
           this.controllers.delete(job.id);
         }
-        if (!this.closed) await new Promise((resolve8) => setImmediate(resolve8));
+        if (!this.closed) await new Promise((resolve11) => setImmediate(resolve11));
       }
     } finally {
       this.running = false;
@@ -23391,8 +24245,8 @@ var INGESTION_JOB_LIMITS = Object.freeze({ maxPendingJobs: MAX_PENDING_JOBS2, co
 // packages/context/src/session.mjs
 var SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$/;
 function validateSessionId(value) {
-  if (typeof value !== "string" || !SESSION_ID.test(value)) {
-    throw new TypeError("sessionId must be an opaque 1-128 character identifier using letters, digits, dot, underscore, tilde, or hyphen.");
+  if (typeof value !== "string" || !SESSION_ID.test(value) || value.toLowerCase() === "default") {
+    throw new TypeError("sessionId must be an opaque 1-128 character identifier using letters, digits, dot, underscore, tilde, or hyphen; default is reserved.");
   }
   return value;
 }
@@ -23419,20 +24273,21 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 // packages/context/src/impact-state.mjs
 import { randomUUID } from "node:crypto";
-import { existsSync as existsSync3, mkdirSync as mkdirSync2 } from "node:fs";
-import { dirname as dirname4, join as join5, resolve as resolve7 } from "node:path";
+import { existsSync as existsSync4, mkdirSync as mkdirSync2 } from "node:fs";
+import { dirname as dirname4, join as join7, resolve as resolve9 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
+import { pathToFileURL } from "node:url";
 
 // packages/context/src/impact-path.mjs
 import { createHash as createHash2 } from "node:crypto";
-import { lstatSync as lstatSync2, readFileSync as readFileSync4, realpathSync as realpathSync3 } from "node:fs";
-import { dirname as dirname3, isAbsolute, join as join4, relative as relative2, resolve as resolve6 } from "node:path";
-var MAX_CONFIG_BYTES = 262144;
+import { lstatSync as lstatSync4, readFileSync as readFileSync4, realpathSync as realpathSync4 } from "node:fs";
+import { dirname as dirname3, isAbsolute as isAbsolute2, join as join6, relative as relative3, resolve as resolve8 } from "node:path";
+var MAX_CONFIG_BYTES2 = 262144;
 var UNSAFE_ROOT_CHARS = /[\x00-\x1F\x7F-\x9F\u2028\u2029\u200E\u200F\u202A-\u202E\u2066-\u2069`*?[\]{}]/;
 var EXCLUDED_DIRS = /(^|\/)(node_modules|\.git|\.dotdotgod|dist|build|coverage)(\/|$)/;
 function entryExists(targetPath) {
   try {
-    lstatSync2(targetPath);
+    lstatSync4(targetPath);
     return true;
   } catch {
     return false;
@@ -23442,28 +24297,28 @@ function insideRealRoot(resolvedRoot, targetPath) {
   try {
     let ancestor = targetPath;
     while (!entryExists(ancestor) && dirname3(ancestor) !== ancestor) ancestor = dirname3(ancestor);
-    const realRelative = relative2(realpathSync3(resolvedRoot), realpathSync3(ancestor));
-    const sep2 = process.platform === "win32" ? "\\" : "/";
-    return realRelative !== ".." && !realRelative.startsWith(`..${sep2}`) && !isAbsolute(realRelative);
+    const realRelative = relative3(realpathSync4(resolvedRoot), realpathSync4(ancestor));
+    const sep3 = process.platform === "win32" ? "\\" : "/";
+    return realRelative !== ".." && !realRelative.startsWith(`..${sep3}`) && !isAbsolute2(realRelative);
   } catch {
     return false;
   }
 }
 function resolveDocumentationRoot(root2) {
   try {
-    const resolvedRoot = resolve6(root2);
-    const configPath = join4(resolvedRoot, "dotdotgod.config.json");
-    const stat = lstatSync2(configPath);
-    if (stat.isSymbolicLink() || !stat.isFile() || stat.size > MAX_CONFIG_BYTES) return "docs";
+    const resolvedRoot = resolve8(root2);
+    const configPath = join6(resolvedRoot, "dotdotgod.config.json");
+    const stat = lstatSync4(configPath);
+    if (stat.isSymbolicLink() || !stat.isFile() || stat.size > MAX_CONFIG_BYTES2) return "docs";
     const parsed = JSON.parse(readFileSync4(configPath, "utf8"));
     const raw = parsed?.documentation?.root;
     if (typeof raw !== "string" || !raw || UNSAFE_ROOT_CHARS.test(raw)) return "docs";
-    if (raw.startsWith("\\") || raw.startsWith("/") || /^[A-Za-z]:/.test(raw) || isAbsolute(raw)) return "docs";
+    if (raw.startsWith("\\") || raw.startsWith("/") || /^[A-Za-z]:/.test(raw) || isAbsolute2(raw)) return "docs";
     const normalized = raw.replaceAll("\\", "/").replace(/\/+$/, "");
     if (!normalized) return "docs";
     const segments = normalized.split("/");
     if (segments.some((seg) => !seg || seg.startsWith("."))) return "docs";
-    if (!insideRealRoot(resolvedRoot, resolve6(resolvedRoot, normalized))) return "docs";
+    if (!insideRealRoot(resolvedRoot, resolve8(resolvedRoot, normalized))) return "docs";
     return normalized;
   } catch {
     return "docs";
@@ -23471,10 +24326,10 @@ function resolveDocumentationRoot(root2) {
 }
 function impactPath(root2, path, docRoot = resolveDocumentationRoot(root2)) {
   if (typeof path !== "string" || !path.trim() || path.includes("\0")) return void 0;
-  const resolvedRoot = resolve6(root2);
-  const absolute = resolve6(resolvedRoot, path);
-  const name = relative2(resolvedRoot, absolute).replaceAll("\\", "/");
-  if (!name || name === ".." || name.startsWith("../") || isAbsolute(name)) return void 0;
+  const resolvedRoot = resolve8(root2);
+  const absolute = resolve8(resolvedRoot, path);
+  const name = relative3(resolvedRoot, absolute).replaceAll("\\", "/");
+  if (!name || name === ".." || name.startsWith("../") || isAbsolute2(name)) return void 0;
   if (EXCLUDED_DIRS.test(name)) return void 0;
   const planPrefix = `${docRoot}/plan`;
   const archivePrefix = `${docRoot}/archive`;
@@ -23486,7 +24341,7 @@ function impactPath(root2, path, docRoot = resolveDocumentationRoot(root2)) {
 }
 function impactFingerprint(root2, path) {
   try {
-    return createHash2("sha256").update(readFileSync4(resolve6(root2, path))).digest("hex");
+    return createHash2("sha256").update(readFileSync4(resolve8(root2, path))).digest("hex");
   } catch (error2) {
     return error2.code === "ENOENT" ? "missing" : void 0;
   }
@@ -23495,69 +24350,75 @@ function impactFingerprint(root2, path) {
 // packages/context/src/impact-state.mjs
 var CREATE_PENDING = "CREATE TABLE IF NOT EXISTS pending (session TEXT NOT NULL, path TEXT NOT NULL, revision TEXT NOT NULL, fingerprint TEXT, created_at INTEGER, expires_at INTEGER, notified INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (session, path))";
 var CREATE_PLAN_NOTICES = "CREATE TABLE IF NOT EXISTS plan_notices (session TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, notified INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)";
-function inspectSchema2(db) {
-  const hasPending = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pending'").get());
-  const hasPlanNotices = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='plan_notices'").get());
-  const cols = hasPending ? db.prepare("PRAGMA table_info(pending)").all().map((c) => c.name) : [];
-  return {
-    hasPending,
-    hasPlanNotices,
-    needsCreatedAt: hasPending && !cols.includes("created_at"),
-    needsExpiry: hasPending && !cols.includes("expires_at"),
-    needsNotified: hasPending && !cols.includes("notified")
-  };
-}
-var ImpactState = class {
-  constructor(root2, sessionId2) {
-    this.root = resolve7(root2);
-    this.sessionId = validateSessionId(sessionId2);
-    this.path = join5(this.root, ".dotdotgod/context/impact.sqlite");
-  }
-  database(write = false) {
-    if (!write && !existsSync3(this.path)) return void 0;
-    if (write) mkdirSync2(dirname4(this.path), { recursive: true });
-    const db = new DatabaseSync3(this.path);
+var CREATE_LOAD_STATE = `CREATE TABLE IF NOT EXISTS load_state (
+  session TEXT PRIMARY KEY,
+  assessed INTEGER NOT NULL DEFAULT 0 CHECK (assessed IN (0,1)),
+  loaded INTEGER NOT NULL DEFAULT 0 CHECK (loaded IN (0,1)),
+  notified INTEGER NOT NULL DEFAULT 0 CHECK (notified IN (0,1)),
+  skip_count INTEGER NOT NULL DEFAULT 0 CHECK (skip_count >= 0),
+  last_prompt_hash TEXT,
+  inflight_token TEXT,
+  inflight_until INTEGER NOT NULL DEFAULT 0 CHECK (inflight_until >= 0),
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL CHECK (expires_at > created_at)
+)`;
+var UNLOADED = Object.freeze({ assessed: false, loaded: false, notified: false, skipCount: 0, lastPromptHash: null });
+var FINISH_LOAD = "last_prompt_hash = ?, inflight_token = NULL, inflight_until = 0";
+var OWN_LOAD = "session = ? AND inflight_token = ? AND loaded = 0";
+var BUSY_MS = 5e3;
+var lockWait = new Int32Array(new SharedArrayBuffer(4));
+function enableWal(db) {
+  const deadline = performance.now() + BUSY_MS;
+  for (; ; ) {
     try {
-      db.exec("PRAGMA busy_timeout=5000");
       db.exec("PRAGMA journal_mode=WAL");
-      const state = inspectSchema2(db);
-      const needsSchema = !state.hasPending || !state.hasPlanNotices || state.needsExpiry || state.needsNotified;
-      if (!write && !needsSchema) return db;
-      db.exec("BEGIN IMMEDIATE");
-      try {
-        db.exec(CREATE_PENDING);
-        db.exec(CREATE_PLAN_NOTICES);
-        const current = inspectSchema2(db);
-        if (current.needsCreatedAt) db.exec("ALTER TABLE pending ADD COLUMN created_at INTEGER;");
-        if (current.needsExpiry) {
-          db.exec("ALTER TABLE pending ADD COLUMN expires_at INTEGER;");
-          const now = Date.now();
-          db.prepare("UPDATE pending SET created_at = COALESCE(created_at, ?), expires_at = ? WHERE expires_at IS NULL").run(now, now + RETENTION_MS);
-        }
-        if (current.needsNotified) db.exec("ALTER TABLE pending ADD COLUMN notified INTEGER NOT NULL DEFAULT 0;");
-        if (write) {
-          const now = Date.now();
-          db.prepare("DELETE FROM pending WHERE expires_at <= ?").run(now);
-          db.prepare("DELETE FROM plan_notices WHERE expires_at <= ?").run(now);
-        }
-        db.exec("COMMIT");
-      } catch (error2) {
-        db.exec("ROLLBACK");
-        throw error2;
-      }
-      return db;
+      return;
     } catch (error2) {
-      db.close();
-      throw error2;
+      if (error2.errcode !== 5 || performance.now() >= deadline) throw error2;
+      Atomics.wait(lockWait, 0, 0, 5);
     }
   }
+}
+function pendingColumns(db) {
+  return db.prepare("PRAGMA table_info(pending)").all().map(({ name }) => name);
+}
+function migrateAndPurge(db, now, legacySeenAt = now) {
+  db.exec(`${CREATE_PENDING}; ${CREATE_PLAN_NOTICES}; ${CREATE_LOAD_STATE}`);
+  const cols = pendingColumns(db);
+  if (!cols.includes("created_at")) db.exec("ALTER TABLE pending ADD COLUMN created_at INTEGER");
+  if (!cols.includes("expires_at")) {
+    db.exec("ALTER TABLE pending ADD COLUMN expires_at INTEGER");
+    db.prepare("UPDATE pending SET created_at = COALESCE(created_at, ?), expires_at = ? WHERE expires_at IS NULL").run(legacySeenAt, legacySeenAt + RETENTION_MS);
+  }
+  if (!cols.includes("notified")) db.exec("ALTER TABLE pending ADD COLUMN notified INTEGER NOT NULL DEFAULT 0");
+  for (const table of ["pending", "plan_notices", "load_state"]) db.prepare(`DELETE FROM ${table} WHERE expires_at <= ?`).run(now);
+}
+var ImpactState = class {
+  #legacySeenAt;
+  constructor(root2, sessionId2) {
+    this.root = resolve9(root2);
+    this.sessionId = validateSessionId(sessionId2);
+    this.path = join7(this.root, ".dotdotgod/context/impact.sqlite");
+  }
+  database() {
+    if (!existsSync4(this.path)) return void 0;
+    const active = existsSync4(`${this.path}-wal`) || existsSync4(`${this.path}-journal`);
+    const path = active ? this.path : `${pathToFileURL(this.path).href}?immutable=1`;
+    return new DatabaseSync3(path, { readOnly: true, timeout: BUSY_MS });
+  }
   tx(fn) {
-    const db = this.database(true);
+    mkdirSync2(dirname4(this.path), { recursive: true });
+    const db = new DatabaseSync3(this.path);
     try {
+      db.exec(`PRAGMA busy_timeout=${BUSY_MS}`);
+      enableWal(db);
       db.exec("BEGIN IMMEDIATE");
       try {
-        const result = fn(db);
+        const now = Date.now();
+        migrateAndPurge(db, now, this.#legacySeenAt);
+        const result = fn(db, now);
         db.exec("COMMIT");
+        this.#legacySeenAt = void 0;
         return result;
       } catch (error2) {
         db.exec("ROLLBACK");
@@ -23583,16 +24444,23 @@ var ImpactState = class {
   snapshot(paths) {
     const docRoot = paths ? resolveDocumentationRoot(this.root) : void 0;
     const selected = paths ? new Set(paths.map((path) => impactPath(this.root, path, docRoot)).filter(Boolean)) : void 0;
-    const db = this.database(false);
+    const db = this.database();
     if (!db) return [];
     try {
-      return db.prepare("SELECT path,revision,fingerprint FROM pending WHERE session=? AND expires_at > ? ORDER BY path").all(this.sessionId, Date.now()).filter((item) => !selected || selected.has(item.path));
+      const cols = pendingColumns(db);
+      if (!cols.length) return [];
+      const expiry = cols.includes("expires_at");
+      if (!expiry) {
+        this.#legacySeenAt ??= Date.now();
+        if (this.#legacySeenAt + RETENTION_MS <= Date.now()) return [];
+      }
+      return db.prepare(`SELECT path,revision,fingerprint FROM pending WHERE session=?${expiry ? " AND expires_at > ?" : ""} ORDER BY path`).all(this.sessionId, ...expiry ? [Date.now()] : []).filter((item) => !selected || selected.has(item.path));
     } finally {
       db.close();
     }
   }
   complete(snapshot2) {
-    if (!snapshot2.length || !existsSync3(this.path)) return;
+    if (!snapshot2.length || !existsSync4(this.path)) return;
     this.tx((db) => {
       const remove = db.prepare("DELETE FROM pending WHERE session=? AND path=? AND revision=?");
       for (const item of snapshot2) {
@@ -23603,14 +24471,14 @@ var ImpactState = class {
   clearPaths(paths) {
     const docRoot = resolveDocumentationRoot(this.root);
     const names = [...new Set(paths.map((path) => impactPath(this.root, path, docRoot)).filter(Boolean))];
-    if (!names.length || !existsSync3(this.path)) return 0;
+    if (!names.length || !existsSync4(this.path)) return 0;
     return this.tx((db) => {
       const remove = db.prepare("DELETE FROM pending WHERE session=? AND path=?");
       return names.reduce((sum, path) => sum + Number(remove.run(this.sessionId, path).changes ?? 0), 0);
     });
   }
   claimUnnotified(limit = 50) {
-    if (!existsSync3(this.path)) return { ok: true, count: 0, pending: [], truncated: false };
+    if (!existsSync4(this.path)) return { ok: true, count: 0, pending: [], truncated: false };
     const rows = this.tx((db) => db.prepare("UPDATE pending SET notified = 1 WHERE session = ? AND notified = 0 AND expires_at > ? RETURNING path").all(this.sessionId, Date.now()));
     rows.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
     return { ok: true, count: rows.length, pending: rows.slice(0, limit).map(({ path }) => ({ path })), truncated: rows.length > limit };
@@ -23622,12 +24490,57 @@ var ImpactState = class {
     });
   }
   claimPlanNotice() {
-    if (!existsSync3(this.path)) return false;
+    if (!existsSync4(this.path)) return false;
     return this.tx((db) => Number(db.prepare("UPDATE plan_notices SET notified = 1 WHERE session = ? AND notified = 0 AND expires_at > ?").run(this.sessionId, Date.now()).changes ?? 0) === 1);
   }
   clearPlanNotice() {
-    if (!existsSync3(this.path)) return false;
+    if (!existsSync4(this.path)) return false;
     return this.tx((db) => Number(db.prepare("DELETE FROM plan_notices WHERE session = ?").run(this.sessionId).changes ?? 0) > 0);
+  }
+  getLoadState() {
+    const db = this.database();
+    if (!db) return UNLOADED;
+    try {
+      if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='load_state'").get()) return UNLOADED;
+      const row = db.prepare("SELECT assessed,loaded,notified,skip_count,last_prompt_hash FROM load_state WHERE session=? AND expires_at > ?").get(this.sessionId, Date.now());
+      return row ? { assessed: Boolean(row.assessed), loaded: Boolean(row.loaded), notified: Boolean(row.notified), skipCount: row.skip_count, lastPromptHash: row.last_prompt_hash } : UNLOADED;
+    } finally {
+      db.close();
+    }
+  }
+  beginLoadAssessment(promptHash, leaseMs) {
+    const token = randomUUID();
+    return this.tx((db, now) => {
+      const row = db.prepare(`INSERT INTO load_state (session,inflight_token,inflight_until,created_at,expires_at) VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(session) DO UPDATE SET inflight_token = excluded.inflight_token, inflight_until = excluded.inflight_until
+        WHERE loaded = 0 AND notified = 0 AND skip_count < 5 AND (last_prompt_hash IS NULL OR last_prompt_hash != ?) AND inflight_until <= ?
+        RETURNING session, skip_count`).get(this.sessionId, token, now + leaseMs, now, now + RETENTION_MS, promptHash, now);
+      return row && { session: row.session, token, skipCount: row.skip_count };
+    });
+  }
+  recordLoadSkip(token, promptHash) {
+    return this.tx((db) => {
+      const row = db.prepare(`UPDATE load_state SET skip_count = skip_count + 1, ${FINISH_LOAD},
+        assessed = CASE WHEN skip_count + 1 >= 5 THEN 1 ELSE assessed END,
+        notified = CASE WHEN skip_count + 1 >= 5 THEN 1 ELSE notified END
+        WHERE ${OWN_LOAD} RETURNING skip_count`).get(promptHash, this.sessionId, token);
+      return row ? { recorded: true, terminal: row.skip_count >= 5, skipCount: row.skip_count } : { recorded: false };
+    });
+  }
+  completeLoadNotified(token, promptHash) {
+    return this.tx((db) => db.prepare(`UPDATE load_state SET assessed = 1, notified = 1, ${FINISH_LOAD} WHERE ${OWN_LOAD}`).run(promptHash, this.sessionId, token).changes === 1);
+  }
+  completeLoadPrefetch(token, promptHash) {
+    return this.tx((db) => db.prepare(`UPDATE load_state SET assessed = 1, loaded = 1, notified = 1, ${FINISH_LOAD} WHERE ${OWN_LOAD}`).run(promptHash, this.sessionId, token).changes === 1);
+  }
+  claimAdvisedOnce() {
+    return this.tx((db, now) => db.prepare(`INSERT INTO load_state (session,assessed,notified,created_at,expires_at) VALUES (?, 1, 1, ?, ?)
+      ON CONFLICT(session) DO UPDATE SET assessed = 1, notified = 1, inflight_token = NULL, inflight_until = 0
+      WHERE loaded = 0 AND notified = 0`).run(this.sessionId, now, now + RETENTION_MS).changes === 1);
+  }
+  markLoaded() {
+    this.tx((db, now) => db.prepare(`INSERT INTO load_state (session,assessed,loaded,notified,created_at,expires_at) VALUES (?, 1, 1, 1, ?, ?)
+      ON CONFLICT(session) DO UPDATE SET assessed = 1, loaded = 1, notified = 1, inflight_token = NULL, inflight_until = 0`).run(this.sessionId, now, now + RETENTION_MS));
   }
   status(limit = 50) {
     const all = this.snapshot();
@@ -23642,6 +24555,26 @@ async function withImpactReview(root2, sessionId2, paths, review, signal) {
   signal?.throwIfAborted();
   if (result.ok === true) state.complete(snapshot2);
   return { ...result, checked: result.ok === true ? paths : [], impactStatus: state.status() };
+}
+
+// packages/context/src/hook-state.mjs
+import { closeSync as closeSync3, constants as constants4, fstatSync as fstatSync3, lstatSync as lstatSync5, openSync as openSync3, readFileSync as readFileSync5, readSync as readSync2, realpathSync as realpathSync5 } from "node:fs";
+import { dirname as dirname5, join as join8, parse as parse3, resolve as resolve10, sep as sep2 } from "node:path";
+var MAX_ARTIFACT_BYTES = 2 * 1024 * 1024;
+function isInitializedProject(dir) {
+  if (typeof dir !== "string" || !dir.trim()) return false;
+  const resolved = resolve10(dir);
+  try {
+    const cfg = lstatSync5(join8(resolved, "dotdotgod.config.json"));
+    if (!cfg.isSymbolicLink() && cfg.isFile()) return true;
+  } catch {
+  }
+  try {
+    const dot = lstatSync5(join8(resolved, ".dotdotgod"));
+    if (!dot.isSymbolicLink() && dot.isDirectory()) return true;
+  } catch {
+  }
+  return false;
 }
 
 // packages/context/src/server.mjs
@@ -23674,7 +24607,7 @@ async function syncRootsFromClient() {
   const entry = response?.roots?.find((item) => typeof item?.uri === "string" && item.uri.startsWith("file://"));
   if (!entry) return;
   const nextRoot = fileURLToPath2(entry.uri);
-  if (!existsSync4(nextRoot) || !statSync6(nextRoot).isDirectory() || nextRoot === root) return;
+  if (!existsSync5(nextRoot) || !statSync7(nextRoot).isDirectory() || nextRoot === root) return;
   await jobRunner?.close();
   jobRunner = void 0;
   contextStore?.close();
@@ -23828,7 +24761,17 @@ register("project_load", "Load a bounded documentation map and optional semantic
   focus: external_exports.string().max(500).optional(),
   limit: external_exports.number().int().min(1).max(30).optional(),
   maxDepth: external_exports.number().int().min(1).max(5).optional()
-}, (input) => projectLoad(projectInput(input)), { readOnlyHint: true });
+}, async (input, extra) => {
+  const args = projectInput(input);
+  const result = await projectLoad({ ...args, signal: extra.signal });
+  if (currentBound() && result.ok === true && isInitializedProject(args.root)) {
+    try {
+      new ImpactState(args.root, currentSession()).markLoaded();
+    } catch {
+    }
+  }
+  return result;
+}, { readOnlyHint: true });
 register("embedding_status", "Inspect the optional persistent embedding runtime without installing or contacting a registry.", { root: external_exports.string().optional() }, (input) => projectEmbeddingStatus(projectInput(input)), { readOnlyHint: true });
 register("embedding_install", "After explicit user approval, install the fixed optional embedding runtime persistently. Uses network and dependency install scripts.", { root: external_exports.string().optional(), confirm: external_exports.literal(true) }, (input) => projectEmbeddingInstall(projectInput(input)), { destructiveHint: true, openWorldHint: true });
 register("project_impact", "Run bounded graph impact for up to 20 changed paths.", {

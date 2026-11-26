@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { once } from 'node:events';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -18,14 +20,14 @@ function makeTempDir(prefix = 'ddg-ag-') {
 
 function initWorkspace(dir, config = { documentation: { root: 'docs' } }) {
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, 'dotdotgod.config.json'), `${JSON.stringify(config, null, 2)}\n`);
+  writeFileSync(join(dir, 'dotdotgod.config.json'), `${JSON.stringify({ decision: { mode: 'advisory' }, ...config }, null, 2)}\n`);
   mkdirSync(join(dir, 'src'), { recursive: true });
   writeFileSync(join(dir, 'src/a.ts'), 'export const a = 1;\n');
   writeFileSync(join(dir, 'src/b.ts'), 'export const b = 2;\n');
   return dir;
 }
 
-test('AG-01: never falls back to process.cwd(), isolates uninitialized repos, rejects invalid sessions, enforces segment boundaries', (t) => {
+test('AG-01: never falls back to process.cwd(), isolates uninitialized repos, rejects invalid sessions, enforces segment boundaries', async (t) => {
   const base = makeTempDir('ddg-ag01-');
   t.after(() => rmSync(base, { recursive: true, force: true }));
 
@@ -35,16 +37,16 @@ test('AG-01: never falls back to process.cwd(), isolates uninitialized repos, re
   writeFileSync(join(uninitChild, 'src/x.ts'), 'export const x = 1;\n');
 
   // 1. Missing workspacePaths and cwd must NEVER fall back to process.cwd() (even though repo cwd is initialized).
-  const noWsOut = runAntigravityHook('posttooluse', {
+  const noWsOut = await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     toolCall: { name: 'write_file', args: { Path: 'src/a.ts' } },
     error: '',
   });
   assert.deepEqual(noWsOut, {});
-  assert.deepEqual(runAntigravityHook('preinvocation', { conversationId: SESSION }), {});
+  assert.deepEqual(await runAntigravityHook('preinvocation', { conversationId: SESSION }), {});
 
   // 2. Uninitialized workspace in workspacePaths creates no .dotdotgod/ and does not walk up to parentInit.
-  const uninitOut = runAntigravityHook('posttooluse', {
+  const uninitOut = await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [uninitChild],
     cwd: uninitChild,
@@ -58,7 +60,7 @@ test('AG-01: never falls back to process.cwd(), isolates uninitialized repos, re
   // 3. Invalid conversationId returns {} and never creates DB.
   const ws = initWorkspace(join(base, 'app'));
   for (const badId of ['', undefined, '../evil', 'a'.repeat(129), 12345]) {
-    assert.deepEqual(runAntigravityHook('posttooluse', {
+    assert.deepEqual(await runAntigravityHook('posttooluse', {
       conversationId: badId,
       workspacePaths: [ws],
       toolCall: { name: 'write_file', args: { Path: join(ws, 'src/a.ts') } },
@@ -69,7 +71,7 @@ test('AG-01: never falls back to process.cwd(), isolates uninitialized repos, re
 
   // 4. Segment boundary: sibling /app-v2 must not match /app.
   const sibling = initWorkspace(join(base, 'app-v2'));
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     toolCall: { name: 'write_file', args: { Path: join(sibling, 'src/a.ts') } },
@@ -79,7 +81,7 @@ test('AG-01: never falls back to process.cwd(), isolates uninitialized repos, re
   assert.equal(existsSync(join(sibling, '.dotdotgod')), false);
 
   // 5. Fallback to findInitializedRoot(input.cwd) when workspacePaths is omitted.
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     cwd: join(ws, 'src'),
     toolCall: { name: 'edit_file', args: { path: 'b.ts' } },
@@ -88,7 +90,7 @@ test('AG-01: never falls back to process.cwd(), isolates uninitialized repos, re
   assert.deepEqual(new ImpactState(ws, SESSION).status().pending, [{ path: 'src/b.ts' }]);
 });
 
-test('AG-02: CLI + App/IDE edit tools, PreInvocation 1-time claim & re-edit reset, MCP allowlist & failure retention, error masking', (t) => {
+test('AG-02: CLI + App/IDE edit tools, PreInvocation 1-time claim & re-edit reset, MCP allowlist & failure retention, error masking', async (t) => {
   const base = makeTempDir('ddg-ag02-');
   t.after(() => rmSync(base, { recursive: true, force: true }));
   const ws = initWorkspace(join(base, 'repo'));
@@ -105,7 +107,7 @@ test('AG-02: CLI + App/IDE edit tools, PreInvocation 1-time claim & re-edit rese
     { name: 'multi_replace_file_content', args: { TargetFile: join(ws, 'src/e.ts') } },
   ];
   for (const toolCall of edits) {
-    assert.deepEqual(runAntigravityHook('posttooluse', {
+    assert.deepEqual(await runAntigravityHook('posttooluse', {
       conversationId: SESSION,
       workspacePaths: [ws],
       toolCall,
@@ -115,7 +117,7 @@ test('AG-02: CLI + App/IDE edit tools, PreInvocation 1-time claim & re-edit rese
   assert.equal(new ImpactState(ws, SESSION).status().count, 5);
 
   // PreInvocation emits 1-time injectSteps via claimUnnotified
-  const firstPre = runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] });
+  const firstPre = await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] });
   assert.equal(firstPre.injectSteps?.length, 1);
   const text = firstPre.injectSteps[0].systemMessage.systemMessage;
   assert.match(text, /\[DOTDOTGOD IMPACT PENDING — ADVISORY\]/);
@@ -124,30 +126,30 @@ test('AG-02: CLI + App/IDE edit tools, PreInvocation 1-time claim & re-edit rese
   assert.match(text, /src\/e\.ts/);
 
   // Second PreInvocation returns {} (no duplicate trajectory spam)
-  assert.deepEqual(runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
+  assert.deepEqual(await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
 
   // Failed edit with isError: true (no top-level error) must NOT mark or reset
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     toolCall: { name: 'edit_file', args: { Path: join(ws, 'src/a.ts') } },
     isError: true,
   });
-  assert.deepEqual(runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
+  assert.deepEqual(await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
 
   // Successful re-edit resets notified = 0 -> next PreInvocation re-notifies
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     toolCall: { name: 'edit_file', args: { Path: join(ws, 'src/a.ts') } },
     error: '',
   });
-  const rePre = runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] });
+  const rePre = await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] });
   assert.equal(rePre.injectSteps?.length, 1);
   assert.match(rePre.injectSteps[0].systemMessage.systemMessage, /src\/a\.ts/);
 
   // Failed project_impact (isError: true WITHOUT top-level error, and top-level error) MUST retain pending
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     toolCall: {
@@ -156,7 +158,7 @@ test('AG-02: CLI + App/IDE edit tools, PreInvocation 1-time claim & re-edit rese
     },
     isError: true,
   });
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     toolCall: {
@@ -173,7 +175,7 @@ test('AG-02: CLI + App/IDE edit tools, PreInvocation 1-time claim & re-edit rese
     { name: 'mcp__other_context__project_impact', args: { paths: ['src/a.ts'] } },
     { name: 'other_context__project_impact', args: { paths: ['src/a.ts'] } },
   ]) {
-    runAntigravityHook('posttooluse', { conversationId: SESSION, workspacePaths: [ws], toolCall, error: '' });
+    await runAntigravityHook('posttooluse', { conversationId: SESSION, workspacePaths: [ws], toolCall, error: '' });
   }
   assert.equal(new ImpactState(ws, SESSION).status().count, 5);
 
@@ -186,7 +188,7 @@ test('AG-02: CLI + App/IDE edit tools, PreInvocation 1-time claim & re-edit rese
     { name: 'mcp__dotdotgod-context__project_impact', args: { paths: ['src/e.ts'] } },
   ];
   for (const toolCall of clearances) {
-    assert.deepEqual(runAntigravityHook('posttooluse', {
+    assert.deepEqual(await runAntigravityHook('posttooluse', {
       conversationId: SESSION,
       workspacePaths: [ws],
       toolCall,
@@ -200,21 +202,12 @@ test('AG-02: CLI + App/IDE edit tools, PreInvocation 1-time claim & re-edit rese
   mkdirSync(join(brokenWs, '.dotdotgod/context/impact.sqlite'), { recursive: true });
   const fakeHome = base;
   const payload = JSON.stringify({ conversationId: SESSION, workspacePaths: [brokenWs] });
-  const script = `import { hookMain } from ${JSON.stringify(hookModuleUrl)}; hookMain('preinvocation');`;
-  const captured = execFileSync(
-    process.execPath,
-    ['--input-type=module', '-e', `
-      import { spawnSync } from 'node:child_process';
-      const r = spawnSync(process.execPath, ['--input-type=module', '-e', ${JSON.stringify(script)}], {
-        input: ${JSON.stringify(payload)},
-        env: { ...process.env, HOME: ${JSON.stringify(fakeHome)} },
-        encoding: 'utf8',
-      });
-      process.stdout.write(JSON.stringify({ status: r.status, stdout: r.stdout, stderr: r.stderr }));
-    `],
-    { encoding: 'utf8' },
-  );
-  const res = JSON.parse(captured);
+  const script = `import { hookMain } from ${JSON.stringify(hookModuleUrl)}; await hookMain('preinvocation');`;
+  const res = spawnSync(process.execPath, ['--no-warnings', '--input-type=module', '-e', script], {
+    input: payload,
+    env: { ...process.env, HOME: fakeHome },
+    encoding: 'utf8',
+  });
   assert.equal(res.status, 0);
   assert.equal(res.stdout, '{}\n');
   assert.equal(res.stdout.includes(fakeHome), false);
@@ -223,7 +216,7 @@ test('AG-02: CLI + App/IDE edit tools, PreInvocation 1-time claim & re-edit rese
   assert.ok(res.stderr.trim().length <= 240);
 });
 
-test('AG-03: C-2 /plan trigger, negative vectors, 2 MiB boundary, symlink/dir/FIFO guards, DB privacy, workspace plan clear', (t) => {
+test('AG-03: C-2 /plan trigger, negative vectors, 2 MiB boundary, symlink/dir/FIFO guards, DB privacy, workspace plan clear', async (t) => {
   const base = makeTempDir('ddg-ag03-');
   t.after(() => rmSync(base, { recursive: true, force: true }));
 
@@ -250,7 +243,7 @@ test('AG-03: C-2 /plan trigger, negative vectors, 2 MiB boundary, symlink/dir/FI
     { name: 'write_file', args: { Path: join(artDir, 'notes.md') } },
   ];
   for (const toolCall of ignoredCalls) {
-    assert.deepEqual(runAntigravityHook('posttooluse', {
+    assert.deepEqual(await runAntigravityHook('posttooluse', {
       conversationId: SESSION,
       workspacePaths: [ws],
       artifactDirectoryPath: artDir,
@@ -258,24 +251,24 @@ test('AG-03: C-2 /plan trigger, negative vectors, 2 MiB boundary, symlink/dir/FI
       error: '',
     }), {});
   }
-  assert.deepEqual(runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
+  assert.deepEqual(await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
 
   // Workspace implementation_plan.md is a normal workspace edit, NOT a C-2 plan sync notice
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     artifactDirectoryPath: artDir,
     toolCall: { name: 'write_file', args: { Path: join(ws, 'implementation_plan.md') } },
     error: '',
   });
-  const wsPlanPre = runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] });
+  const wsPlanPre = await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] });
   assert.equal(wsPlanPre.injectSteps?.length, 1);
   assert.match(wsPlanPre.injectSteps[0].systemMessage.systemMessage, /\[DOTDOTGOD IMPACT PENDING — ADVISORY\]/);
   assert.doesNotMatch(wsPlanPre.injectSteps[0].systemMessage.systemMessage, /PLAN SYNC/);
   new ImpactState(ws, SESSION).clearPaths(['implementation_plan.md']);
 
   // Valid C-2 write trigger on exact <artifactDirectoryPath>/implementation_plan.md
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     artifactDirectoryPath: artDir,
@@ -284,7 +277,7 @@ test('AG-03: C-2 /plan trigger, negative vectors, 2 MiB boundary, symlink/dir/FI
   });
   assert.equal(existsSync(join(ws, 'knowledge/plan')), false, 'hook must never write workspace files');
 
-  const pre1 = runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] });
+  const pre1 = await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] });
   assert.deepEqual(Object.keys(pre1), ['injectSteps']);
   assert.equal(pre1.injectSteps.length, 1);
   assert.equal('decision' in pre1, false);
@@ -309,18 +302,18 @@ test('AG-03: C-2 /plan trigger, negative vectors, 2 MiB boundary, symlink/dir/FI
   }
 
   // Unchanged save does NOT re-notify
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     artifactDirectoryPath: artDir,
     toolCall: { name: 'edit_file', args: { Path: planFile } },
     error: '',
   });
-  assert.deepEqual(runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
+  assert.deepEqual(await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
 
   // Updated save DOES re-notify, and writing <docRoot>/plan/**/*.md clears it without marking impact
   writeFileSync(planFile, '# Plan v2\n');
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     artifactDirectoryPath: artDir,
@@ -329,68 +322,68 @@ test('AG-03: C-2 /plan trigger, negative vectors, 2 MiB boundary, symlink/dir/FI
   });
   mkdirSync(join(ws, 'knowledge/plan/task-1'), { recursive: true });
   writeFileSync(join(ws, 'knowledge/plan/task-1/README.MD'), '# Saved plan\n');
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     artifactDirectoryPath: artDir,
     toolCall: { name: 'write_file', args: { Path: join(ws, 'knowledge/plan/task-1/README.MD') } },
     error: '',
   });
-  assert.deepEqual(runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
+  assert.deepEqual(await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
   assert.equal(new ImpactState(ws, SESSION).status().count, 0);
 
   // Size boundary: exact 2 MiB passes; 2 MiB + 1B rejects
   const exact2MiB = Buffer.alloc(2 * 1024 * 1024, 0x61);
   writeFileSync(planFile, exact2MiB);
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     artifactDirectoryPath: artDir,
     toolCall: { name: 'write_file', args: { Path: planFile } },
     error: '',
   });
-  const pre2MiB = runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] });
+  const pre2MiB = await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] });
   assert.equal(pre2MiB.injectSteps?.length, 1);
 
   const over2MiB = Buffer.alloc(2 * 1024 * 1024 + 1, 0x62);
   writeFileSync(planFile, over2MiB);
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     artifactDirectoryPath: artDir,
     toolCall: { name: 'write_file', args: { Path: planFile } },
     error: '',
   });
-  assert.deepEqual(runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
+  assert.deepEqual(await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
 
   // Symlink rejected
   const outsideTarget = join(base, 'outside.md');
   writeFileSync(outsideTarget, '# Secret\n');
   rmSync(planFile, { force: true });
   symlinkSync(outsideTarget, planFile);
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     artifactDirectoryPath: artDir,
     toolCall: { name: 'write_file', args: { Path: planFile } },
     error: '',
   });
-  assert.deepEqual(runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
+  assert.deepEqual(await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
 
   // Directory rejected
   rmSync(planFile, { force: true });
   mkdirSync(planFile);
-  runAntigravityHook('posttooluse', {
+  await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     artifactDirectoryPath: artDir,
     toolCall: { name: 'write_file', args: { Path: planFile } },
     error: '',
   });
-  assert.deepEqual(runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
+  assert.deepEqual(await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
 });
 
-test('AG-03 (POSIX): FIFO at artifact implementation_plan.md is rejected non-blocking in < 1s', { skip: process.platform === 'win32' }, (t) => {
+test('AG-03 (POSIX): FIFO at artifact implementation_plan.md is rejected non-blocking in < 1s', { skip: process.platform === 'win32' }, async (t) => {
   const base = makeTempDir('ddg-ag03-fifo-');
   t.after(() => rmSync(base, { recursive: true, force: true }));
   const ws = initWorkspace(join(base, 'repo'));
@@ -400,7 +393,7 @@ test('AG-03 (POSIX): FIFO at artifact implementation_plan.md is rejected non-blo
   execFileSync('mkfifo', [fifoPath]);
 
   const started = Date.now();
-  const out = runAntigravityHook('posttooluse', {
+  const out = await runAntigravityHook('posttooluse', {
     conversationId: SESSION,
     workspacePaths: [ws],
     artifactDirectoryPath: artDir,
@@ -411,5 +404,224 @@ test('AG-03 (POSIX): FIFO at artifact implementation_plan.md is rejected non-blo
 
   assert.deepEqual(out, {});
   assert.ok(elapsedMs < 1000, `FIFO check took ${elapsedMs}ms (expected < 1000ms)`);
-  assert.deepEqual(runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
+  assert.deepEqual(await runAntigravityHook('preinvocation', { conversationId: SESSION, workspacePaths: [ws] }), {});
+});
+
+function loadFixture(t) {
+  const base = makeTempDir('ddg-ag-load-');
+  t.after(() => rmSync(base, { recursive: true, force: true }));
+  return {
+    base,
+    workspace: (name, decision) => initWorkspace(join(base, name), { decision }),
+    pre: (workspacePaths, options) => runAntigravityHook('preinvocation', {
+      conversationId: SESSION, workspacePaths, lastUserInput: 'Review authentication', ...options,
+    }),
+  };
+}
+
+function decisionMessage(output) {
+  assert.deepEqual(Object.keys(output), ['injectSteps']);
+  assert.equal(output.injectSteps.length, 1);
+  const { systemMessage: { systemMessage } } = output.injectSteps[0];
+  assert.ok(Buffer.byteLength(systemMessage) <= 6144);
+  return systemMessage;
+}
+
+function captureStderr(t) {
+  const spy = t.mock.method(process.stderr, 'write', () => true);
+  return () => spy.mock.calls.map(({ arguments: [line] }) => line);
+}
+
+async function decisionServer(t, handler) {
+  const server = createServer(handler).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  return `http://127.0.0.1:${server.address().port}`;
+}
+
+test('AG-04: advisory, manual and invalid config add no trajectory step or load state', async (t) => {
+  const { workspace, pre } = loadFixture(t);
+  const stderr = captureStderr(t);
+  for (const mode of ['advisory', 'manual', 'sk-invalid-secret']) {
+    const ws = workspace('repo', { mode });
+    assert.deepEqual(await pre([ws]), {});
+    assert.equal(existsSync(join(ws, '.dotdotgod')), false);
+  }
+  assert.deepEqual(stderr(), ['dotdotgod decision: config_invalid\n']);
+});
+
+test('AG-04: always injects once, even without lastUserInput; opt-out does not consume state', async (t) => {
+  const { workspace, pre } = loadFixture(t);
+  const ws = workspace('always', { mode: 'always' });
+  const state = new ImpactState(ws, SESSION);
+  assert.deepEqual(await pre([ws], { lastUserInput: 'hello /dd:no-load' }), {});
+  assert.equal(existsSync(state.path), false);
+  assert.match(decisionMessage(await pre([ws], { lastUserInput: undefined })), /Recommended project_load.*baseline/);
+  assert.equal(state.getLoadState().notified, true);
+  assert.deepEqual(await pre([ws]), {});
+});
+
+test('AG-04: unsupported host claims once and only fallback always injects', async (t) => {
+  const { workspace, pre } = loadFixture(t);
+  const stderr = captureStderr(t);
+  for (const [index, fallback] of ['advisory', 'manual', 'always'].entries()) {
+    const ws = workspace(fallback, { mode: 'model', provider: 'host', fallback });
+    const state = new ImpactState(ws, SESSION);
+    assert.deepEqual(await pre([ws], { lastUserInput: undefined }), {});
+    assert.equal(existsSync(state.path), false);
+
+    const output = await pre([ws]);
+    if (fallback === 'always') assert.match(decisionMessage(output), /Recommended project_load.*baseline/);
+    else assert.deepEqual(output, {});
+    const claim = state.getLoadState();
+    assert.equal(claim.notified, true);
+    assert.equal(claim.loaded, false);
+    assert.deepEqual(await pre([ws]), {});
+    assert.deepEqual(state.getLoadState(), claim);
+    assert.deepEqual(stderr(), Array(index + 1).fill('dotdotgod decision: provider_unsupported_on_host\n'));
+  }
+});
+
+test('AG-05: model skips duplicate prompts and delivers bounded advice/prefetch only in the active workspace', async (t) => {
+  const calls = [];
+  const ref = 'docs/spec/AUTH.md';
+  const baseUrl = await decisionServer(t, async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const { model, messages } = JSON.parse(Buffer.concat(chunks));
+    const { excerpt } = JSON.parse(messages[1].content);
+    calls.push([req.url, model, excerpt]);
+    const load = excerpt === 'hello' ? { action: 'skip', focus: '' }
+      : model === 'advice' ? { action: 'focused', focus: 'Authentication ' + '한😀'.repeat(1800) }
+        : { action: 'full', focus: '' };
+    const content = JSON.stringify({ load, refs: model === 'advice' ? [ref] : [], reason: 'private model reasoning' });
+    res.end(JSON.stringify(req.url === '/api/chat' ? { message: { content } } : { choices: [{ message: { content } }] }));
+  });
+  const { base, workspace, pre } = loadFixture(t);
+  const adviceWs = workspace('advice', { mode: 'model', model: 'advice', baseUrl, provider: 'ollama' });
+  const prefetchWs = workspace('prefetch', { mode: 'model', model: 'prefetch', baseUrl, provider: 'openai-compatible', delivery: 'prefetch' });
+  const workspaces = [prefetchWs, adviceWs];
+  for (const ws of workspaces) {
+    mkdirSync(join(ws, 'docs/spec'), { recursive: true });
+    writeFileSync(join(ws, ref), '# Authentication\n');
+  }
+  const adviceState = new ImpactState(adviceWs, SESSION);
+  const prefetchState = new ImpactState(prefetchWs, SESSION);
+  assert.deepEqual(await pre(workspaces), {});
+  assert.deepEqual(await pre(workspaces, { cwd: base }), {});
+  for (const lastUserInput of [undefined, '', '  \n  ']) {
+    assert.deepEqual(await pre(workspaces, { cwd: adviceWs, lastUserInput }), {});
+  }
+  assert.deepEqual(calls, []);
+  assert.equal(existsSync(adviceState.path), false);
+  assert.equal(existsSync(prefetchState.path), false);
+
+  for (const [ws, state] of [[adviceWs, adviceState], [prefetchWs, prefetchState]]) {
+    const active = { cwd: join(ws, 'src') };
+    assert.deepEqual(await pre(workspaces, { ...active, lastUserInput: 'hello' }), {});
+    assert.deepEqual(await pre(workspaces, { ...active, lastUserInput: 'hello' }), {});
+    assert.equal(state.getLoadState().skipCount, 1);
+
+    const message = decisionMessage(await pre(workspaces, { ...active, lastUserInput: 'check authentication' }));
+    assert.match(message, /AUTH\.md/);
+    assert.doesNotMatch(message, /private model reasoning|\uFFFD/);
+    if (ws === adviceWs) {
+      assert.match(message, /Recommended project_load focus: "Authentication /);
+      assert.ok(Buffer.byteLength(message) > 6100, 'oversized advice should exercise the byte cap');
+      assert.equal(existsSync(prefetchState.path), false);
+    } else {
+      assert.match(message, /instructionAuthority: "none"/);
+      assert.match(message, /\n(`{3,})text\n[\s\S]*\n\1$/);
+    }
+    assert.equal(state.getLoadState().loaded, ws === prefetchWs);
+    assert.deepEqual(await pre(workspaces, { ...active, lastUserInput: 'follow up' }), {});
+  }
+  assert.deepEqual(calls, [
+    ['/api/chat', 'advice', 'hello'],
+    ['/api/chat', 'advice', 'check authentication'],
+    ['/chat/completions', 'prefetch', 'hello'],
+    ['/chat/completions', 'prefetch', 'check authentication'],
+  ]);
+
+  adviceState.mark(['src/a.ts']);
+  prefetchState.recordPlanNotice('pending-plan');
+  const { injectSteps } = await pre(workspaces); // Ambiguous for load, not for impact or plan sync.
+  assert.equal(injectSteps.length, 2);
+  assert.match(injectSteps[0].systemMessage.systemMessage, /PLAN SYNC/);
+  assert.match(injectSteps[1].systemMessage.systemMessage, /IMPACT PENDING/);
+  assert.deepEqual(await pre(workspaces), {});
+});
+
+test('AG-05: short injected budget times out and keeps advisory fallback silent', { timeout: 4000 }, async (t) => {
+  let attempts = 0;
+  const baseUrl = await decisionServer(t, (_req, res) => {
+    attempts++;
+    const content = JSON.stringify({ load: { action: 'full', focus: '' }, refs: [], reason: '' });
+    const timer = setTimeout(() => res.end(JSON.stringify({ message: { content } })), 1500);
+    res.once('close', () => clearTimeout(timer));
+  });
+  const { workspace, pre } = loadFixture(t);
+  const ws = workspace('slow', { mode: 'model', provider: 'ollama', baseUrl, model: 'slow', timeoutMs: 15_000 });
+  const stderr = captureStderr(t);
+  assert.deepEqual(await pre([ws], { __testBudgetMs: 250 }), {});
+  assert.equal(attempts, 1);
+  assert.equal(new ImpactState(ws, SESSION).getLoadState().loaded, false);
+  assert.deepEqual(stderr(), ['dotdotgod decision: request_timeout\n']);
+  assert.deepEqual(await pre([ws]), {});
+  assert.equal(attempts, 1);
+});
+
+test('AG-06: only successful allowlisted project_load calls mark the selected initialized workspace', async (t) => {
+  const { base, workspace, pre } = loadFixture(t);
+  const ws = workspace('repo', { mode: 'always' });
+  const other = workspace('other', { mode: 'always' });
+  const uninitialized = join(base, 'empty');
+  mkdirSync(uninitialized);
+  const workspaces = [ws, other, uninitialized];
+  const wrapper = { name: 'call_mcp_tool', args: { ServerName: 'dotdotgod_context', ToolName: 'project_load', Arguments: { root: ws } } };
+  const direct = { name: 'mcp__dotdotgod_context__project_load' };
+  const post = (toolCall, options) => runAntigravityHook('posttooluse', {
+    conversationId: SESSION, workspacePaths: workspaces, toolCall, ...options,
+  });
+  await post(wrapper, { toolResponse: { structuredContent: { ok: false } } });
+  await post({ ...wrapper, args: { ...wrapper.args, ServerName: 'external_context' } });
+  await post({ name: 'mcp__external_context__project_load', args: { root: ws } });
+  await post(direct); // Ambiguous: neither root nor cwd is known.
+  await post({ ...direct, args: { root: uninitialized } }, { cwd: ws });
+  for (const root of workspaces) assert.equal(existsSync(join(root, '.dotdotgod')), false);
+
+  assert.deepEqual(await post(wrapper, { cwd: other }), {});
+  assert.equal(new ImpactState(ws, SESSION).getLoadState().loaded, true);
+  assert.equal(existsSync(join(other, '.dotdotgod')), false);
+  assert.deepEqual(await pre(workspaces, { cwd: ws }), {});
+
+  assert.deepEqual(await post(direct, { toolResponse: { structuredContent: { ok: true, root: other } } }), {});
+  assert.equal(new ImpactState(other, SESSION).getLoadState().loaded, true);
+  assert.deepEqual(await pre(workspaces, { cwd: other }), {});
+
+  const alias = { name: 'mcp__dotdotgod-context__project_load' };
+  assert.deepEqual(await post(alias, { workspacePaths: [other], conversationId: 'another-session' }), {});
+  assert.equal(new ImpactState(other, 'another-session').getLoadState().loaded, true);
+});
+
+test('AG-06 (F1): uninitialized workspaces stay silent with a global model profile', async (t) => {
+  const { base, pre } = loadFixture(t);
+  const home = join(base, 'home');
+  const ws = join(base, 'uninitialized');
+  mkdirSync(join(home, '.dotdotgod'), { recursive: true });
+  mkdirSync(ws);
+  const previousHome = process.env.HOME;
+  process.env.HOME = home;
+  t.after(() => { if (previousHome === undefined) delete process.env.HOME; else process.env.HOME = previousHome; });
+  writeFileSync(join(home, '.dotdotgod/config.json'), JSON.stringify({
+    decision: { mode: 'model', provider: 'host', fallback: 'always' },
+  }));
+  const stderr = captureStderr(t);
+  assert.deepEqual(await pre([ws], { cwd: ws }), {});
+  assert.deepEqual(stderr(), []);
+  assert.equal(existsSync(join(ws, '.dotdotgod')), false);
+
+  mkdirSync(join(ws, '.dotdotgod'));
+  assert.match(decisionMessage(await pre([ws], { cwd: ws })), /Recommended project_load.*baseline/);
+  assert.deepEqual(stderr(), ['dotdotgod decision: provider_unsupported_on_host\n']);
 });

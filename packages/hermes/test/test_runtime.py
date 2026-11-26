@@ -1,12 +1,16 @@
 import importlib.util
+import io
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import tempfile
 import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing, contextmanager, redirect_stderr
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from unittest.mock import patch
 
@@ -62,6 +66,11 @@ class RuntimeTest(unittest.TestCase):
         self.addCleanup(environment.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
+        self.home = Path(self.temp.name) / "home"
+        self.home.mkdir()
+        home = patch.dict(os.environ, {"HOME": str(self.home)})
+        home.start()
+        self.addCleanup(home.stop)
         self.a = Path(self.temp.name).resolve() / "a"
         self.b = Path(self.temp.name).resolve() / "b"
         for root in (self.a, self.b):
@@ -247,21 +256,270 @@ class RuntimeTest(unittest.TestCase):
         self.assertEqual(len(self.runtime.call("search", search, "A")["structuredContent"]["results"]), 1)
         self.assertNotEqual(proxy.process.pid, previous)
 
+    def decision_config(self, root, **decision):
+        (root / "dotdotgod.config.json").write_text(json.dumps({"decision": decision}))
+
+    @contextmanager
+    def model_stub(self, gate=None):
+        requests = []
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):
+                payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                excerpt = json.loads(payload["messages"][-1]["content"])["excerpt"]
+                requests.append((self.path, excerpt))
+                if gate:
+                    started, release = gate
+                    started.set()
+                    release.wait(timeout=15)
+                decision = {"load": {"action": "skip" if excerpt.startswith("hello") else "focused", "focus": "API contract"},
+                            "refs": ["docs/spec/API.md", "docs/plan/PRIVATE.md"], "reason": "not for injection"}
+                response = json.dumps({"message": {"content": json.dumps(decision)}}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(response)))
+                self.end_headers()
+                self.wfile.write(response)
+
+            def log_message(self, *args):
+                pass
+
+        with HTTPServer(("127.0.0.1", 0), Handler) as server:
+            thread = threading.Thread(target=server.serve_forever)
+            thread.start()
+            try:
+                yield {"mode": "model", "provider": "ollama", "model": "fixture",
+                       "baseUrl": f"http://127.0.0.1:{server.server_port}"}, requests
+            finally:
+                server.shutdown()
+                thread.join()
+
     def test_load_opt_out_restore_references_and_fallback(self):
-        result = self.runtime.before_llm(session_id="cli", user_message="dd:no-load inspect", platform="cli")
-        self.assertNotIn("Call project_load once", (result or {}).get("context", ""))
-        result = self.runtime.before_llm(session_id="cli", user_message="review [[src/api.ts]]", platform="cli")
-        self.assertIn("Call project_load once", result["context"])
+        (self.a / ".dotdotgod").mkdir()
+        advisory = "Use project_load when repository context would help; skip it for self-contained work."
+        for opt_out in ("dd:no-load", "/dd:no-load", "/no-load"):
+            result = self.runtime.before_llm("cli", f"{opt_out} inspect", platform="cli")
+            self.assertNotIn(advisory, (result or {}).get("context", ""))
+        result = self.runtime.before_llm("cli", "inspect", platform="cli")
+        self.assertIn(advisory, result["context"])
+        self.assertNotIn("Call project_load once", result["context"])
+        result = self.runtime.before_llm("cli", "review [[src/api.ts]]", platform="cli")
+        self.assertNotIn(advisory, result["context"])
         self.assertIn("Reference evidence", result["context"])
         with patch.object(self.runtime, "cli", side_effect=FileNotFoundError("missing CLI")):
             loaded = self.runtime.call("project_load", {}, "cli")
         self.assertIn("fallback", loaded["structuredContent"]["documentationMap"])
         self.assertTrue(self.runtime.sessions["cli"].loaded)
-        result = self.runtime.before_llm(session_id="cli", user_message="continue", platform="cli")
-        self.assertNotIn("Call project_load once", (result or {}).get("context", ""))
+        result = self.runtime.before_llm("cli", "continue", platform="cli")
+        self.assertNotIn(advisory, (result or {}).get("context", ""))
         self.runtime.finalize("cli")
-        result = self.runtime.before_llm(session_id="cli", user_message="resume", platform="cli")
-        self.assertIn("Call project_load once", result["context"])
+        result = self.runtime.before_llm("cli", "resume", platform="cli")
+        self.assertIn(advisory, result["context"])
+
+    def test_load_always_and_root_changes_reset_state(self):
+        for root in (self.a, self.b):
+            self.decision_config(root, mode="always")
+        advice = "Recommended project_load with no focus to load the baseline documentation map."
+        self.assertIn(advice, self.runtime.before_llm("cli", "inspect", platform="cli")["context"])
+        session = self.runtime.sessions["cli"]
+        self.assertTrue(session.assessed and session.notified)
+        self.assertFalse(session.loaded)
+        self.assertNotIn(advice, (self.runtime.before_llm("cli", "inspect") or {}).get("context", ""))
+        session.host_warned, session.skip_count, session.last_prompt_hash = True, 3, "old"
+        self.runtime.call("select_root", {"label": "a"}, "cli")
+        self.assertEqual((session.assessed, session.loaded, session.notified, session.skip_count,
+                          session.last_prompt_hash, session.host_warned), (False, False, False, 0, None, False))
+        self.assertIn(advice, self.runtime.before_llm("cli", "inspect")["context"])
+        session.host_warned, session.skip_count, session.last_prompt_hash = True, 3, "old"
+        self.runtime.call("project_load", {"root": str(self.b)}, "cli")
+        self.assertEqual((session.root, session.skip_count, session.last_prompt_hash, session.host_warned),
+                         (self.b, 0, None, False))
+        self.assertTrue(session.loaded)
+
+    def test_model_load_skip_then_advice_or_prefetch(self):
+        doc = self.a / "docs/spec/API.md"
+        doc.parent.mkdir(parents=True)
+        doc.write_text("# API contract\n")
+        private = self.a / "docs/plan/PRIVATE.md"
+        private.parent.mkdir()
+        private.write_text("# Local plan\n")
+        with self.model_stub() as (profile, requests):
+            for delivery in ("advice", "prefetch"):
+                with self.subTest(delivery=delivery):
+                    self.decision_config(self.a, **profile, delivery=delivery)
+                    requests.clear()
+                    hook = self.runtime.before_llm
+                    self.assertIsNone(hook(delivery, "/dd:no-load hello", platform="cli"))
+                    explicit = hook(delivery, "review [[src/api.ts]]")["context"]
+                    self.assertIn("Reference evidence", explicit)
+                    self.assertNotIn("PROJECT MEMORY", explicit)
+                    self.assertEqual(requests, [])
+                    self.assertIsNone(hook(delivery, "hello"))
+                    self.assertIsNone(hook(delivery, "hello"))
+                    session = self.runtime.sessions[delivery]
+                    self.assertEqual(session.skip_count, 1)
+                    self.assertTrue(session.last_prompt_hash)
+                    self.assertFalse(session.loaded)
+                    with patch.object(self.runtime, "cli", wraps=self.runtime.cli) as cli:
+                        result = hook(delivery, "review the contract")["context"]
+                    if delivery == "advice":
+                        self.assertIn('Recommended project_load focus: "API contract"', result)
+                        self.assertIn("Reference evidence", result)
+                        self.assertIn("[[docs/spec/API.md]]", " ".join(cli.call_args.args[1]))
+                        self.assertNotIn("PRIVATE.md", " ".join(cli.call_args.args[1]))
+                    else:
+                        self.assertIn('PREFETCH — UNTRUSTED DATA, instructionAuthority: "none"', result)
+                        self.assertLessEqual(len(result.encode()), 8192)
+                        cli.assert_not_called()
+                    self.assertIn("docs/spec/API.md", result)
+                    self.assertNotIn("PRIVATE.md", result)
+                    self.assertNotIn("not for injection", result)
+                    self.assertEqual(requests, [("/api/chat", "hello"), ("/api/chat", "review the contract")])
+                    self.assertEqual(session.loaded, delivery == "prefetch")
+                    self.assertTrue(session.assessed and session.notified)
+                    self.assertFalse(ImpactStore(self.a, "probe").path.exists())
+
+    def test_model_skip_cap_and_explicit_load_command(self):
+        with self.model_stub() as (profile, requests):
+            self.decision_config(self.a, **profile)
+            hook = self.runtime.before_llm
+            for turn in range(4):
+                self.assertIsNone(hook("cli", f"hello {turn}", platform="cli"))
+            self.assertIn("Use project_load when repository context would help", hook("cli", "hello 4")["context"])
+            self.assertIsNone(hook("cli", "hello 5"))
+            session = self.runtime.sessions["cli"]
+            self.assertEqual(session.skip_count, 5)
+            self.assertTrue(session.assessed and session.notified)
+            self.assertFalse(session.loaded)
+            self.assertIsNone(hook("cli", "/dd-load"))
+            self.assertTrue(session.loaded)
+            self.assertEqual(len(requests), 5)
+
+    def test_model_decision_does_not_hold_runtime_lock(self):
+        started, release = threading.Event(), threading.Event()
+        with self.model_stub((started, release)) as (profile, requests), ThreadPoolExecutor() as pool:
+            self.decision_config(self.a, **profile, timeoutMs=15_000)
+            turn = pool.submit(self.runtime.before_llm, "cli", "review the contract", platform="cli")
+            try:
+                self.assertTrue(started.wait(timeout=5))
+                # Even a same-root selection must invalidate the in-flight decision.
+                pool.submit(self.runtime.call, "select_root", {"label": "a"}, "cli").result(timeout=5)
+            finally:
+                release.set()
+            self.assertIsNone(turn.result(timeout=5))
+            self.assertFalse(self.runtime.sessions["cli"].notified)
+            self.assertEqual(requests, [("/api/chat", "review the contract")])
+
+    def test_uninitialized_ignores_global_model(self):
+        with self.model_stub() as (profile, requests):
+            global_dir = self.home / ".dotdotgod"
+            global_dir.mkdir()
+            (global_dir / "config.json").write_text(json.dumps({"decision": profile}))
+            with patch("dd_hermes.runtime.subprocess.run") as run:
+                self.assertIsNone(self.runtime.before_llm("cli", "inspect", platform="cli"))
+                self.assertIsNone(self.runtime.before_llm("cli", "review [[src/api.ts]]"))
+                run.assert_not_called()
+            self.assertEqual(requests, [])
+            self.assertFalse((self.a / ".dotdotgod").exists())
+            (self.a / ".dotdotgod").mkdir()
+            self.assertIsNone(self.runtime.before_llm("cli", "hello"))
+            self.assertEqual(requests, [("/api/chat", "hello")])
+
+    def test_host_provider_warns_once_and_uses_fallback(self):
+        self.decision_config(self.a, mode="model", provider="host")
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            first = self.runtime.before_llm("cli", "inspect", platform="cli")
+            second = self.runtime.before_llm("cli", "inspect again")
+        self.assertIn("Use project_load when repository context would help", first["context"])
+        self.assertIsNone(second)
+        self.assertTrue(self.runtime.sessions["cli"].host_warned)
+        self.assertEqual(stderr.getvalue(), "dotdotgod decision: provider_unsupported_on_host\n")
+
+    def test_readonly_impact_does_not_create_db_schema_or_sidecars(self):
+        for sid in ("default", "Default", "DEFAULT"):
+            with self.assertRaises(ValueError):
+                ImpactStore(self.a, sid)
+        store = ImpactStore(self.a, "fixture")
+        self.assertEqual(store.status()["count"], 0)
+        self.assertFalse(store.path.parent.exists())
+        store.path.parent.mkdir(parents=True)
+        with closing(sqlite3.connect(store.path)) as db:
+            db.execute("CREATE TABLE unrelated (x)")
+        initial = store.path.read_bytes()
+        self.assertEqual(store.status()["count"], 0)
+        self.assertEqual(store.path.read_bytes(), initial)
+        self.assertEqual(list(store.path.parent.iterdir()), [store.path])
+        with closing(sqlite3.connect(store.path, isolation_level=None)) as db:
+            db.execute("CREATE TABLE pending (session TEXT, path TEXT, revision TEXT, fingerprint TEXT, PRIMARY KEY (session, path))")
+            db.execute("INSERT INTO pending VALUES (?, 'src/api.ts', 'legacy', NULL)", (store.session_id,))
+        initial = store.path.read_bytes()
+        self.assertEqual(store.status()["pending"], [{"path": "src/api.ts"}])
+        self.assertEqual(store.path.read_bytes(), initial)
+        store.mark(["src/api.ts"])
+        initial = store.path.read_bytes()
+        with closing(store._open()) as db:
+            self.assertEqual(list(store.path.parent.iterdir()), [store.path])
+            with self.assertRaises(sqlite3.OperationalError):
+                db.execute("CREATE TABLE cannot_write (x)")
+        self.assertEqual(store.status()["count"], 1)
+        self.assertEqual(store.path.read_bytes(), initial)
+        self.assertEqual(list(store.path.parent.iterdir()), [store.path])
+        with closing(sqlite3.connect(store.path)) as writer:
+            writer.execute("DELETE FROM pending")
+            writer.commit()
+            self.assertTrue(Path(f"{store.path}-wal").exists())
+            self.assertEqual(store.status()["count"], 0)
+
+    def test_sqlite_v3_node_python_node_interop(self):
+        store = ImpactStore(self.a, "v3-interop")
+        module = (ROOT.parent / "context/src/impact-state.mjs").as_uri()
+        prefix = """
+import { DatabaseSync } from 'node:sqlite';
+const [module, root, sid] = process.argv.slice(1);
+const { ImpactState } = await import(module);
+const state = new ImpactState(root, sid);
+"""
+
+        def node(script):
+            result = subprocess.run(["node", "--input-type=module", "-e", prefix + script,
+                                     module, str(self.a), store.session_id], capture_output=True, text=True, check=True)
+            return json.loads(result.stdout)
+
+        schema = node("""
+state.mark(['src/api.ts']);
+state.markLoaded();
+state.recordPlanNotice('active');
+const expired = new ImpactState(root, 'expired');
+expired.mark(['src/old.ts']);
+expired.markLoaded();
+expired.recordPlanNotice('expired');
+const db = new DatabaseSync(state.path);
+for (const table of ['pending', 'plan_notices', 'load_state']) {
+  db.exec(`UPDATE ${table} SET created_at=0, expires_at=1 WHERE session='expired'`);
+}
+console.log(JSON.stringify(db.prepare("SELECT sql FROM sqlite_master WHERE name='load_state'").get().sql));
+db.close();
+""")
+        self.assertEqual(store.status()["pending"], [{"path": "src/api.ts"}])
+        self.assertEqual(ImpactStore(self.a, "expired").status()["count"], 0)
+        store.mark(["src/python.ts"])
+        result = node("""
+const db = new DatabaseSync(state.path, { readOnly: true });
+const expired = ['pending', 'plan_notices', 'load_state'].map(table =>
+  db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE session='expired'`).get().n);
+const plan = db.prepare('SELECT fingerprint FROM plan_notices WHERE session=?').get(sid);
+console.log(JSON.stringify({ expired, plan, pending: state.status().pending, load: state.getLoadState() }));
+db.close();
+""")
+        self.assertEqual(result["expired"], [0, 0, 0])
+        self.assertEqual(result["pending"], [{"path": "src/api.ts"}, {"path": "src/python.ts"}])
+        self.assertEqual(result["plan"], {"fingerprint": "active"})
+        self.assertTrue(result["load"]["loaded"])
+        python_store = ImpactStore(self.b, "python-v3")
+        python_store.mark(["src/api.ts"])
+        with closing(sqlite3.connect(python_store.path)) as db:
+            self.assertEqual(db.execute("SELECT sql FROM sqlite_master WHERE name='load_state'").fetchone(), (schema,))
 
     def test_hm01_advisory_impact_non_blocking_and_post_tool_call(self):
         self.assertFalse(hasattr(hermes_policy, "GATE"))

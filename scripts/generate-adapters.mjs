@@ -73,14 +73,8 @@ function renderInitBody(platform) {
     .replace(/^3\. The POSIX fallback.*$/m, '3. Use bundled scripts only as an explicit fallback when MCP is unavailable. Custom templates require the CLI; do not silently substitute a bundled template.');
 }
 
-function renderLoadBody(platform) {
-  if (platform === "pi") return loadBody;
-  if (platform === "opencode") return loadBody
-    .replace(/^3\. Without arguments,.*$/m, '3. Without arguments, call the shared MCP project_load tool with an empty focus and maxDepth 5. Its configured map owns documentation-root resolution, exclusions and boundary summaries.')
-    .replace(/^4\. With arguments,.*$/m, '4. With arguments, call project_load with the arguments as focus, limit 30 and maxDepth 3. It returns the configured map plus documentation/code query results and retrieval warnings.');
-  const configGuidance = `## CLI Context\n\nRun \`dotdotgod map <root> --depth 5 --json\` for a broad documentation map. With focus text, run \`dotdotgod query <root> "<focus>" --limit 30 --json\` and \`dotdotgod map <root> --depth 3 --json\`. The map command resolves the configured documentation root and exclusions. If the CLI is unavailable, continue from the documentation tree and README indexes.`;
-  return `${configGuidance}\n\n${loadBody}`;
-}
+const openCodeLoadBody = loadBody.replace(/^5\. If MCP is unavailable.*$/m,
+  '5. If MCP is unavailable or project_load reports mapUnavailable, continue with README routing.');
 
 function renderPlanBody(platform) {
   if (platform === "pi") return planBody;
@@ -144,7 +138,7 @@ write(
     `description: Load dotdotgod project memory for the current repository\nargument-hint: [optional focus]\nallowed-tools: [Read, Glob, Grep, Bash]`,
     "/dd:load - Load Project Memory",
     "Load project memory without modifying source, documentation, or project config; focused query may refresh ignored caches.\n\nUser focus, if provided: `$ARGUMENTS`",
-    renderLoadBody("claude"),
+    loadBody,
   ),
 );
 write(
@@ -179,7 +173,7 @@ write(
   skill(
     `name: project-load\ndescription: Use this skill when the user asks Claude Code to load, refresh, inspect, summarize, or resume a repository's dotdotgod project memory; when starting unfamiliar work; or when a dd:load style project context pass is requested.\nversion: 1.0.0`,
     "Project Load",
-    renderLoadBody("claude"),
+    loadBody,
   ),
 );
 write(
@@ -219,7 +213,7 @@ write(
   skill(
     `name: project-load\ndescription: Load and summarize the current repository's dotdotgod project memory. Use when the user asks Codex to load, refresh, inspect, summarize, or resume project context; when switching repositories; when starting unfamiliar work; or when a dd:load style project memory pass is requested.`,
     "Project Load",
-    renderLoadBody("codex"),
+    loadBody,
   ),
 );
 write(
@@ -256,7 +250,7 @@ copyDirectory("packages/shared/initializer/references", "packages/codex/skills/p
 
 for (const [name, title, body] of [
   ["project-initializer", "Project Initializer", renderInitBody("hermes")],
-  ["project-load", "Project Load", renderLoadBody("hermes")],
+  ["project-load", "Project Load", loadBody],
   ["impact-review", "Impact Review", impactBody],
 ]) {
   const routing = "Use the operator-authorized selected repository. Prefer project_initialize, project_load and project_impact from the dotdotgod toolset for their respective workflows. Context tools use the shared MCP catalog names without adapter aliases; inspect content, structuredContent and isError. Pending impact is advisory and never blocks tools; preserve host permissions. Hermes native delegate_task handles delegation; this adapter has no Plan Mode.";
@@ -275,13 +269,13 @@ const opencodeImpactBody = impactBody
   .replace('All adapters use this advisory workflow without blocking tools; trusted local hooks may optionally enforce a stricter project boundary.', 'OpenCode tracks observed edits per session; pending impact is advisory and never blocks tools.')
   .replace(/2\. Call the host-registered project_impact[\s\S]*?(?=\n3\. Review)/, '2. Call the shared MCP project_impact tool with up to twenty unique paths in first-seen order. Split larger sets into ordered batches of twenty. Inspect isError and structuredContent; only successful reviews of covered unchanged revisions clear pending state. Failures, cancellation and concurrent re-edits retain pending. When MCP is unavailable, follow README indexes, traceability, package metadata and focused search without claiming pending was cleared.');
 for (const [id, title, body, description] of [
-  ['project-load', 'Project Load', renderLoadBody('opencode'), 'Load or refresh project memory and focused documentation/code search.'],
+  ['project-load', 'Project Load', openCodeLoadBody, 'Load or refresh project memory and focused documentation/code search.'],
   ['doc-first-planning', 'Doc-First Planning', renderPlanBody('opencode'), 'Plan implementation from maintained docs with the native plan agent.'],
   ['project-initializer', 'Project Initializer', renderInitBody('opencode'), 'Initialize shared project memory, documentation indexes and configuration.'],
   ['impact-review', 'Impact Review', opencodeImpactBody, 'Review changed files and related docs/tests using graph impact.'],
 ]) write(`packages/opencode/skills/${id}/SKILL.md`, skill(`name: ${id}\ndescription: ${description}`, title, `${opencodeRouting}\n\n${body}`));
 for (const [id, title, body] of [
-  ['load', 'Load project memory', renderLoadBody('opencode')],
+  ['load', 'Load project memory', openCodeLoadBody],
   ['init', 'Initialize project memory', renderInitBody('opencode')],
   ['impact', 'Review changed-file impact', opencodeImpactBody],
 ]) write(`packages/opencode/commands/${id}.md`, command(`description: ${title}`, title, `${opencodeRouting}\n\nUser arguments: $ARGUMENTS`, body));
@@ -290,7 +284,7 @@ copyFile('LICENSE', 'packages/opencode/LICENSE');
 
 const antigravityRouting = 'Use the `dotdotgod_context` MCP server for project load, initialization, graph impact, execution, and indexed retrieval. Discover its exact host-qualified tool names and inspect `isError` and `structuredContent`. Pending impact is advisory and never blocks edits, tests, builds, commits, or other tools. Preserve host permissions and native `/plan` approval gates; never bypass restrictions through MCP or hooks.';
 for (const [id, title, body, description] of [
-  ['dd-load', 'Project Load', renderLoadBody('antigravity'), 'Load or refresh repository dotdotgod project memory and focused search. Use for /dd-load or dd:load requests.'],
+  ['dd-load', 'Project Load', loadBody, 'Load or refresh repository dotdotgod project memory and focused search. Use for /dd-load or dd:load requests.'],
   ['dd-init', 'Project Initializer', renderInitBody('antigravity'), 'Initialize or normalize shared project memory and dotdotgod.config.json. Use for /dd-init or dd:init requests.'],
   ['dd-impact', 'Impact Review', impactBody, 'Review changed files with dotdotgod graph impact before verification or handoff. Use for /dd-impact or dd:impact requests.'],
 ]) write(`packages/antigravity/skills/${id}/SKILL.md`, skill(`name: ${id}\ndescription: ${description}`, title, `${antigravityRouting}\n\n${body}`));

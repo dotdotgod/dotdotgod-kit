@@ -3,6 +3,7 @@ import { registerResources } from './resources.mjs';
 import { registerMcp } from './mcp.mjs';
 import { registerPlan } from './plan.mjs';
 import { registerImpact } from './impact.mjs';
+import { registerLoad } from './load.mjs';
 
 export default {
   id: 'dotdotgod',
@@ -13,5 +14,6 @@ export default {
     await registerMcp(ctx, root);
     await registerPlan(ctx, root);
     await registerImpact(ctx, root);
+    await registerLoad(ctx, root);
   },
 };

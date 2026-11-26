@@ -34,9 +34,10 @@ Create dotdotgod.config.json from a bundled or user template. Without --template
   dotdotgod status <root> [--json]`;
     case 'query':
       return `Usage:
-  dotdotgod query <root> <query> [--limit n] [--scope docs|code|all] [--search hybrid|keyword|vector] [--json]
+  dotdotgod query <root> <query> [--limit n] [--scope docs|code|all|shared] [--search hybrid|keyword|vector] [--no-write] [--json]
+  dotdotgod query <root> [options] -- <query>
 
-Search full documentation and code outlines/comments. Default: hybrid docs+code. Selecting a remote embedding profile authorizes code metadata transmission.`;
+Search full documentation and code outlines/comments. Default: hybrid docs+code. Use --no-write for keyword search without updating caches, and --scope shared to exclude local memory. Selecting a remote embedding profile authorizes code metadata transmission.`;
     case 'embedding':
       return `Usage:
   dotdotgod embedding status [<root>] [--json]
@@ -55,7 +56,9 @@ Render the configured shared Markdown documentation map without modifying the pr
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]`;
     case 'expand':
       return `Usage:
-  dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]`;
+  dotdotgod expand <root> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--scope shared|all] [--no-write] [--json] [--] <prompt>
+
+Use --no-write to read an existing index without refreshing it; incompatible with --with-impact.`;
     case 'traceability':
       return `Usage:
   dotdotgod traceability links <root> [--check|--write] [--json]`;
@@ -134,7 +137,11 @@ export function isHelpToken(value) {
 }
 
 export function hasHelpToken(argv) {
-  return argv.some((arg) => isHelpToken(arg));
+  for (const arg of argv) {
+    if (arg === '--') break;
+    if (isHelpToken(arg)) return true;
+  }
+  return false;
 }
 
 export function isVersionToken(value) {

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { once } from 'node:events';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -7,7 +9,7 @@ import plugin from '../src/index.mjs';
 import { planGuidance, redirectPlanPermissions, registerPlan, rewritePlanReminder } from '../src/plan.mjs';
 import { editedPaths } from '../src/impact.mjs';
 import { registerMcp } from '../src/mcp.mjs';
-import { ImpactState } from '../mcp/impact-state.mjs';
+import { ImpactState } from '../../context/src/impact-state.mjs';
 
 const reminder = `You are in Plan mode. Discuss the plan with the user directly in the conversation. Do not create or update plan files unless the user explicitly asks you to; when they do, write them only in:\n${homedir()}/.opencode/plan\nYou remain in Plan mode until the user switches agents. If the user asks you to implement changes, do not do so. Tell them they need to switch agents.`;
 const nativeRules = () => [{ action: 'edit', resource: '*', effect: 'deny' }, { action: 'edit', resource: join(homedir(), '.opencode/plan/*'), effect: 'allow' }];
@@ -100,6 +102,7 @@ test('plugin registers three commands, four skills, Code Mode MCP, advisory trac
       tool: { transform: async fn => fn({ list: () => [mcp], update: (_id, fn) => fn(mcp) }), hook: async (name, fn) => (hooks[name] ??= []).push(fn) },
       permission: { assert: async value => checked.push(value) },
     };
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({ decision: { mode: 'manual' } }));
     await plugin.setup(ctx);
     assert.deepEqual(commands.map(command => command.name), ['dd:load', 'dd:init', 'dd:impact']);
     assert.equal(skills.length, 4);
@@ -133,4 +136,161 @@ test('plugin registers three commands, four skills, Code Mode MCP, advisory trac
     for (const hook of hooks.context) await hook(unsupported);
     assert.match(unsupported.system[0].text, /COMPATIBILITY/);
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+async function loadFixture(t, execute = async input => ({ structuredContent: { ok: true, sessionId: input.contextSessionId } })) {
+  const dir = mkdtempSync(join(tmpdir(), 'opencode-load-'));
+  const root = join(dir, 'project');
+  const home = join(dir, 'home');
+  mkdirSync(root);
+  mkdirSync(home);
+  const homeVar = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
+  const previousHome = process.env[homeVar];
+  process.env[homeVar] = home;
+  t.after(() => {
+    if (previousHome === undefined) delete process.env[homeVar];
+    else process.env[homeVar] = previousHome;
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const hooks = {};
+  const hook = async (name, fn) => (hooks[name] ??= []).push(fn);
+  const tool = { id: 'dotdotgod_context_project_load', execute };
+  await plugin.setup({
+    app: { version: '2.2.0' }, location: { directory: root, project: { directory: root } },
+    command: { transform: async () => {} }, skill: { transform: async () => {} }, mcp: { transform: async () => {} },
+    session: { hook, get: async ({ sessionID }) => {
+      assert.ok(sessionID && sessionID !== 'default' && sessionID !== '../invalid', 'invalid session must not reach host lookup');
+      return { location: { directory: sessionID === 'foreign' ? dir : root } };
+    } },
+    tool: { hook, transform: async fn => fn({ list: () => [tool], update: (_id, fn) => fn(tool) }) },
+  });
+  const context = async (content, sessionID = 'local', otherMessages = []) => {
+    const event = { sessionID, agent: 'build', messages: [...otherMessages, { role: 'user', content }, { role: 'assistant', content: 'assistant tail' }], system: [] };
+    for (const fn of hooks.context) await fn(event);
+    return event.system.map(part => { assert.equal(part.type, 'text'); return part.text; });
+  };
+  const after = async (sessionID, status = 'completed', name = tool.id) => {
+    for (const fn of hooks['execute.after']) await fn({ sessionID, status, tool: name, input: { path: 'a.ts' } });
+  };
+  const config = (decision, file = join(root, 'dotdotgod.config.json')) => writeFileSync(file, JSON.stringify({ decision }));
+  const state = (sessionID = 'local') => new ImpactState(root, sessionID);
+  return { root, home, config, state, context, after, tool };
+}
+
+async function modelStub(t, decide) {
+  const excerpts = [];
+  const server = createServer(async (request, response) => {
+    let body = '';
+    for await (const chunk of request) body += chunk;
+    const { excerpt } = JSON.parse(JSON.parse(body).messages.at(-1).content);
+    excerpts.push(excerpt);
+    const content = JSON.stringify({ load: decide(excerpt), refs: [], reason: 'internal diagnostic' });
+    response.end(JSON.stringify({ choices: [{ message: { content } }] }));
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const profile = { mode: 'model', provider: 'openai-compatible', model: 'fixture', baseUrl: `http://127.0.0.1:${server.address().port}/v1` };
+  return { profile, excerpts };
+}
+
+test('load and impact hooks leave uninitialized, foreign, and invalid sessions untouched', async t => {
+  const { root, home, config, state, context, after, tool } = await loadFixture(t);
+  const { profile, excerpts } = await modelStub(t, () => ({ action: 'skip', focus: '' }));
+  mkdirSync(join(home, '.dotdotgod'));
+  config(profile, join(home, '.dotdotgod/config.json'));
+  writeFileSync(join(root, 'a.ts'), 'value');
+  assert.deepEqual(await context('inspect this repository'), []);
+  await after('local');
+  await after('local', 'completed', 'write');
+  await tool.execute({}, { agent: 'build', sessionID: 'local' });
+  assert.equal(existsSync(state().path), false);
+  assert.deepEqual(excerpts, []);
+
+  config(profile);
+  for (const sessionID of ['foreign', '', 'default', '../invalid']) {
+    assert.deepEqual(await context('inspect this repository', sessionID), []);
+    await after(sessionID);
+    await after(sessionID, 'completed', 'write');
+    await tool.execute({}, { agent: 'build', sessionID });
+  }
+  assert.equal(existsSync(state().path), false);
+  assert.deepEqual(excerpts, []);
+});
+
+test('default advisory repeats without creating state and stops after successful execute.after', async t => {
+  const { config, state, context, after } = await loadFixture(t);
+  config();
+  const advisory = ['Use project_load when repository context would help; skip it for self-contained work.'];
+  assert.deepEqual(await context('first turn'), advisory);
+  assert.deepEqual(await context('next turn'), advisory);
+  assert.equal(existsSync(state().path), false);
+  await after('local', 'error');
+  assert.equal(existsSync(state().path), false);
+  await after('local');
+  assert.equal(state().getLoadState().loaded, true);
+  assert.deepEqual(await context('follow-up'), []);
+});
+
+test('always suggests a full load once without claiming the project was loaded', async t => {
+  const { config, state, context } = await loadFixture(t);
+  config({ mode: 'always' });
+  assert.match((await context('start work'))[0], /Recommended project_load with no focus/);
+  assert.deepEqual(await context('follow-up'), []);
+  assert.equal(state().getLoadState().loaded, false);
+});
+
+for (const delivery of ['advice', 'prefetch']) test(`model triage strips reminders and non-text parts, then skips and delivers ${delivery}`, async t => {
+  const { root, config, state, context } = await loadFixture(t);
+  const { profile, excerpts } = await modelStub(t, excerpt => excerpt === 'hello'
+    ? { action: 'skip', focus: '' } : { action: delivery === 'prefetch' ? 'full' : 'focused', focus: 'Authentication' });
+  config({ ...profile, delivery });
+  mkdirSync(join(root, 'docs/spec'), { recursive: true });
+  writeFileSync(join(root, 'docs/spec/AUTH.md'), '# Authentication');
+
+  assert.deepEqual(await context('hello'), []);
+  assert.deepEqual(await context('hello'), []);
+  assert.equal(state().getLoadState().skipCount, 1);
+  const parts = [
+    { type: 'text', text: '<system-reminder>\n/dd:no-load [[private]]\n</system-reminder>Review auth' },
+    { type: 'image', text: 'image secret' }, { type: 'file', text: 'file secret' }, { type: 'tool', text: 'tool secret' },
+    { type: 'text', text: 123 }, { type: 'text', text: 'contracts' },
+  ];
+  const injection = await context(parts, 'local', [{ role: 'user', content: 'previous user turn' }]);
+  assert.deepEqual(excerpts, ['hello', 'Review auth\ncontracts']);
+  assert.equal(injection.length, 1);
+  assert.match(injection[0], delivery === 'prefetch' ? /PREFETCH — UNTRUSTED DATA[\s\S]*AUTH\.md/ : /Recommended project_load focus: "Authentication"/);
+  assert.ok(Buffer.byteLength(injection[0]) <= 8192);
+  assert.doesNotMatch(injection[0], /internal diagnostic/);
+  assert.equal(state().getLoadState().loaded, delivery === 'prefetch');
+  assert.deepEqual(await context('follow-up'), []);
+  assert.equal(excerpts.length, 2);
+});
+
+test('unsupported host decision provider writes one canonical warning per session in the process', async t => {
+  const { config, state, context } = await loadFixture(t);
+  config({ mode: 'model', provider: 'host' });
+  const stderr = t.mock.method(process.stderr, 'write', () => true);
+  assert.match((await context('inspect auth'))[0], /Use project_load/);
+  rmSync(state().path); // Fresh on-disk state must not reset the process-level warning deduplication.
+  assert.match((await context('inspect auth again'))[0], /Use project_load/);
+  assert.match((await context('inspect auth', 'second'))[0], /Use project_load/);
+  assert.deepEqual(stderr.mock.calls.map(call => call.arguments[0]), Array(2).fill('dotdotgod decision: provider_unsupported_on_host\n'));
+});
+
+test('Code Mode MCP wrapper records only successful project loads under the host session', async t => {
+  let response;
+  const { config, state, context, tool } = await loadFixture(t, async input => ({ ...response, content: input.contextSessionId }));
+  config();
+  const hostContext = { agent: 'build', sessionID: 'local' };
+  for (response of [{ isError: true }, { structuredContent: { ok: false } }]) {
+    assert.deepEqual(await tool.execute({}, hostContext), { ...response, content: 'local' });
+    assert.equal(existsSync(state().path), false);
+  }
+  response = { structuredContent: { ok: true } };
+  assert.deepEqual(await tool.execute({ contextSessionId: 'spoof' }, hostContext), { ...response, content: 'local' });
+  assert.equal(state().getLoadState().loaded, true);
+  assert.equal(state('spoof').getLoadState().loaded, false);
+  assert.deepEqual(await context('follow-up'), []);
 });

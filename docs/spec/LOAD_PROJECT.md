@@ -11,11 +11,13 @@ Pi provides explicit full-load commands:
 - `/load`: compatibility full load
 - `/dd:load`: namespaced full load
 
-Explicit command delivery uses an internal structural marker that the global input handler strips before model processing and cancels any pending automatic load, preventing the full-load request from being wrapped in a second compact load.
+Explicit command delivery uses an internal structural marker that the global input handler strips before model processing. It marks the active branch loaded, preventing a second compact load for the same request.
 
-Pi also performs one mode-neutral automatic project-memory assessment at the beginning of session work. Automatic state, recent-load lookup, and transcript inspection use only entries reachable from the active session branch. A fork before assessment reassesses; a fork before completion cannot inherit an abandoned sibling's completion; a fork after reachable completion reuses it. When baseline coverage is missing and no recent load exists, the global project-memory extension leaves the original `input` and attached images unchanged, makes `project_memory_load` available to that agent run, and injects a persistent custom instruction with `display: false` before agent start. The hidden instruction is sent to the model but is not rendered as user-authored request text. The extension records instruction delivery when `before_agent_start` schedules that message, allowing the model's immediate tool call without waiting for the session branch to expose the newly injected entry; restored branches may also confirm delivery from a reachable hidden message. Other extensions and tools remain independently owned. The instruction keeps downstream planning and impact targeting task-directed, requires one agent-selected focused load, returns compact Load output, records completion exactly once for the reachable branch state, and continues the original request. Pending and instruction-delivery state persist across active-branch restore. This automatic flow applies in ordinary mode and Plan Mode; Plan Mode does not classify, queue, or recognize automatic-load prompts. `/dd:no-load`, `dd:no-load`, or `/no-load` opts out of the automatic assessment for that request.
+Pi activates `project_memory_load` whenever the repository is initialized and the active branch is unloaded (`!loaded`), in ordinary mode and Plan Mode. The zero-config `advisory` mode offers one line of hidden guidance (`display: false`) without forcing a load. Use the tool when project context would help and skip it for self-contained work. `mode: "always"` retains the one-time compatibility instruction to load before substantive work; `manual` and request-local `/dd:no-load`, `dd:no-load`, or `/no-load` suppress automatic guidance, not tool availability. The extension leaves the original user input and images unchanged. Optional model triage can skip, recommend a focus and shared refs, or deliver read-only prefetch; see [Decision Config](DECISION_CONFIG.md).
 
-Claude Code and Codex provide generated Load commands or skills from `packages/shared/workflows/load.md`. Their generated workflow runs `dotdotgod map <root> --depth <3|5> --json` for the configured documentation map and uses `dotdotgod query` for focused routing, with README and local tree fallback when CLI execution is unavailable.
+The compact tool calls shared MCP `project_load`; concurrent loads are guarded. Tool or map failure leaves it active. A successful compact load, successful prefetch, or explicit full Load disables the tool for that branch. The `project-memory-auto-state` v3 entry is branch-local: restore and compaction keep reachable completion, not an abandoned sibling's. Legacy v2 restore also recognizes a reachable load entry. Plan Mode does not own load triage.
+
+Claude Code and Codex provide generated Load commands or skills from `packages/shared/workflows/load.md`. The workflow prefers the shared MCP `project_load` tool so a successful load can be tracked. It falls back to `dotdotgod map`, `dotdotgod query`, and README/local tree routing when the tool or CLI is unavailable.
 
 Hermes uses native lifecycle hooks and the registered project-load skill/tool,
 with canonical map/query routing, request-local dd:no-load and conservative
@@ -41,7 +43,7 @@ Load detects the repository root, dirty worktree state, and baseline memory file
 - `README.md`
 - `docs/README.md`
 
-Agents preserve existing user changes and avoid rereading baseline content already clear in the active branch transcript. Automatic assessment intentionally uses bounded active-branch transcript evidence, matching the earlier Plan Mode trigger level: startup `contextFiles` alone do not suppress a focused Load. A recent reachable Load or transcript-visible baseline map prevents duplicate loading.
+Agents preserve existing user changes and avoid rereading baseline content already clear in the active branch. Pi uses reachable branch state to track completed loads; startup `contextFiles` are not load completion.
 
 ## Documentation Map
 
@@ -62,7 +64,7 @@ Load lists paths but reads bodies selectively through maintained README indexes 
 
 Free-form Load arguments are query text, not mode switches. When arguments are present, Load:
 
-1. runs `dotdotgod query <root> "<arguments>" --limit 30 --json` when available
+1. runs `dotdotgod query <root> --limit 30 --json -- "<arguments>"` when available
 2. presents up to 30 typed documentation-file or code-symbol results, preserving symbol ranges and retrieval warnings
 3. runs `dotdotgod map <root> --depth 3 --json` and renders its documentation tree with the same named boundary-child summaries
 4. falls back to README routing and targeted reads when query is unavailable
@@ -95,16 +97,16 @@ Explicit full Load reports:
 - relevant active plans or archive history when needed
 - questions surfaced by loaded material
 
-Internal automatic compact Load reports:
+Pi's compact Load tool reports:
 
 - compact project-memory status
 - relevant documentation routes
 - relevant active plan hints when needed
 - bounded next reads
 
-The automatic tool result retains the complete Load content for model consumption. In the interactive Pi TUI, the collapsed result MUST occupy at most three lines including its remaining-line count and configured `app.tools.expand` hint. The same keybinding (`Ctrl+O` by default) MUST reveal or collapse the complete output.
+The compact tool result retains the complete Load content for model consumption. In the interactive Pi TUI, the collapsed result MUST occupy at most three lines including its remaining-line count and configured `app.tools.expand` hint. The same keybinding (`Ctrl+O` by default) MUST reveal or collapse the complete output.
 
-Neither output form reports graph size, cache metrics, communities, or index statistics as project narrative. Compact rendering is an internal automatic-load behavior and has no public slash command.
+Neither output form reports graph size, cache metrics, communities, or index statistics as project narrative. Compact rendering belongs to the tool and has no public slash command.
 
 ## Safety
 
@@ -128,20 +130,24 @@ Load and `map` do not modify source, docs, project config, or derived indexes. Q
   - [packages/cli/src/memory/documentation-map.mjs](../../packages/cli/src/memory/documentation-map.mjs)
   - [packages/cli/src/commands/query.mjs](../../packages/cli/src/commands/query.mjs)
   - [packages/shared/workflows/load.md](../../packages/shared/workflows/load.md)
+  - [packages/context/src/decision.mjs](../../packages/context/src/decision.mjs)
+  - [packages/context/src/project.mjs](../../packages/context/src/project.mjs)
 - Verified by:
   - [packages/pi/test/project-memory-extension.test.ts](../../packages/pi/test/project-memory-extension.test.ts)
   - [packages/pi/test/load-project-utils.test.ts](../../packages/pi/test/load-project-utils.test.ts)
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
+  - [packages/context/test/decision.test.mjs](../../packages/context/test/decision.test.mjs)
 - Related docs:
   - [docs/spec/CROSS_AGENT_SUPPORT.md](CROSS_AGENT_SUPPORT.md)
   - [docs/spec/cli/MAP.md](cli/MAP.md)
   - [docs/spec/cli/QUERY.md](cli/QUERY.md)
+  - [docs/spec/DECISION_CONFIG.md](DECISION_CONFIG.md)
 - Design decisions:
   - [docs/arch/EXTENSION_ARCHITECTURE.md](../arch/EXTENSION_ARCHITECTURE.md)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/pi/extensions/project-memory/index.ts","packages/pi/extensions/project-memory/context.ts","packages/pi/extensions/project-memory/lifecycle.ts","packages/pi/extensions/load-project/index.ts","packages/pi/extensions/load-project/prompt.ts","packages/pi/extensions/load-project/snapshot.ts","packages/cli/src/commands/map.mjs","packages/cli/src/memory/documentation-map.mjs","packages/cli/src/commands/query.mjs","packages/shared/workflows/load.md"],"verifiedBy":["packages/pi/test/project-memory-extension.test.ts","packages/pi/test/load-project-utils.test.ts","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/cli/MAP.md","docs/spec/cli/QUERY.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/pi/extensions/project-memory/index.ts","packages/pi/extensions/project-memory/context.ts","packages/pi/extensions/project-memory/lifecycle.ts","packages/pi/extensions/load-project/index.ts","packages/pi/extensions/load-project/prompt.ts","packages/pi/extensions/load-project/snapshot.ts","packages/cli/src/commands/map.mjs","packages/cli/src/memory/documentation-map.mjs","packages/cli/src/commands/query.mjs","packages/shared/workflows/load.md","packages/context/src/decision.mjs","packages/context/src/project.mjs"],"verifiedBy":["packages/pi/test/project-memory-extension.test.ts","packages/pi/test/load-project-utils.test.ts","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/context/test/decision.test.mjs"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/cli/MAP.md","docs/spec/cli/QUERY.md","docs/spec/DECISION_CONFIG.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
 ```

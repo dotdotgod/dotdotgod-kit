@@ -1,4 +1,4 @@
-"""Advisory impact path validation, SQLite v2 store, and display formatting."""
+"""Advisory impact path validation, SQLite v3 store, and display formatting."""
 from contextlib import closing
 import hashlib, json, os, re, sqlite3, stat, time, uuid
 from pathlib import Path
@@ -12,6 +12,22 @@ EXCLUDED_DIRS = re.compile(r"(^|/)(node_modules|\.git|\.dotdotgod|dist|build|cov
 PATCH_HEADER_RE = re.compile(r"^\*\*\* (?:Update File|Add File|Delete File|Move to): (.+)$", re.MULTILINE)
 CREATE_PENDING = "CREATE TABLE IF NOT EXISTS pending (session TEXT NOT NULL, path TEXT NOT NULL, revision TEXT NOT NULL, fingerprint TEXT, created_at INTEGER, expires_at INTEGER, notified INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (session, path))"
 CREATE_PLAN_NOTICES = "CREATE TABLE IF NOT EXISTS plan_notices (session TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, notified INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)"
+CREATE_LOAD_STATE = """CREATE TABLE IF NOT EXISTS load_state (
+  session TEXT PRIMARY KEY,
+  assessed INTEGER NOT NULL DEFAULT 0 CHECK (assessed IN (0,1)),
+  loaded INTEGER NOT NULL DEFAULT 0 CHECK (loaded IN (0,1)),
+  notified INTEGER NOT NULL DEFAULT 0 CHECK (notified IN (0,1)),
+  skip_count INTEGER NOT NULL DEFAULT 0 CHECK (skip_count >= 0),
+  last_prompt_hash TEXT,
+  inflight_token TEXT,
+  inflight_until INTEGER NOT NULL DEFAULT 0 CHECK (inflight_until >= 0),
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL CHECK (expires_at > created_at)
+)"""
+
+
+def _pending_columns(conn):
+    return {row[1] for row in conn.execute("PRAGMA table_info(pending)")}
 
 def _inside_real_root(real_root, target_path):
     try:
@@ -135,48 +151,36 @@ def mask_error(err):
 
 class ImpactStore:
     def __init__(self, root, session_id):
-        if not isinstance(session_id, str) or not SESSION_ID_RE.match(session_id):
+        if not isinstance(session_id, str) or not SESSION_ID_RE.fullmatch(session_id) or session_id.lower() == "default":
             raise ValueError("Invalid impact sessionId")
         self.root, self.session_id = Path(root).resolve(), session_id
         self.path = self.root / ".dotdotgod" / "context" / "impact.sqlite"
 
-    def _inspect(self, conn):
-        has_p = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pending'").fetchone() is not None
-        has_n = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='plan_notices'").fetchone() is not None
-        cols = {r[1] for r in conn.execute("PRAGMA table_info(pending)").fetchall()} if has_p else set()
-        return has_p, has_n, (has_p and "created_at" not in cols), (has_p and "expires_at" not in cols), (has_p and "notified" not in cols)
-
-    def _ensure_schema(self, conn, now, prune):
+    def _ensure_schema(self, conn, now):
         conn.execute(CREATE_PENDING)
         conn.execute(CREATE_PLAN_NOTICES)
-        _, _, need_c, need_e, need_n = self._inspect(conn)
-        if need_c: conn.execute("ALTER TABLE pending ADD COLUMN created_at INTEGER")
-        if need_e:
+        conn.execute(CREATE_LOAD_STATE)
+        cols = _pending_columns(conn)
+        if "created_at" not in cols: conn.execute("ALTER TABLE pending ADD COLUMN created_at INTEGER")
+        if "expires_at" not in cols:
             conn.execute("ALTER TABLE pending ADD COLUMN expires_at INTEGER")
             conn.execute("UPDATE pending SET created_at = COALESCE(created_at, ?), expires_at = ? WHERE expires_at IS NULL", (now, now + RETENTION_MS))
-        if need_n: conn.execute("ALTER TABLE pending ADD COLUMN notified INTEGER NOT NULL DEFAULT 0")
-        if prune:
-            conn.execute("DELETE FROM pending WHERE expires_at <= ?", (now,))
-            conn.execute("DELETE FROM plan_notices WHERE expires_at <= ?", (now,))
+        if "notified" not in cols: conn.execute("ALTER TABLE pending ADD COLUMN notified INTEGER NOT NULL DEFAULT 0")
+        for table in ("pending", "plan_notices", "load_state"):
+            conn.execute(f"DELETE FROM {table} WHERE expires_at <= ?", (now,))
 
     def _open(self, write=False):
-        if not write and not self.path.exists():
-            return None
-        if write: self.path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(str(self.path), timeout=5.0, isolation_level=None)
+        if not write:
+            if not self.path.exists():
+                return None
+            # Immutable mode avoids creating sidecars for a checkpointed WAL database.
+            active = any(Path(f"{self.path}{suffix}").exists() for suffix in ("-wal", "-journal"))
+            mode = "?mode=ro" if active else "?mode=ro&immutable=1"
+            return sqlite3.connect(self.path.as_uri() + mode, uri=True, timeout=5.0, isolation_level=None)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(self.path, timeout=5.0, isolation_level=None)
         try:
-            conn.execute("PRAGMA busy_timeout=5000")
             conn.execute("PRAGMA journal_mode=WAL")
-            hp, hn, nc, ne, nn = self._inspect(conn)
-            if not write and (not hp or not hn or nc or ne or nn):
-                conn.execute("BEGIN IMMEDIATE")
-                try:
-                    self._ensure_schema(conn, int(time.time() * 1000), False)
-                    conn.execute("COMMIT")
-                except Exception:
-                    if conn.in_transaction:
-                        conn.execute("ROLLBACK")
-                    raise
             return conn
         except Exception:
             conn.close()
@@ -192,7 +196,7 @@ class ImpactStore:
             conn.execute("BEGIN IMMEDIATE")
             try:
                 now = int(time.time() * 1000)
-                self._ensure_schema(conn, now, prune=True)
+                self._ensure_schema(conn, now)
                 had = conn.execute("SELECT 1 FROM pending WHERE session=? AND expires_at > ? LIMIT 1", (self.session_id, now)).fetchone() is not None
                 for n, fp in entries:
                     conn.execute("INSERT OR REPLACE INTO pending (session,path,revision,fingerprint,created_at,expires_at,notified) VALUES (?, ?, ?, ?, ?, ?, 0)", (self.session_id, n, str(uuid.uuid4()), fp, now, now + RETENTION_MS))
@@ -205,7 +209,12 @@ class ImpactStore:
 
     def status(self, limit=50):
         conn = self._open(write=False)
-        if conn is None: return {"ok": True, "count": 0, "pending": [], "truncated": False}
-        with closing(conn):
-            rows = conn.execute("SELECT path FROM pending WHERE session=? AND expires_at > ? ORDER BY path", (self.session_id, int(time.time() * 1000))).fetchall()
+        rows = []
+        if conn is not None:
+            with closing(conn):
+                cols = _pending_columns(conn)
+                if cols:
+                    expiry = " AND expires_at > ?" if "expires_at" in cols else ""
+                    args = (self.session_id, int(time.time() * 1000)) if expiry else (self.session_id,)
+                    rows = conn.execute(f"SELECT path FROM pending WHERE session=?{expiry} ORDER BY path", args).fetchall()
         return {"ok": True, "count": len(rows), "pending": [{"path": r[0]} for r in rows[:limit]], "truncated": len(rows) > limit}

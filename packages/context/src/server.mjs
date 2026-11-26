@@ -16,6 +16,7 @@ import { resolveSessionId, validateSessionId } from './session.mjs';
 import { PHASE3_TOOL_INPUT_SCHEMAS } from './tool-contracts.mjs';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { ImpactState, withImpactReview } from './impact-state.mjs';
+import { isInitializedProject } from './hook-state.mjs';
 
 const UNBOUND_IMPACT_GUIDANCE = 'Session unbound; hook-tracked pending paths are not visible here. Pass paths explicitly to project_impact.';
 const explicitRoot = process.env.DOTDOTGOD_PROJECT_ROOT;
@@ -148,7 +149,15 @@ register('purge', 'Permanently delete one explicit context scope, session, or so
 }, (input) => ({ ok: true, ...getStore().purge(input) }), { destructiveHint: true });
 register('project_load', 'Load a bounded documentation map and optional semantic project query.', {
   root: z.string().optional(), focus: z.string().max(500).optional(), limit: z.number().int().min(1).max(30).optional(), maxDepth: z.number().int().min(1).max(5).optional(),
-}, (input) => projectLoad(projectInput(input)), { readOnlyHint: true });
+}, async (input, extra) => {
+  const args = projectInput(input);
+  const result = await projectLoad({ ...args, signal: extra.signal });
+  if (currentBound() && result.ok === true && isInitializedProject(args.root)) {
+    try { new ImpactState(args.root, currentSession()).markLoaded(); }
+    catch { /* Advisory tracking must not turn a successful load into a tool error. */ }
+  }
+  return result;
+}, { readOnlyHint: true });
 register('embedding_status', 'Inspect the optional persistent embedding runtime without installing or contacting a registry.', { root: z.string().optional() }, (input) => projectEmbeddingStatus(projectInput(input)), { readOnlyHint: true });
 register('embedding_install', 'After explicit user approval, install the fixed optional embedding runtime persistently. Uses network and dependency install scripts.', { root: z.string().optional(), confirm: z.literal(true) }, (input) => projectEmbeddingInstall(projectInput(input)), { destructiveHint: true, openWorldHint: true });
 register('project_impact', 'Run bounded graph impact for up to 20 changed paths.', {

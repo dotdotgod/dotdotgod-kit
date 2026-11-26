@@ -576,24 +576,24 @@ var init_languages = __esm({
 
 // packages/cli/src/symbols/runtime.mjs
 import { createRequire } from "node:module";
-import { existsSync as existsSync10, readFileSync as readFileSync10 } from "node:fs";
-import { dirname as dirname6, join as join9 } from "node:path";
+import { existsSync as existsSync9, readFileSync as readFileSync9 } from "node:fs";
+import { dirname as dirname6, join as join10 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash as createHash4 } from "node:crypto";
 function languageAsset(language) {
   const patched = fileURLToPath(new URL(`./parsers/tree-sitter-${language}.wasm`, import.meta.url));
-  return existsSync10(patched) ? patched : join9(dirname6(parserEntry()), `tree-sitter-${language}.wasm`);
+  return existsSync9(patched) ? patched : join10(dirname6(parserEntry()), `tree-sitter-${language}.wasm`);
 }
 function parserEntry() {
   const bundled = fileURLToPath(new URL("./parsers/tree-sitter.cjs", import.meta.url));
-  return existsSync10(bundled) ? bundled : require2.resolve("@vscode/tree-sitter-wasm");
+  return existsSync9(bundled) ? bundled : require2.resolve("@vscode/tree-sitter-wasm");
 }
 function parserIdentity() {
   if (!identity) {
     const entry = parserEntry();
-    const hash2 = createHash4("sha256").update(readFileSync10(entry));
-    hash2.update(readFileSync10(join9(dirname6(entry), "tree-sitter.wasm")));
-    for (const language of Object.keys(LANGUAGE_EXTENSIONS)) hash2.update(language).update(readFileSync10(languageAsset(language)));
+    const hash2 = createHash4("sha256").update(readFileSync9(entry));
+    hash2.update(readFileSync9(join10(dirname6(entry), "tree-sitter.wasm")));
+    for (const language of Object.keys(LANGUAGE_EXTENSIONS)) hash2.update(language).update(readFileSync9(languageAsset(language)));
     identity = hash2.digest("hex");
   }
   return identity;
@@ -779,17 +779,16 @@ var require_node_style = __commonJS({
 });
 
 // packages/cli/src/init.mjs
-import { existsSync as existsSync5, mkdirSync as mkdirSync2, readFileSync as readFileSync5, statSync, writeFileSync as writeFileSync2 } from "node:fs";
-import { basename, dirname as dirname2, join as join5, resolve as resolve3 } from "node:path";
+import { existsSync as existsSync4, mkdirSync as mkdirSync2, readFileSync as readFileSync4, statSync, writeFileSync as writeFileSync2 } from "node:fs";
+import { basename, dirname as dirname2, join as join6, resolve as resolve3 } from "node:path";
 
 // packages/cli/src/config/templates.mjs
-import { existsSync as existsSync3, readFileSync as readFileSync3 } from "node:fs";
-import { homedir as homedir2 } from "node:os";
-import { join as join3 } from "node:path";
+import { existsSync as existsSync2, readFileSync as readFileSync2 } from "node:fs";
+import { homedir as homedir3 } from "node:os";
+import { join as join4 } from "node:path";
 
 // packages/cli/src/memory/config.mjs
-import { existsSync as existsSync2, readFileSync as readFileSync2 } from "node:fs";
-import { isAbsolute, join as join2, normalize, resolve } from "node:path";
+import { isAbsolute, join as join3, normalize, resolve } from "node:path";
 
 // packages/cli/src/common/paths.mjs
 import { relative } from "node:path";
@@ -941,6 +940,123 @@ function resolveEmbeddingProfile(root = ".", options = {}) {
   const globalConfig = readJson(globalPath, "global config");
   if (globalConfig && Object.hasOwn(globalConfig, "embedding")) return { profile: validateEmbeddingProfile(globalConfig.embedding, "global embedding"), source: "global", path: globalPath };
   return { profile: null, source: "not-configured", path: null };
+}
+
+// packages/cli/src/decision/config.mjs
+import { closeSync, constants, fstatSync, lstatSync, openSync, readSync } from "node:fs";
+import { homedir as homedir2 } from "node:os";
+import { join as join2 } from "node:path";
+var MAX_CONFIG_BYTES = 256 * 1024;
+var DEFAULT_PROFILE = Object.freeze({ mode: "advisory", delivery: "advice", fallback: "advisory", timeoutMs: 2e3 });
+var FALLBACK_MODES = ["advisory", "manual", "always"];
+var MODES = [...FALLBACK_MODES, "model"];
+var PROVIDERS = ["ollama", "openai-compatible", "host"];
+var CONNECTION_FIELDS = ["baseUrl", "apiKey", "apiKeyEnv"];
+var FIELDS = /* @__PURE__ */ new Set([...Object.keys(DEFAULT_PROFILE), "provider", "model", ...CONNECTION_FIELDS]);
+var OPENAI_BASE_URL = "https://api.openai.com/v1";
+function readConfigJson(path) {
+  let entry;
+  try {
+    entry = lstatSync(path);
+  } catch (error) {
+    if (error.code === "ENOENT") return void 0;
+    throw new Error("Cannot inspect config file.");
+  }
+  if (!entry.isFile()) throw new Error("Config must be a regular file, not a symlink or special file.");
+  let fd;
+  try {
+    fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  } catch {
+    throw new Error("Cannot open config file without following symlinks.");
+  }
+  try {
+    const stat2 = fstatSync(fd);
+    if (!stat2.isFile()) throw new Error("Config must be a regular file.");
+    if (stat2.size > MAX_CONFIG_BYTES) throw new Error("Config exceeds 256 KiB.");
+    const bytes = Buffer.alloc(MAX_CONFIG_BYTES + 1);
+    let length = 0;
+    while (length < bytes.length) {
+      const count = readSync(fd, bytes, length, bytes.length - length, null);
+      if (count === 0) break;
+      length += count;
+    }
+    if (length > MAX_CONFIG_BYTES) throw new Error("Config exceeds 256 KiB.");
+    try {
+      return JSON.parse(bytes.toString("utf8", 0, length));
+    } catch {
+      throw new Error("Invalid JSON in config file.");
+    }
+  } finally {
+    closeSync(fd);
+  }
+}
+function loopback(hostname) {
+  return hostname === "localhost" || hostname === "localhost." || hostname === "[::1]" || /^127\.\d+\.\d+\.\d+$/.test(hostname) || /^\[::ffff:7f[0-9a-f]{2}:[0-9a-f]+\]$/.test(hostname);
+}
+function decisionBaseUrl(baseUrl, hasCredential) {
+  const input = baseUrl.trim().replace(/[\t\r\n]/g, "");
+  const authority = /^https?:\/\/([^/\\?#]+)/i.exec(input)?.[1];
+  const url = URL.parse(input);
+  if (!authority || !url || !["http:", "https:"].includes(url.protocol)) throw new Error("decision.baseUrl must be an absolute HTTP(S) URL.");
+  if (authority.includes("@") || url.username || url.password || /[?#]/.test(url.href)) {
+    throw new Error("decision.baseUrl must not contain userinfo, a query, or a fragment.");
+  }
+  const host = url.hostname;
+  if (/^(?:169\.254\.|0\.)\d/.test(host) || /^\[(?:(?:fe[89ab][\da-f]):|::ffff:(?:a9fe|[\da-f]{1,2}):|::\])/.test(host)) {
+    throw new Error("decision.baseUrl must not target a link-local or unspecified address.");
+  }
+  if (hasCredential && url.protocol === "http:" && !loopback(host)) throw new Error("decision.baseUrl must use HTTPS with credentials on non-loopback hosts.");
+  return url.href.replace(/\/+$/, "");
+}
+function validateDecisionProfile(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("decision must be an object.");
+  if (Object.keys(data).some((key) => !FIELDS.has(key))) throw new Error("decision contains an unsupported field.");
+  const profile = { ...DEFAULT_PROFILE, ...data };
+  if (!MODES.includes(profile.mode)) throw new Error("decision.mode must be advisory, manual, always, or model.");
+  if (!["advice", "prefetch"].includes(profile.delivery)) throw new Error("decision.delivery must be advice or prefetch.");
+  if (!FALLBACK_MODES.includes(profile.fallback)) throw new Error("decision.fallback must be advisory, manual, or always.");
+  if (!Number.isInteger(profile.timeoutMs) || profile.timeoutMs < 200 || profile.timeoutMs > 15e3) throw new Error("decision.timeoutMs must be an integer from 200 to 15000.");
+  if ((profile.mode === "model" || profile.provider !== void 0) && !PROVIDERS.includes(profile.provider)) throw new Error("decision.provider must be ollama, openai-compatible, or host.");
+  const needsModel = profile.mode === "model" && profile.provider !== "host";
+  if (needsModel || profile.model !== void 0) {
+    if (typeof profile.model !== "string" || !profile.model.trim()) throw new Error("decision.model must be a non-empty string.");
+    profile.model = profile.model.trim();
+  }
+  if (profile.provider === "host" && CONNECTION_FIELDS.some((key) => profile[key] !== void 0)) throw new Error("decision provider host does not accept baseUrl, apiKey, or apiKeyEnv.");
+  for (const key of CONNECTION_FIELDS) {
+    if (profile[key] !== void 0 && (typeof profile[key] !== "string" || !profile[key].trim())) throw new Error(`decision.${key} must be a non-empty string.`);
+  }
+  if (profile.apiKey !== void 0 && profile.apiKeyEnv !== void 0) throw new Error("decision.apiKey and decision.apiKeyEnv are mutually exclusive.");
+  if (profile.apiKeyEnv !== void 0 && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(profile.apiKeyEnv)) throw new Error("decision.apiKeyEnv must be an environment variable name.");
+  if (profile.baseUrl !== void 0) profile.baseUrl = decisionBaseUrl(profile.baseUrl, Boolean(profile.apiKey || profile.apiKeyEnv));
+  return profile;
+}
+function resolveDecisionProfile(root = ".", { home = homedir2(), project = readProjectConfig(root) } = {}) {
+  if (project.errors.length) return { source: "invalid", path: project.path, profile: null };
+  if (project.profiles.decision) return { source: "project", path: project.path, profile: project.profiles.decision };
+  const path = join2(home, ".dotdotgod", "config.json");
+  try {
+    const global = readConfigJson(path);
+    if (global !== void 0) {
+      if (!global || typeof global !== "object" || Array.isArray(global)) throw new Error("Global config must be a JSON object.");
+      if (Object.hasOwn(global, "decision")) return { source: "global", path, profile: validateDecisionProfile(global.decision) };
+    }
+  } catch (error) {
+    return { source: "invalid", path, profile: null, error: error.message };
+  }
+  return { source: "default", path: null, profile: { ...DEFAULT_PROFILE } };
+}
+function sanitizeDecisionProfile(profile, source) {
+  if (!profile) return null;
+  const { apiKey, ...safe } = profile;
+  if (apiKey !== void 0) safe.apiKey = "[redacted]";
+  const endpoint = profile.baseUrl ?? (profile.provider === "openai-compatible" ? OPENAI_BASE_URL : null);
+  const host = endpoint?.split("/")[2].replace(/:\d+$/, "");
+  if (source === "project" && host && !loopback(host)) {
+    const credential2 = profile.apiKeyEnv ? ` and the credential from apiKeyEnv (${profile.apiKeyEnv})` : apiKey ? " and a configured API key" : "";
+    safe.warning = `Project decision config can send prompt/repo metadata${credential2} to remote ${endpoint}; verify repository trust.`;
+  }
+  return safe;
 }
 
 // packages/cli/src/memory/config.mjs
@@ -1321,7 +1437,7 @@ function normalizeMemoryArea(raw) {
 function isFiniteNumberInRange(value, min, max) {
   return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max;
 }
-function validateMemoryConfigData(data, root = ".", file = "dotdotgod.config.json") {
+function validateMemoryConfigData(data, root = ".", file = MEMORY_CONFIG_FILE, profiles = {}) {
   const errors = [];
   const add = (code, field2, message, fix = null) => errors.push({
     file: rel(root, resolve(root, file)),
@@ -1339,9 +1455,16 @@ Fix: ${fix ?? `update ${field2 ?? "this config"} in ${file} to match the expecte
   }
   if (data.embedding !== void 0) {
     try {
-      validateEmbeddingProfile(data.embedding, "embedding");
+      profiles.embedding = validateEmbeddingProfile(data.embedding);
     } catch (error) {
-      add("EMBEDDING_CONFIG_INVALID", "embedding", error instanceof Error ? error.message : String(error));
+      add("EMBEDDING_CONFIG_INVALID", "embedding", error.message);
+    }
+  }
+  if (data.decision !== void 0) {
+    try {
+      profiles.decision = validateDecisionProfile(data.decision);
+    } catch (error) {
+      add("DECISION_CONFIG_INVALID", "decision", error.message);
     }
   }
   const traceability2 = data.traceability;
@@ -1489,27 +1612,38 @@ Fix: ${fix ?? `update ${field2 ?? "this config"} in ${file} to match the expecte
   }
   return errors;
 }
-function readMemoryConfig(root = ".") {
-  const path = join2(root, MEMORY_CONFIG_FILE);
-  if (!existsSync2(path)) return defaultMemoryConfig();
+function readProjectConfig(root) {
+  const path = join3(root, MEMORY_CONFIG_FILE);
+  const profiles = {};
+  let data;
   try {
-    const data = JSON.parse(readFileSync2(path, "utf8"));
-    const errors = validateMemoryConfigData(data, root, MEMORY_CONFIG_FILE);
-    if (errors.length > 0) return { ...defaultMemoryConfig(), source: MEMORY_CONFIG_FILE, errors };
-    const documentationRoot = normalizeDocumentationRoot(data.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT);
-    const defaults = defaultMemoryConfig({ documentationRoot });
-    const configuredAreas = data.memory?.areas?.map(normalizeMemoryArea) ?? [];
-    const traceability2 = data.traceability === void 0 ? defaults.traceability : normalizeTraceabilityPolicy(data.traceability);
-    const validation = data.validation === void 0 ? cloneValidationPolicy() : normalizeValidationPolicy(data.validation);
-    const impactRanking = normalizeImpactRankingPolicy(data.impactRanking);
-    const referenceExpansion = normalizeReferenceExpansionPolicy(data.referenceExpansion);
-    const load = data.load === void 0 ? defaults.load : normalizeLoadPolicy(data.load);
-    const planMode = data.planMode === void 0 ? defaults.planMode : normalizePlanModePolicy(data.planMode);
-    return configuredAreas.length > 0 ? { source: MEMORY_CONFIG_FILE, documentation: { root: documentationRoot }, areas: configuredAreas, traceability: traceability2, validation, impactRanking, referenceExpansion, load, planMode, errors: [] } : { ...defaults, traceability: traceability2, validation, impactRanking, referenceExpansion, load, planMode, source: MEMORY_CONFIG_FILE, errors: [] };
+    data = readConfigJson(path);
   } catch (error) {
-    return { ...defaultMemoryConfig(), source: MEMORY_CONFIG_FILE, errors: [{ file: MEMORY_CONFIG_FILE, code: "MEMORY_CONFIG_INVALID_JSON", message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}
-Fix: repair ${MEMORY_CONFIG_FILE} so it is valid JSON, or remove it before regenerating the default config with \`dotdotgod config init <root>\`.` }] };
+    const message = `${error.message}
+Fix: repair ${MEMORY_CONFIG_FILE} or remove it before regenerating it with \`dotdotgod config init <root>\`.`;
+    return { path, profiles, errors: [{ file: MEMORY_CONFIG_FILE, code: "MEMORY_CONFIG_INVALID_JSON", message }] };
   }
+  const errors = data === void 0 ? [] : validateMemoryConfigData(data, root, MEMORY_CONFIG_FILE, profiles);
+  return { path, data, profiles, errors };
+}
+function readMemoryConfig(root = ".", { data, errors } = readProjectConfig(root)) {
+  if (errors.length > 0) return { ...defaultMemoryConfig(), source: MEMORY_CONFIG_FILE, errors };
+  if (data === void 0) return defaultMemoryConfig();
+  const documentationRoot = normalizeDocumentationRoot(data.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT);
+  const defaults = defaultMemoryConfig({ documentationRoot });
+  const configuredAreas = data.memory?.areas?.map(normalizeMemoryArea) ?? [];
+  return {
+    ...defaults,
+    source: MEMORY_CONFIG_FILE,
+    areas: configuredAreas.length > 0 ? configuredAreas : defaults.areas,
+    traceability: data.traceability === void 0 ? defaults.traceability : normalizeTraceabilityPolicy(data.traceability),
+    validation: data.validation === void 0 ? defaults.validation : normalizeValidationPolicy(data.validation),
+    impactRanking: normalizeImpactRankingPolicy(data.impactRanking),
+    referenceExpansion: normalizeReferenceExpansionPolicy(data.referenceExpansion),
+    load: data.load === void 0 ? defaults.load : normalizeLoadPolicy(data.load),
+    planMode: data.planMode === void 0 ? defaults.planMode : normalizePlanModePolicy(data.planMode),
+    errors: []
+  };
 }
 function serializableMemoryArea(area2) {
   return withOptionalAreaMetadata({
@@ -1736,7 +1870,7 @@ function builtInTemplateData(name, { documentationRoot = "docs" } = {}) {
   return data ? rebaseBuiltIn(data, documentationRoot) : null;
 }
 function dotdotgodHome() {
-  return join3(homedir2(), ".dotdotgod");
+  return join4(homedir3(), ".dotdotgod");
 }
 function templateError(code, message, path = null) {
   return { ok: false, error: { code, message, ...path ? { path } : {} } };
@@ -1744,11 +1878,11 @@ function templateError(code, message, path = null) {
 function resolveInitializationTemplate(explicitName = null, home = dotdotgodHome()) {
   let name = explicitName;
   let selectedBy = explicitName ? "explicit" : "default";
-  const globalPath = join3(home, "config.json");
-  if (!name && existsSync3(globalPath)) {
+  const globalPath = join4(home, "config.json");
+  if (!name && existsSync2(globalPath)) {
     let globalConfig;
     try {
-      globalConfig = JSON.parse(readFileSync3(globalPath, "utf8"));
+      globalConfig = JSON.parse(readFileSync2(globalPath, "utf8"));
     } catch (error) {
       return templateError("GLOBAL_CONFIG_INVALID_JSON", `Invalid global config JSON: ${error instanceof Error ? error.message : String(error)}`, globalPath);
     }
@@ -1765,11 +1899,11 @@ function resolveInitializationTemplate(explicitName = null, home = dotdotgodHome
   }
   name ??= DEFAULT_TEMPLATE_NAME;
   if (!isKebabCase(name)) return templateError("TEMPLATE_INVALID_NAME", `Template name must be kebab-case: ${name}`);
-  const customPath = join3(home, "templates", `${name}.json`);
-  if (existsSync3(customPath)) {
+  const customPath = join4(home, "templates", `${name}.json`);
+  if (existsSync2(customPath)) {
     let data2;
     try {
-      data2 = JSON.parse(readFileSync3(customPath, "utf8"));
+      data2 = JSON.parse(readFileSync2(customPath, "utf8"));
     } catch (error) {
       return templateError("TEMPLATE_INVALID_JSON", `Invalid template JSON: ${error instanceof Error ? error.message : String(error)}`, customPath);
     }
@@ -1785,23 +1919,23 @@ function resolveInitializationTemplate(explicitName = null, home = dotdotgodHome
 }
 
 // packages/cli/src/claude-plans.mjs
-import { existsSync as existsSync4, lstatSync, readFileSync as readFileSync4, realpathSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname, join as join4, relative as relative2, resolve as resolve2, isAbsolute as isAbsolute2 } from "node:path";
+import { existsSync as existsSync3, lstatSync as lstatSync2, readFileSync as readFileSync3, realpathSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname, join as join5, relative as relative2, resolve as resolve2, isAbsolute as isAbsolute2 } from "node:path";
 function prepareClaudePlans(root, documentationRoot) {
-  const path = join4(root, ".claude", "settings.json");
-  for (const target of [join4(root, ".claude"), path]) {
+  const path = join5(root, ".claude", "settings.json");
+  for (const target of [join5(root, ".claude"), path]) {
     try {
-      if (lstatSync(target).isSymbolicLink()) throw new Error(`Refusing symlink: ${target}`);
+      if (lstatSync2(target).isSymbolicLink()) throw new Error(`Refusing symlink: ${target}`);
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
   }
   const base = resolve2(root);
-  if (existsSync4(dirname(path))) {
+  if (existsSync3(dirname(path))) {
     const rel2 = relative2(realpathSync(base), realpathSync(dirname(path)));
     if (rel2.startsWith("..") || isAbsolute2(rel2)) throw new Error("Claude settings must stay inside the project.");
   }
-  const current = existsSync4(path) ? readFileSync4(path, "utf8") : null;
+  const current = existsSync3(path) ? readFileSync3(path, "utf8") : null;
   const settings = current === null ? {} : JSON.parse(current);
   if (!settings || typeof settings !== "object" || Array.isArray(settings)) throw new Error("Claude settings must be a JSON object.");
   const value = `./${documentationRoot}/plan`;
@@ -1826,12 +1960,12 @@ function applyClaudePlans(prepared, dryRun) {
   if (dryRun) return { ...result, status: `would_${result.status === "created" ? "create" : "update"}` };
   for (const target of [dirname(prepared.path), prepared.path]) {
     try {
-      if (lstatSync(target).isSymbolicLink()) throw new Error(`Refusing symlink: ${target}`);
+      if (lstatSync2(target).isSymbolicLink()) throw new Error(`Refusing symlink: ${target}`);
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
   }
-  const latest = existsSync4(prepared.path) ? readFileSync4(prepared.path, "utf8") : null;
+  const latest = existsSync3(prepared.path) ? readFileSync3(prepared.path, "utf8") : null;
   if (latest !== current) throw new Error("Claude settings changed during initialization; retry without overwriting them.");
   mkdirSync(dirname(prepared.path), { recursive: true });
   writeFileSync(prepared.path, content, { flag: current === null ? "wx" : "w" });
@@ -1886,8 +2020,8 @@ function initError(options, code, message) {
   process.exit(2);
 }
 function writeInitFile(options, relativePath, content, actions) {
-  const target = join5(options.root, relativePath);
-  if (existsSync5(target)) {
+  const target = join6(options.root, relativePath);
+  if (existsSync4(target)) {
     actions.push(action("skipped", target));
     return;
   }
@@ -1901,8 +2035,8 @@ function writeInitFile(options, relativePath, content, actions) {
   actions.push(action("created", target));
 }
 function ensureInitDirectory(options, relativePath, actions) {
-  const target = join5(options.root, relativePath);
-  if (existsSync5(target)) {
+  const target = join6(options.root, relativePath);
+  if (existsSync4(target)) {
     actions.push(action("skipped", target));
     return;
   }
@@ -1914,9 +2048,9 @@ function ensureInitDirectory(options, relativePath, actions) {
   actions.push(action("created", target));
 }
 function ensureGitignoreEntry(options, entry, actions) {
-  const target = join5(options.root, ".gitignore");
-  const existed = existsSync5(target);
-  let current = existed ? readFileSync5(target, "utf8") : "";
+  const target = join6(options.root, ".gitignore");
+  const existed = existsSync4(target);
+  let current = existed ? readFileSync4(target, "utf8") : "";
   if (current.split(/\r?\n/).includes(entry)) return;
   if (options.dryRun) {
     actions.push(action(existed ? "would_update" : "would_create", target, { add: entry }));
@@ -2031,14 +2165,14 @@ function runInit(argv, usage2) {
     usage2(error instanceof Error ? error.message : String(error), "init");
     return;
   }
-  if (!options.dryRun && existsSync5(options.root)) {
+  if (!options.dryRun && existsSync4(options.root)) {
     try {
       if (!statSync(options.root).isDirectory()) initError(options, "ROOT_NOT_DIRECTORY", `Project root is not a directory: ${options.root}`);
     } catch {
       initError(options, "ROOT_NOT_FOUND", `Project root not found: ${options.root}`);
     }
   }
-  if (options.claudePlans && !options.documentationRootExplicit && existsSync5(join5(options.root, "dotdotgod.config.json"))) {
+  if (options.claudePlans && !options.documentationRootExplicit && existsSync4(join6(options.root, "dotdotgod.config.json"))) {
     options.documentationRoot = readMemoryConfig(options.root).documentation.root;
   }
   let claudePlans;
@@ -2050,7 +2184,7 @@ function runInit(argv, usage2) {
     }
   }
   if (!options.dryRun) mkdirSync2(options.root, { recursive: true });
-  const configExists = existsSync5(join5(options.root, "dotdotgod.config.json"));
+  const configExists = existsSync4(join6(options.root, "dotdotgod.config.json"));
   if (configExists && options.documentationRootExplicit) {
     const existingRoot = readMemoryConfig(options.root).documentation.root;
     if (existingRoot !== options.documentationRoot) initError(options, "DOCUMENTATION_ROOT_CONFLICT", `Existing config uses documentation root ${existingRoot}; initialization does not migrate documentation.`);
@@ -2090,7 +2224,7 @@ function runInit(argv, usage2) {
 }
 
 // packages/cli/src/cli/usage.mjs
-import { readFileSync as readFileSync6 } from "node:fs";
+import { readFileSync as readFileSync5 } from "node:fs";
 import { resolve as resolve4 } from "node:path";
 var HELP_TOKENS = /* @__PURE__ */ new Set(["help", "--help", "-h"]);
 var VERSION_TOKENS = /* @__PURE__ */ new Set(["version", "--version", "-v"]);
@@ -2124,9 +2258,10 @@ Create dotdotgod.config.json from a bundled or user template. Without --template
   dotdotgod status <root> [--json]`;
     case "query":
       return `Usage:
-  dotdotgod query <root> <query> [--limit n] [--scope docs|code|all] [--search hybrid|keyword|vector] [--json]
+  dotdotgod query <root> <query> [--limit n] [--scope docs|code|all|shared] [--search hybrid|keyword|vector] [--no-write] [--json]
+  dotdotgod query <root> [options] -- <query>
 
-Search full documentation and code outlines/comments. Default: hybrid docs+code. Selecting a remote embedding profile authorizes code metadata transmission.`;
+Search full documentation and code outlines/comments. Default: hybrid docs+code. Use --no-write for keyword search without updating caches, and --scope shared to exclude local memory. Selecting a remote embedding profile authorizes code metadata transmission.`;
     case "embedding":
       return `Usage:
   dotdotgod embedding status [<root>] [--json]
@@ -2151,7 +2286,9 @@ Render the configured shared Markdown documentation map without modifying the pr
   dotdotgod resolve <root> <ref> [--max-results n] [--include-archive] [--json]`;
     case "expand":
       return `Usage:
-  dotdotgod expand <root> <prompt> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--json]`;
+  dotdotgod expand <root> [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--scope shared|all] [--no-write] [--json] [--] <prompt>
+
+Use --no-write to read an existing index without refreshing it; incompatible with --with-impact.`;
     case "traceability":
       return `Usage:
   dotdotgod traceability links <root> [--check|--write] [--json]`;
@@ -2230,7 +2367,11 @@ function isHelpToken(value) {
   return HELP_TOKENS.has(value);
 }
 function hasHelpToken(argv) {
-  return argv.some((arg) => isHelpToken(arg));
+  for (const arg of argv) {
+    if (arg === "--") break;
+    if (isHelpToken(arg)) return true;
+  }
+  return false;
 }
 function isVersionToken(value) {
   return VERSION_TOKENS.has(value);
@@ -2238,7 +2379,7 @@ function isVersionToken(value) {
 function printVersion() {
   let version = "unknown";
   try {
-    const data = JSON.parse(readFileSync6(new URL("../../package.json", import.meta.url), "utf8"));
+    const data = JSON.parse(readFileSync5(new URL("../../package.json", import.meta.url), "utf8"));
     if (typeof data.version === "string") version = data.version;
   } catch {
   }
@@ -2265,11 +2406,11 @@ function parseCommon(argv) {
 }
 
 // packages/cli/src/validate/run.mjs
-import { existsSync as existsSync14, readFileSync as readFileSync14, readdirSync as readdirSync3 } from "node:fs";
-import { basename as basename7, dirname as dirname11, extname as extname6, join as join13, resolve as resolve9 } from "node:path";
+import { existsSync as existsSync13, readFileSync as readFileSync13, readdirSync as readdirSync3 } from "node:fs";
+import { basename as basename7, dirname as dirname11, extname as extname6, join as join14, resolve as resolve9 } from "node:path";
 
 // packages/cli/src/docs/traceability.mjs
-import { existsSync as existsSync6 } from "node:fs";
+import { existsSync as existsSync5 } from "node:fs";
 import { basename as basename2, dirname as dirname3, extname, relative as relative3, resolve as resolve5 } from "node:path";
 function isSecretIndexPath(path) {
   return /(^|\/)(\.env|\.npmrc|\.pypirc|id_rsa|id_dsa|id_ed25519|credentials|secrets?)(\.|\/|$)/i.test(path);
@@ -2470,7 +2611,7 @@ function validateTraceabilityPathArray(data, field2, add, root, config, { requir
       add("TRACEABILITY_LOCAL_MEMORY_TARGET", displayField, `target points to local memory area "${area2.id}": ${value}. Traceability must point to shared durable files, not active plans or archive memory.`);
       continue;
     }
-    if (!existsSync6(resolve5(root, value))) add("TRACEABILITY_MISSING_TARGET", displayField, `target does not exist: ${value}.`);
+    if (!existsSync5(resolve5(root, value))) add("TRACEABILITY_MISSING_TARGET", displayField, `target does not exist: ${value}.`);
   }
 }
 function validateTraceabilityCommandArray(data, field2, add, { required = true, displayField = field2 } = {}) {
@@ -2538,9 +2679,9 @@ function validateTraceabilityBlock(data, root, file, line = null, config = defau
 
 // packages/cli/src/index/files.mjs
 import { createHash } from "node:crypto";
-import { existsSync as existsSync7, readFileSync as readFileSync7, readdirSync, statSync as statSync2 } from "node:fs";
+import { existsSync as existsSync6, readFileSync as readFileSync6, readdirSync, statSync as statSync2 } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { basename as basename3, extname as extname2, join as join6 } from "node:path";
+import { basename as basename3, extname as extname2, join as join7 } from "node:path";
 
 // packages/cli/src/index/constants.mjs
 var CACHE_VERSION = 15;
@@ -2701,7 +2842,7 @@ function walkIndexCandidates(root, config = readMemoryConfig(root)) {
   const files = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const path = join6(dir, entry.name);
+      const path = join7(dir, entry.name);
       const pathRel = rel(root, path);
       if (entry.isDirectory()) {
         const area2 = resolveMemoryArea(pathRel, config);
@@ -2715,7 +2856,7 @@ function walkIndexCandidates(root, config = readMemoryConfig(root)) {
 function addConfiguredLocalMemoryCandidates(root, candidates, config, limit = 5e3) {
   let added = 0;
   const addPath = (path) => {
-    if (added >= limit || !existsSync7(path)) return;
+    if (added >= limit || !existsSync6(path)) return;
     let stat2;
     try {
       stat2 = statSync2(path);
@@ -2731,7 +2872,7 @@ function addConfiguredLocalMemoryCandidates(root, candidates, config, limit = 5e
     if (!stat2.isDirectory() || isExcludedIndexDir(pathRel)) return;
     for (const entry of readdirSync(path, { withFileTypes: true })) {
       if (added >= limit) return;
-      addPath(join6(path, entry.name));
+      addPath(join7(path, entry.name));
     }
   };
   for (const area2 of config.areas ?? []) {
@@ -2739,30 +2880,30 @@ function addConfiguredLocalMemoryCandidates(root, candidates, config, limit = 5e
     for (const pattern of area2.paths ?? []) {
       if (pattern.startsWith("**/")) continue;
       const base = pattern.endsWith("/**") ? pattern.slice(0, -3) : pattern;
-      addPath(join6(root, base));
+      addPath(join7(root, base));
     }
   }
 }
 function collectIndexFiles(root, config = readMemoryConfig(root)) {
   const candidates = new Set(gitIndexCandidates(root) ?? walkIndexCandidates(root, config));
   addConfiguredLocalMemoryCandidates(root, candidates, config);
-  return [...candidates].filter((path) => shouldIndexPath(path, config)).map((path) => join6(root, path)).filter(existsSync7).sort();
+  return [...candidates].filter((path) => shouldIndexPath(path, config)).map((path) => join7(root, path)).filter(existsSync6).sort();
 }
 function fingerprint(file) {
-  const content = readFileSync7(file);
+  const content = readFileSync6(file);
   return createHash("sha256").update(content).digest("hex");
 }
 function cacheFile(root) {
-  return join6(root, CACHE_DIR, MANIFEST_FILE);
+  return join7(root, CACHE_DIR, MANIFEST_FILE);
 }
 
 // packages/cli/src/index/cache.mjs
-import { existsSync as existsSync13, readFileSync as readFileSync13, statSync as statSync4 } from "node:fs";
-import { basename as basename6, join as join12 } from "node:path";
+import { existsSync as existsSync12, readFileSync as readFileSync12, statSync as statSync4 } from "node:fs";
+import { basename as basename6, join as join13 } from "node:path";
 
 // packages/cli/src/graph/store.mjs
-import { existsSync as existsSync8, mkdirSync as mkdirSync3, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import { dirname as dirname4, join as join7 } from "node:path";
+import { existsSync as existsSync7, mkdirSync as mkdirSync3, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { dirname as dirname4, join as join8 } from "node:path";
 var GRAPH_NODE_SHARDS = ["docs", "packages", "source"];
 var GRAPH_EDGE_SHARDS = ["docs-links", "packages", "other"];
 function graphNodeShard(node2) {
@@ -2793,10 +2934,10 @@ function expandEdge(row) {
   return { source, target, relation, ...data };
 }
 function shardFile(root, kind, name) {
-  return join7(root, CACHE_DIR, "graph", kind, `${name}.json`);
+  return join8(root, CACHE_DIR, "graph", kind, `${name}.json`);
 }
 function jsonSize(file) {
-  return existsSync8(file) ? statSync3(file).size : 0;
+  return existsSync7(file) ? statSync3(file).size : 0;
 }
 function writeJson(file, value) {
   mkdirSync3(dirname4(file), { recursive: true });
@@ -2863,12 +3004,12 @@ function addEdge(graph, source, target, relation, data = {}) {
 }
 
 // packages/cli/src/graph/extract.mjs
-import { readFileSync as readFileSync8 } from "node:fs";
+import { readFileSync as readFileSync7 } from "node:fs";
 import { basename as basename5, dirname as dirname5, resolve as resolve7 } from "node:path";
 
 // packages/cli/src/graph/metadata.mjs
 import { createHash as createHash2 } from "node:crypto";
-import { existsSync as existsSync9 } from "node:fs";
+import { existsSync as existsSync8 } from "node:fs";
 import { basename as basename4, extname as extname3, resolve as resolve6 } from "node:path";
 function isReadmeIndexPath(path = "") {
   return basename4(path) === "README.md";
@@ -2928,7 +3069,7 @@ function addReferenceEvidence(graph, sourceId, reference) {
 function addTraceabilityTarget(graph, sourceId, root, relation, targetPath, data = {}, config = defaultMemoryConfig()) {
   if (!isLocalRelativeTraceabilityPath(targetPath)) return;
   addReferenceEvidence(graph, sourceId, { targetPath, href: targetPath, relation, data: { confidence: "CURATED_TRACEABILITY", ...data } });
-  if (!existsSync9(resolve6(root, targetPath))) return;
+  if (!existsSync8(resolve6(root, targetPath))) return;
   const targetId = `file:${targetPath}`;
   addNode(graph, targetId, "file", fileNodeMetadata(targetPath, null, config));
   addEdge(graph, sourceId, targetId, relation, { confidence: "CURATED_TRACEABILITY", ...data });
@@ -2980,7 +3121,7 @@ function headingId(path, title) {
 // packages/cli/src/graph/extract.mjs
 function extractMarkdownGraph(root, file, graph, config = defaultMemoryConfig()) {
   const path = rel(root, file);
-  const content = readFileSync8(file, "utf8");
+  const content = readFileSync7(file, "utf8");
   const fileId = `file:${path}`;
   const headingRe = /^(#{1,6})\s+(.+)$/gm;
   let match;
@@ -3011,7 +3152,7 @@ function extractPackageGraph(root, file, graph) {
   const fileId = `file:${path}`;
   let pkg;
   try {
-    pkg = JSON.parse(readFileSync8(file, "utf8"));
+    pkg = JSON.parse(readFileSync7(file, "utf8"));
   } catch {
     return;
   }
@@ -3058,24 +3199,24 @@ function buildGraph(root, files, config = defaultMemoryConfig()) {
 
 // packages/cli/src/symbols/store.mjs
 import {
-  existsSync as existsSync12,
-  lstatSync as lstatSync3,
+  existsSync as existsSync11,
+  lstatSync as lstatSync4,
   mkdirSync as mkdirSync4,
-  readFileSync as readFileSync12,
+  readFileSync as readFileSync11,
   renameSync,
   writeFileSync as writeFileSync4
 } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { dirname as dirname8, join as join11 } from "node:path";
+import { dirname as dirname8, join as join12 } from "node:path";
 
 // packages/cli/src/symbols/discovery.mjs
 var import_ignore = __toESM(require_ignore(), 1);
-import { existsSync as existsSync11, lstatSync as lstatSync2, readFileSync as readFileSync11, realpathSync as realpathSync2 } from "node:fs";
-import { extname as extname5, join as join10, relative as relative5, isAbsolute as isAbsolute3 } from "node:path";
+import { existsSync as existsSync10, lstatSync as lstatSync3, readFileSync as readFileSync10, realpathSync as realpathSync2 } from "node:fs";
+import { extname as extname5, join as join11, relative as relative5, isAbsolute as isAbsolute3 } from "node:path";
 
 // packages/cli/src/query/chunks.mjs
-import { readFileSync as readFileSync9, readdirSync as readdirSync2 } from "node:fs";
-import { join as join8, relative as relative4 } from "node:path";
+import { readFileSync as readFileSync8, readdirSync as readdirSync2 } from "node:fs";
+import { join as join9, relative as relative4 } from "node:path";
 import { createHash as createHash3 } from "node:crypto";
 var MAX_CHUNK_CHARS = 1600;
 var SKIPPED_DIRECTORIES = /* @__PURE__ */ new Set(["node_modules", "dist", "build", "coverage", ".git", ".dotdotgod"]);
@@ -3083,7 +3224,7 @@ function textFingerprint(text) {
   return createHash3("sha256").update(text).digest("hex");
 }
 function collectDocumentationMarkdown(root, exclude = ["docs/plan", "docs/archive"], documentationRoot = "docs") {
-  const docsRoot = join8(root, documentationRoot);
+  const docsRoot = join9(root, documentationRoot);
   const files = [];
   const walk = (directory) => {
     let entries;
@@ -3095,7 +3236,7 @@ function collectDocumentationMarkdown(root, exclude = ["docs/plan", "docs/archiv
     entries.sort((a, b) => a.name.localeCompare(b.name));
     for (const entry of entries) {
       if (entry.name.startsWith(".")) continue;
-      const absolute = join8(directory, entry.name);
+      const absolute = join9(directory, entry.name);
       const path = relative4(root, absolute).replaceAll("\\", "/");
       if (isSecretLikePathPattern(path) || exclude.some((pattern) => matchPathPattern(path, pattern) || path === pattern || path.startsWith(`${pattern}/`))) continue;
       if (entry.isDirectory()) {
@@ -3158,7 +3299,7 @@ ${piece}`;
 }
 function collectDocumentationChunks(root, exclude, documentationRoot = "docs") {
   return collectDocumentationMarkdown(root, exclude, documentationRoot).flatMap((path) => {
-    const content = readFileSync9(join8(root, path), "utf8");
+    const content = readFileSync8(join9(root, path), "utf8");
     return chunkMarkdown(path, content);
   });
 }
@@ -3167,14 +3308,14 @@ function collectDocumentationChunks(root, exclude, documentationRoot = "docs") {
 init_languages();
 init_runtime();
 function inside(root, file) {
-  if (!lstatSync2(file).isFile()) return false;
+  if (!lstatSync3(file).isFile()) return false;
   const path = relative5(realpathSync2(root), realpathSync2(file));
   return !path.startsWith("..") && !isAbsolute3(path);
 }
 function ignoreRules(root, directory, cache) {
   if (!cache.has(directory)) {
-    const file = join10(root, directory, ".gitignore");
-    cache.set(directory, (0, import_ignore.default)().add(existsSync11(file) && inside(root, file) ? readFileSync11(file, "utf8") : ""));
+    const file = join11(root, directory, ".gitignore");
+    cache.set(directory, (0, import_ignore.default)().add(existsSync10(file) && inside(root, file) ? readFileSync10(file, "utf8") : ""));
   }
   return cache.get(directory);
 }
@@ -3200,9 +3341,9 @@ function sourceFiles(root) {
     const path = relative5(root, file).replaceAll("\\", "/");
     if (!SOURCE_EXTENSIONS.has(extname5(path)) || path.split("/").some((part) => part.startsWith(".")) || isSecretLikePathPattern(path)) return false;
     if (!inside(root, file) || ignored(root, path, cache)) return false;
-    return !/^#![^\n]*\n\/\/ Generated|^\/\/ Generated|@generated/m.test(readFileSync11(file, "utf8").slice(0, 256));
+    return !/^#![^\n]*\n\/\/ Generated|^\/\/ Generated|@generated/m.test(readFileSync10(file, "utf8").slice(0, 256));
   }).map((file) => {
-    const source = readFileSync11(file, "utf8");
+    const source = readFileSync10(file, "utf8");
     return { path: relative5(root, file).replaceAll("\\", "/"), hash: fingerprint(file), language: languageForPath(file), sourceLength: source.length, lineCount: source.split("\n").length };
   });
 }
@@ -3215,12 +3356,12 @@ function outlinePolicy(root) {
 // packages/cli/src/symbols/store.mjs
 init_languages();
 var OUTLINE_SCHEMA = 1;
-var outlinePath = (root) => join11(root, ".dotdotgod", "outlines.json");
+var outlinePath = (root) => join12(root, ".dotdotgod", "outlines.json");
 function assertCachePath(root) {
   for (const path of [dirname8(outlinePath(root)), outlinePath(root)]) {
     let stat2;
     try {
-      stat2 = lstatSync3(path);
+      stat2 = lstatSync4(path);
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
@@ -3231,7 +3372,7 @@ function assertCachePath(root) {
 function readOutlines(root) {
   try {
     assertCachePath(root);
-    const index = JSON.parse(readFileSync12(outlinePath(root), "utf8"));
+    const index = JSON.parse(readFileSync11(outlinePath(root), "utf8"));
     if (index.schema !== OUTLINE_SCHEMA || index.extractor !== EXTRACTOR_ID || !Array.isArray(index.files))
       return null;
     const paths = /* @__PURE__ */ new Set();
@@ -3284,8 +3425,8 @@ function outlineStatus(root) {
   const index = readOutlines(root);
   if (!index)
     return {
-      ok: files.length === 0 && !existsSync12(outlinePath(root)),
-      reason: existsSync12(outlinePath(root)) ? "missing-or-invalid" : "missing",
+      ok: files.length === 0 && !existsSync11(outlinePath(root)),
+      reason: existsSync11(outlinePath(root)) ? "missing-or-invalid" : "missing",
       paths: files.map((file) => file.path)
     };
   const old = new Map(index.files.map((file) => [file.path, file]));
@@ -3330,9 +3471,9 @@ async function buildOutlines(root) {
       continue;
     }
     const { extractSymbols: extractSymbols2 } = await Promise.resolve().then(() => (init_parser(), parser_exports));
-    const source = readFileSync12(join11(root, file.path), "utf8");
+    const source = readFileSync11(join12(root, file.path), "utf8");
     const extracted = await extractSymbols2(file.path, source, file.language);
-    if (fingerprint(join11(root, file.path)) !== file.hash)
+    if (fingerprint(join12(root, file.path)) !== file.hash)
       throw new Error(`Source changed during outline extraction: ${file.path}`);
     records.push({ ...file, ...extracted });
     parsed += 1;
@@ -3433,10 +3574,10 @@ function buildIndex(root, previous = readIndex(root)) {
   const currentPaths = new Set(files.map((file) => file.path));
   const removedPaths = (previous?.files ?? []).filter((file) => !currentPaths.has(file.path)).map((file) => file.path);
   const changedPaths = [...files.filter((file) => indexed.get(file.path) !== file.sha256).map((file) => file.path), ...removedPaths];
-  const changedFiles = files.filter((file) => changedPaths.includes(file.path)).map((file) => join12(root, file.path));
+  const changedFiles = files.filter((file) => changedPaths.includes(file.path)).map((file) => join13(root, file.path));
   const fullRebuild = !previous?.graph || previous.version !== CACHE_VERSION;
   const refreshReason = !previous ? "missing" : previous.version !== CACHE_VERSION ? "schema-mismatch" : removedPaths.length > 0 ? "content-removed" : changedPaths.length > 0 ? "content-changed" : "fresh";
-  const rawGraph = fullRebuild ? buildGraph(root, files.map((file) => join12(root, file.path)), memoryConfig) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles, memoryConfig), changedPaths);
+  const rawGraph = fullRebuild ? buildGraph(root, files.map((file) => join13(root, file.path)), memoryConfig) : mergeIncrementalGraph(previous.graph, buildGraph(root, changedFiles, memoryConfig), changedPaths);
   const graph = { nodes: rawGraph.nodes.filter((node2) => !["symbol", "unresolved_import"].includes(node2.type)), edges: rawGraph.edges.filter((edge) => !["declares_symbol", "contains_symbol", "imports"].includes(edge.relation)) };
   const outlines = readOutlines(root);
   let outlinePolicyMatches = false;
@@ -3460,20 +3601,20 @@ function writeIndex(root, index) {
   const graphShards = { nodes: Object.fromEntries(Object.keys(compact.nodes).map((name) => [name, rel(root, shardFile(root, "nodes", name))])), edges: Object.fromEntries(Object.keys(compact.edges).map((name) => [name, rel(root, shardFile(root, "edges", name))])) };
   const manifest = { version: index.version, schemaVersion: index.schemaVersion ?? index.version, generatedAt: index.generatedAt, archiveBodiesIncluded: index.archiveBodiesIncluded, memoryConfig: index.memoryConfig, files: index.files, graph: { ...graphStats(index.graph), compactSchema: true, shards: graphShards }, incremental: index.incremental };
   writeJson(cacheFile(root), manifest);
-  const shardBytes = [...Object.values(graphShards.nodes), ...Object.values(graphShards.edges)].reduce((sum, path) => sum + jsonSize(join12(root, path)), 0);
+  const shardBytes = [...Object.values(graphShards.nodes), ...Object.values(graphShards.edges)].reduce((sum, path) => sum + jsonSize(join13(root, path)), 0);
   const manifestBytes = jsonSize(cacheFile(root));
   return { ...manifest, indexSizeBytes: manifestBytes + shardBytes, manifestBytes, shardBytes };
 }
 function readIndex(root) {
   const file = cacheFile(root);
-  if (!existsSync13(file)) return null;
+  if (!existsSync12(file)) return null;
   try {
-    const manifest = JSON.parse(readFileSync13(file, "utf8"));
+    const manifest = JSON.parse(readFileSync12(file, "utf8"));
     const shards = manifest.graph?.shards;
     if (!shards) return manifest;
     const compact = { nodes: {}, edges: {} };
-    for (const [name, path] of Object.entries(shards.nodes ?? {})) compact.nodes[name] = existsSync13(join12(root, path)) ? JSON.parse(readFileSync13(join12(root, path), "utf8")) : [];
-    for (const [name, path] of Object.entries(shards.edges ?? {})) compact.edges[name] = existsSync13(join12(root, path)) ? JSON.parse(readFileSync13(join12(root, path), "utf8")) : [];
+    for (const [name, path] of Object.entries(shards.nodes ?? {})) compact.nodes[name] = existsSync12(join13(root, path)) ? JSON.parse(readFileSync12(join13(root, path), "utf8")) : [];
+    for (const [name, path] of Object.entries(shards.edges ?? {})) compact.edges[name] = existsSync12(join13(root, path)) ? JSON.parse(readFileSync12(join13(root, path), "utf8")) : [];
     return { ...manifest, graph: expandGraph(compact) };
   } catch {
     return null;
@@ -3676,7 +3817,7 @@ function runValidate(argv) {
   const root = resolve9(options.root);
   const memoryConfig = readMemoryConfig(root);
   const documentationRoot = memoryConfig.documentation?.root ?? "docs";
-  const docs = join13(root, documentationRoot);
+  const docs = join14(root, documentationRoot);
   const errors = [];
   const warnings = [];
   const markdownFiles = [];
@@ -3694,9 +3835,9 @@ Fix: ${fix}` : message, ...prompt ? { prompt } : {} });
     return false;
   };
   const walk = (dir) => {
-    if (!existsSync14(dir) || shouldSkipDir(dir)) return;
+    if (!existsSync13(dir) || shouldSkipDir(dir)) return;
     for (const entry of readdirSync3(dir, { withFileTypes: true })) {
-      const path = join13(dir, entry.name);
+      const path = join14(dir, entry.name);
       if (entry.isDirectory()) {
         const docsRel = rel(docs, path);
         if (docsRel && !docsRel.startsWith("..")) {
@@ -3706,7 +3847,7 @@ Fix: ${fix}` : message, ...prompt ? { prompt } : {} });
       } else if (entry.isFile() && entry.name.endsWith(".md")) markdownFiles.push(path);
     }
   };
-  if (!existsSync14(docs)) usage(`docs directory not found: ${docs}`);
+  if (!existsSync13(docs)) usage(`docs directory not found: ${docs}`);
   const validationPolicy = cloneValidationPolicy(memoryConfig.validation ?? DEFAULT_VALIDATION_POLICY);
   const maxLines = options.maxLines ?? validationPolicy.markdown.maxLines;
   const maxChars = options.maxChars ?? validationPolicy.markdown.maxChars;
@@ -3746,7 +3887,7 @@ README.md directory indexes, clear HTTP-status filenames such as RESPONSE_200_OK
     const docsRel = rel(docs, file);
     const rootRel = rel(root, file);
     if (docsRel && !docsRel.startsWith("..") && !isUpperSnakeMarkdown(name)) addError(file, "FILE_NAMING", `Markdown file must be UPPER_SNAKE_CASE.md or README.md: ${name}`, null, "rename the markdown file to UPPER_SNAKE_CASE.md or README.md and update any links that reference it.");
-    const content = readFileSync14(file, "utf8");
+    const content = readFileSync13(file, "utf8");
     fileCache.set(file, content);
     const docArea = docsRel?.split("/")[0];
     if (name !== "README.md" && isUpperSnakeMarkdown(name) && FILENAME_QUALITY_AREAS.has(docArea)) {
@@ -3812,12 +3953,12 @@ ${traceabilityExample()}`, block.line);
         const pathPart = hashIndex === -1 ? href : href.slice(0, hashIndex);
         const anchor = hashIndex === -1 ? "" : href.slice(hashIndex + 1);
         const target = pathPart ? resolve9(fileDir, pathPart) : file;
-        if (pathPart && !existsSync14(target)) {
+        if (pathPart && !existsSync13(target)) {
           addError(file, "BROKEN_LINK", `Local link target does not exist: ${pathPart}`, line, "update the link target to an existing local file, create the intended file, or remove the stale link.");
           continue;
         }
         if (anchor && extname6(target) === ".md") {
-          const targetContent = fileCache.get(target) ?? (existsSync14(target) ? readFileSync14(target, "utf8") : "");
+          const targetContent = fileCache.get(target) ?? (existsSync13(target) ? readFileSync13(target, "utf8") : "");
           if (targetContent && !extractAnchors(targetContent).has(decodeURIComponent(anchor))) addError(file, "BROKEN_ANCHOR", `Local anchor target does not exist: ${href}`, line, "update the fragment to a heading that exists in the target markdown file, or add the missing heading.");
         }
       }
@@ -3831,7 +3972,7 @@ ${traceabilityExample()}`, block.line);
       outlines = { ok: false, reason: `inspection-unavailable: ${error instanceof Error ? error.message : String(error)}`, paths: [] };
     }
     if (!outlines.ok) addError(outlinePath(root), "OUTLINE_INDEX_STALE", `Outline index: ${outlines.reason}${outlines.paths.length ? ` (${outlines.paths.join(", ")})` : ""}`, null, "run `dotdotgod index <root>` to refresh outlines and graph metadata; validation does not parse, embed or repair.");
-    for (const path of outlines.unsupported ?? []) addWarning(join13(root, path), "OUTLINE_LANGUAGE_UNSUPPORTED", "Source language is not supported by the current outline extraction matrix.");
+    for (const path of outlines.unsupported ?? []) addWarning(join14(root, path), "OUTLINE_LANGUAGE_UNSUPPORTED", "Source language is not supported by the current outline extraction matrix.");
     const index = readIndex(root);
     if (!index) addError(cacheFile(root), "INDEX_MISSING", "Expected .dotdotgod index cache.", null, "run `dotdotgod index <root>` to build the graph index.");
     else {
@@ -3851,20 +3992,20 @@ ${traceabilityExample()}`, block.line);
   }
   if (options.includeLocalMemory) {
     for (const area2 of ["plan", "archive/plan", "archive/report"]) {
-      const areaRoot = join13(docs, area2);
-      if (!existsSync14(areaRoot)) continue;
+      const areaRoot = join14(docs, area2);
+      if (!existsSync13(areaRoot)) continue;
       for (const entry of readdirSync3(areaRoot, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue;
-        if (!isKebabCase(entry.name)) addError(join13(areaRoot, entry.name), "SLUG_NAMING", `Archive/plan/report slug must be kebab-case: ${entry.name}`, null, "rename the task/report directory to kebab-case and update any README index links that reference it.");
-        const readme = join13(areaRoot, entry.name, "README.md");
-        if (!existsSync14(readme)) addError(readme, "MISSING_README", `Expected README.md in ${documentationRoot}/${area2}/${entry.name}/`, null, "add a README.md that summarizes the task/report and links any supporting files.");
+        if (!isKebabCase(entry.name)) addError(join14(areaRoot, entry.name), "SLUG_NAMING", `Archive/plan/report slug must be kebab-case: ${entry.name}`, null, "rename the task/report directory to kebab-case and update any README index links that reference it.");
+        const readme = join14(areaRoot, entry.name, "README.md");
+        if (!existsSync13(readme)) addError(readme, "MISSING_README", `Expected README.md in ${documentationRoot}/${area2}/${entry.name}/`, null, "add a README.md that summarizes the task/report and links any supporting files.");
       }
     }
   }
-  const gitignore = join13(root, ".gitignore");
-  if (!existsSync14(gitignore)) addError(gitignore, "MISSING_GITIGNORE", "Expected .gitignore", null, `create .gitignore and include ${documentationRoot}/plan, ${documentationRoot}/archive, and .dotdotgod entries.`);
+  const gitignore = join14(root, ".gitignore");
+  if (!existsSync13(gitignore)) addError(gitignore, "MISSING_GITIGNORE", "Expected .gitignore", null, `create .gitignore and include ${documentationRoot}/plan, ${documentationRoot}/archive, and .dotdotgod entries.`);
   else {
-    const content = readFileSync14(gitignore, "utf8").split("\n").map((line) => line.trim());
+    const content = readFileSync13(gitignore, "utf8").split("\n").map((line) => line.trim());
     for (const required of [`${documentationRoot}/plan`, `${documentationRoot}/archive`, CACHE_DIR]) if (!content.includes(required)) addError(gitignore, "MISSING_GITIGNORE_ENTRY", `Expected .gitignore entry: ${required}`, null, `add ${required} to .gitignore so local plans, archives, and cache files stay untracked.`);
   }
   if (options.json) console.log(JSON.stringify({ ok: errors.length === 0, errors, warnings }, null, 2));
@@ -3889,8 +4030,9 @@ Prompt: ${error.prompt}` : ""}`);
 }
 
 // packages/cli/src/commands/config.mjs
-import { existsSync as existsSync15, statSync as statSync6, writeFileSync as writeFileSync5 } from "node:fs";
-import { join as join14, resolve as resolve10 } from "node:path";
+import { existsSync as existsSync14, statSync as statSync6, writeFileSync as writeFileSync5 } from "node:fs";
+import { homedir as homedir4 } from "node:os";
+import { join as join15, resolve as resolve10 } from "node:path";
 function parseConfigOptions(argv, usageKey = "config") {
   const options = { root: ".", json: false, template: null };
   let rootSet = false;
@@ -3927,6 +4069,15 @@ function formatConfigOutput(payload) {
   lines.push(`- documentation root: ${payload.config.documentation.root}`);
   lines.push(`- memory areas: ${payload.config.areas.length}`);
   lines.push(`- embedding: ${payload.embedding.profile ? `${payload.embedding.profile.provider}/${payload.embedding.profile.model}` : "not configured; keyword search"} (${payload.embedding.source})`);
+  const { profile, source, warning } = payload.decision;
+  if (profile) {
+    const fields = Object.entries(profile).map(([key, value]) => `${key}=${value}`);
+    lines.push(`- decision: ${fields.join(" | ")} (${source})`);
+  } else {
+    const reason = payload.errors.some((error) => error.file === "dotdotgod.config.json") ? "project config invalid; global fallback blocked" : "global config invalid";
+    lines.push(`- decision: invalid (${reason}; runtime falls back to local advisory)`);
+  }
+  if (warning) lines.push(`  Warning: ${warning}`);
   lines.push(`- traceability required: ${(payload.config.traceability.required ?? []).join(", ") || "none"}`);
   lines.push(`- traceability exclude: ${(payload.config.traceability.exclude ?? []).join(", ") || "none"}`);
   lines.push("- traceability keys:");
@@ -3946,18 +4097,31 @@ function formatConfigOutput(payload) {
   }
   return lines.join("\n");
 }
+function embeddingSummary(project, errors) {
+  if (project.profiles.embedding) return { source: "project", path: project.path, profile: sanitizeEmbeddingProfile(project.profiles.embedding) };
+  if (project.errors.some(({ code }) => code === "EMBEDDING_CONFIG_INVALID" || code === "MEMORY_CONFIG_INVALID_JSON")) return { source: "invalid", path: null, profile: null };
+  const path = join15(homedir4(), ".dotdotgod", "config.json");
+  try {
+    const global = readConfigJson(path);
+    if (global && Object.hasOwn(global, "embedding")) return { source: "global", path, profile: sanitizeEmbeddingProfile(validateEmbeddingProfile(global.embedding)) };
+  } catch (error) {
+    errors.push({ file: "embedding config", code: "EMBEDDING_CONFIG_INVALID", message: error.message });
+    return { source: "invalid", path: null, profile: null };
+  }
+  return { source: "not-configured", path: null, profile: null };
+}
 function runConfig(argv) {
   const isInit = argv[0] === "init";
   const options = parseConfigOptions(isInit ? argv.slice(1) : argv, isInit ? "config init" : "config");
   if (isInit) {
-    if (!existsSync15(options.root)) configInitError(options, "ROOT_NOT_FOUND", `Project root not found: ${options.root}`);
+    if (!existsSync14(options.root)) configInitError(options, "ROOT_NOT_FOUND", `Project root not found: ${options.root}`);
     try {
       if (!statSync6(options.root).isDirectory()) configInitError(options, "ROOT_NOT_DIRECTORY", `Project root is not a directory: ${options.root}`);
     } catch {
       configInitError(options, "ROOT_NOT_FOUND", `Project root not found: ${options.root}`);
     }
-    const target = join14(options.root, "dotdotgod.config.json");
-    if (existsSync15(target)) configInitError(options, "CONFIG_EXISTS", "dotdotgod.config.json already exists.", target);
+    const target = join15(options.root, "dotdotgod.config.json");
+    if (existsSync14(target)) configInitError(options, "CONFIG_EXISTS", "dotdotgod.config.json already exists.", target);
     const template = resolveInitializationTemplate(options.template);
     if (!template.ok) configInitError(options, template.error.code, template.error.message, template.error.path ?? target);
     writeFileSync5(target, template.text);
@@ -3966,35 +4130,36 @@ function runConfig(argv) {
     else console.log(`dotdotgod config init: created ${target} from ${template.source}:${template.name} (${template.selectedBy})`);
     return;
   }
-  const config = readMemoryConfig(options.root);
-  const errors = config.errors ?? [];
-  let embedding;
-  try {
-    const resolved = resolveEmbeddingProfile(options.root);
-    embedding = { source: resolved.source, path: resolved.path, profile: sanitizeEmbeddingProfile(resolved.profile) };
-  } catch (error) {
-    errors.push({ file: "embedding config", code: "EMBEDDING_CONFIG_INVALID", message: error instanceof Error ? error.message : String(error) });
-    embedding = { source: "invalid", path: null, profile: null };
+  const project = readProjectConfig(options.root);
+  const config = readMemoryConfig(options.root, project);
+  const errors = [...project.errors];
+  const { error: decisionError, ...decision } = resolveDecisionProfile(options.root, { project });
+  if (decisionError) errors.push({ file: "decision config", code: "DECISION_CONFIG_INVALID", message: decisionError });
+  if (decision.profile) {
+    const { warning, ...profile } = sanitizeDecisionProfile(decision.profile, decision.source);
+    decision.profile = profile;
+    if (warning) decision.warning = warning;
   }
-  const payload = { ok: errors.length === 0, command: "config", root: options.root, source: config.source ?? "default", path: config.source && config.source !== "default" ? join14(options.root, config.source) : null, embedding, config: memoryConfigSummary(config), errors };
+  const embedding = embeddingSummary(project, errors);
+  const payload = { ok: errors.length === 0, command: "config", root: options.root, source: config.source ?? "default", path: config.source && config.source !== "default" ? join15(options.root, config.source) : null, embedding, decision, config: memoryConfigSummary(config), errors };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else console.log(formatConfigOutput(payload));
   if (errors.length > 0) process.exit(1);
 }
 
 // packages/cli/src/commands/query.mjs
-import { resolve as resolve11 } from "node:path";
+import { resolve as resolve12 } from "node:path";
 
 // packages/cli/src/query/cache-session.mjs
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { mkdirSync as mkdirSync6, openSync, closeSync, readFileSync as readFileSync16, writeFileSync as writeFileSync7, renameSync as renameSync3, rmSync as rmSync2 } from "node:fs";
-import { join as join16 } from "node:path";
+import { mkdirSync as mkdirSync6, openSync as openSync2, closeSync as closeSync2, readFileSync as readFileSync15, writeFileSync as writeFileSync7, renameSync as renameSync3, rmSync as rmSync2 } from "node:fs";
+import { join as join17 } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // packages/cli/src/query/store.mjs
 import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync16, mkdirSync as mkdirSync5, readFileSync as readFileSync15, renameSync as renameSync2, rmSync, writeFileSync as writeFileSync6 } from "node:fs";
-import { join as join15 } from "node:path";
+import { existsSync as existsSync15, mkdirSync as mkdirSync5, readFileSync as readFileSync14, renameSync as renameSync2, rmSync, writeFileSync as writeFileSync6 } from "node:fs";
+import { join as join16 } from "node:path";
 var VECTOR_SCHEMA_VERSION = 2;
 var VECTOR_DIMENSIONS = 384;
 function profileFingerprint(identity2) {
@@ -4014,22 +4179,22 @@ function isValidNormalizedVectorValues(values, dimensions = VECTOR_DIMENSIONS) {
   return true;
 }
 function vectorCachePaths(root) {
-  const directory = join15(root, ".dotdotgod", "vectors");
-  return { directory, manifest: join15(directory, "manifest.json"), chunks: join15(directory, "chunks.jsonl"), embeddings: join15(directory, "embeddings.f32") };
+  const directory = join16(root, ".dotdotgod", "vectors");
+  return { directory, manifest: join16(directory, "manifest.json"), chunks: join16(directory, "chunks.jsonl"), embeddings: join16(directory, "embeddings.f32") };
 }
 function readVectorCache(root, identity2 = null, diagnostics = {}) {
   diagnostics.reason = "missing";
   const paths = vectorCachePaths(root);
-  if (!existsSync16(paths.manifest) || !existsSync16(paths.chunks) || !existsSync16(paths.embeddings)) return null;
+  if (!existsSync15(paths.manifest) || !existsSync15(paths.chunks) || !existsSync15(paths.embeddings)) return null;
   try {
-    const manifest = JSON.parse(readFileSync15(paths.manifest, "utf8"));
+    const manifest = JSON.parse(readFileSync14(paths.manifest, "utf8"));
     diagnostics.reason = "schema-mismatch";
     if (manifest.schemaVersion !== VECTOR_SCHEMA_VERSION || !Number.isInteger(manifest.dimensions) || manifest.dimensions < 1) return null;
     diagnostics.reason = "profile-mismatch";
     if (identity2 && manifest.profileFingerprint !== profileFingerprint(identity2)) return null;
     diagnostics.reason = "corrupt";
-    const chunks = readFileSync15(paths.chunks, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
-    const buffer = readFileSync15(paths.embeddings);
+    const chunks = readFileSync14(paths.chunks, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
+    const buffer = readFileSync14(paths.embeddings);
     if (buffer.byteLength !== chunks.length * manifest.dimensions * 4) return null;
     const vectors = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4);
     if (!isValidNormalizedVectorValues(vectors, manifest.dimensions)) return null;
@@ -4063,19 +4228,19 @@ function writeVectorCache(root, chunks, vectors, metadata = {}) {
 
 // packages/cli/src/query/cache-session.mjs
 async function vectorCacheSession(root, identity2, action2) {
-  const directory = join16(root, ".dotdotgod", "vectors");
+  const directory = join17(root, ".dotdotgod", "vectors");
   mkdirSync6(directory, { recursive: true });
-  const lock = join16(directory, "build.lock");
+  const lock = join17(directory, "build.lock");
   const token = randomUUID2();
   const started = Date.now();
   let waited = false;
   while (true) {
     try {
-      const fd = openSync(lock, "wx");
+      const fd = openSync2(lock, "wx");
       try {
         writeFileSync7(fd, JSON.stringify({ pid: process.pid, token }));
       } finally {
-        closeSync(fd);
+        closeSync2(fd);
       }
       break;
     } catch (error) {
@@ -4083,7 +4248,7 @@ async function vectorCacheSession(root, identity2, action2) {
       waited = true;
       if (Date.now() - started >= 3e4) throw new Error("Vector cache lock timed out; another build may be running or the lock needs inspection.");
       try {
-        const owner = JSON.parse(readFileSync16(lock, "utf8"));
+        const owner = JSON.parse(readFileSync15(lock, "utf8"));
         if (!Number.isInteger(owner.pid) || owner.pid < 1) throw new Error("Invalid lock owner.");
         try {
           process.kill(owner.pid, 0);
@@ -4100,7 +4265,7 @@ async function vectorCacheSession(root, identity2, action2) {
             throw claim;
           }
           try {
-            const current = JSON.parse(readFileSync16(lock, "utf8"));
+            const current = JSON.parse(readFileSync15(lock, "utf8"));
             if (current.token === owner.token && current.pid === owner.pid) rmSync2(lock);
           } finally {
             rmSync2(recovery, { recursive: true, force: true });
@@ -4114,12 +4279,12 @@ async function vectorCacheSession(root, identity2, action2) {
     }
   }
   try {
-    const path = join16(directory, "snapshots.json");
+    const path = join17(directory, "snapshots.json");
     const fingerprint2 = profileFingerprint(identity2);
     let state;
     let reason = "missing";
     try {
-      state = JSON.parse(readFileSync16(path, "utf8"));
+      state = JSON.parse(readFileSync15(path, "utf8"));
       if (state.schema !== 1) {
         reason = "schema-mismatch";
         state = null;
@@ -4162,7 +4327,7 @@ async function vectorCacheSession(root, identity2, action2) {
     return await action2(state, save, { reason, lockWaitMs: waited ? Date.now() - started : 0 });
   } finally {
     try {
-      if (JSON.parse(readFileSync16(lock, "utf8")).token === token) rmSync2(lock);
+      if (JSON.parse(readFileSync15(lock, "utf8")).token === token) rmSync2(lock);
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
@@ -4170,11 +4335,11 @@ async function vectorCacheSession(root, identity2, action2) {
 }
 
 // packages/cli/src/query/embedding-runtime.mjs
-import { existsSync as existsSync17, mkdirSync as mkdirSync7, readFileSync as readFileSync17, rmSync as rmSync3, writeFileSync as writeFileSync8 } from "node:fs";
+import { existsSync as existsSync16, mkdirSync as mkdirSync7, readFileSync as readFileSync16, rmSync as rmSync3, writeFileSync as writeFileSync8 } from "node:fs";
 import { spawnSync as spawnSync2 } from "node:child_process";
 import { createRequire as createRequire2 } from "node:module";
-import { homedir as homedir3 } from "node:os";
-import { join as join17 } from "node:path";
+import { homedir as homedir5 } from "node:os";
+import { join as join18 } from "node:path";
 import { pathToFileURL } from "node:url";
 var EMBEDDING_RUNTIME_PACKAGE = "@huggingface/transformers";
 var EMBEDDING_RUNTIME_VERSION = "4.2.0";
@@ -4186,12 +4351,12 @@ var EmbeddingRuntimeMissingError = class extends Error {
   }
 };
 function embeddingRuntimeRoot(options = {}) {
-  return join17(options.home ?? homedir3(), ".dotdotgod", "runtime", "embedding");
+  return join18(options.home ?? homedir5(), ".dotdotgod", "runtime", "embedding");
 }
 function resolvePersistentTransformers(options = {}) {
   const root = embeddingRuntimeRoot(options);
   try {
-    const require3 = createRequire2(join17(root, "package.json"));
+    const require3 = createRequire2(join18(root, "package.json"));
     return require3.resolve(EMBEDDING_RUNTIME_PACKAGE);
   } catch {
     throw new EmbeddingRuntimeMissingError();
@@ -4200,10 +4365,10 @@ function resolvePersistentTransformers(options = {}) {
 function embeddingRuntimeStatus(options = {}) {
   const root = embeddingRuntimeRoot(options);
   try {
-    const require3 = createRequire2(join17(root, "package.json"));
+    const require3 = createRequire2(join18(root, "package.json"));
     require3.resolve(EMBEDDING_RUNTIME_PACKAGE);
-    const packagePath = join17(root, "node_modules", ...EMBEDDING_RUNTIME_PACKAGE.split("/"), "package.json");
-    const version = JSON.parse(readFileSync17(packagePath, "utf8")).version;
+    const packagePath = join18(root, "node_modules", ...EMBEDDING_RUNTIME_PACKAGE.split("/"), "package.json");
+    const version = JSON.parse(readFileSync16(packagePath, "utf8")).version;
     return { ok: true, installed: true, installAvailable: true, package: EMBEDDING_RUNTIME_PACKAGE, requiredVersion: EMBEDDING_RUNTIME_VERSION, packageVersion: version, location: root };
   } catch {
     return { ok: true, installed: false, installAvailable: true, package: EMBEDDING_RUNTIME_PACKAGE, requiredVersion: EMBEDDING_RUNTIME_VERSION, packageVersion: null, location: root };
@@ -4212,8 +4377,8 @@ function embeddingRuntimeStatus(options = {}) {
 function installEmbeddingRuntime(options = {}) {
   if (options.confirm !== true) throw new Error("Embedding runtime installation requires explicit confirmation.");
   const root = embeddingRuntimeRoot(options);
-  const lock = join17(root, ".installing");
-  if (existsSync17(lock)) throw new Error("Embedding runtime installation is already in progress.");
+  const lock = join18(root, ".installing");
+  if (existsSync16(lock)) throw new Error("Embedding runtime installation is already in progress.");
   mkdirSync7(root, { recursive: true });
   writeFileSync8(lock, `${process.pid}
 `, { flag: "wx" });
@@ -4336,6 +4501,127 @@ async function resolveEmbedder(root, options = {}) {
 }
 
 // packages/cli/src/query/hybrid.mjs
+import { readFileSync as readFileSync17 } from "node:fs";
+import { join as join20 } from "node:path";
+
+// packages/cli/src/memory/documentation-map.mjs
+import { existsSync as existsSync17, lstatSync as lstatSync5, readdirSync as readdirSync4, realpathSync as realpathSync3, statSync as statSync7 } from "node:fs";
+import { join as join19, resolve as resolve11 } from "node:path";
+var SKIPPED_DIRECTORIES2 = /* @__PURE__ */ new Set(["node_modules", "dist", "build", "coverage", ".git", ".dotdotgod"]);
+function node() {
+  return { directories: /* @__PURE__ */ new Map(), files: [] };
+}
+function buildTree(paths) {
+  const root = node();
+  for (const path of [...new Set(paths)].sort()) {
+    const parts = path.split("/");
+    let current = root;
+    for (const part of parts.slice(0, -1)) {
+      if (!current.directories.has(part)) current.directories.set(part, node());
+      current = current.directories.get(part);
+    }
+    current.files.push(parts.at(-1));
+  }
+  return root;
+}
+function descendantCounts(current) {
+  let directories = 0;
+  let files = current.files.length;
+  for (const child of current.directories.values()) {
+    directories += 1;
+    const nested = descendantCounts(child);
+    directories += nested.directories;
+    files += nested.files;
+  }
+  return { directories, files };
+}
+function plural(count, singular, pluralForm = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : pluralForm}`;
+}
+function formatDocumentationTree(paths, documentationRoot = "docs", maxDepth = 5) {
+  const tree = buildTree(paths);
+  let docs = tree;
+  for (const part of documentationRoot.split("/")) {
+    docs = docs.directories.get(part);
+    if (!docs) return `- ${documentationRoot}/: missing`;
+  }
+  const lines = [`${documentationRoot}/`];
+  const render = (current, depth, indent) => {
+    for (const file of current.files.sort()) lines.push(`${indent}- ${file}`);
+    if (depth >= maxDepth && current.directories.size > 0) {
+      for (const [name, child] of [...current.directories.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+        const counts = descendantCounts(child);
+        lines.push(`${indent}- ${name}/`);
+        lines.push(`${indent}  - \u2026 ${plural(counts.directories, "directory", "directories")}, ${plural(counts.files, "Markdown file")}`);
+      }
+      return;
+    }
+    for (const [name, child] of [...current.directories.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+      lines.push(`${indent}- ${name}/`);
+      render(child, depth + 1, `${indent}  `);
+    }
+  };
+  render(docs, 1, "  ");
+  return lines.join("\n");
+}
+function checkedDocumentationRoot(root, documentationRoot) {
+  const realRoot = realpathSync3(root);
+  let path = realRoot;
+  for (const part of documentationRoot.split("/")) {
+    path = join19(path, part);
+    const entry = lstatSync5(path, { throwIfNoEntry: false });
+    if (!entry) return null;
+    if (!entry.isDirectory()) throw new Error("Configured documentation root must be a directory without symlinks.");
+  }
+  return realRoot;
+}
+function isSharedMemoryPath(path, config) {
+  const roots = [config.documentation.root, DEFAULT_DOCUMENTATION_ROOT];
+  return !/[\\\x00-\x1f\x7f]/.test(path) && !path.split("/").some((part) => !part || part.startsWith(".") || SKIPPED_DIRECTORIES2.has(part)) && !roots.some((root) => ["plan", "archive"].some((area2) => matchPathPattern(path, `${root}/${area2}/**`))) && !isSecretLikePathPattern(path) && resolveMemoryArea(path, config)?.scope !== "local";
+}
+function* discoverDocumentation(root, documentationRoot, exclude, { maxDepth = Infinity, allowPath = () => true } = {}) {
+  function* walk(relativeDirectory, depth) {
+    let entries;
+    try {
+      entries = readdirSync4(join19(root, relativeDirectory), { withFileTypes: true, encoding: "utf8" });
+    } catch {
+      return;
+    }
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+      const path = `${relativeDirectory}/${entry.name}`;
+      if (entry.name.startsWith(".") || entry.name.includes("\\") || isSecretLikePathPattern(path) || exclude.some((pattern) => matchPathPattern(path, pattern))) continue;
+      if (entry.isDirectory()) {
+        if (depth < maxDepth && !SKIPPED_DIRECTORIES2.has(entry.name)) yield* walk(path, depth + 1);
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md") && allowPath(path)) yield path;
+    }
+  }
+  yield* walk(documentationRoot, 1);
+}
+function buildDocumentationMap(projectRoot = ".", { depth = 5 } = {}) {
+  const root = resolve11(projectRoot);
+  if (!existsSync17(root)) return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
+  try {
+    if (!statSync7(root).isDirectory()) return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
+  } catch {
+    return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
+  }
+  const config = readMemoryConfig(root);
+  const documentationRoot = config.documentation?.root ?? "docs";
+  const exclude = [...config.load?.documentationSummary?.exclude ?? []].sort();
+  const paths = [...discoverDocumentation(root, documentationRoot, exclude)].sort();
+  return {
+    ok: true,
+    root,
+    documentationRoot,
+    depth,
+    exclude,
+    paths,
+    tree: formatDocumentationTree(paths, documentationRoot, depth)
+  };
+}
+
+// packages/cli/src/query/hybrid.mjs
 var resultKey = (chunk) => chunk.kind === "symbol" ? chunk.id : chunk.path;
 var terms = (text) => [...new Set(text.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean))];
 function keywordCandidates(query, chunks) {
@@ -4376,11 +4662,24 @@ function fuseCandidates(keyword, vector, limit) {
     return true;
   }).slice(0, limit);
 }
-async function projectCorpus(root, scope) {
+async function projectCorpus(root, scope, readOnly) {
   const config = readMemoryConfig(root);
-  const docs = scope === "code" ? [] : collectDocumentationChunks(root, config.load?.documentationSummary?.exclude, config.documentation?.root ?? "docs").map((chunk) => ({ ...chunk, kind: "document" }));
-  const outlines = scope === "docs" ? null : await buildOutlines(root);
-  return { chunks: [...docs, ...outlines ? outlineChunks(outlines) : []], outlines };
+  const shared = scope === "shared";
+  const documentationRoot = config.documentation.root;
+  const exclude = config.load.documentationSummary.exclude;
+  const allowPath = (path) => !shared || isSharedMemoryPath(path, config);
+  let docs = [];
+  if (readOnly || shared) {
+    if (config.errors?.length) throw new Error("Project configuration is invalid.");
+    const realRoot = checkedDocumentationRoot(root, documentationRoot);
+    if (scope !== "code" && realRoot) {
+      const patterns = exclude.map((pattern) => pattern.includes("*") ? pattern : `${pattern}/**`);
+      docs = [...discoverDocumentation(realRoot, documentationRoot, patterns, { allowPath })].flatMap((path) => chunkMarkdown(path, readFileSync17(join20(realRoot, path), "utf8")));
+    }
+  } else if (scope !== "code") docs = collectDocumentationChunks(root, exclude, documentationRoot);
+  let outlines = scope === "docs" ? null : readOnly ? readOutlines(root) : await buildOutlines(root);
+  if (outlines && shared) outlines = { ...outlines, files: outlines.files.filter(({ path }) => allowPath(path)) };
+  return { chunks: [...docs.map((chunk) => ({ ...chunk, kind: "document" })), ...outlines ? outlineChunks(outlines) : []], outlines };
 }
 function attachRelationships(results, outlines) {
   if (!outlines) return results;
@@ -4397,14 +4696,18 @@ var MAX_LIMIT = 100;
 var EMBED_BATCH_SIZE = 16;
 function parseQueryOptions(argv) {
   const options = { root: ".", query: "", limit: DEFAULT_LIMIT, json: false, scope: "all", search: "hybrid" };
-  let rootSet = false;
-  const queryParts = [];
+  const operands = [];
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
+    if (arg === "--") {
+      operands.push(...argv.slice(i + 1));
+      break;
+    }
     if (arg === "--json") options.json = true;
+    else if (arg === "--no-write") options.readOnly = true;
     else if (arg === "--scope") {
       options.scope = argv[++i];
-      if (!["docs", "code", "all"].includes(options.scope)) usage("--scope must be docs, code or all.", "query");
+      if (!["docs", "code", "all", "shared"].includes(options.scope)) usage("--scope must be docs, code, all or shared.", "query");
     } else if (arg === "--search") {
       options.search = argv[++i];
       if (!["hybrid", "keyword", "vector"].includes(options.search)) usage("--search must be hybrid, keyword or vector.", "query");
@@ -4413,11 +4716,10 @@ function parseQueryOptions(argv) {
       if (!Number.isInteger(value) || value < 1 || value > MAX_LIMIT) usage(`--limit must be an integer from 1 to ${MAX_LIMIT}.`, "query");
       options.limit = value;
     } else if (arg.startsWith("-")) usage(`Unknown option: ${arg}`, "query");
-    else if (!rootSet) {
-      options.root = resolve11(arg);
-      rootSet = true;
-    } else queryParts.push(arg);
+    else operands.push(arg);
   }
+  const [root = ".", ...queryParts] = operands;
+  options.root = resolve12(root);
   options.query = queryParts.join(" ").trim();
   if (!options.query) usage("query requires search text.", "query");
   return options;
@@ -4511,9 +4813,9 @@ async function buildVectorIndex(root, embedOrOptions = {}) {
 }
 async function queryProject(root, query, options = {}) {
   const scope = options.scope ?? "all";
-  const search = options.search ?? "hybrid";
+  const search = options.readOnly ? "keyword" : options.search ?? "hybrid";
   const limit = options.limit ?? DEFAULT_LIMIT;
-  const corpus = await projectCorpus(root, scope);
+  const corpus = await projectCorpus(root, scope, options.readOnly);
   const keyword = search === "vector" ? [] : keywordCandidates(query, corpus.chunks);
   let vector = [];
   let index;
@@ -4530,7 +4832,7 @@ async function queryProject(root, query, options = {}) {
   }
   if (search !== "keyword" && configured) {
     try {
-      index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks, corpora: scope === "all" ? ["docs", "code"] : [scope] });
+      index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks, corpora: scope === "all" || scope === "shared" ? ["docs", "code"] : [scope] });
       const [queryVector] = index.chunks.length ? await index.embedding.embed([query], "query") : [];
       vector = index.chunks.map((chunk, position) => ({ ...chunk, vectorScore: cosineScore(queryVector, index.vectors, position * index.manifest.dimensions, index.manifest.dimensions) })).sort((a, b) => b.vectorScore - a.vectorScore || a.id.localeCompare(b.id));
     } catch (error) {
@@ -4580,7 +4882,7 @@ async function runQuery(argv) {
 }
 
 // packages/cli/src/commands/embedding.mjs
-import { resolve as resolve12 } from "node:path";
+import { resolve as resolve13 } from "node:path";
 function parse(argv) {
   const [action2 = "status", ...rest] = argv;
   let root = ".";
@@ -4592,7 +4894,7 @@ function parse(argv) {
     else if (!arg.startsWith("-") && root === ".") root = arg;
     else usage(`Unknown embedding option: ${arg}`, `embedding ${action2}`);
   }
-  return { action: action2, root: resolve12(root), json: json2, confirm };
+  return { action: action2, root: resolve13(root), json: json2, confirm };
 }
 function runEmbedding(argv, options = {}) {
   const parsed = parse(argv);
@@ -4619,112 +4921,6 @@ function runEmbedding(argv, options = {}) {
 
 // packages/cli/src/commands/map.mjs
 import { resolve as resolve14 } from "node:path";
-
-// packages/cli/src/memory/documentation-map.mjs
-import { existsSync as existsSync18, readdirSync as readdirSync4, statSync as statSync7 } from "node:fs";
-import { join as join18, resolve as resolve13 } from "node:path";
-var SKIPPED_DIRECTORIES2 = /* @__PURE__ */ new Set(["node_modules", "dist", "build", "coverage", ".git", ".dotdotgod"]);
-function node() {
-  return { directories: /* @__PURE__ */ new Map(), files: [] };
-}
-function buildTree(paths) {
-  const root = node();
-  for (const path of [...new Set(paths)].sort()) {
-    const parts = path.split("/");
-    let current = root;
-    for (const part of parts.slice(0, -1)) {
-      if (!current.directories.has(part)) current.directories.set(part, node());
-      current = current.directories.get(part);
-    }
-    current.files.push(parts.at(-1));
-  }
-  return root;
-}
-function descendantCounts(current) {
-  let directories = 0;
-  let files = current.files.length;
-  for (const child of current.directories.values()) {
-    directories += 1;
-    const nested = descendantCounts(child);
-    directories += nested.directories;
-    files += nested.files;
-  }
-  return { directories, files };
-}
-function plural(count, singular, pluralForm = `${singular}s`) {
-  return `${count} ${count === 1 ? singular : pluralForm}`;
-}
-function formatDocumentationTree(paths, documentationRoot = "docs", maxDepth = 5) {
-  const tree = buildTree(paths);
-  let docs = tree;
-  for (const part of documentationRoot.split("/")) {
-    docs = docs.directories.get(part);
-    if (!docs) return `- ${documentationRoot}/: missing`;
-  }
-  const lines = [`${documentationRoot}/`];
-  const render = (current, depth, indent) => {
-    for (const file of current.files.sort()) lines.push(`${indent}- ${file}`);
-    if (depth >= maxDepth && current.directories.size > 0) {
-      for (const [name, child] of [...current.directories.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-        const counts = descendantCounts(child);
-        lines.push(`${indent}- ${name}/`);
-        lines.push(`${indent}  - \u2026 ${plural(counts.directories, "directory", "directories")}, ${plural(counts.files, "Markdown file")}`);
-      }
-      return;
-    }
-    for (const [name, child] of [...current.directories.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-      lines.push(`${indent}- ${name}/`);
-      render(child, depth + 1, `${indent}  `);
-    }
-  };
-  render(docs, 1, "  ");
-  return lines.join("\n");
-}
-function discoverMarkdown(root, documentationRoot, exclude) {
-  const paths = [];
-  const walk = (relativeDirectory) => {
-    let entries;
-    try {
-      entries = readdirSync4(join18(root, relativeDirectory), { withFileTypes: true, encoding: "utf8" });
-    } catch {
-      return;
-    }
-    entries.sort((a, b) => a.name.localeCompare(b.name));
-    for (const entry of entries) {
-      const path = `${relativeDirectory}/${entry.name}`.replaceAll("\\", "/");
-      if (entry.name.startsWith(".") || isSecretLikePathPattern(path) || exclude.some((pattern) => matchPathPattern(path, pattern))) continue;
-      if (entry.isDirectory()) {
-        if (!SKIPPED_DIRECTORIES2.has(entry.name)) walk(path);
-      } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) paths.push(path);
-    }
-  };
-  walk(documentationRoot);
-  return paths.sort();
-}
-function buildDocumentationMap(projectRoot = ".", { depth = 5 } = {}) {
-  const root = resolve13(projectRoot);
-  if (!existsSync18(root)) return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
-  try {
-    if (!statSync7(root).isDirectory()) return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
-  } catch {
-    return { ok: false, error: { code: "ROOT_NOT_FOUND", message: `Project root not found: ${root}` } };
-  }
-  const config = readMemoryConfig(root);
-  const documentationRoot = config.documentation?.root ?? "docs";
-  const exclude = [...config.load?.documentationSummary?.exclude ?? []].sort();
-  const paths = discoverMarkdown(root, documentationRoot, exclude);
-  return {
-    ok: true,
-    root,
-    documentationRoot,
-    depth,
-    exclude,
-    paths,
-    tree: formatDocumentationTree(paths, documentationRoot, depth)
-  };
-}
-
-// packages/cli/src/commands/map.mjs
 function fail(json2, code, message) {
   if (json2) console.log(JSON.stringify({ ok: false, error: { code, message } }, null, 2));
   else console.error(message);
@@ -6212,7 +6408,7 @@ function prepareImpactReferences(index, root, changedPaths) {
 }
 
 // packages/cli/src/impact/vector-profile.mjs
-import { lstatSync as lstatSync4, readFileSync as readFileSync19, realpathSync as realpathSync3 } from "node:fs";
+import { lstatSync as lstatSync6, readFileSync as readFileSync19, realpathSync as realpathSync4 } from "node:fs";
 import { extname as extname8, relative as relative7, resolve as resolve16, sep } from "node:path";
 var MAX_VECTOR_PROFILE_FILE_BYTES = 64 * 1024;
 var MAX_VECTOR_PROFILE_CHARS = 4e3;
@@ -6235,8 +6431,8 @@ function canonicalizeChangedPath(root, path) {
   const absolute = resolve16(rootAbsolute, normalized);
   if (!insideRoot(rootAbsolute, absolute)) return normalized;
   try {
-    const canonicalRoot = realpathSync3(rootAbsolute);
-    const canonicalAbsolute = realpathSync3(absolute);
+    const canonicalRoot = realpathSync4(rootAbsolute);
+    const canonicalAbsolute = realpathSync4(absolute);
     if (!insideRoot(canonicalRoot, canonicalAbsolute)) return normalized;
     const canonical = relative7(canonicalRoot, canonicalAbsolute).replaceAll("\\", "/");
     return canonical || normalized;
@@ -6265,11 +6461,11 @@ function safeTextPrefix(root, path) {
   try {
     const absolute = resolve16(root, path);
     if (!insideRoot(root, absolute)) return "";
-    const canonicalAbsolute = realpathSync3(absolute);
-    if (!insideRoot(realpathSync3(root), canonicalAbsolute)) return "";
-    const canonicalPath = relative7(realpathSync3(root), canonicalAbsolute).replaceAll("\\", "/");
+    const canonicalAbsolute = realpathSync4(absolute);
+    if (!insideRoot(realpathSync4(root), canonicalAbsolute)) return "";
+    const canonicalPath = relative7(realpathSync4(root), canonicalAbsolute).replaceAll("\\", "/");
     if (canonicalPath !== path || unsafeProfilePath(canonicalPath) || !TEXT_EXTENSIONS.has(extname8(canonicalPath).toLowerCase())) return "";
-    const stats = lstatSync4(canonicalAbsolute);
+    const stats = lstatSync6(canonicalAbsolute);
     if (!stats.isFile() || stats.isSymbolicLink() || stats.size > MAX_VECTOR_PROFILE_FILE_BYTES) return "";
     const buffer = readFileSync19(canonicalAbsolute);
     if (buffer.includes(0)) return "";
@@ -6654,10 +6850,14 @@ function resolveReferenceCandidates(index, ref, options = {}) {
   return { input: ref, query, normalized, candidates: shown, top: shown[0] ?? null, ambiguous: shown.length > 1 && shown[0].score - shown[1].score < 5, omitted: Math.max(0, candidates.length - shown.length) };
 }
 function parseReferenceOptions(argv, command) {
-  const filtered = [];
-  const options = { maxResults: DEFAULT_REFERENCE_LIMIT, includeArchive: false, withImpact: false, fuzzy: false };
+  const operands = [];
+  const options = { maxResults: DEFAULT_REFERENCE_LIMIT, includeArchive: false, withImpact: false, fuzzy: false, json: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
+    if (arg === "--" && command === "expand") {
+      operands.push(...argv.slice(i + 1));
+      break;
+    }
     if (arg === "--max-results") {
       const next = argv[i + 1];
       if (!next || next.startsWith("-") || Number.isNaN(Number.parseInt(next, 10))) usage("Missing or invalid value for --max-results.", command);
@@ -6665,15 +6865,16 @@ function parseReferenceOptions(argv, command) {
       i += 1;
     } else if (arg === "--include-archive") options.includeArchive = true;
     else if (arg === "--with-impact") options.withImpact = true;
-    else if (arg === "--fuzzy") {
-      if (command !== "expand") usage(`Unknown option: ${arg}`, command);
-      options.fuzzy = true;
-    } else if (arg === "--json") filtered.push(arg);
+    else if (command === "expand" && arg === "--fuzzy") options.fuzzy = true;
+    else if (command === "expand" && arg === "--no-write") options.readOnly = true;
+    else if (command === "expand" && arg === "--scope") {
+      options.scope = argv[++i];
+      if (!["all", "shared"].includes(options.scope)) usage("--scope must be all or shared.", command);
+    } else if (arg === "--json") options.json = true;
     else if (arg.startsWith("-")) usage(`Unknown option: ${arg}`, command);
-    else filtered.push(arg);
+    else operands.push(arg);
   }
-  const operands = filtered.filter((arg) => !arg.startsWith("-"));
-  return { ...options, root: resolve17(operands[0] ?? "."), json: filtered.includes("--json"), rootArgv: operands.slice(1) };
+  return { ...options, root: resolve17(operands[0] ?? "."), rootArgv: operands.slice(1) };
 }
 function formatReferenceOutput(payload) {
   const refreshNote = payload.metadata.cacheRefreshed ? ", refreshed" : "";
@@ -6698,39 +6899,70 @@ function runResolve(argv) {
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else console.log(formatReferenceOutput(payload));
 }
-function runExpand(argv) {
-  const options = parseReferenceOptions(argv, "expand");
-  const prompt = options.rootArgv?.join(" ");
-  if (!prompt) usage("Missing required argument: <prompt>.", "expand");
+function readExpansionIndex(root) {
+  const index = readIndex(root);
+  const schemaVersion = index?.schemaVersion ?? index?.version ?? null;
+  const current = schemaVersion === CACHE_VERSION && (index.version ?? schemaVersion) === CACHE_VERSION && Boolean(index.graph);
+  const status = current ? "cached" : index ? "stale" : "missing";
+  return { index: current ? index : null, status: { ok: current, status }, metadata: { cacheRefreshed: false, schemaVersion } };
+}
+function sharedReferenceIndex(index, config) {
+  const allowed = (path) => isSharedMemoryPath(path, config);
+  const nodes = index.graph.nodes.filter((node2) => allowed(referencePathForNode(node2))).map((node2) => node2.references ? { ...node2, references: node2.references.filter(({ targetPath }) => allowed(targetPath)) } : node2);
+  const ids = new Set(nodes.map(({ id }) => id));
+  const edges = index.graph.edges.filter(({ source, target }) => ids.has(source) && ids.has(target));
+  return { ...index, graph: { nodes, edges } };
+}
+function expandReferences(root, prompt, options = {}) {
+  if (options.readOnly && options.withImpact) throw new Error("--with-impact cannot be combined with --no-write.");
   const refsInPrompt = extractBracketReferences(prompt);
-  if (refsInPrompt.length === 0 && !options.fuzzy) usage("No [[refs]] found in prompt.", "expand");
-  const { status, index, metadata } = readFreshIndex(options.root);
-  const fuzzyRefs = options.fuzzy ? extractFuzzyReferences(prompt, index, { ...options, memoryConfig: readMemoryConfig(options.root), existingTargets: refsInPrompt.map((item) => item.target) }) : [];
+  if (refsInPrompt.length === 0 && !options.fuzzy && !options.readOnly) throw new Error("No [[refs]] found in prompt.");
+  const { status, index, metadata } = options.readOnly ? readExpansionIndex(root) : readFreshIndex(root);
+  const payload = { ok: options.readOnly || status.ok, command: "expand", root, prompt, status, metadata, refs: [], omitted: 0 };
+  if (!index || !refsInPrompt.length && !options.fuzzy) return payload;
+  const memoryConfig = readMemoryConfig(root);
+  const shared = options.scope === "shared";
+  if (shared && memoryConfig.errors?.length) throw new Error("Project configuration is invalid.");
+  const scopedIndex = shared ? sharedReferenceIndex(index, memoryConfig) : index;
+  const settings = { ...options, memoryConfig, existingTargets: refsInPrompt.map((item) => item.target) };
+  const fuzzyRefs = options.fuzzy ? extractFuzzyReferences(prompt, scopedIndex, settings) : [];
   let refs = [
-    ...refsInPrompt.map((item) => ({ ...resolveReferenceCandidates(index, item.target, { ...options, memoryConfig: readMemoryConfig(options.root) }), source: "explicit", raw: item.raw, label: item.label })),
-    ...fuzzyRefs.map((item) => ({ ...resolveReferenceCandidates(index, item.target, { ...options, memoryConfig: readMemoryConfig(options.root) }), source: "fuzzy", raw: item.raw, confidence: item.confidence, reasons: item.reasons }))
+    ...refsInPrompt.map((item) => ({ ...resolveReferenceCandidates(scopedIndex, item.target, settings), source: "explicit", raw: item.raw, label: item.label })),
+    ...fuzzyRefs.map((item) => ({ ...resolveReferenceCandidates(scopedIndex, item.target, settings), source: "fuzzy", raw: item.raw, confidence: item.confidence, reasons: item.reasons }))
   ];
+  if (shared) refs = refs.filter((item) => item.top);
   if (options.withImpact) refs = refs.map((item) => {
     const topPath = item.top?.path;
     if (!topPath) return item;
-    const impact = buildCompactImpactReport(buildImpactReport(index, topPath, { root: options.root }));
+    const impact = buildCompactImpactReport(buildImpactReport(scopedIndex, topPath, { root }));
     return { ...item, impact: { changed: topPath, warnings: impact.warnings, related: impact.related, groups: impact.groups, omittedRelated: impact.omittedRelated, quality: impact.quality } };
   });
-  const payload = { ok: status.ok, command: "expand", root: options.root, prompt, status, metadata, refs, omitted: refs.reduce((sum, item) => sum + item.omitted, 0) };
+  return { ...payload, refs, omitted: refs.reduce((sum, item) => sum + item.omitted, 0) };
+}
+function runExpand(argv) {
+  const options = parseReferenceOptions(argv, "expand");
+  const prompt = options.rootArgv.join(" ");
+  if (!prompt) usage("Missing required argument: <prompt>.", "expand");
+  let payload;
+  try {
+    payload = expandReferences(options.root, prompt, options);
+  } catch (error) {
+    usage(error.message, "expand");
+  }
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else console.log(formatReferenceOutput(payload));
 }
 
 // packages/cli/src/commands/traceability.mjs
-import { existsSync as existsSync19, readFileSync as readFileSync20, readdirSync as readdirSync5, writeFileSync as writeFileSync9 } from "node:fs";
-import { join as join19, resolve as resolve18 } from "node:path";
+import { existsSync as existsSync18, readFileSync as readFileSync20, readdirSync as readdirSync5, writeFileSync as writeFileSync9 } from "node:fs";
+import { join as join21, resolve as resolve18 } from "node:path";
 function collectDocsMarkdownFiles(root) {
-  const docs = join19(root, "docs");
+  const docs = join21(root, "docs");
   const files = [];
   const walk = (dir) => {
-    if (!existsSync19(dir)) return;
+    if (!existsSync18(dir)) return;
     for (const entry of readdirSync5(dir, { withFileTypes: true })) {
-      const path = join19(dir, entry.name);
+      const path = join21(dir, entry.name);
       if (entry.isDirectory()) walk(path);
       else if (entry.isFile() && entry.name.endsWith(".md")) files.push(path);
     }
@@ -6796,7 +7028,7 @@ function runTraceability(argv) {
 
 // packages/cli/src/commands/graph.mjs
 import { mkdir, writeFile, rename, rm } from "node:fs/promises";
-import { join as join21 } from "node:path";
+import { join as join23 } from "node:path";
 
 // packages/cli/src/graph-view/traceability.mjs
 import { resolve as resolve19 } from "node:path";
@@ -6839,10 +7071,10 @@ async function exportTraceability(root) {
 // packages/cli/src/graph-view/server.mjs
 import { createServer } from "node:http";
 import { readFileSync as readFileSync21 } from "node:fs";
-import { dirname as dirname13, extname as extname10, join as join20, resolve as resolve20 } from "node:path";
+import { dirname as dirname13, extname as extname10, join as join22, resolve as resolve20 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 var import_node_style = __toESM(require_node_style(), 1);
-var ASSET_ROOT = join20(dirname13(fileURLToPath2(import.meta.url)), "assets");
+var ASSET_ROOT = join22(dirname13(fileURLToPath2(import.meta.url)), "assets");
 var CONTENT_TYPES = { ".css": "text/css; charset=utf-8", ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".cjs": "text/javascript; charset=utf-8", ".map": "application/json; charset=utf-8" };
 var VENDOR_FILES = {
   "/vendor/d3.js": new URL("../../node_modules/d3/dist/d3.min.js", import.meta.url)
@@ -6882,13 +7114,13 @@ async function startImpactGraphServer({ root, changed, host = "127.0.0.1", port 
       }
     }
     if (VENDOR_FILES[url.pathname]) return asset(response, fileURLToPath2(VENDOR_FILES[url.pathname]));
-    if (url.pathname === "/policy.js") return asset(response, join20(ASSET_ROOT, "../policy.cjs"));
+    if (url.pathname === "/policy.js") return asset(response, join22(ASSET_ROOT, "../policy.cjs"));
     const relative8 = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
     if (!["index.html", "app.css", "app.js", "file-list.js", "graph-client.js", "layout.js"].includes(relative8)) {
       response.writeHead(404);
       return response.end("Not found");
     }
-    return asset(response, join20(ASSET_ROOT, relative8));
+    return asset(response, join22(ASSET_ROOT, relative8));
   });
   await new Promise((resolve21, reject) => {
     server.once("error", reject);
@@ -7057,9 +7289,9 @@ async function runGraph(argv) {
   if (sub === "export") {
     const graph = await exportTraceability(options.root);
     delete graph.projectRoot;
-    const directory = join21(options.root, ".dotdotgod");
+    const directory = join23(options.root, ".dotdotgod");
     await mkdir(directory, { recursive: true });
-    const path = join21(directory, "traceability.json");
+    const path = join23(directory, "traceability.json");
     const temporary = `${path}.${process.pid}.tmp`;
     try {
       await writeFile(temporary, JSON.stringify(graph, null, 2));

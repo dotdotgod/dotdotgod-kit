@@ -19,7 +19,7 @@ with zero errors and zero warnings and activates with zero prompts (no required
   `dotdotgod_context` with 19 unprefixed tools.
 - Hooks (`hooks.json`): root hook config registering only `PostToolUse` and
   `PreInvocation` under `"dotdotgod"` (no `SessionStart`, `PreToolUse`, or
-  `Stop` hooks).
+  `Stop` hooks). `PreInvocation` has `timeout: 25` seconds.
 - Rules (`rules/AGENTS.md`): concise always-on router that activates ONLY when
   `dotdotgod.config.json` or `.dotdotgod/` exists in the workspace root and
   stays silent in uninitialized repositories unless explicitly invoked. It never
@@ -64,7 +64,7 @@ fall back to `process.cwd()` or create `.dotdotgod/` in uninitialized repos.
 
 - `PostToolUse` tracks successful CLI (`write_file`, `edit_file`) and App/IDE
   (`write_to_file`, `replace_file_content`, `multi_replace_file_content`) edits
-  inside initialized workspaces in `.dotdotgod/context/impact.sqlite` v2
+  inside initialized workspaces in `.dotdotgod/context/impact.sqlite` v3
   (24-hour fixed TTL). Paths outside the canonical root, `node_modules`, `.git`,
   `.dotdotgod`, `dist`, `build`, `coverage`, and `<docRoot>/(plan|archive)` are
   excluded; `<docRoot>/post` remains tracked.
@@ -80,6 +80,27 @@ fall back to `process.cwd()` or create `.dotdotgod/` in uninitialized repos.
   direct `mcp__dotdotgod_context__project_impact` /
   `dotdotgod_context__project_impact` clears requested paths via `clearPaths`;
   failed reviews retain pending rows.
+
+## Project Memory Load
+
+The static `rules/AGENTS.md` has one line directing the agent to call
+`project_load` autonomously before substantive work unless `decision.mode` is
+`manual` or the user opts out with `/dd:no-load` (A3). It adds no hook trajectory
+step; the text itself cannot dynamically disappear in `manual` or on opt-out.
+The agent must honor the caveat. `PreInvocation` adds no load step for `advisory`
+or `manual`, including those fallback outcomes. Impact and plan notices remain
+independent.
+
+`PreInvocation` triages at most one initialized workspace: match `cwd` or use the
+sole initialized workspace; if several remain and none matches, skip load triage.
+`model` reads `lastUserInput` and skips missing or blank input. The internal
+budget is at most 22 seconds; advice or prefetch is injected as a `systemMessage`
+of at most 6,144 UTF-8 bytes. `always` produces a one-time load hint, not a gate.
+See [Decision Config](DECISION_CONFIG.md) for policy and payload boundaries.
+
+Successful `PostToolUse` for allowlisted `call_mcp_tool` with
+`ToolName: "project_load"`, or for a recognized direct MCP tool name, calls
+`markLoaded()` for the matched workspace/conversation. Failed results do not mark completion.
 
 ## Native Plan Integration
 
@@ -122,6 +143,7 @@ untouched (Option C-2).
   - [packages/context/src/server.mjs](../../packages/context/src/server.mjs)
   - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
   - [scripts/build-adapter-runtime.mjs](../../scripts/build-adapter-runtime.mjs)
+  - [packages/context/src/decision.mjs](../../packages/context/src/decision.mjs)
 - Verified by:
   - [packages/context/test/hooks-antigravity.test.mjs](../../packages/context/test/hooks-antigravity.test.mjs)
   - [packages/antigravity/test/resources.test.mjs](../../packages/antigravity/test/resources.test.mjs)
@@ -132,6 +154,7 @@ untouched (Option C-2).
   - [docs/spec/CONTEXT_EXECUTION.md](CONTEXT_EXECUTION.md)
   - [docs/spec/CROSS_AGENT_SUPPORT.md](CROSS_AGENT_SUPPORT.md)
   - [docs/spec/NATIVE_PLAN_STORAGE.md](NATIVE_PLAN_STORAGE.md)
+  - [docs/spec/DECISION_CONFIG.md](DECISION_CONFIG.md)
 - Design decisions:
   - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../arch/CROSS_AGENT_ARCHITECTURE.md)
   - [docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md](../arch/CONTEXT_EXECUTION_ARCHITECTURE.md)
@@ -144,5 +167,5 @@ untouched (Option C-2).
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/antigravity/plugin.json","packages/antigravity/mcp_config.json","packages/antigravity/hooks.json","packages/antigravity/rules/AGENTS.md","packages/antigravity/assets/logo.svg","packages/context/src/hooks-antigravity.mjs","packages/context/src/hook-state.mjs","packages/context/src/impact-state.mjs","packages/context/src/server.mjs","scripts/generate-adapters.mjs","scripts/build-adapter-runtime.mjs"],"verifiedBy":["packages/context/test/hooks-antigravity.test.mjs","packages/antigravity/test/resources.test.mjs","packages/context/test/adapter-packaging.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/ADVISORY_IMPACT.md","docs/spec/CONTEXT_EXECUTION.md","docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/NATIVE_PLAN_STORAGE.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md","docs/arch/NATIVE_PLAN_INTEGRATION.md"],"contracts":[{"id":"ANTIGRAVITY-PLUGIN-001","title":"Native Antigravity plugin layout, skills, scoped rules, and MCP roots discovery","sections":["Plugin Layout And Resources","Runtime And MCP Boundary"],"implementedBy":["packages/antigravity/plugin.json","packages/antigravity/mcp_config.json","packages/antigravity/rules/AGENTS.md","packages/antigravity/assets/logo.svg","packages/context/src/server.mjs"],"verifiedBy":["packages/antigravity/test/resources.test.mjs","packages/context/test/adapter-packaging.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/CONTEXT_EXECUTION.md"]},{"id":"ANTIGRAVITY-IMPACT-001","title":"Non-blocking advisory impact tracking, one-time PreInvocation notice, and PostToolUse clearance","sections":["Advisory Impact Hooks"],"implementedBy":["packages/antigravity/hooks.json","packages/context/src/hooks-antigravity.mjs","packages/context/src/hook-state.mjs","packages/context/src/impact-state.mjs"],"verifiedBy":["packages/context/test/hooks-antigravity.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/ADVISORY_IMPACT.md"]},{"id":"ANTIGRAVITY-PLAN-001","title":"Read-only native /plan artifact observation and one-time workspace save advisory","sections":["Native Plan Integration"],"implementedBy":["packages/antigravity/hooks.json","packages/context/src/hooks-antigravity.mjs","packages/context/src/impact-state.mjs"],"verifiedBy":["packages/context/test/hooks-antigravity.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/NATIVE_PLAN_STORAGE.md"]}]}
+{"kind":"spec","implementedBy":["packages/antigravity/plugin.json","packages/antigravity/mcp_config.json","packages/antigravity/hooks.json","packages/antigravity/rules/AGENTS.md","packages/antigravity/assets/logo.svg","packages/context/src/hooks-antigravity.mjs","packages/context/src/hook-state.mjs","packages/context/src/impact-state.mjs","packages/context/src/server.mjs","scripts/generate-adapters.mjs","scripts/build-adapter-runtime.mjs","packages/context/src/decision.mjs"],"verifiedBy":["packages/context/test/hooks-antigravity.test.mjs","packages/antigravity/test/resources.test.mjs","packages/context/test/adapter-packaging.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/ADVISORY_IMPACT.md","docs/spec/CONTEXT_EXECUTION.md","docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/NATIVE_PLAN_STORAGE.md","docs/spec/DECISION_CONFIG.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md","docs/arch/NATIVE_PLAN_INTEGRATION.md"],"contracts":[{"id":"ANTIGRAVITY-PLUGIN-001","title":"Native Antigravity plugin layout, skills, scoped rules, and MCP roots discovery","sections":["Plugin Layout And Resources","Runtime And MCP Boundary"],"implementedBy":["packages/antigravity/plugin.json","packages/antigravity/mcp_config.json","packages/antigravity/rules/AGENTS.md","packages/antigravity/assets/logo.svg","packages/context/src/server.mjs"],"verifiedBy":["packages/antigravity/test/resources.test.mjs","packages/context/test/adapter-packaging.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/CONTEXT_EXECUTION.md"]},{"id":"ANTIGRAVITY-IMPACT-001","title":"Non-blocking advisory impact tracking, one-time PreInvocation notice, and PostToolUse clearance","sections":["Advisory Impact Hooks"],"implementedBy":["packages/antigravity/hooks.json","packages/context/src/hooks-antigravity.mjs","packages/context/src/hook-state.mjs","packages/context/src/impact-state.mjs"],"verifiedBy":["packages/context/test/hooks-antigravity.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/ADVISORY_IMPACT.md"]},{"id":"ANTIGRAVITY-PLAN-001","title":"Read-only native /plan artifact observation and one-time workspace save advisory","sections":["Native Plan Integration"],"implementedBy":["packages/antigravity/hooks.json","packages/context/src/hooks-antigravity.mjs","packages/context/src/impact-state.mjs"],"verifiedBy":["packages/context/test/hooks-antigravity.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/NATIVE_PLAN_STORAGE.md"]}]}
 ```

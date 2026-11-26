@@ -51,17 +51,24 @@ project-data ACLs.
 
 ## Load And References
 
-Automatic assessment injects a load-required instruction until successful project
-load; it does not rewrite user text/images or run broad validation. Requests with
-`dd:no-load` suppress only that request's automatic instruction. Restored
-sessions conservatively reassess; completion is never inherited from abandoned
-siblings.
+In initialized selected repositories, `before_llm` offers non-forcing
+`advisory` guidance by default without rewriting user text/images. `always`
+offers a one-time baseline-load hint. `manual` or request-local `/dd:no-load`
+suppresses automatic load guidance. With `mode: "model"`, the bundled
+`mcp/decision.mjs` runs triage outside the Python runtime lock with a 25-second
+subprocess timeout. See [Decision Config](DECISION_CONFIG.md).
+
+The in-memory `Session` owns load state (including completion, skip count, and
+last prompt hash), not SQLite. `select_root` or an explicit load that changes
+the root resets it. Restored routing does not restore completion after a process
+restart. An explicit load or reselection supersedes any in-flight decision.
 
 Full load uses canonical map depth 5. Focused load uses map depth 3 and up to 30
 query hits. CLI/query failure falls back to baseline README routing without
-automatic installation. Reference expansion supplies explicit/fuzzy bounded CLI
-evidence, marked non-authoritative, and falls back visibly when unavailable.
-Hermes does not claim Pi's hidden TUI-message or codemode delivery mechanics.
+automatic installation. Reference expansion supplies bounded explicit/fuzzy
+evidence and can use allowlisted decision refs as additional non-authoritative
+seeds. Prefetch already expands its refs read-only, so the hook skips its normal
+expansion for that turn. Hermes uses native ephemeral context, not Pi's TUI.
 
 ## Context Results And Lifecycle
 
@@ -90,10 +97,13 @@ shared command-capture limits or result data.
 ## Impact And Delegation
 
 Hermes uses Path 1 non-blocking advisory impact backed by shared
-`.dotdotgod/context/impact.sqlite` v2 (24-hour fixed millisecond TTL, WAL mode,
-`busy_timeout=5000`, `isolation_level=None`, `BEGIN IMMEDIATE`, `closing`) for
-direct cross-process interoperability between Python `sqlite3` and Node
-`ImpactState`.
+`.dotdotgod/context/impact.sqlite` v3 for Python `sqlite3` and Node `ImpactState`
+interop. Writes add the same `load_state` DDL and purge expired rows from all
+three tables under the fixed, non-sliding 24-hour TTL. Hermes does not use that
+table as its load state source of truth. `write=False` makes zero WAL/DDL writes
+and does not create the database. The reserved `default` session ID is rejected
+case-insensitively. See [schema](ADVISORY_IMPACT.md#schema-v3-and-delivery-cadence)
+and [retention](CONTEXT_RETENTION.md).
 
 - `post_tool_call` observes successful native `write_file`, `file_write`,
   `file_edit`, and `patch` (both `path` and V4A multi-file `patch` headers)
@@ -133,7 +143,7 @@ memory, compaction, planning UI, or `pi-subagents` implementation is replaced.
 Python stdlib regressions exercise registration, unrestricted project routing,
 concurrent clients, same-root session filtering, explicit resume/reconnect,
 conservative load restore/opt-out, reference fallback, `post_tool_call` edit
-tracking, Python/Node `impact.sqlite` v2 interop, aligned `impact_status`,
+tracking, Python/Node `impact.sqlite` v3 interop, aligned `impact_status`,
 MCP `project_impact` clearance/failure/re-edits, non-blocking execution under
 pending impact, delegation identity, and interruption with real generated Node
 processes. Resource checks validate generated skills and absent Plan Mode. The
@@ -161,6 +171,7 @@ mutations.
   - [packages/hermes/mcp/bridge-entry.mjs](../../packages/hermes/mcp/bridge-entry.mjs)
   - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
   - [scripts/build-adapter-runtime.mjs](../../scripts/build-adapter-runtime.mjs)
+  - [packages/hermes/mcp/decision-entry.mjs](../../packages/hermes/mcp/decision-entry.mjs)
 - Verified by:
   - [packages/hermes/test/test_runtime.py](../../packages/hermes/test/test_runtime.py)
   - [packages/hermes/test/resources.test.mjs](../../packages/hermes/test/resources.test.mjs)
@@ -172,6 +183,8 @@ mutations.
   - [docs/spec/LOAD_PROJECT.md](LOAD_PROJECT.md)
   - [docs/spec/CONTEXT_EXECUTION.md](CONTEXT_EXECUTION.md)
   - [docs/spec/TOOL_RESPONSES.md](TOOL_RESPONSES.md)
+  - [docs/spec/DECISION_CONFIG.md](DECISION_CONFIG.md)
+  - [docs/spec/CONTEXT_RETENTION.md](CONTEXT_RETENTION.md)
 - Design decisions:
   - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../arch/CROSS_AGENT_ARCHITECTURE.md)
 - Contracts:
@@ -181,5 +194,5 @@ mutations.
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/hermes/__init__.py","packages/hermes/plugin.yaml","packages/hermes/runtime.py","packages/hermes/impact.py","packages/hermes/proxy.py","packages/hermes/policy.py","packages/hermes/mcp/bridge-entry.mjs","scripts/generate-adapters.mjs","scripts/build-adapter-runtime.mjs"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/resources.test.mjs","packages/hermes/test/pinned_host_smoke.py","docs/test/HERMES_ADAPTER.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/ADVISORY_IMPACT.md","docs/spec/LOAD_PROJECT.md","docs/spec/CONTEXT_EXECUTION.md","docs/spec/TOOL_RESPONSES.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"],"contracts":[{"id":"HERMES-ROUTING-001","title":"CLI and gateway sessions use project-routed MCP connections without filesystem-area authorization or Plan Mode","sections":["Installation And Routing","Context Results And Lifecycle"],"implementedBy":["packages/hermes/__init__.py","packages/hermes/runtime.py","packages/hermes/proxy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]},{"id":"HERMES-IMPACT-001","title":"Observed edits record non-blocking advisory pending impact in shared impact.sqlite with aligned status and MCP review clearance","sections":["Impact And Delegation"],"implementedBy":["packages/hermes/runtime.py","packages/hermes/impact.py","packages/hermes/policy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]}]}
+{"kind":"spec","implementedBy":["packages/hermes/__init__.py","packages/hermes/plugin.yaml","packages/hermes/runtime.py","packages/hermes/impact.py","packages/hermes/proxy.py","packages/hermes/policy.py","packages/hermes/mcp/bridge-entry.mjs","scripts/generate-adapters.mjs","scripts/build-adapter-runtime.mjs","packages/hermes/mcp/decision-entry.mjs"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/resources.test.mjs","packages/hermes/test/pinned_host_smoke.py","docs/test/HERMES_ADAPTER.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/ADVISORY_IMPACT.md","docs/spec/LOAD_PROJECT.md","docs/spec/CONTEXT_EXECUTION.md","docs/spec/TOOL_RESPONSES.md","docs/spec/DECISION_CONFIG.md","docs/spec/CONTEXT_RETENTION.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"],"contracts":[{"id":"HERMES-ROUTING-001","title":"CLI and gateway sessions use project-routed MCP connections without filesystem-area authorization or Plan Mode","sections":["Installation And Routing","Context Results And Lifecycle"],"implementedBy":["packages/hermes/__init__.py","packages/hermes/runtime.py","packages/hermes/proxy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]},{"id":"HERMES-IMPACT-001","title":"Observed edits record non-blocking advisory pending impact in shared impact.sqlite with aligned status and MCP review clearance","sections":["Impact And Delegation"],"implementedBy":["packages/hermes/runtime.py","packages/hermes/impact.py","packages/hermes/policy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]}]}
 ```

@@ -47,9 +47,14 @@ test('AP-01: plugin.json, package.json, mcp_config.json, and hooks.json match An
   for (const token of ['write_file', 'edit_file', 'write_to_file', 'replace_file_content', 'multi_replace_file_content', 'call_mcp_tool', 'dotdotgod_context']) {
     assert.ok(postGroup.matcher.includes(token), `PostToolUse matcher missing ${token}`);
   }
+  const matcher = new RegExp(`^(?:${postGroup.matcher})$`);
+  for (const prefix of ['mcp__dotdotgod_context__', 'dotdotgod_context__', 'mcp__dotdotgod-context__']) {
+    assert.match(`${prefix}project_load`, matcher);
+  }
   assert.equal(postGroup.hooks[0].command, 'node ./scripts/hook-runtime.mjs posttooluse');
   assert.equal(hooks.dotdotgod.PreInvocation.length, 1);
   assert.equal(hooks.dotdotgod.PreInvocation[0].command, 'node ./scripts/hook-runtime.mjs preinvocation');
+  assert.equal(hooks.dotdotgod.PreInvocation[0].timeout, 25);
 });
 
 test('AP-01: rules/AGENTS.md stays within line budget and declares all four security/activation boundaries', () => {
@@ -70,6 +75,10 @@ test('AP-01: rules/AGENTS.md stays within line budget and declares all four secu
     assert.equal(existsSync(join(pkgRoot, 'skills', skillName, 'SKILL.md')), true, `missing skill ${skillName}`);
   }
   assert.match(rules, /never block/i);
+  const workflowRules = rules.split('## Workflows And Plan Sync\n')[1].split('\n## ')[0];
+  const loadRules = workflowRules.split('\n').filter((line) => line.includes('`project_load`'));
+  assert.equal(loadRules.length, 1);
+  assert.match(loadRules[0], /initialized repositor.*\bproject_load\b.*before substantive work.*`decision\.mode`.*`manual`.*`\/dd:no-load`/i);
   // 3. C-2 /plan native write boundary
   assert.match(rules, /implementation_plan\.md/);
   assert.match(rules, /native file write tools/i);

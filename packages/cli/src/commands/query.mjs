@@ -15,18 +15,23 @@ const EMBED_BATCH_SIZE = 16;
 
 export function parseQueryOptions(argv) {
   const options = { root: '.', query: '', limit: DEFAULT_LIMIT, json: false, scope: 'all', search: 'hybrid' };
-  let rootSet = false;
-  const queryParts = [];
+  const operands = [];
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
+    if (arg === '--') {
+      operands.push(...argv.slice(i + 1));
+      break;
+    }
     if (arg === '--json') options.json = true;
-    else if (arg === '--scope') { options.scope = argv[++i]; if (!['docs', 'code', 'all'].includes(options.scope)) usage('--scope must be docs, code or all.', 'query'); }
+    else if (arg === '--no-write') options.readOnly = true;
+    else if (arg === '--scope') { options.scope = argv[++i]; if (!['docs', 'code', 'all', 'shared'].includes(options.scope)) usage('--scope must be docs, code, all or shared.', 'query'); }
     else if (arg === '--search') { options.search = argv[++i]; if (!['hybrid', 'keyword', 'vector'].includes(options.search)) usage('--search must be hybrid, keyword or vector.', 'query'); }
     else if (arg === '--limit') { const value = Number(argv[++i]); if (!Number.isInteger(value) || value < 1 || value > MAX_LIMIT) usage(`--limit must be an integer from 1 to ${MAX_LIMIT}.`, 'query'); options.limit = value; }
     else if (arg.startsWith('-')) usage(`Unknown option: ${arg}`, 'query');
-    else if (!rootSet) { options.root = resolve(arg); rootSet = true; }
-    else queryParts.push(arg);
+    else operands.push(arg);
   }
+  const [root = '.', ...queryParts] = operands;
+  options.root = resolve(root);
   options.query = queryParts.join(' ').trim();
   if (!options.query) usage('query requires search text.', 'query');
   return options;
@@ -130,9 +135,9 @@ export async function queryDocumentation(root, query, options = {}) {
 
 export async function queryProject(root, query, options = {}) {
   const scope = options.scope ?? 'all';
-  const search = options.search ?? 'hybrid';
+  const search = options.readOnly ? 'keyword' : options.search ?? 'hybrid';
   const limit = options.limit ?? DEFAULT_LIMIT;
-  const corpus = await projectCorpus(root, scope);
+  const corpus = await projectCorpus(root, scope, options.readOnly);
   const keyword = search === 'vector' ? [] : keywordCandidates(query, corpus.chunks);
   let vector = []; let index; let vectorError;
   let configured = false;
@@ -143,7 +148,7 @@ export async function queryProject(root, query, options = {}) {
   }
   if (search !== 'keyword' && configured) {
     try {
-      index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks, corpora: scope === 'all' ? ['docs', 'code'] : [scope] });
+      index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks, corpora: scope === 'all' || scope === 'shared' ? ['docs', 'code'] : [scope] });
       const [queryVector] = index.chunks.length ? await index.embedding.embed([query], 'query') : [];
       vector = index.chunks.map((chunk, position) => ({ ...chunk, vectorScore: cosineScore(queryVector, index.vectors, position * index.manifest.dimensions, index.manifest.dimensions) }))
         .sort((a, b) => b.vectorScore - a.vectorScore || a.id.localeCompare(b.id));

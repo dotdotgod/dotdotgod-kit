@@ -1,6 +1,9 @@
-import { collectDocumentationChunks } from './chunks.mjs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { chunkMarkdown, collectDocumentationChunks } from './chunks.mjs';
 import { readMemoryConfig } from '../memory/config.mjs';
-import { buildOutlines, outlineChunks } from '../symbols/store.mjs';
+import { checkedDocumentationRoot, discoverDocumentation, isSharedMemoryPath } from '../memory/documentation-map.mjs';
+import { buildOutlines, outlineChunks, readOutlines } from '../symbols/store.mjs';
 import { addOutlineGraph } from '../symbols/graph.mjs';
 
 export const resultKey = (chunk) => chunk.kind === 'symbol' ? chunk.id : chunk.path;
@@ -40,11 +43,25 @@ export function fuseCandidates(keyword, vector, limit) {
     seen.add(key); return true;
   }).slice(0, limit);
 }
-export async function projectCorpus(root, scope) {
+export async function projectCorpus(root, scope, readOnly) {
   const config = readMemoryConfig(root);
-  const docs = scope === 'code' ? [] : collectDocumentationChunks(root, config.load?.documentationSummary?.exclude, config.documentation?.root ?? 'docs').map((chunk) => ({ ...chunk, kind: 'document' }));
-  const outlines = scope === 'docs' ? null : await buildOutlines(root);
-  return { chunks: [...docs, ...(outlines ? outlineChunks(outlines) : [])], outlines };
+  const shared = scope === 'shared';
+  const documentationRoot = config.documentation.root;
+  const exclude = config.load.documentationSummary.exclude;
+  const allowPath = (path) => !shared || isSharedMemoryPath(path, config);
+  let docs = [];
+  if (readOnly || shared) {
+    if (config.errors?.length) throw new Error('Project configuration is invalid.');
+    const realRoot = checkedDocumentationRoot(root, documentationRoot);
+    if (scope !== 'code' && realRoot) {
+      const patterns = exclude.map((pattern) => pattern.includes('*') ? pattern : `${pattern}/**`);
+      docs = [...discoverDocumentation(realRoot, documentationRoot, patterns, { allowPath })]
+        .flatMap((path) => chunkMarkdown(path, readFileSync(join(realRoot, path), 'utf8')));
+    }
+  } else if (scope !== 'code') docs = collectDocumentationChunks(root, exclude, documentationRoot);
+  let outlines = scope === 'docs' ? null : readOnly ? readOutlines(root) : await buildOutlines(root);
+  if (outlines && shared) outlines = { ...outlines, files: outlines.files.filter(({ path }) => allowPath(path)) };
+  return { chunks: [...docs.map((chunk) => ({ ...chunk, kind: 'document' })), ...(outlines ? outlineChunks(outlines) : [])], outlines };
 }
 export function attachRelationships(results, outlines) {
   if (!outlines) return results;

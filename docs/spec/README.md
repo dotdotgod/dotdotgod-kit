@@ -2,7 +2,7 @@
 
 - `OBSIDIAN_PLUGIN.md`: vault-relative export, desktop plugin behavior, safety, lifecycle, and release contract.
 
-- `CONTEXT_RETENTION.md`: fixed 24-hour SQLite content/job/impact (`pending` and `plan_notices`) lifetime, fast read-only path, migration, and cleanup contract.
+- `CONTEXT_RETENTION.md`: fixed 24-hour SQLite content/job/impact (`pending`, `plan_notices`, and `load_state`) lifetime, fast read-only path, migration, and cleanup contract.
 
 Use this area for behavior specs, API contracts, and product requirements.
 
@@ -28,20 +28,21 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 - `CONTEXT_SEARCH_RECOVERY.md`: failure diagnostic queries, bounded wildcard browsing, and evidence limits.
 - `CONFIG_TEMPLATES.md`: initialization-only built-in/custom templates, global default selection, shadowing, and fallback behavior.
 - `EMBEDDING_CONFIG.md`: global/project embedding profiles, local and remote providers, credentials, consent, and cache invalidation.
+- `DECISION_CONFIG.md`: optional load triage profiles, remote trust and credentials, and read-only prefetch.
 
 ## Index
 
 - `ANTIGRAVITY_ADAPTER.md`: native Antigravity plugin layout, `dotdotgod_context` MCP, non-blocking advisory impact hooks, and Option C-2 `/plan` sync.
 - `NATIVE_PLAN_STORAGE.md`: opt-in Claude/Codex native plan storage, Antigravity Option C-2 read-only `/plan` observation, and host permission boundaries.
 - `OPENCODE_ADAPTER.md`: OpenCode V2 native planning, MCP and advisory impact contract.
-- `ADVISORY_IMPACT.md`: unified all-6-adapter non-blocking `.dotdotgod/context/impact.sqlite` v2 pending state, clearance, and unbound MCP guidance.
+- `ADVISORY_IMPACT.md`: unified all-6-adapter non-blocking `.dotdotgod/context/impact.sqlite` v3 pending/load state, clearance, and unbound MCP guidance.
 - `REFERENCE_SCOPE_VALIDATION.md`: shared-to-local Markdown and inline-code dependency errors with layout-example exemptions.
 - `README.md`: specs documentation scope and local table of contents.
 - `PROJECT_INITIALIZER.md`: project initializer scaffold, CLI options, overwrite policy, and docs contract.
 - `PLAN_MODE.md`: compatibility route for Plan Mode behavior docs.
 - `plan-mode/README.md`: `/dd:plan`, safe planning restrictions, context shaping, concise plan review choice, and execution tracking.
 - `PLAN_MODE_TOOL_SETTINGS.md`: optional Plan Mode extra tool allowlist settings and prompt requirements.
-- `LOAD_PROJECT.md`: global automatic project-memory assessment plus `/load` and `/dd:load` documentation-map and focused-query behavior.
+- `LOAD_PROJECT.md`: advisory project-memory loading, Pi tool lifecycle, and `/load` / `/dd:load` behavior.
 - `MEMORY_AREA_CONFIG.md`: optional config for shared/local and fresh/stale memory-area policy.
 - `TRACEABILITY_CONFIG.md`: optional config for traceability enforcement paths, generated-link drift checks, and repair flow.
 - `VALIDATION_CONFIG.md`: optional config for markdown validation size budgets and explicit size-check exclusions.

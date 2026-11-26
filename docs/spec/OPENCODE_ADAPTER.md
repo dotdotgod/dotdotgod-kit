@@ -12,6 +12,8 @@ The adapter registers the bundled dotdotgod_context stdio MCP server with Code
 Mode enabled, using the active checkout rather than another canonical worktree.
 It adds no duplicate native execution/search/project tools. Node >=22.5 must be
 available. AGENTS.md remains canonical; no OPENCODE.md or local scaffold is added.
+Load and impact share one adapter runtime bundle, `mcp/runtime.mjs` (C-05),
+separate from the MCP server executable.
 
 All nineteen shared tool names are unprefixed, including project_load,
 project_impact, impact_status, and execute; the dotdotgod_context server namespace
@@ -39,6 +41,24 @@ reminder/permission layouts report unavailable integration and retain native
 restrictions instead of claiming successful automatic storage. The agent uses
 normal write/edit tools; the plugin does not dump or summarize transcripts into
 files. Compatible context transformation does not rewrite persisted history.
+
+## Project Memory Load
+
+`session.hook("context")` assesses initialized repositories with a valid session
+ID and a matching checkout (`isLocalSession`). It reads only the last user
+message's text, discards non-text parts, and strips `<system-reminder>` blocks
+before triage. While unloaded it can offer non-forcing `advisory` guidance or
+apply the configured [Decision Config](DECISION_CONFIG.md) mode.
+
+Load advice and bounded read-only prefetch go into `event.system`. That context
+is ephemeral (P-06): successful prefetch marks `loaded`, so the block is not
+re-injected on later turns while the load record is current. Later turns can
+rely only on retained conversation content or request an explicit load.
+
+The Code Mode executor wrapper marks successful `project_load` results loaded.
+The native `execute.after` hook also marks completed
+`dotdotgod_context_project_load` calls. Both use `markLoaded()` for the initialized
+local session in `impact.sqlite` v3.
 
 ## Advisory Impact
 
@@ -85,6 +105,8 @@ does not reproduce the native shell scanner for compound commands.
   - [packages/context/src/server.mjs](../../packages/context/src/server.mjs)
   - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
   - [scripts/build-adapter-runtime.mjs](../../scripts/build-adapter-runtime.mjs)
+  - [packages/opencode/src/load.mjs](../../packages/opencode/src/load.mjs)
+  - [packages/opencode/mcp/runtime-entry.mjs](../../packages/opencode/mcp/runtime-entry.mjs)
 - Verified by:
   - [packages/opencode/test/plugin.test.mjs](../../packages/opencode/test/plugin.test.mjs)
   - [packages/opencode/scripts/smoke.mjs](../../packages/opencode/scripts/smoke.mjs)
@@ -94,6 +116,7 @@ does not reproduce the native shell scanner for compound commands.
   - [docs/test/OPENCODE_ADAPTER.md](../test/OPENCODE_ADAPTER.md)
 - Related docs:
   - [docs/spec/CONTEXT_EXECUTION.md](CONTEXT_EXECUTION.md)
+  - [docs/spec/DECISION_CONFIG.md](DECISION_CONFIG.md)
 - Design decisions:
   - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../arch/CROSS_AGENT_ARCHITECTURE.md)
   - [docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md](../arch/CONTEXT_EXECUTION_ARCHITECTURE.md)
@@ -101,5 +124,5 @@ does not reproduce the native shell scanner for compound commands.
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/opencode/src/index.mjs","packages/opencode/src/resources.mjs","packages/opencode/src/plan.mjs","packages/opencode/src/mcp.mjs","packages/opencode/src/impact.mjs","packages/opencode/src/location.mjs","packages/context/src/impact-state.mjs","packages/context/src/server.mjs","scripts/generate-adapters.mjs","scripts/build-adapter-runtime.mjs"],"verifiedBy":["packages/opencode/test/plugin.test.mjs","packages/opencode/scripts/smoke.mjs","packages/context/test/impact-state.test.mjs","packages/context/test/mcp.test.mjs","packages/context/test/opencode-packaging.test.mjs","docs/test/OPENCODE_ADAPTER.md"],"relatedDocs":["docs/spec/CONTEXT_EXECUTION.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/opencode/src/index.mjs","packages/opencode/src/resources.mjs","packages/opencode/src/plan.mjs","packages/opencode/src/mcp.mjs","packages/opencode/src/impact.mjs","packages/opencode/src/location.mjs","packages/context/src/impact-state.mjs","packages/context/src/server.mjs","scripts/generate-adapters.mjs","scripts/build-adapter-runtime.mjs","packages/opencode/src/load.mjs","packages/opencode/mcp/runtime-entry.mjs"],"verifiedBy":["packages/opencode/test/plugin.test.mjs","packages/opencode/scripts/smoke.mjs","packages/context/test/impact-state.test.mjs","packages/context/test/mcp.test.mjs","packages/context/test/opencode-packaging.test.mjs","docs/test/OPENCODE_ADAPTER.md"],"relatedDocs":["docs/spec/CONTEXT_EXECUTION.md","docs/spec/DECISION_CONFIG.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]}
 ```

@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { execFile, spawnSync } from 'node:child_process';
+import { once } from 'node:events';
 import {
   existsSync,
   mkdtempSync,
@@ -8,10 +10,11 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { createServer } from 'node:http';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { spawnSync } from 'node:child_process';
-import test from 'node:test';
+import test, { after } from 'node:test';
+import { promisify } from 'node:util';
 import {
   extractHookSessionId,
   formatHookError,
@@ -20,23 +23,29 @@ import {
 } from '../src/hook-state.mjs';
 import { ImpactState } from '../src/impact-state.mjs';
 
-const runner = `import { hookMain } from './src/hooks.mjs'; hookMain(process.argv[1]);`;
+const runner = `import { hookMain } from './src/hooks.mjs'; await hookMain(process.argv[1]);`;
 const packageRoot = new URL('..', import.meta.url);
+const home = mkdtempSync(join(tmpdir(), 'dotdotgod-hooks-home-'));
+after(() => rmSync(home, { recursive: true, force: true }));
 
-function runHookRaw(event, stdinText, extraEnv = {}) {
-  const env = { ...process.env, ...extraEnv };
+function hookOptions(extraEnv = {}) {
+  const env = { ...process.env, HOME: home, ...extraEnv };
   if (!Object.hasOwn(extraEnv, 'CLAUDE_PROJECT_DIR')) delete env.CLAUDE_PROJECT_DIR;
-  return spawnSync(process.execPath, ['--input-type=module', '-e', runner, event], {
-    cwd: packageRoot,
-    input: stdinText,
-    encoding: 'utf8',
-    env,
-  });
+  return { cwd: packageRoot, encoding: 'utf8', env };
 }
 
-function hook(event, input = {}, extraEnv = {}) {
+function hookArgs(event) {
+  return ['--disable-warning=ExperimentalWarning', '--input-type=module', '-e', runner, event];
+}
+
+function runHookRaw(event, stdinText, extraEnv = {}) {
+  return spawnSync(process.execPath, hookArgs(event), { ...hookOptions(extraEnv), input: stdinText });
+}
+
+function hook(event, input = {}, extraEnv = {}, stderr = '') {
   const result = runHookRaw(event, JSON.stringify(input), extraEnv);
   assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, stderr);
   return JSON.parse(result.stdout);
 }
 
@@ -51,7 +60,7 @@ function impactDbPath(root) {
 }
 
 test('HK-01: extractHookSessionId rejects invalid session IDs without default fallback or DB creation', () => {
-  for (const bad of ['', '   ', '../evil', 'a/b', 'bad space', 'x'.repeat(129), 123, null, undefined, {}]) {
+  for (const bad of ['', '   ', 'default', '../evil', 'a/b', 'bad space', 'x'.repeat(129), 123, null, undefined, {}]) {
     assert.equal(extractHookSessionId({ session_id: bad }), null);
     assert.equal(extractHookSessionId({ sessionId: bad }), null);
     assert.equal(extractHookSessionId({ conversationId: bad }), null);
@@ -62,7 +71,7 @@ test('HK-01: extractHookSessionId rejects invalid session IDs without default fa
   const root = initProject('dotdotgod-hk01-');
   try {
     writeFileSync(join(root, 'source.ts'), 'export const x = 1;\n');
-    for (const badId of [undefined, '', '../evil', 'a'.repeat(129)]) {
+    for (const badId of [undefined, '', 'default', '../evil', 'a'.repeat(129)]) {
       const base = badId === undefined ? { cwd: root } : { cwd: root, session_id: badId };
       assert.deepEqual(hook('posttooluse', { ...base, tool_name: 'Write', tool_input: { file_path: join(root, 'source.ts') } }), {});
       assert.deepEqual(hook('userpromptsubmit', base), {});
@@ -315,4 +324,143 @@ test('HK-05: failed project_impact retains pending, succeeded clears, third-part
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+const loadAdvisory = 'Use project_load when repository context would help; skip it for self-contained work.';
+const fullAdvice = 'Recommended project_load with no focus to load the baseline documentation map.';
+
+function contextOutput(hookEventName, additionalContext) {
+  return { hookSpecificOutput: { hookEventName, additionalContext } };
+}
+
+test('HK-06: SessionStart gives mode-specific guidance without opening impact.sqlite', (t) => {
+  const root = initProject('dotdotgod-hk06-');
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  for (const [mode, context] of [
+    ['advisory', loadAdvisory], ['manual', ''],
+    ['always', `[DOTDOTGOD PROJECT MEMORY — ADVICE] ${fullAdvice}`], ['model', ''],
+  ]) {
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({ decision: { mode, provider: 'host' } }));
+    for (const session_id of ['s1', undefined, 'default']) {
+      const input = { cwd: root, session_id };
+      const expected = context ? contextOutput('SessionStart', context) : {};
+      assert.deepEqual(hook('sessionstart', input), expected);
+      assert.equal(existsSync(impactDbPath(root)), false);
+    }
+  }
+  mkdirSync(dirname(impactDbPath(root)), { recursive: true });
+  writeFileSync(impactDbPath(root), 'not a SQLite database');
+  assert.deepEqual(hook('sessionstart', { cwd: root, session_id: 's1' }), {});
+  assert.equal(readFileSync(impactDbPath(root), 'utf8'), 'not a SQLite database');
+});
+
+test('HK-07: UserPromptSubmit triages skip then advice or read-only prefetch with a loopback model', async (t) => {
+  const requests = [];
+  const server = createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const { excerpt } = JSON.parse(JSON.parse(Buffer.concat(chunks)).messages[1].content);
+    requests.push(excerpt);
+    const load = excerpt === 'hello' ? { action: 'skip', focus: '' } : { action: 'focused', focus: 'Authentication' };
+    const content = JSON.stringify({ load, refs: ['docs/spec/AUTH.md'], reason: 'DO NOT INJECT THIS' });
+    res.end(JSON.stringify({ message: { content } }));
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => { server.closeAllConnections(); server.close(); });
+
+  const root = initProject('dotdotgod-hk07-');
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, 'docs/spec'), { recursive: true });
+  writeFileSync(join(root, 'docs/spec/AUTH.md'), '# Authentication\nShared auth contract.');
+  const run = promisify(execFile);
+  async function submit(session_id, fields) {
+    const pending = run(process.execPath, hookArgs('userpromptsubmit'), { ...hookOptions(), timeout: 25_000 });
+    pending.child.stdin.end(JSON.stringify({ cwd: root, session_id, ...fields }));
+    const { stdout, stderr } = await pending;
+    assert.equal(stderr, '');
+    return JSON.parse(stdout);
+  }
+  for (const delivery of ['advice', 'prefetch']) {
+    const decision = { mode: 'model', provider: 'ollama', model: 'stub', baseUrl: `http://127.0.0.1:${server.address().port}`, delivery };
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({ decision }));
+    const state = new ImpactState(root, delivery);
+    assert.deepEqual(await submit(delivery, { prompt: 'hello', user_prompt: 'ignored' }), {});
+    assert.deepEqual(await submit(delivery, { user_prompt: 'hello' }), {});
+    assert.equal(state.getLoadState().skipCount, 1);
+    if (delivery === 'advice') state.mark(['docs/spec/AUTH.md']);
+    const { hookSpecificOutput } = await submit(delivery, { message: 'Check auth' });
+    const { additionalContext } = hookSpecificOutput;
+    assert.equal(hookSpecificOutput.hookEventName, 'UserPromptSubmit');
+    assert.doesNotMatch(additionalContext, /DO NOT INJECT THIS/);
+    assert.match(additionalContext, /docs\/spec\/AUTH\.md/);
+    if (delivery === 'advice') {
+      assert.match(additionalContext, /Recommended project_load focus: "Authentication"/);
+      assert.match(additionalContext, /DOTDOTGOD IMPACT PENDING/);
+    } else {
+      assert.match(additionalContext, /PROJECT MEMORY PREFETCH.*instructionAuthority: "none"/);
+      assert.match(additionalContext, /\n(`{3,})text\n[\s\S]*\n\1$/);
+      assert.ok(Buffer.byteLength(additionalContext) <= 8192);
+      assert.deepEqual(await submit(delivery, { prompt: 'another request' }), {});
+    }
+    assert.equal(state.getLoadState().loaded, delivery === 'prefetch');
+  }
+  assert.deepEqual(requests, ['hello', 'Check auth', 'hello', 'Check auth']);
+});
+
+test('HK-08: UserPromptSubmit mode always gives full advice once and respects explicit load controls', (t) => {
+  const root = initProject('dotdotgod-hk08-', { decision: { mode: 'always' } });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const input = { cwd: root, session_id: 's1', prompt: 'Work on this project' };
+  assert.deepEqual(hook('userpromptsubmit', { ...input, prompt: '/dd:no-load' }), {});
+  assert.equal(existsSync(impactDbPath(root)), false);
+  assert.deepEqual(hook('userpromptsubmit', input), contextOutput('UserPromptSubmit', `[DOTDOTGOD PROJECT MEMORY — ADVICE]\n${fullAdvice}`));
+  assert.deepEqual(hook('userpromptsubmit', input), {});
+  for (const mode of ['advisory', 'manual']) {
+    writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({ decision: { mode } }));
+    assert.deepEqual(hook('userpromptsubmit', { ...input, session_id: mode, prompt: '/dd:load auth' }), {});
+    assert.equal(new ImpactState(root, mode).getLoadState().loaded, true);
+  }
+});
+
+test('HK-09: non-host model falls back and logs provider_unsupported_on_host once per session', (t) => {
+  const root = initProject('dotdotgod-hk09-', { decision: { mode: 'model', provider: 'host' } });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const input = { cwd: root, session_id: 's1', prompt: 'Check auth' };
+  const warning = 'dotdotgod decision: provider_unsupported_on_host\n';
+  assert.deepEqual(hook('userpromptsubmit', input, {}, warning), contextOutput('UserPromptSubmit', loadAdvisory));
+  assert.equal(new ImpactState(root, 's1').getLoadState().notified, true);
+  assert.deepEqual(hook('userpromptsubmit', { ...input, prompt: 'Check another feature' }), {});
+});
+
+test('HK-10: invalid project config fails open without falling through to global model; uninitialized stays silent', (t) => {
+  const isolatedHome = mkdtempSync(join(tmpdir(), 'dotdotgod-hk10-home-'));
+  const root = initProject('dotdotgod-hk10-');
+  const uninit = mkdtempSync(join(tmpdir(), 'dotdotgod-hk10-uninit-'));
+  t.after(() => [isolatedHome, root, uninit].forEach((dir) => rmSync(dir, { recursive: true, force: true })));
+  mkdirSync(join(isolatedHome, '.dotdotgod'));
+  writeFileSync(join(isolatedHome, '.dotdotgod/config.json'), JSON.stringify({ decision: { mode: 'model', provider: 'host' } }));
+  writeFileSync(join(root, 'dotdotgod.config.json'), '{"decision":{"apiKey":"sk-invalid-sentinel"');
+  const env = { HOME: isolatedHome };
+  const base = { session_id: 's1', prompt: 'Check auth' };
+  for (const event of ['SessionStart', 'UserPromptSubmit']) {
+    assert.deepEqual(hook(event, { ...base, cwd: root }, env, 'dotdotgod decision: config_invalid\n'), contextOutput(event, loadAdvisory));
+    assert.deepEqual(hook(event, { ...base, cwd: uninit }, env), {});
+  }
+  assert.equal(existsSync(impactDbPath(root)), false);
+  assert.equal(existsSync(impactDbPath(uninit)), false);
+});
+
+test('HK-11: PostToolUse marks only successful allowlisted project_load calls as loaded', (t) => {
+  const root = initProject('dotdotgod-hk11-', { decision: { mode: 'model', provider: 'host' } });
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const input = { cwd: root, session_id: 's1', tool_name: 'mcp__dotdotgod_context__project_load' };
+  const state = new ImpactState(root, 's1');
+  assert.deepEqual(hook('posttooluse', { ...input, tool_response: { structuredContent: { ok: false } } }), {});
+  assert.deepEqual(hook('posttooluse', { ...input, tool_name: 'mcp__other_server__project_load' }), {});
+  assert.equal(state.getLoadState().loaded, false);
+  assert.equal(existsSync(impactDbPath(root)), false);
+  assert.deepEqual(hook('posttooluse', { ...input, tool_response: { structuredContent: { ok: true } } }), {});
+  assert.equal(state.getLoadState().loaded, true);
+  assert.deepEqual(hook('userpromptsubmit', { cwd: root, session_id: 's1', prompt: 'Check auth' }), {});
 });

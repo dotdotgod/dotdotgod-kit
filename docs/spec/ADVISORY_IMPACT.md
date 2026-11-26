@@ -2,7 +2,7 @@
 
 All six adapters (Pi, OpenCode, Claude Code, Codex, Hermes, and Antigravity)
 share non-blocking advisory impact state in `.dotdotgod/context/impact.sqlite`
-(schema v2), keyed by validated host session and canonical project-relative
+(schema v3), keyed by validated host session and canonical project-relative
 path. Legacy `.dotdotgod/context/runtime/*.json` files are ignored and neither
 read nor migrated.
 
@@ -19,18 +19,44 @@ segments, globs, control/bidi characters, or symlink escape), defaulting to
 
 Hook entrypoints validate `sessionId` / `conversationId` strictly against
 `validateSessionId` and fail open (`null` / no-op `{}`) when missing or
-invalid; there is no `'default'` fallback or hash substitution.
+invalid. `default` is reserved and rejected case-insensitively; there is no
+fallback or hash substitution.
 
-## Schema v2 And Delivery Cadence
+## Schema v3 And Delivery Cadence
 
-`impact.sqlite` v2 maintains two tables under the fixed 24-hour non-sliding
-retention policy (see `CONTEXT_RETENTION.md`):
+`impact.sqlite` v3 adds `load_state` alongside `pending` and `plan_notices`
+without resetting existing data. All three use the fixed 24-hour non-sliding
+[retention policy](CONTEXT_RETENTION.md).
 
 - `pending(session, path, revision, fingerprint, created_at, expires_at, notified)`:
   records observed edits (`notified = 0` on mark/re-edit).
 - `plan_notices(session, fingerprint, notified, created_at, expires_at)`: tracks
   Antigravity native `/plan` artifact hashes for one-time save advisories
   without storing `$HOME` paths.
+
+Node and Hermes share the additive load-state DDL:
+
+```sql
+CREATE TABLE IF NOT EXISTS load_state (
+  session TEXT PRIMARY KEY,
+  assessed INTEGER NOT NULL DEFAULT 0 CHECK (assessed IN (0,1)),
+  loaded INTEGER NOT NULL DEFAULT 0 CHECK (loaded IN (0,1)),
+  notified INTEGER NOT NULL DEFAULT 0 CHECK (notified IN (0,1)),
+  skip_count INTEGER NOT NULL DEFAULT 0 CHECK (skip_count >= 0),
+  last_prompt_hash TEXT,
+  inflight_token TEXT,
+  inflight_until INTEGER NOT NULL DEFAULT 0 CHECK (inflight_until >= 0),
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL CHECK (expires_at > created_at)
+);
+```
+
+Read-only access (`write=false`; `write=False` in Hermes) makes zero WAL or DDL
+writes. Write transactions migrate and purge expired rows across all three
+tables. Load triage uses short transactions to claim and finish an assessment,
+with no SQLite lock held during the model request or prefetch. `markLoaded()`
+clears the assessment lease without extending an existing expiry. Pi keeps
+load state in branch entries; Hermes keeps it in its in-memory `Session`.
 
 Pending state is strictly advisory across all six adapters and NEVER blocks
 edits, tests, builds, lint, commits, pushes, publishes, or other tools. Host
@@ -84,6 +110,7 @@ Pending records expire after 24 hours; expiry never proves a review succeeded.
   - [packages/context/src/server.mjs](../../packages/context/src/server.mjs)
   - [packages/pi/extensions/context-tools/index.ts](../../packages/pi/extensions/context-tools/index.ts)
   - [packages/hermes/impact.py](../../packages/hermes/impact.py)
+  - [packages/context/src/session.mjs](../../packages/context/src/session.mjs)
 - Verified by:
   - [packages/context/test/impact-state.test.mjs](../../packages/context/test/impact-state.test.mjs)
   - [packages/context/test/hooks.test.mjs](../../packages/context/test/hooks.test.mjs)
@@ -97,11 +124,12 @@ Pending records expire after 24 hours; expiry never proves a review succeeded.
   - [docs/spec/CONTEXT_RETENTION.md](CONTEXT_RETENTION.md)
   - [docs/spec/ANTIGRAVITY_ADAPTER.md](ANTIGRAVITY_ADAPTER.md)
   - [docs/spec/HERMES_ADAPTER.md](HERMES_ADAPTER.md)
+  - [docs/spec/DECISION_CONFIG.md](DECISION_CONFIG.md)
 - Design decisions:
   - [docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md](../arch/CONTEXT_EXECUTION_ARCHITECTURE.md)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/context/src/impact-path.mjs","packages/context/src/impact-state.mjs","packages/context/src/hook-state.mjs","packages/context/src/hooks.mjs","packages/context/src/hooks-antigravity.mjs","packages/context/src/server.mjs","packages/pi/extensions/context-tools/index.ts","packages/hermes/impact.py"],"verifiedBy":["packages/context/test/impact-state.test.mjs","packages/context/test/hooks.test.mjs","packages/context/test/hooks-antigravity.test.mjs","packages/context/test/mcp.test.mjs","packages/pi/test/context-root-isolation.test.ts","packages/pi/test/context-execution-gates.test.ts","packages/hermes/test/test_runtime.py"],"relatedDocs":["docs/spec/CONTEXT_EXECUTION.md","docs/spec/CONTEXT_RETENTION.md","docs/spec/ANTIGRAVITY_ADAPTER.md","docs/spec/HERMES_ADAPTER.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/context/src/impact-path.mjs","packages/context/src/impact-state.mjs","packages/context/src/hook-state.mjs","packages/context/src/hooks.mjs","packages/context/src/hooks-antigravity.mjs","packages/context/src/server.mjs","packages/pi/extensions/context-tools/index.ts","packages/hermes/impact.py","packages/context/src/session.mjs"],"verifiedBy":["packages/context/test/impact-state.test.mjs","packages/context/test/hooks.test.mjs","packages/context/test/hooks-antigravity.test.mjs","packages/context/test/mcp.test.mjs","packages/pi/test/context-root-isolation.test.ts","packages/pi/test/context-execution-gates.test.ts","packages/hermes/test/test_runtime.py"],"relatedDocs":["docs/spec/CONTEXT_EXECUTION.md","docs/spec/CONTEXT_RETENTION.md","docs/spec/ANTIGRAVITY_ADAPTER.md","docs/spec/HERMES_ADAPTER.md","docs/spec/DECISION_CONFIG.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]}
 ```

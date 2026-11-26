@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { markProjectLoaded } from './load.mjs';
 
 const prefix = 'dotdotgod_context_';
 const readOnly = new Set(['project_load', 'project_impact', 'impact_status', 'embedding_status', 'index', 'search', 'fetch_and_index', 'stats', 'doctor', 'session_resume', 'ingestion_job_start', 'ingestion_job_status']);
@@ -29,7 +30,11 @@ export async function registerMcp(ctx, root) {
               action: 'shell', resources: [entry.executable ? [entry.executable, ...(entry.args ?? [])].map(quote).join(' ') : entry.command ?? ''],
             });
           }
-          return execute({ ...input, contextSessionId: context.sessionID }, context);
+          const result = await execute({ ...input, contextSessionId: context.sessionID }, context);
+          if (name === 'project_load' && result?.isError !== true && result?.structuredContent?.ok !== false) {
+            await markProjectLoaded(ctx, root, context.sessionID);
+          }
+          return result;
         };
       });
     }

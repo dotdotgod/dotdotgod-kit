@@ -1,9 +1,132 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, symlinkSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
+import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { ImpactState, impactReminder, withImpactReview } from '../src/impact-state.mjs';
+import { validateSessionId } from '../src/session.mjs';
+
+function loadFixture(t, session = 'load') {
+  const root = mkdtempSync(join(tmpdir(), 'impact-load-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  return new ImpactState(root, session);
+}
+
+const unloaded = { assessed: false, loaded: false, notified: false, skipCount: 0, lastPromptHash: null };
+
+test('v2 read does not enable WAL or add v3 DDL; first writer migrates additively', (t) => {
+  const state = loadFixture(t);
+  assert.deepEqual(state.getLoadState(), unloaded);
+  assert.equal(existsSync(state.path), false);
+  mkdirSync(join(state.root, '.dotdotgod/context'), { recursive: true });
+  const legacy = new DatabaseSync(state.path);
+  legacy.exec(`CREATE TABLE pending (session TEXT NOT NULL, path TEXT NOT NULL, revision TEXT NOT NULL, fingerprint TEXT, created_at INTEGER, expires_at INTEGER, notified INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (session, path));
+    CREATE TABLE plan_notices (session TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, notified INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL);`);
+  const now = Date.now();
+  legacy.prepare('INSERT INTO pending VALUES (?, ?, ?, ?, ?, ?, ?)').run('load', 'a.ts', 'rev', 'fp', now, now + 60000, 0);
+  legacy.close();
+  const before = readFileSync(state.path);
+  assert.deepEqual(state.getLoadState(), unloaded);
+  assert.equal(state.status().count, 1);
+  assert.deepEqual(readFileSync(state.path), before);
+  assert.equal(existsSync(`${state.path}-wal`), false);
+  assert.equal(state.claimAdvisedOnce(), true);
+  assert.equal(state.claimAdvisedOnce(), false);
+  assert.deepEqual(state.getLoadState(), { ...unloaded, assessed: true, notified: true });
+  assert.equal(state.status().count, 1);
+  assert.equal(existsSync(`${state.path}-wal`), false);
+  assert.equal(existsSync(`${state.path}-shm`), false);
+  const db = new DatabaseSync(state.path);
+  try {
+    assert.equal(db.prepare('PRAGMA journal_mode').get().journal_mode, 'wal');
+    const columns = Object.fromEntries(db.prepare('PRAGMA table_info(load_state)').all().map(({ name, ...column }) => [name, column]));
+    assert.deepEqual(Object.keys(columns), ['session', 'assessed', 'loaded', 'notified', 'skip_count', 'last_prompt_hash', 'inflight_token', 'inflight_until', 'created_at', 'expires_at']);
+    assert.equal(columns.inflight_until.notnull, 1);
+    assert.equal(columns.inflight_until.dflt_value, '0');
+    for (const change of ['assessed = 2', 'loaded = 2', 'notified = -1', 'skip_count = -1', 'inflight_until = -1', 'expires_at = created_at']) {
+      assert.throws(() => db.exec(`UPDATE load_state SET ${change}`), /CHECK constraint failed/);
+    }
+  } finally { db.close(); }
+});
+
+test('lease expiry replaces token without recording a hash, stale CAS fails, and fifth distinct skip is terminal', (t) => {
+  const state = loadFixture(t);
+  const first = state.beginLoadAssessment('hash-1', 5000);
+  assert.equal(first.session, state.sessionId);
+  assert.equal(first.skipCount, 0);
+  assert.deepEqual(state.getLoadState(), unloaded);
+  assert.equal(state.beginLoadAssessment('hash-other', 5000), undefined);
+  const db = new DatabaseSync(state.path);
+  db.exec('UPDATE load_state SET inflight_until = 0');
+  db.close();
+  const next = state.beginLoadAssessment('hash-1', 5000);
+  assert.notEqual(next.token, first.token);
+  assert.equal(state.recordLoadSkip(first.token, 'hash-1').recorded, false);
+  assert.equal(state.completeLoadNotified(first.token, 'hash-1'), false);
+  assert.equal(state.completeLoadPrefetch(first.token, 'hash-1'), false);
+  assert.deepEqual(state.recordLoadSkip(next.token, 'hash-1'), { recorded: true, terminal: false, skipCount: 1 });
+  assert.equal(state.beginLoadAssessment('hash-1', 5000), undefined);
+  for (let i = 2; i <= 5; i++) {
+    const hash = `hash-${i}`;
+    const claim = state.beginLoadAssessment(hash, 5000);
+    assert.equal(claim.skipCount, i - 1);
+    assert.deepEqual(state.recordLoadSkip(claim.token, hash), { recorded: true, terminal: i === 5, skipCount: i });
+    assert.equal(state.recordLoadSkip(claim.token, hash).recorded, false);
+  }
+  assert.deepEqual(state.getLoadState(), { ...unloaded, assessed: true, notified: true, skipCount: 5, lastPromptHash: 'hash-5' });
+  assert.equal(state.beginLoadAssessment('hash-6', 5000), undefined);
+  assert.equal(state.claimAdvisedOnce(), false);
+});
+
+test('write purges all three tables; explicit load clears lease and preserves a live row’s 24h TTL', (t) => {
+  const state = loadFixture(t);
+  state.mark(['a.ts']);
+  state.recordPlanNotice('plan');
+  state.beginLoadAssessment('old', 5000);
+  const db = new DatabaseSync(state.path);
+  try {
+    const times = () => db.prepare('SELECT created_at, expires_at FROM load_state').get();
+    for (const table of ['pending', 'plan_notices', 'load_state']) db.exec(`UPDATE ${table} SET created_at = 1, expires_at = 2`);
+    assert.deepEqual(state.getLoadState(), unloaded);
+    assert.equal(times().expires_at, 2, 'read never purges');
+    state.markLoaded();
+    assert.ok(times().created_at > 2);
+    assert.equal(times().expires_at - times().created_at, 86400000);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM pending').get().n, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM plan_notices').get().n, 0);
+    assert.deepEqual(state.getLoadState(), { ...unloaded, assessed: true, notified: true, loaded: true });
+    db.exec('UPDATE load_state SET assessed = 0, loaded = 0, notified = 0');
+    const { token } = state.beginLoadAssessment('racing', 5000);
+    const live = times();
+    state.markLoaded();
+    state.markLoaded();
+    assert.deepEqual(times(), live);
+    assert.deepEqual({ ...db.prepare('SELECT inflight_token, inflight_until FROM load_state').get() }, { inflight_token: null, inflight_until: 0 });
+    assert.equal(state.completeLoadPrefetch(token, 'racing'), false);
+  } finally { db.close(); }
+});
+
+test('two processes racing for one SQLite lease elect exactly one claimant', async (t) => {
+  const state = loadFixture(t);
+  const module = new URL('../src/impact-state.mjs', import.meta.url).href;
+  const code = `import { ImpactState } from ${JSON.stringify(module)}; const state = new ImpactState(${JSON.stringify(state.root)}, 'load'); console.log(Boolean(state.beginLoadAssessment('same', 15000)));`;
+  const run = () => promisify(execFile)(process.execPath, ['--input-type=module', '-e', code]);
+  const children = await Promise.all([run(), run()]);
+  assert.deepEqual(children.map(({ stdout }) => stdout.trim()).sort(), ['false', 'true']);
+});
+
+test('S-07: reserved default is rejected case-insensitively at the session boundary', (t) => {
+  const state = loadFixture(t);
+  for (const id of ['default', 'DeFaUlt', 'DEFAULT']) {
+    assert.throws(() => validateSessionId(id), /sessionId/);
+    assert.throws(() => new ImpactState(state.root, id), /sessionId/);
+  }
+  assert.equal(validateSessionId('default-1'), 'default-1');
+  assert.equal(existsSync(state.path), false);
+});
 
 test('advisory impact persists, isolates sessions, retains failures and concurrent edits', async () => {
   const root = mkdtempSync(join(tmpdir(), 'impact-state-'));

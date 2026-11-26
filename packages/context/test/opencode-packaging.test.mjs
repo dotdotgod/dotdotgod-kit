@@ -45,18 +45,33 @@ test('OpenCode tarball imports and shares durable state with standalone MCP with
     assert.equal(plugin.id, 'dotdotgod');
     assert.equal(typeof plugin.setup, 'function');
   }
-  for (const file of ['mcp/server.mjs', 'mcp/cli.mjs', 'mcp/impact-state.mjs', 'mcp/parsers/tree-sitter.cjs', 'commands/load.md', 'skills/project-initializer/scripts/init_project.sh']) {
+  assert.equal(existsSync(join(packed, 'mcp/impact-state.mjs')), false, 'obsolete impact bundle must not ship');
+  for (const file of ['mcp/server.mjs', 'mcp/cli.mjs', 'mcp/runtime.mjs', 'mcp/parsers/tree-sitter.cjs', 'commands/load.md', 'skills/project-initializer/scripts/init_project.sh']) {
     assert.equal(existsSync(join(packed, file)), true, file);
   }
   const project = join(root, 'project');
   mkdirSync(join(project, 'docs'), { recursive: true });
   writeFileSync(join(project, 'docs/README.md'), '# Packaged project memory');
   writeFileSync(join(project, 'source.ts'), 'export const value = 1;');
-  const { ImpactState } = await import(pathToFileURL(join(packed, 'mcp/impact-state.mjs')).href);
+  writeFileSync(join(project, 'dotdotgod.config.json'), JSON.stringify({ decision: { mode: 'advisory' } }));
+  const { ImpactState, evaluateLoadDecision } = await import(pathToFileURL(join(packed, 'mcp/runtime.mjs')).href);
+  assert.equal(typeof evaluateLoadDecision, 'function');
   const state = new ImpactState(project, 'packed-host');
   state.mark(['source.ts']);
+
+  const { registerLoad } = await import(pathToFileURL(join(packed, 'src/load.mjs')).href);
+  const hooks = new Map();
+  const hook = async (name, fn) => hooks.set(name, fn);
+  await registerLoad({
+    location: { directory: project },
+    session: { hook, get: async () => ({ location: { directory: project } }) },
+    tool: { hook },
+  }, project);
+  const event = { sessionID: 'packed-host', messages: [{ role: 'user', content: 'Inspect project memory' }], system: [] };
+  await hooks.get('context')(event);
+  assert.match(event.system[0]?.text, /Use project_load/u);
   const client = new Client({ name: 'opencode-packed-test', version: '1.0.0' });
-  const transport = new StdioClientTransport({ command: process.execPath, args: [join(packed, 'mcp/server.mjs')], cwd: project, env: { ...process.env, HOME: root, DOTDOTGOD_PROJECT_ROOT: project }, stderr: 'pipe' });
+  const transport = new StdioClientTransport({ command: process.execPath, args: [join(packed, 'mcp/server.mjs')], cwd: project, env: { HOME: root, DOTDOTGOD_PROJECT_ROOT: project }, stderr: 'pipe' });
   try {
     await client.connect(transport);
     const listed = await client.listTools();
@@ -64,6 +79,12 @@ test('OpenCode tarball imports and shares durable state with standalone MCP with
     const loaded = await client.callTool({ name: 'project_load', arguments: {} });
     assert.equal(loaded.structuredContent.documentationRoot, 'docs');
     assert.match(loaded.structuredContent.documentationTree.join('\n'), /README.md/);
+    assert.equal(state.getLoadState().loaded, false);
+    await hooks.get('execute.after')({ sessionID: event.sessionID, status: 'completed', tool: 'dotdotgod_context_project_load' });
+    assert.equal(state.getLoadState().loaded, true);
+    const next = { ...event, system: [] };
+    await hooks.get('context')(next);
+    assert.deepEqual(next.system, []);
     const status = await client.callTool({ name: 'impact_status', arguments: { contextSessionId: 'packed-host' } });
     assert.equal(status.structuredContent.count, 1);
     const reviewed = await client.callTool({ name: 'project_impact', arguments: { paths: ['source.ts'], contextSessionId: 'packed-host' } });

@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { resolveDecisionProfile } from '@dotdotgod/cli/src/decision/config.mjs';
+import { evaluateLoadDecision, formatDecisionError, formatDecisionInjection } from './decision.mjs';
 import {
   extractHookSessionId, findInitializedRoot, hasFailedToolResult, isDotdotgodMcpTool,
   isInitializedProject, parseHookInput, readArtifactBounded, runHookSafely, selectWorkspaceForPath,
@@ -25,6 +27,10 @@ function initializedWorkspaces(input) {
   }
   const root = findInitializedRoot(input?.cwd);
   return root ? [root] : [];
+}
+
+function activeWorkspace(workspaces, cwd) {
+  return selectWorkspaceForPath(workspaces, cwd) ?? (workspaces.length === 1 ? workspaces[0] : null);
 }
 
 function resolveTarget(raw, input) {
@@ -64,6 +70,14 @@ function extractImpactCall(name, args) {
   return isDotdotgodMcpTool(name, 'project_impact', MCP_PREFIXES) ? { paths: args.paths, root: args.root } : null;
 }
 
+function extractLoadCall(name, args) {
+  if (name === 'call_mcp_tool') {
+    if (!MCP_SERVERS.has(args.ServerName) || args.ToolName !== 'project_load') return null;
+    return { root: args.Arguments?.root };
+  }
+  return isDotdotgodMcpTool(name, 'project_load', MCP_PREFIXES) ? { root: args.root } : null;
+}
+
 function handlePostToolUse(input, sessionId) {
   if (hasFailedToolResult(input)) return {};
   const call = input?.toolCall && typeof input.toolCall === 'object' ? input.toolCall : {};
@@ -80,6 +94,21 @@ function handlePostToolUse(input, sessionId) {
     } else {
       for (const ws of workspaces) new ImpactState(ws, sessionId).clearPaths(paths);
     }
+    return {};
+  }
+
+  const loadCall = extractLoadCall(name, args);
+  if (loadCall) {
+    const workspaces = initializedWorkspaces(input);
+    const active = activeWorkspace(workspaces, input.cwd);
+    const response = input.tool_response ?? input.toolResponse ?? input.tool_result ?? input.toolResult ?? input.result;
+    const root = response?.structuredContent?.root ?? response?.root ?? loadCall.root;
+    let ws = active;
+    if (typeof root === 'string' && root.trim()) {
+      const target = isAbsolute(root) ? root : active && resolve(active, root);
+      ws = selectWorkspaceForPath(workspaces, target);
+    }
+    if (ws) new ImpactState(ws, sessionId).markLoaded();
     return {};
   }
 
@@ -107,18 +136,37 @@ function handlePostToolUse(input, sessionId) {
   return {};
 }
 
-function handlePreInvocation(input, sessionId) {
+async function loadDecisionMessage(input, root, sessionId) {
+  const { profile } = resolveDecisionProfile(root);
+  if (!profile) {
+    process.stderr.write(`${formatDecisionError('config_invalid')}\n`);
+    return;
+  }
+  if (profile.mode === 'advisory' || profile.mode === 'manual') return;
+
+  const rawPrompt = typeof input.lastUserInput === 'string' ? input.lastUserInput : '';
+  if (profile.mode === 'model' && !rawPrompt.trim()) return;
+  const outcome = await evaluateLoadDecision({ root, rawPrompt, sessionId, budgetMs: input.__testBudgetMs ?? 22_000 });
+  if (outcome.errorCode) process.stderr.write(`${formatDecisionError(outcome.errorCode)}\n`);
+  if (outcome.kind === 'advice' || outcome.kind === 'prefetch') return formatDecisionInjection(outcome, { maxBytes: 6144 });
+}
+
+async function handlePreInvocation(input, sessionId) {
   const injectSteps = [];
-  for (const ws of initializedWorkspaces(input)) {
+  const workspaces = initializedWorkspaces(input);
+  for (const ws of workspaces) {
     const state = new ImpactState(ws, sessionId);
     const claimed = state.claimUnnotified();
     if (claimed.count > 0) injectSteps.push({ systemMessage: { systemMessage: impactReminder(claimed) } });
     if (state.claimPlanNotice()) injectSteps.push({ systemMessage: { systemMessage: planSyncReminder(resolveDocumentationRoot(ws)) } });
   }
+  const root = activeWorkspace(workspaces, input.cwd);
+  const message = root ? await loadDecisionMessage(input, root, sessionId) : undefined;
+  if (message) injectSteps.push({ systemMessage: { systemMessage: message } });
   return injectSteps.length ? { injectSteps } : {};
 }
 
-export function runAntigravityHook(event, rawInput) {
+export async function runAntigravityHook(event, rawInput) {
   const input = rawInput === undefined ? parseHookInput() : (typeof rawInput === 'string' ? parseHookInput(rawInput) : rawInput);
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('Hook stdin must be a JSON object.');
   const sessionId = extractHookSessionId(input);
@@ -129,5 +177,5 @@ export function runAntigravityHook(event, rawInput) {
 }
 
 export function hookMain(event) {
-  runHookSafely(() => runAntigravityHook(event));
+  return runHookSafely(() => runAntigravityHook(event));
 }

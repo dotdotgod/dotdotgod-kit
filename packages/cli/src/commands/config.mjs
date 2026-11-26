@@ -1,9 +1,11 @@
 import { existsSync, statSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { usage } from '../cli/usage.mjs';
-import { memoryConfigSummary, readMemoryConfig } from '../memory/config.mjs';
+import { memoryConfigSummary, readMemoryConfig, readProjectConfig } from '../memory/config.mjs';
 import { resolveInitializationTemplate } from '../config/templates.mjs';
-import { resolveEmbeddingProfile, sanitizeEmbeddingProfile } from '../query/embedding-config.mjs';
+import { readConfigJson, resolveDecisionProfile, sanitizeDecisionProfile } from '../decision/config.mjs';
+import { sanitizeEmbeddingProfile, validateEmbeddingProfile } from '../query/embedding-config.mjs';
 
 function parseConfigOptions(argv, usageKey = 'config') {
   const options = { root: '.', json: false, template: null };
@@ -43,6 +45,15 @@ function formatConfigOutput(payload) {
   lines.push(`- documentation root: ${payload.config.documentation.root}`);
   lines.push(`- memory areas: ${payload.config.areas.length}`);
   lines.push(`- embedding: ${payload.embedding.profile ? `${payload.embedding.profile.provider}/${payload.embedding.profile.model}` : 'not configured; keyword search'} (${payload.embedding.source})`);
+  const { profile, source, warning } = payload.decision;
+  if (profile) {
+    const fields = Object.entries(profile).map(([key, value]) => `${key}=${value}`);
+    lines.push(`- decision: ${fields.join(' | ')} (${source})`);
+  } else {
+    const reason = payload.errors.some((error) => error.file === 'dotdotgod.config.json') ? 'project config invalid; global fallback blocked' : 'global config invalid';
+    lines.push(`- decision: invalid (${reason}; runtime falls back to local advisory)`);
+  }
+  if (warning) lines.push(`  Warning: ${warning}`);
   lines.push(`- traceability required: ${(payload.config.traceability.required ?? []).join(', ') || 'none'}`);
   lines.push(`- traceability exclude: ${(payload.config.traceability.exclude ?? []).join(', ') || 'none'}`);
   lines.push('- traceability keys:');
@@ -61,6 +72,20 @@ function formatConfigOutput(payload) {
     for (const error of errors) lines.push(`  - ${error.code} ${error.file}: ${error.message}`);
   }
   return lines.join('\n');
+}
+
+function embeddingSummary(project, errors) {
+  if (project.profiles.embedding) return { source: 'project', path: project.path, profile: sanitizeEmbeddingProfile(project.profiles.embedding) };
+  if (project.errors.some(({ code }) => code === 'EMBEDDING_CONFIG_INVALID' || code === 'MEMORY_CONFIG_INVALID_JSON')) return { source: 'invalid', path: null, profile: null };
+  const path = join(homedir(), '.dotdotgod', 'config.json');
+  try {
+    const global = readConfigJson(path);
+    if (global && Object.hasOwn(global, 'embedding')) return { source: 'global', path, profile: sanitizeEmbeddingProfile(validateEmbeddingProfile(global.embedding)) };
+  } catch (error) {
+    errors.push({ file: 'embedding config', code: 'EMBEDDING_CONFIG_INVALID', message: error.message });
+    return { source: 'invalid', path: null, profile: null };
+  }
+  return { source: 'not-configured', path: null, profile: null };
 }
 
 export function runConfig(argv) {
@@ -84,17 +109,18 @@ export function runConfig(argv) {
     return;
   }
 
-  const config = readMemoryConfig(options.root);
-  const errors = config.errors ?? [];
-  let embedding;
-  try {
-    const resolved = resolveEmbeddingProfile(options.root);
-    embedding = { source: resolved.source, path: resolved.path, profile: sanitizeEmbeddingProfile(resolved.profile) };
-  } catch (error) {
-    errors.push({ file: 'embedding config', code: 'EMBEDDING_CONFIG_INVALID', message: error instanceof Error ? error.message : String(error) });
-    embedding = { source: 'invalid', path: null, profile: null };
+  const project = readProjectConfig(options.root);
+  const config = readMemoryConfig(options.root, project);
+  const errors = [...project.errors];
+  const { error: decisionError, ...decision } = resolveDecisionProfile(options.root, { project });
+  if (decisionError) errors.push({ file: 'decision config', code: 'DECISION_CONFIG_INVALID', message: decisionError });
+  if (decision.profile) {
+    const { warning, ...profile } = sanitizeDecisionProfile(decision.profile, decision.source);
+    decision.profile = profile;
+    if (warning) decision.warning = warning;
   }
-  const payload = { ok: errors.length === 0, command: 'config', root: options.root, source: config.source ?? 'default', path: config.source && config.source !== 'default' ? join(options.root, config.source) : null, embedding, config: memoryConfigSummary(config), errors };
+  const embedding = embeddingSummary(project, errors);
+  const payload = { ok: errors.length === 0, command: 'config', root: options.root, source: config.source ?? 'default', path: config.source && config.source !== 'default' ? join(options.root, config.source) : null, embedding, decision, config: memoryConfigSummary(config), errors };
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else console.log(formatConfigOutput(payload));
   if (errors.length > 0) process.exit(1);

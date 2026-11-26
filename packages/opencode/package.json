@@ -10,7 +10,7 @@
   "publishConfig": { "access": "public" },
   "files": ["index.js", "server.js", "src", "skills", "commands", "mcp", "README.md", "LICENSE"],
   "scripts": {
-    "syntax": "node --check index.js && node --check server.js && node --check src/index.mjs && node --check src/plan.mjs && node --check src/impact.mjs && node --check src/location.mjs && node --check src/resources.mjs && node --check src/mcp.mjs && node --check scripts/smoke.mjs",
+    "syntax": "node --check index.js && node --check server.js && node --check src/index.mjs && node --check src/plan.mjs && node --check src/impact.mjs && node --check src/load.mjs && node --check src/location.mjs && node --check src/resources.mjs && node --check src/mcp.mjs && node --check scripts/smoke.mjs",
     "test": "node --test test/*.test.mjs",
     "smoke": "node scripts/smoke.mjs",
     "verify": "pnpm run syntax && pnpm run test && node ../../scripts/build-adapter-runtime.mjs opencode --check",

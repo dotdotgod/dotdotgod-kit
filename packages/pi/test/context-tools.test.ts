@@ -27,6 +27,7 @@ test("automatic Load retains compact Pi guidance and retries a blocked MCP reque
     });
   }, [new URL("../extensions/project-memory/index.ts", import.meta.url).pathname]);
   try {
+    mkdirSync(join(f.root, ".dotdotgod"));
     mkdirSync(join(f.root, "docs"));
     writeFileSync(join(f.root, "AGENTS.md"), "# Agent rules");
     writeFileSync(join(f.root, "docs/README.md"), "# Project docs");

@@ -1,5 +1,5 @@
-import { ImpactState, impactReminder } from '../mcp/impact-state.mjs';
-import { isLocalSession } from './location.mjs';
+import { ImpactState, impactReminder } from '../mcp/runtime.mjs';
+import { isInitializedLocalSession } from './load.mjs';
 
 export function editedPaths(tool, input) {
   if (!input || typeof input !== 'object') return [];
@@ -13,12 +13,12 @@ export function editedPaths(tool, input) {
 
 export async function registerImpact(ctx, root) {
   await ctx.tool.hook('execute.after', async event => {
-    if (event.status !== 'completed' || !await isLocalSession(ctx, event.sessionID)) return;
+    if (event.status !== 'completed') return;
     const paths = editedPaths(event.tool, event.input);
-    if (paths.length) new ImpactState(root, event.sessionID).mark(paths);
+    if (paths.length && await isInitializedLocalSession(ctx, root, event.sessionID)) new ImpactState(root, event.sessionID).mark(paths);
   });
   await ctx.session.hook('context', async event => {
-    if (!await isLocalSession(ctx, event.sessionID)) return;
+    if (!await isInitializedLocalSession(ctx, root, event.sessionID)) return;
     const reminder = impactReminder(new ImpactState(root, event.sessionID).status());
     if (reminder) event.system.push({ type: 'text', text: reminder });
   });

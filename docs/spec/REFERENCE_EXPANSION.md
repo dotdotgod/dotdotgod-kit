@@ -12,7 +12,7 @@ The CLI MUST provide explicit commands:
 
 ```bash
 dotdotgod resolve <root> <ref> [--json] [--max-results n] [--include-archive]
-dotdotgod expand <root> <prompt> [--json] [--max-results n] [--include-archive] [--with-impact] [--fuzzy]
+dotdotgod expand <root> [--json] [--max-results n] [--include-archive] [--with-impact] [--fuzzy] [--no-write] [--scope all|shared] [--] <prompt>
 ```
 
 `resolve` resolves one reference string. The input MAY include `[[...]]`, but the wrapper is not required.
@@ -38,15 +38,17 @@ Fuzzy low-signal terms MUST be configurable through project config while preserv
 
 The effective set MUST start with built-in defaults, remove normalized `remove` entries, then add normalized `add` entries. Matching is case-insensitive and de-duplicated. Invalid low-signal config MUST be reported by validation and runtime fuzzy expansion MUST fall back to defaults rather than crash.
 
-Both commands MUST expose help through `--help`, `-h`, and `help` without refreshing the graph cache.
+Both commands MUST expose help through `--help`, `-h`, and `help` without refreshing the graph cache. In `expand` and `query`, `--` ends option and help-token parsing: later tokens, including literal `help`, `-h`, `--help`, and option-like text, are operands.
 
 ## Index Reuse
 
-The commands MUST use the shared dotdotgod index through the lazy-refresh path used by `resolve`, `expand`, and `graph` commands.
+By default, the commands use the shared dotdotgod index through the lazy-refresh path used by `resolve`, `expand`, and `graph`.
 
 When the index is missing, stale, or schema-mismatched, the command MAY refresh `.dotdotgod/` before returning output. JSON output MUST include refresh metadata so callers can see whether the cache changed.
 
 The resolver MUST NOT create a separate persistent database or require embedding/vector search.
+
+`expand --no-write --scope shared` reads only an existing, schema-compatible graph cache and never builds or refreshes it. `--no-write` cannot be combined with `--with-impact`. A cold repository or incompatible cache returns `ok: true` and `refs: []` in JSON (exit 0). `--scope shared` filters candidates before ranking and excludes local-scope memory, plan/archive paths, hidden entries, and secret-like paths even if `--include-archive` is present.
 
 ## Matching
 
@@ -116,6 +118,8 @@ Agent load and planning workflows MAY prefer `dotdotgod expand` before broad `gr
 
 Pi Plan Mode MAY run `expand --with-impact` during context shaping for explicit `[[...]]` refs and MAY run `expand --fuzzy --with-impact` for high-signal natural prompts. Claude Code and Codex hook examples MAY remind users or agents to run `expand`, but hooks MUST remain optional/advisory guardrails and MUST NOT block `grep` or `find`.
 
+Decision-model `refs` are optional, non-authoritative hints: at most three distinct exact paths from the bounded shared decision map, with unsafe or unlisted entries dropped. Prefetch may use them as seeds for read-only shared expansion. They never replace user `[[...]]` references or traceability evidence. See [Decision Config](DECISION_CONFIG.md).
+
 ## Traceability
 
 
@@ -129,20 +133,25 @@ Pi Plan Mode MAY run `expand --with-impact` during context shaping for explicit 
   - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
   - [packages/pi/extensions/plan-mode/index.ts](../../packages/pi/extensions/plan-mode/index.ts)
   - [packages/pi/extensions/plan-mode/utils.ts](../../packages/pi/extensions/plan-mode/utils.ts)
+  - [packages/cli/src/reference/resolve.mjs](../../packages/cli/src/reference/resolve.mjs)
+  - [packages/context/src/decision.mjs](../../packages/context/src/decision.mjs)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
   - [packages/pi/test/plan-mode-utils.test.ts](../../packages/pi/test/plan-mode-utils.test.ts)
   - [docs/test/REFERENCE_EXPANSION.md](../test/REFERENCE_EXPANSION.md)
+  - [packages/cli/test/decision-readonly.test.mjs](../../packages/cli/test/decision-readonly.test.mjs)
+  - [packages/context/test/decision.test.mjs](../../packages/context/test/decision.test.mjs)
 - Related docs:
   - [docs/spec/CLI_INTERFACE.md](CLI_INTERFACE.md)
   - [docs/spec/LOAD_PROJECT.md](LOAD_PROJECT.md)
   - [docs/concept/CONTEXT_CURATION.md](../concept/CONTEXT_CURATION.md)
+  - [docs/spec/DECISION_CONFIG.md](DECISION_CONFIG.md)
 - Design decisions:
   - [docs/arch/VALIDATION_ARCHITECTURE.md](../arch/VALIDATION_ARCHITECTURE.md)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/pi/test/plan-mode-utils.test.ts","docs/test/REFERENCE_EXPANSION.md"],"relatedDocs":["docs/spec/CLI_INTERFACE.md","docs/spec/LOAD_PROJECT.md","docs/concept/CONTEXT_CURATION.md"],"designDecisions":["docs/arch/VALIDATION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts","packages/cli/src/reference/resolve.mjs","packages/context/src/decision.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/pi/test/plan-mode-utils.test.ts","docs/test/REFERENCE_EXPANSION.md","packages/cli/test/decision-readonly.test.mjs","packages/context/test/decision.test.mjs"],"relatedDocs":["docs/spec/CLI_INTERFACE.md","docs/spec/LOAD_PROJECT.md","docs/concept/CONTEXT_CURATION.md","docs/spec/DECISION_CONFIG.md"],"designDecisions":["docs/arch/VALIDATION_ARCHITECTURE.md"]}
 ```

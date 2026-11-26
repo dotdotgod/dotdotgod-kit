@@ -138,9 +138,9 @@ export function formatHookError(error) {
   return line.length > 240 ? `${line.slice(0, 237)}...` : line;
 }
 
-export function runHookSafely(fn) {
+export async function runHookSafely(fn) {
   try {
-    const out = fn();
+    const out = await fn();
     process.stdout.write(`${JSON.stringify(out ?? {})}\n`);
   } catch (error) {
     process.stderr.write(`${formatHookError(error)}\n`);

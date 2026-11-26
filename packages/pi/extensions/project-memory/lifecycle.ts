@@ -1,88 +1,114 @@
-export interface ProjectMemoryState {
+export const PROJECT_MEMORY_STATE_ENTRY = "project-memory-auto-state";
+
+interface ProjectMemoryState {
+	version: 3;
 	assessed: boolean;
+	loaded: boolean;
+	notified: boolean;
+	skipCount: number;
+	lastPromptHash: string | null;
 	pending: boolean;
-	inFlight: boolean;
-	promptDelivered: boolean;
 }
 
-interface ProjectMemoryStateEntry {
-	type?: string;
+interface BranchEntry {
+	type: string;
 	customType?: string;
 	data?: unknown;
 }
 
-export function findLatestProjectMemoryAutoState(
-	entries: readonly unknown[],
-): Pick<ProjectMemoryState, "assessed" | "pending" | "promptDelivered"> | undefined {
-	for (let i = entries.length - 1; i >= 0; i -= 1) {
-		const entry = entries[i] as ProjectMemoryStateEntry | undefined;
-		if (entry?.type !== "custom" || entry.customType !== "project-memory-auto-state") continue;
-		const data = entry.data as {
-			assessed?: boolean;
-			pending?: boolean;
-			promptDelivered?: boolean;
-		} | undefined;
-		return {
-			assessed: data?.assessed === true,
-			pending: data?.pending === true,
-			promptDelivered: data?.promptDelivered === true,
-		};
-	}
-	return undefined;
-}
+const INITIAL_STATE: ProjectMemoryState = {
+	version: 3, assessed: false, loaded: false, notified: false, skipCount: 0, lastPromptHash: null, pending: false,
+};
+const MAX_SKIPS = 5;
 
 export class ProjectMemoryLifecycle {
-	readonly state: ProjectMemoryState = {
-		assessed: false,
-		pending: false,
-		inFlight: false,
-		promptDelivered: false,
-	};
+	private state = { ...INITIAL_STATE };
+	private assessment: symbol | undefined;
+	private inFlight = false;
 
-	restore(entries: readonly unknown[], deliveredPromptReachable = false): void {
-		const restored = findLatestProjectMemoryAutoState(entries);
-		this.state.assessed = restored?.assessed ?? false;
-		this.state.pending = restored?.pending ?? false;
-		this.state.inFlight = false;
-		this.state.promptDelivered =
-			this.state.pending &&
-			((restored?.promptDelivered ?? false) || deliveredPromptReachable);
+	private readonly persist: (state: ProjectMemoryState) => void;
+
+	constructor(persist: (state: ProjectMemoryState) => void) {
+		this.persist = persist;
 	}
 
-	get needsAssessment(): boolean {
-		return !this.state.assessed && !this.state.inFlight;
+	restore(branch: readonly BranchEntry[]): void {
+		// The full branch includes ancestors omitted from the model context by compaction.
+		const data = branch.filter(entry => entry.type === "custom" && entry.customType === PROJECT_MEMORY_STATE_ENTRY).at(-1)?.data as
+			(Partial<Omit<ProjectMemoryState, "version">> & { version?: number }) | undefined;
+		const assessed = data?.assessed === true;
+		const pending = data?.pending === true;
+		const loaded = data?.version === 3 ? data.loaded === true
+			: (assessed && !pending) || branch.some(entry => entry.type === "custom" && entry.customType === "project-memory-load");
+		this.state = {
+			version: 3,
+			assessed: assessed || loaded,
+			loaded,
+			notified: loaded || (data?.version === 3 && data.notified === true),
+			skipCount: data?.version === 3 ? data.skipCount ?? 0 : 0,
+			lastPromptHash: data?.version === 3 ? data.lastPromptHash ?? null : null,
+			pending: pending && !loaded,
+		};
+		this.assessment = undefined;
 	}
 
-	assess(pending: boolean): void {
-		this.state.assessed = true;
-		this.state.pending = pending;
-		this.state.promptDelivered = false;
+	getLoadState(): Readonly<ProjectMemoryState> {
+		return this.state;
 	}
 
-	confirmPromptDelivered(): void {
-		if (!this.state.pending) {
-			throw new Error("No automatic project-memory prompt can be confirmed.");
-		}
-		this.state.promptDelivered = true;
+	beginLoadAssessment(promptHash: string) {
+		const { loaded, notified, skipCount, lastPromptHash } = this.state;
+		if (loaded || notified || this.assessment || this.inFlight || skipCount >= MAX_SKIPS || lastPromptHash === promptHash) return;
+		this.assessment = Symbol();
+		return { token: this.assessment, skipCount };
 	}
 
-	beginLoad(): void {
-		if (
-			!this.state.pending ||
-			!this.state.promptDelivered ||
-			this.state.inFlight
-		) {
-			throw new Error("No automatic project-memory load is pending.");
-		}
-		this.state.inFlight = true;
+	recordLoadSkip(token: symbol, promptHash: string) {
+		const skipCount = this.state.skipCount + 1;
+		const terminal = skipCount >= MAX_SKIPS;
+		const recorded = this.completeAssessment(token, promptHash, { skipCount, ...(terminal ? { assessed: true, notified: true } : {}) });
+		return { recorded, terminal: recorded && terminal };
 	}
 
-	completeLoad(): void {
-		this.state.pending = false;
-		this.state.promptDelivered = false;
+	completeLoadNotified(token: symbol, promptHash: string): boolean {
+		return this.completeAssessment(token, promptHash, { assessed: true, notified: true, pending: false });
+	}
+
+	completeLoadPrefetch(token: symbol, promptHash: string): boolean {
+		return this.completeAssessment(token, promptHash, { assessed: true, loaded: true, notified: true, pending: false });
+	}
+
+	claimAdvisedOnce(): boolean {
+		if (this.state.loaded || this.state.notified) return false;
+		this.assessment = undefined;
+		this.update({ assessed: true, notified: true, pending: true });
+		return true;
+	}
+
+	markLoaded(): void {
+		this.assessment = undefined;
+		if (!this.state.loaded) this.update({ assessed: true, loaded: true, notified: true, pending: false });
+	}
+
+	beginLoad(): boolean {
+		if (this.state.loaded || this.inFlight) return false;
+		this.inFlight = true;
+		return true;
 	}
 
 	finishLoad(): void {
-		this.state.inFlight = false;
+		this.inFlight = false;
+	}
+
+	private completeAssessment(token: symbol, promptHash: string, changes: Partial<ProjectMemoryState>): boolean {
+		if (this.assessment !== token) return false;
+		this.assessment = undefined;
+		this.update({ ...changes, lastPromptHash: promptHash });
+		return true;
+	}
+
+	private update(changes: Partial<ProjectMemoryState>): void {
+		this.state = { ...this.state, ...changes };
+		this.persist(this.state);
 	}
 }

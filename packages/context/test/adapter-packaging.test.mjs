@@ -13,10 +13,13 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
+import { once } from 'node:events';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import test from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -128,6 +131,44 @@ function packAndExtract(adapter, root) {
 
 function runHook(runtime, event, input, options) {
   return run(process.execPath, [runtime, event], { ...options, input });
+}
+
+const execFileAsync = promisify(execFile);
+const prefetchFocus = 'packaged triage keyword';
+
+async function configurePrefetch(t, project) {
+  const requests = [];
+  const content = JSON.stringify({ load: { action: 'focused', focus: prefetchFocus }, refs: [], reason: 'test' });
+  const server = createServer((request, response) => {
+    requests.push(`${request.method} ${request.url}`);
+    request.resume();
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify({ choices: [{ message: { content } }] }));
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+
+  mkdirSync(join(project, 'docs'), { recursive: true });
+  writeFileSync(join(project, 'docs', 'PREFETCH.md'), '# Prefetch fixture\n\nPackaged triage keyword fixture.\n');
+  writeFileSync(join(project, 'dotdotgod.config.json'), JSON.stringify({
+    version: 1, documentation: { root: 'docs' },
+    decision: { mode: 'model', delivery: 'prefetch', provider: 'openai-compatible', model: 'stub', baseUrl: `http://127.0.0.1:${server.address().port}` },
+  }));
+  return requests;
+}
+
+async function runPackedAsync(args, input, options) {
+  const result = execFileAsync(process.execPath, args, { ...options, timeout: 30_000 });
+  result.child.stdin.end(JSON.stringify(input));
+  const { stdout, stderr } = await result;
+  assert.doesNotMatch(stderr, /dotdotgod decision:|dotdotgod hook error:/u);
+  return JSON.parse(stdout);
+}
+
+function assertPrefetch(text, requests) {
+  assert.deepEqual(requests, ['POST /chat/completions']);
+  assert.match(text, /PREFETCH — UNTRUSTED DATA/u);
+  assert.match(text, /Packaged triage keyword fixture\./u);
 }
 
 function withTimeout(promise, milliseconds, label) {
@@ -266,6 +307,12 @@ for (const adapter of ['claude-code', 'codex']) {
       await withTimeout(client.close(), 5_000, `${adapter} MCP close`);
     }
 
+    const requests = await configurePrefetch(t, project);
+    const prefetch = await runPackedAsync([runtime, 'userpromptsubmit'], {
+      cwd: project, session_id: `prefetch-${adapter}`, prompt: prefetchFocus,
+    }, { cwd: project, env });
+    assertPrefetch(prefetch.hookSpecificOutput?.additionalContext, requests);
+
     const cli = run(process.execPath, [join(packageRoot, 'mcp', 'cli.mjs'), '--version'], { cwd: project, env });
     assert.equal(cli.status, 0, cli.stderr);
     assert.match(cli.stdout, /^(?:unknown|\d+\.\d+\.\d+)\s*$/u);
@@ -367,8 +414,35 @@ test('AP-02: antigravity packed adapter is a standalone plugin, hook, and roots-
     await withTimeout(client.close(), 5_000, 'antigravity MCP close');
   }
 
+  const requests = await configurePrefetch(t, project);
+  const prefetch = await runPackedAsync([runtime, 'preinvocation'], {
+    conversationId: 'prefetch-antigravity', workspacePaths: [project], cwd: project, lastUserInput: prefetchFocus,
+  }, { cwd: packageRoot, env });
+  assert.equal(prefetch.injectSteps?.length, 1);
+  assertPrefetch(prefetch.injectSteps[0].systemMessage.systemMessage, requests);
+
   const compressed = statSync(tarball).size;
   let unpacked = 0;
   walk(packageRoot, (path, entry) => { if (entry.isFile()) unpacked += lstatSync(path).size; });
   t.diagnostic(`antigravity packed size: ${compressed} bytes compressed, ${unpacked} bytes unpacked`);
+});
+
+test('Hermes packed decision runtime prefetches with its standalone CLI', { timeout: 90_000 }, async (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'dotdotgod-packed-hermes-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const project = join(root, 'project');
+  mkdirSync(join(root, 'home'));
+  const env = isolatedEnvironment(root, project, createNetworkStubs(root));
+  const { packageRoot } = packAndExtract('hermes', root);
+  assertNoAncestorNodeModules(packageRoot);
+  auditExtractedPackage(packageRoot);
+  const requests = await configurePrefetch(t, project);
+  const result = await runPackedAsync([join(packageRoot, 'mcp', 'decision.mjs')], {
+    root: project, rawPrompt: prefetchFocus,
+    sessionState: { assessed: false, loaded: false, notified: false, skipCount: 0, lastPromptHash: null },
+  }, { cwd: project, env });
+  assert.equal(result.ok, true, result.errorLine);
+  assert.equal(result.errorLine, null);
+  assert.equal(result.state.loaded, true);
+  assertPrefetch(result.text, requests);
 });

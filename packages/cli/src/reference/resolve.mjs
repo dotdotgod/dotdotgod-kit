@@ -1,7 +1,9 @@
 import { resolve } from 'node:path';
 import { usage } from '../cli/usage.mjs';
 import { readMemoryConfig } from '../memory/config.mjs';
-import { readFreshIndex } from '../index/cache.mjs';
+import { isSharedMemoryPath } from '../memory/documentation-map.mjs';
+import { readFreshIndex, readIndex } from '../index/cache.mjs';
+import { CACHE_VERSION } from '../index/constants.mjs';
 import { buildCompactImpactReport, buildImpactReport } from '../impact/report.mjs';
 import { DEFAULT_REFERENCE_LIMIT, extractBracketReferences, extractFuzzyReferences, isArchiveBodyPath, normalizeReferenceAlias, referenceCandidateAliases, referencePathForNode } from './extract.mjs';
 
@@ -54,10 +56,14 @@ export function resolveReferenceCandidates(index, ref, options = {}) {
 }
 
 function parseReferenceOptions(argv, command) {
-  const filtered = [];
-  const options = { maxResults: DEFAULT_REFERENCE_LIMIT, includeArchive: false, withImpact: false, fuzzy: false };
+  const operands = [];
+  const options = { maxResults: DEFAULT_REFERENCE_LIMIT, includeArchive: false, withImpact: false, fuzzy: false, json: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
+    if (arg === '--' && command === 'expand') {
+      operands.push(...argv.slice(i + 1));
+      break;
+    }
     if (arg === '--max-results') {
       const next = argv[i + 1];
       if (!next || next.startsWith('-') || Number.isNaN(Number.parseInt(next, 10))) usage('Missing or invalid value for --max-results.', command);
@@ -65,16 +71,16 @@ function parseReferenceOptions(argv, command) {
       i += 1;
     } else if (arg === '--include-archive') options.includeArchive = true;
     else if (arg === '--with-impact') options.withImpact = true;
-    else if (arg === '--fuzzy') {
-      if (command !== 'expand') usage(`Unknown option: ${arg}`, command);
-      options.fuzzy = true;
-    }
-    else if (arg === '--json') filtered.push(arg);
+    else if (command === 'expand' && arg === '--fuzzy') options.fuzzy = true;
+    else if (command === 'expand' && arg === '--no-write') options.readOnly = true;
+    else if (command === 'expand' && arg === '--scope') {
+      options.scope = argv[++i];
+      if (!['all', 'shared'].includes(options.scope)) usage('--scope must be all or shared.', command);
+    } else if (arg === '--json') options.json = true;
     else if (arg.startsWith('-')) usage(`Unknown option: ${arg}`, command);
-    else filtered.push(arg);
+    else operands.push(arg);
   }
-  const operands = filtered.filter((arg) => !arg.startsWith('-'));
-  return { ...options, root: resolve(operands[0] ?? '.'), json: filtered.includes('--json'), rootArgv: operands.slice(1) };
+  return { ...options, root: resolve(operands[0] ?? '.'), rootArgv: operands.slice(1) };
 }
 
 function formatReferenceOutput(payload) {
@@ -102,25 +108,59 @@ export function runResolve(argv) {
   else console.log(formatReferenceOutput(payload));
 }
 
-export function runExpand(argv) {
-  const options = parseReferenceOptions(argv, 'expand');
-  const prompt = options.rootArgv?.join(' ');
-  if (!prompt) usage('Missing required argument: <prompt>.', 'expand');
+function readExpansionIndex(root) {
+  const index = readIndex(root);
+  const schemaVersion = index?.schemaVersion ?? index?.version ?? null;
+  const current = schemaVersion === CACHE_VERSION && (index.version ?? schemaVersion) === CACHE_VERSION && Boolean(index.graph);
+  const status = current ? 'cached' : index ? 'stale' : 'missing';
+  return { index: current ? index : null, status: { ok: current, status }, metadata: { cacheRefreshed: false, schemaVersion } };
+}
+
+function sharedReferenceIndex(index, config) {
+  const allowed = (path) => isSharedMemoryPath(path, config);
+  const nodes = index.graph.nodes.filter((node) => allowed(referencePathForNode(node))).map((node) => node.references
+    ? { ...node, references: node.references.filter(({ targetPath }) => allowed(targetPath)) }
+    : node);
+  const ids = new Set(nodes.map(({ id }) => id));
+  const edges = index.graph.edges.filter(({ source, target }) => ids.has(source) && ids.has(target));
+  return { ...index, graph: { nodes, edges } };
+}
+
+export function expandReferences(root, prompt, options = {}) {
+  if (options.readOnly && options.withImpact) throw new Error('--with-impact cannot be combined with --no-write.');
   const refsInPrompt = extractBracketReferences(prompt);
-  if (refsInPrompt.length === 0 && !options.fuzzy) usage('No [[refs]] found in prompt.', 'expand');
-  const { status, index, metadata } = readFreshIndex(options.root);
-  const fuzzyRefs = options.fuzzy ? extractFuzzyReferences(prompt, index, { ...options, memoryConfig: readMemoryConfig(options.root), existingTargets: refsInPrompt.map((item) => item.target) }) : [];
+  if (refsInPrompt.length === 0 && !options.fuzzy && !options.readOnly) throw new Error('No [[refs]] found in prompt.');
+  const { status, index, metadata } = options.readOnly ? readExpansionIndex(root) : readFreshIndex(root);
+  const payload = { ok: options.readOnly || status.ok, command: 'expand', root, prompt, status, metadata, refs: [], omitted: 0 };
+  if (!index || (!refsInPrompt.length && !options.fuzzy)) return payload;
+
+  const memoryConfig = readMemoryConfig(root);
+  const shared = options.scope === 'shared';
+  if (shared && memoryConfig.errors?.length) throw new Error('Project configuration is invalid.');
+  const scopedIndex = shared ? sharedReferenceIndex(index, memoryConfig) : index;
+  const settings = { ...options, memoryConfig, existingTargets: refsInPrompt.map((item) => item.target) };
+  const fuzzyRefs = options.fuzzy ? extractFuzzyReferences(prompt, scopedIndex, settings) : [];
   let refs = [
-    ...refsInPrompt.map((item) => ({ ...resolveReferenceCandidates(index, item.target, { ...options, memoryConfig: readMemoryConfig(options.root) }), source: 'explicit', raw: item.raw, label: item.label })),
-    ...fuzzyRefs.map((item) => ({ ...resolveReferenceCandidates(index, item.target, { ...options, memoryConfig: readMemoryConfig(options.root) }), source: 'fuzzy', raw: item.raw, confidence: item.confidence, reasons: item.reasons })),
+    ...refsInPrompt.map((item) => ({ ...resolveReferenceCandidates(scopedIndex, item.target, settings), source: 'explicit', raw: item.raw, label: item.label })),
+    ...fuzzyRefs.map((item) => ({ ...resolveReferenceCandidates(scopedIndex, item.target, settings), source: 'fuzzy', raw: item.raw, confidence: item.confidence, reasons: item.reasons })),
   ];
+  if (shared) refs = refs.filter((item) => item.top);
   if (options.withImpact) refs = refs.map((item) => {
     const topPath = item.top?.path;
     if (!topPath) return item;
-    const impact = buildCompactImpactReport(buildImpactReport(index, topPath, { root: options.root }));
+    const impact = buildCompactImpactReport(buildImpactReport(scopedIndex, topPath, { root }));
     return { ...item, impact: { changed: topPath, warnings: impact.warnings, related: impact.related, groups: impact.groups, omittedRelated: impact.omittedRelated, quality: impact.quality } };
   });
-  const payload = { ok: status.ok, command: 'expand', root: options.root, prompt, status, metadata, refs, omitted: refs.reduce((sum, item) => sum + item.omitted, 0) };
+  return { ...payload, refs, omitted: refs.reduce((sum, item) => sum + item.omitted, 0) };
+}
+
+export function runExpand(argv) {
+  const options = parseReferenceOptions(argv, 'expand');
+  const prompt = options.rootArgv.join(' ');
+  if (!prompt) usage('Missing required argument: <prompt>.', 'expand');
+  let payload;
+  try { payload = expandReferences(options.root, prompt, options); }
+  catch (error) { usage(error.message, 'expand'); }
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else console.log(formatReferenceOutput(payload));
 }
