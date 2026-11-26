@@ -17,7 +17,7 @@ Pi activates `project_memory_load` whenever the repository is initialized and th
 
 The compact tool calls shared MCP `project_load`; concurrent loads are guarded. Tool or map failure leaves it active. A successful compact load, successful prefetch, or explicit full Load disables the tool for that branch. The `project-memory-auto-state` v3 entry is branch-local: restore and compaction keep reachable completion, not an abandoned sibling's. Legacy v2 restore also recognizes a reachable load entry. Plan Mode does not own load triage.
 
-Claude Code and Codex provide generated Load commands or skills from `packages/shared/workflows/load.md`. The workflow prefers the shared MCP `project_load` tool so a successful load can be tracked. It falls back to `dotdotgod map`, `dotdotgod query`, and README/local tree routing when the tool or CLI is unavailable.
+Claude Code and Codex provide generated Load commands or skills from `packages/cli/assets/workflows/load.md`. The workflow prefers the shared MCP `project_load` tool so a successful load can be tracked. It falls back to `dotdotgod map`, `dotdotgod query`, and README/local tree routing when the tool or CLI is unavailable.
 
 Hermes uses native lifecycle hooks and the registered project-load skill/tool,
 with canonical map/query routing, request-local dd:no-load and conservative
@@ -129,15 +129,15 @@ Load and `map` do not modify source, docs, project config, or derived indexes. Q
   - [packages/cli/src/commands/map.mjs](../../packages/cli/src/commands/map.mjs)
   - [packages/cli/src/memory/documentation-map.mjs](../../packages/cli/src/memory/documentation-map.mjs)
   - [packages/cli/src/commands/query.mjs](../../packages/cli/src/commands/query.mjs)
-  - [packages/shared/workflows/load.md](../../packages/shared/workflows/load.md)
-  - [packages/context/src/decision.mjs](../../packages/context/src/decision.mjs)
-  - [packages/context/src/project.mjs](../../packages/context/src/project.mjs)
+  - [packages/cli/assets/workflows/load.md](../../packages/cli/assets/workflows/load.md)
+  - [packages/cli/src/context/decision.mjs](../../packages/cli/src/context/decision.mjs)
+  - [packages/cli/src/context/project.mjs](../../packages/cli/src/context/project.mjs)
 - Verified by:
   - [packages/pi/test/project-memory-extension.test.ts](../../packages/pi/test/project-memory-extension.test.ts)
   - [packages/pi/test/load-project-utils.test.ts](../../packages/pi/test/load-project-utils.test.ts)
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
-  - [packages/context/test/decision.test.mjs](../../packages/context/test/decision.test.mjs)
+  - [packages/cli/test/context/decision.test.mjs](../../packages/cli/test/context/decision.test.mjs)
 - Related docs:
   - [docs/spec/CROSS_AGENT_SUPPORT.md](CROSS_AGENT_SUPPORT.md)
   - [docs/spec/cli/MAP.md](cli/MAP.md)
@@ -149,5 +149,5 @@ Load and `map` do not modify source, docs, project config, or derived indexes. Q
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/pi/extensions/project-memory/index.ts","packages/pi/extensions/project-memory/context.ts","packages/pi/extensions/project-memory/lifecycle.ts","packages/pi/extensions/load-project/index.ts","packages/pi/extensions/load-project/prompt.ts","packages/pi/extensions/load-project/snapshot.ts","packages/cli/src/commands/map.mjs","packages/cli/src/memory/documentation-map.mjs","packages/cli/src/commands/query.mjs","packages/shared/workflows/load.md","packages/context/src/decision.mjs","packages/context/src/project.mjs"],"verifiedBy":["packages/pi/test/project-memory-extension.test.ts","packages/pi/test/load-project-utils.test.ts","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/context/test/decision.test.mjs"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/cli/MAP.md","docs/spec/cli/QUERY.md","docs/spec/DECISION_CONFIG.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/pi/extensions/project-memory/index.ts","packages/pi/extensions/project-memory/context.ts","packages/pi/extensions/project-memory/lifecycle.ts","packages/pi/extensions/load-project/index.ts","packages/pi/extensions/load-project/prompt.ts","packages/pi/extensions/load-project/snapshot.ts","packages/cli/src/commands/map.mjs","packages/cli/src/memory/documentation-map.mjs","packages/cli/src/commands/query.mjs","packages/cli/assets/workflows/load.md","packages/cli/src/context/decision.mjs","packages/cli/src/context/project.mjs"],"verifiedBy":["packages/pi/test/project-memory-extension.test.ts","packages/pi/test/load-project-utils.test.ts","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/cli/test/context/decision.test.mjs"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/cli/MAP.md","docs/spec/cli/QUERY.md","docs/spec/DECISION_CONFIG.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
 ```

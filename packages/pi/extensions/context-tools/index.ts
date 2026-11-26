@@ -10,7 +10,7 @@ export default function contextTools(pi: ExtensionAPI): void {
   // There are no native forwarding aliases or duplicated schemas.
   const server = {
     command: process.execPath,
-    args: [require.resolve("@dotdotgod/context/bin/server.mjs")],
+    args: [require.resolve("@dotdotgod/cli/bin/dotdotgod.mjs"), "mcp"],
     exposure: "codemode" as const,
     toolExposure: { project_impact: "direct" as const, impact_status: "direct" as const },
     timeout: 660,

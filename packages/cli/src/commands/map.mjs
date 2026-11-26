@@ -1,5 +1,25 @@
 import { resolve } from 'node:path';
-import { buildDocumentationMap } from '../memory/documentation-map.mjs';
+import { buildDocumentationMap as readDocumentationMap } from '../memory/documentation-map.mjs';
+
+export class DotdotgodServiceError extends Error {
+  constructor(code, message, options) {
+    super(message, options);
+    this.name = 'DotdotgodServiceError';
+    this.code = code;
+  }
+
+  static from(error, code) {
+    if (error instanceof DotdotgodServiceError) return error;
+    return new DotdotgodServiceError(error?.code ?? code, error instanceof Error ? error.message : String(error), { cause: error });
+  }
+}
+
+export function buildDocumentationMap(root, { depth, signal } = {}) {
+  signal?.throwIfAborted();
+  const result = readDocumentationMap(root, { depth });
+  if (!result.ok) throw new DotdotgodServiceError(result.error.code, result.error.message);
+  return result;
+}
 
 function fail(json, code, message) {
   if (json) console.log(JSON.stringify({ ok: false, error: { code, message } }, null, 2));
@@ -34,8 +54,12 @@ function parseMapOptions(argv) {
 
 export function runMap(argv) {
   const options = parseMapOptions(argv);
-  const result = buildDocumentationMap(options.root, { depth: options.depth });
-  if (!result.ok) fail(options.json, result.error.code, result.error.message);
+  let result;
+  try { result = buildDocumentationMap(options.root, { depth: options.depth }); }
+  catch (error) {
+    if (!(error instanceof DotdotgodServiceError)) throw error;
+    return fail(options.json, error.code, error.message);
+  }
   if (options.json) console.log(JSON.stringify(result, null, 2));
   else console.log(result.tree);
 }

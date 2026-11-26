@@ -1,21 +1,20 @@
 # Hook Tests
 
-These checks cover packaged non-blocking advisory hooks across Claude Code, Codex, and Antigravity, plus optional user-configured hook guidance. Packaged hooks never block host edits, tests, builds, commits, or other tools; all pending state lives in `.dotdotgod/context/impact.sqlite` v2 while legacy `.dotdotgod/context/runtime/*.json` files are ignored.
+These checks cover packaged non-blocking advisory hooks across Claude Code, Codex, and Antigravity, plus optional user-configured hook guidance. Packaged hooks never block host edits, tests, builds, commits, or other tools; all pending state lives in `.dotdotgod/context/impact.sqlite` v3 while legacy `.dotdotgod/context/runtime/*.json` files are ignored.
 
 - **Claude Code & Codex (`hooks/hooks.json`)**: `SessionStart`, `UserPromptSubmit`, and `PostToolUse` (`PreToolUse` is removed from `hooks.json`; invoking `pretooluse` directly returns `{}`).
 - **Antigravity (`hooks.json`)**: `PostToolUse` and `PreInvocation` (`rules/AGENTS.md` replaces `SessionStart`; no `PreToolUse` or `Stop`).
 
 ## Automated Checks
 
-- `packages/context/test/hooks.test.mjs` (`HK-01`..`HK-05`):
+- `packages/cli/test/context/hooks.test.mjs` (`HK-01`..`HK-05`):
   - `HK-01`: `extractHookSessionId` rejects empty, traversal, 129-char, or non-string IDs and returns `null` (no `'default'` fallback, no DB created).
   - `HK-02`: `isInitializedProject` rejects symlinked `dotdotgod.config.json` and symlinked `.dotdotgod`; `selectWorkspaceForPath` enforces segment-boundary matching (`/a/app` vs `/a/app-v2` returns `null`, `/a/app/sub` selects longest match).
   - `HK-03`: `formatHookError` and `runHookSafely` mask `$HOME`, strip `\r\n`/ANSI controls, cap stderr at `<= 240` chars, and fail open with `{}\n` + exit `0`.
   - `HK-04`..`HK-05`: Claude Code and Codex full advisory loop — `SessionStart` routing, `PostToolUse` single transition advisory on `0 -> >0` (`becameNonEmpty`), `apply_patch` multi-file tracking, `UserPromptSubmit` per-turn advisory while pending > 0, `PreToolUse` returning `{}` (never `deny`), failed `project_impact` retaining pending rows, succeeded `project_impact` clearing requested paths (`clearPaths`), third-party `mcp__other_server__project_impact` ignored, and pre-seeded legacy `.dotdotgod/context/runtime/*.json` completely ignored.
-- `packages/context/test/hooks-antigravity.test.mjs` (`AG-01`..`AG-03`): Antigravity workspace isolation, CLI + App/IDE tool tracking, 1-time `PreInvocation` `claimUnnotified`, `call_mcp_tool` clearance and `isError` retention, and Option C-2 `/plan` observation. See [`ANTIGRAVITY_ADAPTER.md`](ANTIGRAVITY_ADAPTER.md).
-- `pnpm --filter @dotdotgod/cli test`: validates Claude/Codex hook README JSON/TOML examples, safety policy rules, and package dry-run inclusion of `hooks/README.md`.
-- `pnpm --filter @dotdotgod/claude-code run verify`, `pnpm --filter @dotdotgod/codex run verify`, and `pnpm --filter @dotdotgod/antigravity run verify`: verify packaged hook manifests and generated hook/MCP/CLI runtime drift.
-- `node --test packages/context/test/adapter-packaging.test.mjs` (`AP-02`): extracts Claude Code, Codex, and Antigravity tarballs outside workspace dependency ancestry and checks advisory hook loading (no `PreToolUse`, no `runtime/*.json`, no `deny`), fail-open malformed input, MCP 19-tool startup, focused `project_load`, link/path leakage, and artifact sizes.
+- `packages/cli/test/context/hooks-antigravity.test.mjs` (`AG-01`..`AG-03`): Antigravity workspace isolation, CLI + App/IDE tool tracking, 1-time `PreInvocation` `claimUnnotified`, `call_mcp_tool` clearance and `isError` retention, and Option C-2 `/plan` observation. See [`ANTIGRAVITY_ADAPTER.md`](ANTIGRAVITY_ADAPTER.md).
+- `packages/cli/test/adapters/host-artifacts.test.mjs` and `antigravity-resources.test.mjs`: verify rendered manifests, advisory-only hooks, and CLI bindings.
+- `packages/cli/test/context/bin-dispatch-and-bridge.test.mjs` and `packages/cli/test/adapters/runtime-smoke.test.mjs`: exercise shared bin dispatch with malformed hook input and installed hook/MCP entrypoints.
 - `pnpm run verify:generated` and `node packages/cli/bin/dotdotgod.mjs validate . --include-local-memory --check-index`: verify generated commands/skills and hook docs freshness.
 
 ## Manual Smoke Checks

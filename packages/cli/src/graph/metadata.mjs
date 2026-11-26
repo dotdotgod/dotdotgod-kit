@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { basename, extname, resolve } from 'node:path';
-import { rel } from '../common/paths.mjs';
+import { rel } from '../primitives.mjs';
 import { headingToAnchor } from '../docs/markdown.mjs';
 import { extractDotdotgodTraceabilityBlocks, isLocalRelativeTraceabilityPath } from '../docs/traceability.mjs';
 import { defaultMemoryConfig, resolveMemoryArea } from '../memory/config.mjs';

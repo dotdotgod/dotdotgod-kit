@@ -1,5 +1,8 @@
 # Obsidian Traceability Plugin
 
+Obsidian is a private workspace build target, not a `dotdotgod adapter` host.
+Its community release flow is separate from npm publication.
+
 ## Requirements
 
 - The desktop-only plugin MUST bundle its runtime as `main.js` with root release

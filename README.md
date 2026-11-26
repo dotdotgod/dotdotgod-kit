@@ -50,23 +50,17 @@ Every adapter follows the same loop:
 3. **plan** — record durable task intent under `docs/plan/` before source edits when the work warrants a saved plan.
 4. **impact** — identify related specs, tests, docs, commands, and source before broad verification or handoff.
 
-## Pick the Package You Need
+## Choose an Installation
 
-| Package | Use it when | Start here |
+This checkout targets **0.12.0**; it has not been released. The unified
+installer below describes this checkout and the planned release, not 0.11.x.
+See [migration and retirement](docs/spec/ADAPTER_MIGRATION.md) for existing installs.
+
+| Workspace package | Use | Install |
 | --- | --- | --- |
-| [`@dotdotgod/pi`](packages/pi/README.md) | You use Pi and want initialization, project loading, Plan Mode, impact checks, and archive handoff. | `pi install npm:@dotdotgod/pi` |
-| [`@dotdotgod/cli`](packages/cli/README.md) | You want validation, graph indexing, local query, reference expansion, or impact reports. | `npx @dotdotgod/cli init .` |
-| [`@dotdotgod/context`](packages/context/README.md) | You want local command/file processing, FTS5 retrieval, and the shared stdio MCP runtime. | Installed automatically by the agent adapters. |
-| [`@dotdotgod/claude-code`](packages/claude-code/README.md#start-here) | You use Claude Code and want `/dd:*` workflows plus local context MCP tools. | `/plugin marketplace add dotdotgod/dotdotgod-kit`, then `/plugin install dotdotgod@dotdotgod` |
-| [`@dotdotgod/codex`](packages/codex/README.md#start-here) | You use Codex and want dotdotgod skills, local context MCP tools, and reviewed hooks. | Register the plugin manifest through a trusted Codex plugin flow. |
-| [`@dotdotgod/opencode`](packages/opencode/README.md) | You use OpenCode V2 and want MCP tools, automatic project plans and advisory impact tracking. | Add the package to `opencode.jsonc` plugins after publishing; use the package directory locally. |
-| [`@dotdotgod/antigravity`](packages/antigravity/README.md) | You use Antigravity CLI, App, or IDE and want native skills, rules, MCP tools, advisory impact, and `/plan` sync guidance. | `agy plugin install ./packages/antigravity` (or install from npm package directory) |
-
-The source checkout includes [`@dotdotgod/skills`](packages/skills/README.md), a standalone skills package with role-based planning and `document-clarify` (no longer bundled with adapters). Its [Skills CLI installation guide](packages/skills/README.md#설치-플러그인-없이-skills-cli-사용) covers Codex, Claude Code, Pi, Hermes Agent, and OpenCode without a new plugin; native host discovery verification is still pending.
-
-The source checkout also includes [`@dotdotgod/hermes`](packages/hermes/README.md)
-for Hermes CLI/gateway, with per-session MCP connections and no Plan Mode.
-Install its npm tarball into the native Hermes plugin directory; see its package README.
+| [`@dotdotgod/cli`](packages/cli/README.md) | Validation, graph, query, stdio MCP, and the host installer | Persistent `npm install -g @dotdotgod/cli` for host bindings once released; use a durable checkout for development |
+| [`@dotdotgod/pi`](packages/pi/README.md) | Native Pi extensions and initializer | `pi install npm:@dotdotgod/pi`; pairs with its declared CLI dependency |
+| [Obsidian Traceability](packages/obsidian/README.md) | Desktop graph plugin | Community release files; the private workspace package is not published to npm |
 
 ## Quick Start
 
@@ -99,7 +93,22 @@ npx @dotdotgod/cli graph impact . --changed <path> --compact
 npx @dotdotgod/cli graph serve .
 ```
 
-For Claude Code and Codex setup, follow the package-specific **Start Here** links in the package table.
+### Claude Code, Codex, Antigravity, OpenCode, and Hermes
+
+From a persistent unified CLI installation, preview the selected host:
+
+```bash
+dotdotgod adapter status
+dotdotgod adapter install opencode --dry-run
+dotdotgod adapter install opencode
+```
+
+Replace `opencode` with `claude-code`, `codex`, `antigravity`, or `hermes`
+as needed. Follow the printed host activation steps; no host registration is
+run for you. OpenCode defaults to project scope; the other hosts use user
+scope. `--with-skills` adds `ddg-planning` and `document-clarify`.
+`dotdotgod adapter install pi --with-skills` is skills-only; it does not
+install the native Pi adapter. See the [installer contract](docs/spec/cli/ADAPTER.md).
 
 ## Why dotdotgod
 
@@ -121,9 +130,9 @@ The structure provides:
 
 The adapters share a local runtime that keeps large command output, files, and fetched text useful without filling the model context. Small results return directly; larger results become locally searchable, bounded excerpts with provenance and trust metadata. Durable ingestion jobs and opaque session resume let longer processing survive individual turns.
 
-Pi, OpenCode, Claude Code, Codex, Hermes, and Antigravity use the shared local MCP runtime without native forwarding aliases. Individual tool names are unprefixed; hosts qualify them with the MCP server namespace. All six adapters track observed edits per session in `.dotdotgod/context/impact.sqlite` and surface non-blocking advisory impact reminders without blocking edits, tests, builds, commits, or other tools. Hermes wrappers own a connection per authorized repository/session. Host shell and permission behavior remains separate. The compatibility environment preserves ordinary inherited credentials; allowlist mode provides a stricter child environment.
+Pi, OpenCode, Claude Code, Codex, Hermes, and Antigravity use the shared local MCP runtime without native forwarding aliases. Individual tool names are unprefixed; hosts qualify them with the MCP server namespace. All six adapters track observed edits per session in `.dotdotgod/context/impact.sqlite` and surface non-blocking advisory impact reminders without blocking edits, tests, builds, commits, or other tools. Hermes wrappers own a connection per selected repository/session. Host shell and permission behavior remains separate. The compatibility environment preserves ordinary inherited credentials; allowlist mode provides a stricter child environment.
 
-The runtime applies bounded capture, storage, traversal, and HTTP(S) fetch policies. These controls provide defense in depth rather than a network sandbox or prompt-injection guarantee. See the [`@dotdotgod/context` npm landing page](packages/context/README.md), [behavior contract](docs/spec/CONTEXT_EXECUTION.md), [architecture](docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md), and [verification strategy](docs/test/CONTEXT_EXECUTION.md).
+The runtime applies bounded capture, storage, traversal, and HTTP(S) fetch policies. These controls provide defense in depth rather than a network sandbox or prompt-injection guarantee. See the [behavior contract](docs/spec/CONTEXT_EXECUTION.md), [architecture](docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md), and [verification strategy](docs/test/CONTEXT_EXECUTION.md).
 
 ## Changed-File Impact Example
 
@@ -151,10 +160,10 @@ Each result includes ranking reasons so agents can inspect the smallest useful s
 For visual review, start the local explorer:
 
 ```bash
-dotdotgod graph serve . --changed packages/cli/src/core.mjs
+dotdotgod graph serve .
 ```
 
-The explorer keeps only shared structural nodes connected to the changed-file root, preserves relation-arrow direction, and lays nodes out from the root by structural hop. Its **Node reveal** control offers **Instant**, **By hop layer**, and **One by one** modes; the choice is saved locally, **Skip reveal** finishes an active sequence, and reduced-motion preferences use immediate placement. The server binds to `127.0.0.1` by default; use `--host` or `--port` only when needed.
+The explorer displays shared traceability relationships and preserves relation-arrow direction. Its **Node reveal** control offers **Instant**, **By hop layer**, and **One by one** modes; the choice is saved locally, **Skip reveal** finishes an active sequence, and reduced-motion preferences use immediate placement. The server binds to `127.0.0.1` by default; use `--host` or `--port` only when needed.
 
 ## Core Concepts
 
@@ -210,7 +219,8 @@ Common routes:
 
 ## Publishing
 
-The root workspace package is private. Publish public workspace packages individually or with:
+The root and Obsidian workspace packages are private. After separate release
+approval, publish only the CLI and Pi (in dependency order) with:
 
 ```bash
 pnpm run publish:all

@@ -1,2 +1,4 @@
 packages:
-  - "packages/*"
+  - packages/cli
+  - packages/obsidian
+  - packages/pi

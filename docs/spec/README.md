@@ -32,6 +32,8 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 
 ## Index
 
+- [`ADAPTER_MIGRATION.md`](ADAPTER_MIGRATION.md): migration to the unified runtime and approval-gated 0.12.0 retirement runbook.
+
 - `ANTIGRAVITY_ADAPTER.md`: native Antigravity plugin layout, `dotdotgod_context` MCP, non-blocking advisory impact hooks, and Option C-2 `/plan` sync.
 - `NATIVE_PLAN_STORAGE.md`: opt-in Claude/Codex native plan storage, Antigravity Option C-2 read-only `/plan` observation, and host permission boundaries.
 - `OPENCODE_ADAPTER.md`: OpenCode V2 native planning, MCP and advisory impact contract.
@@ -48,7 +50,7 @@ Project-level config is optional and lives in `dotdotgod.config.json`. Use `dotd
 - `VALIDATION_CONFIG.md`: optional config for markdown validation size budgets and explicit size-check exclusions.
 - `IMPACT_RANKING_CONFIG.md`: fixed `graph impact` PPR/memory policy, request-local vector overlay controls, non-blocking compatibility behavior, score breakdowns, and compact text/YML output.
 - `CONFIG_COMMAND.md`: CLI behavior for inspecting and initializing project-level dotdotgod config files.
-- `cli/README.md`: focused CLI specs for discovery/help, local multilingual query and vector cache, graph impact, traceability links, and plan commands.
+- `cli/README.md`: focused CLI specs for adapter installation, discovery/help, local multilingual query and vector cache, graph impact, traceability links, and plan commands.
 - `CLI_INTERFACE.md`: compatibility route for the legacy monolithic CLI interface spec; new behavior belongs under `cli/`.
 - `REFERENCE_EXPANSION.md`: CLI reference resolution and prompt-time expansion from the dotdotgod graph/index.
 - `CROSS_AGENT_SUPPORT.md`: cross-agent support contract for Pi, OpenCode, Claude Code, Codex, Antigravity, Hermes, and shared docs workflows.

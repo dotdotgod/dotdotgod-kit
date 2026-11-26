@@ -16,7 +16,7 @@ Pi, OpenCode, Claude Code, Codex, and Antigravity use nineteen shared stdio MCP 
 - `project_load`, `project_impact`, `impact_status`, `project_initialize`;
 - `embedding_status`, confirmation-gated `embedding_install`.
 
-Unprefixed names are host-qualified by server. Pi uses host-managed MCP without aliases (pending-only `project_memory_load` calls `project_load`). OpenCode bundles MCP with Code Mode ([OPENCODE_ADAPTER.md](OPENCODE_ADAPTER.md)); Antigravity launches `dotdotgod_context` from `mcp_config.json` ([ANTIGRAVITY_ADAPTER.md](ANTIGRAVITY_ADAPTER.md)); Hermes uses per-session native-to-MCP routing ([HERMES_ADAPTER.md](HERMES_ADAPTER.md)). When `DOTDOTGOD_PROJECT_ROOT` is unset and the client advertises `capabilities.roots`, the server resolves workspace root via MCP `roots/list` (and `notifications/roots/list_changed`), falling back to `process.cwd()`. Reload after upgrading; old names are unsupported.
+Unprefixed names are host-qualified by server. Pi uses host-managed MCP without aliases (pending-only `project_memory_load` calls `project_load`). OpenCode integrates the shared MCP server with Code Mode ([OPENCODE_ADAPTER.md](OPENCODE_ADAPTER.md)); Antigravity launches `dotdotgod_context` from `mcp_config.json` ([ANTIGRAVITY_ADAPTER.md](ANTIGRAVITY_ADAPTER.md)); Hermes uses per-session native-to-MCP routing ([HERMES_ADAPTER.md](HERMES_ADAPTER.md)). When `DOTDOTGOD_PROJECT_ROOT` is unset and the client advertises `capabilities.roots`, the server resolves workspace root via MCP `roots/list` (and `notifications/roots/list_changed`), falling back to `process.cwd()`. Reload after upgrading; old names are unsupported.
 
 ## Output Handling
 
@@ -61,11 +61,11 @@ Writable connections use WAL and bounded `busy_timeout`. Replacement, expiry, an
 
 ## Packaged Adapter Runtime
 
-Claude Code, Codex, and Antigravity bundle shared hooks, MCP, and CLI so extracted runtimes need no ancestor `node_modules`, workspace links, installers, or separate context package. Verification checks drift and isolated tarballs. Optional embeddings may degrade focused enrichment, never mandatory map Load; errors omit paths/stacks.
+`@dotdotgod/cli` owns context services, stdio MCP, and hook dispatch. Claude Code, Codex, and Antigravity point at `dotdotgod mcp` and `dotdotgod hook <host> <event>` through the installed binding. OpenCode and Hermes use thin host-native files without independent CLI or MCP bundles. Pi resolves the CLI bin export from its runtime dependency and invokes it with `mcp`. See [adapter install and runtime binding](cli/ADAPTER.md). Optional embeddings may degrade focused enrichment, never mandatory map Load; errors omit paths/stacks.
 
 ## Hook Routing
 
-Claude Code, Codex, and Antigravity hooks persist advisory state in `.dotdotgod/context/impact.sqlite` v2 and ignore legacy `.dotdotgod/context/runtime/*.json`. Hooks activate only for initialized projects (`dotdotgod.config.json` regular file or `.dotdotgod` directory), validate session IDs strictly (no `'default'` fallback), and fail open on invalid input or errors.
+Claude Code, Codex, and Antigravity hooks persist advisory state in `.dotdotgod/context/impact.sqlite` v3 and ignore legacy `.dotdotgod/context/runtime/*.json`. Hooks activate only for initialized projects (`dotdotgod.config.json` regular file or `.dotdotgod` directory), validate session IDs strictly (no `'default'` fallback), and fail open on invalid input or errors.
 
 - Claude Code and Codex register `SessionStart` (optional project-memory guidance), `UserPromptSubmit` (read-only advisory while pending `count > 0`), and `PostToolUse` (marks edits excluding `<docRoot>/(plan|archive)` and build/cache dirs with one `0 -> >0` transition notice; clears requested paths via `clearPaths` on successful allowlisted `project_impact` and retains pending on failure). `PreToolUse` is removed from `hooks.json` and returns `{}`.
 - Antigravity registers only `PostToolUse` and `PreInvocation` (`claimUnnotified` one-time advisory and read-only `/plan` sync); see [ANTIGRAVITY_ADAPTER.md](ANTIGRAVITY_ADAPTER.md).
@@ -96,50 +96,50 @@ No remote dotdotgod service is required. Runtime state and caches are local; `fe
 ### Traceability Links
 
 - Implemented by:
-  - [packages/context/src/server.mjs](../../packages/context/src/server.mjs)
-  - [packages/context/src/execute.mjs](../../packages/context/src/execute.mjs)
-  - [packages/context/src/store.mjs](../../packages/context/src/store.mjs)
-  - [packages/context/src/chunks.mjs](../../packages/context/src/chunks.mjs)
-  - [packages/context/src/content.mjs](../../packages/context/src/content.mjs)
-  - [packages/context/src/provenance.mjs](../../packages/context/src/provenance.mjs)
-  - [packages/context/src/rank.mjs](../../packages/context/src/rank.mjs)
-  - [packages/context/src/safe-fetch.mjs](../../packages/context/src/safe-fetch.mjs)
-  - [packages/context/src/environment-policy.mjs](../../packages/context/src/environment-policy.mjs)
-  - [packages/context/src/directory-ingestion.mjs](../../packages/context/src/directory-ingestion.mjs)
-  - [packages/context/src/html-normalize.mjs](../../packages/context/src/html-normalize.mjs)
-  - [packages/context/src/doctor.mjs](../../packages/context/src/doctor.mjs)
-  - [packages/context/src/project.mjs](../../packages/context/src/project.mjs)
-  - [packages/context/src/hooks.mjs](../../packages/context/src/hooks.mjs)
-  - [packages/context/src/hooks-antigravity.mjs](../../packages/context/src/hooks-antigravity.mjs)
-  - [packages/context/src/hook-state.mjs](../../packages/context/src/hook-state.mjs)
+  - [packages/cli/src/context/server.mjs](../../packages/cli/src/context/server.mjs)
+  - [packages/cli/src/context/execute.mjs](../../packages/cli/src/context/execute.mjs)
+  - [packages/cli/src/context/store.mjs](../../packages/cli/src/context/store.mjs)
+  - [packages/cli/src/context/chunks.mjs](../../packages/cli/src/context/chunks.mjs)
+  - [packages/cli/src/context/content.mjs](../../packages/cli/src/context/content.mjs)
+  - [packages/cli/src/context/provenance.mjs](../../packages/cli/src/context/provenance.mjs)
+  - [packages/cli/src/context/rank.mjs](../../packages/cli/src/context/rank.mjs)
+  - [packages/cli/src/context/safe-fetch.mjs](../../packages/cli/src/context/safe-fetch.mjs)
+  - [packages/cli/src/context/environment-policy.mjs](../../packages/cli/src/context/environment-policy.mjs)
+  - [packages/cli/src/context/directory-ingestion.mjs](../../packages/cli/src/context/directory-ingestion.mjs)
+  - [packages/cli/src/context/html-normalize.mjs](../../packages/cli/src/context/html-normalize.mjs)
+  - [packages/cli/src/context/doctor.mjs](../../packages/cli/src/context/doctor.mjs)
+  - [packages/cli/src/context/project.mjs](../../packages/cli/src/context/project.mjs)
+  - [packages/cli/src/context/hooks.mjs](../../packages/cli/src/context/hooks.mjs)
+  - [packages/cli/src/context/hooks-antigravity.mjs](../../packages/cli/src/context/hooks-antigravity.mjs)
+  - [packages/cli/src/context/hook-state.mjs](../../packages/cli/src/context/hook-state.mjs)
   - [packages/pi/extensions/context-tools/index.ts](../../packages/pi/extensions/context-tools/index.ts)
-  - [packages/claude-code/.claude-plugin/plugin.json](../../packages/claude-code/.claude-plugin/plugin.json)
-  - [packages/claude-code/hooks/hooks.json](../../packages/claude-code/hooks/hooks.json)
-  - [packages/codex/.codex-plugin/plugin.json](../../packages/codex/.codex-plugin/plugin.json)
-  - [packages/codex/.mcp.json](../../packages/codex/.mcp.json)
-  - [packages/codex/hooks/hooks.json](../../packages/codex/hooks/hooks.json)
-  - [packages/antigravity/plugin.json](../../packages/antigravity/plugin.json)
-  - [packages/antigravity/mcp_config.json](../../packages/antigravity/mcp_config.json)
-  - [packages/antigravity/hooks.json](../../packages/antigravity/hooks.json)
-  - [packages/context/src/jobs.mjs](../../packages/context/src/jobs.mjs)
-  - [packages/context/src/session.mjs](../../packages/context/src/session.mjs)
-  - [scripts/build-adapter-runtime.mjs](../../scripts/build-adapter-runtime.mjs)
+  - [packages/cli/src/adapters/hosts/claude-code.mjs](../../packages/cli/src/adapters/hosts/claude-code.mjs)
+  - [packages/cli/assets/adapters/codex/plugin.json](../../packages/cli/assets/adapters/codex/plugin.json)
+  - [packages/cli/src/adapters/hosts/codex.mjs](../../packages/cli/src/adapters/hosts/codex.mjs)
+  - [packages/cli/assets/adapters/codex/hooks.json](../../packages/cli/assets/adapters/codex/hooks.json)
+  - [packages/cli/assets/adapters/antigravity/plugin.json](../../packages/cli/assets/adapters/antigravity/plugin.json)
+  - [packages/cli/src/adapters/hosts/antigravity.mjs](../../packages/cli/src/adapters/hosts/antigravity.mjs)
+  - [packages/cli/assets/adapters/antigravity/hooks.json](../../packages/cli/assets/adapters/antigravity/hooks.json)
+  - [packages/cli/src/context/jobs.mjs](../../packages/cli/src/context/jobs.mjs)
+  - [packages/cli/src/primitives.mjs](../../packages/cli/src/primitives.mjs)
+  - [packages/cli/bin/dotdotgod.mjs](../../packages/cli/bin/dotdotgod.mjs)
 - Verified by:
   - [packages/pi/test/context-workflow.test.ts](../../packages/pi/test/context-workflow.test.ts)
   - [packages/pi/test/context-codemode.test.ts](../../packages/pi/test/context-codemode.test.ts)
-  - [packages/context/test/context.test.mjs](../../packages/context/test/context.test.mjs)
-  - [packages/context/test/hooks.test.mjs](../../packages/context/test/hooks.test.mjs)
-  - [packages/context/test/hooks-antigravity.test.mjs](../../packages/context/test/hooks-antigravity.test.mjs)
-  - [packages/context/test/store-operations.test.mjs](../../packages/context/test/store-operations.test.mjs)
-  - [packages/context/test/environment-policy.test.mjs](../../packages/context/test/environment-policy.test.mjs)
-  - [packages/context/test/directory-ingestion.test.mjs](../../packages/context/test/directory-ingestion.test.mjs)
-  - [packages/context/test/html-normalize.test.mjs](../../packages/context/test/html-normalize.test.mjs)
-  - [packages/context/test/mcp.test.mjs](../../packages/context/test/mcp.test.mjs)
-  - [packages/context/test/adapters.test.mjs](../../packages/context/test/adapters.test.mjs)
+  - [packages/cli/test/context/context.test.mjs](../../packages/cli/test/context/context.test.mjs)
+  - [packages/cli/test/context/hooks.test.mjs](../../packages/cli/test/context/hooks.test.mjs)
+  - [packages/cli/test/context/hooks-antigravity.test.mjs](../../packages/cli/test/context/hooks-antigravity.test.mjs)
+  - [packages/cli/test/context/store-operations.test.mjs](../../packages/cli/test/context/store-operations.test.mjs)
+  - [packages/cli/test/context/environment-policy.test.mjs](../../packages/cli/test/context/environment-policy.test.mjs)
+  - [packages/cli/test/context/directory-ingestion.test.mjs](../../packages/cli/test/context/directory-ingestion.test.mjs)
+  - [packages/cli/test/context/html-normalize.test.mjs](../../packages/cli/test/context/html-normalize.test.mjs)
+  - [packages/cli/test/context/mcp.test.mjs](../../packages/cli/test/context/mcp.test.mjs)
+  - [packages/cli/test/adapters/runtime-smoke.test.mjs](../../packages/cli/test/adapters/runtime-smoke.test.mjs)
   - [docs/test/CONTEXT_EXECUTION.md](../test/CONTEXT_EXECUTION.md)
   - [docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md](../test/manual-smoke/CROSS_AGENT_ADAPTERS.md)
-  - [packages/context/test/phase3.test.mjs](../../packages/context/test/phase3.test.mjs)
-  - [packages/context/test/adapter-packaging.test.mjs](../../packages/context/test/adapter-packaging.test.mjs)
+  - [packages/cli/test/context/phase3.test.mjs](../../packages/cli/test/context/phase3.test.mjs)
+  - [packages/cli/test/adapters/packaging-contract.test.mjs](../../packages/cli/test/adapters/packaging-contract.test.mjs)
+  - [packages/cli/test/adapters/installer-lifecycle.test.mjs](../../packages/cli/test/adapters/installer-lifecycle.test.mjs)
 - Related docs:
   - [docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md](../arch/CONTEXT_EXECUTION_ARCHITECTURE.md)
   - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../arch/CROSS_AGENT_ARCHITECTURE.md)
@@ -149,10 +149,10 @@ No remote dotdotgod service is required. Runtime state and caches are local; `fe
   - [docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md](../arch/CONTEXT_EXECUTION_ARCHITECTURE.md)
 - Contracts:
   - `CONTEXT-EXECUTION-TOOLS-001` — Local context tools keep large raw bytes outside model context (sections: 3, implementedBy: 3, verifiedBy: 2, relatedDocs: 1)
-  - `CONTEXT-EXECUTION-ADAPTERS-001` — Adapters use shared MCP while retaining native host lifecycle (sections: 3, implementedBy: 8, verifiedBy: 7, relatedDocs: 1)
+  - `CONTEXT-EXECUTION-ADAPTERS-001` — Adapters use shared MCP while retaining native host lifecycle (sections: 3, implementedBy: 8, verifiedBy: 8, relatedDocs: 1)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/context/src/server.mjs","packages/context/src/execute.mjs","packages/context/src/store.mjs","packages/context/src/chunks.mjs","packages/context/src/content.mjs","packages/context/src/provenance.mjs","packages/context/src/rank.mjs","packages/context/src/safe-fetch.mjs","packages/context/src/environment-policy.mjs","packages/context/src/directory-ingestion.mjs","packages/context/src/html-normalize.mjs","packages/context/src/doctor.mjs","packages/context/src/project.mjs","packages/context/src/hooks.mjs","packages/context/src/hooks-antigravity.mjs","packages/context/src/hook-state.mjs","packages/pi/extensions/context-tools/index.ts","packages/claude-code/.claude-plugin/plugin.json","packages/claude-code/hooks/hooks.json","packages/codex/.codex-plugin/plugin.json","packages/codex/.mcp.json","packages/codex/hooks/hooks.json","packages/antigravity/plugin.json","packages/antigravity/mcp_config.json","packages/antigravity/hooks.json","packages/context/src/jobs.mjs","packages/context/src/session.mjs","scripts/build-adapter-runtime.mjs"],"verifiedBy":["packages/pi/test/context-workflow.test.ts","packages/pi/test/context-codemode.test.ts","packages/context/test/context.test.mjs","packages/context/test/hooks.test.mjs","packages/context/test/hooks-antigravity.test.mjs","packages/context/test/store-operations.test.mjs","packages/context/test/environment-policy.test.mjs","packages/context/test/directory-ingestion.test.mjs","packages/context/test/html-normalize.test.mjs","packages/context/test/mcp.test.mjs","packages/context/test/adapters.test.mjs","docs/test/CONTEXT_EXECUTION.md","docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md","packages/context/test/phase3.test.mjs","packages/context/test/adapter-packaging.test.mjs"],"relatedDocs":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md","docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/spec/ANTIGRAVITY_ADAPTER.md","docs/spec/ADVISORY_IMPACT.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"],"contracts":[{"id":"CONTEXT-EXECUTION-TOOLS-001","title":"Local context tools keep large raw bytes outside model context","sections":["Tool Contract","Output Handling","Storage And Search"],"implementedBy":["packages/context/src/server.mjs","packages/context/src/execute.mjs","packages/context/src/store.mjs"],"verifiedBy":["packages/context/test/context.test.mjs","packages/context/test/mcp.test.mjs"],"relatedDocs":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]},{"id":"CONTEXT-EXECUTION-ADAPTERS-001","title":"Adapters use shared MCP while retaining native host lifecycle","sections":["Project Workflow Boundaries","Packaged Adapter Runtime","Hook Routing"],"implementedBy":["packages/pi/extensions/context-tools/index.ts","packages/claude-code/.claude-plugin/plugin.json","packages/codex/.codex-plugin/plugin.json","packages/antigravity/plugin.json","packages/context/src/hooks.mjs","packages/context/src/hooks-antigravity.mjs","scripts/build-adapter-runtime.mjs","packages/opencode/src/mcp.mjs"],"verifiedBy":["packages/context/test/adapters.test.mjs","packages/context/test/adapter-packaging.test.mjs","packages/context/test/hooks.test.mjs","packages/context/test/hooks-antigravity.test.mjs","docs/test/CONTEXT_EXECUTION.md","docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md","packages/opencode/test/plugin.test.mjs"],"relatedDocs":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]}]}
+{"kind":"spec","implementedBy":["packages/cli/src/context/server.mjs","packages/cli/src/context/execute.mjs","packages/cli/src/context/store.mjs","packages/cli/src/context/chunks.mjs","packages/cli/src/context/content.mjs","packages/cli/src/context/provenance.mjs","packages/cli/src/context/rank.mjs","packages/cli/src/context/safe-fetch.mjs","packages/cli/src/context/environment-policy.mjs","packages/cli/src/context/directory-ingestion.mjs","packages/cli/src/context/html-normalize.mjs","packages/cli/src/context/doctor.mjs","packages/cli/src/context/project.mjs","packages/cli/src/context/hooks.mjs","packages/cli/src/context/hooks-antigravity.mjs","packages/cli/src/context/hook-state.mjs","packages/pi/extensions/context-tools/index.ts","packages/cli/src/adapters/hosts/claude-code.mjs","packages/cli/assets/adapters/codex/plugin.json","packages/cli/src/adapters/hosts/codex.mjs","packages/cli/assets/adapters/codex/hooks.json","packages/cli/assets/adapters/antigravity/plugin.json","packages/cli/src/adapters/hosts/antigravity.mjs","packages/cli/assets/adapters/antigravity/hooks.json","packages/cli/src/context/jobs.mjs","packages/cli/src/primitives.mjs","packages/cli/bin/dotdotgod.mjs"],"verifiedBy":["packages/pi/test/context-workflow.test.ts","packages/pi/test/context-codemode.test.ts","packages/cli/test/context/context.test.mjs","packages/cli/test/context/hooks.test.mjs","packages/cli/test/context/hooks-antigravity.test.mjs","packages/cli/test/context/store-operations.test.mjs","packages/cli/test/context/environment-policy.test.mjs","packages/cli/test/context/directory-ingestion.test.mjs","packages/cli/test/context/html-normalize.test.mjs","packages/cli/test/context/mcp.test.mjs","packages/cli/test/adapters/runtime-smoke.test.mjs","docs/test/CONTEXT_EXECUTION.md","docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md","packages/cli/test/context/phase3.test.mjs","packages/cli/test/adapters/packaging-contract.test.mjs","packages/cli/test/adapters/installer-lifecycle.test.mjs"],"relatedDocs":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md","docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/spec/ANTIGRAVITY_ADAPTER.md","docs/spec/ADVISORY_IMPACT.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"],"contracts":[{"id":"CONTEXT-EXECUTION-TOOLS-001","title":"Local context tools keep large raw bytes outside model context","sections":["Tool Contract","Output Handling","Storage And Search"],"implementedBy":["packages/cli/src/context/server.mjs","packages/cli/src/context/execute.mjs","packages/cli/src/context/store.mjs"],"verifiedBy":["packages/cli/test/context/context.test.mjs","packages/cli/test/context/mcp.test.mjs"],"relatedDocs":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]},{"id":"CONTEXT-EXECUTION-ADAPTERS-001","title":"Adapters use shared MCP while retaining native host lifecycle","sections":["Project Workflow Boundaries","Packaged Adapter Runtime","Hook Routing"],"implementedBy":["packages/pi/extensions/context-tools/index.ts","packages/cli/src/adapters/hosts/claude-code.mjs","packages/cli/assets/adapters/codex/plugin.json","packages/cli/assets/adapters/antigravity/plugin.json","packages/cli/src/context/hooks.mjs","packages/cli/src/context/hooks-antigravity.mjs","packages/cli/bin/dotdotgod.mjs","packages/cli/assets/adapters/opencode/src/mcp.mjs"],"verifiedBy":["packages/cli/test/adapters/runtime-smoke.test.mjs","packages/cli/test/context/hooks.test.mjs","packages/cli/test/context/hooks-antigravity.test.mjs","docs/test/CONTEXT_EXECUTION.md","docs/test/manual-smoke/CROSS_AGENT_ADAPTERS.md","packages/cli/test/adapters/opencode-plugin.test.mjs","packages/cli/test/adapters/packaging-contract.test.mjs","packages/cli/test/adapters/installer-lifecycle.test.mjs"],"relatedDocs":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]}]}
 ```

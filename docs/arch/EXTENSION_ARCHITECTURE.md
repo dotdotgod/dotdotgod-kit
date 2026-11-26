@@ -14,7 +14,7 @@
 }
 ```
 
-Pi core packages are peer dependencies and are not bundled into the tarball. `@dotdotgod/cli` and `@dotdotgod/context` are runtime dependencies so npm/Pi installs fetch them automatically; pnpm's isolated node linker prevents `bundledDependencies`, so the published tarball declares dependencies rather than embedding `node_modules` bodies.
+Pi core packages are peer dependencies and are not bundled into the tarball. `@dotdotgod/cli` is the sole runtime dependency; npm/Pi installs resolve it from the declared version rather than embedding another runtime.
 
 ## Package Distribution Metadata
 
@@ -28,7 +28,7 @@ Distribution metadata:
 - Tarballs contain dotdotgod-owned `skills/`, `extensions/`, package metadata, and license files; runtime dependency bodies are installed by the package manager from declared dependencies.
 - Pi peer dependencies remain unbundled and are resolved by the host Pi installation.
 - `@dotdotgod/cli` is a package dependency used by Pi extensions as a source-checkout, package-local, then global CLI fallback chain.
-- `@dotdotgod/context` provides the shared stdio MCP server. Pi registers it through the host MCP API without forwarding aliases or duplicate schemas; plan/UI and load lifecycle remain in-process.
+- Pi resolves `@dotdotgod/cli/bin/dotdotgod.mjs` with the `mcp` argument through the host MCP API, without forwarding aliases or duplicate schemas. Extensions import `@dotdotgod/cli/decision`, `/impact`, and `/memory/config` for in-process policy/state. See [CLI exports](../../packages/cli/README.md#package-exports).
 - Subagent tools, skills, prompts, and agent definitions are not supplied by this adapter.
 
 
@@ -36,7 +36,7 @@ Distribution metadata:
 
 ### Generated vs Hand-Authored Resources
 
-Common workflow text for generated adapter skills comes from `packages/shared/workflows/` and `scripts/generate-adapters.mjs`; edit those sources, then run `pnpm run generate` and `pnpm run verify:generated`. Examples include adapter initializer/load/plan/impact bodies and the standalone `document-clarify` skill.
+Common workflow text lives in `packages/cli/assets/workflows/`. Host installers render their workflow resources from the CLI assets. `scripts/generate-adapters.mjs` synchronizes initializer resources into Pi and generates the optional `document-clarify` skill; run `pnpm run generate` and `pnpm run verify:generated` after edits.
 
 Pi runtime code under `packages/pi/extensions/**` is hand-authored and owns command registration, state, tool policy, and TUI/runtime behavior. Checked-in generated resources are package artifacts for local installs and npm tarballs; do not edit them directly except when intentionally repairing generator output. See [`CROSS_AGENT_ARCHITECTURE.md`](CROSS_AGENT_ARCHITECTURE.md) for cross-adapter ownership.
 
@@ -48,7 +48,7 @@ The script owns template-specific scaffold generation, overwrite policy, and dry
 
 ### Standalone `document-clarify` Skill
 
-`@dotdotgod/skills` owns its distribution; Pi no longer bundles it. The shared workflow remains canonical, and the generator writes complete portable instructions and metadata into `packages/skills/skills/document-clarify/`. No Plan Clarifier subagent is supplied. See the [migration guide](../../packages/skills/MIGRATION.md).
+The CLI distributes `document-clarify` and `ddg-planning` as opt-in skills; the Pi package does not bundle them. `dotdotgod adapter install pi --with-skills` manages only those skills, not the Pi extensions. No Plan Clarifier subagent is supplied. See [migration](../spec/ADAPTER_MIGRATION.md).
 
 
 ### `plan-mode` Extension

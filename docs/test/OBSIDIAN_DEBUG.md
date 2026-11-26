@@ -4,15 +4,16 @@
 
 The macOS development helper launches the installed Obsidian app with a separate
 profile and fixture vault under ignored `.obsidian-dev/`. It does not install a
-plugin or modify the user's normal vault configuration. Node 22+ is required.
+plugin or modify the user's normal vault configuration. Node 22+ is required. Graph/export warnings about the development vault are
+advisory; check command exit status and actual graph rendering separately.
 
 ## Commands
 
 ```bash
-node scripts/obsidian-dev.mjs start
-node scripts/obsidian-dev.mjs status
-node scripts/obsidian-dev.mjs graph
-node scripts/obsidian-dev.mjs screenshot
+node packages/obsidian/scripts/dev/obsidian-dev.mjs start
+node packages/obsidian/scripts/dev/obsidian-dev.mjs status
+node packages/obsidian/scripts/dev/obsidian-dev.mjs graph
+node packages/obsidian/scripts/dev/obsidian-dev.mjs screenshot
 ```
 
 `start` provisions missing fixture files and launches Obsidian. Existing fixture
@@ -50,7 +51,7 @@ restarting; it waits for vault readiness and captures output in `app.log`.
 
 ### Project Traceability Data
 
-`node scripts/obsidian-probe-install.mjs` now exports the current checkout's
+`node packages/obsidian/scripts/dev/obsidian-probe-install.mjs` exports the current checkout's
 traceability graph into the isolated vault and installs the bundled release
 plugin with vault-relative `graphPath`. Referenced fixture files are copied
 without overwriting existing files. Export uses `readMemoryConfig` and `readFreshIndex`, preserving the CLI's
@@ -60,10 +61,10 @@ are exported. Relation labels and weights come from the resolved configuration;
 colors are assigned by configured key order. Multiple relations per directed
 file pair use the highest weight, then relation-ID order, for native styling.
 
-```bash
-node scripts/obsidian-traceability-export.mjs .
-node scripts/obsidian-traceability-check.mjs
-```
+For the canonical project/vault export, run
+`node packages/cli/bin/dotdotgod.mjs graph export .` from the repository root.
+The probe installer is separate: it stages a vault-local export and copies
+referenced files under the isolated development vault.
 
 Reload with the plugin's `Reload traceability` command after exporting again.
 Refresh is explicit, not a watcher. Markdown clicks stay native; non-Markdown
@@ -71,8 +72,8 @@ clicks reveal the copied vault file in the OS browser. Native filters are not
 guaranteed to constrain injected endpoints. Release use and compatibility limits
 are documented in `../../packages/obsidian/README.md`.
 
-The earlier fixed-fixture `obsidian-probe-check.mjs` assumes fixture relations
-and must not be used as acceptance evidence for this project-data mode.
+The old standalone traceability and fixed-fixture check scripts were retired.
+Use the packaged plugin regression test and isolated release check below.
 
 ### Graph Panel Options
 
@@ -82,7 +83,8 @@ back to English. Panel headings, toggles, reload actions, legend accessibility
 labels, and user-facing error notices are localized. Configured relation labels,
 directory names, and file paths remain unchanged. Language changes take effect
 on plugin/app reload; live locale switching is not claimed.
-Run `node --test scripts/obsidian-i18n.test.cjs` for locale fallback checks.
+Check the locale fallback manually during desktop smoke; the old standalone
+i18n test script is no longer a runnable entrypoint.
 
 Relationship legend entries are toggle buttons (`aria-pressed`). Disabled
 relations are persisted in `disabledRelations`; their links and endpoints with
@@ -112,16 +114,15 @@ Live checks confirmed non-Markdown removal, legend hiding, and one controls
 section after reload; defaults were restored after verification.
 
 ```bash
-node scripts/obsidian-probe-install.mjs
-node scripts/obsidian-dev.mjs graph
-node scripts/obsidian-probe-check.mjs
-node scripts/obsidian-dev.mjs screenshot
+node packages/obsidian/scripts/dev/obsidian-probe-install.mjs
+node packages/obsidian/scripts/dev/obsidian-dev.mjs graph
+node packages/obsidian/scripts/dev/obsidian-dev.mjs screenshot
 ```
 
 On first use, enable community plugins in the isolated vault and load the probe:
 
 ```bash
-node scripts/obsidian-dev.mjs eval '(async()=>{await app.plugins.setEnable(true);await app.plugins.loadManifests();await app.plugins.enablePlugin("dotdotgod-graph-probe");return true})()'
+node packages/obsidian/scripts/dev/obsidian-dev.mjs eval '(async()=>{await app.plugins.setEnable(true);await app.plugins.loadManifests();await app.plugins.enablePlugin("dotdotgod-graph-probe");return true})()'
 ```
 
 The old fixed-fixture probe observations below are historical, not acceptance
@@ -164,7 +165,7 @@ first-run missing export, settings save, non-Markdown reveal, and native-option
 preservation. Cross-version, Windows/Linux, mobile, and full keyboard graph
 navigation are not claimed. The supported version is initially 1.14.5 desktop.
 
-Run `node scripts/obsidian-release-check.mjs` after installing the current bundle
+Run `node packages/obsidian/scripts/dev/obsidian-release-check.mjs` after installing the current bundle
 in the isolated app. It verifies exported endpoints, all-relations filtering,
 Markdown mode, legend/weight options, three reloads, missing-file recovery,
 non-Markdown reveal routing (OS call intercepted), settings save, native option

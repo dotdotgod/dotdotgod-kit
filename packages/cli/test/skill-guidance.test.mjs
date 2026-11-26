@@ -5,23 +5,20 @@ import test from 'node:test';
 const root = new URL('../../../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
 
-test('generated initializer paths and impact guidance preserve host contracts', () => {
-  for (const [agent, skillDir] of [['pi', 'project-initializer'], ['codex', 'project-initializer'], ['antigravity', 'dd-init']]) {
-    const skill = read(`packages/${agent}/skills/${skillDir}/SKILL.md`);
-    assert.match(skill, /sh <resolved-skill-directory>\/scripts\/init_project\.sh/);
-    assert.match(skill, /missing local-memory\/cache entries may be appended/);
-  }
-  for (const [agent, skillDir] of [['claude-code', 'impact-review'], ['codex', 'impact-review'], ['hermes', 'impact-review'], ['antigravity', 'dd-impact']]) {
-    const skill = read(`packages/${agent}/skills/${skillDir}/SKILL.md`);
-    assert.match(skill, /Call the host-registered project_impact/);
-    assert.match(skill, /without claiming it clears host pending state/);
-  }
-  assert.match(read('packages/opencode/skills/impact-review/SKILL.md'), /only successful reviews of covered unchanged revisions/);
-  assert.match(read('packages/opencode/skills/project-load/SKILL.md'), /project_load reports mapUnavailable/);
+test('Pi initializer and shared workflow guidance preserve host contracts', () => {
+  const skill = read('packages/pi/skills/project-initializer/SKILL.md');
+  assert.match(skill, /sh <resolved-skill-directory>\/scripts\/init_project\.sh/);
+  assert.match(skill, /missing local-memory\/cache entries may be appended/);
+  const base = 'packages/cli/assets/workflows/';
+  const impact = read(base + 'impact.md');
+  assert.match(impact, /Call the host-registered project_impact/);
+  assert.match(impact, /without claiming it clears host pending state/);
+  assert.match(impact, /up to 20 unique paths in first-seen order/);
+  assert.match(read(base + 'load.md'), /project_load reports mapUnavailable/);
 });
 
 test('standalone task and report guidance separates investigation, implementation and scope', () => {
-  const base = 'packages/skills/skills/ddg-planning/';
+  const base = 'packages/cli/assets/optional-skills/ddg-planning/';
   for (const path of ['SKILL.md', 'references/TEMPLATES.md']) {
     assert.match(read(base + path), /config\.areas/);
   }

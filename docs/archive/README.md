@@ -19,6 +19,12 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Local Investigations
 
+- `report/2026-11-26/unified-runtime-installer/`: `/ddg-planning` final planning report (`PLANNING.md`) for Option C single-runtime installer consolidation (`docs/plan/unified-runtime-installer/`).
+
+- `report/2026-11-26/antigravity-pi-workflow-analysis/`: preliminary installed-code/binary comparison and planning report; actual same-model task reproduction and pilot approval remain pending.
+
+- `report/2026-11-26/decision-model-load-triage/`: `/ddg-planning` (`PLANNING.md`) and execution/verification (`FINAL.md`) reports for unified six-adapter decision-model load and reference triage (`docs/archive/plan/decision-model-load-triage/`); implementation and automated verification completed, awaiting git commit/merge/push approval.
+
 - `report/2026-11-24/antigravity-adapter-advisory-impact/`: planning (`PLANNING.md`) and implementation/verification (`FINAL.md`) reports for `@dotdotgod/antigravity` and all-6-adapter advisory impact unification; released in `0.11.0`.
 
 - `report/2026-11-15/pi-plan-mode-persistent-approvals/`: five-scope command approval planning report; research-first, detailed mechanisms blocked and implementation not started.
@@ -29,6 +35,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 - `report/benchmark-recovery/`: benchmark progress snapshot and local session recovery utility; not executed during cleanup.
 
 ### Completed plans
+
+- `plan/decision-model-load-triage/`: unified all six adapters (`pi`, `hermes`, `claude-code`, `codex`, `opencode`, `antigravity`) on zero-config `advisory` default with optional decision-model triage (`ollama`, `openai-compatible`, Pi `host` via `modelRegistry.streamSimple`), single-call `{ load, refs, reason }`, configurable `advice`/`prefetch` (`--no-write --scope shared`), SQLite v3 `load_state`, and `docs/spec/DECISION_CONFIG.md`; automated workspace, offline tarball, and Agent Scenarios 2–3 verification passed, awaiting user git commit/merge/push approval.
 
 - `plan/antigravity-adapter-advisory-impact/`: shipped `@dotdotgod/antigravity` (three `/dd-*` skills, borderless pastel logo, scoped `rules/AGENTS.md`, MCP `roots/list`, Option C-2 `/plan`) and unified all six adapters on non-blocking `impact.sqlite` v2 advisory impact; verified across workspace, Antigravity CLI, and Hermes pinned-host smokes and released as `0.11.0`.
 

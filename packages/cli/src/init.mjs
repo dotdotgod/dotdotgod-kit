@@ -3,6 +3,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { builtInTemplateData, builtInTemplateScaffold, resolveInitializationTemplate } from './config/templates.mjs';
 import { isValidDocumentationRoot, normalizeDocumentationRoot, readMemoryConfig } from './memory/config.mjs';
 import { prepareClaudePlans, applyClaudePlans } from './claude-plans.mjs';
+import { DotdotgodServiceError } from './commands/map.mjs';
 
 function action(status, path, extra = {}) {
   return { status, path, ...extra };
@@ -196,21 +197,20 @@ function initFiles(options, scaffold) {
   return files.map(([path, content]) => [path.replace(/^docs(?=\/|$)/, options.documentationRoot), content.replaceAll('docs/', `${options.documentationRoot}/`).replaceAll('`docs`', `\`${options.documentationRoot}\``)]);
 }
 
-export function runInit(argv, usage) {
-  let options;
-  try {
-    options = parseInitOptions(argv);
-  } catch (error) {
-    usage(error instanceof Error ? error.message : String(error), 'init');
-    return;
-  }
+export function initializeProject(root, { projectName = basename(root), documentationRoot = 'docs', dryRun = true, ...input } = {}) {
+  const options = { ...input, root, projectName, documentationRoot, dryRun };
+  options.signal?.throwIfAborted();
+  try { return populateProject(options); }
+  catch (error) { throw DotdotgodServiceError.from(error, 'INITIALIZATION_FAILED'); }
+}
 
-  if (!options.dryRun && existsSync(options.root)) {
-    try {
-      if (!statSync(options.root).isDirectory()) initError(options, 'ROOT_NOT_DIRECTORY', `Project root is not a directory: ${options.root}`);
-    } catch {
-      initError(options, 'ROOT_NOT_FOUND', `Project root not found: ${options.root}`);
-    }
+function populateProject(options) {
+  const { root } = options;
+  if (!options.dryRun && existsSync(root)) {
+    let stat;
+    try { stat = statSync(root); }
+    catch { throw new DotdotgodServiceError('ROOT_NOT_FOUND', `Project root not found: ${root}`); }
+    if (!stat.isDirectory()) throw new DotdotgodServiceError('ROOT_NOT_DIRECTORY', `Project root is not a directory: ${root}`);
   }
 
   if (options.claudePlans && !options.documentationRootExplicit && existsSync(join(options.root, 'dotdotgod.config.json'))) {
@@ -219,7 +219,7 @@ export function runInit(argv, usage) {
   let claudePlans;
   if (options.claudePlans) {
     try { claudePlans = prepareClaudePlans(options.root, options.documentationRoot); }
-    catch (error) { initError(options, 'CLAUDE_SETTINGS_INVALID', error.message); }
+    catch (error) { throw new DotdotgodServiceError('CLAUDE_SETTINGS_INVALID', error.message); }
   }
 
   if (!options.dryRun) mkdirSync(options.root, { recursive: true });
@@ -227,11 +227,11 @@ export function runInit(argv, usage) {
   const configExists = existsSync(join(options.root, 'dotdotgod.config.json'));
   if (configExists && options.documentationRootExplicit) {
     const existingRoot = readMemoryConfig(options.root).documentation.root;
-    if (existingRoot !== options.documentationRoot) initError(options, 'DOCUMENTATION_ROOT_CONFLICT', `Existing config uses documentation root ${existingRoot}; initialization does not migrate documentation.`);
+    if (existingRoot !== options.documentationRoot) throw new DotdotgodServiceError('DOCUMENTATION_ROOT_CONFLICT', `Existing config uses documentation root ${existingRoot}; initialization does not migrate documentation.`);
   }
   let template = configExists ? null : resolveInitializationTemplate(options.template);
-  if (template && !template.ok) initError(options, template.error.code, template.error.message);
-  if (template?.source === 'custom' && normalizeDocumentationRoot(template.data.documentation?.root ?? 'docs') !== options.documentationRoot) initError(options, 'DOCUMENTATION_ROOT_CONFLICT', 'Custom template documentation.root conflicts with --documentation-root; custom policy paths are never rewritten.');
+  if (template && !template.ok) throw new DotdotgodServiceError(template.error.code, template.error.message);
+  if (template?.source === 'custom' && normalizeDocumentationRoot(template.data.documentation?.root ?? 'docs') !== options.documentationRoot) throw new DotdotgodServiceError('DOCUMENTATION_ROOT_CONFLICT', 'Custom template documentation.root conflicts with --documentation-root; custom policy paths are never rewritten.');
   if (template?.source === 'bundled') { const data = builtInTemplateData(template.name, { documentationRoot: options.documentationRoot }); template = { ...template, data, text: `${JSON.stringify(data, null, 2)}\n` }; }
 
   const actions = [];
@@ -250,10 +250,23 @@ export function runInit(argv, usage) {
 
   if (claudePlans) {
     try { actions.push(applyClaudePlans(claudePlans, options.dryRun)); }
-    catch (error) { initError(options, 'CLAUDE_SETTINGS_CHANGED', error.message); }
+    catch (error) { throw new DotdotgodServiceError('CLAUDE_SETTINGS_CHANGED', error.message); }
   }
 
-  const payload = { ok: true, command: 'init', root: options.root, projectName: options.projectName, documentationRoot: options.documentationRoot, dryRun: options.dryRun, template: template ? { name: template.name, source: template.source, selectedBy: template.selectedBy } : null, actions };
+  return { ok: true, command: 'init', root: options.root, projectName: options.projectName, documentationRoot: options.documentationRoot, dryRun: options.dryRun, template: template ? { name: template.name, source: template.source, selectedBy: template.selectedBy } : null, actions };
+}
+
+export function runInit(argv, usage) {
+  let options;
+  try { options = parseInitOptions(argv); }
+  catch (error) { return usage(error instanceof Error ? error.message : String(error), 'init'); }
+  let payload;
+  try { payload = initializeProject(options.root, options); }
+  catch (error) {
+    if (error.cause) throw error.cause;
+    return initError(options, error.code, error.message);
+  }
+  const { template, actions } = payload;
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else {
     if (template) console.log(`template      ${template.source}:${template.name} (${template.selectedBy})`);

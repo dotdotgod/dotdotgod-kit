@@ -6,19 +6,20 @@ The Hermes adapter supports CLI and messaging-gateway project memory without
 Plan Mode. Native plugin tools and hooks route context operations through an
 adapter-owned stdio MCP client per selected project/host session.
 
-Host pin: `19b57f11d6eefb17e3e8a58e40b0b16aeb8b83b9` (verified to support
+Historical host pin: `19b57f11d6eefb17e3e8a58e40b0b16aeb8b83b9` (verified to support
 `post_tool_call` in `VALID_HOOKS`). Compatibility evidence covers the real
 loader/registry/hooks and generated runtime; external messaging/model API calls
 and complete model-driven delegation are separate live checks.
 
 ## Installation And Routing
 
-The native plugin directory contains `plugin.yaml` and `__init__.py`. Enable it
-explicitly and restart the host. Three canonical generated skills are registered:
-`project-initializer`, `project-load`, and `impact-review`. `document-clarify`
-is installed separately from `@dotdotgod/skills`. Generated server/client/CLI
-artifacts work without ancestor `node_modules` or Python MCP packages. No
-profile-wide `mcp.json` server declaration is installed.
+`dotdotgod adapter install hermes` places `plugin.yaml`, `__init__.py`, and the
+Python runtime under `~/.hermes/plugins/dotdotgod/` without editing `config.yaml`.
+Run the reported host enable command and restart. Three canonical generated skills
+are registered: `project-initializer`, `project-load`, and `impact-review`.
+The [optional skills](cli/ADAPTER.md#optional-skills) install separately from the
+plugin files. The Python client launches the shared CLI via `mcp-bridge` and
+needs no Python MCP package. There is no profile-wide `mcp.json` server declaration.
 
 Configured roots map convenient labels to absolute local directories. Every
 platform may select a configured label or any existing absolute directory through
@@ -54,8 +55,8 @@ project-data ACLs.
 In initialized selected repositories, `before_llm` offers non-forcing
 `advisory` guidance by default without rewriting user text/images. `always`
 offers a one-time baseline-load hint. `manual` or request-local `/dd:no-load`
-suppresses automatic load guidance. With `mode: "model"`, the bundled
-`mcp/decision.mjs` runs triage outside the Python runtime lock with a 25-second
+suppresses automatic load guidance. With `mode: "model"`, the shared CLI's
+`hook hermes decision` command runs triage outside the Python runtime lock with a 25-second
 subprocess timeout. See [Decision Config](DECISION_CONFIG.md).
 
 The in-memory `Session` owns load state (including completion, skip count, and
@@ -147,7 +148,7 @@ tracking, Python/Node `impact.sqlite` v3 interop, aligned `impact_status`,
 MCP `project_impact` clearance/failure/re-edits, non-blocking execution under
 pending impact, delegation identity, and interruption with real generated Node
 processes. Resource checks validate generated skills and absent Plan Mode. The
-opt-in pinned-host smoke loads an extracted package in an isolated real
+opt-in pinned-host smoke loads a CLI-rendered plugin in an isolated real
 `PluginManager` profile and tests CLI/gateway hook delivery, concurrent roots,
 and advisory impact mark/remind/clear/re-edit without blocking or remote
 mutations.
@@ -162,20 +163,20 @@ mutations.
 ### Traceability Links
 
 - Implemented by:
-  - [packages/hermes/__init__.py](../../packages/hermes/__init__.py)
-  - [packages/hermes/plugin.yaml](../../packages/hermes/plugin.yaml)
-  - [packages/hermes/runtime.py](../../packages/hermes/runtime.py)
-  - [packages/hermes/impact.py](../../packages/hermes/impact.py)
-  - [packages/hermes/proxy.py](../../packages/hermes/proxy.py)
-  - [packages/hermes/policy.py](../../packages/hermes/policy.py)
-  - [packages/hermes/mcp/bridge-entry.mjs](../../packages/hermes/mcp/bridge-entry.mjs)
+  - [packages/cli/assets/adapters/hermes/__init__.py](../../packages/cli/assets/adapters/hermes/__init__.py)
+  - [packages/cli/assets/adapters/hermes/plugin.yaml](../../packages/cli/assets/adapters/hermes/plugin.yaml)
+  - [packages/cli/assets/adapters/hermes/runtime.py](../../packages/cli/assets/adapters/hermes/runtime.py)
+  - [packages/cli/assets/adapters/hermes/impact.py](../../packages/cli/assets/adapters/hermes/impact.py)
+  - [packages/cli/assets/adapters/hermes/proxy.py](../../packages/cli/assets/adapters/hermes/proxy.py)
+  - [packages/cli/assets/adapters/hermes/policy.py](../../packages/cli/assets/adapters/hermes/policy.py)
+  - [packages/cli/src/context/mcp-bridge.mjs](../../packages/cli/src/context/mcp-bridge.mjs)
   - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
-  - [scripts/build-adapter-runtime.mjs](../../scripts/build-adapter-runtime.mjs)
-  - [packages/hermes/mcp/decision-entry.mjs](../../packages/hermes/mcp/decision-entry.mjs)
+  - [packages/cli/src/adapters/hosts/hermes.mjs](../../packages/cli/src/adapters/hosts/hermes.mjs)
+  - [packages/cli/src/context/hermes-decision.mjs](../../packages/cli/src/context/hermes-decision.mjs)
 - Verified by:
-  - [packages/hermes/test/test_runtime.py](../../packages/hermes/test/test_runtime.py)
-  - [packages/hermes/test/resources.test.mjs](../../packages/hermes/test/resources.test.mjs)
-  - [packages/hermes/test/pinned_host_smoke.py](../../packages/hermes/test/pinned_host_smoke.py)
+  - [packages/cli/test/adapters/hermes/test_runtime.py](../../packages/cli/test/adapters/hermes/test_runtime.py)
+  - [packages/cli/test/adapters/hermes-resources.test.mjs](../../packages/cli/test/adapters/hermes-resources.test.mjs)
+  - [packages/cli/test/adapters/hermes/pinned_host_smoke.py](../../packages/cli/test/adapters/hermes/pinned_host_smoke.py)
   - [docs/test/HERMES_ADAPTER.md](../test/HERMES_ADAPTER.md)
 - Related docs:
   - [docs/spec/CROSS_AGENT_SUPPORT.md](CROSS_AGENT_SUPPORT.md)
@@ -194,5 +195,5 @@ mutations.
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/hermes/__init__.py","packages/hermes/plugin.yaml","packages/hermes/runtime.py","packages/hermes/impact.py","packages/hermes/proxy.py","packages/hermes/policy.py","packages/hermes/mcp/bridge-entry.mjs","scripts/generate-adapters.mjs","scripts/build-adapter-runtime.mjs","packages/hermes/mcp/decision-entry.mjs"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/resources.test.mjs","packages/hermes/test/pinned_host_smoke.py","docs/test/HERMES_ADAPTER.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/ADVISORY_IMPACT.md","docs/spec/LOAD_PROJECT.md","docs/spec/CONTEXT_EXECUTION.md","docs/spec/TOOL_RESPONSES.md","docs/spec/DECISION_CONFIG.md","docs/spec/CONTEXT_RETENTION.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"],"contracts":[{"id":"HERMES-ROUTING-001","title":"CLI and gateway sessions use project-routed MCP connections without filesystem-area authorization or Plan Mode","sections":["Installation And Routing","Context Results And Lifecycle"],"implementedBy":["packages/hermes/__init__.py","packages/hermes/runtime.py","packages/hermes/proxy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]},{"id":"HERMES-IMPACT-001","title":"Observed edits record non-blocking advisory pending impact in shared impact.sqlite with aligned status and MCP review clearance","sections":["Impact And Delegation"],"implementedBy":["packages/hermes/runtime.py","packages/hermes/impact.py","packages/hermes/policy.py"],"verifiedBy":["packages/hermes/test/test_runtime.py","packages/hermes/test/pinned_host_smoke.py"]}]}
+{"kind":"spec","implementedBy":["packages/cli/assets/adapters/hermes/__init__.py","packages/cli/assets/adapters/hermes/plugin.yaml","packages/cli/assets/adapters/hermes/runtime.py","packages/cli/assets/adapters/hermes/impact.py","packages/cli/assets/adapters/hermes/proxy.py","packages/cli/assets/adapters/hermes/policy.py","packages/cli/src/context/mcp-bridge.mjs","scripts/generate-adapters.mjs","packages/cli/src/adapters/hosts/hermes.mjs","packages/cli/src/context/hermes-decision.mjs"],"verifiedBy":["packages/cli/test/adapters/hermes/test_runtime.py","packages/cli/test/adapters/hermes-resources.test.mjs","packages/cli/test/adapters/hermes/pinned_host_smoke.py","docs/test/HERMES_ADAPTER.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/ADVISORY_IMPACT.md","docs/spec/LOAD_PROJECT.md","docs/spec/CONTEXT_EXECUTION.md","docs/spec/TOOL_RESPONSES.md","docs/spec/DECISION_CONFIG.md","docs/spec/CONTEXT_RETENTION.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"],"contracts":[{"id":"HERMES-ROUTING-001","title":"CLI and gateway sessions use project-routed MCP connections without filesystem-area authorization or Plan Mode","sections":["Installation And Routing","Context Results And Lifecycle"],"implementedBy":["packages/cli/assets/adapters/hermes/__init__.py","packages/cli/assets/adapters/hermes/runtime.py","packages/cli/assets/adapters/hermes/proxy.py"],"verifiedBy":["packages/cli/test/adapters/hermes/test_runtime.py","packages/cli/test/adapters/hermes/pinned_host_smoke.py"]},{"id":"HERMES-IMPACT-001","title":"Observed edits record non-blocking advisory pending impact in shared impact.sqlite with aligned status and MCP review clearance","sections":["Impact And Delegation"],"implementedBy":["packages/cli/assets/adapters/hermes/runtime.py","packages/cli/assets/adapters/hermes/impact.py","packages/cli/assets/adapters/hermes/policy.py"],"verifiedBy":["packages/cli/test/adapters/hermes/test_runtime.py","packages/cli/test/adapters/hermes/pinned_host_smoke.py"]}]}
 ```

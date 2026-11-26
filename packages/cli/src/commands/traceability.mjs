@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { usage } from '../cli/usage.mjs';
-import { rel } from '../common/paths.mjs';
+import { rel } from '../primitives.mjs';
 import { extractDotdotgodTraceabilityBlocks, syncTraceabilityLinksInContent, validateTraceabilityLinksRegion } from '../docs/traceability.mjs';
 import { readMemoryConfig } from '../memory/config.mjs';
 

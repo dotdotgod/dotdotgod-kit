@@ -7,7 +7,7 @@ TypeScript and TSX WASM are generated from tree-sitter-typescript 0.23.2
 with tree-sitter-javascript 0.23.1, tree-sitter-cli 0.25.10, and emsdk 4.0.4.
 The MIT license is retained as TYPESCRIPT_LICENSE.
 
-The small source patch in ../typescript-import-grammar.mjs adds import types as
+The small source patch in ../grammar-patches.mjs adds import types as
 primary types and typeof operands with their own conflict/precedence handling.
 It fixes generic typeof-import calls and qualified import-type arrays without
 changing application text or hiding tree-sitter error nodes.
@@ -29,7 +29,7 @@ CSHARP_LICENSE. The source tarball is
 https://registry.npmjs.org/tree-sitter-c-sharp/-/tree-sitter-c-sharp-0.23.5.tgz.
 
 This grammar recognizes collection expressions, including empty and spread forms.
-The small ../csharp-contextual-grammar.mjs patch adds required to the grammar's
+The small ../grammar-patches.mjs patch adds required to the grammar's
 contextual identifier choice: it remains a member modifier but can also name a
 pattern variable used as required[i]. No application text or parse errors are
 rewritten. Extract the pinned npm tarball into a fresh disposable directory:

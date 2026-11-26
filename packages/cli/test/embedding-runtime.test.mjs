@@ -16,7 +16,7 @@ function fakePackage(home) {
 }
 
 test('published package manifests do not install the optional runtime implicitly', () => {
-  for (const path of ['../package.json', '../../claude-code/package.json', '../../codex/package.json']) {
+  for (const path of ['../package.json', '../../pi/package.json']) {
     const manifest = JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
     assert.equal(manifest.dependencies?.['@huggingface/transformers'], undefined, `${manifest.name} must require explicit embedding installation`);
   }

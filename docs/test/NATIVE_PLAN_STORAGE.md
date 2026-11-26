@@ -3,9 +3,9 @@
 ## Automated
 
 - `packages/cli/test/claude-plans.test.mjs`: covers Claude Code opt-in `plansDirectory`, dry-run, preserved settings/denies, existing native directory, idempotency, invalid JSON/object shape, symlinks, and documentation-root selection.
-- `packages/codex/test/native-plan.test.mjs`: checks the narrow Codex native prompt patch, preserved catalog metadata/default instructions, rejection of custom prompts, permission conflicts, and project-specific read/write policy.
-- `packages/context/test/hooks.test.mjs`: verifies local `<docRoot>/plan/**/*.md` and `<docRoot>/archive/**` edits do not create pending impact entries while `<docRoot>/post/**` and maintained docs remain tracked.
-- `packages/context/test/hooks-antigravity.test.mjs` (`AG-03`) & `packages/antigravity/test/resources.test.mjs` (`AP-01`): verify Antigravity Option C-2 native `/plan` integration:
+- `packages/cli/test/adapters/codex-plan.test.mjs`: checks the narrow Codex native prompt patch, preserved catalog metadata/default instructions, rejection of custom prompts, permission conflicts, and project-specific read/write policy.
+- `packages/cli/test/context/hooks.test.mjs`: verifies local `<docRoot>/plan/**/*.md` and `<docRoot>/archive/**` edits do not create pending impact entries while `<docRoot>/post/**` and maintained docs remain tracked.
+- `packages/cli/test/context/hooks-antigravity.test.mjs` (`AG-03`) & `packages/cli/test/adapters/antigravity-resources.test.mjs` (`AP-01`): verify Antigravity Option C-2 native `/plan` integration:
   - triggers only on successful `PostToolUse` write/edit calls targeting exact `<artifactDirectoryPath>/implementation_plan.md`;
   - negative coverage ignores `Read` calls, workspace `implementation_plan.md`, sibling `<artifactDirectoryPath>-evil/implementation_plan.md`, and other/nested artifact files (`task.md`, `walkthrough.md`, `notes.md`);
   - `readArtifactBounded` passes `2 MiB` files and rejects `2 MiB + 1 B` files, symlinks (`O_NOFOLLOW`), directories, and POSIX FIFOs (`O_NONBLOCK`, completing in `< 1s`, skipped on `win32`);
@@ -14,12 +14,12 @@
 
 ## Actual Host Smoke
 
-Host binaries are installed only in a disposable directory with verified npm SHA-512 integrity and isolated `HOME`/config. Loopback model fixtures use no account, paid inference, or external model API.
-
-```sh
-CLAUDE_BINARY=/path/to/claude node packages/claude-code/scripts/smoke-plans.mjs
-CODEX_BINARY=/path/to/codex CODEX_CATALOG=/path/to/full/models.json node packages/codex/scripts/smoke-plan.mjs
-```
+Use disposable projects and profiles. For Claude Code, preview then apply
+`dotdotgod init <root> --claude-plans` and check native Plan Mode writes.
+For Codex, preview `dotdotgod adapter setup-plan codex <root> --codex <bin> --catalog <file>`
+with Codex 0.163.0, then apply with `--confirm` and use the reported launch command.
+The older dedicated smoke scripts were retired; the historical observations
+below do not prove the new installer or native registration was exercised.
 
 - **Claude Code 2.1.308**: the generated `plansDirectory` setting is read by native Plan Mode and its native Write tool stores a plan below the project's `docs/plan` directory.
 - **Codex 0.163.0 on macOS**: native `apply_patch` writes a plan and denies a source patch; sandboxed commands create/update plans and deny source/config/maintained-doc and symlink-escape writes. Outgoing Plan Mode requests carry patched catalog instructions; resume retains Plan Mode and leaving it does not expand permissions.

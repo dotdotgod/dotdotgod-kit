@@ -26,6 +26,12 @@ Prefer pausing or archiving stale work over leaving every possible future idea a
 
 ## Active Plans
 
+- `unified-runtime-installer/` — active: Option C single-runtime installer consolidation (`11 -> 3` packages, `9 -> 2` public npm `@dotdotgod/cli` + `@dotdotgod/pi`, private `@dotdotgod/obsidian`, zero 5x23MB duplicate bundles, `dotdotgod adapter` 5 hosts + `pi --with-skills`); T0–T12 implemented and workspace verified, remaining manual/release sign-off tracked locally.
+
+- `antigravity-pi-workflow-analysis/` — active: source/binary-grounded comparison of installed Antigravity CLI and Pi workflows; Astra/max investigators, preliminary causal hypotheses, and a controlled pilot proposal pending session examples and model parity.
+
+- `load-ab-workstation-experiment/` — active: 10-day `dotdot-workstation` experiment comparing 4 topologies (`pi-solo`, `pi-sol-lead`, `pi-astra-lead`, `agy-neon-lead` all delegating to `pi-sol-medium`) across 5 arms on `limelink-api` and `lime-note` (3,232 runs, 6 workers, max 3 cycles, daily `02:00 KST`).
+
 - `pi-plan-mode-persistent-approvals/` — active: confirmed five-scope command approval UX; research-first target identity, host integration and safe persistence tasks, implementation not started.
 
 - `pi-plan-mode-policy/` — active: duplicate commands/save UI removed; native hc readiness/ceiling routing implemented, workspace verify passed (Pi 225) and isolated hc lifecycle smoke passed; full live acceptance still partial.

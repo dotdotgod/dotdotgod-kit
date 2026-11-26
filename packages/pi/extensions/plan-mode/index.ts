@@ -20,7 +20,7 @@ import { resolveInvocation, type ExecutionInput } from "./policy/invocation.ts";
 import { ChildManager } from "./children/manager.ts";
 import { parseHcCommand, type HcCommand } from "./children/hc-command.ts";
 import { tokenizeShellCommand } from "./tools.ts";
-import { ImpactState, impactReminder } from "@dotdotgod/context";
+import { ImpactState, impactReminder } from "@dotdotgod/cli/impact";
 import { isMcpTool, mcpTool } from "../shared/mcp.ts";
 import { buildDecisionWizardFollowUp } from "./decision-wizard.ts";
 import { describePendingPlanDecisions } from "./controllers/decision-wizard.ts";

@@ -2,9 +2,8 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { basename, extname, join } from 'node:path';
-import { rel } from '../common/paths.mjs';
+import { CACHE_DIR, MANIFEST_FILE, rel } from '../primitives.mjs';
 import { defaultMemoryConfig, readMemoryConfig, resolveMemoryArea } from '../memory/config.mjs';
-import { CACHE_DIR, MANIFEST_FILE } from './constants.mjs';
 
 const INDEX_TEXT_EXTENSIONS = new Set([
   '.md', '.mdx', '.markdown', '.txt', '.rst', '.adoc', '.org',

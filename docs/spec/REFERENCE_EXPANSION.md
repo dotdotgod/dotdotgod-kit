@@ -134,14 +134,14 @@ Decision-model `refs` are optional, non-authoritative hints: at most three disti
   - [packages/pi/extensions/plan-mode/index.ts](../../packages/pi/extensions/plan-mode/index.ts)
   - [packages/pi/extensions/plan-mode/utils.ts](../../packages/pi/extensions/plan-mode/utils.ts)
   - [packages/cli/src/reference/resolve.mjs](../../packages/cli/src/reference/resolve.mjs)
-  - [packages/context/src/decision.mjs](../../packages/context/src/decision.mjs)
+  - [packages/cli/src/context/decision.mjs](../../packages/cli/src/context/decision.mjs)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
   - [packages/pi/test/plan-mode-utils.test.ts](../../packages/pi/test/plan-mode-utils.test.ts)
   - [docs/test/REFERENCE_EXPANSION.md](../test/REFERENCE_EXPANSION.md)
   - [packages/cli/test/decision-readonly.test.mjs](../../packages/cli/test/decision-readonly.test.mjs)
-  - [packages/context/test/decision.test.mjs](../../packages/context/test/decision.test.mjs)
+  - [packages/cli/test/context/decision.test.mjs](../../packages/cli/test/context/decision.test.mjs)
 - Related docs:
   - [docs/spec/CLI_INTERFACE.md](CLI_INTERFACE.md)
   - [docs/spec/LOAD_PROJECT.md](LOAD_PROJECT.md)
@@ -153,5 +153,5 @@ Decision-model `refs` are optional, non-authoritative hints: at most three disti
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts","packages/cli/src/reference/resolve.mjs","packages/context/src/decision.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/pi/test/plan-mode-utils.test.ts","docs/test/REFERENCE_EXPANSION.md","packages/cli/test/decision-readonly.test.mjs","packages/context/test/decision.test.mjs"],"relatedDocs":["docs/spec/CLI_INTERFACE.md","docs/spec/LOAD_PROJECT.md","docs/concept/CONTEXT_CURATION.md","docs/spec/DECISION_CONFIG.md"],"designDecisions":["docs/arch/VALIDATION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts","packages/cli/src/reference/resolve.mjs","packages/cli/src/context/decision.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/pi/test/plan-mode-utils.test.ts","docs/test/REFERENCE_EXPANSION.md","packages/cli/test/decision-readonly.test.mjs","packages/cli/test/context/decision.test.mjs"],"relatedDocs":["docs/spec/CLI_INTERFACE.md","docs/spec/LOAD_PROJECT.md","docs/concept/CONTEXT_CURATION.md","docs/spec/DECISION_CONFIG.md"],"designDecisions":["docs/arch/VALIDATION_ARCHITECTURE.md"]}
 ```

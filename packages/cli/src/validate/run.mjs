@@ -1,12 +1,11 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { usage } from '../cli/usage.mjs';
-import { rel } from '../common/paths.mjs';
+import { CACHE_DIR, CACHE_VERSION, rel } from '../primitives.mjs';
 import { extractAnchors, extractFirstHeading, extractLinks, isKebabCase, isNumberedSeriesFilename, isUpperSnakeMarkdown, suggestFilenameFromHeading } from '../docs/markdown.mjs';
 import { extractDotdotgodTraceabilityBlocks, stripTraceabilityLinksRegion, syncTraceabilityLinksInContent, traceabilityExample, validateTraceabilityBlock, validateTraceabilityLinksRegion, validateTraceabilityPlacement } from '../docs/traceability.mjs';
 import { DEFAULT_VALIDATION_POLICY, cloneValidationPolicy, isMarkdownSizeExcluded, matchPathPattern, readMemoryConfig, requiresTraceability, resolveMemoryArea } from '../memory/config.mjs';
 import { cacheFile, collectIndexFiles, fingerprint } from '../index/files.mjs';
-import { CACHE_DIR, CACHE_VERSION } from '../index/constants.mjs';
 import { readIndex } from '../index/cache.mjs';
 import { sharedLocalReferences } from './references.mjs';
 import { outlineStatus, outlinePath } from '../symbols/store.mjs';

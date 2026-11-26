@@ -15,6 +15,9 @@ and compact hover paths. English and Korean controls follow the app language.
 
 ## Install
 
+This plugin is built from the private `@dotdotgod/obsidian` workspace package.
+It is not an npm install target or a `dotdotgod adapter` host.
+
 The [community listing](https://community.obsidian.md/plugins/dotdotgod-traceability)
 is public; automated review and in-app availability are separate statuses.
 For manual installation, create `<vault>/.obsidian/plugins/dotdotgod-traceability/`
@@ -85,7 +88,9 @@ may contact npm; graph export itself is local.
 Source: `src/`; shared graph policy/colors: `../cli/src/graph-view/`.
 From the repository root, run `pnpm install` and
 `pnpm --filter @dotdotgod/obsidian run verify`. Output is ignored under
-`packages/obsidian/dist/`. See the
+`packages/obsidian/dist/`. Root `npm run build` also produces the community
+build files. The isolated desktop helpers live in `packages/obsidian/scripts/dev/`;
+see the [debug guide](../../docs/test/OBSIDIAN_DEBUG.md). See the
 [submission checklist](../../docs/report/OBSIDIAN_COMMUNITY_SUBMISSION.md).
 
 Licensed under [Elastic License 2.0](../../LICENSE), not MIT. This is original

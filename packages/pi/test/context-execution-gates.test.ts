@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import { textContent, workflowSession } from "./support/context-workflow.ts";
-import { ImpactState } from "@dotdotgod/context";
+import { ImpactState } from "@dotdotgod/cli/impact";
 import { mcpTool } from "../extensions/shared/mcp.ts";
 
 for (const toolName of ["bash", mcpTool("execute")]) {

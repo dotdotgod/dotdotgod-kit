@@ -25,8 +25,9 @@ records reuse extraction. Partial parses retry and are reported as incomplete.
 The pinned @vscode/tree-sitter-wasm 0.3.1 MIT distribution supplies the runtime and
 default grammars. CLI uses it as a production dependency, with local pinned TS/TSX
 and C# overrides documented in [parser assets](../../../packages/cli/src/symbols/parsers/README.md).
-Generated adapter CLI runtimes include matching parser assets/licenses so extracted
-plugins need no node_modules. No runtime grammar download.
+The CLI tarball ships one set of the three patched grammar assets and their
+licenses; installed hosts reuse that CLI and its pinned upstream dependency.
+No runtime grammar download or per-host parser bundle is needed.
 
 Verified grammar routes: JavaScript/JSX, TypeScript, TSX, Python, Go, Rust, Java,
 Ruby, PHP, C#, C++, Bash and PowerShell. Other recognized source extensions are
@@ -94,7 +95,7 @@ freshness is separate from outline metadata freshness.
 ### Traceability Links
 
 - Implemented by:
-  - [packages/cli/src/symbols/csharp-contextual-grammar.mjs](../../../packages/cli/src/symbols/csharp-contextual-grammar.mjs)
+  - [packages/cli/src/symbols/grammar-patches.mjs](../../../packages/cli/src/symbols/grammar-patches.mjs)
   - [scripts/build-csharp-parser.mjs](../../../scripts/build-csharp-parser.mjs)
   - [packages/cli/src/symbols/languages.mjs](../../../packages/cli/src/symbols/languages.mjs)
   - [packages/cli/src/symbols/runtime.mjs](../../../packages/cli/src/symbols/runtime.mjs)
@@ -104,10 +105,10 @@ freshness is separate from outline metadata freshness.
   - [packages/cli/src/symbols/graph.mjs](../../../packages/cli/src/symbols/graph.mjs)
   - [packages/cli/src/index/cache.mjs](../../../packages/cli/src/index/cache.mjs)
   - [packages/cli/src/validate/run.mjs](../../../packages/cli/src/validate/run.mjs)
-  - [scripts/build-adapter-runtime.mjs](../../../scripts/build-adapter-runtime.mjs)
 - Verified by:
   - [packages/cli/test/csharp-modern-syntax.test.mjs](../../../packages/cli/test/csharp-modern-syntax.test.mjs)
   - [packages/cli/test/symbol-query.test.mjs](../../../packages/cli/test/symbol-query.test.mjs)
+  - [packages/cli/test/adapters/packaging-contract.test.mjs](../../../packages/cli/test/adapters/packaging-contract.test.mjs)
 - Related docs:
   - [docs/spec/cli/QUERY.md](QUERY.md)
   - [docs/spec/LOAD_PROJECT.md](../LOAD_PROJECT.md)
@@ -117,5 +118,5 @@ freshness is separate from outline metadata freshness.
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/symbols/csharp-contextual-grammar.mjs","scripts/build-csharp-parser.mjs","packages/cli/src/symbols/languages.mjs","packages/cli/src/symbols/runtime.mjs","packages/cli/src/symbols/parser.mjs","packages/cli/src/symbols/discovery.mjs","packages/cli/src/symbols/store.mjs","packages/cli/src/symbols/graph.mjs","packages/cli/src/index/cache.mjs","packages/cli/src/validate/run.mjs","scripts/build-adapter-runtime.mjs"],"verifiedBy":["packages/cli/test/csharp-modern-syntax.test.mjs","packages/cli/test/symbol-query.test.mjs"],"relatedDocs":["docs/spec/cli/QUERY.md","docs/spec/LOAD_PROJECT.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/symbols/grammar-patches.mjs","scripts/build-csharp-parser.mjs","packages/cli/src/symbols/languages.mjs","packages/cli/src/symbols/runtime.mjs","packages/cli/src/symbols/parser.mjs","packages/cli/src/symbols/discovery.mjs","packages/cli/src/symbols/store.mjs","packages/cli/src/symbols/graph.mjs","packages/cli/src/index/cache.mjs","packages/cli/src/validate/run.mjs"],"verifiedBy":["packages/cli/test/csharp-modern-syntax.test.mjs","packages/cli/test/symbol-query.test.mjs","packages/cli/test/adapters/packaging-contract.test.mjs"],"relatedDocs":["docs/spec/cli/QUERY.md","docs/spec/LOAD_PROJECT.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]}
 ```

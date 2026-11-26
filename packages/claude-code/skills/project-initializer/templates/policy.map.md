@@ -1,4 +1,0 @@
-- `docs/policy/`: Use this area for integrated policy proposals and outputs.
-- `docs/sections/`: Use this area for source policy sections.
-- `docs/evidence/`: Use this area for evidence supporting policy proposals.
-- `docs/outputs/`: Use this area for maintained policy submission outputs.

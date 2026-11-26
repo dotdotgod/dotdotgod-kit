@@ -10,6 +10,26 @@
   "bin": {
     "dotdotgod": "./bin/dotdotgod.mjs"
   },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "exports": {
+    ".": "./src/core.mjs",
+    "./bin/dotdotgod.mjs": "./bin/dotdotgod.mjs",
+    "./server": "./src/context/server.mjs",
+    "./hooks": "./src/context/hooks.mjs",
+    "./hooks/antigravity": "./src/context/hooks-antigravity.mjs",
+    "./decision": "./src/context/decision.mjs",
+    "./memory/config": "./src/memory/config.mjs",
+    "./context": {
+      "types": "./src/context/index.d.ts",
+      "import": "./src/context/index.mjs"
+    },
+    "./impact": {
+      "types": "./src/context/index.d.ts",
+      "import": "./src/context/impact-state.mjs"
+    }
+  },
   "keywords": [
     "agent-memory",
     "ai-coding-agent",
@@ -23,21 +43,26 @@
     "validator"
   ],
   "scripts": {
-    "test": "node --test --test-concurrency=1 test/*.test.mjs",
-    "verify": "node --check bin/dotdotgod.mjs && node --check src/core.mjs && pnpm run test && node bin/dotdotgod.mjs validate ../.. --include-local-memory",
+    "test": "node --test --test-concurrency=1 'test/**/*.test.mjs' && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -v -s test/adapters/hermes -p 'test_*.py'",
+    "verify": "node --check bin/dotdotgod.mjs && node --check src/core.mjs && node --check src/context/server.mjs && node --check src/context/hooks.mjs && node --check src/context/hooks-antigravity.mjs && node --check src/commands/adapter.mjs && pnpm run test && node bin/dotdotgod.mjs validate ../.. --include-local-memory",
     "pack:dry-run": "pnpm pack --dry-run --json"
   },
   "files": [
     "bin",
     "src",
+    "assets",
+    "!**/__pycache__/**",
+    "!**/*.py[cod]",
     "README.md",
     "LICENSE"
   ],
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.2",
     "@vscode/tree-sitter-wasm": "0.3.1",
     "d3": "^7.9.0",
     "ignore": "7.0.5",
-    "leiden-ts": "^0.1.0"
+    "leiden-ts": "^0.1.0",
+    "zod": "^3.25.76"
   },
   "homepage": "https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/cli#readme",
   "repository": {

@@ -77,14 +77,14 @@ Triage does not deny editing or execution or replace host approvals. The canonic
   - [packages/cli/src/memory/documentation-map.mjs](../../packages/cli/src/memory/documentation-map.mjs)
   - [packages/cli/src/commands/query.mjs](../../packages/cli/src/commands/query.mjs)
   - [packages/cli/src/reference/resolve.mjs](../../packages/cli/src/reference/resolve.mjs)
-  - [packages/context/src/decision.mjs](../../packages/context/src/decision.mjs)
-  - [packages/context/src/project.mjs](../../packages/context/src/project.mjs)
-  - [packages/context/src/impact-state.mjs](../../packages/context/src/impact-state.mjs)
+  - [packages/cli/src/context/decision.mjs](../../packages/cli/src/context/decision.mjs)
+  - [packages/cli/src/context/project.mjs](../../packages/cli/src/context/project.mjs)
+  - [packages/cli/src/context/impact-state.mjs](../../packages/cli/src/context/impact-state.mjs)
 - Verified by:
   - [packages/cli/test/decision-config.test.mjs](../../packages/cli/test/decision-config.test.mjs)
   - [packages/cli/test/decision-readonly.test.mjs](../../packages/cli/test/decision-readonly.test.mjs)
-  - [packages/context/test/decision.test.mjs](../../packages/context/test/decision.test.mjs)
-  - [packages/context/test/impact-state.test.mjs](../../packages/context/test/impact-state.test.mjs)
+  - [packages/cli/test/context/decision.test.mjs](../../packages/cli/test/context/decision.test.mjs)
+  - [packages/cli/test/context/impact-state.test.mjs](../../packages/cli/test/context/impact-state.test.mjs)
   - [packages/pi/test/project-memory-extension.test.ts](../../packages/pi/test/project-memory-extension.test.ts)
 - Related docs:
   - [docs/spec/LOAD_PROJECT.md](LOAD_PROJECT.md)
@@ -97,5 +97,5 @@ Triage does not deny editing or execution or replace host approvals. The canonic
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/decision/config.mjs","packages/cli/src/commands/config.mjs","packages/cli/src/memory/documentation-map.mjs","packages/cli/src/commands/query.mjs","packages/cli/src/reference/resolve.mjs","packages/context/src/decision.mjs","packages/context/src/project.mjs","packages/context/src/impact-state.mjs"],"verifiedBy":["packages/cli/test/decision-config.test.mjs","packages/cli/test/decision-readonly.test.mjs","packages/context/test/decision.test.mjs","packages/context/test/impact-state.test.mjs","packages/pi/test/project-memory-extension.test.ts"],"relatedDocs":["docs/spec/LOAD_PROJECT.md","docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/REFERENCE_EXPANSION.md","docs/spec/EMBEDDING_CONFIG.md"],"designDecisions":["docs/arch/NATURAL_LANGUAGE_BOUNDARIES.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/decision/config.mjs","packages/cli/src/commands/config.mjs","packages/cli/src/memory/documentation-map.mjs","packages/cli/src/commands/query.mjs","packages/cli/src/reference/resolve.mjs","packages/cli/src/context/decision.mjs","packages/cli/src/context/project.mjs","packages/cli/src/context/impact-state.mjs"],"verifiedBy":["packages/cli/test/decision-config.test.mjs","packages/cli/test/decision-readonly.test.mjs","packages/cli/test/context/decision.test.mjs","packages/cli/test/context/impact-state.test.mjs","packages/pi/test/project-memory-extension.test.ts"],"relatedDocs":["docs/spec/LOAD_PROJECT.md","docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/REFERENCE_EXPANSION.md","docs/spec/EMBEDDING_CONFIG.md"],"designDecisions":["docs/arch/NATURAL_LANGUAGE_BOUNDARIES.md"]}
 ```

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "dotdotgod",
+  "displayName": "dotdotgod",
+  "version": "0.11.0",
+  "description": "Docs-first project memory for AI coding agents: bounded context loading, durable plans, local FTS5 retrieval, and advisory impact review.",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "Load project memory for the current repository using /dd-load.",
+    "Preview a dry-run dotdotgod initialization using /dd-init.",
+    "Review changed-file graph impact using /dd-impact."
+  ],
+  "author": {
+    "name": "dotdotgod",
+    "url": "https://github.com/dotdotgod"
+  },
+  "homepage": "https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/cli/assets/adapters/antigravity#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dotdotgod/dotdotgod-kit.git"
+  },
+  "license": "Elastic-2.0",
+  "keywords": [
+    "agent-memory",
+    "ai-coding-agent",
+    "antigravity",
+    "context-curation",
+    "documentation",
+    "dotdotgod",
+    "graph-impact",
+    "planning",
+    "plugin",
+    "project-memory",
+    "traceability"
+  ]
+}

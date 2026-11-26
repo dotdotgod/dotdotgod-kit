@@ -3,7 +3,7 @@ import { lstatSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 
-const { validatePlanModePolicy, normalizePlanModePolicy, validateMemoryConfigData } = createRequire(import.meta.url)('@dotdotgod/cli/src/memory/config.mjs') as {
+const { validatePlanModePolicy, normalizePlanModePolicy, validateMemoryConfigData } = createRequire(import.meta.url)('@dotdotgod/cli/memory/config') as {
   validatePlanModePolicy(policy: unknown, options: { allowAbsolutePaths: boolean }): { field: string; message: string }[];
   normalizePlanModePolicy(policy: unknown): PlanPolicy;
   validateMemoryConfigData(data: unknown, root?: string, file?: string): { field: string; message: string }[];

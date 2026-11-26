@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { buildDecisionDocsMap } from '../src/memory/documentation-map.mjs';
 import { hasHelpToken } from '../src/cli/usage.mjs';
 import { queryProject } from '../src/commands/query.mjs';
-import { CACHE_VERSION } from '../src/index/constants.mjs';
+import { CACHE_VERSION } from '../src/primitives.mjs';
 import { expandReferences } from '../src/reference/resolve.mjs';
 import { buildOutlines } from '../src/symbols/store.mjs';
 

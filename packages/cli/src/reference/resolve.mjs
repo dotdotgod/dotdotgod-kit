@@ -1,9 +1,10 @@
 import { resolve } from 'node:path';
 import { usage } from '../cli/usage.mjs';
+import { DotdotgodServiceError } from '../commands/map.mjs';
 import { readMemoryConfig } from '../memory/config.mjs';
 import { isSharedMemoryPath } from '../memory/documentation-map.mjs';
 import { readFreshIndex, readIndex } from '../index/cache.mjs';
-import { CACHE_VERSION } from '../index/constants.mjs';
+import { CACHE_VERSION } from '../primitives.mjs';
 import { buildCompactImpactReport, buildImpactReport } from '../impact/report.mjs';
 import { DEFAULT_REFERENCE_LIMIT, extractBracketReferences, extractFuzzyReferences, isArchiveBodyPath, normalizeReferenceAlias, referenceCandidateAliases, referencePathForNode } from './extract.mjs';
 
@@ -127,16 +128,17 @@ function sharedReferenceIndex(index, config) {
 }
 
 export function expandReferences(root, prompt, options = {}) {
-  if (options.readOnly && options.withImpact) throw new Error('--with-impact cannot be combined with --no-write.');
+  options.signal?.throwIfAborted();
+  if (options.readOnly && options.withImpact) throw new DotdotgodServiceError('REFERENCE_MODE_CONFLICT', '--with-impact cannot be combined with --no-write.');
   const refsInPrompt = extractBracketReferences(prompt);
-  if (refsInPrompt.length === 0 && !options.fuzzy && !options.readOnly) throw new Error('No [[refs]] found in prompt.');
+  if (refsInPrompt.length === 0 && !options.fuzzy && !options.readOnly) throw new DotdotgodServiceError('REFERENCES_MISSING', 'No [[refs]] found in prompt.');
   const { status, index, metadata } = options.readOnly ? readExpansionIndex(root) : readFreshIndex(root);
   const payload = { ok: options.readOnly || status.ok, command: 'expand', root, prompt, status, metadata, refs: [], omitted: 0 };
   if (!index || (!refsInPrompt.length && !options.fuzzy)) return payload;
 
   const memoryConfig = readMemoryConfig(root);
   const shared = options.scope === 'shared';
-  if (shared && memoryConfig.errors?.length) throw new Error('Project configuration is invalid.');
+  if (shared && memoryConfig.errors?.length) throw new DotdotgodServiceError('INVALID_CONFIG', 'Project configuration is invalid.');
   const scopedIndex = shared ? sharedReferenceIndex(index, memoryConfig) : index;
   const settings = { ...options, memoryConfig, existingTargets: refsInPrompt.map((item) => item.target) };
   const fuzzyRefs = options.fuzzy ? extractFuzzyReferences(prompt, scopedIndex, settings) : [];

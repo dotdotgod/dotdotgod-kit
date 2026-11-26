@@ -137,7 +137,7 @@ export default function projectMemoryExtension(pi: ExtensionAPI): void {
 		rawPrompt = undefined;
 		if (!syncTool(ctx) || !prompt?.trim()) return;
 		// @ts-expect-error The shared decision entry point is JavaScript without declarations.
-		const { evaluateLoadDecision, formatDecisionInjection } = await import("@dotdotgod/context/decision");
+		const { evaluateLoadDecision, formatDecisionInjection } = await import("@dotdotgod/cli/decision");
 		const outcome = await evaluateLoadDecision({
 			root: ctx.cwd,
 			rawPrompt: prompt,

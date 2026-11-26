@@ -1,11 +1,10 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { parseCommon } from '../cli/usage.mjs';
-import { rel } from '../common/paths.mjs';
+import { CACHE_VERSION, rel } from '../primitives.mjs';
 import { readMemoryConfig, memoryConfigSummary } from '../memory/config.mjs';
 import { addEdge, addNode, compactGraph, expandGraph, graphStats, jsonSize, shardFile, writeJson } from '../graph/store.mjs';
 import { cacheFile, collectIndexFiles, fingerprint } from './files.mjs';
-import { CACHE_VERSION } from './constants.mjs';
 import { buildGraph } from '../graph/extract.mjs';
 import { buildOutlines, readOutlines } from '../symbols/store.mjs';
 import { outlinePolicy } from '../symbols/discovery.mjs';

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { buildIndex, writeIndex, readIndex } from '../src/index/cache.mjs';
-import { CACHE_VERSION } from '../src/index/constants.mjs';
+import { CACHE_VERSION } from '../src/primitives.mjs';
 import { buildImpactReport, buildCompactImpactReport } from '../src/impact/report.mjs';
 import { startImpactGraphServer } from '../src/graph-view/server.mjs';
 

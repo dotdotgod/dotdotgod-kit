@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const packagesDir = join(root, 'packages');
+const packages = ['cli', 'obsidian', 'pi'];
 const checkFamilies = new Set(['syntax', 'typecheck', 'test', 'lint', 'check']);
 
 function readJson(path) {
@@ -19,16 +19,11 @@ function shellReferencesScript(command, scriptName) {
 const failures = [];
 const checkedPackages = [];
 
-for (const entry of readdirSync(packagesDir).sort()) {
-  const packageDir = join(packagesDir, entry);
-  if (!statSync(packageDir).isDirectory()) continue;
-
-  const packageJsonPath = join(packageDir, 'package.json');
+for (const entry of packages) {
+  const packageJsonPath = join(root, 'packages', entry, 'package.json');
   const packageJson = readJson(packageJsonPath);
   const scripts = packageJson.scripts || {};
   const checkScripts = Object.keys(scripts).filter((scriptName) => checkFamilies.has(scriptName.split(':')[0]));
-
-  if (checkScripts.length === 0) continue;
 
   checkedPackages.push(packageJson.name || entry);
   const verify = scripts.verify;

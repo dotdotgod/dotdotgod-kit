@@ -1,5 +1,5 @@
 import { isAbsolute, join, normalize, resolve } from 'node:path';
-import { rel } from '../common/paths.mjs';
+import { rel } from '../primitives.mjs';
 import { isKebabCase } from '../docs/markdown.mjs';
 import { validateEmbeddingProfile } from '../query/embedding-config.mjs';
 import { readConfigJson, validateDecisionProfile } from '../decision/config.mjs';

@@ -17,7 +17,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `VALIDATION_CONFIG.md`: markdown validation budget and size-check exclusion coverage.
 - `CONTEXT_MEASUREMENT.md`: context measurement commands and runtime context debug smoke checks.
 - `HERMES_ADAPTER.md`: native registration, concurrent MCP routing, Path 1 non-blocking advisory impact (`HM-01`..`HM-03a`), packed pinned-host smoke, and external messaging acceptance.
-- `CONTEXT_EXECUTION.md`: automated and manual coverage for local execution, FTS5 retrieval, `impact.sqlite` v2, MCP `roots/list` and `sessionBound`, advisory hooks, and adapter packaging.
+- `CONTEXT_EXECUTION.md`: automated and manual coverage for local execution, FTS5 retrieval, `impact.sqlite` v3, MCP `roots/list` and `sessionBound`, advisory hooks, and adapter packaging.
 - `COMMAND_GUIDANCE.md`: environment-aware query and project command guidance checks.
 - `IMPACT_RANKING_CONFIG.md`: fixed graph-impact scoring, non-blocking compatibility config, request-local vector overlay, compact output, and selection-noise checks.
 - `IMPACT_GRAPH_EXPLORER.md`: standalone traceability graph API, shared filtering, browser interactions, and workspace verification.
@@ -39,7 +39,7 @@ Use this area for test strategy, coverage notes, regression cases, and manual ve
 - `packages/cli/test/embedding-opt-in.test.mjs`: unconfigured keyword/structural retrieval, vector-request errors, and explicit keyword override without embeddings.
 - `packages/pi/test/planning-context.test.ts`: bounded impact/reference refresh, no automatic validation or Plan Mode compaction, one-shot delivery, and CLI failure/execution-mode handling.
 - `packages/cli/test/pre-push.test.mjs`: composed gate order and failure exits, single documentation-validation path, and standalone cache-gate guarantees.
-- `packages/cli/test/document-clarify.test.mjs`: standalone guidance, absence from all six adapters, and removal of verified obsolete spec history while protecting current requirements and historical archive meaning.
+- `packages/cli/test/document-clarify.test.mjs`: standalone guidance, absence from built-in host skills, and removal of verified obsolete spec history while protecting current requirements and historical archive meaning.
 
 ## Verification Command Cheat Sheet
 
@@ -68,7 +68,7 @@ pnpm run verify:generated
 pnpm run verify:types
 pnpm run verify:unit
 pnpm run verify:contract
-agy plugin validate --strict packages/antigravity
+DOTDOTGOD_REQUIRE_AGY=1 pnpm --filter @dotdotgod/cli run verify
 pnpm --filter @dotdotgod/cli test
 pnpm run verify
 pnpm run pack:dry-run
@@ -98,15 +98,9 @@ Confirm JSON includes schema/refresh metadata, graph counts, bounded summaries, 
 
 ## Workspace Coverage
 
-- `@dotdotgod/shared`: private source resources for generated adapter commands, skills, and initializer files.
-- `@dotdotgod/cli`: CLI syntax check, unit/e2e tests, repository validation, local multilingual query/vector-cache coverage, sharded graph-cache status checks, stale-index reindex coverage, and Leiden/fallback community output coverage.
-- `@dotdotgod/context`: local execution, FTS5 retrieval, `impact.sqlite` v2, advisory hooks, MCP `roots/list` + `sessionBound`, and isolated tarball packaging checks.
-- `@dotdotgod/pi`: generated initializer skill, extension syntax smoke checks, TypeScript typecheck, unit tests, and tarball dry-run.
-- `@dotdotgod/opencode`: V2 plugin, native plan persistence, bundled MCP, advisory impact, and tarball dry-run.
-- `@dotdotgod/claude-code`: generated plugin commands/skills, advisory hook/manifest checks, and tarball dry-run.
-- `@dotdotgod/codex`: generated plugin skills, advisory hook/manifest checks, and tarball dry-run.
-- `@dotdotgod/hermes`: native Python lifecycle/advisory impact (`impact.py`), bundled MCP artifacts, resource tests, opt-in pinned-host smoke, and tarball dry-run.
-- `@dotdotgod/antigravity`: plugin manifest, `rules/AGENTS.md`, `assets/logo.svg`, generated skills, advisory hooks, Option C-2 `/plan`, `agy plugin validate --strict`, and tarball dry-run.
+- `@dotdotgod/cli`: Node/CLI, graph and docs validation, shared context/hooks/MCP, installer lifecycle, strict Antigravity fixture validation, native host artifacts, Hermes Python regressions, and two-package tarball contract.
+- `@dotdotgod/pi`: initializer resources, extension syntax, typecheck, public SDK/unit tests, and tarball dry-run.
+- `@dotdotgod/obsidian` (private): development helper syntax, plugin build, and plugin regression suite. Root `npm run build` creates the Obsidian community build files.
 
 ## Manual Smoke Tests
 

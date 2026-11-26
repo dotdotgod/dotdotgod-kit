@@ -20,7 +20,7 @@ No matches mean no match for that query, not that diagnostics are absent. Partia
 
 ## Verification And Limits
 
-`packages/context/test/search-recovery.test.mjs` verifies retrieval of a middle `FAIL quota exceeded` diagnostic in long retained nonzero stderr, plus wildcard limits, filtering, expiry, ordering, and provenance. Public Pi SDK tests verify direct/codemode MCP wildcard calls and namespace recovery guidance.
+`packages/cli/test/context/search-recovery.test.mjs` verifies retrieval of a middle `FAIL quota exceeded` diagnostic in long retained nonzero stderr, plus wildcard limits, filtering, expiry, ordering, and provenance. Public Pi SDK tests verify direct/codemode MCP wildcard calls and namespace recovery guidance.
 
 These are deterministic integration checks, not proof that a live model always follows the guidance. The previous model evaluation remains historical; it has not been rerun for this change.
 
@@ -40,12 +40,12 @@ These are deterministic integration checks, not proof that a live model always f
 ### Traceability Links
 
 - Implemented by:
-  - [packages/context/src/store.mjs](../../packages/context/src/store.mjs)
-  - [packages/context/src/server.mjs](../../packages/context/src/server.mjs)
+  - [packages/cli/src/context/store.mjs](../../packages/cli/src/context/store.mjs)
+  - [packages/cli/src/context/server.mjs](../../packages/cli/src/context/server.mjs)
   - [packages/pi/extensions/context-tools/index.ts](../../packages/pi/extensions/context-tools/index.ts)
   - [AGENTS.md](../../AGENTS.md)
 - Verified by:
-  - [packages/context/test/search-recovery.test.mjs](../../packages/context/test/search-recovery.test.mjs)
+  - [packages/cli/test/context/search-recovery.test.mjs](../../packages/cli/test/context/search-recovery.test.mjs)
   - [packages/pi/test/context-workflow.test.ts](../../packages/pi/test/context-workflow.test.ts)
   - [packages/pi/test/context-codemode.test.ts](../../packages/pi/test/context-codemode.test.ts)
   - [docs/test/CONTEXT_EXECUTION.md](../test/CONTEXT_EXECUTION.md)
@@ -59,5 +59,5 @@ These are deterministic integration checks, not proof that a live model always f
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/context/src/store.mjs","packages/context/src/server.mjs","packages/pi/extensions/context-tools/index.ts","AGENTS.md"],"verifiedBy":["packages/context/test/search-recovery.test.mjs","packages/pi/test/context-workflow.test.ts","packages/pi/test/context-codemode.test.ts","docs/test/CONTEXT_EXECUTION.md"],"relatedDocs":["docs/spec/CONTEXT_EXECUTION.md","docs/spec/PI_CONTEXT_TOOL_SELECTION.md","docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/context/store.mjs","packages/cli/src/context/server.mjs","packages/pi/extensions/context-tools/index.ts","AGENTS.md"],"verifiedBy":["packages/cli/test/context/search-recovery.test.mjs","packages/pi/test/context-workflow.test.ts","packages/pi/test/context-codemode.test.ts","docs/test/CONTEXT_EXECUTION.md"],"relatedDocs":["docs/spec/CONTEXT_EXECUTION.md","docs/spec/PI_CONTEXT_TOOL_SELECTION.md","docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]}
 ```

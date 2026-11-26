@@ -27,7 +27,7 @@ Tests use an isolated temporary home and never touch the developer's real `~/.do
 ```bash
 HOME=/tmp/dotdotgod-home node packages/cli/bin/dotdotgod.mjs config init /tmp/research-project --template research --json
 HOME=/tmp/dotdotgod-home node packages/cli/bin/dotdotgod.mjs init /tmp/policy-project --template policy --dry-run --json
-sh packages/shared/initializer/scripts/init_project.sh /tmp/publication-project --template publication --dry-run
+sh packages/cli/assets/initializer/scripts/init_project.sh /tmp/publication-project --template publication --dry-run
 ```
 
 Confirm `dotdotgod config <root> --json` remains `source: "default"` when no project config exists, regardless of global template settings. For the research fixture, also confirm the three maintained domain indexes and `outputs/` exist after initialization; general validation is not intended to require all configured memory areas to exist.

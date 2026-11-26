@@ -1,5 +1,7 @@
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { DEFAULT_EMBEDDING_PROFILE, embeddingInputFormat, embeddingProfileIdentity, resolveEmbeddingProfile } from './embedding-config.mjs';
-import { importTransformers } from './embedding-runtime.mjs';
+import { importTransformers, resolveTransformersModule } from './embedding-runtime.mjs';
 
 const localPipelines = new Map();
 
@@ -19,6 +21,62 @@ async function localEmbedder(profile) {
   }
   const model = await localPipelines.get(profile.model);
   return async (texts) => (await model(texts, { pooling: 'mean', normalize: true })).tolist().map(normalize);
+}
+
+function startLocalInference(profile, options) {
+  const { signal } = options;
+  signal?.throwIfAborted();
+  const runtime = resolveTransformersModule(options);
+  const entry = fileURLToPath(new URL('./local-inference.mjs', import.meta.url));
+  const child = spawn(process.execPath, [entry, runtime, profile.model], { cwd: options.cwd, shell: false, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+  const stop = () => { if (!child.killed && child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); };
+  let pending = Promise.withResolvers();
+  let dead = false;
+  const ready = pending.promise;
+  const failed = () => {
+    dead = true;
+    pending?.reject(signal?.aborted ? signal.reason : new Error('Local embedding inference helper exited unexpectedly.'));
+  };
+  child.on('message', (message) => {
+    if (!pending) return;
+    if (message?.type === 'error' && typeof message.message === 'string') pending.reject(new Error(message.message));
+    else if (message?.type === 'ready') pending.resolve();
+    else if (message?.type === 'result' && Array.isArray(message.rows)) pending.resolve(message.rows);
+    else pending.reject(new Error('Local embedding inference helper returned an invalid response.'));
+    pending = null;
+  });
+  child.on('error', failed);
+  const closed = new Promise((resolve) => child.once('close', () => {
+    signal?.removeEventListener('abort', stop);
+    failed();
+    resolve();
+  }));
+  signal?.addEventListener('abort', stop, { once: true });
+  return {
+    async open() {
+      await ready;
+      return async (texts) => {
+        signal?.throwIfAborted();
+        if (dead) throw new Error('Local embedding inference helper exited unexpectedly.');
+        pending = Promise.withResolvers();
+        const { promise } = pending;
+        child.send(texts, (error) => { if (error) failed(); });
+        return (await promise).map(normalize);
+      };
+    },
+    async close() { stop(); await closed; },
+  };
+}
+
+// One lazy child per project query or impact; reuse the pipeline for every batch.
+export async function withEmbeddingOperation(options, run) {
+  let local;
+  try {
+    return await run({ ...options, openLocal: (profile) => {
+      local ??= startLocalInference(profile, options);
+      return local.open();
+    } });
+  } finally { await local?.close(); }
 }
 
 function credential(profile) {
@@ -73,8 +131,8 @@ function withInputFormat(embed, profile) {
   };
 }
 
-export async function createEmbedder(profile) {
-  const embed = profile.provider === 'local' ? await localEmbedder(profile) : remoteEmbedder(profile);
+export async function createEmbedder(profile, options = {}) {
+  const embed = profile.provider === 'local' ? await (options.openLocal ?? localEmbedder)(profile) : remoteEmbedder(profile);
   async function embedBatch(texts) {
     if (texts.length === 0) return [];
     let rows;
@@ -95,7 +153,7 @@ export async function createEmbedder(profile) {
 export async function resolveEmbedder(root, options = {}) {
   const resolved = options.profile || options.embed ? { profile: options.profile ?? DEFAULT_EMBEDDING_PROFILE, source: options.source ?? 'injected', path: null } : resolveEmbeddingProfile(root, options);
   if (!resolved.profile) throw new Error('Embedding is not configured. Set embedding in project or global configuration to use vector search.');
-  return { ...resolved, identity: embeddingProfileIdentity(resolved.profile), embed: options.embed ? withInputFormat(options.embed, resolved.profile) : await createEmbedder(resolved.profile) };
+  return { ...resolved, identity: embeddingProfileIdentity(resolved.profile), embed: options.embed ? withInputFormat(options.embed, resolved.profile) : await createEmbedder(resolved.profile, options) };
 }
 
 export async function embedTexts(texts) {

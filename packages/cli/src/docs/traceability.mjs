@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { basename, dirname, extname, relative, resolve } from 'node:path';
-import { rel } from '../common/paths.mjs';
+import { rel } from '../primitives.mjs';
 import { DEFAULT_TRACEABILITY_KEYS, defaultMemoryConfig, resolveMemoryArea } from '../memory/config.mjs';
 
 function isSecretIndexPath(path) {

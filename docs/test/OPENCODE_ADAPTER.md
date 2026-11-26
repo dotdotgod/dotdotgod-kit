@@ -1,49 +1,27 @@
 # OpenCode Adapter Verification
 
-## Automated Checks
+See [behavior](../spec/OPENCODE_ADAPTER.md) and
+[manual smoke](manual-smoke/OPENCODE_ADAPTER.md).
 
-- `packages/opencode/test/plugin.test.mjs`: commands/skills, attachment and
-  delivery preservation, literal argument substitution, known plan reminders,
-  unknown-layout warning, in-place permission exception and later user deny,
-  successful/failed edit tracking, location isolation, host-owned MCP identity,
-  plan-only MCP restrictions and propagation of user shell denials.
-- `packages/context/test/impact-state.test.mjs`: persistence, session isolation,
-  failed reviews, same-content revision changes, external content changes,
-  cancellation, symlink exclusion and more than fifty retained pending paths.
-- `packages/context/test/mcp.test.mjs`: real stdio catalog/schema, execution,
-  search, session routing, jobs, diagnostics and explicit initialization.
-- `packages/context/test/adapters.test.mjs`: bundled OpenCode MCP startup from
-  an unrelated working directory.
-- `packages/context/test/opencode-packaging.test.mjs`: isolated tarball imports,
-  parser/resource contents, standalone Load and shared advisory-state completion.
-- `scripts/build-adapter-runtime.mjs --check`: catalog/runtime/parser drift.
+## Automated Coverage
 
-## Installed Host Smoke
+- [`opencode-plugin.test.mjs`](../../packages/cli/test/adapters/opencode-plugin.test.mjs)
+  exercises registrations, Code Mode, native plan redirect and later denies,
+  write-capable tool gating, load advice and clearance on successful impact.
+- [`opencode-runtime.test.mjs`](../../packages/cli/test/adapters/opencode-runtime.test.mjs)
+  verifies the CLI-relative runtime import in pinned/PATH modes, rejects
+  untrusted bindings, and checks fail-open advisories without lifting native
+  plan restrictions.
+- [`jsonc-edit.test.mjs`](../../packages/cli/test/adapters/jsonc-edit.test.mjs) and
+  [`installer-lifecycle.test.mjs`](../../packages/cli/test/adapters/installer-lifecycle.test.mjs)
+  cover project and user destinations, byte-preserving narrow config edits,
+  ownership, legacy conflicts, and uninstall.
+- [`runtime-smoke.test.mjs`](../../packages/cli/test/adapters/runtime-smoke.test.mjs)
+  launches MCP through the installed plugin. The
+  [package contract test](../../packages/cli/test/adapters/packaging-contract.test.mjs)
+  checks shared CLI/Pi tarballs, not a separate OpenCode tarball.
 
-Run `pnpm --filter @dotdotgod/opencode smoke` from the source checkout with
-OpenCode 2.1.2 on PATH. It uses disposable HOME/XDG directories, an isolated
-service port and local deterministic OpenAI-compatible responses. It checks
-command discovery, skill routing, plan permissions, actual outgoing auto-save
-instructions, real plan-file writes, user-deny/outside-plan safety, pending edit
-reminders, MCP Code Mode host identity, and unprefixed impact/status review and
-pending clearance. No paid model is used.
-This proves integration plumbing, not a live model's compliance with guidance.
-Use `node packages/opencode/scripts/smoke.mjs <directory>` with an extracted
-package to test the same host behavior without workspace dependencies.
-
-## Acceptance Checklist
-
-Follow [manual acceptance](manual-smoke/OPENCODE_ADAPTER.md) for a real model:
-automatic creation/revision, unrelated tasks, user denies, outside-plan edits,
-MCP indexed output, pending tracking and failure/re-edit retention.
-
-## Commands
-
-```bash
-pnpm run generate
-pnpm --filter @dotdotgod/opencode verify
-pnpm --filter @dotdotgod/pi verify
-pnpm --filter @dotdotgod/context verify
-pnpm run verify
-pnpm run pack:dry-run
-```
+Run `pnpm --filter @dotdotgod/cli run verify`. Check native plugin
+discovery separately in a private profile. The native Plan Mode adapter
+targets 2.1.2; discovery on another version does not prove Plan Mode
+redirect or permission compatibility.

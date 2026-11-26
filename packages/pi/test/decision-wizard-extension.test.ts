@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { it } from "node:test";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { ImpactState } from "@dotdotgod/context";
+import { ImpactState } from "@dotdotgod/cli/impact";
 
 // Exercise the extension through Pi's own TypeScript loader, including .js -> .ts imports.
 const hostRequire = createRequire(import.meta.resolve("@earendil-works/pi-coding-agent"));

@@ -65,13 +65,6 @@ function writeConfig(root, value) {
   writeFileSync(join(root, 'dotdotgod.config.json'), `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function packDryRun(packageName) {
-  const workspaceRoot = resolve('../..');
-  const result = spawnSync('pnpm', ['--filter', packageName, 'pack', '--dry-run', '--json'], { cwd: workspaceRoot, encoding: 'utf8' });
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  return JSON.parse(result.stdout);
-}
-
 function impactWithConfig(value) {
   const root = createFixture();
   writeConfig(root, value);
@@ -374,7 +367,7 @@ describe('dotdotgod CLI e2e', () => {
 
   it('creates engineering areas only for software and research across CLI and POSIX', () => {
     const parent = mkdtempSync(join(tmpdir(), 'dotdotgod-template-areas-'));
-    const script = resolve('../shared/initializer/scripts/init_project.sh');
+    const script = resolve('assets/initializer/scripts/init_project.sh');
     for (const name of ['software', 'research', 'case-and-evidence', 'publication', 'portfolio', 'policy']) {
       const cliRoot = join(parent, `${name}-cli`);
       const shellRoot = join(parent, `${name}-shell`);
@@ -401,7 +394,7 @@ describe('dotdotgod CLI e2e', () => {
   it('keeps the POSIX initializer config aligned with CLI defaults', () => {
     const parent = mkdtempSync(join(tmpdir(), 'dotdotgod-shell-init-e2e-'));
     const root = join(parent, 'project');
-    const script = resolve('../shared/initializer/scripts/init_project.sh');
+    const script = resolve('assets/initializer/scripts/init_project.sh');
 
     const initialized = spawnSync('sh', [script, root, '--project-name', 'Shell Fixture'], { encoding: 'utf8' });
     assert.equal(initialized.status, 0, initialized.stderr || initialized.stdout);
@@ -415,11 +408,8 @@ describe('dotdotgod CLI e2e', () => {
     for (const path of ['docs/research/README.md', 'docs/record/README.md', 'docs/report/README.md', 'outputs']) assert.equal(existsSync(join(researchRoot, path)), true, `POSIX research init should create ${path}`);
 
     for (const template of [
-      resolve('../shared/initializer/templates/dotdotgod.config.json'),
+      resolve('assets/initializer/templates/dotdotgod.config.json'),
       resolve('../pi/skills/project-initializer/templates/dotdotgod.config.json'),
-      resolve('../claude-code/skills/project-initializer/templates/dotdotgod.config.json'),
-      resolve('../codex/skills/project-initializer/templates/dotdotgod.config.json'),
-      resolve('../antigravity/skills/dd-init/templates/dotdotgod.config.json'),
     ]) assert.deepEqual(JSON.parse(readFileSync(template, 'utf8')), defaultDotdotgodConfigData());
 
     const rcRoot = join(parent, 'rc-project');
@@ -430,30 +420,6 @@ describe('dotdotgod CLI e2e', () => {
     assert.match(rcInitialized.stdout, /created\s+.*dotdotgod\.config\.json/);
     assert.equal(existsSync(join(rcRoot, 'dotdotgod.config.json')), true);
     assert.equal(existsSync(join(rcRoot, '.dotdotgodrc.json')), true);
-  });
-
-  it('packages adapter initializer config templates and hook documentation', () => {
-    for (const packageName of ['@dotdotgod/claude-code', '@dotdotgod/codex']) {
-      const payload = packDryRun(packageName);
-      const paths = new Set(payload.files.map((file) => file.path));
-      assert(paths.has('hooks/README.md'), `${packageName} package should include hooks/README.md`);
-      assert(paths.has('skills/project-initializer/templates/dotdotgod.config.json'), `${packageName} package should include the initializer config template`);
-      for (const name of ['software', 'research', 'case-and-evidence', 'publication', 'portfolio', 'policy']) assert(paths.has(`skills/project-initializer/templates/${name}.json`), `${packageName} should include ${name}`);
-      assert(paths.has('README.md'), `${packageName} package should include README.md`);
-      assert(paths.has('package.json'), `${packageName} package should include package.json`);
-    }
-
-    const piPayload = packDryRun('@dotdotgod/pi');
-    const piPaths = new Set(piPayload.files.map((file) => file.path));
-    assert(piPaths.has('skills/project-initializer/templates/dotdotgod.config.json'), '@dotdotgod/pi package should include the initializer config template');
-    for (const name of ['software', 'research', 'case-and-evidence', 'publication', 'portfolio', 'policy']) assert(piPaths.has(`skills/project-initializer/templates/${name}.json`), `@dotdotgod/pi should include ${name}`);
-
-    const agyPayload = packDryRun('@dotdotgod/antigravity');
-    const agyPaths = new Set(agyPayload.files.map((file) => file.path));
-    for (const required of ['plugin.json', 'mcp_config.json', 'hooks.json', 'rules/AGENTS.md', 'assets/logo.svg', 'scripts/hook-runtime.mjs', 'mcp/server.mjs', 'skills/dd-init/templates/dotdotgod.config.json']) {
-      assert(agyPaths.has(required), `@dotdotgod/antigravity should include ${required}`);
-    }
-    for (const name of ['software', 'research', 'case-and-evidence', 'publication', 'portfolio', 'policy']) assert(agyPaths.has(`skills/dd-init/templates/${name}.json`), `@dotdotgod/antigravity should include ${name}`);
   });
 
   it('uses templates only when creating project config', () => {

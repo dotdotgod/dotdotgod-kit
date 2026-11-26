@@ -1,0 +1,7 @@
+{
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "command" }] }],
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "timeout": 25 }] }],
+    "PostToolUse": [{ "matcher": "apply_patch|Edit|Write|MultiEdit|mcp__", "hooks": [{ "type": "command" }] }]
+  }
+}

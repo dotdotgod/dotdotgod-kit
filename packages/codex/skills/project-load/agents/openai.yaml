@@ -1,4 +1,0 @@
-interface:
-  display_name: "Project Load"
-  short_description: "Load dotdotgod project memory."
-  default_prompt: "Load the resolved dotdotgod project context and summarize the maintained evidence and routes relevant to the current request."

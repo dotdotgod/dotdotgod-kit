@@ -29,7 +29,7 @@ Run one command without installing globally:
 npx @dotdotgod/cli validate .
 ```
 
-Install only if you want a persistent `dotdotgod` command:
+Install persistently for host adapter bindings, or to keep `dotdotgod` on PATH:
 
 ```bash
 npm install -g @dotdotgod/cli
@@ -56,6 +56,45 @@ dotdotgod graph serve .
 - `graph serve` starts a standalone read-only traceability graph without Obsidian. It uses resolved project configuration, relation filters, document-group colors, and optional weighted line widths.
 - `graph export` writes `.dotdotgod/traceability.json` for the desktop Obsidian plugin. Run it in the project/vault, then reload traceability in Obsidian. Exported paths are relative; referenced files must exist in the vault. See [plugin setup](../obsidian/README.md).
 - `traceability links` checks or repairs generated Markdown traceability-link sections.
+
+## Host Adapters
+
+The unified runtime targets 0.12.0 (not yet released). A persistent CLI
+installation provides the stdio server (`dotdotgod mcp`) and thin host
+integrations for Claude Code, Codex, Antigravity, OpenCode, and Hermes.
+
+```bash
+dotdotgod adapter status
+dotdotgod adapter install opencode --dry-run
+dotdotgod adapter install opencode
+```
+
+Use the chosen host ID in place of `opencode` and follow the printed
+activation steps. Only OpenCode supports project scope (the default for it).
+Do not bind adapters to a temporary npx/dlx CLI. Add `--with-skills` for
+`ddg-planning` and `document-clarify`. The `pi` target manages only those skills;
+use `pi install npm:@dotdotgod/pi` for Pi extensions. Obsidian is a separate
+community plugin. See the [installer contract](../../docs/spec/cli/ADAPTER.md)
+and [upgrade guide](../../docs/spec/ADAPTER_MIGRATION.md).
+
+## Package Exports
+
+The package exposes exactly nine entrypoints. Imports use `@dotdotgod/cli`
+followed by the subpath below (the root import needs no subpath).
+
+| Export | Role |
+| --- | --- |
+| `.` | CLI core API |
+| `./bin/dotdotgod.mjs` | Executable path for resolution/launch, not a library import |
+| `./server` | Stdio MCP server |
+| `./hooks`, `./hooks/antigravity` | Shared lifecycle hook handlers |
+| `./decision` | Project-memory load decisions |
+| `./memory/config` | Project memory configuration |
+| `./context` | Context service API |
+| `./impact` | Advisory impact state |
+
+Only these paths are package exports; files under `src/` and `assets/`
+are not public deep imports.
 
 ## Commands
 

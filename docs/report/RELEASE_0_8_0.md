@@ -4,7 +4,7 @@
 
 `@dotdotgod/skills` provides `ddg-planning`, its 17 role definitions and references, and `document-clarify`.
 
-Breaking distribution change: Pi, Claude Code, Codex, Hermes and OpenCode no longer bundle `document-clarify`. Install it separately using the [migration guide](../../packages/skills/MIGRATION.md). The name, writing safeguards, attribution and CLI fallback remain intact. Refresh old adapter caches and verify one loaded provider; no automatic removal of user-owned installations is performed.
+Breaking distribution change: Pi, Claude Code, Codex, Hermes and OpenCode no longer bundle `document-clarify`. Install it separately using the [migration guide](https://github.com/dotdotgod/dotdotgod-kit/blob/e3e45a3442c43e3d99b1c1a72cec9b4c3b8b4ff7/packages/skills/MIGRATION.md). The name, writing safeguards, attribution and CLI fallback remain intact. Refresh old adapter caches and verify one loaded provider; no automatic removal of user-owned installations is performed.
 
 ## Runtime and Validation
 

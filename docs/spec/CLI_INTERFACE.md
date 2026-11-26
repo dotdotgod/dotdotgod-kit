@@ -6,6 +6,7 @@ This compatibility route preserves the historical `docs/spec/CLI_INTERFACE.md` e
 
 Use the focused specs for behavior changes:
 
+- [`cli/ADAPTER.md`](cli/ADAPTER.md): host installation, runtime binding, optional skills, and Codex Plan setup.
 - [`cli/DISCOVERY.md`](cli/DISCOVERY.md): top-level help/version, subcommand help, command side-effect boundaries, unknown commands, and validation budget override flags.
 - [`cli/GRAPH_IMPACT.md`](cli/GRAPH_IMPACT.md): `dotdotgod graph impact` required arguments, output modes, structured failures, and unsupported graph subcommands.
 - [`cli/MAP.md`](cli/MAP.md): read-only configured documentation discovery, depth-bounded tree rendering, JSON output, and failures.
@@ -29,6 +30,7 @@ Use the focused specs for behavior changes:
 
 - Implemented by:
   - [docs/spec/cli/DISCOVERY.md](cli/DISCOVERY.md)
+  - [docs/spec/cli/ADAPTER.md](cli/ADAPTER.md)
   - [docs/spec/cli/GRAPH_IMPACT.md](cli/GRAPH_IMPACT.md)
   - [docs/spec/cli/TRACEABILITY_LINKS.md](cli/TRACEABILITY_LINKS.md)
 - Verified by:
@@ -45,5 +47,5 @@ Use the focused specs for behavior changes:
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["docs/spec/cli/DISCOVERY.md","docs/spec/cli/GRAPH_IMPACT.md","docs/spec/cli/TRACEABILITY_LINKS.md"],"verifiedBy":["docs/test/CLI_INTERFACE.md"],"relatedDocs":["docs/spec/cli/README.md","packages/cli/README.md","docs/test/README.md","docs/spec/PROJECT_INITIALIZER.md","docs/spec/CONFIG_COMMAND.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/REFERENCE_EXPANSION.md"],"designDecisions":[]}
+{"kind":"spec","implementedBy":["docs/spec/cli/DISCOVERY.md","docs/spec/cli/ADAPTER.md","docs/spec/cli/GRAPH_IMPACT.md","docs/spec/cli/TRACEABILITY_LINKS.md"],"verifiedBy":["docs/test/CLI_INTERFACE.md"],"relatedDocs":["docs/spec/cli/README.md","packages/cli/README.md","docs/test/README.md","docs/spec/PROJECT_INITIALIZER.md","docs/spec/CONFIG_COMMAND.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/REFERENCE_EXPANSION.md"],"designDecisions":[]}
 ```

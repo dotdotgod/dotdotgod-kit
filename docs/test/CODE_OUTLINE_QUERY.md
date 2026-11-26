@@ -39,14 +39,15 @@ Pi format tests preserve symbol location/type and vector retrieval warnings.
 
 ## Clean Checkout And Distribution
 
-After pnpm install, run pnpm run generate to materialize ignored parser binaries.
-Then pnpm run verify and pnpm run pack:dry-run:packages verify code, generated drift
-and package contents. Assets come from installed pinned dependencies, not runtime
-language-server/model installation. Adapter parser folders carry upstream licenses.
+After `pnpm install`, `pnpm run verify` and `pnpm run pack:dry-run` check
+code, generated drift, and package contents. Patched grammars ship only in
+`@dotdotgod/cli`; its pinned dependency supplies the other grammars. See the
+[tarball contract test](../../packages/cli/test/adapters/packaging-contract.test.mjs).
 
-For an installed-plugin check, pack/extract outside the workspace dependency ancestry
-and run its mcp/cli.mjs index/query --search keyword against a disposable JS/TS/Python
-repository without node_modules. Test code-symbol results and validate --check-index,
+For an installed-runtime check, install the CLI tarball and its dependencies
+outside the workspace. Run `dotdotgod index <fixture>` and `dotdotgod query
+<fixture> <query> --search keyword` on a disposable JS/TS/Python project without
+its own `node_modules`. Test code-symbol results and `validate --check-index`,
 then edit source and confirm stale validation without a cache write.
 
 ## Measurement

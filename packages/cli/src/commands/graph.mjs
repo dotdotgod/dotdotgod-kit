@@ -1,3 +1,4 @@
+import { DotdotgodServiceError } from './map.mjs';
 import { commandUsage, parseCommon, usage } from '../cli/usage.mjs';
 import { mkdir, writeFile, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -6,6 +7,7 @@ import { buildCommunities } from '../graph/communities.mjs';
 import { graphSummary, readFreshIndex } from '../index/cache.mjs';
 import { buildCompactImpactReport, buildImpactReport } from '../impact/report.mjs';
 import { buildVectorImpactOverlay } from '../impact/vector-overlay.mjs';
+import { withEmbeddingOperation } from '../query/embedder.mjs';
 import { canonicalizeChangedPath } from '../impact/vector-profile.mjs';
 import { startImpactGraphServer } from '../graph-view/server.mjs';
 import { formatCompactImpactOutput, formatImpactWarnings, formatYmlGraphImpactError, formatYmlImpactOutput } from '../impact/format.mjs';
@@ -39,6 +41,22 @@ export function parseGraphOptions(argv) {
   options.host = host;
   options.port = Number.isInteger(port) && port >= 0 && port <= 65535 ? port : NaN;
   return options;
+}
+
+export async function computeGraphImpact(root, paths, { compact, json, yml, signal, cwd } = {}) {
+  signal?.throwIfAborted();
+  try {
+    const changed = [...new Set(paths.map((path) => canonicalizeChangedPath(root, path)).filter(Boolean))];
+    const { status, index, metadata } = readFreshIndex(root);
+    const overlay = await withEmbeddingOperation({ signal, cwd }, (options) => buildVectorImpactOverlay(root, index, changed, options));
+    signal?.throwIfAborted();
+    const rawImpact = buildImpactReport(index, changed, { root, overlay, verboseSemantic: json });
+    const impact = compact || yml ? buildCompactImpactReport(rawImpact) : rawImpact;
+    return { ok: status.ok, command: 'graph impact', compact: compact || undefined, root, status, metadata, changed: changed[0], changedFiles: changed, related: impact.related, impact };
+  } catch (error) {
+    signal?.throwIfAborted();
+    throw DotdotgodServiceError.from(error, 'GRAPH_IMPACT_FAILED');
+  }
 }
 
 export async function runGraph(argv) {
@@ -100,14 +118,13 @@ export async function runGraph(argv) {
     }
     usage(message, 'graph impact');
   }
-  if (isImpact) options.changed = [...new Set(options.changed.map((path) => canonicalizeChangedPath(options.root, path)).filter(Boolean))];
-  const { status, index, metadata } = readFreshIndex(options.root);
-  const overlay = isImpact ? await buildVectorImpactOverlay(options.root, index, options.changed) : undefined;
-  const rawImpact = isImpact ? buildImpactReport(index, options.changed, { root: options.root, overlay, verboseSemantic: options.json }) : undefined;
-  const impact = isImpact && (options.compact || options.yml) ? buildCompactImpactReport(rawImpact) : rawImpact;
-  const payload = isImpact
-    ? { ok: status.ok, command: 'graph impact', compact: options.compact || undefined, root: options.root, status, metadata, changed: options.changed[0], changedFiles: options.changed, related: impact.related, impact }
-    : { ok: status.ok, command: 'graph communities', root: options.root, status, metadata, graph: graphSummary(index), communities: buildCommunities(index) };
+  let payload;
+  if (isImpact) payload = await computeGraphImpact(options.root, options.changed, options);
+  else {
+    const { status, index, metadata } = readFreshIndex(options.root);
+    payload = { ok: status.ok, command: 'graph communities', root: options.root, status, metadata, graph: graphSummary(index), communities: buildCommunities(index) };
+  }
+  const { impact, status, metadata } = payload;
   const refreshNote = metadata.cacheRefreshed ? ', refreshed' : '';
   if (options.json) console.log(JSON.stringify(payload, null, 2));
   else if (isImpact && options.yml) console.log(formatYmlImpactOutput(payload, impact));

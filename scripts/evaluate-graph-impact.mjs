@@ -27,7 +27,7 @@ const SEEDS = [
   {
     seed: 'packages/pi/extensions/load-project/utils.ts',
     must: ['packages/pi/test/load-project-utils.test.ts', 'packages/pi/extensions/load-project/index.ts', 'docs/spec/LOAD_PROJECT.md'],
-    should: ['docs/arch/EXTENSION_ARCHITECTURE.md', 'docs/test/CONTEXT_MEASUREMENT.md', 'packages/shared/workflows/load.md'],
+    should: ['docs/arch/EXTENSION_ARCHITECTURE.md', 'docs/test/CONTEXT_MEASUREMENT.md', 'packages/cli/assets/workflows/load.md'],
   },
   {
     seed: 'docs/spec/IMPACT_RANKING_CONFIG.md',
@@ -50,9 +50,9 @@ const SEEDS = [
     should: ['packages/cli/package.json', 'packages/pi/package.json', 'README.md'],
   },
   {
-    seed: 'packages/shared/workflows/load.md',
+    seed: 'packages/cli/assets/workflows/load.md',
     must: ['docs/spec/LOAD_PROJECT.md', 'docs/spec/CROSS_AGENT_SUPPORT.md', 'docs/arch/CROSS_AGENT_ARCHITECTURE.md'],
-    should: ['packages/claude-code/commands/dd/load.md', 'packages/claude-code/skills/project-load/SKILL.md', 'packages/codex/skills/project-load/SKILL.md', 'scripts/generate-adapters.mjs', 'packages/shared/workflows/init.md', 'packages/shared/workflows/plan.md'],
+    should: ['packages/cli/src/adapters/workflows.mjs', 'packages/cli/src/adapters/hosts/claude-code.mjs', 'packages/cli/src/adapters/hosts/codex.mjs', 'packages/cli/assets/workflows/init.md', 'packages/cli/assets/workflows/plan.md'],
   },
   {
     seeds: ['packages/cli/src/commands/graph.mjs', 'packages/cli/src/impact/report.mjs'],

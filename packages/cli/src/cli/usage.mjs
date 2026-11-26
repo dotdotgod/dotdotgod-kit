@@ -4,8 +4,24 @@ import { resolve } from 'node:path';
 const HELP_TOKENS = new Set(['help', '--help', '-h']);
 const VERSION_TOKENS = new Set(['version', '--version', '-v']);
 
+const ADAPTER_USAGE = {
+  install: '<host> [--dry-run] [--use-path] [--with-skills] [--scope <user|project>] [--root <dir>] [--json]',
+  uninstall: '<host> [--dry-run] [--with-skills] [--scope <user|project>] [--root <dir>] [--json]',
+  status: '[<host>] [--scope <user|project>] [--root <dir>] [--json]',
+  'setup-plan': 'codex [<root>] [--catalog <path>] [--codex <bin>] [--confirm] [--json]',
+};
+
 export function commandUsage(command = 'root') {
+  if (command.startsWith('adapter ')) {
+    const name = command.slice('adapter '.length);
+    if (Object.hasOwn(ADAPTER_USAGE, name)) return `Usage:\n  dotdotgod adapter ${name} ${ADAPTER_USAGE[name]}`;
+  }
   switch (command) {
+    case 'adapter':
+      return `Usage:\n${Object.entries(ADAPTER_USAGE).map(([name, args]) => `  dotdotgod adapter ${name} ${args}`).join('\n')}
+
+Hosts: claude-code, codex, antigravity, opencode, hermes, pi (optional skills only).
+OpenCode defaults to project scope; other hosts use user scope. Setup-plan previews unless --confirm is supplied.`;
     case 'validate':
       return `Usage:
   dotdotgod validate <root> [--include-local-memory] [--check-index] [--max-lines n] [--max-chars n] [--no-link-check] [--json]`;
@@ -97,6 +113,7 @@ Usage:
 
 Commands:
   init                  Initialize project memory files.
+  adapter               Install, inspect or remove host adapters; set up Codex Plan Mode.
   config                Inspect or initialize project configuration.
   query                 Search project documentation.
   embedding             Inspect or install the optional local embedding runtime.
@@ -166,6 +183,7 @@ export function helpCommandFromArgs(args) {
   if (nonHelp[0] === 'traceability' && nonHelp[1]) return `traceability ${nonHelp[1]}`;
   if (nonHelp[0] === 'config' && nonHelp[1] === 'init') return 'config init';
   if (nonHelp[0] === 'embedding' && nonHelp[1]) return `embedding ${nonHelp[1]}`;
+  if (nonHelp[0] === 'adapter' && Object.hasOwn(ADAPTER_USAGE, nonHelp[1])) return `adapter ${nonHelp[1]}`;
   return nonHelp[0] ?? 'root';
 }
 

@@ -2,9 +2,12 @@
 
 ## Setup
 
-Generate resources and load packages/opencode as a local plugin directory in a
-disposable project. Use OpenCode 2.1.2 and Node >=22.5. Keep user configuration
-unchanged; use isolated configuration for permissions cases.
+Use a disposable project and private HOME/XDG paths. Preview then run
+`dotdotgod adapter install opencode --root <project>` from a durable CLI.
+Confirm exactly one local plugin entry in the project config, with user config
+unchanged. Separately exercise `--scope user` with its isolated XDG config.
+Use OpenCode 2.1.2 for the native Plan Mode contract; discovering the plugin on
+another version does not verify automatic plan storage. Use Node >=22.5.
 
 ## Planning
 

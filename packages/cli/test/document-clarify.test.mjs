@@ -5,14 +5,14 @@ import { existsSync, readFileSync } from 'node:fs';
 const read = (path) => readFileSync(new URL(`../../../${path}`, import.meta.url), 'utf8');
 
 test('standalone document-clarify preserves guidance without adapter copies', () => {
-  const source = read('packages/shared/workflows/doc-clarify.md').trim();
-  const skill = read('packages/skills/skills/document-clarify/SKILL.md');
+  const source = read('packages/cli/assets/workflows/doc-clarify.md').trim();
+  const skill = read('packages/cli/assets/optional-skills/document-clarify/SKILL.md');
   assert.ok(skill.includes(source), 'standalone skill must embed the complete shared workflow');
   assert.ok(skill.includes('excludePaths'));
   assert.ok(skill.includes('config.areas'));
   assert.ok(skill.includes('When CLI-backed routing is unavailable'));
   assert.doesNotMatch(skill, /operator-authorized selected repository|OpenCode Code Mode/);
-  assert.match(read('packages/skills/skills/document-clarify/agents/openai.yaml'), /Document Clarify/);
+  assert.match(read('packages/cli/assets/optional-skills/document-clarify/agents/openai.yaml'), /Document Clarify/);
   for (const adapter of ['pi', 'claude-code', 'codex', 'hermes', 'opencode', 'antigravity']) {
     assert.equal(existsSync(new URL(`../../../packages/${adapter}/skills/document-clarify`, import.meta.url)), false, `${adapter} must not bundle the skill`);
   }

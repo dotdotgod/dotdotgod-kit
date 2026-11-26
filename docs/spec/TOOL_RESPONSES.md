@@ -56,14 +56,14 @@ permission failures may reject separately from server-reported isError responses
 ### Traceability Links
 
 - Implemented by:
-  - [packages/context/src/presentation.mjs](../../packages/context/src/presentation.mjs)
-  - [packages/context/src/server.mjs](../../packages/context/src/server.mjs)
+  - [packages/cli/src/context/presentation.mjs](../../packages/cli/src/context/presentation.mjs)
+  - [packages/cli/src/context/server.mjs](../../packages/cli/src/context/server.mjs)
   - [packages/pi/extensions/context-tools/index.ts](../../packages/pi/extensions/context-tools/index.ts)
   - [packages/pi/extensions/project-memory/index.ts](../../packages/pi/extensions/project-memory/index.ts)
   - [packages/pi/extensions/plan-mode/index.ts](../../packages/pi/extensions/plan-mode/index.ts)
 - Verified by:
-  - [packages/context/test/presentation.test.mjs](../../packages/context/test/presentation.test.mjs)
-  - [packages/context/test/mcp.test.mjs](../../packages/context/test/mcp.test.mjs)
+  - [packages/cli/test/context/presentation.test.mjs](../../packages/cli/test/context/presentation.test.mjs)
+  - [packages/cli/test/context/mcp.test.mjs](../../packages/cli/test/context/mcp.test.mjs)
   - [packages/pi/test/structured-output.test.ts](../../packages/pi/test/structured-output.test.ts)
   - [packages/pi/test/context-codemode.test.ts](../../packages/pi/test/context-codemode.test.ts)
 - Related docs:
@@ -74,5 +74,5 @@ permission failures may reject separately from server-reported isError responses
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/context/src/presentation.mjs","packages/context/src/server.mjs","packages/pi/extensions/context-tools/index.ts","packages/pi/extensions/project-memory/index.ts","packages/pi/extensions/plan-mode/index.ts"],"verifiedBy":["packages/context/test/presentation.test.mjs","packages/context/test/mcp.test.mjs","packages/pi/test/structured-output.test.ts","packages/pi/test/context-codemode.test.ts"],"relatedDocs":["docs/spec/PI_CONTEXT_TOOL_SELECTION.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/context/presentation.mjs","packages/cli/src/context/server.mjs","packages/pi/extensions/context-tools/index.ts","packages/pi/extensions/project-memory/index.ts","packages/pi/extensions/plan-mode/index.ts"],"verifiedBy":["packages/cli/test/context/presentation.test.mjs","packages/cli/test/context/mcp.test.mjs","packages/pi/test/structured-output.test.ts","packages/pi/test/context-codemode.test.ts"],"relatedDocs":["docs/spec/PI_CONTEXT_TOOL_SELECTION.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]}
 ```

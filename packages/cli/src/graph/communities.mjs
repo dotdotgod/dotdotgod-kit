@@ -15,10 +15,9 @@ function communityKeyForNode(node, config) {
   if (path.startsWith('packages/pi/extensions/plan-mode/')) return 'pi-plan-mode';
   if (path.startsWith('packages/pi/extensions/load-project/')) return 'pi-load-project';
   if (path.startsWith('packages/pi/extensions/context-metrics/')) return 'pi-context-metrics';
+  if (path.startsWith('packages/cli/assets/')) return 'shared-adapter-resources';
   if (path.startsWith('packages/cli/')) return 'cli';
-  if (path.startsWith('packages/claude-code/')) return 'claude-code-adapter';
-  if (path.startsWith('packages/codex/')) return 'codex-adapter';
-  if (path.startsWith('packages/shared/')) return 'shared-adapter-resources';
+  if (path.startsWith('packages/obsidian/')) return 'obsidian';
   const area = docsArea(path, config);
   if (area) return `docs-${area}`;
   if (node.type === 'package' || node.type === 'script' || node.type === 'binary' || node.type === 'dependency' || node.type === 'package_resource') return 'package-metadata';

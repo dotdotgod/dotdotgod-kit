@@ -2,14 +2,14 @@
   "name": "dotdotgod-workspace",
   "version": "0.11.0",
   "private": true,
-  "description": "Workspace for dotdotgod project memory packages across CLI, Pi, OpenCode, Claude Code, Codex, Hermes, and Antigravity adapters.",
+  "description": "Workspace for the dotdotgod CLI, Pi adapter, and Obsidian plugin.",
   "type": "module",
   "license": "Elastic-2.0",
   "packageManager": "pnpm@10.30.0",
   "scripts": {
     "build": "node scripts/obsidian-community-build.mjs",
-    "generate": "node scripts/generate-adapters.mjs && node scripts/build-adapter-runtime.mjs",
-    "verify:generated": "node scripts/generate-adapters.mjs --check && node scripts/build-adapter-runtime.mjs --check",
+    "generate": "node scripts/generate-adapters.mjs",
+    "verify:generated": "node scripts/generate-adapters.mjs --check",
     "verify:types": "pnpm -r --if-present run typecheck",
     "verify:unit": "pnpm -r --if-present run test",
     "verify:contract": "node scripts/check-package-verify-contract.mjs",
@@ -23,7 +23,7 @@
     "thumbnail:terminal": "node scripts/generate-terminal-thumbnail.mjs",
     "pack:dry-run:packages": "pnpm -r --if-present run pack:dry-run",
     "pack:dry-run": "pnpm run verify:generated && pnpm run pack:dry-run:packages",
-    "publish:all": "pnpm --filter @dotdotgod/skills publish --access public && pnpm --filter @dotdotgod/cli publish --access public && pnpm --filter @dotdotgod/context publish --access public && pnpm --filter @dotdotgod/pi publish --access public && pnpm --filter @dotdotgod/claude-code publish --access public && pnpm --filter @dotdotgod/codex publish --access public && pnpm --filter @dotdotgod/hermes publish --access public && pnpm --filter @dotdotgod/opencode publish --access public && pnpm --filter @dotdotgod/antigravity publish --access public",
+    "publish:all": "pnpm --filter @dotdotgod/cli publish --access public && pnpm --filter @dotdotgod/pi publish --access public",
     "prepare": "husky"
   },
   "devDependencies": {

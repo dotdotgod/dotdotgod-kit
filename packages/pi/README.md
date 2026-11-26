@@ -1,6 +1,6 @@
 # @dotdotgod/pi
 
-`document-clarify` is distributed separately through [@dotdotgod/skills](../skills/README.md). Before upgrading from a bundled copy, follow its [migration guide](../skills/MIGRATION.md).
+The unified-runtime setup targets 0.12.0 (not yet released). Install Pi itself through Pi; the CLI command `dotdotgod adapter install pi --with-skills` installs only `ddg-planning` and `document-clarify`. See the [migration guide](../../docs/spec/ADAPTER_MIGRATION.md) before replacing older copies.
 
 [![npm version](https://img.shields.io/npm/v/@dotdotgod/pi.svg)](https://www.npmjs.com/package/@dotdotgod/pi) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod--kit-181717?logo=github)](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/pi) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](https://github.com/dotdotgod/dotdotgod-kit/blob/main/LICENSE)
 
@@ -107,7 +107,7 @@ MCP `index` accepts files or explicitly requested bounded directories, including
 
 MCP `fetch_and_index` accepts bounded credential-free HTTP(S) resources and applies application-level DNS, address, peer, redirect, encoding, wire-byte, and decoded-byte validation. Accepted HTML is normalized as bounded untrusted text without browser rendering, JavaScript, subresource loading, or link following by default. The shared API supports an optional injected renderer, but Pi bundles none, so `browser: true` fails explicitly. These controls provide defense in depth rather than a network sandbox or prompt-injection guarantee. The SQLite store uses WAL, a bounded busy timeout, and transactional source replacement, expiry, and purge. MCP `doctor` performs local read-only checks without network access, migration, or repairs, while purge requires `confirm: true` and exactly one selector: scope, session ID, or source ID.
 
-For output modes, ingestion limits, retrieval details, and the complete security contract, see [`@dotdotgod/context`](https://www.npmjs.com/package/@dotdotgod/context), its [package README](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/context), and the maintained [Context execution specification](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md).
+Pi registers `@dotdotgod/cli/bin/dotdotgod.mjs` with the `mcp` argument. The CLI is the only runtime dependency; no separate context package or global CLI is required for Pi's MCP registration. See the maintained [context execution spec](https://github.com/dotdotgod/dotdotgod-kit/blob/main/docs/spec/CONTEXT_EXECUTION.md) for output modes, ingestion limits, retrieval, and security boundaries.
 
 ### Choosing Tools, Including Codemode
 

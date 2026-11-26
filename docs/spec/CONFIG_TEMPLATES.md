@@ -97,8 +97,8 @@ The CLI-independent POSIX fallback packages all built-in templates and accepts `
   - [packages/cli/src/config/templates.mjs](../../packages/cli/src/config/templates.mjs)
   - [packages/cli/src/commands/config.mjs](../../packages/cli/src/commands/config.mjs)
   - [packages/cli/src/init.mjs](../../packages/cli/src/init.mjs)
-  - [packages/shared/initializer/scripts/init_project.sh](../../packages/shared/initializer/scripts/init_project.sh)
-  - [packages/shared/workflows/init.md](../../packages/shared/workflows/init.md)
+  - [packages/cli/assets/initializer/scripts/init_project.sh](../../packages/cli/assets/initializer/scripts/init_project.sh)
+  - [packages/cli/assets/workflows/init.md](../../packages/cli/assets/workflows/init.md)
   - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
@@ -113,5 +113,5 @@ The CLI-independent POSIX fallback packages all built-in templates and accepts `
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/config/templates.mjs","packages/cli/src/commands/config.mjs","packages/cli/src/init.mjs","packages/shared/initializer/scripts/init_project.sh","packages/shared/workflows/init.md","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_TEMPLATES.md"],"relatedDocs":["docs/spec/CONFIG_COMMAND.md","docs/spec/PROJECT_INITIALIZER.md"],"designDecisions":["docs/arch/CONFIG_TEMPLATE_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/config/templates.mjs","packages/cli/src/commands/config.mjs","packages/cli/src/init.mjs","packages/cli/assets/initializer/scripts/init_project.sh","packages/cli/assets/workflows/init.md","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_TEMPLATES.md"],"relatedDocs":["docs/spec/CONFIG_COMMAND.md","docs/spec/PROJECT_INITIALIZER.md"],"designDecisions":["docs/arch/CONFIG_TEMPLATE_ARCHITECTURE.md"]}
 ```

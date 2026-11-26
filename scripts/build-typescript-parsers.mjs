@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { patchTypescriptGrammar } from '../packages/cli/src/symbols/typescript-import-grammar.mjs';
+import { patchTypescriptGrammar } from '../packages/cli/src/symbols/grammar-patches.mjs';
 
 const source = resolve(process.argv[2]);
 const cli = process.env.TREE_SITTER_CLI ?? 'tree-sitter';

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { SEMANTIC_RELATIONS } from '../memory/config.mjs';
-import { CACHE_DIR } from '../index/constants.mjs';
+import { CACHE_DIR } from '../primitives.mjs';
 
 const GRAPH_NODE_SHARDS = ['docs', 'packages', 'source'];
 const GRAPH_EDGE_SHARDS = ['docs-links', 'packages', 'other'];

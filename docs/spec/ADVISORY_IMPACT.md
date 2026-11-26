@@ -102,23 +102,23 @@ Pending records expire after 24 hours; expiry never proves a review succeeded.
 ### Traceability Links
 
 - Implemented by:
-  - [packages/context/src/impact-path.mjs](../../packages/context/src/impact-path.mjs)
-  - [packages/context/src/impact-state.mjs](../../packages/context/src/impact-state.mjs)
-  - [packages/context/src/hook-state.mjs](../../packages/context/src/hook-state.mjs)
-  - [packages/context/src/hooks.mjs](../../packages/context/src/hooks.mjs)
-  - [packages/context/src/hooks-antigravity.mjs](../../packages/context/src/hooks-antigravity.mjs)
-  - [packages/context/src/server.mjs](../../packages/context/src/server.mjs)
+  - [packages/cli/src/context/impact-path.mjs](../../packages/cli/src/context/impact-path.mjs)
+  - [packages/cli/src/context/impact-state.mjs](../../packages/cli/src/context/impact-state.mjs)
+  - [packages/cli/src/context/hook-state.mjs](../../packages/cli/src/context/hook-state.mjs)
+  - [packages/cli/src/context/hooks.mjs](../../packages/cli/src/context/hooks.mjs)
+  - [packages/cli/src/context/hooks-antigravity.mjs](../../packages/cli/src/context/hooks-antigravity.mjs)
+  - [packages/cli/src/context/server.mjs](../../packages/cli/src/context/server.mjs)
   - [packages/pi/extensions/context-tools/index.ts](../../packages/pi/extensions/context-tools/index.ts)
-  - [packages/hermes/impact.py](../../packages/hermes/impact.py)
-  - [packages/context/src/session.mjs](../../packages/context/src/session.mjs)
+  - [packages/cli/assets/adapters/hermes/impact.py](../../packages/cli/assets/adapters/hermes/impact.py)
+  - [packages/cli/src/primitives.mjs](../../packages/cli/src/primitives.mjs)
 - Verified by:
-  - [packages/context/test/impact-state.test.mjs](../../packages/context/test/impact-state.test.mjs)
-  - [packages/context/test/hooks.test.mjs](../../packages/context/test/hooks.test.mjs)
-  - [packages/context/test/hooks-antigravity.test.mjs](../../packages/context/test/hooks-antigravity.test.mjs)
-  - [packages/context/test/mcp.test.mjs](../../packages/context/test/mcp.test.mjs)
+  - [packages/cli/test/context/impact-state.test.mjs](../../packages/cli/test/context/impact-state.test.mjs)
+  - [packages/cli/test/context/hooks.test.mjs](../../packages/cli/test/context/hooks.test.mjs)
+  - [packages/cli/test/context/hooks-antigravity.test.mjs](../../packages/cli/test/context/hooks-antigravity.test.mjs)
+  - [packages/cli/test/context/mcp.test.mjs](../../packages/cli/test/context/mcp.test.mjs)
   - [packages/pi/test/context-root-isolation.test.ts](../../packages/pi/test/context-root-isolation.test.ts)
   - [packages/pi/test/context-execution-gates.test.ts](../../packages/pi/test/context-execution-gates.test.ts)
-  - [packages/hermes/test/test_runtime.py](../../packages/hermes/test/test_runtime.py)
+  - [packages/cli/test/adapters/hermes/test_runtime.py](../../packages/cli/test/adapters/hermes/test_runtime.py)
 - Related docs:
   - [docs/spec/CONTEXT_EXECUTION.md](CONTEXT_EXECUTION.md)
   - [docs/spec/CONTEXT_RETENTION.md](CONTEXT_RETENTION.md)
@@ -131,5 +131,5 @@ Pending records expire after 24 hours; expiry never proves a review succeeded.
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/context/src/impact-path.mjs","packages/context/src/impact-state.mjs","packages/context/src/hook-state.mjs","packages/context/src/hooks.mjs","packages/context/src/hooks-antigravity.mjs","packages/context/src/server.mjs","packages/pi/extensions/context-tools/index.ts","packages/hermes/impact.py","packages/context/src/session.mjs"],"verifiedBy":["packages/context/test/impact-state.test.mjs","packages/context/test/hooks.test.mjs","packages/context/test/hooks-antigravity.test.mjs","packages/context/test/mcp.test.mjs","packages/pi/test/context-root-isolation.test.ts","packages/pi/test/context-execution-gates.test.ts","packages/hermes/test/test_runtime.py"],"relatedDocs":["docs/spec/CONTEXT_EXECUTION.md","docs/spec/CONTEXT_RETENTION.md","docs/spec/ANTIGRAVITY_ADAPTER.md","docs/spec/HERMES_ADAPTER.md","docs/spec/DECISION_CONFIG.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/context/impact-path.mjs","packages/cli/src/context/impact-state.mjs","packages/cli/src/context/hook-state.mjs","packages/cli/src/context/hooks.mjs","packages/cli/src/context/hooks-antigravity.mjs","packages/cli/src/context/server.mjs","packages/pi/extensions/context-tools/index.ts","packages/cli/assets/adapters/hermes/impact.py","packages/cli/src/primitives.mjs"],"verifiedBy":["packages/cli/test/context/impact-state.test.mjs","packages/cli/test/context/hooks.test.mjs","packages/cli/test/context/hooks-antigravity.test.mjs","packages/cli/test/context/mcp.test.mjs","packages/pi/test/context-root-isolation.test.ts","packages/pi/test/context-execution-gates.test.ts","packages/cli/test/adapters/hermes/test_runtime.py"],"relatedDocs":["docs/spec/CONTEXT_EXECUTION.md","docs/spec/CONTEXT_RETENTION.md","docs/spec/ANTIGRAVITY_ADAPTER.md","docs/spec/HERMES_ADAPTER.md","docs/spec/DECISION_CONFIG.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]}
 ```

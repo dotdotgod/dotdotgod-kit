@@ -110,7 +110,7 @@ JSON output for init errors includes `ok: false`, `command: "config init"`, `roo
   - [packages/cli/src/init.mjs](../../packages/cli/src/init.mjs)
   - [packages/cli/src/memory/config.mjs](../../packages/cli/src/memory/config.mjs)
   - [packages/cli/src/config/templates.mjs](../../packages/cli/src/config/templates.mjs)
-  - [packages/shared/initializer/templates/dotdotgod.config.json](../../packages/shared/initializer/templates/dotdotgod.config.json)
+  - [packages/cli/assets/initializer/templates/dotdotgod.config.json](../../packages/cli/assets/initializer/templates/dotdotgod.config.json)
   - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
@@ -131,5 +131,5 @@ JSON output for init errors includes `ok: false`, `command: "config init"`, `roo
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/init.mjs","packages/cli/src/memory/config.mjs","packages/cli/src/config/templates.mjs","packages/shared/initializer/templates/dotdotgod.config.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_COMMAND.md","docs/test/CONFIG_TEMPLATES.md"],"relatedDocs":["docs/spec/CONFIG_TEMPLATES.md","docs/spec/PROJECT_INITIALIZER.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/spec/CLI_INTERFACE.md"],"designDecisions":["docs/arch/MEMORY_AREA_CONFIG.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/init.mjs","packages/cli/src/memory/config.mjs","packages/cli/src/config/templates.mjs","packages/cli/assets/initializer/templates/dotdotgod.config.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_COMMAND.md","docs/test/CONFIG_TEMPLATES.md"],"relatedDocs":["docs/spec/CONFIG_TEMPLATES.md","docs/spec/PROJECT_INITIALIZER.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/spec/CLI_INTERFACE.md"],"designDecisions":["docs/arch/MEMORY_AREA_CONFIG.md"]}
 ```

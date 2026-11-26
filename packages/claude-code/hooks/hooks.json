@@ -1,7 +1,0 @@
-{
-  "hooks": {
-    "SessionStart": [{ "matcher": "", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/runtime.mjs\" sessionstart" }] }],
-    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/runtime.mjs\" userpromptsubmit", "timeout": 25 }] }],
-    "PostToolUse": [{ "matcher": "Edit|Write|MultiEdit|mcp__.*", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/runtime.mjs\" posttooluse" }] }]
-  }
-}

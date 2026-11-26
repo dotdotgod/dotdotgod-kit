@@ -4,7 +4,7 @@
 
 `project-initializer` creates shared agent instructions, documentation indexes, local-memory ignores, and a complete editable project config.
 
-The `dotdotgod init` CLI command and bundled POSIX fallback produce the same baseline file set and canonical config for Pi, Claude Code, and Codex workflows.
+The `dotdotgod init` CLI command and bundled POSIX fallback produce the same baseline file set and canonical config for host workflows that offer a shell fallback; each uses the canonical CLI initializer assets (Pi ships a synchronized copy).
 
 ## CLI Contract
 
@@ -74,7 +74,7 @@ The full command catalog remains owned by CLI Help. `CLAUDE.md` and `CODEX.md` s
 - The initializer skill inspects the project and passes an appropriate template explicitly when evidence is sufficient.
 - `dotdotgod.config.json` is the only supported project config filename.
 - Existing `dotdotgod.config.json` files follow the normal skip and dry-run rules.
-- All bundled templates are generated and packaged with each adapter rather than maintained separately in shell.
+- The CLI packages the canonical generated templates; host workflow renderers reuse those assets and Pi packages a synchronized copy.
 - The POSIX fallback supports explicitly selected bundled templates; custom templates require the CLI.
 
 ## Project Name
@@ -121,12 +121,10 @@ Generated docs follow these conventions:
   - [packages/cli/src/init.mjs](../../packages/cli/src/init.mjs)
   - [packages/cli/src/core.mjs](../../packages/cli/src/core.mjs)
   - [packages/cli/src/config/templates.mjs](../../packages/cli/src/config/templates.mjs)
-  - [packages/shared/initializer/scripts/init_project.sh](../../packages/shared/initializer/scripts/init_project.sh)
-  - [packages/shared/workflows/init.md](../../packages/shared/workflows/init.md)
-  - [packages/shared/initializer/templates/dotdotgod.config.json](../../packages/shared/initializer/templates/dotdotgod.config.json)
+  - [packages/cli/assets/initializer/scripts/init_project.sh](../../packages/cli/assets/initializer/scripts/init_project.sh)
+  - [packages/cli/assets/workflows/init.md](../../packages/cli/assets/workflows/init.md)
+  - [packages/cli/assets/initializer/templates/dotdotgod.config.json](../../packages/cli/assets/initializer/templates/dotdotgod.config.json)
   - [packages/pi/skills/project-initializer/scripts/init_project.sh](../../packages/pi/skills/project-initializer/scripts/init_project.sh)
-  - [packages/claude-code/skills/project-initializer/scripts/init_project.sh](../../packages/claude-code/skills/project-initializer/scripts/init_project.sh)
-  - [packages/codex/skills/project-initializer/scripts/init_project.sh](../../packages/codex/skills/project-initializer/scripts/init_project.sh)
   - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
 - Verified by:
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
@@ -146,5 +144,5 @@ Generated docs follow these conventions:
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/init.mjs","packages/cli/src/core.mjs","packages/cli/src/config/templates.mjs","packages/shared/initializer/scripts/init_project.sh","packages/shared/workflows/init.md","packages/shared/initializer/templates/dotdotgod.config.json","packages/pi/skills/project-initializer/scripts/init_project.sh","packages/claude-code/skills/project-initializer/scripts/init_project.sh","packages/codex/skills/project-initializer/scripts/init_project.sh","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/e2e.test.mjs","docs/test/README.md","docs/test/CONFIG_COMMAND.md","docs/test/CONFIG_TEMPLATES.md","docs/test/MANUAL_SMOKE.md"],"relatedDocs":["docs/spec/CONFIG_TEMPLATES.md","docs/spec/CLI_INTERFACE.md","docs/spec/CONFIG_COMMAND.md"],"designDecisions":["docs/arch/CONFIG_TEMPLATE_ARCHITECTURE.md","docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/init.mjs","packages/cli/src/core.mjs","packages/cli/src/config/templates.mjs","packages/cli/assets/initializer/scripts/init_project.sh","packages/cli/assets/workflows/init.md","packages/cli/assets/initializer/templates/dotdotgod.config.json","packages/pi/skills/project-initializer/scripts/init_project.sh","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/e2e.test.mjs","docs/test/README.md","docs/test/CONFIG_COMMAND.md","docs/test/CONFIG_TEMPLATES.md","docs/test/MANUAL_SMOKE.md"],"relatedDocs":["docs/spec/CONFIG_TEMPLATES.md","docs/spec/CLI_INTERFACE.md","docs/spec/CONFIG_COMMAND.md"],"designDecisions":["docs/arch/CONFIG_TEMPLATE_ARCHITECTURE.md","docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/DOCS_STRUCTURE.md"]}
 ```

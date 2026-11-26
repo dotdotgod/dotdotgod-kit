@@ -3,7 +3,7 @@
 import { readFileSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { patchCsharpGrammar } from '../packages/cli/src/symbols/csharp-contextual-grammar.mjs';
+import { patchCsharpGrammar } from '../packages/cli/src/symbols/grammar-patches.mjs';
 
 const source = resolve(process.argv[2]);
 const metadata = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'));

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { extractSymbols } from '../src/symbols/parser.mjs';
 import { buildOutlines, outlineStatus } from '../src/symbols/store.mjs';
-import { patchCsharpGrammar } from '../src/symbols/csharp-contextual-grammar.mjs';
+import { patchCsharpGrammar } from '../src/symbols/grammar-patches.mjs';
 
 const source = `using System.Text.Json.Nodes;
 namespace Example;

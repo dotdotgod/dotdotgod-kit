@@ -1,4 +1,0 @@
-interface:
-  display_name: "Doc-First Planning"
-  short_description: "Plan work from dotdotgod docs first."
-  default_prompt: "Plan this change from maintained project evidence and create a durable task plan when the work warrants one."

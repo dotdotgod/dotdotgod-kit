@@ -4,14 +4,14 @@
 
 Workspace verification keeps dotdotgod changes safe before commits, package dry-runs, and publishes.
 
-`dotdotgod validate` checks docs and project memory. Workspace `verify` is the broader repository gate: it combines generated-resource checks, package verify contract checks, package-level verification scripts, docs validation, graph cache freshness, and package dry-runs.
+`dotdotgod validate` checks docs and project memory. Workspace `verify` is the broader repository gate: it combines generated-resource checks, package verify contract checks, package-level verification scripts and docs validation. Index refresh/freshness and package dry-runs are separate gates.
 
 ## Required Workflows
 
-- `pnpm run verify` runs generated-resource drift checks, package verify contract checks, and each package's `verify` script, including the context runtime's syntax, core, hook, and stdio MCP protocol tests. The CLI package runs its test files serially so embedding/provider and e2e fixtures do not contend for shared runtime resources.
+- `pnpm run verify` runs generated-resource drift checks, package verify contract checks, and each package's `verify` script, including the context runtime's syntax, core, hook, and stdio MCP protocol tests. The CLI package runs Node tests serially, then Hermes Python unittest discovery and source-checkout docs validation. `DOTDOTGOD_REQUIRE_AGY=1 pnpm run verify` requires the real Antigravity strict-validation test instead of skipping it when `agy` is absent.
 - `pnpm run verify:cache` runs docs validation, refreshes the local `.dotdotgod/` index, and checks cache freshness.
 - `.husky/pre-push` runs workspace verification (including docs validation) once, then refreshes the index, checks cache freshness, and runs package dry-runs. It avoids the duplicate docs validation in standalone `verify:cache`, whose guarantees remain unchanged.
-- `publish:all` publishes `@dotdotgod/cli`, then `@dotdotgod/context`, then dependent Pi, Claude Code, and Codex adapters.
+- `publish:all` publishes only `@dotdotgod/cli`, then dependent `@dotdotgod/pi`. Obsidian is private and uses the community build/release workflow. Release actions require separate approval; the unified topology targets 0.12.0, not a published release.
 - `scripts/check-package-verify-contract.mjs` fails packages that define quality scripts but omit them from package-level `verify`.
 
 ## Graph Retrieval Expectations

@@ -7,7 +7,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node --test test/*.test.mjs",
-    "verify": "pnpm run build && pnpm run test"
+    "verify": "for file in scripts/dev/*.mjs; do node --check \"$file\" || exit 1; done && pnpm run build && pnpm run test"
   },
   "devDependencies": { "esbuild": "^0.25.12" }
 }

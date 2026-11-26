@@ -2,10 +2,11 @@
 
 ## Plugin Layout And Resources
 
-`@dotdotgod/antigravity` is a native Antigravity plugin for Antigravity CLI,
-Antigravity App, and Antigravity IDE. It passes `agy plugin validate --strict`
-with zero errors and zero warnings and activates with zero prompts (no required
-`variables`).
+Install the native Antigravity CLI/App/IDE plugin with
+`dotdotgod adapter install antigravity`. It writes `~/.gemini/config/plugins/dotdotgod/`
+for direct discovery. The rendered pinned plugin must pass
+`agy plugin validate --strict` with zero errors and zero warnings; its manifest
+has no required `variables`. Restart Antigravity and enable it in the host if needed.
 
 - Manifest (`plugin.json`): declares `$schema`
   (`https://antigravity.google/schemas/v1/plugin.json`), `name: "dotdotgod"`,
@@ -15,7 +16,7 @@ with zero errors and zero warnings and activates with zero prompts (no required
   (`<= 16 KiB`), free of `<script>`, `<foreignObject>`, event handlers, DTD or
   entity declarations, and external URLs.
 - MCP (`mcp_config.json`): declares `mcpServers.context` running
-  `node ${PLUGIN_ROOT}/mcp/server.mjs`, which Antigravity exposes as
+  the shared CLI with `mcp`, which Antigravity exposes as
   `dotdotgod_context` with 19 unprefixed tools.
 - Hooks (`hooks.json`): root hook config registering only `PostToolUse` and
   `PreInvocation` under `"dotdotgod"` (no `SessionStart`, `PreToolUse`, or
@@ -31,17 +32,17 @@ with zero errors and zero warnings and activates with zero prompts (no required
   `dd-load` (`dd:load`), and `dd-impact` (`dd:impact`). Planning uses
   Antigravity's built-in `/plan` with Option C-2 sync rather than a separate
   `doc-first-planning` skill. No root `commands/` folder is shipped.
-  `document-clarify` remains separate in `@dotdotgod/skills`.
-- Isolated runtime: bundled `scripts/hook-runtime.mjs` and `mcp/{server,cli,parsers}`
-  run from extracted tarballs without ancestor `node_modules` or workspace links.
+  The two [optional skills](cli/ADAPTER.md#optional-skills) are separate from the plugin.
+- Hooks run the shared CLI with `hook antigravity <event>`.
   `AGENTS.md` remains canonical; no `ANTIGRAVITY.md` or `GEMINI.md` is scaffolded.
 
 ## Runtime And MCP Boundary
 
-Node.js `>=22.5.0` is required on `PATH` for built-in `node:sqlite`. Hook
-entrypoints fail open (returning `{}` and exiting `0` with masked one-line
-stderr `<= 240` chars and no `$HOME` path) if Node is incompatible or an input
-or runtime error occurs.
+The installer checks Node.js `>=22.5.0` with built-in `node:sqlite`.
+Use the default pinned binding for GUI launches with a restricted `PATH`.
+Once invoked, hook dispatch fails open (`{}` and exit `0`) on input or runtime
+errors, with one bounded stderr line and HOME paths masked. A missing launcher
+cannot return a hook response; inspect `adapter status` and rebind.
 
 Antigravity spawns plugin MCP servers with `process.cwd() = ${PLUGIN_ROOT}`.
 When `DOTDOTGOD_PROJECT_ROOT` is unset and the client advertises
@@ -132,22 +133,21 @@ untouched (Option C-2).
 ### Traceability Links
 
 - Implemented by:
-  - [packages/antigravity/plugin.json](../../packages/antigravity/plugin.json)
-  - [packages/antigravity/mcp_config.json](../../packages/antigravity/mcp_config.json)
-  - [packages/antigravity/hooks.json](../../packages/antigravity/hooks.json)
-  - [packages/antigravity/rules/AGENTS.md](../../packages/antigravity/rules/AGENTS.md)
-  - [packages/antigravity/assets/logo.svg](../../packages/antigravity/assets/logo.svg)
-  - [packages/context/src/hooks-antigravity.mjs](../../packages/context/src/hooks-antigravity.mjs)
-  - [packages/context/src/hook-state.mjs](../../packages/context/src/hook-state.mjs)
-  - [packages/context/src/impact-state.mjs](../../packages/context/src/impact-state.mjs)
-  - [packages/context/src/server.mjs](../../packages/context/src/server.mjs)
+  - [packages/cli/assets/adapters/antigravity/plugin.json](../../packages/cli/assets/adapters/antigravity/plugin.json)
+  - [packages/cli/src/adapters/hosts/antigravity.mjs](../../packages/cli/src/adapters/hosts/antigravity.mjs)
+  - [packages/cli/assets/adapters/antigravity/hooks.json](../../packages/cli/assets/adapters/antigravity/hooks.json)
+  - [packages/cli/assets/adapters/antigravity/rules/AGENTS.md](../../packages/cli/assets/adapters/antigravity/rules/AGENTS.md)
+  - [packages/cli/assets/adapters/antigravity/assets/logo.svg](../../packages/cli/assets/adapters/antigravity/assets/logo.svg)
+  - [packages/cli/src/context/hooks-antigravity.mjs](../../packages/cli/src/context/hooks-antigravity.mjs)
+  - [packages/cli/src/context/hook-state.mjs](../../packages/cli/src/context/hook-state.mjs)
+  - [packages/cli/src/context/impact-state.mjs](../../packages/cli/src/context/impact-state.mjs)
+  - [packages/cli/src/context/server.mjs](../../packages/cli/src/context/server.mjs)
   - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
-  - [scripts/build-adapter-runtime.mjs](../../scripts/build-adapter-runtime.mjs)
-  - [packages/context/src/decision.mjs](../../packages/context/src/decision.mjs)
+  - [packages/cli/src/context/decision.mjs](../../packages/cli/src/context/decision.mjs)
 - Verified by:
-  - [packages/context/test/hooks-antigravity.test.mjs](../../packages/context/test/hooks-antigravity.test.mjs)
-  - [packages/antigravity/test/resources.test.mjs](../../packages/antigravity/test/resources.test.mjs)
-  - [packages/context/test/adapter-packaging.test.mjs](../../packages/context/test/adapter-packaging.test.mjs)
+  - [packages/cli/test/context/hooks-antigravity.test.mjs](../../packages/cli/test/context/hooks-antigravity.test.mjs)
+  - [packages/cli/test/adapters/antigravity-resources.test.mjs](../../packages/cli/test/adapters/antigravity-resources.test.mjs)
+  - [packages/cli/test/adapters/runtime-smoke.test.mjs](../../packages/cli/test/adapters/runtime-smoke.test.mjs)
   - [docs/test/ANTIGRAVITY_ADAPTER.md](../test/ANTIGRAVITY_ADAPTER.md)
 - Related docs:
   - [docs/spec/ADVISORY_IMPACT.md](ADVISORY_IMPACT.md)
@@ -167,5 +167,5 @@ untouched (Option C-2).
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/antigravity/plugin.json","packages/antigravity/mcp_config.json","packages/antigravity/hooks.json","packages/antigravity/rules/AGENTS.md","packages/antigravity/assets/logo.svg","packages/context/src/hooks-antigravity.mjs","packages/context/src/hook-state.mjs","packages/context/src/impact-state.mjs","packages/context/src/server.mjs","scripts/generate-adapters.mjs","scripts/build-adapter-runtime.mjs","packages/context/src/decision.mjs"],"verifiedBy":["packages/context/test/hooks-antigravity.test.mjs","packages/antigravity/test/resources.test.mjs","packages/context/test/adapter-packaging.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/ADVISORY_IMPACT.md","docs/spec/CONTEXT_EXECUTION.md","docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/NATIVE_PLAN_STORAGE.md","docs/spec/DECISION_CONFIG.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md","docs/arch/NATIVE_PLAN_INTEGRATION.md"],"contracts":[{"id":"ANTIGRAVITY-PLUGIN-001","title":"Native Antigravity plugin layout, skills, scoped rules, and MCP roots discovery","sections":["Plugin Layout And Resources","Runtime And MCP Boundary"],"implementedBy":["packages/antigravity/plugin.json","packages/antigravity/mcp_config.json","packages/antigravity/rules/AGENTS.md","packages/antigravity/assets/logo.svg","packages/context/src/server.mjs"],"verifiedBy":["packages/antigravity/test/resources.test.mjs","packages/context/test/adapter-packaging.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/CONTEXT_EXECUTION.md"]},{"id":"ANTIGRAVITY-IMPACT-001","title":"Non-blocking advisory impact tracking, one-time PreInvocation notice, and PostToolUse clearance","sections":["Advisory Impact Hooks"],"implementedBy":["packages/antigravity/hooks.json","packages/context/src/hooks-antigravity.mjs","packages/context/src/hook-state.mjs","packages/context/src/impact-state.mjs"],"verifiedBy":["packages/context/test/hooks-antigravity.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/ADVISORY_IMPACT.md"]},{"id":"ANTIGRAVITY-PLAN-001","title":"Read-only native /plan artifact observation and one-time workspace save advisory","sections":["Native Plan Integration"],"implementedBy":["packages/antigravity/hooks.json","packages/context/src/hooks-antigravity.mjs","packages/context/src/impact-state.mjs"],"verifiedBy":["packages/context/test/hooks-antigravity.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/NATIVE_PLAN_STORAGE.md"]}]}
+{"kind":"spec","implementedBy":["packages/cli/assets/adapters/antigravity/plugin.json","packages/cli/src/adapters/hosts/antigravity.mjs","packages/cli/assets/adapters/antigravity/hooks.json","packages/cli/assets/adapters/antigravity/rules/AGENTS.md","packages/cli/assets/adapters/antigravity/assets/logo.svg","packages/cli/src/context/hooks-antigravity.mjs","packages/cli/src/context/hook-state.mjs","packages/cli/src/context/impact-state.mjs","packages/cli/src/context/server.mjs","scripts/generate-adapters.mjs","packages/cli/src/context/decision.mjs"],"verifiedBy":["packages/cli/test/context/hooks-antigravity.test.mjs","packages/cli/test/adapters/antigravity-resources.test.mjs","packages/cli/test/adapters/runtime-smoke.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/ADVISORY_IMPACT.md","docs/spec/CONTEXT_EXECUTION.md","docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/NATIVE_PLAN_STORAGE.md","docs/spec/DECISION_CONFIG.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md","docs/arch/NATIVE_PLAN_INTEGRATION.md"],"contracts":[{"id":"ANTIGRAVITY-PLUGIN-001","title":"Native Antigravity plugin layout, skills, scoped rules, and MCP roots discovery","sections":["Plugin Layout And Resources","Runtime And MCP Boundary"],"implementedBy":["packages/cli/assets/adapters/antigravity/plugin.json","packages/cli/src/adapters/hosts/antigravity.mjs","packages/cli/assets/adapters/antigravity/rules/AGENTS.md","packages/cli/assets/adapters/antigravity/assets/logo.svg","packages/cli/src/context/server.mjs"],"verifiedBy":["packages/cli/test/adapters/antigravity-resources.test.mjs","packages/cli/test/adapters/runtime-smoke.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/CROSS_AGENT_SUPPORT.md","docs/spec/CONTEXT_EXECUTION.md"]},{"id":"ANTIGRAVITY-IMPACT-001","title":"Non-blocking advisory impact tracking, one-time PreInvocation notice, and PostToolUse clearance","sections":["Advisory Impact Hooks"],"implementedBy":["packages/cli/assets/adapters/antigravity/hooks.json","packages/cli/src/context/hooks-antigravity.mjs","packages/cli/src/context/hook-state.mjs","packages/cli/src/context/impact-state.mjs"],"verifiedBy":["packages/cli/test/context/hooks-antigravity.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/ADVISORY_IMPACT.md"]},{"id":"ANTIGRAVITY-PLAN-001","title":"Read-only native /plan artifact observation and one-time workspace save advisory","sections":["Native Plan Integration"],"implementedBy":["packages/cli/assets/adapters/antigravity/hooks.json","packages/cli/src/context/hooks-antigravity.mjs","packages/cli/src/context/impact-state.mjs"],"verifiedBy":["packages/cli/test/context/hooks-antigravity.test.mjs","docs/test/ANTIGRAVITY_ADAPTER.md"],"relatedDocs":["docs/spec/NATIVE_PLAN_STORAGE.md"]}]}
 ```

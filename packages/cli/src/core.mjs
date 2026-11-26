@@ -10,9 +10,8 @@ import { runResolve, runExpand } from './reference/resolve.mjs';
 import { runTraceability } from './commands/traceability.mjs';
 import { runGraph } from './commands/graph.mjs';
 
-export { CACHE_VERSION } from './index/constants.mjs';
 export { commandUsage, hasHelpToken, helpCommandFromArgs, isHelpToken, isVersionToken, parseCommon, printVersion, usage } from './cli/usage.mjs';
-export { rel } from './common/paths.mjs';
+export { CACHE_VERSION, rel } from './primitives.mjs';
 export { extractAnchors, extractFirstHeading, extractLinks, headingToAnchor, isKebabCase, isNumberedSeriesFilename, isUpperSnakeMarkdown, removeCodeBlocks, suggestFilenameFromHeading } from './docs/markdown.mjs';
 export { extractDotdotgodTraceabilityBlocks, findTraceabilityLinksRegion, isLocalRelativeTraceabilityPath, renderCompactTraceabilityBlock, stripTraceabilityLinksRegion, syncTraceabilityLinksInContent, traceabilityExample, validateTraceabilityBlock, validateTraceabilityLinksRegion, validateTraceabilityPlacement } from './docs/traceability.mjs';
 export { DEFAULT_IMPACT_RANKING_POLICY, DEFAULT_LOAD_POLICY, DEFAULT_VALIDATION_POLICY, SEMANTIC_RELATIONS, cloneImpactRankingPolicy, cloneLoadPolicy, cloneReferenceExpansionPolicy, cloneValidationPolicy, defaultDotdotgodConfigData, defaultDotdotgodConfigText, defaultMemoryConfig, isValidDocumentationRoot, normalizeDocumentationRoot, isMarkdownSizeExcluded, isSecretLikePathPattern, isValidPathPattern, matchPathPattern, memoryAreaForPath, memoryConfigSummary, normalizeLowSignalTerm, readMemoryConfig, requiresTraceability, resolveMemoryArea, validateMemoryConfigData } from './memory/config.mjs';
@@ -64,5 +63,6 @@ export async function runCli(argv = process.argv.slice(2)) {
   else if (command === 'expand') runExpand(args);
   else if (command === 'traceability') runTraceability(args);
   else if (command === 'graph') await runGraph(args);
+  else if (command === 'adapter') await (await import('./commands/adapter.mjs')).runAdapter(args);
   else usage(`Unknown command: ${command}`);
 }

@@ -5,8 +5,7 @@
 ```bash
 node packages/cli/bin/dotdotgod.mjs init <fixture-root> --dry-run --project-name fixture-name
 sh packages/pi/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name <fixture-root>
-sh packages/claude-code/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name <fixture-root>
-sh packages/codex/skills/project-initializer/scripts/init_project.sh --dry-run --project-name fixture-name <fixture-root>
+sh packages/cli/assets/initializer/scripts/init_project.sh --dry-run --project-name fixture-name <fixture-root>
 ```
 
 Confirm each initializer path reports `docs/plan`, `docs/archive`, and `.dotdotgod` `.gitignore` entries. Confirm only `software` and `research` create `docs/spec`, `docs/arch`, and `docs/test`; other templates list only their domain areas in generated maps. Also confirm adapter guidance does not stop when `dotdotgod` is absent; it should use the bundled shell fallback and still create README indexes needed for manual project-memory loading.
@@ -18,7 +17,9 @@ pi install npm:@dotdotgod/pi
 pi uninstall npm:@dotdotgod/pi
 ```
 
-The first public `0.1.0` publish confirmed install and uninstall worked.
+The first public `0.1.0` publish confirmed install and uninstall worked. That
+historical result does not verify 0.12.0 (not yet released). Before release use a
+local Pi checkout or matching CLI/Pi tarballs and a private profile.
 
 ## README Landing Review
 

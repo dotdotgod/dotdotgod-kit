@@ -5,25 +5,25 @@
 Use one shared runtime package, thin transport/adapter wrappers, and platform-native lifecycle integration with unified non-blocking advisory impact.
 
 ```text
-@dotdotgod/context
+@dotdotgod/cli (src/context/)
 ├── process capture, file/directory ingestion, and safe fetch
 ├── structural chunking, provenance, ranking, and FTS5 storage
 ├── read-only runtime diagnostics and project workflow services
-├── impact-path.mjs + impact-state.mjs (v2 WAL SQLite advisory store)
+├── impact-path.mjs + impact-state.mjs (v3 WAL SQLite advisory store)
 ├── hook-state.mjs + hooks.mjs + hooks-antigravity.mjs (fail-open hooks)
 └── stdio MCP server (roots/list workspace resolution + sessionBound)
 
 Pi          ── host-managed MCP + native plan/load + impact.sqlite
 OpenCode    ── plugin-registered MCP + native plan + impact.sqlite
-Claude Code ── bundled stdio MCP + advisory hooks (SessionStart/UserPromptSubmit/PostToolUse)
-Codex       ── bundled stdio MCP + advisory hooks (SessionStart/UserPromptSubmit/PostToolUse)
-Antigravity ── bundled stdio MCP (roots/list) + advisory hooks (PostToolUse/PreInvocation)
-Hermes      ── per-session bundled MCP + Python post_tool_call/before_llm + impact.sqlite
+Claude Code ── shared stdio MCP + advisory hooks (SessionStart/UserPromptSubmit/PostToolUse)
+Codex       ── shared stdio MCP + advisory hooks (SessionStart/UserPromptSubmit/PostToolUse)
+Antigravity ── shared stdio MCP (roots/list) + advisory hooks (PostToolUse/PreInvocation)
+Hermes      ── per-session CLI bridge to MCP + Python post_tool_call/before_llm + impact.sqlite
 ```
 
 ## Runtime Boundary
 
-`packages/context` owns shared behavior; adapters own host registration, paths, approvals, lifecycle, and naming.
+`packages/cli/src/context/` owns shared behavior; adapters own host registration, paths, approvals, lifecycle, and naming.
 
 The server writes only JSON-RPC to stdout. Child stdout/stderr flows to temporary files. Small bounded output returns directly; larger output is chunked and written to the project-local FTS5 database before excerpts return.
 
@@ -54,29 +54,32 @@ Storage enforces [24-hour retention](../spec/CONTEXT_RETENTION.md) across conten
 
 ## Modular Advisory Impact And Hook Architecture
 
-Advisory impact and hook logic are split into focused modules (targeting `<= 150` lines per module per `CODE_CONVENTIONS.md`):
+Advisory impact and hook logic are split by responsibility:
 
-- `packages/context/src/impact-path.mjs`: SQLite-free `resolveDocumentationRoot` (validating `dotdotgod.config.json` regular-file `<= 256 KiB` relative paths, rejecting escapes/dot-segments/control chars), `impactPath` (excluding build/cache dirs and `<docRoot>/(plan|archive)` while keeping `<docRoot>/post`), `impactFingerprint`, `sanitizeDisplayPath`, and `impactReminder` (post-`JSON.stringify` C1/separator/bidi escaping, 200-char/8-item caps, untrusted-data notice).
-- `packages/context/src/impact-state.mjs`: single owner of `.dotdotgod/context/impact.sqlite` v2 schema (`pending` with `notified` column, plus `plan_notices` without `$HOME` paths), 24-hour fixed TTL, `ImpactState`, and `withImpactReview` (re-exporting `impact-path.mjs`).
-- `packages/context/src/hook-state.mjs`: trust-boundary helpers — `parseHookInput`, `extractHookSessionId` (strict `validateSessionId`, fail-open `null`, no `'default'` fallback), `isInitializedProject` (`lstatSync` non-symlink `dotdotgod.config.json` or `.dotdotgod`), `findInitializedRoot`, `selectWorkspaceForPath` (segment-boundary longest match), `parseApplyPatchPaths`, `isDotdotgodMcpTool`, `hasFailedToolResult`, `readArtifactBounded` (`O_NOFOLLOW | O_NONBLOCK`, `2 MiB` ceiling), `formatHookError`, and `runHookSafely`.
-- `packages/context/src/hooks.mjs`: Claude Code and Codex hooks (`sessionstart`, `userpromptsubmit`, `posttooluse`; `pretooluse` returns `{}` and is removed from `hooks.json`). Legacy `.dotdotgod/context/runtime/*.json` files are ignored.
-- `packages/context/src/hooks-antigravity.mjs`: Antigravity hooks (`posttooluse`, `preinvocation`) tracking CLI/App edit tools, clearing on successful `call_mcp_tool` (`dotdotgod_context` / `project_impact`) or direct MCP, claiming unnotified rows once (`claimUnnotified`), and observing Option C-2 `/plan` artifacts.
-- `packages/hermes/impact.py`: Python `sqlite3` (`isolation_level=None`, WAL, `BEGIN IMMEDIATE`, ms TTL) interoperable with `impact.sqlite` v2 for Hermes `post_tool_call` and `before_llm`.
+- `packages/cli/src/context/impact-path.mjs`: SQLite-free `resolveDocumentationRoot` (validating `dotdotgod.config.json` regular-file `<= 256 KiB` relative paths, rejecting escapes/dot-segments/control chars), `impactPath` (excluding build/cache dirs and `<docRoot>/(plan|archive)` while keeping `<docRoot>/post`), `impactFingerprint`, `sanitizeDisplayPath`, and `impactReminder` (post-`JSON.stringify` C1/separator/bidi escaping, 200-char/8-item caps, untrusted-data notice).
+- `packages/cli/src/context/impact-state.mjs`: single owner of `.dotdotgod/context/impact.sqlite` v3 schema (`pending`, `plan_notices` without `$HOME` paths, and `load_state`), 24-hour fixed TTL, `ImpactState`, and `withImpactReview` (re-exporting `impact-path.mjs`).
+- `packages/cli/src/context/hook-state.mjs`: trust-boundary helpers — `parseHookInput`, `extractHookSessionId` (strict `validateSessionId`, fail-open `null`, no `'default'` fallback), `isInitializedProject` (`lstatSync` non-symlink `dotdotgod.config.json` or `.dotdotgod`), `findInitializedRoot`, `selectWorkspaceForPath` (segment-boundary longest match), `parseApplyPatchPaths`, `isDotdotgodMcpTool`, `hasFailedToolResult`, `readArtifactBounded` (`O_NOFOLLOW | O_NONBLOCK`, `2 MiB` ceiling), `formatHookError`, and `runHookSafely`.
+- `packages/cli/src/context/hooks.mjs`: Claude Code and Codex hooks (`sessionstart`, `userpromptsubmit`, `posttooluse`; `pretooluse` returns `{}` and is removed from `hooks.json`). Legacy `.dotdotgod/context/runtime/*.json` files are ignored.
+- `packages/cli/src/context/hooks-antigravity.mjs`: Antigravity hooks (`posttooluse`, `preinvocation`) tracking CLI/App edit tools, clearing on successful `call_mcp_tool` (`dotdotgod_context` / `project_impact`) or direct MCP, claiming unnotified rows once (`claimUnnotified`), and observing Option C-2 `/plan` artifacts.
+- `packages/cli/assets/adapters/hermes/impact.py`: Python `sqlite3` (`isolation_level=None`, WAL, `BEGIN IMMEDIATE`, ms TTL) interoperable with `impact.sqlite` v3 for Hermes `post_tool_call` and `before_llm`.
 
-## `impact.sqlite` v2 Concurrency And Fast Read-Only Path
+## `impact.sqlite` Concurrency And Fast Read-Only Path
 
 1. `database(write = false)` returns `undefined` when `impact.sqlite` does not exist (never creates directories or files).
-2. Connections execute `PRAGMA busy_timeout = 5000` and `PRAGMA journal_mode = WAL` before any `BEGIN IMMEDIATE`.
-3. **Fast read-only path (`write = false`)**: when v2 columns/tables exist, queries filter `WHERE expires_at > ?` without `BEGIN IMMEDIATE` or physical `DELETE`. Legacy v0/v1 schemas migrate idempotently under `BEGIN IMMEDIATE` when columns are missing.
-4. **Write path (`write = true`)**: runs inside `BEGIN IMMEDIATE`, prunes `expires_at <= now` from `pending` and `plan_notices`, performs the atomic mutation (`mark` returning `{ becameNonEmpty }`, `clearPaths`, `claimUnnotified` via `UPDATE ... RETURNING`, `recordPlanNotice`, `claimPlanNotice`, or `clearPlanNotice`), and commits.
+2. Writable connections use `PRAGMA busy_timeout = 5000` and `PRAGMA journal_mode = WAL` before `BEGIN IMMEDIATE`.
+3. **Fast read-only path (`write = false`)**: queries use available expiry fields without `BEGIN IMMEDIATE`, DDL, or physical `DELETE`. Older layouts migrate on write; the installer does not open these stores.
+4. **Write path (`write = true`)**: runs inside `BEGIN IMMEDIATE`, prunes `expires_at <= now` from `pending`, `plan_notices`, and `load_state`, performs the atomic mutation (`mark` returning `{ becameNonEmpty }`, `clearPaths`, `claimUnnotified` via `UPDATE ... RETURNING`, `recordPlanNotice`, `claimPlanNotice`, or `clearPlanNotice`), and commits.
 
 Non-bound hooks use `clearPaths` on successful `PostToolUse(project_impact)` and retain pending rows on failure. Session-bound MCP (`withImpactReview`) protects concurrent edits via revision/fingerprint CAS. External or shell mutations remain outside observed-edit interception.
 
 ## Packaging
 
-- `@dotdotgod/context` is published first as the runtime source of truth (consumed directly by Pi).
-- `scripts/build-adapter-runtime.mjs` bundles self-contained MCP, CLI, parser, and hook artifacts into Claude Code (`${CLAUDE_PLUGIN_ROOT}`), Codex (`${PLUGIN_ROOT}`), Antigravity (`${PLUGIN_ROOT}/mcp/server.mjs` + `scripts/hook-runtime.mjs`), OpenCode (`mcp/impact-state.mjs` + server/CLI), and Hermes (`mcp/{server,cli,bridge,tools.json}`).
-- Optional semantic embeddings stay outside generated bundles; unresolved embeddings degrade to bounded recovery evidence without raw module paths.
+The CLI's bin owns the shared stdio server and fail-open hook dispatch. Thin
+host files bind to a durable CLI installation; they contain no self-contained
+MCP/CLI/parser copies. Hermes uses a per-session `mcp-bridge` to the same
+runtime; Pi registers the bin export with `mcp`. Optional semantic embeddings
+remain separately installed and missing embeddings degrade focused Load to
+bounded recovery evidence without leaking raw module paths.
 
 ## Phase 3 Components
 

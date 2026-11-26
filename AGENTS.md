@@ -5,7 +5,7 @@ Canonical instructions for AI coding agents working in this repository.
 ## Project
 
 - Name: dotdotgod
-- Purpose: Project memory kit for AI coding agents containing shared docs initialization, plan/archive workflow conventions, and customized Pi, Claude Code, and Codex adapters.
+- Purpose: Project memory kit for AI coding agents containing shared docs initialization, plan/archive workflow conventions, and native Pi extensions plus CLI-installed Claude Code, Codex, Antigravity, OpenCode, and Hermes integrations.
 - Primary stack: TypeScript/Node.js, Pi coding agent package conventions, POSIX shell for initializer scripting.
 
 ## Working Rules

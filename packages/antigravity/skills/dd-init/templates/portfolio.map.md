@@ -1,4 +1,0 @@
-- `docs/strategy/`: Use this area for portfolio strategy and risk rules.
-- `docs/positions/`: Use this area for position theses and investment conclusions.
-- `docs/journal/`: Use this area for dated investment decisions and reviews.
-- `docs/report/`: Use this area for maintained market research and analysis.

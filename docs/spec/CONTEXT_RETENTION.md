@@ -71,21 +71,20 @@ expiry, WAL, doctor, and packed-runtime tests remain required.
 ### Traceability Links
 
 - Implemented by:
-  - [packages/context/src/retention.mjs](../../packages/context/src/retention.mjs)
-  - [packages/context/src/store.mjs](../../packages/context/src/store.mjs)
-  - [packages/context/src/impact-state.mjs](../../packages/context/src/impact-state.mjs)
-  - [packages/context/src/jobs.mjs](../../packages/context/src/jobs.mjs)
-  - [packages/context/src/content.mjs](../../packages/context/src/content.mjs)
-  - [packages/context/src/execute.mjs](../../packages/context/src/execute.mjs)
-  - [packages/context/src/server.mjs](../../packages/context/src/server.mjs)
-  - [packages/context/src/session.mjs](../../packages/context/src/session.mjs)
-  - [packages/hermes/impact.py](../../packages/hermes/impact.py)
+  - [packages/cli/src/context/store.mjs](../../packages/cli/src/context/store.mjs)
+  - [packages/cli/src/context/impact-state.mjs](../../packages/cli/src/context/impact-state.mjs)
+  - [packages/cli/src/context/jobs.mjs](../../packages/cli/src/context/jobs.mjs)
+  - [packages/cli/src/context/content.mjs](../../packages/cli/src/context/content.mjs)
+  - [packages/cli/src/context/execute.mjs](../../packages/cli/src/context/execute.mjs)
+  - [packages/cli/src/context/server.mjs](../../packages/cli/src/context/server.mjs)
+  - [packages/cli/src/primitives.mjs](../../packages/cli/src/primitives.mjs)
+  - [packages/cli/assets/adapters/hermes/impact.py](../../packages/cli/assets/adapters/hermes/impact.py)
 - Verified by:
-  - [packages/context/test/retention.test.mjs](../../packages/context/test/retention.test.mjs)
-  - [packages/context/test/impact-state.test.mjs](../../packages/context/test/impact-state.test.mjs)
-  - [packages/context/test/store-operations.test.mjs](../../packages/context/test/store-operations.test.mjs)
-  - [packages/context/test/mcp.test.mjs](../../packages/context/test/mcp.test.mjs)
-  - [packages/hermes/test/test_runtime.py](../../packages/hermes/test/test_runtime.py)
+  - [packages/cli/test/context/retention.test.mjs](../../packages/cli/test/context/retention.test.mjs)
+  - [packages/cli/test/context/impact-state.test.mjs](../../packages/cli/test/context/impact-state.test.mjs)
+  - [packages/cli/test/context/store-operations.test.mjs](../../packages/cli/test/context/store-operations.test.mjs)
+  - [packages/cli/test/context/mcp.test.mjs](../../packages/cli/test/context/mcp.test.mjs)
+  - [packages/cli/test/adapters/hermes/test_runtime.py](../../packages/cli/test/adapters/hermes/test_runtime.py)
 - Related docs:
   - [docs/spec/CONTEXT_EXECUTION.md](CONTEXT_EXECUTION.md)
   - [docs/spec/ADVISORY_IMPACT.md](ADVISORY_IMPACT.md)
@@ -97,5 +96,5 @@ expiry, WAL, doctor, and packed-runtime tests remain required.
 ## Traceability
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/context/src/retention.mjs","packages/context/src/store.mjs","packages/context/src/impact-state.mjs","packages/context/src/jobs.mjs","packages/context/src/content.mjs","packages/context/src/execute.mjs","packages/context/src/server.mjs","packages/context/src/session.mjs","packages/hermes/impact.py"],"verifiedBy":["packages/context/test/retention.test.mjs","packages/context/test/impact-state.test.mjs","packages/context/test/store-operations.test.mjs","packages/context/test/mcp.test.mjs","packages/hermes/test/test_runtime.py"],"relatedDocs":["docs/spec/CONTEXT_EXECUTION.md","docs/spec/ADVISORY_IMPACT.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/context/store.mjs","packages/cli/src/context/impact-state.mjs","packages/cli/src/context/jobs.mjs","packages/cli/src/context/content.mjs","packages/cli/src/context/execute.mjs","packages/cli/src/context/server.mjs","packages/cli/src/primitives.mjs","packages/cli/assets/adapters/hermes/impact.py"],"verifiedBy":["packages/cli/test/context/retention.test.mjs","packages/cli/test/context/impact-state.test.mjs","packages/cli/test/context/store-operations.test.mjs","packages/cli/test/context/mcp.test.mjs","packages/cli/test/adapters/hermes/test_runtime.py"],"relatedDocs":["docs/spec/CONTEXT_EXECUTION.md","docs/spec/ADVISORY_IMPACT.md"],"designDecisions":["docs/arch/CONTEXT_EXECUTION_ARCHITECTURE.md"]}
 ```

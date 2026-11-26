@@ -4,6 +4,7 @@ Focused behavior contracts for the `dotdotgod` command-line interface.
 
 Use these files instead of the legacy monolithic `docs/spec/CLI_INTERFACE.md` when changing or verifying one CLI surface:
 
+- [`ADAPTER.md`](ADAPTER.md): host install, status, uninstall, runtime binding, optional skills, and Codex Plan setup.
 - `DISCOVERY.md`: top-level help/version, subcommand help, command side-effect boundaries, unknown commands, and validation budget override flags.
 - `GRAPH_IMPACT.md`: impact ranking/output behavior and the standalone `graph serve` traceability contract.
 - `MAP.md`: shared read-only documentation discovery, depth-bounded tree rendering, human/JSON output, and structured failures.

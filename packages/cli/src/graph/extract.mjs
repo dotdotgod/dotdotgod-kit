@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
-import { rel } from '../common/paths.mjs';
+import { rel } from '../primitives.mjs';
 import { extractLinks } from '../docs/markdown.mjs';
 import { defaultMemoryConfig } from '../memory/config.mjs';
 import { addEdge, addNode } from './store.mjs';

@@ -4,9 +4,9 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
+import { CACHE_VERSION } from '../src/primitives.mjs';
 import {
   BUILT_IN_TEMPLATE_NAMES,
-  CACHE_VERSION,
   addDeterministicSemanticEdges,
   buildCommunities,
   buildGraph,
@@ -59,6 +59,15 @@ import {
   validateTraceabilityBlock,
   validateTraceabilityLinksRegion,
 } from '../src/core.mjs';
+
+it('groups migrated CLI assets with shared adapter resources', () => {
+  const paths = ['packages/cli/assets/workflows/init.md', 'packages/cli/assets/initializer/scripts/init_project.sh'];
+  const nodes = paths.map(path => ({ id: `file:${path}`, type: 'file', path }));
+  const { communities } = buildCommunities({ graph: { nodes, edges: [] } });
+  assert.equal(communities.length, 1);
+  assert.equal(communities[0].id, 'shared-adapter-resources');
+  assert.deepEqual(communities[0].files, paths);
+});
 
 describe('documentation map', () => {
   it('renders all boundary files and named child summaries deterministically', () => {
@@ -180,15 +189,6 @@ function cloneConfigWithImpactRanking(impactRanking = {}) {
   return config;
 }
 
-function fencedBlocks(markdown, language) {
-  return [...markdown.matchAll(/```([^\n]*)\n([\s\S]*?)```/g)]
-    .filter((match) => match[1].trim().split(/\s+/)[0] === language)
-    .map((match) => match[2].trim());
-}
-
-function commandStringsFromHookConfig(config) {
-  return Object.values(config.hooks ?? {}).flatMap((groups) => groups.flatMap((group) => (group.hooks ?? []).map((hook) => hook.command).filter(Boolean)));
-}
 
 describe('CLI docs helpers', () => {
   it('validates dotdotgod naming conventions', () => {
@@ -799,82 +799,6 @@ describe('CLI docs helpers', () => {
     assert(validateMemoryConfigData({ planMode: { writablePaths: ['src/**'] } }, root).length === 0);
     assert(validateMemoryConfigData({ planMode: { writablePaths: '../docs/**' } }, root).length === 0);
   });
-
-  it('keeps Claude Code and Codex hook JSON examples parseable with supported events', () => {
-    const repoRoot = resolve('../..');
-    const docs = [
-      readFileSync(join(repoRoot, 'packages/claude-code/hooks/README.md'), 'utf8'),
-      readFileSync(join(repoRoot, 'packages/codex/hooks/README.md'), 'utf8'),
-    ];
-    const allowedEvents = new Set(['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'Stop']);
-
-    for (const doc of docs) {
-      const blocks = fencedBlocks(doc, 'json');
-      assert(blocks.length > 0);
-      for (const block of blocks) {
-        const parsed = JSON.parse(block);
-        assert(parsed.hooks && typeof parsed.hooks === 'object');
-        for (const [eventName, groups] of Object.entries(parsed.hooks)) {
-          assert(allowedEvents.has(eventName), `unexpected hook event: ${eventName}`);
-          assert(Array.isArray(groups), `hook event must be an array: ${eventName}`);
-          for (const group of groups) {
-            assert(Array.isArray(group.hooks), `hook group must include hooks: ${eventName}`);
-            for (const hook of group.hooks) {
-              assert.equal(hook.type, 'command');
-              assert.equal(typeof hook.command, 'string');
-              assert(hook.command.length > 0);
-            }
-          }
-        }
-      }
-    }
-  });
-
-  it('keeps hook examples within dotdotgod safety policy', () => {
-    const repoRoot = resolve('../..');
-    const claudeHooks = readFileSync(join(repoRoot, 'packages/claude-code/hooks/README.md'), 'utf8');
-    const codexHooks = readFileSync(join(repoRoot, 'packages/codex/hooks/README.md'), 'utf8');
-    const allExampleText = [...fencedBlocks(claudeHooks, 'json'), ...fencedBlocks(codexHooks, 'json'), ...fencedBlocks(codexHooks, 'toml')].join('\n');
-
-    assert.doesNotMatch(allExampleText, /pnpm run verify/);
-    assert.doesNotMatch(allExampleText, /dotdotgod index\b/);
-    assert.doesNotMatch(allExampleText, /mv\s+docs\/plan/);
-    assert.doesNotMatch([...fencedBlocks(codexHooks, 'json'), ...fencedBlocks(codexHooks, 'toml')].join('\n'), /dotdotgod status \. --json/);
-    assert.match(codexHooks, /Codex stop hooks need Codex-compatible hook output/);
-    assert.match(codexHooks, /cache-aware/);
-    assert.match(codexHooks, /plugin_hooks/);
-    assert.match(codexHooks, /dd:impact/);
-    assert.match(codexHooks, /UserPromptSubmit/);
-    assert.match(codexHooks, /dotdotgod graph impact \. --changed <path-a> --changed <path-b> --compact/);
-    assert.match(codexHooks, /complete target file list/);
-    assert.match(codexHooks, /one bounded multi-seed graph impact command/);
-    assert.match(codexHooks, /up to 20 unique paths/);
-    assert.match(claudeHooks, /UserPromptSubmit` does not support matchers/);
-    assert.match(claudeHooks, /submitted `prompt` field/);
-    assert.match(claudeHooks, /ships `hooks\/hooks\.json` with optional memory guidance and impact-pending routing/);
-    assert.match(claudeHooks, /\/dd:impact/);
-    assert.match(claudeHooks, /dotdotgod graph impact \. --changed <path-a> --changed <path-b> --compact/);
-    assert.match(claudeHooks, /one bounded multi-seed graph impact command/);
-    assert.match(claudeHooks, /up to 20 unique paths/);
-    assert.match(claudeHooks, /PostToolBatch/);
-    assert.match(claudeHooks, /StopFailure/);
-    assert.match(claudeHooks, /SessionEnd/);
-    assert.match(claudeHooks, /Plan:[\s\S]*Implement:[\s\S]*Verify:[\s\S]*Review:[\s\S]*Archive:/);
-    assert.match(claudeHooks, /\"args\": \[\"\$\{CLAUDE_PROJECT_DIR\}/);
-    assert.doesNotMatch(claudeHooks, /\"PrePlanMode\"/);
-    assert.doesNotMatch(claudeHooks, /\"PostPlanMode\"/);
-    assert.match(claudeHooks, /explicitly in plan-only mode/);
-    assert.match(codexHooks, /explicitly in plan-only mode/);
-  });
-
-  it('keeps Codex TOML hook examples in the documented shape', () => {
-    const codexHooks = readFileSync(join(resolve('../..'), 'packages/codex/hooks/README.md'), 'utf8');
-    const blocks = fencedBlocks(codexHooks, 'toml');
-    assert(blocks.length > 0);
-    assert(blocks.some((block) => /\[\[hooks\.PostToolUse\]\]/.test(block)));
-    assert(blocks.some((block) => /\[\[hooks\.PostToolUse\.hooks\]\]/.test(block)));
-    assert(blocks.some((block) => /type\s*=\s*"command"/.test(block)));
-  });
 });
 
 function writePlanStage(root, slug, stage, content, extraFiles = {}) {
@@ -1220,19 +1144,12 @@ describe('CLI index and graph helpers', () => {
     assert(graph.edges.some((edge) => edge.relation === 'declares_package'));
   });
 
-  it('keeps generated Claude Code and Codex load guidance documentation-map-first', () => {
-    const repoRoot = resolve('..', '..');
-    for (const file of [
-      'packages/claude-code/commands/dd/load.md',
-      'packages/claude-code/skills/project-load/SKILL.md',
-      'packages/codex/skills/project-load/SKILL.md',
-    ]) {
-      const content = readFileSync(join(repoRoot, file), 'utf8');
-      assert.match(content, /dotdotgod query <root>/);
-      assert.match(content, /depth 5/);
-      assert.match(content, /docs\/archive\/README\.md/);
-      assert.doesNotMatch(content, /load-snapshot/);
-    }
+  it('keeps shared load guidance documentation-map-first', () => {
+    const content = readFileSync(new URL('../assets/workflows/load.md', import.meta.url), 'utf8');
+    assert.match(content, /dotdotgod query <root>/);
+    assert.match(content, /--depth 5/);
+    assert.match(content, /docs\/archive\/README\.md/);
+    assert.doesNotMatch(content, /load-snapshot/);
   });
 });
 
