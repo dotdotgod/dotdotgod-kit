@@ -2,9 +2,9 @@
 
 ## Release Status
 
-This checkout implements the topology planned for **0.12.0**. It is not an
-announcement that 0.12.0 has been released or that old packages have been
-deprecated. Existing 0.11.x installs still use their historical packages.
+Version **0.12.0** introduces the unified CLI runtime topology. Existing 0.11.x
+installs using the retired standalone packages should follow the upgrade steps
+below.
 
 ## Upgrade An Existing Installation
 

@@ -6,6 +6,8 @@ Use reports for evidence snapshots, measurements, and interpretations. Route dur
 
 ## Index
 
+- `RELEASE_0_12_0.md`: consolidate adapters and context runtime into unified `@dotdotgod/cli` (`0.12.0`), unify advisory project-memory loading, and add the Pi Plan Mode execution verification loop.
+
 - `RELEASE_0_11_0.md`: add `@dotdotgod/antigravity` plugin adapter (Option C-2 `/plan`, three `/dd-*` skills) and unify all six adapters on non-blocking advisory impact (`impact.sqlite` v2).
 
 - `RELEASE_0_10_1.md`: remove mandatory Claude/Codex project-memory load gating; retain optional advice and impact checks.

@@ -59,9 +59,9 @@ dotdotgod graph serve .
 
 ## Host Adapters
 
-The unified runtime targets 0.12.0 (not yet released). A persistent CLI
-installation provides the stdio server (`dotdotgod mcp`) and thin host
-integrations for Claude Code, Codex, Antigravity, OpenCode, and Hermes.
+Starting with `0.12.0`, a persistent CLI installation provides the stdio server
+(`dotdotgod mcp`) and thin host integrations for Claude Code, Codex,
+Antigravity, OpenCode, and Hermes.
 
 ```bash
 dotdotgod adapter status

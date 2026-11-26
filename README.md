@@ -52,13 +52,14 @@ Every adapter follows the same loop:
 
 ## Choose an Installation
 
-This checkout targets **0.12.0**; it has not been released. The unified
-installer below describes this checkout and the planned release, not 0.11.x.
-See [migration and retirement](docs/spec/ADAPTER_MIGRATION.md) for existing installs.
+Starting with **0.12.0**, dotdotgod ships three workspace packages with a
+unified CLI runtime and host installer. See
+[migration and retirement](docs/spec/ADAPTER_MIGRATION.md) when upgrading from
+0.11.x installs.
 
 | Workspace package | Use | Install |
 | --- | --- | --- |
-| [`@dotdotgod/cli`](packages/cli/README.md) | Validation, graph, query, stdio MCP, and the host installer | Persistent `npm install -g @dotdotgod/cli` for host bindings once released; use a durable checkout for development |
+| [`@dotdotgod/cli`](packages/cli/README.md) | Validation, graph, query, stdio MCP, and the host installer | Persistent `npm install -g @dotdotgod/cli` for host bindings, or a durable checkout for development |
 | [`@dotdotgod/pi`](packages/pi/README.md) | Native Pi extensions and initializer | `pi install npm:@dotdotgod/pi`; pairs with its declared CLI dependency |
 | [Obsidian Traceability](packages/obsidian/README.md) | Desktop graph plugin | Community release files; the private workspace package is not published to npm |
 

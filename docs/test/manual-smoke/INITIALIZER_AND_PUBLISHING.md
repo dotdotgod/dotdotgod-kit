@@ -17,9 +17,9 @@ pi install npm:@dotdotgod/pi
 pi uninstall npm:@dotdotgod/pi
 ```
 
-The first public `0.1.0` publish confirmed install and uninstall worked. That
-historical result does not verify 0.12.0 (not yet released). Before release use a
-local Pi checkout or matching CLI/Pi tarballs and a private profile.
+The first public `0.1.0` publish confirmed install and uninstall worked. For
+`0.12.0` verification before or after release, test with a private Pi profile
+against published `0.12.0` packages or matching CLI/Pi tarballs.
 
 ## README Landing Review
 

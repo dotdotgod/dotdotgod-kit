@@ -1,6 +1,6 @@
 # @dotdotgod/pi
 
-The unified-runtime setup targets 0.12.0 (not yet released). Install Pi itself through Pi; the CLI command `dotdotgod adapter install pi --with-skills` installs only `ddg-planning` and `document-clarify`. See the [migration guide](../../docs/spec/ADAPTER_MIGRATION.md) before replacing older copies.
+Starting with `0.12.0`, `@dotdotgod/pi` depends solely on `@dotdotgod/cli`. Install Pi itself through Pi; the CLI command `dotdotgod adapter install pi --with-skills` installs only `ddg-planning` and `document-clarify`. See the [migration guide](../../docs/spec/ADAPTER_MIGRATION.md) before replacing older copies.
 
 [![npm version](https://img.shields.io/npm/v/@dotdotgod/pi.svg)](https://www.npmjs.com/package/@dotdotgod/pi) [![GitHub](https://img.shields.io/badge/GitHub-dotdotgod%2Fdotdotgod--kit-181717?logo=github)](https://github.com/dotdotgod/dotdotgod-kit/tree/main/packages/pi) [![License: Elastic 2.0](https://img.shields.io/badge/License-Elastic%202.0-blue.svg)](https://github.com/dotdotgod/dotdotgod-kit/blob/main/LICENSE)
 
