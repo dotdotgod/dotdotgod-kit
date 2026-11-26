@@ -50,28 +50,27 @@ export class ExecutionProgressController {
 		return this.todos.length > 0 && this.todos.every((todo) => todo.completed);
 	}
 
-	replayCompletedFromSessionEntries(entries: readonly unknown[]): void {
-		let executeIndex = -1;
-		for (let i = entries.length - 1; i >= 0; i -= 1) {
-			const entry = entries[i] as { customType?: string };
-			if (entry.customType === "plan-mode-execute") {
-				executeIndex = i;
-				break;
-			}
+	replayCompletedFromSessionEntries(entries: readonly unknown[], attemptId?: string): void {
+		let executeIndex = entries.length - 1;
+		for (; executeIndex >= 0; executeIndex--) {
+			const entry = entries[executeIndex] as { type?: string; customType?: string; data?: { attemptId?: string } } | undefined;
+			if (entry?.type === "custom" && entry.customType === "plan-mode-execute"
+				&& (attemptId === undefined || entry.data?.attemptId === attemptId)) break;
 		}
+		if (executeIndex < 0) return;
 
 		const messages: AgentMessage[] = [];
 		for (let i = executeIndex + 1; i < entries.length; i += 1) {
-			const entry = entries[i] as {
-				type?: string;
-				message?: AgentMessage;
-			};
-			if (entry?.type === "message" && entry.message && isAssistantMessage(entry.message)) {
+			const entry = entries[i] as { type?: string; customType?: string; message?: AgentMessage } | undefined;
+			if (entry?.type === "custom" && entry.customType === "plan-mode-execute") break;
+			if (entry?.type === "message" && entry.message && isAssistantMessage(entry.message)
+				&& entry.message.stopReason !== "aborted" && entry.message.stopReason !== "error") {
 				messages.push(entry.message);
 			}
 		}
 		this.markCompletedFromText(messages.map(getMessageText).join("\n"));
 	}
+
 
 	snapshot(): ExecutionProgressSnapshot {
 		return { todos: this.todos.map((todo) => ({ ...todo })) };

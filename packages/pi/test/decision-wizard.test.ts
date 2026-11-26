@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
@@ -26,8 +26,9 @@ const theme = { fg: (_color: string, text: string) => text, bold: (text: string)
 
 function fixture(run: (cwd: string, path: string) => Promise<void>) {
 	const cwd = mkdtempSync(join(tmpdir(), "decision-wizard-"));
-	const path = join(cwd, "README.md");
-	writeFileSync(path, markdown);
+	const path = "docs/plan/test-plan/README.md";
+	mkdirSync(join(cwd, "docs/plan/test-plan"), { recursive: true });
+	writeFileSync(join(cwd, path), markdown);
 	return run(cwd, path).finally(() => rmSync(cwd, { recursive: true, force: true }));
 }
 
@@ -308,7 +309,7 @@ describe("decision wizard controller", () => {
 		if (result?.action === "confirm") assert.deepEqual(result.answers.map((answer) => answer.value), ["JSON", "기타\n여러 줄"]);
 		assert.equal(selections.length, 0);
 		assert.match(titles.join("\n"), /JSON[\s\S]*기타/);
-		assert.equal(readFileSync(path, "utf8"), markdown);
+		assert.equal(readFileSync(join(cwd, path), "utf8"), markdown);
 	}));
 	it("custom summary edits return straight to summary without submitting early", () => fixture(async (cwd, path) => {
 		const choices = ["1. A: Markdown", "Other / custom answer", "Edit Q1", "Other / custom answer", "Confirm answers"];
@@ -358,18 +359,18 @@ describe("decision wizard controller", () => {
 		const ctx = context(cwd, { select: async () => { current = false; return "1. A: Markdown"; } });
 		assert.deepEqual(await promptForDecisionWizard(ctx, path, () => current), { action: "cancel" });
 		current = true;
-		ctx.ui.select = async () => { writeFileSync(path, markdown.replace("Pick storage?", "New question?")); return "1. A: Markdown"; };
+		ctx.ui.select = async () => { writeFileSync(join(cwd, path), markdown.replace("Pick storage?", "New question?")); return "1. A: Markdown"; };
 		assert.deepEqual(await promptForDecisionWizard(ctx, path, () => current), { action: "cancel" });
 	}));
 	it("re-reads decisions after plan updates, blocks missing plans and noninteractive review", () => fixture(async (cwd, path) => {
 		const ctx = context(cwd, { select: async () => "Cancel" });
-		writeFileSync(path, "# Cleared plan");
+		writeFileSync(join(cwd, path), "# Cleared plan");
 		assert.equal(await promptForDecisionWizard(ctx, path, () => true), undefined);
-		writeFileSync(path, markdown);
+		writeFileSync(join(cwd, path), markdown);
 		assert.deepEqual(await promptForDecisionWizard(ctx, path, () => true), { action: "cancel" });
 		const noUI = { ...ctx, hasUI: false };
 		assert.deepEqual(await promptForDecisionWizard(noUI, path, () => true), { action: "cancel" });
-		rmSync(path);
+		rmSync(join(cwd, path));
 		await assert.rejects(promptForDecisionWizard(ctx, path, () => true), /ENOENT/);
 	}));
 });

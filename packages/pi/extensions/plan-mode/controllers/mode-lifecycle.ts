@@ -19,6 +19,10 @@ export class ModeLifecycleController {
 	activeTools: string[] = [];
 	private generation = 0;
 
+	get currentGeneration(): number {
+		return this.generation;
+	}
+
 	get active(): boolean {
 		return this.mode !== "off";
 	}
@@ -73,6 +77,10 @@ export class ModeLifecycleController {
 		if (!this.isCurrentReview(reviewGeneration)) return false;
 		this.transition("executing", []);
 		return true;
+	}
+
+	escalateToPlanning(activeTools: string[]): void {
+		if (this.executing) this.transition("planning", activeTools);
 	}
 
 	completeExecution(): void {

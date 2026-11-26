@@ -8,12 +8,13 @@ This file provides a stable route for links to the Plan Mode behavior contract w
 
 - [`plan-mode/README.md`](plan-mode/README.md): purpose, commands, allowed work summary, and routing.
 - [`plan-mode/WORKFLOW.md`](plan-mode/WORKFLOW.md): advisory context shaping, review choice, and execution workflow.
+- [`plan-mode/EXECUTION_VERIFICATION.md`](plan-mode/EXECUTION_VERIFICATION.md): saved-plan checks, observed evidence, bounded continuation, re-planning, and recovery.
 - [`plan-mode/TOOL_POLICY.md`](plan-mode/TOOL_POLICY.md): planning tool and command boundaries.
 - [`plan-mode/DEBUG_AND_ARCHIVE.md`](plan-mode/DEBUG_AND_ARCHIVE.md): debug measurement, archive policy, and traceability.
 
 ## Compatibility Summary
 
-`plan-mode` is a Pi extension that provides safe planning before source changes. It allows read-only project inspection, local plan/archive markdown updates, conservative local-memory housekeeping, bounded dotdotgod context/status commands, `/dd:plan <request>` one-command planning entry, and user-approved execution with internal todo tracking. `pi --dd-plan` enables dotdotgod Plan Mode at startup; this extension does not register the generic `--plan` flag.
+`plan-mode` is a Pi extension that provides safe planning before source changes. It allows read-only project inspection, local plan/archive markdown updates, conservative local-memory housekeeping, bounded dotdotgod context/status commands, `/dd:plan <request>` one-command planning entry, and user-approved execution with todo tracking and observed verification. Completing the checklist does not by itself complete execution. `pi --dd-plan` enables dotdotgod Plan Mode at startup; this extension does not register the generic `--plan` flag.
 
 ## Traceability
 
@@ -35,6 +36,7 @@ This file provides a stable route for links to the Plan Mode behavior contract w
   - [docs/spec/plan-mode/README.md](plan-mode/README.md)
   - [docs/spec/PLAN_MODE_TOOL_SETTINGS.md](PLAN_MODE_TOOL_SETTINGS.md)
   - [docs/spec/IMPACT_RANKING_CONFIG.md](IMPACT_RANKING_CONFIG.md)
+  - [docs/spec/plan-mode/EXECUTION_VERIFICATION.md](plan-mode/EXECUTION_VERIFICATION.md)
 - Design decisions:
   - [docs/arch/EXTENSION_ARCHITECTURE.md](../arch/EXTENSION_ARCHITECTURE.md)
   - [docs/arch/CODE_CONVENTIONS.md](../arch/CODE_CONVENTIONS.md)
@@ -42,5 +44,5 @@ This file provides a stable route for links to the Plan Mode behavior contract w
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts"],"verifiedBy":["packages/pi/test/plan-mode-extension.test.ts","packages/pi/test/plan-mode-utils.test.ts","docs/test/README.md"],"relatedDocs":["docs/spec/plan-mode/README.md","docs/spec/PLAN_MODE_TOOL_SETTINGS.md","docs/spec/IMPACT_RANKING_CONFIG.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md","docs/arch/CODE_CONVENTIONS.md"]}
+{"kind":"spec","implementedBy":["packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/utils.ts"],"verifiedBy":["packages/pi/test/plan-mode-extension.test.ts","packages/pi/test/plan-mode-utils.test.ts","docs/test/README.md"],"relatedDocs":["docs/spec/plan-mode/README.md","docs/spec/PLAN_MODE_TOOL_SETTINGS.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/spec/plan-mode/EXECUTION_VERIFICATION.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md","docs/arch/CODE_CONVENTIONS.md"]}
 ```

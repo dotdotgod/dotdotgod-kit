@@ -19,6 +19,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 
 ### Local Investigations
 
+- `report/2026-11-26/pi-plan-mode-execution-verification-loop/`: `/ddg-planning` (`PLANNING.md`) and implementation/verification closeout (`FINAL.md`) reports for Pi Plan Mode execution verification loop (`docs/archive/plan/pi-plan-mode-execution-verification-loop/`).
+
 - `report/2026-11-26/unified-runtime-installer/`: `/ddg-planning` final planning report (`PLANNING.md`) for Option C single-runtime installer consolidation (`docs/plan/unified-runtime-installer/`).
 
 - `report/2026-11-26/antigravity-pi-workflow-analysis/`: preliminary installed-code/binary comparison and planning report; actual same-model task reproduction and pilot approval remain pending.
@@ -35,6 +37,8 @@ Use this area for local completed plans, temporary reports, historical notes, pa
 - `report/benchmark-recovery/`: benchmark progress snapshot and local session recovery utility; not executed during cleanup.
 
 ### Completed plans
+
+- `plan/pi-plan-mode-execution-verification-loop/`: upgraded Pi Plan Mode with `## Verification` and `## Re-plan If` contracts, canonical single-snapshot review with Execute drift rechecks, branch-scoped `executionEvidence` ledger (observed bash/MCP receipts and `Q2=A` edit debt), 11-step `agent_before_settle` gate with bounded auto-continuation (max 3/run), `[REPLAN]` / 2-consecutive-failure escalation, persist-first non-aborted `agent_settled` completion, 3-channel non-UI delivery, `Q1=A` legacy recovery, and 4 opt-in debug metrics (`344/344` Pi tests and 7 automated live Pi `1.6.1` scenarios passed; human TUI Esc/tree checks noted).
 
 - `plan/decision-model-load-triage/`: unified all six adapters (`pi`, `hermes`, `claude-code`, `codex`, `opencode`, `antigravity`) on zero-config `advisory` default with optional decision-model triage (`ollama`, `openai-compatible`, Pi `host` via `modelRegistry.streamSimple`), single-call `{ load, refs, reason }`, configurable `advice`/`prefetch` (`--no-write --scope shared`), SQLite v3 `load_state`, and `docs/spec/DECISION_CONFIG.md`; automated workspace, offline tarball, and Agent Scenarios 2–3 verification passed, awaiting user git commit/merge/push approval.
 

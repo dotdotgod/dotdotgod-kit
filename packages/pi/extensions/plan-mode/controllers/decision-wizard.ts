@@ -1,10 +1,13 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { DecisionWizardComponent, type WizardScreenResult } from "../components/decision-wizard.ts";
 import { DecisionWizardState, type DecisionWizardResult } from "../decision-wizard.ts";
 import { summarizeDiscussionQueue } from "../plans.ts";
 import { selectWizardPage } from "./decision-wizard-pages.ts";
+import { resolveValidatedPlanPath } from "./plan-artifact.ts";
+
+const unreadablePlan = "Plan Mode remains active. Cannot read the saved plan; restore it before review.";
+const changedPlan = "Plan or review changed. Draft answers discarded; review the current plan again.";
 
 async function fallbackScreen(ctx: ExtensionContext, state: DecisionWizardState, isCurrent: () => boolean): Promise<WizardScreenResult | undefined> {
 	if (state.summary) {
@@ -34,12 +37,14 @@ async function fallbackScreen(ctx: ExtensionContext, state: DecisionWizardState,
 }
 
 export function describePendingPlanDecisions(cwd: string, planPath: string): string {
+	const file = resolveValidatedPlanPath(cwd, planPath);
+	if (!file) return unreadablePlan;
 	try {
-		const queue = summarizeDiscussionQueue(readFileSync(resolve(cwd, planPath), "utf8"));
+		const queue = summarizeDiscussionQueue(readFileSync(file.target, "utf8"));
 		const questions = queue.unresolved.map((item) => `${item.id}: ${item.question}`).join("\n");
-		return `Plan Mode remains active. Interactive execution approval is required for ${planPath}.${questions ? `\nUnanswered decisions:\n${questions}` : ""}`;
+		return `Plan Mode remains active. Interactive execution approval is required for ${file.planPath}.${questions ? `\nUnanswered decisions:\n${questions}` : ""}`;
 	} catch {
-		return `Plan Mode remains active. Cannot read ${planPath}; restore the saved plan before review.`;
+		return unreadablePlan;
 	}
 }
 
@@ -47,12 +52,17 @@ export async function promptForDecisionWizard(
 	ctx: ExtensionContext,
 	planPath: string | undefined,
 	isCurrent: () => boolean,
+	review?: { bytes: Buffer; queue: ReturnType<typeof summarizeDiscussionQueue> },
 ): Promise<DecisionWizardResult | undefined> {
 	if (!planPath) return undefined;
-	const path = resolve(ctx.cwd, planPath);
+	const file = resolveValidatedPlanPath(ctx.cwd, planPath);
+	if (!file) {
+		ctx.ui.notify(unreadablePlan, "warning");
+		return { action: "cancel" };
+	}
 	// A missing/unreadable saved plan must never look like a cleared queue.
-	const markdown = readFileSync(path, "utf8");
-	const queue = summarizeDiscussionQueue(markdown);
+	const snapshot = review?.bytes ?? readFileSync(file.target);
+	const queue = review?.queue ?? summarizeDiscussionQueue(snapshot.toString("utf8"));
 	if (!queue.blocksExecutionReview) return undefined;
 	if (!ctx.hasUI) {
 		ctx.ui.notify(`Unanswered plan decisions: ${queue.unresolved.map((item) => `${item.id}: ${item.question}`).join("; ")}. Remain in Plan Mode.`, "warning");
@@ -62,7 +72,15 @@ export async function promptForDecisionWizard(
 	// Older supported Pi hosts omit mode; their RPC custom() returns undefined.
 	const mode = (ctx as ExtensionContext & { mode?: string }).mode;
 	let fallback = mode !== undefined && mode !== "tui";
-	const current = () => isCurrent() && readFileSync(path, "utf8") === markdown;
+	const current = () => {
+		if (!isCurrent()) return false;
+		const fresh = resolveValidatedPlanPath(ctx.cwd, file.planPath);
+		try {
+			return fresh !== undefined && snapshot.equals(readFileSync(fresh.target));
+		} catch {
+			return false;
+		}
+	};
 	while (current()) {
 		let result: WizardScreenResult | undefined;
 		if (fallback) result = await fallbackScreen(ctx, state, current);
@@ -77,9 +95,9 @@ export async function promptForDecisionWizard(
 					fallback = true;
 					continue;
 				}
-			} catch (error) {
+			} catch {
 				if (!current()) break;
-				ctx.ui.notify(`Decision wizard unavailable; using sequential selectors. ${String(error)}`, "warning");
+				ctx.ui.notify("Decision wizard unavailable; using sequential selectors.", "warning");
 				fallback = true;
 				continue;
 			}
@@ -95,6 +113,6 @@ export async function promptForDecisionWizard(
 			}
 		} else if (result) return result;
 	}
-	ctx.ui.notify("Plan or review changed. Draft answers discarded; review the current plan again.", "warning");
+	ctx.ui.notify(changedPlan, "warning");
 	return { action: "cancel" };
 }

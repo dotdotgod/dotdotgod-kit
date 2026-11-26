@@ -17,7 +17,7 @@ for(const route of ["native","user"]){
    const program=join(root,"inspect");writeFileSync(program,"#!/bin/sh\nprintf accepted\n",{mode:0o755});
    const handlers=new Map<string,Function>(),tools=new Map<string,any>();let session="session",trusted=false;
    const pi={on:(n:string,h:Function)=>handlers.set(n,h),registerTool:(t:any)=>tools.set(t.name,t),registerCommand(){},registerFlag(){},registerShortcut(){},getFlag:(n:string)=>n==="dd-plan",getSettings:()=>({}),getActiveTools:()=>[],getAllTools:()=>[{name:"bash"}],setActiveTools(){},appendEntry(){},sendUserMessage(){},sendMessage(){},exec:async()=>({stdout:"{}",stderr:"",code:0,killed:false})};
-   const ctx={cwd:root,hasUI:true,mode:"tui",model:{provider:"openai",id:"fixture"},isProjectTrusted:()=>trusted,sessionManager:{getSessionId:()=>session,getEntries:()=>[]},ui:{theme:{fg:(_c:string,t:string)=>t},setStatus(){},setWidget(){},notify(){},select:async()=>{if(change==="ui-cwd")ctx.cwd=tmpdir();if(change==="ui-trust")trusted=true;return "Always this project";}}};
+   const ctx={cwd:root,hasUI:true,mode:"tui",model:{provider:"openai",id:"fixture"},isProjectTrusted:()=>trusted,sessionManager:{getSessionId:()=>session,getEntries:()=>[],getBranch:()=>[]},ui:{theme:{fg:(_c:string,t:string)=>t},setStatus(){},setWidget(){},notify(){},select:async()=>{if(change==="ui-cwd")ctx.cwd=tmpdir();if(change==="ui-trust")trusted=true;return "Always this project";}}};
    try{
     install(pi as unknown as ExtensionAPI);await handlers.get("session_start")!({},ctx);
     const event={toolName:"bash",toolCallId:"approved",input:{command:program}};

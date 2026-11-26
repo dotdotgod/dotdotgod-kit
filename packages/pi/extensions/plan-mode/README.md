@@ -5,8 +5,8 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 ## Changes
 
 - `pi --dd-plan` starts Pi with dotdotgod Plan Mode enabled without claiming the generic `--plan` flag.
-- `/dd:plan <request>` enables Plan Mode if needed and queues the request as the first or next planning turn with explicit follow-up delivery; `/dd:plan <docs/plan/<task>/README.md>` loads an existing plan and its internal todo state; `/dd:plan` without args still toggles.
-- Plan Mode controllers own lifecycle, plan artifacts, context shaping, review, execution flow and progress. Shared MCP owns impact review; durable advisory records are stored separately from plan snapshots.
+- `/dd:plan <request>` enables Plan Mode if needed and queues the request as the first or next planning turn with explicit follow-up delivery; `/dd:plan <docs/plan/<task>/README.md>` loads an existing plan for review without replacing prior approved progress or debt; `/dd:plan` without args still toggles.
+- `execution-evidence.ts` parses contracts, normalizes receipts, and evaluates the gate. `controllers/execution-evidence.ts` owns the branch ledger and run state; `presentation.ts` formats status and notices. Shared MCP owns impact review, with records separate from plan snapshots.
 - Only the `Plan:` heading is parsed for step extraction.
 - Plan mode can use `pi-web-access` tools when installed:
   - `web_search`
@@ -34,7 +34,7 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 - `pi --dd-plan` - Start Pi with dotdotgod Plan Mode enabled
 - `/dd:plan` - Toggle plan mode
 - `/dd:plan <request>` - Enable Plan Mode if needed and send `<request>` as a planning request without toggling off an active Plan Mode session
-- `/dd:plan <path>` - Load an existing `docs/plan/<task>/README.md` or `docs/plan/<task>` as the active plan and restore its internal todo state
+- `/dd:plan <path>` - Load an existing `docs/plan/<task>/README.md` or `docs/plan/<task>` for review
 - `/impact-check` - Request shared MCP impact review of pending and git-changed source/config paths in batches of twenty
 - `Ctrl+Alt+P` - Toggle plan mode
 
@@ -52,8 +52,12 @@ A customized planning mode for Pi. Source changes are blocked during planning, w
 10. During execution, the agent must mark every completed step in the same response with `[DONE:n]` tags.
 11. Before source changes for implementation tasks, run the plan's `dotdotgod graph impact` refinement step and update target files, risks, or verification if needed.
 12. After source/config edits, run `/impact-check` or MCP `project_impact` and review related docs/tests/files before broad verification or commit. Pending reminders are advisory, not command gates.
-13. After modification or coding work, run `dotdotgod validate` for the project before final completion.
+13. Run the saved plan's `## Verification` checks after edits. `dotdotgod validate` checks docs/project memory, not code or feature behavior. A small task with mandatory checks needs a saved plan; add `## Re-plan If` to capture when to stop and revise.
 14. After implementation and verification, the agent moves the completed task directory to `docs/archive/plan/<task-slug>/` and includes that step's `[DONE:n]` tag.
+
+## Verified Settlement
+
+Review shows the saved check count; Execute rechecks path and bytes. `[DONE:n]` is progress, not proof. After an execution turn, `agent_before_settle` can continue at most three times per run. `[BLOCKED]` pauses; `[REPLAN]` or two same-check failures return to planning. Non-aborted `agent_settled` persists completion before clearing state. See the [execution contract](../../../../docs/spec/plan-mode/EXECUTION_VERIFICATION.md).
 
 ## Plan Mode Restrictions
 

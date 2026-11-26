@@ -7,6 +7,21 @@ export type { TodoItem } from "./todos.ts";
 export { extractTodoItems, markCompletedSteps } from "./todos.ts";
 
 export {
+	EMPTY_CONTRACT_HASH, classifyEditTrackingPath, classifyGenericVerification, computeExecutionProgressFingerprint,
+	evaluateExecutionSettleGate, extractExecutionSignals,
+	extractObservedCommandOutcomes, extractPlanVerificationContract, matchVerificationCommand,
+	normalizeRelativeCwd, parseVerificationShellChain,
+} from "./execution-evidence.ts";
+export type {
+	AllowlistedRunnerId, CompiledCommandUnit, CompiledVerificationCheck, EditPathClassification,
+	ExecutionCompleteMetricPayload, ExecutionNoticeKind, ExecutionPauseState, ExecutionReplanTrigger,
+	ExecutionSettleGateInput, ExecutionSignal, ObservedCommandOutcome, PendingCompletion, PendingNonUiStatusNotice,
+	PersistedExecutionEvidenceSnapshot, PersistedLastCheckState, PlanReviewFailureReason, PlanVerificationContract,
+	ReviewSnapshotResult, SafeCheckRef, SafeExecutionUxSummary, SettleGateDecision, SettleGateReason, VerificationCheckOutcome,
+} from "./execution-evidence.ts";
+export { validatePlanPath } from "./controllers/plan-artifact.ts";
+
+export {
 	normalizePlanCommandRequest,
 	tokenizeShellCommand,
 	isSafeCommand,

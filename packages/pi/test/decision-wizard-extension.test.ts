@@ -49,7 +49,7 @@ async function harness(run: (h: {
 	const ctx = {
 		cwd, mode: "rpc", hasUI: true, isProjectTrusted: () => false,
 		ui: { theme: { fg: (_: string, text: string) => text }, notify() {}, setStatus(key: string, value: unknown) { displays.push({ key, value }); }, setWidget(key: string, value: unknown) { displays.push({ key, value }); }, select: async () => "Cancel" },
-		sessionManager: { getSessionId: () => "wizard-fixture", getEntries: () => [{ type: "custom", customType: "plan-mode", data: {
+		sessionManager: { getSessionId: () => "wizard-fixture", getEntries() { return this.getBranch(); }, getBranch: () => [{ type: "custom", customType: "plan-mode", data: {
 			version: 2, mode: { mode: "planning", activeTools: ["read", "write"] },
 			artifact: { currentPlanPath: planPath, pendingReviewPath: planPath, suppressChoiceForInlineRequest: false, touchedPlanPaths: [] },
 			gates: { pendingImpactItems: legacyPaths.map(path => ({ path, reason: "edit", touchedAt: "legacy" })) },

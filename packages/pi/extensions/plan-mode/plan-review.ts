@@ -31,6 +31,7 @@ export interface PlanExecutionDecision {
 export interface PlanReviewDisplayMarkdownOptions {
 	planPath: string | undefined;
 	todoCount: number;
+	verificationCount?: number;
 	review: PlanReviewMarkdown;
 }
 
@@ -63,9 +64,19 @@ export function planModeFollowUpDeliveryOptions(): PlanModeUserMessageDeliveryOp
 	return { deliverAs: "followUp" };
 }
 
-export function buildPlanReviewTitle(planPath: string | undefined, todoCount: number): string {
-	const count = todoCount === 1 ? "1 step" : `${todoCount} steps`;
-	return planPath ? `Review plan before execution: ${planPath} (${count})` : `Review plan before execution (${count})`;
+export function formatPlanReviewCounts(todoCount: number, verificationCount = 0, separator: " · " | ", " = " · "): string {
+	const steps = todoCount === 1 ? "1 step" : `${todoCount} steps`;
+	if (verificationCount <= 0) return steps;
+	return steps + separator + (verificationCount === 1 ? "1 check" : `${verificationCount} checks`);
+}
+
+export function buildPlanReviewTitle(planPath: string | undefined, todoCount: number, verificationCount?: number): string {
+	const counts = formatPlanReviewCounts(todoCount, verificationCount);
+	return planPath ? `Review plan before execution: ${planPath} (${counts})` : `Review plan before execution (${counts})`;
+}
+
+export function buildPlanReviewFallbackPrompt(planPath: string, todoCount: number, verificationCount?: number): string {
+	return `Plan mode - choose next action after reviewing ${planPath} (${formatPlanReviewCounts(todoCount, verificationCount, ", ")})`;
 }
 
 export function buildPlanReviewMarkdown(planPath: string | undefined, todos: readonly TodoItem[], readFile: PlanReviewFileReader): PlanReviewMarkdown {
@@ -82,7 +93,7 @@ export function buildPlanReviewMarkdown(planPath: string | undefined, todos: rea
 }
 
 export function buildPlanReviewDisplayMarkdown(options: PlanReviewDisplayMarkdownOptions): string {
-	const title = buildPlanReviewTitle(options.planPath, options.todoCount);
+	const title = buildPlanReviewTitle(options.planPath, options.todoCount, options.verificationCount);
 	const note = options.review.source === "fallback"
 		? "Plan file preview fallback: review the extracted steps carefully before executing."
 		: "Full saved plan preview. Choose an action only after reviewing the plan.";

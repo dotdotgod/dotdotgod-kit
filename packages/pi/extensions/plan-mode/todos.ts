@@ -43,15 +43,37 @@ function isTemplatePlanStep(text: string): boolean {
 	);
 }
 
+export function* scanMarkdownLines(markdown: string) {
+	let fence: string | undefined;
+	for (const line of markdown.split(/\r?\n/)) {
+		if (fence) {
+			const close = line.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/)?.[1];
+			if (close && close[0] === fence[0] && close.length >= fence.length) {
+				fence = undefined;
+				yield { kind: "close", line } as const;
+			} else yield { kind: "code", line } as const;
+			continue;
+		}
+		const [, marker, info = ""] = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/) ?? [];
+		if (marker && (marker[0] !== "`" || !info.includes("`"))) {
+			fence = marker;
+			yield { kind: "open", line, language: info.trim().toLowerCase() } as const;
+		} else yield { kind: "text", line } as const;
+	}
+}
+
 export function extractTodoItems(message: string): TodoItem[] {
 	const items: TodoItem[] = [];
-	const headerMatch = message.match(/\*{0,2}Plan:\*{0,2}\s*\n/i);
-	if (!headerMatch) return items;
-
-	const planSection = message.slice(message.indexOf(headerMatch[0]) + headerMatch[0].length);
-	const numberedPattern = /^\s*(\d+)[.)]\s+\*{0,2}([^*\n]+)/gm;
-
-	for (const match of planSection.matchAll(numberedPattern)) {
+	let inPlan = false;
+	for (const { kind, line } of scanMarkdownLines(message)) {
+		if (kind !== "text") continue;
+		if (!inPlan) {
+			inPlan = /^(?:#{1,6}\s+)?[ \t]*\*{0,2}Plan:\*{0,2}[ \t]*$/i.test(line);
+			continue;
+		}
+		if (/^#{1,6}\s+/.test(line)) break;
+		const match = line.match(/^\s*(\d+)[.)]\s+\*{0,2}([^*\n]+)/);
+		if (!match) continue;
 		const rawText = match[2];
 		if (!rawText) continue;
 		const text = rawText

@@ -17,7 +17,7 @@ test("existing hc bash lifecycle executes only after tool preflight and rejects 
  const handlers=new Map<string,Function>();const tools=new Map<string,any>();const commands:string[]=[];
  const calls:string[][]=[];let confirmations=0;
  const pi={on:(name:string,handler:Function)=>handlers.set(name,handler),registerTool:(tool:any)=>tools.set(tool.name,tool),registerCommand:(name:string)=>commands.push(name),registerFlag(){},registerShortcut(){},getFlag:(name:string)=>name==="dd-plan",getSettings:()=>({}),getActiveTools:()=>[],getAllTools:()=>["bash","read","write"].map(name=>({name})),setActiveTools(){},appendEntry(){},sendUserMessage(){},sendMessage(){},exec:async(_cmd:string,args:string[])=>{calls.push(args);return {stdout:"{}",stderr:"",code:0,killed:false};}};
- const ctx={cwd:root,hasUI:true,mode:"tui",model:{provider:"openai",id:"fixture"},isProjectTrusted:()=>false,sessionManager:{getSessionId:()=>"fixture",getEntries:()=>[]},ui:{theme:{fg:(_color:string,text:string)=>text},setStatus(){},setWidget(){},notify(){},confirm:async()=>{confirmations++;return true;}}};
+ const ctx={cwd:root,hasUI:true,mode:"tui",model:{provider:"openai",id:"fixture"},isProjectTrusted:()=>false,sessionManager:{getSessionId:()=>"fixture",getEntries:()=>[],getBranch:()=>[]},ui:{theme:{fg:(_color:string,text:string)=>text},setStatus(){},setWidget(){},notify(){},confirm:async()=>{confirmations++;return true;}}};
  try{
   install(pi as unknown as ExtensionAPI);await handlers.get("session_start")!({},ctx);
   assert.ok(!commands.includes("dd:plan-child")&&!commands.includes("dd:plan-policy"));

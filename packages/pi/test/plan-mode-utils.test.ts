@@ -131,25 +131,43 @@ describe("plan-mode domain controllers", () => {
 		const context = new ContextShapingController();
 		const execution = new ExecutionProgressController();
 		const events: string[] = [];
-		const flow = new ExecutionFlowController(lifecycle, artifact, context, execution, {
+		const { ExecutionEvidenceController } = await import("../extensions/plan-mode/controllers/execution-evidence.ts");
+		const { extractPlanVerificationContract } = await import("../extensions/plan-mode/execution-evidence.ts");
+		const evidence = new ExecutionEvidenceController();
+		const flow = new ExecutionFlowController(lifecycle, artifact, context, execution, evidence, {
 			getFlag: () => false,
 			appendEntry: () => events.push("marker"),
 			sendUserMessage: () => events.push("follow-up"),
 			setNormalTools: () => events.push("tools"),
+			setPlanningTools: () => assert.fail("unexpected planning"),
+			sendStatus: () => assert.fail("unexpected notice"),
+			escalateToPlanning: async () => assert.fail("unexpected escalation"),
 			updateStatus: () => events.push("status"),
 			persistState: () => events.push("persist"),
 		});
 		const ctx = { ui: {} } as never;
 
-		await flow.handleReviewChoice(ctx, "execute", "docs/plan/example/README.md", reviewGeneration ?? -1);
+		const verificationContract = extractPlanVerificationContract("", process.cwd());
+		assert.ok(verificationContract.ok);
+		await flow.handleReviewChoice(ctx, "execute", {
+			ok: true, planPath: "docs/plan/example/README.md", markdown: "", todos: [],
+			verificationContract, verificationCount: 0, discussionQueue: summarizeDiscussionQueue(""),
+		}, reviewGeneration ?? -1);
 		assert.equal(lifecycle.mode, "executing");
-		assert.deepEqual(events.slice(0, 4), ["tools", "status", "marker", "persist"]);
+		assert.deepEqual(events, ["marker", "persist", "tools", "status"]);
+		const boundary = { outcome: "completed", continue: false, entries: [], context: { pendingMessages: [], canContinue: false } } as never;
+		assert.equal(await flow.handleBeforeSettle(boundary, ctx), undefined);
+		flow.handleSettled({ type: "agent_settled", aborted: false }, ctx);
+		assert.equal(lifecycle.mode, "executing");
 		await new Promise<void>((resolve) => setTimeout(resolve, 0));
 		assert.equal(events.at(-1), "follow-up");
 
-		assert.equal(flow.completeExecutionIfDone(ctx), true);
+		evidence.markObservedExecutionTurn();
+		assert.equal(await flow.handleBeforeSettle(boundary, ctx), undefined);
+		assert.equal(lifecycle.mode, "executing");
+		flow.handleSettled({ type: "agent_settled", aborted: false }, ctx);
 		assert.equal(lifecycle.mode, "off");
-		assert.deepEqual(events.slice(-4), ["follow-up", "tools", "status", "persist"]);
+		assert.deepEqual(events.slice(-4), ["follow-up", "persist", "tools", "status"]);
 	});
 
 	it("loads an existing plan path and populates todos from its README", () => {

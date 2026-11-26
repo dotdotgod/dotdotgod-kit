@@ -3,6 +3,7 @@ import { getMarkdownTheme } from "@earendil-works/pi-coding-agent";
 import { Key, Markdown, matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import {
 	PLAN_REVIEW_ACTIONS,
+	formatPlanReviewCounts,
 	getNextPlanReviewActionIndex,
 	getPlanReviewActionChoice,
 	getPlanReviewBodyViewportLines,
@@ -48,13 +49,17 @@ export class PlanReviewComponent {
 	private selectedActionIndex = 0;
 	private cachedWidth?: number;
 	private cachedMarkdownLines?: string[];
+	private readonly markdown: string;
+	private readonly counts: string;
+	private readonly theme: Theme;
+	private readonly done: (choice: PlanReviewChoice | undefined) => void;
 
-	constructor(
-		private readonly markdown: string,
-		private readonly todoCount: number,
-		private readonly theme: Theme,
-		private readonly done: (choice: PlanReviewChoice | undefined) => void,
-	) {}
+	constructor(markdown: string, todoCount: number, theme: Theme, done: (choice: PlanReviewChoice | undefined) => void, verificationCount?: number) {
+		this.markdown = markdown;
+		this.counts = formatPlanReviewCounts(todoCount, verificationCount);
+		this.theme = theme;
+		this.done = done;
+	}
 
 	handleInput(data: string): void {
 		const visibleLines = getPlanReviewBodyLineCount();
@@ -81,11 +86,12 @@ export class PlanReviewComponent {
 		const scroll = getPlanReviewScrollState(this.offset, bodyLines.length, visibleLines);
 		this.offset = scroll.offset;
 		const th = this.theme;
-		const title = ` Plan Mode Review (${this.todoCount === 1 ? "1 step" : `${this.todoCount} steps`}) `;
+		const title = th.fg("borderAccent", "──") + th.fg("accent", ` Plan Mode Review (${this.counts}) `);
+		const titleWidth = visibleWidth(title);
 		const controls = "↑/↓ PgUp/PgDn Home/End scroll · ←/→ Tab select · Enter confirm · e/s/r/c shortcuts";
 		const status = `${scroll.offset + Math.min(bodyLines.length, 1)}-${Math.min(bodyLines.length, scroll.offset + visibleLines)} / ${bodyLines.length}`;
 		const lines = [
-			truncateToWidth(th.fg("borderAccent", "─".repeat(2)) + th.fg("accent", title) + th.fg("borderAccent", "─".repeat(safeWidth)), safeWidth),
+			titleWidth <= safeWidth ? title + th.fg("borderAccent", "─".repeat(safeWidth - titleWidth)) : truncateToWidth(title, safeWidth),
 			truncateToWidth(th.fg("dim", controls), safeWidth),
 			truncateToWidth(th.fg("dim", `Scroll: ${status}${scroll.canScrollDown ? " · more below" : ""}`), safeWidth),
 			truncateToWidth(th.fg("borderMuted", "─".repeat(safeWidth)), safeWidth),

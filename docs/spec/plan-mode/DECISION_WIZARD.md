@@ -16,15 +16,15 @@ After the last question, an editable answer summary offers Confirm answers. The 
 
 Cancel discards the unsubmitted batch and returns to planning. Drafts are not persisted across sessions. Deferral, research, and plan revision are requested in planning rather than questionnaire shortcuts.
 
-The next review re-reads durable markdown. New or still-unresolved questions reopen the wizard; only a cleared queue proceeds to the unchanged separate execute/stay/refine/cancel UI described in [WORKFLOW.md](WORKFLOW.md).
+The next review re-reads durable markdown. New or still-unresolved questions reopen the wizard; only a cleared queue proceeds to the separate execute/stay/refine/cancel UI described in [WORKFLOW.md](WORKFLOW.md).
 
 ## Fallback and Stale Results
 
-Explicit execution requests use the same decision-first ordering. When custom UI is unavailable, sequential select/editor dialogs use the same immediate answer advancement and retain Back/Next, summary editing, and explicit batch confirmation; no first-item-only fallback remains. Without interactive UI, Plan Mode surfaces pending decisions and stays in planning.
+Explicit execution requests use the same decision-first ordering. When custom UI is unavailable, sequential select/editor dialogs use the same immediate answer advancement and retain Back/Next, summary editing, and explicit batch confirmation; no first-item-only fallback remains. Without UI, Plan Mode stays in planning. At `agent_end` a pending review emits a `plan-decisions-pending` notice only when `!hasUI && mode !== "print"`; it does not trigger a turn.
 
 Fallback selectors paginate full question/context/option text and answer summaries before offering actions. Read more/Previous page traverses content; Continue unlocks bounded action pages with More actions/Previous actions and Read again. Confirm answers is available only after all summary content pages have been presented. Resizing restarts content review before accepting a choice. Native selector framing requires at least 40 columns and 18 rows; smaller terminals return to planning with a resize notice. RPC without terminal dimensions uses an 80×24 budget.
 
-Missing or unreadable plans and UI errors do not clear the gate. Changes to plan content, active plan, mode generation, session shutdown, or branch navigation invalidate pending answers. Changes during the separate execution review also discard approval.
+The active README must match the configured plan path shape and resolve canonically inside the plan root. The wizard revalidates the live path and exact bytes before accepting answers. Missing/unreadable files, path escapes, byte drift, stale candidate or generation, shutdown, branch navigation, and UI errors do not clear the gate. Separate [Execute review](EXECUTION_VERIFICATION.md#review-and-approval) also checks the canonical target and exact bytes.
 
 ## Verification
 
@@ -47,22 +47,24 @@ The bounded [fallback pager](../../../packages/pi/extensions/plan-mode/controlle
   - [packages/pi/extensions/plan-mode/index.ts](../../../packages/pi/extensions/plan-mode/index.ts)
   - [packages/pi/extensions/plan-mode/plans.ts](../../../packages/pi/extensions/plan-mode/plans.ts)
   - [packages/pi/extensions/plan-mode/prompts.ts](../../../packages/pi/extensions/plan-mode/prompts.ts)
+  - [packages/pi/extensions/plan-mode/controllers/plan-artifact.ts](../../../packages/pi/extensions/plan-mode/controllers/plan-artifact.ts)
 - Verified by:
   - [packages/pi/test/decision-wizard.test.ts](../../../packages/pi/test/decision-wizard.test.ts)
   - [packages/pi/test/decision-wizard-extension.test.ts](../../../packages/pi/test/decision-wizard-extension.test.ts)
   - [packages/pi/test/plan-mode-utils.test.ts](../../../packages/pi/test/plan-mode-utils.test.ts)
   - [packages/pi/test/plan-mode-extension.test.ts](../../../packages/pi/test/plan-mode-extension.test.ts)
   - [docs/test/manual-smoke/PLAN_DECISION_WIZARD.md](../../test/manual-smoke/PLAN_DECISION_WIZARD.md)
+  - [packages/pi/test/plan-mode-execution-handlers.test.ts](../../../packages/pi/test/plan-mode-execution-handlers.test.ts)
 - Related docs:
   - [docs/spec/plan-mode/WORKFLOW.md](WORKFLOW.md)
   - [docs/arch/EXTENSION_ARCHITECTURE.md](../../arch/EXTENSION_ARCHITECTURE.md)
 - Design decisions:
   - [docs/arch/EXTENSION_ARCHITECTURE.md](../../arch/EXTENSION_ARCHITECTURE.md)
 - Contracts:
-  - `PLAN-MODE-DECISIONS-001` — Sequential plan decisions require explicit batch confirmation before execution review (sections: 3, implementedBy: 7, verifiedBy: 5, relatedDocs: 1, designDecisions: 1)
+  - `PLAN-MODE-DECISIONS-001` — Sequential plan decisions require explicit batch confirmation before execution review (sections: 3, implementedBy: 8, verifiedBy: 6, relatedDocs: 1, designDecisions: 1)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"],"implementedBy":["packages/pi/extensions/plan-mode/decision-wizard.ts","packages/pi/extensions/plan-mode/components/decision-wizard.ts","packages/pi/extensions/plan-mode/controllers/decision-wizard.ts","packages/pi/extensions/plan-mode/controllers/review-gates.ts","packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/plans.ts","packages/pi/extensions/plan-mode/prompts.ts"],"verifiedBy":["packages/pi/test/decision-wizard.test.ts","packages/pi/test/decision-wizard-extension.test.ts","packages/pi/test/plan-mode-utils.test.ts","packages/pi/test/plan-mode-extension.test.ts","docs/test/manual-smoke/PLAN_DECISION_WIZARD.md"],"relatedDocs":["docs/spec/plan-mode/WORKFLOW.md","docs/arch/EXTENSION_ARCHITECTURE.md"],"contracts":[{"id":"PLAN-MODE-DECISIONS-001","title":"Sequential plan decisions require explicit batch confirmation before execution review","sections":["Questions and Drafts","Batch Confirmation","Fallback and Stale Results"],"implementedBy":["packages/pi/extensions/plan-mode/decision-wizard.ts","packages/pi/extensions/plan-mode/components/decision-wizard.ts","packages/pi/extensions/plan-mode/controllers/decision-wizard.ts","packages/pi/extensions/plan-mode/controllers/review-gates.ts","packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/plans.ts","packages/pi/extensions/plan-mode/prompts.ts"],"verifiedBy":["packages/pi/test/decision-wizard.test.ts","packages/pi/test/decision-wizard-extension.test.ts","packages/pi/test/plan-mode-utils.test.ts","packages/pi/test/plan-mode-extension.test.ts","docs/test/manual-smoke/PLAN_DECISION_WIZARD.md"],"relatedDocs":["docs/spec/plan-mode/WORKFLOW.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}]}
+{"kind":"spec","designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"],"implementedBy":["packages/pi/extensions/plan-mode/decision-wizard.ts","packages/pi/extensions/plan-mode/components/decision-wizard.ts","packages/pi/extensions/plan-mode/controllers/decision-wizard.ts","packages/pi/extensions/plan-mode/controllers/review-gates.ts","packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/plans.ts","packages/pi/extensions/plan-mode/prompts.ts","packages/pi/extensions/plan-mode/controllers/plan-artifact.ts"],"verifiedBy":["packages/pi/test/decision-wizard.test.ts","packages/pi/test/decision-wizard-extension.test.ts","packages/pi/test/plan-mode-utils.test.ts","packages/pi/test/plan-mode-extension.test.ts","docs/test/manual-smoke/PLAN_DECISION_WIZARD.md","packages/pi/test/plan-mode-execution-handlers.test.ts"],"relatedDocs":["docs/spec/plan-mode/WORKFLOW.md","docs/arch/EXTENSION_ARCHITECTURE.md"],"contracts":[{"id":"PLAN-MODE-DECISIONS-001","title":"Sequential plan decisions require explicit batch confirmation before execution review","sections":["Questions and Drafts","Batch Confirmation","Fallback and Stale Results"],"implementedBy":["packages/pi/extensions/plan-mode/decision-wizard.ts","packages/pi/extensions/plan-mode/components/decision-wizard.ts","packages/pi/extensions/plan-mode/controllers/decision-wizard.ts","packages/pi/extensions/plan-mode/controllers/review-gates.ts","packages/pi/extensions/plan-mode/index.ts","packages/pi/extensions/plan-mode/plans.ts","packages/pi/extensions/plan-mode/prompts.ts","packages/pi/extensions/plan-mode/controllers/plan-artifact.ts"],"verifiedBy":["packages/pi/test/decision-wizard.test.ts","packages/pi/test/decision-wizard-extension.test.ts","packages/pi/test/plan-mode-utils.test.ts","packages/pi/test/plan-mode-extension.test.ts","docs/test/manual-smoke/PLAN_DECISION_WIZARD.md","packages/pi/test/plan-mode-execution-handlers.test.ts"],"relatedDocs":["docs/spec/plan-mode/WORKFLOW.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}]}
 ```
