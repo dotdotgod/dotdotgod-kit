@@ -6,6 +6,8 @@ Use reports for evidence snapshots, measurements, and interpretations. Route dur
 
 ## Index
 
+- `RELEASE_0_12_1.md`: decouple Load from index builds, unify index storage on SQLite WAL with HNSW, and add MCP background indexing.
+
 - `RELEASE_0_12_0.md`: consolidate adapters and context runtime into unified `@dotdotgod/cli` (`0.12.0`), unify advisory project-memory loading, and add the Pi Plan Mode execution verification loop.
 
 - `RELEASE_0_11_0.md`: add `@dotdotgod/antigravity` plugin adapter (Option C-2 `/plan`, three `/dd-*` skills) and unify all six adapters on non-blocking advisory impact (`impact.sqlite` v2).
