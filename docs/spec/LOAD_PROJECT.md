@@ -49,7 +49,7 @@ Agents preserve existing user changes and avoid rereading baseline content alrea
 
 The shared CLI `map` command discovers Markdown below the configured documentation root and renders repository-relative paths as a prefix-compressed tree for every adapter. Pi invokes `map --json` through its source/package/global CLI resolver and retains a bounded local fallback for CLI-unavailable operation. Directory depth counts `docs/` as depth 1, `docs/spec/` as depth 2, and `docs/spec/plan-mode/` as depth 3 under the default root.
 
-Shared MCP `project_load` returns `ok: false`, `mapUnavailable.code: "MAP_UNAVAILABLE"`, an empty `documentationTree`, and `query: null` when map execution fails. It does not substitute an unconfigured `docs` tree or claim a successful empty map. Agents continue with settings-aware host file inspection and README routing.
+Shared MCP `project_load` returns `ok: false`, `mapUnavailable.code: "MAP_UNAVAILABLE"`, an empty `documentationTree`, and `query: null` when map execution fails. It does not substitute an unconfigured `docs` tree or claim a successful empty map. Agents continue with settings-aware host file inspection and README routing. The service rejects invalid configuration and symlinked documentation roots before map discovery. If the configured root is absent, ordinary Load returns an empty map; focused Load also returns an empty query with a repository-selection hint, without traversing descendants or reading caches.
 
 `load.documentationSummary.exclude` filters complete subtrees from this shared map. Its default values are:
 
@@ -64,18 +64,14 @@ Load lists paths but reads bodies selectively through maintained README indexes 
 
 Free-form Load arguments are query text, not mode switches. When arguments are present, Load:
 
-1. runs `dotdotgod query <root> --limit 30 --json -- "<arguments>"` when available
+1. runs `dotdotgod query <root> --limit 30 --prepared-only --json -- "<arguments>"` when available
 2. presents up to 30 typed documentation-file or code-symbol results, preserving symbol ranges and retrieval warnings
 3. runs `dotdotgod map <root> --depth 3 --json` and renders its documentation tree with the same named boundary-child summaries
 4. falls back to README routing and targeted reads when query is unavailable
 
 Query searches full shared documentation and code outlines/comments, excluding plan/archive bodies and code implementation passages. Results include path, heading, score and text; symbols add source hash and declaration/body ranges. Verify freshness before targeted implementation reads. See [cli/QUERY.md](cli/QUERY.md).
 
-Hybrid retrieval keeps keyword results when vectors are unavailable. Shared project-load
-results keep query data and expose vectorUnavailable with confirmation-gated runtime
-recovery for a missing optional local runtime; queryUnavailable remains for a failed
-query as a whole. No automatic runtime/model installation or code-disclosure consent
-is implied by Load.
+Focused Load reads existing outlines and compatible committed vector snapshots without building or waiting for writers. A configured but unready snapshot yields keyword results and a warning; it does not start an embedder. With a ready snapshot, only the focus text is embedded. If an optional local runtime is missing at that point, shared `project_load` preserves keyword results and returns a confirmation-gated `vectorUnavailable` recovery offer. `queryUnavailable` remains for a failed query as a whole. Decision prefetch stays offline and keyword-only.
 
 On a failed Pi query, Load surfaces the CLI's `ok: false` string `error` from stdout JSON instead of hiding it behind an exit status. Process errors take precedence; malformed, oversized (over 64 KiB), or unsupported stdout falls back to stderr, then exit status. Each candidate diagnostic is capped at 1,000 characters plus a truncation marker; arbitrary stdout and structured error objects are not dumped. CLI candidate attempts and map-only fallback remain unchanged. `packages/pi/test/load-project-query.test.ts` covers these diagnostics and successful query consumption.
 
@@ -110,7 +106,7 @@ Neither output form reports graph size, cache metrics, communities, or index sta
 
 ## Safety
 
-Load and `map` do not modify source, docs, project config, or derived indexes. Query may create or incrementally refresh ignored `.dotdotgod/vectors/` files and may download the configured local embedding model into the user model cache on first use. Secret-like paths and excluded local-memory bodies must not be embedded. The Help hint is guidance only, so unavailable CLI or shell execution does not block Load.
+Load and `map` do not modify source, docs, project config, or derived indexes. An explicit query without `--prepared-only` or `--no-write` can refresh derived indexes. Querying a ready snapshot with a configured local provider may download the model into the user model cache on first use. Secret-like paths and excluded local-memory bodies must not be embedded. The Help hint is guidance only, so unavailable CLI or shell execution does not block Load.
 
 ## Traceability
 

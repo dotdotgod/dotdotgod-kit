@@ -1,7 +1,8 @@
 import { statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildDocumentationMap, DotdotgodServiceError } from '../commands/map.mjs';
-import { buildDecisionDocsMap } from '../memory/documentation-map.mjs';
+import { readMemoryConfig } from '../memory/config.mjs';
+import { buildDecisionDocsMap, checkedDocumentationRoot } from '../memory/documentation-map.mjs';
 import { queryProject } from '../commands/query.mjs';
 import { expandReferences } from '../reference/resolve.mjs';
 import { getEmbeddingStatus, installProjectEmbedding } from '../commands/embedding.mjs';
@@ -29,8 +30,15 @@ export async function loadProject(input, validDepth = true) {
   let documentationMap;
   try {
     if (!validDepth) throw new DotdotgodServiceError('INVALID_DEPTH', '--depth requires a positive integer.');
-    documentationMap = readOnly ? buildDecisionDocsMap(root)
-      : buildDocumentationMap(root, { depth: input.maxDepth ?? (focus ? 3 : 5), signal });
+    if (readOnly) documentationMap = buildDecisionDocsMap(root);
+    else {
+      const config = readMemoryConfig(root);
+      if (config.errors?.length) throw new Error('Project configuration is invalid.');
+      const documentationRoot = config.documentation.root;
+      documentationMap = checkedDocumentationRoot(root, documentationRoot)
+        ? buildDocumentationMap(root, { depth: input.maxDepth ?? (focus ? 3 : 5), signal })
+        : { ok: true, documentationRoot, paths: [] };
+    }
     if (!documentationMap.ok) throw new Error('MAP_UNAVAILABLE');
   } catch {
     signal?.throwIfAborted();
@@ -43,7 +51,7 @@ export async function loadProject(input, validDepth = true) {
   let vectorUnavailable;
   if (focus) {
     try {
-      query = await queryProject(root, focus, { limit: Math.min(input.limit ?? 30, 30), signal, cwd: root, readOnly, scope: readOnly ? 'shared' : 'all' });
+      query = await queryProject(root, focus, { limit: Math.min(input.limit ?? 30, 30), signal, cwd: root, readOnly, ...(readOnly ? { scope: 'shared' } : { scope: 'all', indexPolicy: 'prepared-only' }) });
       if (query.warnings?.some((warning) => warning.includes('Optional local embedding runtime is not installed'))) vectorUnavailable = embeddingRuntimeRecovery();
     } catch (error) {
       signal?.throwIfAborted();

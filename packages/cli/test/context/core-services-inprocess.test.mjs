@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import childProcess from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, watch, writeFileSync } from 'node:fs';
+import fs, { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, truncateSync, watch, writeFileSync } from 'node:fs';
 import { registerHooks, syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -10,7 +10,7 @@ import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import * as embedding from '../../src/query/embedding-runtime.mjs';
 import * as embeddingCommand from '../../src/commands/embedding.mjs';
-import { queryProject } from '../../src/commands/query.mjs';
+import { buildVectorIndex, queryProject } from '../../src/commands/query.mjs';
 import { projectEmbeddingStatus, projectImpact, projectInitialize, projectLoad } from '../../src/context/project.mjs';
 import { expandReferences } from '../../src/reference/resolve.mjs';
 
@@ -63,6 +63,113 @@ test('U-8: all six project services run in process without changing process stat
   }
 });
 
+test('Load without a docs root skips traversal, caches and global embedding configuration', async (t) => {
+  const root = fixture(t);
+  const home = fixture(t);
+  for (const path of ['nested/docs', '.dotdotgod/vectors']) mkdirSync(join(root, path), { recursive: true });
+  writeFileSync(join(root, 'nested/docs/README.md'), '# Needle');
+  for (const path of ['.dotdotgod/outlines.json', '.dotdotgod/vectors/snapshots.json']) {
+    writeFileSync(join(root, path), 'sentinel');
+    truncateSync(join(root, path), 64 * 1024 * 1024);
+  }
+  const globalConfig = join(home, '.dotdotgod/config.json');
+  mkdirSync(join(home, '.dotdotgod'));
+  writeFileSync(globalConfig, JSON.stringify({ embedding: { provider: 'ollama', model: 'fixture' } }));
+  const originalHome = process.env.HOME;
+  process.env.HOME = home;
+  const read = t.mock.method(fs, 'readFileSync');
+  const walk = t.mock.method(fs, 'readdirSync');
+  const fetch = t.mock.method(globalThis, 'fetch', () => assert.fail('unexpected embedding request'));
+  syncBuiltinESMExports();
+  try {
+    const start = performance.now();
+    const empty = await projectLoad({ root });
+    const focused = await projectLoad({ root, focus: 'needle' });
+    assert.ok(performance.now() - start < 50, 'missing docs guard must return promptly');
+    assert.equal(empty.ok, true);
+    assert.deepEqual(empty.documentationTree, []);
+    assert.equal(empty.query, null);
+    assert.equal(focused.ok, true);
+    assert.deepEqual(focused.documentationTree, []);
+    assert.deepEqual(focused.query.results, []);
+    assert.match(focused.query.warnings[0], /Select a repository/);
+    assert.equal(focused.vectorUnavailable, undefined);
+    assert.equal(walk.mock.callCount(), 0);
+    assert.equal(fetch.mock.callCount(), 0);
+    assert.ok(read.mock.calls.every(({ arguments: [path] }) => !String(path).includes('.dotdotgod/')));
+  } finally {
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+  }
+});
+
+test('Load honors alternate and empty docs roots but fails closed on invalid config or a symlinked root', async (t) => {
+  const root = fixture(t);
+  const alternate = join(root, 'guide');
+  const config = (path) => writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify({ documentation: { root: path }, ...localConfig }));
+  config('guide');
+  mkdirSync(alternate);
+  let result = await projectLoad({ root, focus: 'needle' });
+  assert.equal(result.ok, true);
+  assert.equal(result.documentationRoot, 'guide');
+  assert.deepEqual(result.query.results, []);
+  assert.doesNotMatch(result.query.warnings[0], /Select a repository/);
+  writeFileSync(join(alternate, 'README.md'), '# Needle');
+  result = await projectLoad({ root, focus: 'needle' });
+  assert.match(result.documentationTree.join('\n'), /README.md/);
+  assert.equal(result.query.results[0].path, 'guide/README.md');
+
+  const outside = fixture(t);
+  writeFileSync(join(outside, 'ESCAPED.md'), '# Needle');
+  symlinkSync(outside, join(root, 'docs'));
+  for (const path of ['../outside', 'docs']) {
+    config(path);
+    const walk = t.mock.method(fs, 'readdirSync');
+    syncBuiltinESMExports();
+    try {
+      result = await projectLoad({ root, focus: 'needle' });
+      assert.equal(result.mapUnavailable.code, 'MAP_UNAVAILABLE');
+      assert.deepEqual(result.documentationTree, []);
+      assert.equal(result.query, null);
+      assert.equal(walk.mock.callCount(), 0);
+      await assert.rejects(queryProject(root, 'needle', { indexPolicy: 'prepared-only' }), /invalid|symlinks/);
+    } finally {
+      t.mock.restoreAll();
+      syncBuiltinESMExports();
+    }
+  }
+});
+
+test('Load only offers local runtime installation when a committed snapshot is ready', async (t) => {
+  const root = fixture(t);
+  mkdirSync(join(root, 'docs'));
+  writeFileSync(join(root, 'docs/README.md'), '# Needle');
+  writeFileSync(join(root, 'dotdotgod.config.json'), JSON.stringify(localConfig));
+  let runtimeProbes = 0;
+  const hooks = registerHooks({ resolve(specifier, context, next) {
+    if (specifier === '@huggingface/transformers') {
+      runtimeProbes += 1;
+      throw Object.assign(new Error('fixture module missing'), { code: 'ERR_MODULE_NOT_FOUND' });
+    }
+    return next(specifier, context);
+  } });
+  t.after(() => hooks.deregister());
+  const cold = await projectLoad({ root, focus: 'needle' });
+  assert.deepEqual(cold.query.results[0].retrieval, ['keyword']);
+  assert.match(cold.query.warnings[0], /Prepared snapshot not ready \(missing\)/);
+  assert.equal(cold.vectorUnavailable, undefined);
+  assert.equal(runtimeProbes, 0);
+  assert.equal(existsSync(join(root, '.dotdotgod')), false);
+  await buildVectorIndex(root, { profile: localConfig.embedding, embed: (texts) => texts.map(() => [1, 0]) });
+  const warm = await projectLoad({ root, focus: 'needle' });
+  assert.deepEqual(warm.query.results[0].retrieval, ['keyword']);
+  assert.ok(runtimeProbes > 0);
+  assert.equal(warm.vectorUnavailable.code, 'EMBEDDING_RUNTIME_MISSING');
+  assert.equal(warm.vectorUnavailable.recovery.requiresConfirmation, true);
+});
+
 test('public project impact rejects NUL-containing paths before writing an index', async (t) => {
   const root = fixture(t);
   writeFileSync(join(root, 'README.md'), '# Fixture\n');
@@ -110,6 +217,7 @@ test('U-8: cancellation in a vector batch is not downgraded to keyword results o
   await started.promise;
   controller.abort();
   await assert.rejects(result, { name: 'AbortError' });
+  assert.equal(existsSync(join(root, '.dotdotgod/index.sqlite')), false);
   assert.equal(existsSync(join(root, '.dotdotgod/vectors/snapshots.json')), false);
   assert.equal(existsSync(join(root, '.dotdotgod/vectors/build.lock')), false);
 });
@@ -175,6 +283,8 @@ test('U-8: only local native inference spawns a private child, reused across bat
     assert.equal(readFileSync(join(root, 'calls'), 'utf8'), 'pipeline\nbatch\nbatch\nbatch\n');
     assert.equal(closed, 1);
     const vectors = join(root, '.dotdotgod/vectors');
+    const database = join(root, '.dotdotgod/index.sqlite');
+    const beforeAbort = readFileSync(database);
     rmSync(vectors, { recursive: true });
     const controller = new AbortController();
     const watcher = watch(root, (_event, filename) => { if (filename === 'blocked') controller.abort(); });
@@ -183,6 +293,7 @@ test('U-8: only local native inference spawns a private child, reused across bat
     } finally { watcher.close(); }
     assert.equal(existsSync(join(root, 'blocked')), true);
     assert.deepEqual(readdirSync(vectors), []);
+    assert.deepEqual(readFileSync(database), beforeAbort);
     assert.equal(tracked.mock.callCount(), 2);
     assert.equal(closed, 2);
     assert.equal(Object.hasOwn(process.env, 'FIXTURE_NATIVE_SIDE_EFFECT'), envBefore);

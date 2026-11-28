@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { pathToFileURL } from 'node:url';
 import { RETENTION_MS, validateSessionId } from '../primitives.mjs';
+import { enqueueDirtyPath, inspectIndexPath, openWriter } from '../storage/index-store.mjs';
 import {
   impactFingerprint,
   impactPath,
@@ -105,13 +106,22 @@ export class ImpactState {
     const names = [...new Set(paths.map((path) => impactPath(this.root, path, docRoot)).filter(Boolean))];
     if (!names.length) return { becameNonEmpty: false };
     const entries = names.map((path) => ({ path, fingerprint: impactFingerprint(this.root, path) ?? null }));
-    return this.tx((db) => {
+    const result = this.tx((db) => {
       const now = Date.now();
       const hadActive = Boolean(db.prepare('SELECT 1 FROM pending WHERE session=? AND expires_at > ? LIMIT 1').get(this.sessionId, now));
       const insert = db.prepare('INSERT OR REPLACE INTO pending (session,path,revision,fingerprint,created_at,expires_at,notified) VALUES (?, ?, ?, ?, ?, ?, 0)');
       for (const entry of entries) insert.run(this.sessionId, entry.path, randomUUID(), entry.fingerprint, now, now + RETENTION_MS);
       return { becameNonEmpty: !hadActive };
     });
+    let store;
+    try {
+      if (inspectIndexPath(this.root).exists) {
+        store = openWriter(this.root, undefined, { existingOnly: true, nonblocking: true });
+        store?.transaction(() => { for (const path of names) enqueueDirtyPath(store, path, 'hook'); });
+      }
+    } catch { /* Advisory impact must remain available even if the index is busy or unavailable. */ }
+    finally { store?.close(); }
+    return result;
   }
 
   snapshot(paths) {

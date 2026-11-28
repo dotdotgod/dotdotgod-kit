@@ -9,6 +9,7 @@ import { buildGraph } from '../graph/extract.mjs';
 import { buildOutlines, readOutlines } from '../symbols/store.mjs';
 import { outlinePolicy } from '../symbols/discovery.mjs';
 import { addOutlineGraph } from '../symbols/graph.mjs';
+import { incrementalIndexStatus } from '../storage/index-store.mjs';
 
 function collectFingerprints(root, config = readMemoryConfig(root)) {
   return collectIndexFiles(root, config).map((file) => {
@@ -91,7 +92,9 @@ export function getStatus(root) {
   const index = readIndex(root);
   const memoryConfig = readMemoryConfig(root);
   const currentFiles = collectFingerprints(root, memoryConfig);
-  if (!index) return { ok: false, status: 'missing', cachePath: rel(root, cacheFile(root)), indexedFiles: 0, currentFiles: currentFiles.length, staleFiles: currentFiles.length, archiveBodiesIncluded: false, schemaVersion: null, expectedSchemaVersion: CACHE_VERSION, schemaOk: false, reason: 'missing' };
+  const incrementalIndex = incrementalIndexStatus(root);
+  const engine = { incrementalIndex, indexEngine: incrementalIndex.present ? 'sqlite-wal' : null };
+  if (!index) return { ...engine, ok: false, status: 'missing', cachePath: rel(root, cacheFile(root)), indexedFiles: 0, currentFiles: currentFiles.length, staleFiles: currentFiles.length, archiveBodiesIncluded: false, schemaVersion: null, expectedSchemaVersion: CACHE_VERSION, schemaOk: false, reason: 'missing' };
   const indexed = new Map((index.files ?? []).map((file) => [file.path, file.sha256]));
   const currentMap = new Map(currentFiles.map((file) => [file.path, file.sha256]));
   const stale = currentFiles.filter((file) => indexed.get(file.path) !== file.sha256).map((file) => file.path);
@@ -101,7 +104,7 @@ export function getStatus(root) {
   const schemaOk = schemaVersion === CACHE_VERSION;
   const ok = staleFiles.length === 0 && schemaOk;
   const reason = ok ? 'fresh' : !schemaOk ? 'schema-mismatch' : staleFiles.length > 0 ? 'content-changed' : 'unknown';
-  return { ok, status: ok ? 'fresh' : 'stale', cachePath: rel(root, cacheFile(root)), indexedFiles: index.files?.length ?? 0, currentFiles: currentFiles.length, staleFiles: staleFiles.length, examples: staleFiles.slice(0, 10), archiveBodiesIncluded: index.archiveBodiesIncluded === true, schemaVersion, expectedSchemaVersion: CACHE_VERSION, schemaOk, reason, graph: graphStats(index.graph ?? { nodes: [], edges: [] }) };
+  return { ...engine, ok, status: ok ? 'fresh' : 'stale', cachePath: rel(root, cacheFile(root)), indexedFiles: index.files?.length ?? 0, currentFiles: currentFiles.length, staleFiles: staleFiles.length, examples: staleFiles.slice(0, 10), archiveBodiesIncluded: index.archiveBodiesIncluded === true, schemaVersion, expectedSchemaVersion: CACHE_VERSION, schemaOk, reason, graph: graphStats(index.graph ?? { nodes: [], edges: [] }) };
 }
 
 export async function runIndex(argv) {
@@ -118,7 +121,11 @@ export function runStatus(argv) {
   const options = parseCommon(argv);
   const status = getStatus(options.root);
   if (options.json) console.log(JSON.stringify(status, null, 2));
-  else console.log(`dotdotgod index status: ${status.status} (${status.indexedFiles}/${status.currentFiles} files, cache: ${status.cachePath})`);
+  else {
+    console.log(`dotdotgod index status: ${status.status} (${status.indexedFiles}/${status.currentFiles} files, cache: ${status.cachePath})`);
+    const index = status.incrementalIndex;
+    if (index.present) console.log(`SQLite WAL: ${index.docsChunks} docs chunks, ${index.codeChunks} code chunks, ${index.vectorsCount} vectors, ${index.dirtyQueueCount} queued, HNSW ${index.hnswActiveNodes} active/${index.hnswTombstones} tombstoned${index.workerLease?.active ? `, worker PID ${index.workerLease.pid}` : ''}`);
+  }
   process.exit(status.ok ? 0 : 1);
 }
 

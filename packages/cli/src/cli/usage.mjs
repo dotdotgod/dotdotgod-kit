@@ -50,10 +50,10 @@ Create dotdotgod.config.json from a bundled or user template. Without --template
   dotdotgod status <root> [--json]`;
     case 'query':
       return `Usage:
-  dotdotgod query <root> <query> [--limit n] [--scope docs|code|all|shared] [--search hybrid|keyword|vector] [--no-write] [--json]
+  dotdotgod query <root> <query> [--limit n] [--scope docs|code|all|shared] [--search hybrid|keyword|vector] [--prepared-only] [--no-write] [--json]
   dotdotgod query <root> [options] -- <query>
 
-Search full documentation and code outlines/comments. Default: hybrid docs+code. Use --no-write for keyword search without updating caches, and --scope shared to exclude local memory. Selecting a remote embedding profile authorizes code metadata transmission.`;
+Search full documentation and code outlines/comments. Default: hybrid docs+code. Use --prepared-only to use existing caches without rebuilding, --no-write for offline keyword search without updating caches, and --scope shared to exclude local memory. Selecting a remote embedding profile authorizes code metadata transmission.`;
     case 'embedding':
       return `Usage:
   dotdotgod embedding status [<root>] [--json]

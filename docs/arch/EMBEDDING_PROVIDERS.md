@@ -7,21 +7,23 @@ Embedding configuration resolution, provider execution, index orchestration, and
 - `query/embedding-config.mjs` resolves and validates the whole effective profile.
 - `query/embedder.mjs` owns role-based input formatting, local initialization and remote transport.
 - `commands/query.mjs` owns chunks, batching, incremental reuse, and ranking.
-- `query/store.mjs` owns provider-aware cache validation and atomic persistence.
+- `query/cache-session.mjs` owns writer serialization, scope publication, and legacy migration reads.
+- `storage/index-store.mjs` owns SQLite transactions and packed vector persistence; `query/store.mjs` retains the legacy compatibility export.
 - `impact/vector-overlay.mjs` reuses the resolved index/provider.
 
 The provider interface returns ordered, finite, consistently sized, normalized vectors. Local pipelines are cached by model ID rather than globally so multiple projects can use different models in one process.
 
 ## Cache Identity
 
-The cache fingerprint canonically orders provider/model/endpoint and includes effective query/document prefixes plus a formatting version, but excludes `apiKey` and `apiKeyEnv`. Equivalent omitted/explicit E5 formats share identity. Legacy identities and either prefix changing trigger a rebuild. Dimensions are learned from provider output and stored in the manifest. Schema mismatches and profile changes rebuild the full vector cache; chunk-level reuse applies only within the same schema and profile.
+The cache fingerprint canonically orders provider/model/endpoint and includes effective query/document prefixes plus a formatting version, but excludes `apiKey` and `apiKeyEnv`. Equivalent omitted/explicit E5 formats share identity. Legacy identities and either prefix changing trigger a rebuild. Dimensions are learned from provider output. Reuse applies only within the same effective profile and compatible schema.
 
 ## Scope-Safe Persistence
 
-Document/code snapshots and batch checkpoints share one atomically replaced
-`vectors/snapshots.json` state file. Only refreshed corpora are pruned, including
-empty corpora; candidates always use current chunk metadata. Compatible legacy
-artifacts migrate without new passage calls. A project lock serializes builds
+SQLite WAL batch commits store completed vectors independently of published corpus
+membership. A failed remote build can reuse those vectors on resume. Isolated local
+inference stages vectors until success to avoid persisting aborted cold batches.
+Compatible snapshots (including pending rows) and version-2 exports migrate without
+passage calls. See [INCREMENTAL_INDEX_ENGINE.md](INCREMENTAL_INDEX_ENGINE.md). A project lock serializes builds
 with a 30-second wait and confirmed-dead-owner recovery; malformed locks fail
 closed and require inspection. Diagnostics include invalidation reason, lock wait,
 and per-corpus embedded/reused/recovered counts. Offline regression coverage is

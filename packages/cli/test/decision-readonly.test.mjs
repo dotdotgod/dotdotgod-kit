@@ -112,7 +112,7 @@ test('read-only query stays keyword-only, filters shared docs and outlines, and 
   write('private.mjs', 'export function needlePrivate() {}');
   const cold = snapshot(root);
   const embed = () => assert.fail('read-only query invoked embeddings');
-  const options = { readOnly: true, search: 'keyword', scope: 'shared', embed };
+  const options = { readOnly: true, search: 'vector', scope: 'shared', embed };
   const coldResult = await queryProject(root, 'needle', options);
   assert.deepEqual(coldResult.results.map(({ path }) => path), ['docs/PUBLIC.md']);
   assert.equal(coldResult.outlines, null);
@@ -122,11 +122,12 @@ test('read-only query stays keyword-only, filters shared docs and outlines, and 
   write('.dotdotgod/manifest.json', 'untouched-graph-sentinel');
   write('shared.mjs', 'export function notCached() {}');
   const warm = snapshot(root);
+  assert.deepEqual(warm.map(([path]) => path).filter((path) => path.startsWith('.dotdotgod/index.sqlite')), ['.dotdotgod/index.sqlite']);
   const result = await queryProject(root, 'needle', options);
   assert.deepEqual(new Set(result.results.map(({ path }) => path)), new Set(['docs/PUBLIC.md', 'shared.mjs']));
   assert.equal(result.embeddingSource, 'not-used');
   assert.deepEqual(result.warnings, []);
-  const cli = run('query', '--json', '--no-write', '--scope', 'shared', '--', 'needle');
+  const cli = run('query', '--json', '--no-write', '--search', 'vector', '--scope', 'shared', '--', 'needle');
   assert.equal(cli.status, 0, cli.stderr);
   const payload = JSON.parse(cli.stdout);
   assert.equal(payload.search, 'keyword');

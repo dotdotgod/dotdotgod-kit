@@ -17,14 +17,14 @@ Without arguments, Load discovers shared Markdown below `docs/` and renders a pr
 
 With arguments, Load:
 
-1. runs `dotdotgod query <root> "<arguments>" --limit 30 --json` when available;
-2. includes the best-ranked chunk from each of at most 30 distinct Markdown files;
+1. runs `dotdotgod query <root> --limit 30 --prepared-only --json -- "<arguments>"` when available;
+2. includes up to 30 ranked documentation files or code symbols;
 3. renders the documentation tree through directory depth 3;
 4. falls back to README routing and targeted reads if query or shell execution is unavailable.
 
 At a depth boundary, the map reports exact recursive omitted-directory and Markdown-file counts. `load.documentationSummary.exclude` controls both map and query corpus exclusions; defaults exclude `docs/plan/**` and `docs/archive/**` bodies. Load still treats `docs/plan/README.md` and `docs/archive/README.md` as local routing maps when available.
 
-Focused query can refresh ignored repository cache files under `.dotdotgod/vectors/` and the runtime's user-level model cache. It does not modify source, documentation, or project config.
+Focused query reads existing outlines and committed vectors without rebuilding caches or waiting for writers. If a configured snapshot is not ready, it keeps keyword results and does not start the embedder. A ready local snapshot may require a model download for the focus embedding.
 
 ## Baseline Routing
 

@@ -10,10 +10,14 @@ The CLI uses `.dotdotgod/` at the project root as the default local cache direct
 - The index records whether archive bodies were included; default indexes exclude archive bodies.
 - `dotdotgod status <root>` reports `missing`, `fresh`, or `stale` from file fingerprints and schema state without rebuilding the graph.
 - `dotdotgod index <root>` incrementally rebuilds changed file graph shards when a compatible manifest already exists.
-- Graph-facing commands such as `resolve`, `expand`, and `graph ...` lazily refresh missing or stale graph caches before returning output; `query` maintains its separate vector cache.
+- Graph-facing commands such as `resolve`, `expand`, and `graph ...` lazily refresh missing or stale graph caches before returning output; `query` uses the separate [SQLite retrieval index](../INCREMENTAL_INDEX_ENGINE.md).
 - Lazy refresh output includes cache refresh metadata, changed-file counts, elapsed timing, rebuild mode, and cache size details.
 
-Completion hooks that refresh the index are optional. The default workflow relies on lazy refresh and avoids mutating the cache after every task.
+`validate --check-index` verifies outline-policy and source freshness in addition to the structural graph manifest. Validation does not refresh either index; where SQLite has not been created, compatible legacy outline files can still be inspected.
+
+The [MCP background worker](../INCREMENTAL_INDEX_ENGINE.md#continuous-mcp-indexing) maintains the SQLite retrieval index independently; it does not rewrite the structural graph manifest or shards. Edit hooks enqueue existing SQLite indexes without creating them. Completion hooks that refresh the structural graph are still optional.
+
+`status --json` and MCP `doctor` expose an `incrementalIndex` snapshot: presence, schema version, queued paths, docs and code chunks, stored vectors, active and tombstoned HNSW nodes, and an optional worker lease (PID, expiry and liveness, never its token). Counts span all stored profiles. These diagnostics do not create index databases or sidecars or repair missing state.
 
 Claude Code and Codex hook examples should prefer `dotdotgod status` for read-only stop-time cache reporting and `dotdotgod validate . --include-local-memory --check-index` for explicit docs validation plus markdown index-fingerprint checks. Hook examples that call `query`, `graph`, `index`, or `verify:cache` must describe the cache-refresh side effect or keep those commands opt-in.
 

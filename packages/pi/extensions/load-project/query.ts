@@ -18,7 +18,7 @@ export function queryFailureDetail(result: { error?: { message: string }; stdout
 
 export function runDotdotgodQuery(cwd: string, query: string): QueryRunResult {
 	const errors: string[] = [];
-	for (const candidate of buildDotdotgodCliCandidates(cwd, ["query", cwd, query, "--limit", "30", "--json"])) {
+	for (const candidate of buildDotdotgodCliCandidates(cwd, ["query", cwd, "--limit", "30", "--prepared-only", "--json", "--", query])) {
 		const result = spawnSync(candidate.command, candidate.args, { cwd, encoding: "utf8", timeout: 120_000, maxBuffer: 10 * 1024 * 1024 });
 		if (result.status === 0) {
 			try {

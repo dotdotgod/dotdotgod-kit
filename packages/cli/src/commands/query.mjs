@@ -1,14 +1,16 @@
 import { resolve } from 'node:path';
 import { DotdotgodServiceError } from './map.mjs';
-import { vectorCacheSession } from '../query/cache-session.mjs';
+import { readPreparedVectorSnapshot, sqliteVectorSnapshot, vectorCacheSession } from '../query/cache-session.mjs';
 import { usage } from '../cli/usage.mjs';
 import { readMemoryConfig } from '../memory/config.mjs';
-import { collectDocumentationChunks } from '../query/chunks.mjs';
+import { refreshDocs, documentationChunks } from '../storage/change-detector.mjs';
+import { chunkCorpus, openReadOnly, openWriter } from '../storage/index-store.mjs';
+import { ftsCandidates } from '../storage/fts-search.mjs';
 import { resolveEmbedder, withEmbeddingOperation } from '../query/embedder.mjs';
-import { resolveEmbeddingProfile } from '../query/embedding-config.mjs';
+import { DEFAULT_EMBEDDING_PROFILE, embeddingProfileIdentity, resolveEmbeddingProfile } from '../query/embedding-config.mjs';
 import { isValidNormalizedVectorValues, profileFingerprint, writeVectorCache } from '../query/store.mjs';
 
-import { projectCorpus, keywordCandidates, fuseCandidates, attachRelationships } from '../query/hybrid.mjs';
+import { projectCorpus, keywordCandidates, fuseCandidates, attachRelationships, indexPathFilter } from '../query/hybrid.mjs';
 
 const DEFAULT_LIMIT = 30;
 const MAX_LIMIT = 100;
@@ -25,6 +27,7 @@ export function parseQueryOptions(argv) {
     }
     if (arg === '--json') options.json = true;
     else if (arg === '--no-write') options.readOnly = true;
+    else if (arg === '--prepared-only') options.indexPolicy = 'prepared-only';
     else if (arg === '--scope') { options.scope = argv[++i]; if (!['docs', 'code', 'all', 'shared'].includes(options.scope)) usage('--scope must be docs, code, all or shared.', 'query'); }
     else if (arg === '--search') { options.search = argv[++i]; if (!['hybrid', 'keyword', 'vector'].includes(options.search)) usage('--search must be hybrid, keyword or vector.', 'query'); }
     else if (arg === '--limit') { const value = Number(argv[++i]); if (!Number.isInteger(value) || value < 1 || value > MAX_LIMIT) usage(`--limit must be an integer from 1 to ${MAX_LIMIT}.`, 'query'); options.limit = value; }
@@ -97,69 +100,74 @@ export async function buildVectorIndex(root, embedOrOptions = {}) {
   signal?.throwIfAborted();
   const config = readMemoryConfig(root);
   const exclude = config.load?.documentationSummary?.exclude ?? ['docs/plan', 'docs/archive'];
-  const chunks = options.chunks ?? collectDocumentationChunks(root, exclude, config.documentation?.root ?? 'docs');
-  return vectorCacheSession(root, resolved.identity, async (state, save, diagnostics) => {
-  signal?.throwIfAborted();
-  const selectedFingerprints = new Set(chunks.map((chunk) => chunk.fingerprint));
-  state.pending = state.pending.filter((row) => selectedFingerprints.has(row.chunk.fingerprint));
-  const recovered = new Set(state.pending.map((row) => row.chunk.fingerprint));
-  const cacheRows = [...state.docs, ...state.code, ...state.pending];
-  const cached = state.dimensions ? { chunks: cacheRows.map((row) => row.chunk), vectors: Float32Array.from(cacheRows.flatMap((row) => row.vector)), manifest: { dimensions: state.dimensions } } : null;
-  const cachedOffsets = new Map((cached?.chunks ?? []).map((chunk, index) => [chunk.fingerprint, index]));
-  const rows = new Array(chunks.length);
-  const missing = []; let reused = 0;
-  chunks.forEach((chunk, index) => { const oldIndex = cachedOffsets.get(chunk.fingerprint); if (oldIndex === undefined || !cached) missing.push({ chunk, index }); else { const d = cached.manifest.dimensions; rows[index] = Array.from(cached.vectors.subarray(oldIndex * d, (oldIndex + 1) * d)); reused += 1; } });
-  const isolated = resolved.profile.provider === 'local' && options.openLocal && !options.embed;
-  let completedBatch = false;
-  try {
-    for (let offset = 0; offset < missing.length; offset += EMBED_BATCH_SIZE) {
-      const batch = missing.slice(offset, offset + EMBED_BATCH_SIZE);
-      const embedded = await resolved.embed(batch.map(({ chunk }) => chunk.passage), 'document');
-      signal?.throwIfAborted();
-      if (!Array.isArray(embedded) || embedded.length !== batch.length) throw new Error('Embedder returned an unexpected vector count.');
-      embedded.forEach((vector, index) => {
-        const dimensions = state.dimensions ?? vector.length;
-        assertVector(vector, dimensions, 'Passage vector');
-        state.dimensions = dimensions;
-        rows[batch[index].index] = vector;
-        const { passage, ...chunk } = batch[index].chunk;
-        state.pending.push({ chunk, vector: Array.from(vector) });
-      });
-      if (!isolated) save();
-      completedBatch = true;
+  let chunks = options.chunks;
+  if (!chunks) {
+    const reader = openReadOnly(root);
+    try { chunks = documentationChunks(root, config, reader); }
+    finally { reader?.close(); }
+  }
+  const refreshed = options.corpora ?? (options.chunks ? [...new Set(chunks.map(chunkCorpus))] : ['docs']);
+  const updateDocs = !options.chunks || options.refreshDocs;
+  const refresh = updateDocs || options.refreshOutlines ? (store) => {
+    options.refreshOutlines?.(store);
+    if (updateDocs) refreshDocs(root, store, config);
+  } : null;
+  return vectorCacheSession(root, resolved.identity, async (session, diagnostics) => {
+    signal?.throwIfAborted();
+    let dimensions;
+    const rows = new Array(chunks.length);
+    const missing = [];
+    const counters = Object.fromEntries(refreshed.map((corpus) => [corpus, { chunks: 0, embedded: 0, reused: 0, recovered: 0 }]));
+    const corpora = new Map(refreshed.map((corpus) => [corpus, []]));
+    chunks.forEach((chunk, index) => {
+      const corpus = chunkCorpus(chunk);
+      if (!counters[corpus]) throw new Error(`Chunk ${chunk.id} does not belong to a refreshed corpus.`);
+      const counts = counters[corpus];
+      corpora.get(corpus).push(chunk.fingerprint);
+      counts.chunks += 1;
+      const old = session.lookup(chunk.fingerprint);
+      if (!old) { missing.push({ chunk, index }); counts.embedded += 1; return; }
+      dimensions ??= old.dimensions;
+      assertVector(old.vector, dimensions, 'Cached passage vector');
+      rows[index] = old.vector;
+      counts.reused += 1;
+      if (!old.committed) counts.recovered += 1;
+    });
+    const isolated = resolved.profile.provider === 'local' && options.openLocal && !options.embed;
+    const staged = [];
+    try {
+      for (let offset = 0; offset < missing.length; offset += EMBED_BATCH_SIZE) {
+        const batch = missing.slice(offset, offset + EMBED_BATCH_SIZE);
+        const embedded = await resolved.embed(batch.map(({ chunk }) => chunk.passage), 'document');
+        signal?.throwIfAborted();
+        if (!Array.isArray(embedded) || embedded.length !== batch.length) throw new Error('Embedder returned an unexpected vector count.');
+        const completed = embedded.map((vector, i) => {
+          dimensions ??= vector.length;
+          assertVector(vector, dimensions, 'Passage vector');
+          rows[batch[i].index] = vector;
+          return { fingerprint: batch[i].chunk.fingerprint, corpus: chunkCorpus(batch[i].chunk), vector };
+        });
+        if (isolated) staged.push(...completed);
+        else session.save(dimensions, completed);
+      }
+    } catch (error) {
+      if (staged.length && !signal?.aborted) session.save(dimensions, staged);
+      throw error;
     }
-  } catch (error) {
-    // Do not publish incomplete local batches if the operation was cancelled.
-    if (isolated && completedBatch && !signal?.aborted) save();
-    throw error;
-  }
-  const dimensions = rows[0]?.length ?? cached?.manifest?.dimensions;
-  if (!dimensions && chunks.length) throw new Error('No documentation chunks were available to establish vector dimensions.');
-  if (rows.some((row) => !row || row.length !== dimensions)) throw new Error('Embedder returned inconsistent passage-vector dimensions.');
-  const vectors = new Float32Array(chunks.length * dimensions);
-  rows.forEach((row, index) => { assertVector(row, dimensions, 'Passage vector'); vectors.set(row, index * dimensions); });
-  const storedChunks = chunks.map(({ passage, ...chunk }) => chunk);
-  const refreshed = options.corpora ?? (options.chunks ? [...new Set(chunks.map((chunk) => chunk.kind === 'symbol' ? 'code' : 'docs'))] : ['docs']);
-  const counters = {};
-  for (const corpus of refreshed) {
-    const positions = chunks.map((chunk, index) => ({ chunk, index })).filter(({ chunk }) => (chunk.kind === 'symbol' ? 'code' : 'docs') === corpus);
-    state[corpus] = positions.map(({ index }) => ({ chunk: storedChunks[index], vector: Array.from(rows[index]) }));
-    counters[corpus] = { chunks: positions.length, embedded: missing.filter(({ chunk }) => (chunk.kind === 'symbol' ? 'code' : 'docs') === corpus).length, recovered: positions.filter(({ chunk }) => recovered.has(chunk.fingerprint)).length };
-    counters[corpus].reused = positions.length - counters[corpus].embedded;
-  }
-  state.pending = [];
-  signal?.throwIfAborted();
-  save();
-  const metadata = { provider: resolved.profile.provider, model: resolved.profile.model, dimensions, profileFingerprint: profileFingerprint(resolved.identity), excluded: exclude, embedded: missing.length, reused, diagnostics: { ...diagnostics, corpora: counters } };
-  // Keep the legacy export readable; authoritative snapshots remain atomic above.
-  const manifest = dimensions ? writeVectorCache(root, storedChunks, vectors, metadata) : { chunks: 0, ...metadata };
-  return { chunks: storedChunks, vectors, manifest, embedding: resolved };
+    signal?.throwIfAborted();
+    session.commit(dimensions, staged, corpora, refresh, options.scope === 'shared');
+    const vectors = new Float32Array(chunks.length * (dimensions ?? 0));
+    rows.forEach((row, index) => vectors.set(row, index * dimensions));
+    const storedChunks = chunks.map(({ passage, ...chunk }) => chunk);
+    const metadata = { provider: resolved.profile.provider, model: resolved.profile.model, dimensions, profileFingerprint: profileFingerprint(resolved.identity), excluded: exclude, embedded: missing.length, reused: chunks.length - missing.length, diagnostics: { ...diagnostics, corpora: counters } };
+    const manifest = dimensions && options.exportLegacy ? writeVectorCache(root, storedChunks, vectors, metadata) : { chunks: chunks.length, ...metadata };
+    return { chunks: storedChunks, vectors, manifest, embedding: resolved };
   });
 }
 
 export async function queryDocumentation(root, query, options = {}) {
   const limit = options.limit ?? DEFAULT_LIMIT;
-  const index = await buildVectorIndex(root, options);
+  const index = await buildVectorIndex(root, { ...options, exportLegacy: true });
   const [queryVector] = await index.embedding.embed([query], 'query');
   const dimensions = index.manifest.dimensions;
   assertVector(queryVector, dimensions, 'Query vector');
@@ -175,43 +183,117 @@ export async function queryProject(root, query, options = {}) {
 async function queryWithEmbedding(root, query, options) {
   const { signal } = options;
   signal?.throwIfAborted();
+  let store;
   try {
     const scope = options.scope ?? 'all';
     const search = options.readOnly ? 'keyword' : options.search ?? 'hybrid';
     const limit = options.limit ?? DEFAULT_LIMIT;
-    const corpus = await projectCorpus(root, scope, options.readOnly);
-    signal?.throwIfAborted();
-    const keyword = search === 'vector' ? [] : keywordCandidates(query, corpus.chunks);
-    let vector = []; let index; let vectorError;
-    let configured = false;
-    if (search !== 'keyword') {
-      try { configured = Boolean(options.profile || options.embed || resolveEmbeddingProfile(root, options).profile); }
-      catch (error) { if (search === 'vector') throw error; vectorError = error.message; }
-      if (!configured && !vectorError && search === 'vector') throw new Error('Embedding is not configured. Set embedding in project or global configuration to use vector search.');
+    const preparedOnly = options.indexPolicy === 'prepared-only';
+    const resolveProfile = () => options.profile || options.embed
+      ? { profile: options.profile ?? DEFAULT_EMBEDDING_PROFILE, source: options.source ?? 'injected' }
+      : resolveEmbeddingProfile(root, options);
+    let selection; let configurationError;
+    if (!preparedOnly && search !== 'keyword') {
+      try { selection = resolveProfile(); } catch (error) { configurationError = error; }
     }
-    if (search !== 'keyword' && configured) {
+    const stageOutlines = selection?.profile?.provider === 'local' && !options.embed;
+    const corpus = await projectCorpus(root, scope, options.readOnly, { preparedOnly, stageOutlines });
+    signal?.throwIfAborted();
+    const response = { ok: true, command: 'query', root, query, scope, search, limit };
+    if (corpus.missingDocumentationRoot) {
+      return { ...response, provider: null, model: null, embeddingSource: 'not-used', dimensions: null, index: null, outlines: null, results: [],
+        warnings: [`Documentation root "${corpus.documentationRoot}" is missing. Select a repository with a configured documentation directory and retry.`] };
+    }
+    const corpora = scope === 'all' || scope === 'shared' ? ['docs', 'code'] : [scope];
+    const writable = !preparedOnly && !options.readOnly;
+    const refresh = (docs, outlines) => {
+      const writer = openWriter(root);
       try {
-        index = await buildVectorIndex(root, { ...options, chunks: corpus.chunks, corpora: scope === 'all' || scope === 'shared' ? ['docs', 'code'] : [scope] });
-        const [queryVector] = index.chunks.length ? await index.embedding.embed([query], 'query') : [];
-        signal?.throwIfAborted();
-        vector = index.chunks.map((chunk, position) => ({ ...chunk, vectorScore: cosineScore(queryVector, index.vectors, position * index.manifest.dimensions, index.manifest.dimensions) }))
-          .sort((a, b) => b.vectorScore - a.vectorScore || a.id.localeCompare(b.id));
+        if (outlines) corpus.outlines?.publish?.(writer);
+        if (docs) refreshDocs(root, writer, corpus.config);
+      } finally { writer.close(); }
+    };
+    if (!writable) store = openReadOnly(root);
+    let allowed = store && indexPathFilter(root, store, corpus.allowPath, options.readOnly);
+    let vector = []; let index; let vectorError; let refreshed = false; let publishedOutlines = false;
+    if (search !== 'keyword') {
+      try {
+        if (configurationError) throw configurationError;
+        const { profile, source } = selection ?? resolveProfile();
+        const embeddingOptions = { ...options, profile, source };
+        if (!profile) {
+          if (search === 'vector') throw new Error('Embedding is not configured. Set embedding in project or global configuration to use vector search.');
+        } else if (preparedOnly) {
+          const identity = embeddingProfileIdentity(profile);
+          const prepared = store ? sqliteVectorSnapshot(root, store, identity, corpora, allowed, limit)
+            : corpus.indexExists ? { ready: false, reason: 'unusable' } : readPreparedVectorSnapshot(root, identity, corpus.chunks(), corpora);
+          if (!prepared.ready) throw new Error(`Prepared snapshot not ready (${prepared.reason}).`);
+          const embedding = await awaitEmbedding(signal, () => resolveEmbedder(root, embeddingOptions));
+          index = { ...prepared, embedding };
+        } else {
+          const cached = openReadOnly(root);
+          let chunks;
+          try { chunks = corpus.chunks(cached); }
+          finally { cached?.close(); }
+          index = await buildVectorIndex(root, { ...embeddingOptions, chunks, corpora, refreshDocs: scope !== 'code', refreshOutlines: corpus.outlines?.publish });
+          refreshed = scope !== 'code';
+          publishedOutlines = true;
+          store = openReadOnly(root);
+          if (store) {
+            allowed = indexPathFilter(root, store, corpus.allowPath);
+            const prepared = sqliteVectorSnapshot(root, store, embeddingProfileIdentity(profile), corpora, allowed, limit);
+            if (prepared.ready) index.rank = prepared.rank;
+          }
+        }
+        if (index?.rank || index?.chunks.length) {
+          const [queryVector] = await awaitEmbedding(signal, () => index.embedding.embed([query], 'query'));
+          signal?.throwIfAborted();
+          assertVector(queryVector, index.manifest.dimensions, 'Query vector');
+          vector = index.rank ? index.rank(queryVector) : index.chunks.map((chunk, position) => ({ ...chunk, vectorScore: cosineScore(queryVector, index.vectors, position * index.manifest.dimensions, index.manifest.dimensions) }))
+            .sort((a, b) => b.vectorScore - a.vectorScore || a.id.localeCompare(b.id));
+        }
       } catch (error) {
         signal?.throwIfAborted();
         if (search === 'vector') throw error;
         vectorError = error instanceof Error ? error.message : String(error);
       }
     }
-    const results = attachRelationships(fuseCandidates(keyword, vector, limit), corpus.outlines).map(({ passage, ...result }) => result);
-    return { ok: true, command: 'query', root, query, scope, search, limit,
+    if (writable) {
+      const refreshDocumentation = scope !== 'code' && !refreshed;
+      const refreshOutlines = !publishedOutlines && Boolean(corpus.outlines?.publish);
+      if (refreshDocumentation || refreshOutlines) refresh(refreshDocumentation, refreshOutlines);
+      if (!store) {
+        store = openReadOnly(root);
+        allowed = store && indexPathFilter(root, store, corpus.allowPath);
+      }
+    }
+    let keyword = [];
+    if (search !== 'vector') {
+      const docsIndexed = !options.readOnly && store?.meta('docs_root') === corpus.config.documentation.root;
+      const indexed = !store ? [] : corpora.filter((kind) => kind !== 'docs' || docsIndexed);
+      const fallback = corpora.filter((kind) => !indexed.includes(kind));
+      if (indexed.length) keyword = ftsCandidates(store, query, indexed, limit, allowed);
+      if (fallback.length) keyword.push(...keywordCandidates(query, corpus.chunks(store, fallback)));
+    }
+    signal?.throwIfAborted();
+    const results = attachRelationships(fuseCandidates(keyword, vector, limit), corpus.legacy, scope === 'docs' ? null : store, allowed).map(({ passage, ...result }) => result);
+    let summary = null;
+    if (scope !== 'docs') {
+      const rows = store?.meta('outline_policy') ? store.sql("SELECT path,status FROM files WHERE kind='code' AND status IN ('failed','partial','unsupported') ORDER BY path").all()
+        : corpus.legacy?.files.filter((file) => file.status !== 'parsed');
+      if (rows) summary = { refresh: corpus.outlines?.refresh,
+        indexedFiles: store ? Number(store.meta('outline_count') ?? 0) : corpus.legacy.files.length,
+        diagnostics: rows.filter(({ path }) => corpus.allowPath(path, 'code')).map(({ path, status }) => ({ path, status })) };
+    }
+    return { ...response,
       provider: index?.embedding.profile.provider ?? null, model: index?.embedding.profile.model ?? null,
       embeddingSource: index?.embedding.source ?? 'not-used', dimensions: index?.manifest.dimensions ?? null,
-      index: index?.manifest ?? null, outlines: corpus.outlines ? { refresh: corpus.outlines.refresh, indexedFiles: corpus.outlines.files.length, diagnostics: corpus.outlines.files.filter((file) => file.status !== 'parsed').map(({ path, status }) => ({ path, status })) } : null,
-      warnings: [...(vectorError ? [`Vector retrieval unavailable; keyword results only: ${vectorError}`] : []), ...(corpus.outlines?.files.filter((file) => file.status !== 'parsed').map((file) => `Outline ${file.status}: ${file.path}`) ?? [])], results };
+      index: index?.manifest ?? null, outlines: summary,
+      warnings: [...(vectorError ? [`Vector retrieval unavailable; keyword results only: ${vectorError}`] : []), ...(summary?.diagnostics.map((file) => `Outline ${file.status}: ${file.path}`) ?? [])], results };
   } catch (error) {
     signal?.throwIfAborted();
     throw DotdotgodServiceError.from(error, 'QUERY_FAILED');
-  }
+  } finally { store?.close(); }
 }
 
 function formatQueryResult(payload) {

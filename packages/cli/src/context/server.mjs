@@ -13,6 +13,7 @@ import { loadProject, projectEmbeddingStatus, projectInitialize, reviewProjectIm
 import { installProjectEmbedding } from '../commands/embedding.mjs';
 import { resolveSessionId, resolveWithinRoot, validateSessionId } from '../primitives.mjs';
 import { IngestionJobRunner } from './jobs.mjs';
+import { startBackgroundIndexer } from './index-worker.mjs';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { ImpactState, withImpactReview } from './impact-state.mjs';
 import { isInitializedProject } from './hook-state.mjs';
@@ -42,6 +43,15 @@ const currentBound = () => sessions.getStore()?.bound ?? sessionBound;
 let contextStore;
 let jobRunner;
 let rootsSyncPromise = Promise.resolve();
+let rootSyncVersion = 0;
+let stdioReady = false;
+let indexWorker;
+let indexClosing;
+function stopIndexer() {
+  if (indexWorker) indexClosing = indexWorker.close();
+  indexWorker = undefined;
+  return indexClosing;
+}
 function getStore() {
   contextStore ??= new ContextStore(root);
   return contextStore;
@@ -56,23 +66,37 @@ function unboundImpactStatus() {
 const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
 const server = new McpServer({ name: 'dotdotgod-context', version });
 
-async function syncRootsFromClient() {
-  if (explicitRoot || !server.server.getClientCapabilities()?.roots) return;
+async function syncRootsFromClient(version) {
+  if (explicitRoot || !server.server.getClientCapabilities()?.roots) return true;
   const response = await server.server.listRoots();
   const entry = response?.roots?.find((item) => typeof item?.uri === 'string' && item.uri.startsWith('file://'));
-  if (!entry) return;
+  if (version !== rootSyncVersion || !entry) return false;
   const nextRoot = fileURLToPath(entry.uri);
-  if (!existsSync(nextRoot) || !statSync(nextRoot).isDirectory() || nextRoot === root) return;
-  await jobRunner?.close();
-  jobRunner = undefined;
+  if (!existsSync(nextRoot) || !statSync(nextRoot).isDirectory()) return false;
+  if (nextRoot === root) return true;
+  const oldJobs = jobRunner;
+  await oldJobs?.close();
+  if (jobRunner === oldJobs) jobRunner = undefined;
+  if (version !== rootSyncVersion) return false;
   contextStore?.close();
   contextStore = undefined;
   root = nextRoot;
+  return true;
 }
-server.server.oninitialized = () => { rootsSyncPromise = syncRootsFromClient().catch(() => {}); };
-server.server.setNotificationHandler(RootsListChangedNotificationSchema, async () => {
-  rootsSyncPromise = syncRootsFromClient().catch(() => {});
-  await rootsSyncPromise;
+function scheduleRootSync() {
+  const version = ++rootSyncVersion;
+  // Revoke old work before waiting on the client or another root transition.
+  const stopped = stopIndexer();
+  rootsSyncPromise = Promise.allSettled([stopped, syncRootsFromClient(version)]).then(([_, selection]) => {
+    if (stdioReady && version === rootSyncVersion && selection.status === 'fulfilled' && selection.value) {
+      try { indexWorker = startBackgroundIndexer(root); } catch { /* MCP remains usable without maintenance. */ }
+    }
+  });
+  return rootsSyncPromise;
+}
+server.server.oninitialized = () => { void scheduleRootSync(); };
+server.server.setNotificationHandler(RootsListChangedNotificationSchema, () => {
+  if (!explicitRoot && server.server.getClientCapabilities()?.roots) return scheduleRootSync();
 });
 
 const scopeSchema = z.enum(['transient', 'session', 'project']).optional();
@@ -99,7 +123,8 @@ function register(name, description, inputSchema, handler, annotations) {
   const schema = { ...inputSchema, contextSessionId: z.string().optional().describe('Host session identity; adapters supply this for shared MCP connections.') };
   server.registerTool(name, { description, inputSchema: z.object(schema).strict(), annotations }, async (input, extra) => {
     try {
-      await rootsSyncPromise;
+      let syncing;
+      do { syncing = rootsSyncPromise; await syncing; } while (syncing !== rootsSyncPromise);
       const { contextSessionId, ...args } = input;
       const context = { id: contextSessionId ? validateSessionId(contextSessionId) : sessionId, bound: Boolean(contextSessionId) || sessionBound };
       return await sessions.run(context, async () => success(await handler(args, extra), name));
@@ -198,7 +223,29 @@ export async function startServer() {
   const explicitSession = process.env.DOTDOTGOD_SESSION_ID;
   sessionId = resolveSessionId(explicitSession);
   sessionBound = Boolean(explicitSession);
-  await server.connect(new StdioServerTransport());
+  const transport = new StdioServerTransport();
+  let closing;
+  const shutdown = () => {
+    if (closing) return;
+    stdioReady = false;
+    ++rootSyncVersion;
+    closing = Promise.all([stopIndexer(), jobRunner?.close()]).finally(() => {
+      contextStore?.close();
+      process.off('SIGINT', shutdown);
+      process.off('SIGTERM', shutdown);
+      process.stdin.off('end', shutdown);
+      process.stdin.off('close', shutdown);
+    });
+    void closing.catch(() => {});
+    void server.close().catch(() => {});
+  };
+  transport.onclose = shutdown;
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
+  process.stdin.once('end', shutdown);
+  process.stdin.once('close', shutdown);
+  stdioReady = true;
+  try { await server.connect(transport); } catch (error) { shutdown(); throw error; }
 }
 
 export async function listServerTools() {

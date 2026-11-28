@@ -7,8 +7,8 @@ Code implementation bodies are not search passages. Default retrieval is hybrid
 keyword/vector over both corpora.
 
 ```text
-dotdotgod query <root> <query> [--limit <1..100>] [--scope docs|code|all]
-  [--search hybrid|keyword|vector] [--json]
+dotdotgod query <root> <query> [--limit <1..100>] [--scope docs|code|all|shared]
+  [--search hybrid|keyword|vector] [--prepared-only] [--no-write] [--json]
 ```
 
 - Root is the repository root; remaining free-form arguments form the query.
@@ -31,18 +31,25 @@ Original code doc comments are retained without generated summaries or inferred 
 
 Search and index refresh outlines incrementally. Validation only checks freshness.
 Unchanged searchable passages reuse vectors even when source ranges change.
-Vector cache stays under ignored .dotdotgod/vectors with schema/provider/model/
-dimension/profile identities and normalized float vectors. Missing/corrupt or
-incompatible caches rebuild. Writes use temporary files and atomic artifact rename.
+The derived SQLite WAL index at `.dotdotgod/index.sqlite` stores searchable text,
+outline metadata and normalized vectors. Population and refresh are explicit;
+reading a prepared index does not rebuild missing or incompatible artifacts.
+
+## Prepared-Only Search
+
+`--prepared-only` is the Load policy. It rejects invalid project configuration and symlinked documentation roots. If the configured docs root is missing, it returns empty results with a repository-selection hint, before traversal, cache reads or provider activity.
+
+It searches prepared SQLite lexical rows, excluding missing, changed, or out-of-policy paths. Cold documentation falls back to filesystem keywords; legacy outlines and compatible snapshots remain readable before migration. With an embedding profile, it reads only committed vectors matching current indexed passages. It never acquires or waits for a build lock, migrates legacy caches, or repairs graph files. If a compatible snapshot is unavailable, hybrid returns keywords and a warning without opening the embedder; explicit vector search fails. A ready snapshot needs one query-role embedding.
+
+`--no-write` remains strictly offline and keyword-only, even with `--search vector`; it is the policy for decision prefetch.
 
 ## Scope-Safe Vector Persistence
 
-Document and code snapshots are separate logical corpora in the atomic
-`.dotdotgod/vectors/snapshots.json` state file. Refresh replaces only selected
-corpora, including clearing empty corpora; current chunks alone become candidates.
-Compatible legacy vector artifacts migrate without passage re-embedding.
-Successful batches checkpoint separately from completed snapshots and resume by
-profile and passage fingerprint. A project build lock serializes writers, waits
+Document and code membership is committed separately from completed vector batches.
+A refresh replaces only the selected corpora, including clearing an empty corpus;
+shared refreshes preserve vectors outside shared scope. Compatible legacy snapshots
+and exports migrate without passage re-embedding. Successful batches of 16 vectors
+checkpoint in SQLite and resume by profile and passage fingerprint. A project build lock serializes writers, waits
 up to 30 seconds, and recovers a confirmed dead process owner. Malformed locks
 fail closed after timeout; manual inspection may be required. Diagnostics report
 missing/corrupt/schema/profile reasons, lock wait, and per-corpus embedded, reused
@@ -52,15 +59,16 @@ pruning, batch recovery, corrupt state and multiprocess serialization.
 
 ## Retrieval
 
-- Keyword candidates independently match names, signatures, original comments and
-  complete documentation chunk text. Camel-case identifiers are tokenized; an exact
-  symbol name/qualified-name match has priority.
-- Vector mode scans normalized vectors by exact cosine similarity.
+- Keyword mode uses FTS5 BM25 over names, signatures, original comments and full
+  documentation chunks. Split identifiers and CJK/Hangul bigrams assist retrieval;
+  exact symbol names and qualified names have B-tree priority.
+- Vector mode uses exact cosine similarity below 2,000 committed vectors and HNSW
+  at larger sizes when the graph generation matches SQLite. A missing graph or a
+  selective filter can require a committed-vector exact scan.
 - Hybrid combines independently ranked candidates by reciprocal-rank fusion
   (constant 60), with stable ID ties, then deduplicates docs by path and code by ID.
 - Hybrid embedding failure returns keyword results with an explicit warning.
   Vector-only failure remains fatal.
-- This is lexical candidate ranking, not a full BM25 engine or inferred call graph.
 
 Embeddings require an explicit project/global profile; unconfigured hybrid uses
 keywords silently and vector-only requests fail. No automatic model is selected.
@@ -79,7 +87,8 @@ scope/search, provider/model when used, index information, outline refresh count
 non-parsed/unsupported file diagnostics and vector fallback warnings.
 
 Code results include bounded structural/file-import relationship evidence (up to
-10 edges per result), derived from the same outline metadata. Unresolved imports
+10 edges for each of the first 30 results), derived from result-scoped outline
+metadata. Unresolved imports
 are syntax evidence, not resolved dependencies. No call edges are inferred.
 
 Query writes only derived caches; it never edits source/docs/config or installs
@@ -107,20 +116,26 @@ CLI runQuery uses queryProject for the expanded default contract.
   - [packages/cli/src/query/chunks.mjs](../../../packages/cli/src/query/chunks.mjs)
   - [packages/cli/src/query/store.mjs](../../../packages/cli/src/query/store.mjs)
   - [packages/cli/src/core.mjs](../../../packages/cli/src/core.mjs)
+  - [packages/cli/src/storage/fts-search.mjs](../../../packages/cli/src/storage/fts-search.mjs)
+  - [packages/cli/src/query/hnsw-index.mjs](../../../packages/cli/src/query/hnsw-index.mjs)
+  - [packages/cli/src/query/cache-session.mjs](../../../packages/cli/src/query/cache-session.mjs)
 - Verified by:
   - [packages/cli/test/symbol-query.test.mjs](../../../packages/cli/test/symbol-query.test.mjs)
   - [packages/cli/test/core.test.mjs](../../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../../packages/cli/test/e2e.test.mjs)
   - [packages/pi/test/load-project-utils.test.ts](../../../packages/pi/test/load-project-utils.test.ts)
+  - [packages/cli/test/storage/index-store.test.mjs](../../../packages/cli/test/storage/index-store.test.mjs)
+  - [packages/cli/test/query/hnsw-index.test.mjs](../../../packages/cli/test/query/hnsw-index.test.mjs)
 - Related docs:
   - [docs/spec/cli/CODE_OUTLINES.md](CODE_OUTLINES.md)
   - [docs/spec/LOAD_PROJECT.md](../LOAD_PROJECT.md)
   - [docs/spec/cli/DISCOVERY.md](DISCOVERY.md)
 - Design decisions:
   - [docs/arch/EXTENSION_ARCHITECTURE.md](../../arch/EXTENSION_ARCHITECTURE.md)
+  - [docs/arch/INCREMENTAL_INDEX_ENGINE.md](../../arch/INCREMENTAL_INDEX_ENGINE.md)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/commands/query.mjs","packages/cli/src/query/hybrid.mjs","packages/cli/src/query/chunks.mjs","packages/cli/src/query/store.mjs","packages/cli/src/core.mjs"],"verifiedBy":["packages/cli/test/symbol-query.test.mjs","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/pi/test/load-project-utils.test.ts"],"relatedDocs":["docs/spec/cli/CODE_OUTLINES.md","docs/spec/LOAD_PROJECT.md","docs/spec/cli/DISCOVERY.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/commands/query.mjs","packages/cli/src/query/hybrid.mjs","packages/cli/src/query/chunks.mjs","packages/cli/src/query/store.mjs","packages/cli/src/core.mjs","packages/cli/src/storage/fts-search.mjs","packages/cli/src/query/hnsw-index.mjs","packages/cli/src/query/cache-session.mjs"],"verifiedBy":["packages/cli/test/symbol-query.test.mjs","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","packages/pi/test/load-project-utils.test.ts","packages/cli/test/storage/index-store.test.mjs","packages/cli/test/query/hnsw-index.test.mjs"],"relatedDocs":["docs/spec/cli/CODE_OUTLINES.md","docs/spec/LOAD_PROJECT.md","docs/spec/cli/DISCOVERY.md"],"designDecisions":["docs/arch/EXTENSION_ARCHITECTURE.md","docs/arch/INCREMENTAL_INDEX_ENGINE.md"]}
 ```

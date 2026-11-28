@@ -400,6 +400,18 @@ export function validateMemoryConfigData(data, root = '.', file = MEMORY_CONFIG_
     if (!data.documentation || typeof data.documentation !== 'object' || Array.isArray(data.documentation)) add('DOCUMENTATION_CONFIG_INVALID', 'documentation', 'Expected an object.');
     else if (!isValidDocumentationRoot(data.documentation.root)) add('DOCUMENTATION_CONFIG_INVALID_ROOT', 'documentation.root', 'Expected a safe repository-relative directory without traversal, glob syntax, secrets, or reserved config/cache overlap.');
   }
+  const indexing = data.indexing;
+  if (indexing !== undefined) {
+    if (!indexing || typeof indexing !== 'object' || Array.isArray(indexing)) {
+      add('INDEXING_CONFIG_INVALID', 'indexing', 'Expected an object.');
+    } else {
+      for (const [key, value] of Object.entries(indexing)) {
+        if (!['watch', 'backgroundEmbeddings'].includes(key) || typeof value !== 'boolean') {
+          add('INDEXING_CONFIG_INVALID', `indexing.${key}`, 'Only boolean watch and backgroundEmbeddings fields are supported.');
+        }
+      }
+    }
+  }
   if (data.embedding !== undefined) {
     try { profiles.embedding = validateEmbeddingProfile(data.embedding); }
     catch (error) { add('EMBEDDING_CONFIG_INVALID', 'embedding', error.message); }
@@ -562,14 +574,16 @@ export function readProjectConfig(root) {
 }
 
 export function readMemoryConfig(root = '.', { data, errors } = readProjectConfig(root)) {
-  if (errors.length > 0) return { ...defaultMemoryConfig(), source: MEMORY_CONFIG_FILE, errors };
-  if (data === undefined) return defaultMemoryConfig();
+  const indexing = { watch: true, backgroundEmbeddings: true };
+  if (errors.length > 0) return { ...defaultMemoryConfig(), indexing, source: MEMORY_CONFIG_FILE, errors };
+  if (data === undefined) return { ...defaultMemoryConfig(), indexing, errors: [] };
   const documentationRoot = normalizeDocumentationRoot(data.documentation?.root ?? DEFAULT_DOCUMENTATION_ROOT);
   const defaults = defaultMemoryConfig({ documentationRoot });
   const configuredAreas = data.memory?.areas?.map(normalizeMemoryArea) ?? [];
   return {
     ...defaults,
     source: MEMORY_CONFIG_FILE,
+    indexing: { ...indexing, ...data.indexing },
     areas: configuredAreas.length > 0 ? configuredAreas : defaults.areas,
     traceability: data.traceability === undefined ? defaults.traceability : normalizeTraceabilityPolicy(data.traceability),
     validation: data.validation === undefined ? defaults.validation : normalizeValidationPolicy(data.validation),

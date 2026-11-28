@@ -178,8 +178,10 @@ class RuntimeTest(unittest.TestCase):
         self.runtime.call("select_root", {"label": str(self.b)}, "known")
         result = self.runtime.call("project_load", {"root": str(self.b)}, "")
         self.assertEqual(result["structuredContent"]["root"], str(self.b))
-        focused = self.runtime.call("project_load", {"focus": "--help"}, "")
-        self.assertNotIn("unavailable", focused["structuredContent"]["query"])
+        with patch.object(self.runtime, "cli", wraps=self.runtime.cli) as cli:
+            focused = self.runtime.call("project_load", {"focus": "--help"}, "")
+        cli.assert_any_call(self.a, ["query", str(self.a), "--limit", "30", "--prepared-only", "--json", "--", "--help"])
+        self.assertEqual(focused["structuredContent"]["query"]["query"], "--help")
         self.assertNotIn("", self.runtime.sessions)
         default = self.runtime.call("project_load", {}, "fresh")
         self.assertEqual(default["structuredContent"]["root"], str(self.a))

@@ -87,15 +87,19 @@ function credential(profile) {
   return value;
 }
 
-async function postJson(url, body, profile) {
+async function postJson(url, body, profile, { signal, beforeRequest } = {}) {
+  signal?.throwIfAborted();
+  beforeRequest?.();
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30000);
+  const timer = setTimeout(() => controller.abort(), 30000).unref();
+  const requestSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
   try {
     const key = credential(profile);
-    const response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...(key ? { authorization: `Bearer ${key}` } : {}) }, body: JSON.stringify(body), signal: controller.signal });
+    const response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...(key ? { authorization: `Bearer ${key}` } : {}) }, body: JSON.stringify(body), signal: requestSignal, ...(beforeRequest && { redirect: 'error' }) });
     if (!response.ok) {
       const category = response.status === 401 || response.status === 403 ? 'authentication' : response.status === 429 ? 'rate limit' : `HTTP ${response.status}`;
       const error = new Error(`Remote embedding ${category} failure.`);
+      error.status = response.status;
       if (response.status === 400 || response.status === 413) {
         const body = (await response.text()).slice(0, 8192);
         error.tokenLimit = /(?:exceed\w*[\s\S]{0,120}tokens?|tokens?[\s\S]{0,120}(?:exceed|limit|too (?:long|many))|maximum context length)/i.test(body);
@@ -104,19 +108,20 @@ async function postJson(url, body, profile) {
     }
     try { return await response.json(); } catch { throw new Error('Remote embedding returned malformed JSON.'); }
   } catch (error) {
-    if (error?.name === 'AbortError') throw new Error('Remote embedding request timed out.');
+    signal?.throwIfAborted();
+    if (controller.signal.aborted) throw new Error('Remote embedding request timed out.');
     throw error;
   } finally { clearTimeout(timer); }
 }
 
-function remoteEmbedder(profile) {
+function remoteEmbedder(profile, options) {
   if (profile.provider === 'ollama') return async (texts) => {
-    const data = await postJson(`${profile.baseUrl ?? 'http://localhost:11434'}/api/embed`, { model: profile.model, input: texts }, profile);
+    const data = await postJson(`${profile.baseUrl ?? 'http://localhost:11434'}/api/embed`, { model: profile.model, input: texts }, profile, options);
     if (!Array.isArray(data.embeddings)) throw new Error('Ollama embedding response is missing embeddings.');
     return data.embeddings.map(normalize);
   };
   return async (texts) => {
-    const data = await postJson(`${profile.baseUrl ?? 'https://api.openai.com/v1'}/embeddings`, { model: profile.model, input: texts }, profile);
+    const data = await postJson(`${profile.baseUrl ?? 'https://api.openai.com/v1'}/embeddings`, { model: profile.model, input: texts }, profile, options);
     if (!Array.isArray(data.data)) throw new Error('OpenAI-compatible embedding response is missing data.');
     const ordered = [...data.data].sort((a, b) => a.index - b.index).map((item) => item.embedding);
     return ordered.map(normalize);
@@ -132,7 +137,7 @@ function withInputFormat(embed, profile) {
 }
 
 export async function createEmbedder(profile, options = {}) {
-  const embed = profile.provider === 'local' ? await (options.openLocal ?? localEmbedder)(profile) : remoteEmbedder(profile);
+  const embed = profile.provider === 'local' ? await (options.openLocal ?? localEmbedder)(profile) : remoteEmbedder(profile, options);
   async function embedBatch(texts) {
     if (texts.length === 0) return [];
     let rows;

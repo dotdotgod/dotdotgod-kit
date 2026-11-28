@@ -28,14 +28,15 @@ it("preserves process errors and bounds every diagnostic", () => {
 	assert.equal(queryFailureDetail({ ...failure, stdout: "x".repeat(65537) }), "exit 1");
 });
 
-it("keeps successful source-checkout query consumption unchanged", () => {
+it("runs a prepared-only source-checkout query with literal flag-like focus", () => {
 	const root = mkdtempSync(join(tmpdir(), "dotdotgod-query-test-"));
 	try {
 		mkdirSync(join(root, "packages/cli/bin"), { recursive: true });
-		writeFileSync(join(root, "packages/cli/bin/dotdotgod.mjs"), 'console.log(JSON.stringify({ok:true,results:[{path:"docs/README.md",text:"match"}]}));');
-		const result = runDotdotgodQuery(root, "focus");
+		writeFileSync(join(root, "packages/cli/bin/dotdotgod.mjs"), 'console.log(JSON.stringify({ok:true,results:[{path:"docs/README.md",text:JSON.stringify(process.argv.slice(2))}]}));');
+		const result = runDotdotgodQuery(root, "--help");
 		assert.equal(result.ok, true);
 		assert.equal(result.command, "local workspace CLI");
 		assert.equal(result.data?.results?.[0]?.path, "docs/README.md");
+		assert.equal(result.data?.results?.[0]?.text, JSON.stringify(["query", root, "--limit", "30", "--prepared-only", "--json", "--", "--help"]));
 	} finally { rmSync(root, { recursive: true, force: true }); }
 });

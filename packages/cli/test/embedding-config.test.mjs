@@ -7,7 +7,7 @@ import { describe, it } from 'node:test';
 import { queryDocumentation, queryProject, buildVectorIndex } from '../src/commands/query.mjs';
 import { embeddingProfileIdentity, resolveEmbeddingProfile, sanitizeEmbeddingProfile, validateEmbeddingProfile } from '../src/query/embedding-config.mjs';
 import { createEmbedder, resolveEmbedder } from '../src/query/embedder.mjs';
-import { readVectorCache, profileFingerprint, VECTOR_SCHEMA_VERSION } from '../src/query/store.mjs';
+import { readVectorCache, profileFingerprint, VECTOR_SCHEMA_VERSION, writeVectorCache } from '../src/query/store.mjs';
 
 function fixture() { const root = mkdtempSync(join(tmpdir(), 'dotdotgod-embedding-')); mkdirSync(join(root, 'docs'), { recursive: true }); writeFileSync(join(root, 'docs/README.md'), '# Docs\n\nSemantic retrieval text.\n'); return root; }
 function unitVector(index, dimensions = 3) { return Array.from({ length: dimensions }, (_, position) => position === index ? 1 : 0); }
@@ -90,11 +90,12 @@ describe('embedding configuration and providers', () => {
     assert.deepEqual(embeddingProfileIdentity(profile), embeddingProfileIdentity(equivalent));
     assert.equal((await buildVectorIndex(root, { profile: equivalent, embed })).manifest.embedded, 0);
     assert.equal(calls, initial.chunks.length);
+    writeVectorCache(root, initial.chunks, initial.vectors, initial.manifest);
     const manifestPath = join(root, '.dotdotgod/vectors/manifest.json');
     const manifest = JSON.parse(readFileSync(manifestPath));
     manifest.profileFingerprint = profileFingerprint({ provider: 'local', model: 'm' });
     writeFileSync(manifestPath, JSON.stringify(manifest));
-    rmSync(join(root, '.dotdotgod/vectors/snapshots.json'));
+    rmSync(join(root, '.dotdotgod/index.sqlite'));
     assert.equal((await buildVectorIndex(root, { profile, embed })).manifest.embedded, initial.chunks.length);
     const changed = { ...profile, inputFormat: { queryPrefix: 'Q: ', documentPrefix: 'passage: ' } };
     assert.equal((await buildVectorIndex(root, { profile: changed, embed })).manifest.embedded, initial.chunks.length);
@@ -132,7 +133,7 @@ describe('embedding configuration and providers', () => {
       assert.deepEqual(requests.at(-1).parsed.input, ['query: retrieval']);
       assert.equal(readVectorCache(root, embeddingProfileIdentity(profile)).manifest.schemaVersion, VECTOR_SCHEMA_VERSION);
       const manifestPath = join(root, '.dotdotgod/vectors/manifest.json'); const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')); manifest.schemaVersion = 1; writeFileSync(manifestPath, JSON.stringify(manifest));
-      rmSync(join(root, '.dotdotgod/vectors/snapshots.json'));
+      rmSync(join(root, '.dotdotgod/index.sqlite'));
       let calls = 0; await buildVectorIndex(root, { profile, embed: async (texts) => { calls += 1; return texts.map(() => unitVector(0)); } }); assert(calls > 0);
       assert(!readFileSync(manifestPath, 'utf8').includes('secret'));
     } finally { remote.instance.close(); }

@@ -14,11 +14,13 @@ scope includes code. The synchronous buildIndex API consumes only matching cache
 outlines; it does not launch an async parser. No language server/config registry,
 editor installation, Ctags fallback or automatic summary is required.
 
-Metadata is stored in ignored .dotdotgod/outlines.json with schema, extractor,
-effective policy, per-file hashes/status, declarations/imports and refresh counts.
+Metadata is stored in ignored `.dotdotgod/index.sqlite` with extractor policy,
+per-file hashes/status, and declarations/imports. Compatible `.dotdotgod/outlines.json`
+caches remain readable before migration.
 Zero-symbol parsed files remain explicit records. Source changes during parsing
 abort the refresh. Changed/deleted records are replaced/removed; unchanged successful
-records reuse extraction. Partial parses retry and are reported as incomplete.
+records reuse extraction without reopening the source when its size, mtime and
+inode match. Partial parses retry and are reported as incomplete.
 
 ## Parser And Coverage
 
@@ -105,18 +107,22 @@ freshness is separate from outline metadata freshness.
   - [packages/cli/src/symbols/graph.mjs](../../../packages/cli/src/symbols/graph.mjs)
   - [packages/cli/src/index/cache.mjs](../../../packages/cli/src/index/cache.mjs)
   - [packages/cli/src/validate/run.mjs](../../../packages/cli/src/validate/run.mjs)
+  - [packages/cli/src/storage/index-store.mjs](../../../packages/cli/src/storage/index-store.mjs)
+  - [packages/cli/src/storage/change-detector.mjs](../../../packages/cli/src/storage/change-detector.mjs)
 - Verified by:
   - [packages/cli/test/csharp-modern-syntax.test.mjs](../../../packages/cli/test/csharp-modern-syntax.test.mjs)
   - [packages/cli/test/symbol-query.test.mjs](../../../packages/cli/test/symbol-query.test.mjs)
   - [packages/cli/test/adapters/packaging-contract.test.mjs](../../../packages/cli/test/adapters/packaging-contract.test.mjs)
+  - [packages/cli/test/storage/index-store.test.mjs](../../../packages/cli/test/storage/index-store.test.mjs)
 - Related docs:
   - [docs/spec/cli/QUERY.md](QUERY.md)
   - [docs/spec/LOAD_PROJECT.md](../LOAD_PROJECT.md)
 - Design decisions:
   - [docs/arch/CROSS_AGENT_ARCHITECTURE.md](../../arch/CROSS_AGENT_ARCHITECTURE.md)
+  - [docs/arch/INCREMENTAL_INDEX_ENGINE.md](../../arch/INCREMENTAL_INDEX_ENGINE.md)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/symbols/grammar-patches.mjs","scripts/build-csharp-parser.mjs","packages/cli/src/symbols/languages.mjs","packages/cli/src/symbols/runtime.mjs","packages/cli/src/symbols/parser.mjs","packages/cli/src/symbols/discovery.mjs","packages/cli/src/symbols/store.mjs","packages/cli/src/symbols/graph.mjs","packages/cli/src/index/cache.mjs","packages/cli/src/validate/run.mjs"],"verifiedBy":["packages/cli/test/csharp-modern-syntax.test.mjs","packages/cli/test/symbol-query.test.mjs","packages/cli/test/adapters/packaging-contract.test.mjs"],"relatedDocs":["docs/spec/cli/QUERY.md","docs/spec/LOAD_PROJECT.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/symbols/grammar-patches.mjs","scripts/build-csharp-parser.mjs","packages/cli/src/symbols/languages.mjs","packages/cli/src/symbols/runtime.mjs","packages/cli/src/symbols/parser.mjs","packages/cli/src/symbols/discovery.mjs","packages/cli/src/symbols/store.mjs","packages/cli/src/symbols/graph.mjs","packages/cli/src/index/cache.mjs","packages/cli/src/validate/run.mjs","packages/cli/src/storage/index-store.mjs","packages/cli/src/storage/change-detector.mjs"],"verifiedBy":["packages/cli/test/csharp-modern-syntax.test.mjs","packages/cli/test/symbol-query.test.mjs","packages/cli/test/adapters/packaging-contract.test.mjs","packages/cli/test/storage/index-store.test.mjs"],"relatedDocs":["docs/spec/cli/QUERY.md","docs/spec/LOAD_PROJECT.md"],"designDecisions":["docs/arch/CROSS_AGENT_ARCHITECTURE.md","docs/arch/INCREMENTAL_INDEX_ENGINE.md"]}
 ```

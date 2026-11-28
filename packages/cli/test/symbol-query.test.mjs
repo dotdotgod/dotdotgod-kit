@@ -9,6 +9,8 @@ import { extractSymbols } from '../src/symbols/parser.mjs';
 import { buildOutlines, outlineChunks, outlinePath, outlineStatus } from '../src/symbols/store.mjs';
 import { queryProject, parseQueryOptions } from '../src/commands/query.mjs';
 import { addOutlineGraph } from '../src/symbols/graph.mjs';
+import { indexPath } from '../src/storage/index-store.mjs';
+import { attachRelationships } from '../src/query/hybrid.mjs';
 
 const samples = {
   javascript: '/** Work. */\nexport class Example { /** Run. */ run() { return "}"; } }\nconst arrow = (x) => x + 1;',
@@ -100,8 +102,10 @@ test('outline freshness: additions, line shifts, body-only edits, deletion, corr
     const empty = await buildOutlines(root);
     assert.equal(empty.files.find((item) => item.path.endsWith('empty.ts')).symbols.length, 0);
     rmSync(file); assert.equal(outlineStatus(root).ok, false);
-    await buildOutlines(root); assert.equal(outlineStatus(root).ok, true);
-    const data = JSON.parse(readFileSync(outlinePath(root), 'utf8'));
+    const data = await buildOutlines(root); assert.equal(outlineStatus(root).ok, true);
+    rmSync(indexPath(root));
+    writeFileSync(outlinePath(root), JSON.stringify(data));
+    assert.equal(outlineStatus(root).ok, true);
     data.extractor = 'old'; writeFileSync(outlinePath(root), JSON.stringify(data));
     assert.equal(outlineStatus(root).ok, false);
     writeFileSync(outlinePath(root), '{broken'); assert.equal(outlineStatus(root).ok, false);
@@ -171,13 +175,28 @@ test('CLI index and read-only outline validation preserve plain validate', () =>
     const indexed = cli(['index', root, '--json']);
     assert.equal(indexed.status, 0, indexed.stdout + indexed.stderr);
     assert.equal(cli(['validate', root, '--check-index']).status, 0);
-    const before = readFileSync(outlinePath(root), 'utf8');
+    const before = readFileSync(indexPath(root));
     writeFileSync(join(root, 'src', 'service.ts'), 'function broken( {');
     const stale = cli(['validate', root, '--check-index', '--json']);
     assert.equal(stale.status, 1);
     assert.ok(JSON.parse(stale.stdout).errors.some((error) => error.code === 'OUTLINE_INDEX_STALE'));
-    assert.equal(readFileSync(outlinePath(root), 'utf8'), before);
+    assert.deepEqual(readFileSync(indexPath(root)), before);
     assert.equal(cli(['validate', root]).status, 0);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('prepared relationships match the full outline graph without loading unrelated files', async () => {
+  const root = fixture();
+  try {
+    writeFileSync(join(root, 'src/target.ts'), 'export function target() {}');
+    writeFileSync(join(root, 'src/caller.ts'), "import { target } from './target.js';\nimport tool from 'external';\n/** routed */ export function uniqueCaller() { target(); }\n");
+    writeFileSync(join(root, 'src/unrelated.ts'), 'export function unrelated() {}');
+    const outlines = await buildOutlines(root);
+    const result = await queryProject(root, 'uniqueCaller', { scope: 'code', search: 'keyword', indexPolicy: 'prepared-only' });
+    const stripped = result.results.map(({ relationshipCount, relationships, ...row }) => row);
+    assert.deepEqual(result.results, attachRelationships(stripped, outlines));
+    assert.equal(result.results[0].relationships.find(({ relation }) => relation === 'imports')?.target, 'file:src/target.ts');
+    assert.ok(result.results[0].relationships.length <= 10);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

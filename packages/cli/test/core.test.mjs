@@ -789,6 +789,23 @@ describe('CLI docs helpers', () => {
     assert.deepEqual(fallback.load, defaultLoad);
   });
 
+  it('normalizes optional indexing booleans without changing templates or summaries', () => {
+    const root = fixture();
+    const defaults = { watch: true, backgroundEmbeddings: true };
+    assert.deepEqual(readMemoryConfig(root).indexing, defaults);
+    assert.equal(Object.hasOwn(defaultDotdotgodConfigData(), 'indexing'), false);
+    for (const key of Object.keys(defaults)) {
+      writeFixtureJson(root, 'dotdotgod.config.json', { indexing: { [key]: false } });
+      const config = readMemoryConfig(root);
+      assert.deepEqual(config.errors, []);
+      assert.deepEqual(config.indexing, { ...defaults, [key]: false });
+      assert.equal(Object.hasOwn(memoryConfigSummary(config), 'indexing'), false);
+    }
+    for (const indexing of [null, [], false, 'off', { extra: true }, { watch: 'false' }, { backgroundEmbeddings: 0 }]) {
+      assert.deepEqual(validateMemoryConfigData({ indexing }, root).map(({ code }) => code), ['INDEXING_CONFIG_INVALID']);
+    }
+  });
+
   it('discards deprecated Plan Mode writable paths without treating them as permissions', () => {
     const root = fixture();
     writeFixtureJson(root, 'dotdotgod.config.json', { planMode: { writablePaths: ['docs/proposals/**'] } });

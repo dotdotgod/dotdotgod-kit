@@ -82,16 +82,16 @@ Selecting a remote provider in project or global embedding configuration authori
 
 ## Optional Local Runtime Installation
 
-Local embeddings first use an ordinarily installed `@huggingface/transformers` package, then a persistent user runtime under `~/.dotdotgod/runtime/embedding/`. Missing runtime does not make Project Load fail: Load returns its documentation map plus an `EMBEDDING_RUNTIME_MISSING` recovery offer. The agent must ask the user before invoking `embedding_install` or `dotdotgod embedding install --confirm`; refusal continues map-only work.
+Local embeddings first use an ordinarily installed `@huggingface/transformers` package, then a persistent user runtime under `~/.dotdotgod/runtime/embedding/`. Focused Load opens the local embedder only with a compatible, ready snapshot. A cold or unusable snapshot returns keyword results without an install offer. With a ready snapshot but a missing runtime, Load keeps keyword results and exposes an `EMBEDDING_RUNTIME_MISSING` recovery offer. The agent must ask before invoking `embedding_install` or `dotdotgod embedding install --confirm`; refusal continues keyword/map work.
 
 `dotdotgod embedding status [<root>] [--json]` is read-only and offline. `dotdotgod embedding install [<root>] --confirm [--json]` installs the fixed compatible runtime with npm using a fixed prefix and package version. Installation uses network access and dependency install scripts. The configured model may still download on the first subsequent local query. Remote embedding profiles do not require or offer local runtime installation.
 
 ## Scope-Safe Persistence
 
-Document/code snapshots and batch checkpoints share one atomically replaced
-`vectors/snapshots.json` state file. Only refreshed corpora are pruned, including
-empty corpora; candidates always use current chunk metadata. Compatible legacy
-artifacts migrate without new passage calls. A project lock serializes builds
+SQLite stores completed vector batches as packed Float32 BLOBs. Search reads only
+published document/code membership; interrupted batches can resume but are not yet
+search candidates. Only refreshed corpora are pruned, including empty corpora.
+Compatible legacy snapshots and version-2 exports migrate without new passage calls. A project lock serializes builds
 with a 30-second wait and confirmed-dead-owner recovery; malformed locks fail
 closed and require inspection. Diagnostics include invalidation reason, lock wait,
 and per-corpus embedded/reused/recovered counts. Offline regression coverage is
@@ -99,7 +99,7 @@ and per-corpus embedded/reused/recovered counts. Offline regression coverage is
 
 ## Cache and Failures
 
-The vector manifest records provider, model, dimensions, and a secret-free profile fingerprint. Schema version 2 invalidates all schema-1 caches. Output-affecting profile changes rebuild the index. Cache identity includes effective prefixes and a formatting version. Omitted and explicit equivalent E5 formats share identity; object key order does not matter. Query- or document-prefix changes invalidate the cache, and legacy identities without formatting information rebuild once. Credentials remain excluded.
+Each SQLite vector includes dimensions and a secret-free profile fingerprint. The compatibility export retains a version-2 vector manifest with provider/model metadata. Incompatible legacy exports do not migrate. Output-affecting profile changes require a different vector profile. Cache identity includes effective prefixes and a formatting version. Omitted and explicit equivalent E5 formats share identity; object key order does not matter. Query- or document-prefix changes invalidate the cache, and legacy identities without formatting information rebuild once. Credentials remain excluded.
 
 Documentation indexing starts with batches of 16 inputs. Remote HTTP 400/413 token-limit responses split the failed batch in half recursively, preserving input order. A single oversized input fails without further retry; unrelated errors are not retried. Provider response bodies are not exposed in diagnostics.
 
@@ -120,19 +120,23 @@ Vector-only query fails when embedding fails; configured hybrid falls back with 
   - [packages/cli/src/query/store.mjs](../../packages/cli/src/query/store.mjs)
   - [packages/cli/src/commands/query.mjs](../../packages/cli/src/commands/query.mjs)
   - [packages/cli/src/impact/vector-overlay.mjs](../../packages/cli/src/impact/vector-overlay.mjs)
+  - [packages/cli/src/storage/index-store.mjs](../../packages/cli/src/storage/index-store.mjs)
+  - [packages/cli/src/query/cache-session.mjs](../../packages/cli/src/query/cache-session.mjs)
 - Verified by:
   - [packages/cli/test/embedding-config.test.mjs](../../packages/cli/test/embedding-config.test.mjs)
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
   - [docs/test/EMBEDDING_CONFIG.md](../test/EMBEDDING_CONFIG.md)
+  - [packages/cli/test/vector-cache-session.test.mjs](../../packages/cli/test/vector-cache-session.test.mjs)
 - Related docs:
   - [docs/spec/cli/QUERY.md](cli/QUERY.md)
   - [docs/spec/cli/GRAPH_IMPACT.md](cli/GRAPH_IMPACT.md)
 - Design decisions:
   - [docs/arch/EMBEDDING_PROVIDERS.md](../arch/EMBEDDING_PROVIDERS.md)
+  - [docs/arch/INCREMENTAL_INDEX_ENGINE.md](../arch/INCREMENTAL_INDEX_ENGINE.md)
 
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/query/embedding-config.mjs","packages/cli/src/query/embedder.mjs","packages/cli/src/query/store.mjs","packages/cli/src/commands/query.mjs","packages/cli/src/impact/vector-overlay.mjs"],"verifiedBy":["packages/cli/test/embedding-config.test.mjs","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/EMBEDDING_CONFIG.md"],"relatedDocs":["docs/spec/cli/QUERY.md","docs/spec/cli/GRAPH_IMPACT.md"],"designDecisions":["docs/arch/EMBEDDING_PROVIDERS.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/query/embedding-config.mjs","packages/cli/src/query/embedder.mjs","packages/cli/src/query/store.mjs","packages/cli/src/commands/query.mjs","packages/cli/src/impact/vector-overlay.mjs","packages/cli/src/storage/index-store.mjs","packages/cli/src/query/cache-session.mjs"],"verifiedBy":["packages/cli/test/embedding-config.test.mjs","packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/EMBEDDING_CONFIG.md","packages/cli/test/vector-cache-session.test.mjs"],"relatedDocs":["docs/spec/cli/QUERY.md","docs/spec/cli/GRAPH_IMPACT.md"],"designDecisions":["docs/arch/EMBEDDING_PROVIDERS.md","docs/arch/INCREMENTAL_INDEX_ENGINE.md"]}
 ```

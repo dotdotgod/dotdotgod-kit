@@ -133,7 +133,7 @@ class Runtime:
         query = None
         if focus:
             try:
-                query = self.cli(root, ["query", str(root), "--limit", "30", "--json", "--", focus])
+                query = self.cli(root, ["query", str(root), "--limit", "30", "--prepared-only", "--json", "--", focus])
             except Exception as error:
                 query = {"unavailable": str(error), "guidance": "Use map/README routing; do not install embeddings without approval."}
         with self.lock:

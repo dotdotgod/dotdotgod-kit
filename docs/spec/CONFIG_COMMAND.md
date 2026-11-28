@@ -54,6 +54,18 @@ The config command surfaces the same policy families that validation, Load/query
 
 CLI output describes project-policy provenance, not Pi permission activation. It does not merge user/session grants or establish project trust. Pi runtime is responsible for user/project policy resolution, explicit activation, deny precedence, and execution-time path/context checks; the CLI schema alone does not implement or authorize those operations.
 
+## Background Indexing
+
+The optional `indexing` object accepts two booleans, each defaulting to `true`.
+Unknown keys and non-boolean values are invalid. Templates and the config show
+summary omit this optional policy.
+
+- `watch: false` disables [MCP background indexing](../arch/INCREMENTAL_INDEX_ENGINE.md#continuous-mcp-indexing).
+- `backgroundEmbeddings: false` disables background embedding requests, not
+  local FTS and outline maintenance. When enabled, an eligible root uses its
+  configured embedding profile, if any, with docs batched before code.
+  These switches do not change explicit query behavior.
+
 ## Init Command
 
 ```bash
@@ -112,11 +124,13 @@ JSON output for init errors includes `ok: false`, `command: "config init"`, `roo
   - [packages/cli/src/config/templates.mjs](../../packages/cli/src/config/templates.mjs)
   - [packages/cli/assets/initializer/templates/dotdotgod.config.json](../../packages/cli/assets/initializer/templates/dotdotgod.config.json)
   - [scripts/generate-adapters.mjs](../../scripts/generate-adapters.mjs)
+  - [packages/cli/src/context/index-worker.mjs](../../packages/cli/src/context/index-worker.mjs)
 - Verified by:
   - [packages/cli/test/core.test.mjs](../../packages/cli/test/core.test.mjs)
   - [packages/cli/test/e2e.test.mjs](../../packages/cli/test/e2e.test.mjs)
   - [docs/test/CONFIG_COMMAND.md](../test/CONFIG_COMMAND.md)
   - [docs/test/CONFIG_TEMPLATES.md](../test/CONFIG_TEMPLATES.md)
+  - [packages/cli/test/context/index-worker.test.mjs](../../packages/cli/test/context/index-worker.test.mjs)
 - Related docs:
   - [docs/spec/CONFIG_TEMPLATES.md](CONFIG_TEMPLATES.md)
   - [docs/spec/PROJECT_INITIALIZER.md](PROJECT_INITIALIZER.md)
@@ -131,5 +145,5 @@ JSON output for init errors includes `ok: false`, `command: "config init"`, `roo
 <!-- dotdotgod:traceability-links:end -->
 
 ```json dotdotgod
-{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/init.mjs","packages/cli/src/memory/config.mjs","packages/cli/src/config/templates.mjs","packages/cli/assets/initializer/templates/dotdotgod.config.json","scripts/generate-adapters.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_COMMAND.md","docs/test/CONFIG_TEMPLATES.md"],"relatedDocs":["docs/spec/CONFIG_TEMPLATES.md","docs/spec/PROJECT_INITIALIZER.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/spec/CLI_INTERFACE.md"],"designDecisions":["docs/arch/MEMORY_AREA_CONFIG.md"]}
+{"kind":"spec","implementedBy":["packages/cli/src/core.mjs","packages/cli/src/init.mjs","packages/cli/src/memory/config.mjs","packages/cli/src/config/templates.mjs","packages/cli/assets/initializer/templates/dotdotgod.config.json","scripts/generate-adapters.mjs","packages/cli/src/context/index-worker.mjs"],"verifiedBy":["packages/cli/test/core.test.mjs","packages/cli/test/e2e.test.mjs","docs/test/CONFIG_COMMAND.md","docs/test/CONFIG_TEMPLATES.md","packages/cli/test/context/index-worker.test.mjs"],"relatedDocs":["docs/spec/CONFIG_TEMPLATES.md","docs/spec/PROJECT_INITIALIZER.md","docs/spec/MEMORY_AREA_CONFIG.md","docs/spec/TRACEABILITY_CONFIG.md","docs/spec/VALIDATION_CONFIG.md","docs/spec/IMPACT_RANKING_CONFIG.md","docs/spec/CLI_INTERFACE.md"],"designDecisions":["docs/arch/MEMORY_AREA_CONFIG.md"]}
 ```

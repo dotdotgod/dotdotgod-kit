@@ -1,6 +1,7 @@
 import { accessSync, constants, existsSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { incrementalIndexStatus } from '../storage/index-store.mjs';
 
 const MINIMUM_NODE = [22, 5, 0];
 const EXPECTED_TABLES = new Set(['sources', 'chunks']);
@@ -129,7 +130,10 @@ export function runDoctor(options = {}) {
     mode: options.fetchPolicy?.mode ?? 'strict',
     encodings: options.fetchPolicy?.encodings ?? ['identity', 'gzip', 'deflate', 'br'],
   }));
+  const incrementalIndex = incrementalIndexStatus(root);
   return {
+    incrementalIndex,
+    indexEngine: incrementalIndex.present ? 'sqlite-wal' : null,
     ok: !checks.some((entry) => entry.status === 'FAIL'),
     status: statusFor(checks),
     node: process.version,

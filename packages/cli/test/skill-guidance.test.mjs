@@ -14,7 +14,9 @@ test('Pi initializer and shared workflow guidance preserve host contracts', () =
   assert.match(impact, /Call the host-registered project_impact/);
   assert.match(impact, /without claiming it clears host pending state/);
   assert.match(impact, /up to 20 unique paths in first-seen order/);
-  assert.match(read(base + 'load.md'), /project_load reports mapUnavailable/);
+  const load = read(base + 'load.md');
+  assert.match(load, /project_load reports mapUnavailable/);
+  assert.ok(load.includes('dotdotgod query <root> --limit 30 --prepared-only --json -- "<focus>"'));
 });
 
 test('standalone task and report guidance separates investigation, implementation and scope', () => {

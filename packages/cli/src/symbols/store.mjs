@@ -1,15 +1,10 @@
-import {
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  writeFileSync,
-} from "node:fs";
-import { randomUUID } from "node:crypto";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fingerprint } from "../index/files.mjs";
-import { sourceFiles, outlinePolicy as policy } from "./discovery.mjs";
+import { readMemoryConfig } from "../memory/config.mjs";
+import { codePaths, containedStat, gitChanges, inspectFile, pathEligibility, sameStat } from "../storage/change-detector.mjs";
+import { indexPath, openReadOnly, openWriter } from "../storage/index-store.mjs";
+import { outlinePolicy as policy } from "./discovery.mjs";
+import { parserIdentity } from "./runtime.mjs";
 export { sourceFiles } from "./discovery.mjs";
 import { textFingerprint } from "../query/chunks.mjs";
 import { EXTRACTOR_ID, languageForPath } from "./languages.mjs";
@@ -24,11 +19,11 @@ function assertCachePath(root) {
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
-    if (stat?.isSymbolicLink())
-      throw new Error(`Outline cache must not use symlinks: ${path}`);
+    if (stat && !(path === outlinePath(root) ? stat.isFile() : stat.isDirectory()))
+      throw new Error(`Outline cache must not use symlinks or special files: ${path}`);
   }
 }
-export function readOutlines(root) {
+export function readLegacyOutlines(root) {
   try {
     assertCachePath(root);
     const index = JSON.parse(readFileSync(outlinePath(root), "utf8"));
@@ -83,6 +78,7 @@ export function readOutlines(root) {
           typeof symbol.id !== "string" ||
           !symbol.id.startsWith(`symbol:${file.path}#`) ||
           ids.has(symbol.id) ||
+          typeof symbol.kind !== "string" ||
           typeof symbol.signature !== "string" ||
           typeof symbol.documentation !== "string"
         )
@@ -147,9 +143,34 @@ export function readOutlines(root) {
     return null;
   }
 }
+export function outlineRecord(store, file) {
+  return { path: file.path, hash: file.sha256, language: file.language, sourceLength: file.source_length,
+    lineCount: file.line_count, status: file.status, symbols: store.symbols(file.path), imports: JSON.parse(file.imports_json) };
+}
+
+function storedOutlines(store) {
+  const policy = store.meta('outline_policy');
+  return policy ? { schema: OUTLINE_SCHEMA, extractor: EXTRACTOR_ID, policy,
+    files: store.files('code').map((file) => outlineRecord(store, file)) } : null;
+}
+
+export function readOutlines(root) {
+  const store = openReadOnly(root);
+  if (!store) return existsSync(indexPath(root)) ? null : readLegacyOutlines(root);
+  try { return storedOutlines(store); }
+  finally { store.close(); }
+}
+
+function eligibleSourceFiles(root, config) {
+  const allowed = pathEligibility(root, config, 'outline');
+  return codePaths(root, config).filter((path) => allowed(path, 'code'));
+}
+
 export function outlineStatus(root) {
   assertCachePath(root);
-  const files = sourceFiles(root);
+  const config = readMemoryConfig(root);
+  // Validation hashes independently: unlike refresh it verifies freshness even after stat-preserving edits.
+  const files = eligibleSourceFiles(root, config).map((path) => inspectFile(root, path, null, { code: true })).filter(Boolean);
   const index = readOutlines(root);
   if (!index)
     return {
@@ -187,58 +208,74 @@ export function outlineStatus(root) {
       .map((file) => file.path),
   };
 }
-export async function buildOutlines(root) {
+export async function buildOutlines(root, { persist = true } = {}) {
   assertCachePath(root);
-  const files = sourceFiles(root);
-  const old = readOutlines(root);
-  const previous = new Map(
-    old?.policy === policy(root)
-      ? old.files.map((file) => [file.path, file])
-      : [],
-  );
-  let parsed = 0;
-  let reused = 0;
-  const records = [];
-  for (const file of files) {
-    const cached = previous.get(file.path);
-    if (
-      cached?.hash === file.hash &&
-      ["parsed", "unsupported"].includes(cached.status)
-    ) {
-      records.push(cached);
-      reused += 1;
-      continue;
+  const config = readMemoryConfig(root);
+  const db = persist ? openWriter(root) : openReadOnly(root);
+  const store = db ?? { meta: () => undefined, files: () => [], file: () => undefined };
+  const staged = new Map();
+  const remove = (path) => persist ? store.deleteFile(path) : staged.set(path, null);
+  const save = (path, record) => persist ? store.upsertFile(record, record.symbols, outlineChunks({ files: [record] })) : staged.set(path, record);
+  try {
+    const allowed = pathEligibility(root, config, 'outline');
+    const identity = textFingerprint(JSON.stringify([config.areas, parserIdentity(), EXTRACTOR_ID]));
+    const previousPolicy = store.meta('outline_policy');
+    const git = gitChanges(root, store);
+    const fast = previousPolicy && identity === store.meta('outline_config') && git.paths
+      && ![...git.paths].some((path) => path.split('/').at(-1) === '.gitignore');
+    const currentPolicy = fast ? previousPolicy : policy(root);
+    const old = store.files('code');
+    const paths = fast ? git.paths : new Set([...old.map((file) => file.path), ...eligibleSourceFiles(root, config)]);
+    let reused = fast ? old.filter((file) => !paths.has(file.path) && ['parsed', 'unsupported'].includes(file.status)).length : 0;
+    for (const file of old) if (!['parsed', 'unsupported'].includes(file.status)) paths.add(file.path);
+    let parsed = 0;
+    for (const path of paths) {
+      const cached = store.file(path);
+      const reuse = previousPolicy === currentPolicy && ['parsed', 'unsupported'].includes(cached?.status);
+      const file = allowed(path, 'code') ? inspectFile(root, path, reuse ? cached : null, { code: true }) : null;
+      if (!file) { if (cached?.kind === 'code') remove(path); continue; }
+      let record;
+      if (reuse && cached.sha256 === file.hash) {
+        reused += 1;
+        if (sameStat(cached, file)) continue;
+        record = { ...outlineRecord(store, cached), ...file };
+      } else if (!file.language) record = { ...file, status: 'unsupported', symbols: [], imports: [] };
+      else {
+        const { extractSymbols } = await import('./parser.mjs');
+        record = { ...file, ...await extractSymbols(path, file.source, file.language) };
+        if (!sameStat(file, containedStat(root, path))) throw new Error(`Source changed during outline extraction: ${path}`);
+        parsed += 1;
+      }
+      save(path, record);
     }
-    if (!file.language) {
-      records.push({
-        ...file,
-        status: "unsupported",
-        symbols: [],
-        imports: [],
+    const publish = (writer) => {
+      for (const [path, record] of staged) {
+        if (!record) writer.deleteFile(path);
+        else {
+          if (!sameStat(record, containedStat(root, path))) throw new Error(`Source changed during outline extraction: ${path}`);
+          writer.upsertFile(record, record.symbols, outlineChunks({ files: [record] }));
+        }
+      }
+      writer.transaction(() => {
+        writer.setMeta('outline_policy', currentPolicy);
+        writer.setMeta('outline_count', String(writer.sql('SELECT count(*) AS count FROM files WHERE kind=?').get('code').count));
+        writer.setMeta('outline_config', identity);
+        writer.setMeta('last_git_head', git.head ?? '');
+        writer.setMeta('last_git_dirty', JSON.stringify(git.dirty ?? []));
       });
-      continue;
+    };
+    const refresh = { parsed, reused };
+    if (persist) { publish(store); return { ...storedOutlines(store), refresh }; }
+    const files = new Map(old.map((file) => [file.path, outlineRecord(store, file)]));
+    for (const [path, record] of staged) {
+      if (!record) files.delete(path);
+      else {
+        const { source, mtime_ms, size, ino, ...outline } = record;
+        files.set(path, outline);
+      }
     }
-    const { extractSymbols } = await import("./parser.mjs");
-    const source = readFileSync(join(root, file.path), "utf8");
-    const extracted = await extractSymbols(file.path, source, file.language);
-    if (fingerprint(join(root, file.path)) !== file.hash)
-      throw new Error(`Source changed during outline extraction: ${file.path}`);
-    records.push({ ...file, ...extracted });
-    parsed += 1;
-  }
-  const index = {
-    schema: OUTLINE_SCHEMA,
-    extractor: EXTRACTOR_ID,
-    policy: policy(root),
-    files: records,
-    refresh: { parsed, reused },
-  };
-  const target = outlinePath(root);
-  mkdirSync(dirname(target), { recursive: true });
-  const temporary = `${target}.tmp-${process.pid}-${randomUUID()}`;
-  writeFileSync(temporary, JSON.stringify(index), { flag: "wx" });
-  renameSync(temporary, target);
-  return index;
+    return { files: [...files.values()], refresh, publish };
+  } finally { db?.close(); }
 }
 export function outlineChunks(index) {
   return index.files.flatMap((file) =>

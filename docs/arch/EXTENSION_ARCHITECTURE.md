@@ -100,7 +100,7 @@ A small pure active-tool composition helper is the boundary between project-memo
 - shared `dotdotgod map --json` invocation through the source/package/global CLI resolver for configured Markdown discovery and prefix-compressed tree rendering
 - depth 5 maps without focus and depth 3 maps with focus, preserving all direct boundary files and named per-child summaries below the boundary
 - bounded local discovery/rendering fallback only when CLI execution is unavailable
-- local `dotdotgod query` invocation for up to 30 focused multilingual E5 results
+- local `dotdotgod query --prepared-only` invocation for up to 30 focused results; `--` preserves flag-like focus text
 - lightweight detection of baseline memory files and narrative loader prompt generation
 - command-conflict guidance for `/load`
 
@@ -133,7 +133,7 @@ Prompt content should:
 
 ## Search Architecture
 
-Load navigation routes through read-only `dotdotgod map`; focused Load arguments separately route through `dotdotgod query`, which maintains a separate local `Xenova/multilingual-e5-small` vector cache under `.dotdotgod/vectors/`. This flat exact-scan index is derived routing data, not project truth and not part of the deterministic relationship graph.
+Load navigation uses the configured documentation map. The shared Load service validates the docs root before map discovery. Focused Load uses the CLI's prepared-only policy: it reads existing outlines, matches committed `.dotdotgod/vectors/snapshots.json` rows to current chunks, and embeds only the focus when that snapshot is ready. It neither refreshes indexes nor waits for writers. The flat exact-scan index is derived routing data, not project truth or part of the deterministic relationship graph.
 
 Potential future additions include explicit search/status commands, graph-entity search, or an LLM-callable search tool. They should reuse the current query contract only when the behavior is stable rather than adding speculative provider or index abstractions.
 
